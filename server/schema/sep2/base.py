@@ -1,7 +1,7 @@
 import enum
 from typing import Optional
 
-from pydantic_xml import BaseXmlModel, attr, element
+from pydantic_xml import BaseXmlModel, attr
 
 """ Abstract
 """
