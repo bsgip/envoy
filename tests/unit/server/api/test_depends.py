@@ -1,13 +1,9 @@
 import pytest
-
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 
 from server.api.depends import LFDIAuthDepends
 from server.main import settings
-from .resources import TEST_CERTIFICATE_PEM
-
-
-bs_cert_pem_header = bytes(f"{settings.cert_pem_header}", "ascii")
+from tests.unit.server.resources import TEST_CERTIFICATE_PEM, bs_cert_pem_header
 
 
 def test_generate_lfdi_from_fingerprint():

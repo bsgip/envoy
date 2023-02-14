@@ -1,3 +1,6 @@
+from server.main import settings
+
+
 TEST_CERTIFICATE_PEM = b"""-----BEGIN CERTIFICATE-----
 MIIEETCCAfkCAQEwDQYJKoZIhvcNAQELBQAwSzELMAkGA1UEBhMCQVUxDDAKBgNV
 BAgMA05TVzEMMAoGA1UEBwwDQ0JSMQ4wDAYDVQQKDAVCU0dJUDEQMA4GA1UEAwwH
@@ -23,3 +26,5 @@ N1UwoCrhqJdKlzUODdhe2HHiCf9frKTgCJ8jvvxGdV7usOwqFUly3UaA4PImNw9q
 qRyRKl+rY4NwOuMYqzYFeruO4Mr7i5Ik/R9ldY2MzSxQyiCfTw==
 -----END CERTIFICATE-----
 """
+
+bs_cert_pem_header = bytes(f"{settings.cert_pem_header}", "ascii")
