@@ -3,6 +3,7 @@ sqlalchemy>=2.0.0
 alembic>=1.9.2
 pytz==2022.7.1
 tzlocal==4.2
+pydantic_xml==0.6.0
 
 # DEV
 uvicorn==0.20.0
