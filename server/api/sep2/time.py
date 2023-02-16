@@ -1,4 +1,5 @@
 import datetime
+import logging
 from zoneinfo import ZoneInfo
 
 from dateutil import tz
@@ -7,6 +8,9 @@ from tzlocal import get_localzone
 
 from server.api.response import XmlResponse
 from server.schema.sep2.time import TimeQualityType, TimeResponse
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 
@@ -38,9 +42,8 @@ async def get_time_resource(request: Request):
     # Get daylight savings info
     dst_info = get_dst_info(now_time)
 
-    # Get tzOffset, the non daylight savings time displacement from UTC in seconds.
-    random_non_dst_time = timezone.localize(datetime.datetime(2020, 6, 28, 15, 25))
-    tz_offset = int(random_non_dst_time.utcoffset().total_seconds())
+    # Get tz offset withouth dst component
+    tz_offset = now_time.utcoffset().total_seconds() - dst_info["dst_offset"]
 
     time_dict = {
         "href": request.url.path,
@@ -65,16 +68,20 @@ def get_dst_info(now_time: datetime.datetime) -> dict:
         dst_info (dict):
 
     """
-
-    if now_time.tzinfo == ZoneInfo("UTC"):
-        return {"dst_end": 0, "dst_start": 0, "dst_offset": 0}
+    dst_zero = {"dst_end": 0, "dst_start": 0, "dst_offset": 0}
 
     tzif_obj = tz.gettz(now_time.tzinfo._key)
+    if tzif_obj is None:
+        logger.warn("Unknown timezone name, returning zero dst info.")
+        return dst_zero
 
-    last_transition_idx = tzif_obj._find_last_transition(now_time)
+    if now_time.tzinfo == ZoneInfo("UTC"):
+        return dst_zero
+
+    last_transition_idx = tzif_obj._find_last_transition(now_time) or 1
     if last_transition_idx >= (len(tzif_obj._trans_list_utc) - 1):
         # No info about next transition - likely not a DST tz
-        return {"dst_end": 0, "dst_start": 0, "dst_offset": 0}
+        return dst_zero
 
     # If we are in a DST period (i.e. dst offset total seconds > 0), then the last transition index is the start of the
     # dst period and the next index is end.
