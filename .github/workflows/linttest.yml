@@ -68,7 +68,8 @@ jobs:
           sudo apt install -y postgresql
           pip install -r tests/requirements.txt
           pytest --junit-xml=.test_report.xml
-
+        env:
+         DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"
       - name: Upload Results
         uses: test-summary/action@v1
         with:
