@@ -26,11 +26,12 @@ async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response
     assert exc.value.status_code == 500
 
 
+@pytest.mark.parametrize("mock_db", ["server.api.depends.db"], indirect=True)
 @pytest.mark.asyncio
 async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_response(
-    mocker,
+    mocker, mock_db
 ):
-    mocker.patch("server.crud.auth.select_certificateid_using_lfdi", return_value=None)
+    mocker.patch("server.crud.auth.select_certificate_id_using_lfdi", return_value=None)
     req = Request(
         {
             "type": "http",

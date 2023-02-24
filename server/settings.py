@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from pydantic import BaseSettings
+from pydantic import BaseSettings, PostgresDsn
 
 
 class AppSettings(BaseSettings):
@@ -13,6 +13,9 @@ class AppSettings(BaseSettings):
     version: str = "0.0.0"
 
     cert_pem_header: str = "x-forwarded-client-cert"
+
+    database_url: PostgresDsn
+    commit_on_exit: str = False
 
     class Config:
         validate_assignment = True
@@ -28,3 +31,7 @@ class AppSettings(BaseSettings):
             "title": self.title,
             "version": self.version,
         }
+
+    @property
+    def db_middleware_kwargs(self) -> Dict[str, Any]:
+        return {"db_url": self.database_url, "commit_on_exit": self.commit_on_exit}
