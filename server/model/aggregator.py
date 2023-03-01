@@ -5,6 +5,7 @@ from server.model import Base
 
 
 class Aggregator(Base):
+    "Represents a Distributed Energy Resource (DER) aggregator"
     __tablename__ = "aggregator"
 
     aggregator_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -12,6 +13,8 @@ class Aggregator(Base):
 
 
 class AggregatorCertificateAssignment(Base):
+    """Links a specific Certificate to an Aggregator allowing a many-many relationship"""
+
     __tablename__ = "aggregator_certificate_assignment"
     assignment_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     certificate_id = mapped_column(
