@@ -9,6 +9,6 @@ class DNSP(Base):
     of entities "underneath" it"""
 
     __tablename__ = "dnsp"
-    dnsp_id: Mapped[int] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(String())
+
+    dnsp_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str]
