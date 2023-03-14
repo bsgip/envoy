@@ -1,18 +1,35 @@
-from server.mapper.base import BaseMapper
-from server.schema.sep2.end_device import EndDeviceResponse
+from server.schema.sep2.end_device import EndDeviceResponse, EndDeviceListResponse
+from server.model.site import Site
 
 
-class EndDeviceMapper(BaseMapper):
-    _map = {
-        "lfdi": "lFDI",
-        "sfdi": "sFDI",
-        "device_category": "deviceCategory",
-        "changed_time": "changedTime",
-    }
+class EndDeviceMapper:
+    @staticmethod
+    def map_to_response(site: Site) -> EndDeviceResponse:
+        return EndDeviceResponse.validate(
+            {
+                "href": f"/edev/{site.site_id}",
+                "lFDI": site.lfdi,
+                "sFDI": site.sfdi,
+                "deviceCategory": site.device_category,
+                "changedTime": site.changed_time,
+                "enabled": True,
+            }
+        )
 
-    @classmethod
-    def map_to_response(cls, site_data):
-        site_id = site_data.pop("site_id")
-        return EndDeviceResponse(
-            href=f"/edev/{site_id}", **cls._map_colnames(site_data), enabled=1
+
+class EndDeviceListMapper:
+    @staticmethod
+    def map_to_response(site_list: list[Site]) -> EndDeviceListResponse:
+        return EndDeviceListResponse.validate(
+            [
+                {
+                    "href": f"/edev/{site.site_id}",
+                    "lFDI": site.lfdi,
+                    "sFDI": site.sfdi,
+                    "deviceCategory": site.device_category,
+                    "changedTime": site.changed_time,
+                    "enabled": True,
+                }
+                for site in site_list
+            ]
         )

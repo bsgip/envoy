@@ -29,6 +29,9 @@ async def get_time_resource(request: Request):
     have their own time resource.
     Pages 185-186 of IEEE Std 2030.5-2018. Figure B.14.
 
+    Args:
+        request: FastAPI request object.
+
     Returns:
         fastapi.Response object
 
