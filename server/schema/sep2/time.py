@@ -33,7 +33,7 @@ class DateTimeIntervalType(BaseXmlModelWithNS):
     start: TimeType
 
 
-class TimeResponse(Resource):
+class TimeResponse(Resource, tag="Time"):
     # xsd
     href: Literal["/tm"] = attr()
 

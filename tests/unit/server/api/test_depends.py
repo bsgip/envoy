@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException, Request
 
-from server.api.depends import LFDIAuthDepends
+from server.api.depends import LFDIAuthDepends, MalformedCertificatePEM
 from server.main import settings
 from tests.unit.server.resources import TEST_CERTIFICATE_PEM, bs_cert_pem_header
 
@@ -31,7 +31,7 @@ async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response
 async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_response(
     mocker, mock_db
 ):
-    mocker.patch("server.crud.auth.select_certificate_id_using_lfdi", return_value=None)
+    mocker.patch("server.crud.auth.select_client_ids_using_lfdi", return_value=None)
     req = Request(
         {
             "type": "http",

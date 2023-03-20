@@ -9,7 +9,10 @@ from tests.unit.server.resources import TEST_CERTIFICATE_PEM, bs_cert_pem_header
 async def test_get_time_resource(
     mocker,
 ):
-    mocker.patch("server.crud.auth.select_certificate_id_using_lfdi", return_value=1)
+    mocker.patch(
+        "server.crud.auth.select_client_ids_using_lfdi",
+        return_value={"certificate_id": 1, "aggregator_id": 1},
+    )
 
     with TestClient(app) as client:
         resp = client.get("/tm", headers={bs_cert_pem_header: TEST_CERTIFICATE_PEM})

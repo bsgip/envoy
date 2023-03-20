@@ -3,9 +3,13 @@ import hashlib
 import urllib.parse
 
 from fastapi import HTTPException, Request
+from fastapi_async_sqlalchemy import db
 
 from server.crud import auth
-from fastapi_async_sqlalchemy import db
+
+
+class MalformedCertificatePEM(Exception):
+    pass
 
 
 class LFDIAuthDepends:
@@ -30,14 +34,15 @@ class LFDIAuthDepends:
         # generate lfdi
         lfdi = self.generate_lfdi_from_pem(cert_fingerprint)
 
-        cert_id = await auth.select_certificate_id_using_lfdi(lfdi, db.session)
+        client_ids = await auth.select_client_ids_using_lfdi(lfdi, db.session)
 
-        if not cert_id:
+        if not client_ids:
             raise HTTPException(
                 status_code=403, detail="Unrecognised certificate ID."
             )  # Forbidden
 
-        request.state.cert_id = cert_id
+        request.state.certificate_id = client_ids["certificate_id"]
+        request.state.aggregator_id = client_ids["aggregator_id"]
 
     def generate_lfdi_from_pem(self, cert_pem: str) -> str:
         """This function generates the 2030.5-2018 lFDI (Long-form device identifier) from the device's
@@ -46,9 +51,10 @@ class LFDIAuthDepends:
         of IEEE Std 2030.5-2018.
 
         The lFDI is derived, from the certificate in PEM format, according to the following steps:
-            1- Base64 decode the PEM to DER.
-            2- Performing SHA256 hash on the DER to generate the certificate fingerprint.
-            3- Left truncating the certificate fingerprint to 160 bits.
+            1- percent-encoding decode
+            2- Base64 decode the PEM to DER.
+            3- Performing SHA256 hash on the DER to generate the certificate fingerprint.
+            4- Left truncating the certificate fingerprint to 160 bits.
 
         Args:
             cert_pem: TLS certificate in PEM format.
