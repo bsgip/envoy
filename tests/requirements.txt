@@ -1,4 +1,5 @@
 pytest
 pytest-asyncio
 pytest-mock
+pytest-postgresql
 httpx==0.23.3

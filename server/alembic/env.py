@@ -68,8 +68,14 @@ async def run_async_migrations() -> None:
 
     """
 
+    # allow the injection of a test DB url
+    ini_section = config.get_section(config.config_ini_section)
+    db_url = context.get_x_argument(as_dictionary=True).get('test.database.url')
+    if db_url:
+        ini_section['sqlalchemy.url'] = db_url
+
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        ini_section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
