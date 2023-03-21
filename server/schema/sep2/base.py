@@ -2,14 +2,22 @@ import enum
 from typing import Optional
 
 from pydantic_xml import BaseXmlModel, attr
+from pydantic_xml.element import SearchMode
 
 """ Abstract
 """
 nsmap = {"": "urn:ieee:std:2030.5:ns"}
 
 
-class BaseXmlModelWithNS(BaseXmlModel, nsmap=nsmap):
-    pass
+class BaseXmlModelWithNS(BaseXmlModel):
+    def __init_subclass__(
+        cls,
+        *args,
+        **kwargs,
+    ):
+        super().__init_subclass__(*args, **kwargs)
+        cls.__xml_nsmap__ = nsmap
+        cls.__xml_search_mode__ = SearchMode.UNORDERED
 
 
 """ Resource
@@ -64,3 +72,15 @@ class Link(Resource):
 
 class ListLink(Link):
     all_: Optional[str] = attr(name="all")
+
+
+class HexBinary32(str):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if len(v) > 8:
+            raise ValueError("HexBinary32 max length of 8.")
+        return cls(v)
