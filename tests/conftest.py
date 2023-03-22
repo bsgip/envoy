@@ -1,3 +1,4 @@
+import glob
 import os
 
 import alembic.config
@@ -10,10 +11,23 @@ from tests.test_db import generate_async_conn_str_from_connection
 @pytest.fixture
 def pg_empty_config(postgresql) -> Connection:
     """Sets up the testing DB, applies alembic migrations but does NOT add any entities"""
+
+    # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()
-    print(cwd)
     try:
         os.chdir('./server/')
+
+        # Create migrations (if none are there)
+        if len(glob.glob('alembic/versions/*.py')) == 0:
+            alembicArgs = [
+                '--raiseerr',
+                '-xtest.database.url=' + generate_async_conn_str_from_connection(postgresql),
+                'revision', '--autogenerate', '-m', 'init',
+            ]
+            alembic.config.main(argv=alembicArgs)
+
+
+        # Apply migrations
         alembicArgs = [
             '--raiseerr',
             '-xtest.database.url=' + generate_async_conn_str_from_connection(postgresql),
