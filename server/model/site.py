@@ -1,4 +1,4 @@
-from sqlalchemy import VARCHAR, DateTime, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from server.model import Base
@@ -16,7 +16,7 @@ class Site(Base):
 
     changed_time = mapped_column(DateTime(timezone=True))
     lfdi = mapped_column(VARCHAR(length=42), nullable=False, unique=True)
-    sfdi = mapped_column(Integer, nullable=False)
+    sfdi = mapped_column(BigInteger, nullable=False)
     device_category = mapped_column(VARCHAR(length=8))
     # post_rate: Mapped[Integer] # TODO: should this live in notification/subscription tables?
 
