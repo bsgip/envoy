@@ -71,7 +71,7 @@ async def upsert_site_for_aggregator(session: AsyncSession, site: Site) -> int:
 
     stmt = psql_insert(Site).values([all_cols])
     stmt = stmt.on_conflict_do_update(
-        index_elements=[Site.lfdi],
+        index_elements=[Site.aggregator_id, Site.sfdi],
         set_=update_cols,
     ).returning(Site.site_id)
 

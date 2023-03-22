@@ -19,3 +19,5 @@ class Site(Base):
     sfdi = mapped_column(Integer, nullable=False)
     device_category = mapped_column(VARCHAR(length=8))
     # post_rate: Mapped[Integer] # TODO: should this live in notification/subscription tables?
+
+    UniqueConstraint("sfdi", "aggregator_id", name="sfdi_aggregator_id_uc")

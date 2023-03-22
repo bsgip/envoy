@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi_async_sqlalchemy import db
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from server.api.response import XmlRequest, XmlResponse
 from server.manager.end_device import EndDeviceListManager, EndDeviceManager
@@ -93,10 +93,14 @@ async def create_end_device(
         fastapi.Response object.
 
     """
-    site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
-        db.session, request.state.aggregator_id, payload
-    )
+    try:
+        site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
+            db.session, request.state.aggregator_id, payload
+        )
 
-    response.headers["location"] = f"/edev/{site_id}"
+        response.headers["location"] = f"/edev/{site_id}"
+    except IntegrityError as exc:
+        logger.debug(exc)
+        raise HTTPException(detail="lFDI conflict.", status_code=409)
 
     # TODO: different status_code if update
