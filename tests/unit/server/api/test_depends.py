@@ -1,9 +1,10 @@
 import pytest
 from fastapi import HTTPException, Request
 
-from server.api.depends import LFDIAuthDepends, MalformedCertificatePEM
+from server.api.depends import LFDIAuthDepends
 from server.main import settings
-from tests.unit.server.resources import TEST_CERTIFICATE_PEM, bs_cert_pem_header
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM
+from tests.integration.integration_server import cert_pem_header
 
 
 def test_generate_lfdi_from_fingerprint():
@@ -37,7 +38,7 @@ async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_respons
             "type": "http",
             "headers": [
                 (
-                    bs_cert_pem_header,
+                    cert_pem_header,
                     TEST_CERTIFICATE_PEM,
                 )
             ],

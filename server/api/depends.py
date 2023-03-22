@@ -69,7 +69,7 @@ class LFDIAuthDepends:
 
     @staticmethod
     def _cert_fingerprint_to_lfdi(cert_fingerprint: str) -> str:
-        return cert_fingerprint[:42]
+        return cert_fingerprint[:20]
 
     @staticmethod
     def _cert_pem_to_cert_fingerprint(cert_pem: str) -> str:
