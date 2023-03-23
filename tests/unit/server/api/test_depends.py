@@ -1,5 +1,6 @@
 import pytest
 from fastapi import HTTPException, Request
+from starlette.datastructures import Headers
 
 from server.api.depends import LFDIAuthDepends
 from server.main import settings
@@ -36,12 +37,7 @@ async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_respons
     req = Request(
         {
             "type": "http",
-            "headers": [
-                (
-                    cert_pem_header,
-                    TEST_CERTIFICATE_PEM,
-                )
-            ],
+            "headers": Headers({cert_pem_header: TEST_CERTIFICATE_PEM.decode('utf-8')}).raw,
         }
     )
 

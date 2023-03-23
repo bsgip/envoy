@@ -56,4 +56,4 @@ if __name__ == "__main__":
     print(f"TEST_CERTIFICATE_PEM = b\"\"\"{raw_pem}\"\"\"\n")
     print(f"TEST_CERTIFICATE_FINGERPRINT = \"{fingerprint}\"\n")
     print(f"TEST_CERTIFICATE_LFDI = \"{lfdi}\"\n")
-    print(f"TEST_CERTIFICATE_LFDI = \"{sfdi}\"\n")
+    print(f"TEST_CERTIFICATE_SFDI = \"{sfdi}\"\n")
