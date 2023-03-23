@@ -12,7 +12,7 @@ from tests.postgres_testing import generate_async_session
 @pytest.mark.anyio
 async def test_select_client_ids_using_lfdi(pg_base_config):
     """Tests that select_client_ids_using_lfdi behaves with the base config"""
-    with generate_async_session(pg_base_config) as session:
+    async with generate_async_session(pg_base_config) as session:
         # Test the basic config is there and accessible
         assert await select_client_ids_using_lfdi(cert1_lfdi_active_agg1, session) == {
             "certificate_id": 1,

@@ -1,4 +1,4 @@
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 
 from psycopg import Connection
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -12,8 +12,8 @@ def generate_async_conn_str_from_connection(db: Connection):
     return f"postgresql+asyncpg://{cps.user.decode('UTF-8')}@{cps.host.decode('UTF-8')}:{cps.port.decode('UTF-8')}/{cps.db.decode('UTF-8')}"
 
 
-@contextmanager
-def generate_async_session(db: Connection) -> AsyncSession:
+@asynccontextmanager
+async def generate_async_session(db: Connection) -> AsyncSession:
     """Generates a temporary AsyncSession for use with a test.
 
     Callers will be responsible for cleaning up the session"""
@@ -22,4 +22,4 @@ def generate_async_session(db: Connection) -> AsyncSession:
         Session = sessionmaker(engine, class_=AsyncSession)
         yield Session()
     finally:
-        engine.dispose()
+        await engine.dispose()

@@ -1,7 +1,6 @@
 from typing import Any, Dict
 
 from pydantic import BaseSettings, PostgresDsn
-from sqlalchemy.pool import NullPool
 
 
 class AppSettings(BaseSettings):
@@ -16,7 +15,6 @@ class AppSettings(BaseSettings):
     cert_pem_header: str = "x-forwarded-client-cert"
 
     database_url: PostgresDsn
-    disable_database_conn_pooling: bool = False
     commit_on_exit: str = False
 
     class Config:
@@ -38,9 +36,4 @@ class AppSettings(BaseSettings):
 
     @property
     def db_middleware_kwargs(self) -> Dict[str, Any]:
-
-        # connection pooling can be optionally shutoff
-        engine_args: Dict[str, Any] = {}
-        if self.disable_database_conn_pooling:
-            engine_args["poolclass"] = NullPool
-        return {"db_url": self.database_url, "commit_on_exit": self.commit_on_exit, "engine_args": engine_args}
+        return {"db_url": self.database_url, "commit_on_exit": self.commit_on_exit}

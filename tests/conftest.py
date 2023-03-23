@@ -16,10 +16,6 @@ def pg_empty_config(postgresql) -> Connection:
     conn_str = generate_async_conn_str_from_connection(postgresql)
     os.environ['DATABASE_URL'] = conn_str
 
-    # This is required to support our integration tests running simultaneously.
-    # see https://github.com/bsgip/envoy/issues/13
-    os.environ['DISABLE_DATABASE_CONN_POOLING'] = 'True'
-
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()
     try:

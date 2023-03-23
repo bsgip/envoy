@@ -34,7 +34,8 @@ class LFDIAuthDepends:
         # generate lfdi
         lfdi = self.generate_lfdi_from_pem(cert_fingerprint)
 
-        client_ids = await auth.select_client_ids_using_lfdi(lfdi, db.session)
+        async with db():
+            client_ids = await auth.select_client_ids_using_lfdi(lfdi, db.session)
 
         if not client_ids:
             raise HTTPException(
