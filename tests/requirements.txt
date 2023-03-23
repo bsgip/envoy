@@ -1,6 +1,7 @@
 pytest
 pytest-asyncio
+anyio
 pytest-mock
 pytest-postgresql
 psycopg
-httpx==0.23.3
+httpx

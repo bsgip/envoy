@@ -56,3 +56,10 @@ def pg_base_config(pg_empty_config) -> Connection:
         pg_empty_config.commit()
 
     yield pg_empty_config
+
+
+@pytest.fixture
+def anyio_backend():
+    """async backends to test against
+    see: https://anyio.readthedocs.io/en/stable/testing.html"""
+    return 'asyncio'

@@ -8,13 +8,19 @@ from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_PEM as UN
 from tests.integration.integration_server import cert_pem_header
 
 
-def assert_status_code(response: httpx.Response, expected_status_code: int):
-    """Simple assert on a response for a particular response code. Will include response body in assert message"""
+def assert_response_header(response: httpx.Response, expected_status_code: int, expected_content_type: Optional[str] = 'application/sep+xml'):
+    """Simple assert on a response for a particular response code. Will include response body in assert message in
+    the event of failure. Otherwise content stream will remain unread if this assert succeeds"""
+
+    # short cirtcuit success
+    actual_content_type: str = response.headers["Content-Type"]
     if response.status_code == expected_status_code:
-        return
+        if expected_content_type is None or actual_content_type == expected_content_type:
+            return
 
     body = read_response_body_string(response)
     assert response.status_code == expected_status_code, f"Got HTTP {response.status_code} expected HTTP {expected_status_code}\nResponse body:\n{body}"
+    assert expected_content_type is not None and actual_content_type == expected_content_type, f"Got Content {actual_content_type} expected {expected_content_type}\nResponse body:\n{body}"
 
 
 def read_response_body_string(response: httpx.Response) -> str:
@@ -22,24 +28,24 @@ def read_response_body_string(response: httpx.Response) -> str:
     return response.read().decode("utf-8")
 
 
-def run_basic_unauthorised_tests(client: TestClient, uri: str, method: str = 'GET', body: Optional[Any] = None):
+async def run_basic_unauthorised_tests(client: httpx.AsyncClient, uri: str, method: str = 'GET', body: Optional[Any] = None):
     """Runs common "unauthorised" GET requests on a particular endpoint and ensures that the endpoint is properly
     secured with our LFDI auth dependency"""
 
     # check expired certs don't work
-    response = client.request(method=method, url=uri, data=body, headers={cert_pem_header: EXPIRED_PEM})
-    assert_status_code(response, 403)
+    response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: EXPIRED_PEM})
+    assert_response_header(response, 403, expected_content_type=None)
 
     # check unregistered certs don't work
-    response = client.request(method=method, url=uri, data=body, headers={cert_pem_header: UNKNOWN_PEM})
-    assert_status_code(response, 403)
+    response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: UNKNOWN_PEM})
+    assert_response_header(response, 403, expected_content_type=None)
 
     # missing cert (register as 500 as the gateway should be handling this)
-    response = client.request(method=method, url=uri, data=body, headers={cert_pem_header: ''})
-    assert_status_code(response, 403)
-    response = client.request(method=method, url=uri, data=body)
-    assert_status_code(response, 500)
+    response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: ''})
+    assert_response_header(response, 403, expected_content_type=None)
+    response = await client.request(method=method, url=uri, data=body)
+    assert_response_header(response, 500, expected_content_type=None)
 
     # malformed cert
-    response = client.request(method=method, url=uri, data=body, headers={cert_pem_header: 'abc-123'})
-    assert_status_code(response, 403)
+    response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: 'abc-123'})
+    assert_response_header(response, 403, expected_content_type=None)

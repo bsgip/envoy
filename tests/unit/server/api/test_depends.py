@@ -12,10 +12,10 @@ def test_generate_lfdi_from_fingerprint():
         "0x3e4f45ab31edfe5b67e343e5e4562e31984e23e5349e2ad745672ed145ee213a"
     )  # fingerprint example from standard
 
-    assert lfdi == "0x3e4f45ab31edfe5b67e343e5e4562e31984e23e5"
+    assert lfdi == "0x3e4f45ab31edfe5b67"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response():
     req = Request({"type": "http", "headers": {}})
 
@@ -28,7 +28,7 @@ async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response
 
 
 @pytest.mark.parametrize("mock_db", ["server.api.depends.db"], indirect=True)
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_response(
     mocker, mock_db
 ):

@@ -1,38 +1,42 @@
 import urllib.parse
 from datetime import datetime
 
+import pytest
+from httpx import AsyncClient
+
 from server.schema.sep2.time import TimeResponse
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as VALID_PEM
 from tests.integration.integration_server import cert_pem_header, create_test_server
-from tests.integration.response import assert_status_code, read_response_body_string, run_basic_unauthorised_tests
+from tests.integration.response import assert_response_header, read_response_body_string, run_basic_unauthorised_tests
 
 
-def test_get_time_resource(pg_base_config):
-    with create_test_server(pg_base_config) as client:
-        response = client.get('/tm', headers={cert_pem_header: urllib.parse.quote(VALID_PEM)})
-        assert_status_code(response, 200)
-        body = read_response_body_string(response)
-        assert len(body) > 0
+@pytest.mark.anyio
+async def test_get_time_resource(client: AsyncClient):
+    """Simple test of a valid get - validates that the response looks like XML"""
+    response = await client.get('/tm', headers={cert_pem_header: urllib.parse.quote(VALID_PEM)})
+    assert_response_header(response, 200)
+    body = read_response_body_string(response)
+    assert len(body) > 0
 
-        parsed_response: TimeResponse = TimeResponse.from_xml(body)
+    parsed_response: TimeResponse = TimeResponse.from_xml(body)
 
-        diff = datetime.now().timestamp() - parsed_response.currentTime
-        assert diff > 0 and diff < 20, f"Diff between now and the timestamp value is {diff}. Was expected to be small"
-        assert parsed_response.quality == 4
-
-
-def test_get_time_resource_unauthorised(pg_base_config):
-    with create_test_server(pg_base_config) as client:
-        run_basic_unauthorised_tests(client, '/tm', method='GET')
+    diff = datetime.now().timestamp() - parsed_response.currentTime
+    assert diff > 0 and diff < 20, f"Diff between now and the timestamp value is {diff}. Was expected to be small"
+    assert parsed_response.quality == 4
 
 
-def test_get_time_resource_invalid_methods(pg_base_config):
-    with create_test_server(pg_base_config) as client:
-        response = client.put('/tm', headers={cert_pem_header: VALID_PEM})
-        assert_status_code(response, 405)
+@pytest.mark.anyio
+async def test_get_time_resource_unauthorised(client: AsyncClient):
+    await run_basic_unauthorised_tests(client, '/tm', method='GET')
 
-        response = client.delete('/tm', headers={cert_pem_header: VALID_PEM})
-        assert_status_code(response, 405)
 
-        response = client.post('/tm', headers={cert_pem_header: VALID_PEM})
-        assert_status_code(response, 405)
+@pytest.mark.anyio
+async def test_get_time_resource_invalid_methods(client: AsyncClient):
+    response = await client.put('/tm', headers={cert_pem_header: VALID_PEM})
+    assert_response_header(response, 405, expected_content_type=None)
+
+    response = await client.delete('/tm', headers={cert_pem_header: VALID_PEM})
+    assert_response_header(response, 405, expected_content_type=None)
+
+    response = await client.post('/tm', headers={cert_pem_header: VALID_PEM})
+    assert_response_header(response, 405, expected_content_type=None)

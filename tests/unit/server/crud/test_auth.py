@@ -9,7 +9,7 @@ from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_LFDI as c
 from tests.postgres_testing import generate_async_session
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_select_client_ids_using_lfdi(pg_base_config):
     """Tests that select_client_ids_using_lfdi behaves with the base config"""
     with generate_async_session(pg_base_config) as session:

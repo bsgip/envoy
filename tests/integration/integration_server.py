@@ -16,4 +16,3 @@ def create_test_server(db: Connection) -> TestClient:
     os.environ['DATABASE_URL'] = generate_async_conn_str_from_connection(db)
     from server.main import app
     return TestClient(app)
-
