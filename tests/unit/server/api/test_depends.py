@@ -1,3 +1,5 @@
+import unittest.mock as mock
+
 import pytest
 from fastapi import HTTPException, Request
 from starlette.datastructures import Headers
@@ -29,12 +31,13 @@ async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response
     assert exc.value.status_code == 500
 
 
-@pytest.mark.parametrize("mock_db", ["server.api.depends.db"], indirect=True)
 @pytest.mark.anyio
+@mock.patch("server.crud.auth.select_client_ids_using_lfdi")
 async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_response(
-    mocker, mock_db
+    mock_select_client_ids_using_lfdi: mock.MagicMock
 ):
-    mocker.patch("server.crud.auth.select_client_ids_using_lfdi", return_value=None)
+    # Arrange
+    mock_select_client_ids_using_lfdi.return_value = None
     req = Request(
         {
             "type": "http",
@@ -44,7 +47,11 @@ async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_respons
 
     lfdi_dep = LFDIAuthDepends(settings.cert_pem_header)
 
+    # Act
+
     with pytest.raises(HTTPException) as exc:
         await lfdi_dep(req)
+
+    # Assert
 
     assert exc.value.status_code == 403
