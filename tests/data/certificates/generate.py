@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     fingerprint = raw_fingerprint.split('=')[1].lower().rstrip()
 
-    lfdi = ''.join(fingerprint.split(':')[:10])
+    lfdi = ''.join(fingerprint.split(':')[:20])
 
     raw_sfdi = int(("0x" + lfdi[:9]), 16)
     sfdi_checksum = (10 - (sum_digits(raw_sfdi) % 10)) % 10
