@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 
-def generate_async_conn_str_from_connection(db: Connection):
+def generate_async_conn_str_from_connection(db: Connection) -> str:
     """Utility for extracting a (async) connection string from a postgres connection. This is only really suitable for
     working with a test database - it's not production code"""
     cps = db.pgconn
