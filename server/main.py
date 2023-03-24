@@ -7,6 +7,11 @@ from server.api.sep2.time import router as tm_router
 from server.settings import AppSettings
 
 
+def generate_settings() -> AppSettings:
+    """Generates and configures a new instance of the AppSettings"""
+    return AppSettings()
+
+
 def generate_app(new_settings: AppSettings):
     """Generates a new app instance utilising the specific settings instance"""
     lfdi_auth = LFDIAuthDepends(new_settings.cert_pem_header)
@@ -16,7 +21,7 @@ def generate_app(new_settings: AppSettings):
     return new_app
 
 
-settings = AppSettings()
+settings = generate_settings()
 app = generate_app(settings)
 
 if __name__ == "__main__":

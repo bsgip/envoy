@@ -7,7 +7,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from server import model  # noqa
-from server.main import settings
+from server.main import generate_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -28,7 +28,8 @@ target_metadata = model.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-config.set_main_option("sqlalchemy.url", settings.database_url)
+app_settings = generate_settings()
+config.set_main_option("sqlalchemy.url", app_settings.database_url)
 
 
 def run_migrations_offline() -> None:
@@ -67,15 +68,8 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
-
-    # allow the injection of a test DB url
-    ini_section = config.get_section(config.config_ini_section)
-    db_url = context.get_x_argument(as_dictionary=True).get('test.database.url')
-    if db_url:
-        ini_section['sqlalchemy.url'] = db_url
-
     connectable = async_engine_from_config(
-        ini_section,
+        config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
