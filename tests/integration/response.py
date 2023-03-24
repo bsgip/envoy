@@ -1,7 +1,7 @@
+from http import HTTPStatus
 from typing import Any, Optional
 
 import httpx
-from fastapi.testclient import TestClient
 
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_PEM as EXPIRED_PEM
 from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_PEM as UNKNOWN_PEM
@@ -34,18 +34,18 @@ async def run_basic_unauthorised_tests(client: httpx.AsyncClient, uri: str, meth
 
     # check expired certs don't work
     response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: EXPIRED_PEM})
-    assert_response_header(response, 403, expected_content_type=None)
+    assert_response_header(response, HTTPStatus.FORBIDDEN, expected_content_type=None)
 
     # check unregistered certs don't work
     response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: UNKNOWN_PEM})
-    assert_response_header(response, 403, expected_content_type=None)
+    assert_response_header(response, HTTPStatus.FORBIDDEN, expected_content_type=None)
 
     # missing cert (register as 500 as the gateway should be handling this)
     response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: ''})
-    assert_response_header(response, 403, expected_content_type=None)
+    assert_response_header(response, HTTPStatus.FORBIDDEN, expected_content_type=None)
     response = await client.request(method=method, url=uri, data=body)
-    assert_response_header(response, 500, expected_content_type=None)
+    assert_response_header(response, HTTPStatus.INTERNAL_SERVER_ERROR, expected_content_type=None)
 
     # malformed cert
     response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: 'abc-123'})
-    assert_response_header(response, 403, expected_content_type=None)
+    assert_response_header(response, HTTPStatus.FORBIDDEN, expected_content_type=None)

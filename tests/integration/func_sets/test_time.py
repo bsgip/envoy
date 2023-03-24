@@ -1,5 +1,6 @@
 import urllib.parse
 from datetime import datetime
+from http import HTTPStatus
 
 import pytest
 from httpx import AsyncClient
@@ -14,7 +15,7 @@ from tests.integration.response import assert_response_header, read_response_bod
 async def test_get_time_resource(client: AsyncClient):
     """Simple test of a valid get - validates that the response looks like XML"""
     response = await client.get('/tm', headers={cert_pem_header: urllib.parse.quote(VALID_PEM)})
-    assert_response_header(response, 200)
+    assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
 
@@ -33,10 +34,10 @@ async def test_get_time_resource_unauthorised(client: AsyncClient):
 @pytest.mark.anyio
 async def test_get_time_resource_invalid_methods(client: AsyncClient):
     response = await client.put('/tm', headers={cert_pem_header: VALID_PEM})
-    assert_response_header(response, 405, expected_content_type=None)
+    assert_response_header(response, HTTPStatus.METHOD_NOT_ALLOWED, expected_content_type=None)
 
     response = await client.delete('/tm', headers={cert_pem_header: VALID_PEM})
-    assert_response_header(response, 405, expected_content_type=None)
+    assert_response_header(response, HTTPStatus.METHOD_NOT_ALLOWED, expected_content_type=None)
 
     response = await client.post('/tm', headers={cert_pem_header: VALID_PEM})
-    assert_response_header(response, 405, expected_content_type=None)
+    assert_response_header(response, HTTPStatus.METHOD_NOT_ALLOWED, expected_content_type=None)
