@@ -3,8 +3,8 @@ from typing import Any, Optional
 
 import httpx
 
-from server.api.response import SEP_XML_MIME
-from server.schema.sep2.error import ErrorResponse, ReasonCodeType
+from envoy.server.api.response import SEP_XML_MIME
+from envoy.server.schema.sep2.error import ErrorResponse, ReasonCodeType
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_PEM as EXPIRED_PEM
 from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_PEM as UNKNOWN_PEM
 from tests.integration.integration_server import cert_pem_header

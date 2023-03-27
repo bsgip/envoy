@@ -4,8 +4,8 @@ from typing import Optional
 
 from fastapi import HTTPException, Request, Response
 
-from server.api.response import XmlResponse
-from server.schema.sep2.error import ErrorResponse, ReasonCodeType
+from envoy.server.api.response import XmlResponse
+from envoy.server.schema.sep2.error import ErrorResponse, ReasonCodeType
 
 logger = logging.getLogger(__name__)
 

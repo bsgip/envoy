@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from psycopg import Connection
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -18,8 +19,12 @@ async def generate_async_session(db: Connection) -> AsyncSession:
 
     Callers will be responsible for cleaning up the session"""
     engine = create_async_engine(generate_async_conn_str_from_connection(db))
+    generated_session: Optional[AsyncSession] = None
     try:
         Session = sessionmaker(engine, class_=AsyncSession)
-        yield Session()
+        generated_session = Session()
+        yield generated_session
     finally:
+        if generated_session is not None:
+            await generated_session.close()
         await engine.dispose()

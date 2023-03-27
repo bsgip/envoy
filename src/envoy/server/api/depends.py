@@ -5,7 +5,7 @@ import urllib.parse
 from fastapi import HTTPException, Request
 from fastapi_async_sqlalchemy import db
 
-from server.crud import auth
+from envoy.server.crud import auth
 
 
 class MalformedCertificatePEM(Exception):

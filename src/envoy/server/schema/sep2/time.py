@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 from pydantic_xml import attr, element
 
-from server.schema.sep2.base import BaseXmlModelWithNS, Resource
+from envoy.server.schema.sep2.base import BaseXmlModelWithNS, Resource
 
 
 # p170

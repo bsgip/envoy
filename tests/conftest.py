@@ -18,7 +18,7 @@ def pg_empty_config(postgresql) -> Connection:
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()
     try:
-        os.chdir('./server/')
+        os.chdir('./src/envoy/server/')
 
         # Create migrations (if none are there)
         if len(glob.glob('alembic/versions/*.py')) == 0:

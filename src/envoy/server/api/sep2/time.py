@@ -6,8 +6,8 @@ from dateutil import tz
 from fastapi import APIRouter, Request
 from tzlocal import get_localzone
 
-from server.api.response import XmlResponse
-from server.schema.sep2.time import TimeQualityType, TimeResponse
+from envoy.server.api.response import XmlResponse
+from envoy.server.schema.sep2.time import TimeQualityType, TimeResponse
 
 logger = logging.getLogger(__name__)
 

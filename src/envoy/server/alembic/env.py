@@ -6,8 +6,8 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from server import model  # noqa
-from server.main import generate_settings
+from envoy.server import model  # noqa
+from envoy.server.main import generate_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

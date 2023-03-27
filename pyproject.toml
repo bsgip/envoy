@@ -1,5 +1,5 @@
 [tool.pytest.ini_options]
-pythonpath = ["server", "admin"]
+pythonpath = ["src/"]
 testpaths = "tests"
 
 [tool.bandit]
