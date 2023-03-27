@@ -5,7 +5,7 @@ from http import HTTPStatus
 import pytest
 from httpx import AsyncClient
 
-from server.schema.sep2.time import TimeResponse
+from envoy.server.schema.sep2.time import TimeResponse
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as VALID_PEM
 from tests.integration.integration_server import cert_pem_header
 from tests.integration.response import assert_response_header, read_response_body_string, run_basic_unauthorised_tests

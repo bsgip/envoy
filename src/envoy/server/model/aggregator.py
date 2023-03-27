@@ -1,7 +1,7 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-from server.model import Base
+from envoy.server.model import Base
 
 
 class Aggregator(Base):

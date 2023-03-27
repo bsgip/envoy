@@ -1,6 +1,6 @@
 import pytest
 
-from server.crud.auth import select_client_ids_using_lfdi
+from envoy.server.crud.auth import select_client_ids_using_lfdi
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as cert1_lfdi_active_agg1
 from tests.data.certificates.certificate2 import TEST_CERTIFICATE_LFDI as cert2_lfdi_active_agg1
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_LFDI as cert3_lfdi_expired_agg1

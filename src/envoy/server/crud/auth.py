@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
 
-from server.model import AggregatorCertificateAssignment, Certificate
+from envoy.server.model import AggregatorCertificateAssignment, Certificate
 
 
 async def select_client_ids_using_lfdi(

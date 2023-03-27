@@ -1,8 +1,8 @@
 from http import HTTPStatus
 
-from server.api.error_handler import generate_error_response, http_status_code_to_reason_code
-from server.api.response import SEP_XML_MIME
-from server.schema.sep2.error import ErrorResponse, ReasonCodeType
+from envoy.server.api.error_handler import generate_error_response, http_status_code_to_reason_code
+from envoy.server.api.response import SEP_XML_MIME
+from envoy.server.schema.sep2.error import ErrorResponse, ReasonCodeType
 
 
 def test_http_status_code_to_reason_code_nocrash():

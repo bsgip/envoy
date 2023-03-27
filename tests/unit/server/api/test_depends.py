@@ -5,8 +5,8 @@ import pytest
 from fastapi import HTTPException, Request
 from starlette.datastructures import Headers
 
-from server.api.depends import LFDIAuthDepends
-from server.main import settings
+from envoy.server.api.depends import LFDIAuthDepends
+from envoy.server.main import settings
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as TEST_CERTIFICATE_LFDI_1
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as TEST_CERTIFICATE_PEM_1
 from tests.data.certificates.certificate2 import TEST_CERTIFICATE_LFDI as TEST_CERTIFICATE_LFDI_2
@@ -50,7 +50,7 @@ async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response
 
 
 @pytest.mark.anyio
-@mock.patch("server.crud.auth.select_client_ids_using_lfdi")
+@mock.patch("envoy.server.crud.auth.select_client_ids_using_lfdi")
 async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_response(
     mock_select_client_ids_using_lfdi: mock.MagicMock
 ):

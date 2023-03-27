@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from psycopg import Connection
 
-from server.main import generate_app, generate_settings
+from envoy.server.main import generate_app, generate_settings
 
 
 @pytest.fixture

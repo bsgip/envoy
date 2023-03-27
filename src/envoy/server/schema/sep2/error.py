@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic_xml import element
 
-from server.schema.sep2.base import BaseXmlModelWithNS
+from envoy.server.schema.sep2.base import BaseXmlModelWithNS
 
 
 class ReasonCodeType(enum.IntEnum):
