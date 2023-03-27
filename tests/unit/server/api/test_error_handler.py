@@ -6,7 +6,7 @@ from server.schema.sep2.error import ErrorResponse, ReasonCodeType
 
 
 def test_http_status_code_to_reason_code_nocrash():
-    """Just a quick scan of values to make sure the utility functions with a variety of inputs"""
+    """Just a quick scan of values to make sure the utility functions work with a variety of inputs"""
 
     # test ints
     for i in range(-600, 600):
