@@ -1,0 +1,152 @@
+{
+	"info": {
+		"_postman_id": "080e23aa-5be1-475a-9879-7c2f05673996",
+		"name": "envoy",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "End Device Resource",
+			"item": [
+				{
+					"name": "/edev (EndDeviceList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{SERVER}}/edev",
+							"host": [
+								"{{SERVER}}"
+							],
+							"path": [
+								"edev"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1 (EndDevice)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{SERVER}}/edev/1",
+							"host": [
+								"{{SERVER}}"
+							],
+							"path": [
+								"edev",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Time",
+			"item": [
+				{
+					"name": "/tm",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tm",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tm"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Device Capability",
+			"item": [
+				{
+					"name": "/dcap",
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {}
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/dcap",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"dcap"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "HOST",
+			"value": "localhost:8000",
+			"type": "default"
+		},
+		{
+			"key": "CLIENT_CERTIFICATE",
+			"value": "-----BEGIN%20CERTIFICATE-----%0A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%0AfSCR9LWxGyGL+iGNC19NciZUuY1kLr8=%0A-----END%20CERTIFICATE-----",
+			"type": "default"
+		}
+	]
+}
