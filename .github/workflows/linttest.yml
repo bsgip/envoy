@@ -66,7 +66,7 @@ jobs:
       - name: Run Pytest
         run: |
           sudo apt install -y postgresql
-          pip install -r tests/requirements.txt
+          pip install -r requirements/requirements.testing.txt
           pytest --junit-xml=.test_report.xml
         env:
          DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"
