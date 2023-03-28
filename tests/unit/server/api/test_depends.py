@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException, Request
 from starlette.datastructures import Headers
 
-from envoy.server.api.depends import LFDIAuthDepends, MalformedCertificatePEM
+from envoy.server.api.depends import LFDIAuthDepends
 from envoy.server.main import settings
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as TEST_CERTIFICATE_LFDI_1
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as TEST_CERTIFICATE_PEM_1
