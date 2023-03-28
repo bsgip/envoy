@@ -3,13 +3,9 @@ import hashlib
 import urllib.parse
 
 from fastapi import HTTPException, Request
-from fastapi_async_sqlalchemy import db
 
 from envoy.server.crud import auth
-
-
-class MalformedCertificatePEM(Exception):
-    pass
+from fastapi_async_sqlalchemy import db
 
 
 class LFDIAuthDepends:
@@ -52,10 +48,9 @@ class LFDIAuthDepends:
         of IEEE Std 2030.5-2018.
 
         The lFDI is derived, from the certificate in PEM format, according to the following steps:
-            1- percent-encoding decode
-            2- Base64 decode the PEM to DER.
-            3- Performing SHA256 hash on the DER to generate the certificate fingerprint.
-            4- Left truncating the certificate fingerprint to 160 bits.
+            1- Base64 decode the PEM to DER.
+            2- Performing SHA256 hash on the DER to generate the certificate fingerprint.
+            3- Left truncating the certificate fingerprint to 160 bits.
 
         Args:
             cert_pem: TLS certificate in PEM format.
