@@ -17,7 +17,7 @@ docstrings on `__init__.py` should describe the structure in greater detail
 
 `requirements.txt` contains all the dependencies required to run Envoy. 
 
-The `requirements/` directory will contain seperate `requirements.XXX.txt` files for specific purposes beyond the runtime dependencies.
+The `requirements/` directory contains seperate `requirements.XXX.txt` files for specific purposes beyond the runtime dependencies.
 
 The latest stable/frozen set of requirements can be found in `requirements/requirements.prod.txt`. This file can be regenerated (from a clean virtual environment) using `pip freeze > requirements/requirements.prod.txt`
 
