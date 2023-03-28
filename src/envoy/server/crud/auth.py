@@ -22,8 +22,7 @@ async def select_client_ids_using_lfdi(
         )
         .join(
             AggregatorCertificateAssignment,
-            Certificate.certificate_id
-            == AggregatorCertificateAssignment.certificate_id,
+            Certificate.certificate_id == AggregatorCertificateAssignment.certificate_id,
         )
         .where(Certificate.lfdi == lfdi)
         .where(Certificate.expiry > func.now())  # Only want unexpired certs
