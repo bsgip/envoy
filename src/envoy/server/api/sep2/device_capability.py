@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request
 from envoy.server.api.response import XmlResponse
 from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
-router = APIRouter()
+router = APIRouter(tags=["device capability"])
 
 logger = logging.getLogger(__name__)
 
