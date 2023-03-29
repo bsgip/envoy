@@ -12,9 +12,9 @@ def uri():
 
 
 @pytest.mark.anyio
-async def test_get_device_capability(client: AsyncClient, uri: str, headers: dict):
+async def test_get_device_capability(client: AsyncClient, uri: str, valid_headers: dict):
     """Simple test of a valid get - validates that the response looks like XML"""
-    response = await client.get(uri, headers=headers)
+    response = await client.get(uri, headers=valid_headers)
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
