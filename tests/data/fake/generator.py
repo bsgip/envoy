@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Callable, Optional, Union, get_args, get_origin, get_type_hints
 
+from pydantic_xml import BaseXmlModel
 from sqlalchemy.orm import Mapped
 
 from envoy.server.model.base import Base
@@ -23,17 +24,25 @@ def generate_value(t: type, seed: int = 1, optional_is_none: bool = False) -> An
 
 
 def get_first_generatable_primitive(t: type, include_optional: bool) -> Optional[type]:
-    """Given a primitive type - return that type.
+    """Given a primitive type - return that type. Given a generic type, walk any union arguments looking for a
+    primitive type
 
-    Given a generic type, walk any union arguments looking for a primitive type
+    if the type is optional and include_optional is True - the Optional[type] will be returned, otherwise just the type
+    argument will be returned
 
-    if the type is optional and include_optional is True - the Optional[type] will be returned, otherwise just type will
+    Types that inherit directly from a primitive type will be returned as the base primitive type
 
     Otherwise return None"""
 
     # if we can generate the type out of the box - we're done
     if t in PRIMITIVE_VALUE_GENERATORS:
         return t
+
+    # Check if the type is an extension of a primitive type
+    if hasattr(t, "__bases__"):  # we need this check as types like Optional don't have this property
+        for base in inspect.getmro(t):
+            if base in PRIMITIVE_VALUE_GENERATORS:
+                return base
 
     # certain types will just pass through looking at the arguments
     # eg: Mapped[Optional[int]] is really just Optional[int] for this function's purposes
@@ -72,10 +81,18 @@ def is_generatable_type(t: type) -> bool:
     return primitive_type in PRIMITIVE_VALUE_GENERATORS
 
 
-def is_sql_alchemy_type(t: type) -> bool:
-    """Returns True if the specified type is a SQL Alchemy model type"""
+def get_generatable_class_base(t: type) -> Optional[type]:
+    """Given a class - look to see if it inherits from a key CLASS_INSTANCE_GENERATORS and return that key
+    otherwise return None"""
     target_type = remove_passthrough_type(t)
-    return inspect.isclass(target_type) and Base in target_type.__bases__
+    if not inspect.isclass(target_type):
+        return None
+
+    for base_class in inspect.getmro(target_type):
+        if base_class in CLASS_INSTANCE_GENERATORS:
+            return base_class
+
+    return None
 
 
 def is_optional_type(t: type) -> bool:
@@ -96,20 +113,22 @@ def is_list_type(t: type) -> bool:
     return get_origin(t) == list
 
 
-def generate_sql_alchemy_instance(t: type,
-                                  seed: int = 1,
-                                  optional_is_none: bool = False,
-                                  generate_relationships: bool = False,
-                                  visited_types: Optional[set[type]] = None) -> Any:
-    """Given a child class of the SQL Alchemy Base instance - generate an instance of that class
-    with all properties being assigned unique (type appropriate) values based off seed
+def generate_class_instance(t: type,
+                            seed: int = 1,
+                            optional_is_none: bool = False,
+                            generate_relationships: bool = False,
+                            visited_types: Optional[set[type]] = None) -> Any:
+    """Given a child class of a key to CLASS_INSTANCE_GENERATORS - generate an instance of that class
+    with all properties being assigned unique values based off of seed. The values will match type hints
 
     Any "private" members beginning with '-' will be skipped
 
-    generate_relationships will recursively generate relationships generating instances as required. SQL ALchemy
-    will handle assigning backreferences too
+    generate_relationships will recursively generate relationships generating instances as required. (SQL ALchemy
+    will handle assigning backreferences too)
 
-    If the type cannot be instantiated due to missing type hints / other info exceptions will be raised"""
+    If the type cannot be instantiated due to missing type hints / other info exceptions will be raised
+
+    visited_types should not be specified - it's for internal use only"""
     t = remove_passthrough_type(t)
 
     # stop back references from infinite looping
@@ -119,8 +138,10 @@ def generate_sql_alchemy_instance(t: type,
         return None
     visited_types.add(t)
 
-    if not is_sql_alchemy_type(t):
-        raise Exception(f"Type {t} does not inherit from {Base} - Known inheritance {t.__bases__}")
+    # We can only generate class instances of classes that inherit from a known base
+    t_generatable_base = get_generatable_class_base(t)
+    if t_generatable_base is None:
+        raise Exception(f"Type {t} does not inherit from one of {CLASS_INSTANCE_GENERATORS.keys()}")
 
     type_hints = get_type_hints(t)
 
@@ -128,11 +149,12 @@ def generate_sql_alchemy_instance(t: type,
     # Those values can be basic primitive values or optionally populated
     current_seed = seed
     values: dict[str, Any] = {}
-    for (member_name, _) in inspect.getmembers(t):
+    for member_name in CLASS_MEMBER_FETCHERS[t_generatable_base](t):
+
+        # Skip members that are private OR that are public members of the base class
         if not is_member_public(member_name):
             continue
-
-        if member_name in SQL_ALCHEMY_BASE_PUBLIC_MEMBERS:
+        if member_name in BASE_CLASS_PUBLIC_MEMBERS[t_generatable_base]:
             continue
 
         if member_name not in type_hints:
@@ -146,21 +168,24 @@ def generate_sql_alchemy_instance(t: type,
         if is_list:
             member_type = get_args(member_type)[0]
 
+        # This is an SQL Alchemy specific quirk - hopefully we don't need too many of these special cases
+        #
         # if we are passed a string name of a type (such as SQL Alchemy relationships are want to do)
         # eg - list["ChildType"] we need to be able to resolve that
         # Currently we're digging around in the guts of the Base registry - there might be an official way to do this
         # but I haven't yet figured it out.
-        if isinstance(member_type, str):
-            member_type = Base.registry._class_registry[member_type]
+        if t_generatable_base == Base:
+            if isinstance(member_type, str):
+                member_type = Base.registry._class_registry[member_type]
 
         generated_value: Any = None
         if is_generatable_type(member_type):
             primitive_type = get_first_generatable_primitive(member_type, include_optional=True)
             generated_value = generate_value(primitive_type, seed=current_seed, optional_is_none=optional_is_none)
             current_seed += 1
-        elif is_sql_alchemy_type(member_type):
+        elif get_generatable_class_base(member_type) is not None:
             if generate_relationships:
-                generated_value = generate_sql_alchemy_instance(
+                generated_value = generate_class_instance(
                     member_type,
                     seed=current_seed,
                     optional_is_none=optional_is_none,
@@ -180,10 +205,17 @@ def generate_sql_alchemy_instance(t: type,
         else:
             values[member_name] = generated_value
 
-    return t(**values)
+    return CLASS_INSTANCE_GENERATORS[t_generatable_base](t, values)
 
 
-# The set of generators (seed: int) -> typed value keyed by the type that they generate
+# ---------------------------------------
+#
+# The below global values describe the main extension points for adding support for more types to generate
+# With a bit of luck - adding more support should be as simple as adding extensions to these lookups
+#
+# ---------------------------------------
+
+# The set of generators (seed: int) -> typed value (keyed by the type that they generate)
 PRIMITIVE_VALUE_GENERATORS: dict[type, Callable[[int], Any]] = {
     int: lambda seed: int(seed),
     str: lambda seed: f"{seed}-str",
@@ -193,4 +225,19 @@ PRIMITIVE_VALUE_GENERATORS: dict[type, Callable[[int], Any]] = {
     datetime: lambda seed: datetime(2010, 1, 1) + timedelta(days=seed) + timedelta(seconds=seed),
 }
 
-SQL_ALCHEMY_BASE_PUBLIC_MEMBERS: set[str] = set([m for (m, _) in inspect.getmembers(Base) if is_member_public(m)])
+# the set of all generators (target: type, kvps: dict[str, Any) -> class instance (keyed by the base type of the generated type))
+CLASS_INSTANCE_GENERATORS: dict[type, Callable[[type, dict[str, Any]], Any]] = {
+    Base: lambda target, kvps: target(**kvps),
+    BaseXmlModel: lambda target, kvps: target.construct(**kvps),
+}
+
+# the set of functions for accessing all members of a class (keyed by the base class for accessing those members)
+CLASS_MEMBER_FETCHERS: dict[type, Callable[[type], list[str]]] = {
+    Base: lambda target: [name for (name, _) in inspect.getmembers(target)],
+    BaseXmlModel: lambda target: list(target.schema()['properties'].keys())
+}
+
+# the set all base class public members keyed by the base class that generated them
+BASE_CLASS_PUBLIC_MEMBERS: dict[type, set[str]] = {}
+for base_class in CLASS_INSTANCE_GENERATORS.keys():
+    BASE_CLASS_PUBLIC_MEMBERS[base_class] = set([m for (m, _) in inspect.getmembers(base_class) if is_member_public(m)])
