@@ -12,7 +12,7 @@ from envoy.server.schema.sep2.time import TimeQualityType, TimeResponse
 logger = logging.getLogger(__name__)
 
 
-router = APIRouter()
+router = APIRouter(tags=["time"])
 
 
 @router.head("/tm")
