@@ -4,9 +4,9 @@ from datetime import datetime
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.manager.end_device import EndDeviceManager
+from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
 from envoy.server.model.site import Site
-from envoy.server.schema.sep2.end_device import EndDeviceRequest, EndDeviceResponse
+from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from tests.data.fake.generator import generate_class_instance
 
 
@@ -96,49 +96,89 @@ async def test_add_or_update_enddevice_for_aggregator(mock_datetime: mock.MagicM
     mock_datetime.now.assert_called_once()
 
 
-# class EndDeviceListManager:
-#     @staticmethod
-#     async def fetch_enddevicelist_with_aggregator_id(
-#         session: AsyncSession,
-#         aggregator_id: int,
-#         start: int,
-#         after: int,
-#         limit: int,
-#     ) -> EndDeviceListResponse:
-#         site_list = await select_all_sites_with_aggregator_id(
-#             session, aggregator_id, start, datetime.fromtimestamp(after), limit
-#         )
-#         site_count = await select_aggregator_site_count(session, aggregator_id)
-#         return EndDeviceListMapper.map_to_response(site_list, site_count)
-
 @pytest.mark.anyio
-@mock.patch("envoy.server.manager.end_device.upsert_site_for_aggregator")
-@mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
-@mock.patch("envoy.server.manager.end_device.datetime")
-async def test_fetch_enddevicelist_with_aggregator_id(mock_datetime: mock.MagicMock,
-                                                      mock_EndDeviceMapper: mock.MagicMock,
-                                                      mock_upsert_site_for_aggregator: mock.MagicMock):
-    """Checks that the enddevice update just passes through to the relevant CRUD"""
+@mock.patch("envoy.server.manager.end_device.select_all_sites_with_aggregator_id")
+@mock.patch("envoy.server.manager.end_device.select_aggregator_site_count")
+@mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
+async def test_fetch_enddevicelist_with_aggregator_id(mock_EndDeviceListMapper: mock.MagicMock,
+                                                      mock_select_aggregator_site_count: mock.MagicMock,
+                                                      mock_select_all_sites_with_aggregator_id: mock.MagicMock):
+    """Checks that fetching the enddevice list just passes through to the relevant CRUD"""
     # Arrange
     mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
     aggregator_id = 3
     start = 4
     after = 1678542014
-    end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
-    mapped_site: Site = generate_class_instance(Site)
-    now: datetime = datetime(2020, 1, 2, 3, 4)
+    limit = 5
+    mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
+    returned_site_count = 123
+    returned_sites: list[Site] = [
+        generate_class_instance(Site, seed=101, optional_is_none=False),
+        generate_class_instance(Site, seed=202, optional_is_none=True),
+    ]
 
-    mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
-    mock_upsert_site_for_aggregator.return_value
-    mock_datetime.now = mock.Mock(return_value=now)
-
-    raise Exception("TODO")
+    mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
+    mock_select_all_sites_with_aggregator_id.return_value = returned_sites
+    mock_select_aggregator_site_count.return_value = returned_site_count
 
     # Act
-    await EndDeviceManager.add_or_update_enddevice_for_aggregator(mock_session, aggregator_id, end_device)
+    result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(mock_session,
+                                                                                                      aggregator_id,
+                                                                                                      start,
+                                                                                                      after,
+                                                                                                      limit)
 
     # Assert
+    assert result is mapped_ed_list
     mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
-    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
-    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, mapped_site)
-    mock_datetime.now.assert_called_once()
+
+    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(returned_sites, returned_site_count)
+    mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session,
+                                                                     aggregator_id,
+                                                                     start,
+                                                                     datetime.fromtimestamp(after),
+                                                                     limit)
+    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.select_all_sites_with_aggregator_id")
+@mock.patch("envoy.server.manager.end_device.select_aggregator_site_count")
+@mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
+async def test_fetch_enddevicelist_with_aggregator_id_empty_list(mock_EndDeviceListMapper: mock.MagicMock,
+                                                                 mock_select_aggregator_site_count: mock.MagicMock,
+                                                                 mock_select_all_sites_with_aggregator_id: mock.MagicMock):
+    """Checks that fetching the enddevice list just passes through to the relevant CRUD
+    even when empty list is returned"""
+    # Arrange
+    mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
+    aggregator_id = 3
+    start = 4
+    after = 1678542014
+    limit = 5
+    mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
+    returned_site_count = 123
+    returned_sites: list[Site] = []
+
+    mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
+    mock_select_all_sites_with_aggregator_id.return_value = returned_sites
+    mock_select_aggregator_site_count.return_value = returned_site_count
+
+    # Act
+    result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(mock_session,
+                                                                                                      aggregator_id,
+                                                                                                      start,
+                                                                                                      after,
+                                                                                                      limit)
+
+    # Assert
+    assert result is mapped_ed_list
+    mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
+
+    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(returned_sites, returned_site_count)
+    mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session,
+                                                                     aggregator_id,
+                                                                     start,
+                                                                     datetime.fromtimestamp(after),
+                                                                     limit)
+    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id)
