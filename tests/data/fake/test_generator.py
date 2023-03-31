@@ -13,8 +13,8 @@ from tests.data.fake.generator import (
     generate_value,
     get_first_generatable_primitive,
     get_generatable_class_base,
+    get_optional_type_argument,
     is_generatable_type,
-    is_list_type,
     is_optional_type,
     is_passthrough_type,
     remove_passthrough_type,
@@ -63,6 +63,7 @@ class StringExtension(str):
 
 class ChildXmlClass(BaseXmlModelWithNS):
     childInt: IntExtension = element()
+    childList: Optional[list[str]] = element()
 
 
 class SiblingXmlClass(BaseXmlModelWithNS):
@@ -116,6 +117,19 @@ def test_get_generatable_class_base():
     assert get_generatable_class_base(Optional[FurtherIntExtension]) is None
 
 
+def test_get_optional_type_argument():
+    assert get_optional_type_argument(Optional[datetime]) == datetime
+    assert get_optional_type_argument(Optional[int]) == int
+    assert get_optional_type_argument(Optional[str]) == str
+    assert get_optional_type_argument(Union[type(None), str]) == str
+    assert get_optional_type_argument(Union[str, type(None)]) == str
+    assert get_optional_type_argument(Mapped[Optional[str]]) == str
+
+    assert get_optional_type_argument(ParentClass) is None
+    assert get_optional_type_argument(ChildClass) is None
+    assert get_optional_type_argument(Union[int, str]) is None
+
+
 def test_is_optional_type():
     assert is_optional_type(Optional[datetime])
     assert is_optional_type(Optional[int])
@@ -127,15 +141,6 @@ def test_is_optional_type():
     assert not is_optional_type(ParentClass)
     assert not is_optional_type(ChildClass)
     assert not is_optional_type(Union[int, str])
-
-
-def test_is_list_type():
-    assert is_list_type(list[ParentClass])
-    assert is_list_type(list[int])
-
-    assert not is_list_type(Mapped[int])
-    assert not is_list_type(int)
-    assert not is_list_type(ParentClass)
 
 
 def test_is_passthrough_type():
@@ -279,6 +284,7 @@ def test_generate_xml_instance_relationships():
     assert p2.mySibling is not None and isinstance(p2.mySibling, SiblingXmlClass)
 
     assert p1.myChildren[0].childInt != p2.myChildren[0].childInt, "Differing seed values generate different results"
+    assert p1.myChildren[0].childList != p2.myChildren[0].childList, "Differing seed values generate different results"
     assert p1.mySibling.siblingStr != p2.mySibling.siblingStr, "Differing seed values generate different results"
 
 
