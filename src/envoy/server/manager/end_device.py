@@ -11,11 +11,7 @@ from envoy.server.crud.end_device import (
     upsert_site_for_aggregator,
 )
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
-from envoy.server.schema.sep2.end_device import (
-    EndDeviceListResponse,
-    EndDeviceRequest,
-    EndDeviceResponse,
-)
+from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 
 
 class EndDeviceManager:
@@ -26,6 +22,8 @@ class EndDeviceManager:
         site = await select_single_site_with_site_id(
             session=session, site_id=site_id, aggregator_id=aggregator_id
         )
+        if site is None:
+            return None
         return EndDeviceMapper.map_to_response(site)
 
     @staticmethod
