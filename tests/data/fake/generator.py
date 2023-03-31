@@ -85,6 +85,11 @@ def get_generatable_class_base(t: type) -> Optional[type]:
     """Given a class - look to see if it inherits from a key CLASS_INSTANCE_GENERATORS and return that key
     otherwise return None"""
     target_type = remove_passthrough_type(t)
+
+    # we don't consider the Optional[MyType] - only the MyType
+    if is_optional_type(target_type):
+        target_type = [arg for arg in get_args(target_type) if arg != type(None)][0]
+
     if not inspect.isclass(target_type):
         return None
 
