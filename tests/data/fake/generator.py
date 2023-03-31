@@ -87,8 +87,9 @@ def get_generatable_class_base(t: type) -> Optional[type]:
     target_type = remove_passthrough_type(t)
 
     # we don't consider the Optional[MyType] - only the MyType
-    if is_optional_type(target_type):
-        target_type = [arg for arg in get_args(target_type) if arg != type(None)][0]
+    optional_arg = get_optional_type_argument(target_type)
+    if optional_arg is not None:
+        target_type = optional_arg
 
     if not inspect.isclass(target_type):
         return None
@@ -100,23 +101,31 @@ def get_generatable_class_base(t: type) -> Optional[type]:
     return None
 
 
-def is_optional_type(t: type) -> bool:
-    """Returns true if t is an Optional type"""
+def get_optional_type_argument(t: type) -> Optional[type]:
+    """If t is Optional[MyType] - return MyType - otherwise return None.
+
+    If None is returned then t is NOT an optional type"""
     target_type = remove_passthrough_type(t)
     if get_origin(target_type) != Union:
-        return False
+        return None
 
-    return type(None) in get_args(target_type)
+    # is this an Optional union?
+    type_args = get_args(target_type)
+    if type(None) not in type_args:
+        return None
+
+    # get the first non None type
+    return [arg for arg in type_args if arg != type(None)][0]
+
+
+def is_optional_type(t: type) -> bool:
+    """Returns true if t is an Optional type"""
+    return get_optional_type_argument(t) is not None
 
 
 def is_member_public(member_name: str) -> bool:
     """Simple heuristic to test if a member is public (True) or private/internal (False) """
     return len(member_name) > 0 and member_name[0] != '_'
-
-
-def is_list_type(t: type) -> bool:
-    """Returns true if a type looks like a list type"""
-    return get_origin(t) == list
 
 
 def generate_class_instance(t: type,
@@ -169,10 +178,16 @@ def generate_class_instance(t: type,
         # We generate lists the same as single values (we just wrap the results in a list)
         # keep track of the list state / element type before generating
         member_type = remove_passthrough_type(type_hints[member_name])
-        is_list = is_list_type(member_type)
+        optional_arg_type = get_optional_type_argument(member_type)
+        is_optional = optional_arg_type is not None
+        is_list = False
+        if is_optional:
+            is_list = get_origin(optional_arg_type) == list
+        else:
+            is_list = get_origin(member_type) == list
         empty_list: bool = False  # if True - use an empty list
         if is_list:
-            member_type = get_args(member_type)[0]
+            member_type = get_args(optional_arg_type)[0] if is_optional else get_args(member_type)[0]
 
         # This is an SQL Alchemy specific quirk - hopefully we don't need too many of these special cases
         #
@@ -190,7 +205,10 @@ def generate_class_instance(t: type,
             generated_value = generate_value(primitive_type, seed=current_seed, optional_is_none=optional_is_none)
             current_seed += 1
         elif get_generatable_class_base(member_type) is not None:
-            if generate_relationships:
+            if is_optional and optional_is_none:
+                generated_value = None
+                is_list = False
+            elif generate_relationships:
                 generated_value = generate_class_instance(
                     member_type,
                     seed=current_seed,
@@ -209,7 +227,8 @@ def generate_class_instance(t: type,
                 generated_value = None
             current_seed += 1000  # Rather than calculating how many seed values were utilised - set it arbitrarily high
         else:
-            raise Exception(f"Type {t} has property {member_name} as list {is_list} with type {member_type} that cannot be generated")
+            pretty_type_str = f"list[{member_type}]" if is_list else member_type
+            raise Exception(f"Type {t} has property {member_name} with type {pretty_type_str} that cannot be generated")
 
         if is_list:
             values[member_name] = [] if empty_list else [generated_value]
