@@ -107,6 +107,8 @@ def test_get_generatable_class_base():
     assert get_generatable_class_base(XmlClass) == BaseXmlModel
     assert get_generatable_class_base(FurtherXmlClass) == BaseXmlModel
     assert get_generatable_class_base(ChildXmlClass) == BaseXmlModel
+    assert get_generatable_class_base(Optional[ChildXmlClass]) == BaseXmlModel
+    assert get_generatable_class_base(Optional[FurtherXmlClass]) == BaseXmlModel
 
     assert get_generatable_class_base(str) is None
     assert get_generatable_class_base(FurtherIntExtension) is None
