@@ -122,6 +122,7 @@ def test_is_optional_type():
     assert is_optional_type(Optional[str])
     assert is_optional_type(Union[type(None), str])
     assert is_optional_type(Union[str, type(None)])
+    assert is_optional_type(Mapped[Optional[str]])
 
     assert not is_optional_type(ParentClass)
     assert not is_optional_type(ChildClass)

@@ -102,10 +102,11 @@ def get_generatable_class_base(t: type) -> Optional[type]:
 
 def is_optional_type(t: type) -> bool:
     """Returns true if t is an Optional type"""
-    if get_origin(t) != Union:
+    target_type = remove_passthrough_type(t)
+    if get_origin(target_type) != Union:
         return False
 
-    return type(None) in get_args(t)
+    return type(None) in get_args(target_type)
 
 
 def is_member_public(member_name: str) -> bool:
@@ -126,7 +127,7 @@ def generate_class_instance(t: type,
     """Given a child class of a key to CLASS_INSTANCE_GENERATORS - generate an instance of that class
     with all properties being assigned unique values based off of seed. The values will match type hints
 
-    Any "private" members beginning with '-' will be skipped
+    Any "private" members beginning with '_' will be skipped
 
     generate_relationships will recursively generate relationships generating instances as required. (SQL ALchemy
     will handle assigning backreferences too)
@@ -197,7 +198,12 @@ def generate_class_instance(t: type,
                     generate_relationships=generate_relationships,
                     visited_types=visited_types,
                 )
-                empty_list = generated_value is None  # This will occur of a backreference visiting an existing type
+
+                # None can be generated when Type A has child B that includes a backreference to A. in these
+                # circumstances the visited_types short circuit will just return None from generate_class_instance 
+                # (to stop infinite recursion) The way we handle this is to just generate an empty list (if this is
+                # a list entity)
+                empty_list = generated_value is None
             else:
                 empty_list = True
                 generated_value = None
@@ -230,10 +236,10 @@ PRIMITIVE_VALUE_GENERATORS: dict[type, Callable[[int], Any]] = {
     datetime: lambda seed: datetime(2010, 1, 1) + timedelta(days=seed) + timedelta(seconds=seed),
 }
 
-# the set of all generators (target: type, kvps: dict[str, Any) -> class instance (keyed by the base type of the generated type))
+# the set of all generators (target: type, kwargs: dict[str, Any) -> class instance (keyed by the base type of the generated type))
 CLASS_INSTANCE_GENERATORS: dict[type, Callable[[type, dict[str, Any]], Any]] = {
-    Base: lambda target, kvps: target(**kvps),
-    BaseXmlModel: lambda target, kvps: target.construct(**kvps),
+    Base: lambda target, kwargs: target(**kwargs),
+    BaseXmlModel: lambda target, kwargs: target.construct(**kwargs),
 }
 
 # the set of functions for accessing all members of a class (keyed by the base class for accessing those members)
