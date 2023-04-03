@@ -2,3 +2,4 @@
 the various implemented schemas """
 from .base import *  # noqa
 from .aggregator import *  # noqa
+from .site import *  # noqa

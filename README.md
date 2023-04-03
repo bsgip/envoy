@@ -65,7 +65,7 @@ We recommend adding these to a `.env` file in the root directory so that they ar
 
 7. Apply alembic migrations to the database schema
 
-`cd server/`
+`cd src/envoy/server/`
 
 If there are no migrations in `server/alembic/versions` - first run `alembic revision --autogenerate -m "Init"`
 

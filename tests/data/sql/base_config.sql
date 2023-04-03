@@ -17,3 +17,8 @@ INSERT INTO public.aggregator_certificate_assignment("assignment_id", "certifica
 INSERT INTO public.aggregator_certificate_assignment("assignment_id", "certificate_id", "aggregator_id") VALUES (2, 2, 1);
 INSERT INTO public.aggregator_certificate_assignment("assignment_id", "certificate_id", "aggregator_id") VALUES (3, 3, 1);
 INSERT INTO public.aggregator_certificate_assignment("assignment_id", "certificate_id", "aggregator_id") VALUES (4, 4, 2);
+
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "changed_time", "lfdi", "sfdi") VALUES (1, '1111111111', 1, '2022-02-03 04:05:06', 'site1-lfdi', 1111);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "changed_time", "lfdi", "sfdi") VALUES (2, '2222222222', 1, '2022-02-03 05:06:07', 'site2-lfdi', 2222);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "changed_time", "lfdi", "sfdi") VALUES (3, '3333333333', 2, '2022-02-03 08:09:10', 'site3-lfdi', 3333);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "changed_time", "lfdi", "sfdi") VALUES (4, '4444444444', 1, '2022-02-03 11:12:13', 'site4-lfdi', 4444);

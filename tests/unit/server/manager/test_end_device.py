@@ -92,7 +92,7 @@ async def test_add_or_update_enddevice_for_aggregator(mock_datetime: mock.MagicM
     # Assert
     mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
     mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
-    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, mapped_site)
+    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
     mock_datetime.now.assert_called_once()
 
 

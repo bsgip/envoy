@@ -19,7 +19,8 @@ class Site(Base):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     lfdi: Mapped[str] = mapped_column(VARCHAR(length=42), nullable=False, unique=True)
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    device_category: Mapped[str] = mapped_column(VARCHAR(length=8))
     # post_rate: Mapped[Integer] # TODO: should this live in notification/subscription tables?
 
-    UniqueConstraint("sfdi", "aggregator_id", name="sfdi_aggregator_id_uc")
+    __table_args__ = (
+        UniqueConstraint("sfdi", "aggregator_id", name="sfdi_aggregator_id_uc"),
+    )

@@ -33,7 +33,7 @@ class EndDeviceManager:
         site = EndDeviceMapper.map_from_request(
             end_device, aggregator_id, datetime.now(tz=get_localzone())
         )
-        await upsert_site_for_aggregator(session, site)
+        await upsert_site_for_aggregator(session, aggregator_id, site)
 
 
 class EndDeviceListManager:
