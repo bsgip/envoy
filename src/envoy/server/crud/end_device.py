@@ -8,9 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.model.site import Site
 
 
-async def select_aggregator_site_count(session: AsyncSession, aggregator_id: int):
+async def select_aggregator_site_count(session: AsyncSession, aggregator_id: int, after: datetime):
     stmt = select(func.count()).select_from(
-        select(Site.site_id).where(Site.aggregator_id == aggregator_id)
+        select(Site.site_id)
+        .where((Site.aggregator_id == aggregator_id) & (Site.changed_time >= after))
     )
     resp = await session.execute(stmt)
     return resp.scalar_one()

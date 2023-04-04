@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from typing import Any, Optional
 
 import pytest
 from httpx import AsyncClient
@@ -6,20 +7,31 @@ from httpx import AsyncClient
 from tests.integration.http import HTTPMethod
 from tests.integration.response import assert_response_header, run_basic_unauthorised_tests
 
+EMPTY_XML_DOC = '<?xml version="1.0" encoding="UTF-8"?>\n<tag/>'
+
 
 @pytest.mark.parametrize(
-    "uri",
-    ["/tm"],
+    "request_content",
+    [("GET", "/tm", None),
+     ("GET", "/edev/1", None),
+     ("HEAD", "/edev/1", None),
+     ("GET", "/edev", None),
+     ("HEAD", "/edev", None),
+     ("POST", "/edev", EMPTY_XML_DOC)],
 )
 @pytest.mark.anyio
-async def test_get_resource_unauthorised(uri: str, client: AsyncClient):
-    await run_basic_unauthorised_tests(client, uri, method="GET")
+async def test_get_resource_unauthorised(request_content: tuple[str, str, Optional[Any]], client: AsyncClient):
+    """Runs through the basic unauthorised tests for all parametized requests"""
+    (method, uri, body) = request_content
+    await run_basic_unauthorised_tests(client, uri, method=method, body=body)
 
 
 @pytest.mark.parametrize(
     "uri,invalid_methods",
     [
-        ("/tm", [HTTPMethod.PUT, HTTPMethod.DELETE, HTTPMethod.POST]),
+        ("/tm", [HTTPMethod.PUT, HTTPMethod.DELETE, HTTPMethod.POST, HTTPMethod.PATCH]),
+        ("/edev/1", [HTTPMethod.PUT, HTTPMethod.POST, HTTPMethod.PATCH]),
+        ("/edev", [HTTPMethod.PATCH, HTTPMethod.DELETE]),
     ],
 )
 @pytest.mark.anyio

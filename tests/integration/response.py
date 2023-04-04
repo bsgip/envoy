@@ -7,6 +7,7 @@ from envoy.server.api.response import SEP_XML_MIME
 from envoy.server.schema.sep2.error import ErrorResponse, ReasonCodeType
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_PEM as EXPIRED_PEM
 from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_PEM as UNKNOWN_PEM
+from tests.integration.http import HTTPMethod
 from tests.integration.integration_server import cert_pem_header
 
 
@@ -16,7 +17,7 @@ def assert_response_header(response: httpx.Response,
     """Simple assert on a response for a particular response code. Will include response body in assert message in
     the event of failure. Otherwise content stream will remain unread if this assert succeeds"""
 
-    # short cirtcuit success
+    # short circuit success
     actual_content_type: str = response.headers["Content-Type"]
     if response.status_code == expected_status_code:
         if expected_content_type is None or actual_content_type == expected_content_type:
@@ -30,6 +31,10 @@ def assert_response_header(response: httpx.Response,
 def assert_error_response(response: httpx.Response):
     """Asserts that the response content (which will be consumed) maps to a sep2 Error object"""
     body = read_response_body_string(response)
+    if response.request.method == "HEAD":
+        assert len(body) == 0, "Expected an empty response for a HEAD request"
+        return  # can't validate something that isn't there
+
     parsed_response: ErrorResponse = ErrorResponse.from_xml(body)
     assert type(parsed_response.reasonCode) == ReasonCodeType
     assert parsed_response.message is None or type(parsed_response.message) == str

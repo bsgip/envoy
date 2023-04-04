@@ -9,6 +9,7 @@ from envoy.server.crud.end_device import (
     upsert_site_for_aggregator,
 )
 from envoy.server.model.site import Site
+from envoy.server.schema.sep2.end_device import DeviceCategory
 from tests.assert_type import assert_list_type
 from tests.data.fake.generator import clone_class_instance, generate_class_instance
 from tests.postgres_testing import generate_async_session
@@ -19,13 +20,18 @@ async def test_select_aggregator_site_count(pg_base_config):
     """Simple tests to ensure the counts work for both valid / invalid IDs"""
     async with generate_async_session(pg_base_config) as session:
         # Test the basic config is there and accessible
-        assert await select_aggregator_site_count(session, 1) == 3
-        assert await select_aggregator_site_count(session, 2) == 1
-        assert await select_aggregator_site_count(session, 3) == 0
+        assert await select_aggregator_site_count(session, 1, datetime.min) == 3
+        assert await select_aggregator_site_count(session, 2, datetime.min) == 1
+        assert await select_aggregator_site_count(session, 3, datetime.min) == 0
+
+        # try with after filter being set
+        assert await select_aggregator_site_count(session, 1, datetime(2022, 2, 3, 0, 0, 0)) == 3
+        assert await select_aggregator_site_count(session, 1, datetime(2022, 2, 3, 5, 0, 0)) == 2
+        assert await select_aggregator_site_count(session, 1, datetime(2022, 2, 3, 8, 0, 0)) == 1
 
         # These aggregators don't exist
-        assert await select_aggregator_site_count(session, 4) == 0
-        assert await select_aggregator_site_count(session, -1) == 0
+        assert await select_aggregator_site_count(session, 4, datetime.min) == 0
+        assert await select_aggregator_site_count(session, -1, datetime.min) == 0
 
 
 @pytest.mark.anyio
@@ -42,6 +48,7 @@ async def test_select_all_sites_with_aggregator_id_contents(pg_base_config):
         assert site_3.changed_time.timestamp() == datetime(2022, 2, 3, 8, 9, 10).timestamp()
         assert site_3.lfdi == 'site3-lfdi'
         assert site_3.sfdi == 3333
+        assert site_3.device_category == DeviceCategory(2)
 
 
 @pytest.mark.anyio
@@ -111,6 +118,7 @@ async def test_select_single_site_with_site_id(pg_base_config):
         assert site_3.changed_time.timestamp() == datetime(2022, 2, 3, 8, 9, 10).timestamp()
         assert site_3.lfdi == 'site3-lfdi'
         assert site_3.sfdi == 3333
+        assert site_3.device_category == DeviceCategory(2)
 
         # Site 1 for Agg 1
         site_1 = await select_single_site_with_site_id(session, 1, 1)
@@ -121,6 +129,7 @@ async def test_select_single_site_with_site_id(pg_base_config):
         assert site_1.changed_time.timestamp() == datetime(2022, 2, 3, 4, 5, 6).timestamp()
         assert site_1.lfdi == 'site1-lfdi'
         assert site_1.sfdi == 1111
+        assert site_1.device_category == DeviceCategory(0)
 
         # test mismatched ids
         assert await select_single_site_with_site_id(session, 1, 2) is None
@@ -157,6 +166,7 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
         assert inserted_site.changed_time.timestamp() == new_site.changed_time.timestamp()
         assert inserted_site.lfdi == new_site.lfdi
         assert inserted_site.sfdi == new_site.sfdi
+        assert inserted_site.device_category == new_site.device_category
 
         # Sanity check another site in the same aggregator
         site_1 = await select_single_site_with_site_id(session, 1, 1)
@@ -167,11 +177,12 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
         assert site_1.changed_time.timestamp() == datetime(2022, 2, 3, 4, 5, 6).timestamp()
         assert site_1.lfdi == 'site1-lfdi'
         assert site_1.sfdi == 1111
+        assert site_1.device_category == DeviceCategory(0)
 
         # Sanity check the site count
-        assert await select_aggregator_site_count(session, 1) == 4
-        assert await select_aggregator_site_count(session, 2) == 1
-        assert await select_aggregator_site_count(session, 3) == 0
+        assert await select_aggregator_site_count(session, 1, datetime.min) == 4
+        assert await select_aggregator_site_count(session, 2, datetime.min) == 1
+        assert await select_aggregator_site_count(session, 3, datetime.min) == 0
 
 
 @pytest.mark.anyio
@@ -210,6 +221,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         assert site_db.changed_time.timestamp() == site_to_upsert.changed_time.timestamp()
         assert site_db.lfdi == site_to_upsert.lfdi
         assert site_db.sfdi == site_to_upsert.sfdi
+        assert site_db.device_category == site_to_upsert.device_category
 
         # Sanity check another site in the same aggregator
         site_2 = await select_single_site_with_site_id(session, 2, aggregator_id)
@@ -220,11 +232,12 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         assert site_2.changed_time.timestamp() == datetime(2022, 2, 3, 5, 6, 7).timestamp()
         assert site_2.lfdi == 'site2-lfdi'
         assert site_2.sfdi == 2222
+        assert site_2.device_category == DeviceCategory(1)
 
         # Sanity check the site count
-        assert await select_aggregator_site_count(session, 1) == 3
-        assert await select_aggregator_site_count(session, 2) == 1
-        assert await select_aggregator_site_count(session, 3) == 0
+        assert await select_aggregator_site_count(session, 1, datetime.min) == 3
+        assert await select_aggregator_site_count(session, 2, datetime.min) == 1
+        assert await select_aggregator_site_count(session, 3, datetime.min) == 0
 
 
 @pytest.mark.anyio
@@ -253,6 +266,6 @@ async def test_upsert_site_for_aggregator_cant_change_agg_id(pg_base_config):
         assert site_db.nmi == original_site.nmi, "nmi should NOT have changed"
 
         # Sanity check the site count hasn't changed
-        assert await select_aggregator_site_count(session, 1) == 3
-        assert await select_aggregator_site_count(session, 2) == 1
-        assert await select_aggregator_site_count(session, 3) == 0
+        assert await select_aggregator_site_count(session, 1, datetime.min) == 3
+        assert await select_aggregator_site_count(session, 2, datetime.min) == 1
+        assert await select_aggregator_site_count(session, 3, datetime.min) == 0

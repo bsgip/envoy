@@ -138,7 +138,7 @@ async def test_fetch_enddevicelist_with_aggregator_id(mock_EndDeviceListMapper: 
                                                                      start,
                                                                      datetime.fromtimestamp(after),
                                                                      limit)
-    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id)
+    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, datetime.fromtimestamp(after))
 
 
 @pytest.mark.anyio
@@ -181,4 +181,4 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(mock_EndDeviceL
                                                                      start,
                                                                      datetime.fromtimestamp(after),
                                                                      limit)
-    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id)
+    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, datetime.fromtimestamp(after))

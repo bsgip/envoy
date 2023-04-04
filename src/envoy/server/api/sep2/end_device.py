@@ -6,11 +6,7 @@ from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from envoy.server.api.response import XmlRequest, XmlResponse
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
-from envoy.server.schema.sep2.end_device import (
-    EndDeviceListResponse,
-    EndDeviceRequest,
-    EndDeviceResponse,
-)
+from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 
 logger = logging.getLogger(__name__)
 

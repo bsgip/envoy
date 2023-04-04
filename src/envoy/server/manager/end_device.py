@@ -45,8 +45,9 @@ class EndDeviceListManager:
         after: int,
         limit: int,
     ) -> EndDeviceListResponse:
+        after_dt = datetime.fromtimestamp(after)
         site_list = await select_all_sites_with_aggregator_id(
-            session, aggregator_id, start, datetime.fromtimestamp(after), limit
+            session, aggregator_id, start, after_dt, limit
         )
-        site_count = await select_aggregator_site_count(session, aggregator_id)
+        site_count = await select_aggregator_site_count(session, aggregator_id, after_dt)
         return EndDeviceListMapper.map_to_response(site_list, site_count)
