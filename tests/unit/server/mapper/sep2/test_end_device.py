@@ -2,8 +2,25 @@ from datetime import datetime
 
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
 from envoy.server.model.site import Site
-from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy.server.schema.sep2.base import HexBinary32
+from envoy.server.schema.sep2.end_device import (
+    DeviceCategory,
+    EndDeviceListResponse,
+    EndDeviceRequest,
+    EndDeviceResponse,
+)
 from tests.data.fake.generator import generate_class_instance, generate_value
+
+
+def test_device_category_round_trip():
+    """Tests that the mapping for device_category from int to hex string works both ways"""
+    site: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
+    site.device_category = DeviceCategory(987654)
+
+    end_device = EndDeviceMapper.map_to_response(site)
+
+    roundtrip_site = EndDeviceMapper.map_from_request(end_device, 1, datetime.now())
+    assert roundtrip_site.device_category == site.device_category
 
 
 def test_map_to_response():
@@ -16,12 +33,16 @@ def test_map_to_response():
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
     assert result_all_set.lFDI == site_all_set.lfdi
+    assert type(result_all_set.deviceCategory) == HexBinary32
+    assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
 
     result_optional = EndDeviceMapper.map_to_response(site_optional)
     assert result_optional is not None
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
     assert result_optional.lFDI == site_optional.lfdi
+    assert type(result_optional.deviceCategory) == HexBinary32
+    assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
 
 
 def test_list_map_to_response():
@@ -62,7 +83,9 @@ def test_list_map_to_response():
 def test_map_from_request():
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
     end_device_all_set: EndDeviceRequest = generate_class_instance(EndDeviceRequest, seed=101, optional_is_none=False)
+    end_device_all_set.deviceCategory = "c0ffee"  # needs to be a hex string
     end_device_optional: EndDeviceRequest = generate_class_instance(EndDeviceRequest, seed=202, optional_is_none=True)
+    end_device_optional.deviceCategory = None
     changed_time: datetime = generate_value(datetime, 303)
     aggregator_id: int = 404
 
@@ -72,6 +95,8 @@ def test_map_from_request():
     assert result_all_set.changed_time == changed_time
     assert result_all_set.aggregator_id == aggregator_id
     assert result_all_set.lfdi == end_device_all_set.lFDI
+    assert type(result_all_set.device_category) == DeviceCategory
+    assert result_all_set.device_category == int("c0ffee", 16)
 
     result_optional = EndDeviceMapper.map_from_request(end_device_optional, aggregator_id, changed_time)
     assert result_optional is not None
@@ -79,3 +104,5 @@ def test_map_from_request():
     assert result_optional.changed_time == changed_time
     assert result_optional.aggregator_id == aggregator_id
     assert result_optional.lfdi == end_device_optional.lFDI
+    assert type(result_all_set.device_category) == DeviceCategory
+    assert result_optional.device_category == DeviceCategory(0)

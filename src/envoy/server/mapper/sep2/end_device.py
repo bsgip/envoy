@@ -2,6 +2,7 @@ from datetime import datetime
 
 from envoy.server.model.site import Site
 from envoy.server.schema.sep2.end_device import (
+    DeviceCategory,
     EndDeviceListResponse,
     EndDeviceRequest,
     EndDeviceResponse,
@@ -16,7 +17,7 @@ class EndDeviceMapper:
                 "href": f"/edev/{site.site_id}",
                 "lFDI": site.lfdi,
                 "sFDI": site.sfdi,
-                "deviceCategory": site.device_category,
+                "deviceCategory": f"{site.device_category:x}",  # deviceCategory is a hex string
                 "changedTime": int(site.changed_time.timestamp()),
                 "enabled": True,
             }
@@ -26,12 +27,19 @@ class EndDeviceMapper:
     def map_from_request(
         end_device: EndDeviceRequest, aggregator_id: int, changed_time: datetime
     ) -> Site:
+        # deviceCategory is a hex string
+        device_category: DeviceCategory
+        if end_device.deviceCategory:
+            device_category = DeviceCategory(int(end_device.deviceCategory, 16))
+        else:
+            device_category = DeviceCategory(0)
+
         return Site(
             lfdi=end_device.lFDI,
             sfdi=end_device.sFDI,
             changed_time=changed_time,
-            device_category=end_device.deviceCategory,
             aggregator_id=aggregator_id,
+            device_category=device_category
         )
 
 

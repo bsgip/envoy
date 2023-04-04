@@ -10,6 +10,7 @@ from envoy.server.crud.end_device import (
 )
 from envoy.server.model.site import Site
 from tests.assert_type import assert_list_type
+from tests.data.fake.generator import clone_class_instance, generate_class_instance
 from tests.postgres_testing import generate_async_session
 
 
@@ -138,7 +139,8 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
 
     # Do the insert in a session seperate to the database
     inserted_id: int
-    new_site = Site(nmi="new-nmi", aggregator_id=1, changed_time=datetime.now(), lfdi="new-lfdi", sfdi=1234)
+    new_site: Site = generate_class_instance(Site)
+    del new_site.site_id  # Don't set the primary key - we expect the DB to set that
     async with generate_async_session(pg_base_config) as session:
         inserted_id = await upsert_site_for_aggregator(session, 1, new_site)
         assert inserted_id
@@ -156,7 +158,7 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
         assert inserted_site.lfdi == new_site.lfdi
         assert inserted_site.sfdi == new_site.sfdi
 
-        # Sanity check another site
+        # Sanity check another site in the same aggregator
         site_1 = await select_single_site_with_site_id(session, 1, 1)
         assert type(site_1) == Site
         assert site_1.site_id == 1
@@ -167,6 +169,90 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
         assert site_1.sfdi == 1111
 
         # Sanity check the site count
+        assert await select_aggregator_site_count(session, 1) == 4
+        assert await select_aggregator_site_count(session, 2) == 1
+        assert await select_aggregator_site_count(session, 3) == 0
+
+
+@pytest.mark.anyio
+async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
+    """Tests that the upsert can do updates to fields that aren't unique constrained"""
+
+    # We want the site object we upsert to be a "fresh" Site instance that hasn't been anywhere near
+    # a SQL Alchemy session but shares the appropriate indexed values
+    site_id_to_update = 1
+    aggregator_id = 1
+    site_to_upsert: Site = generate_class_instance(Site)
+    async with generate_async_session(pg_base_config) as session:
+        existing_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
+        assert existing_site
+
+        # Copy across the indexed values as we don't want to update those
+        site_to_upsert.lfdi = existing_site.lfdi
+        site_to_upsert.sfdi = existing_site.sfdi
+        site_to_upsert.aggregator_id = existing_site.aggregator_id
+        site_to_upsert.site_id = existing_site.site_id
+
+    # Perform the upsert in a new session
+    async with generate_async_session(pg_base_config) as session:
+        updated_id = await upsert_site_for_aggregator(session, aggregator_id, site_to_upsert)
+        assert updated_id == site_id_to_update
+        await session.commit()
+
+    # Validate the state of the DB in a new session
+    async with generate_async_session(pg_base_config) as session:
+
+        # check it exists
+        site_db = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
+        assert site_db
+        assert site_db.nmi == site_to_upsert.nmi
+        assert site_db.aggregator_id == site_to_upsert.aggregator_id
+        assert site_db.changed_time.timestamp() == site_to_upsert.changed_time.timestamp()
+        assert site_db.lfdi == site_to_upsert.lfdi
+        assert site_db.sfdi == site_to_upsert.sfdi
+
+        # Sanity check another site in the same aggregator
+        site_2 = await select_single_site_with_site_id(session, 2, aggregator_id)
+        assert type(site_2) == Site
+        assert site_2.site_id == 2
+        assert site_2.nmi == "2222222222"
+        assert site_2.aggregator_id == aggregator_id
+        assert site_2.changed_time.timestamp() == datetime(2022, 2, 3, 5, 6, 7).timestamp()
+        assert site_2.lfdi == 'site2-lfdi'
+        assert site_2.sfdi == 2222
+
+        # Sanity check the site count
+        assert await select_aggregator_site_count(session, 1) == 3
+        assert await select_aggregator_site_count(session, 2) == 1
+        assert await select_aggregator_site_count(session, 3) == 0
+
+
+@pytest.mark.anyio
+async def test_upsert_site_for_aggregator_cant_change_agg_id(pg_base_config):
+    """Tests that attempting to sneak through a mismatched agg_id results in an exception with no changes"""
+    site_id_to_update = 1
+    aggregator_id = 1
+
+    original_site: Site
+    update_attempt_site: Site
+    async with generate_async_session(pg_base_config) as session:
+        original_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
+        assert original_site
+
+        update_attempt_site = clone_class_instance(original_site)
+        update_attempt_site.aggregator_id = 3
+        update_attempt_site.nmi = "new-nmi"
+
+    async with generate_async_session(pg_base_config) as session:
+        with pytest.raises(ValueError):
+            await upsert_site_for_aggregator(session, aggregator_id, update_attempt_site)
+
+        # db should be unmodified
+        site_db = await select_single_site_with_site_id(session, update_attempt_site.site_id, aggregator_id)
+        assert site_db
+        assert site_db.nmi == original_site.nmi, "nmi should NOT have changed"
+
+        # Sanity check the site count hasn't changed
         assert await select_aggregator_site_count(session, 1) == 3
         assert await select_aggregator_site_count(session, 2) == 1
         assert await select_aggregator_site_count(session, 3) == 0

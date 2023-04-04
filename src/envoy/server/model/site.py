@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from envoy.server.model import Base
+from envoy.server.schema.sep2.end_device import DeviceCategory
 
 
 class Site(Base):
@@ -19,6 +20,7 @@ class Site(Base):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     lfdi: Mapped[str] = mapped_column(VARCHAR(length=42), nullable=False, unique=True)
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
     # post_rate: Mapped[Integer] # TODO: should this live in notification/subscription tables?
 
     __table_args__ = (

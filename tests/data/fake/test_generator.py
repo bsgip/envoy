@@ -1,14 +1,16 @@
 from datetime import datetime
+from enum import IntFlag, auto
 from typing import Optional, Union
 
 import pytest
 from pydantic_xml import BaseXmlModel, element
-from sqlalchemy import BOOLEAN, FLOAT, VARCHAR, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import BOOLEAN, FLOAT, INTEGER, VARCHAR, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model.base import Base
 from envoy.server.schema.sep2.base import BaseXmlModelWithNS
 from tests.data.fake.generator import (
+    clone_class_instance,
     generate_class_instance,
     generate_value,
     get_first_generatable_primitive,
@@ -19,6 +21,14 @@ from tests.data.fake.generator import (
     is_passthrough_type,
     remove_passthrough_type,
 )
+
+
+class CustomFlags(IntFlag):
+    """Various bit flags"""
+    FLAG_1 = auto()
+    FLAG_2 = auto()
+    FLAG_3 = auto()
+    FLAG_4 = auto()
 
 
 class ParentClass(Base):
@@ -46,6 +56,8 @@ class ChildClass(Base):
     long_name: Mapped[Optional[str]] = mapped_column(VARCHAR(length=32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    flags: Mapped[CustomFlags] = mapped_column(INTEGER, nullable=False)
+    optional_flags: Mapped[Optional[CustomFlags]] = mapped_column(INTEGER, nullable=True)
     parent: Mapped["ParentClass"] = relationship(back_populates="children")
 
 
@@ -173,6 +185,9 @@ def test_is_generatable_type():
     assert is_generatable_type(IntExtension)
     assert is_generatable_type(FurtherIntExtension)
     assert is_generatable_type(StringExtension)
+    assert is_generatable_type(CustomFlags)
+    assert is_generatable_type(Optional[CustomFlags])
+    assert is_generatable_type(Mapped[CustomFlags])
     assert is_generatable_type(Optional[int])
     assert is_generatable_type(Optional[FurtherIntExtension])
     assert is_generatable_type(Union[int, str])
@@ -203,6 +218,7 @@ def test_get_first_generatable_primitive():
     assert get_first_generatable_primitive(IntExtension, include_optional=True) == int
     assert get_first_generatable_primitive(FurtherIntExtension, include_optional=True) == int
     assert get_first_generatable_primitive(StringExtension, include_optional=True) == str
+    assert get_first_generatable_primitive(CustomFlags, include_optional=True) == int
     assert get_first_generatable_primitive(Optional[int], include_optional=True) == Optional[int]
     assert get_first_generatable_primitive(Optional[FurtherIntExtension], include_optional=True) == Optional[int]
     assert get_first_generatable_primitive(Union[int, str], include_optional=True) == int
@@ -225,6 +241,7 @@ def test_get_first_generatable_primitive():
     assert get_first_generatable_primitive(IntExtension, include_optional=False) == int
     assert get_first_generatable_primitive(FurtherIntExtension, include_optional=False) == int
     assert get_first_generatable_primitive(StringExtension, include_optional=False) == str
+    assert get_first_generatable_primitive(CustomFlags, include_optional=False) == int
     assert get_first_generatable_primitive(Optional[int], include_optional=False) == int
     assert get_first_generatable_primitive(Optional[FurtherIntExtension], include_optional=False) == int
     assert get_first_generatable_primitive(Union[int, str], include_optional=False) == int
@@ -300,11 +317,14 @@ def test_generate_sql_alchemy_instance_basic_values():
     assert c1.parent_id is not None
     assert c1.created_at is not None
     assert c1.deleted_at is not None
+    assert c1.flags is not None
+    assert c1.optional_flags is not None
     assert c1.parent is None, "generate_relationships is False so this should not populate"
 
     assert c1.name != c1.long_name, "Checking that fields of the same type get unique values"
     assert c1.child_id != c1.parent_id, "Checking that fields of the same type get unique values"
     assert c1.created_at != c1.deleted_at, "Checking that fields of the same type get unique values"
+    assert c1.flags != c1.optional_flags, "Checking that fields of the same type get unique values"
 
     # create a new instance with a different seed
     c2: ChildClass = generate_class_instance(ChildClass, seed=123)
@@ -314,11 +334,14 @@ def test_generate_sql_alchemy_instance_basic_values():
     assert c2.parent_id is not None
     assert c2.created_at is not None
     assert c2.deleted_at is not None
+    assert c2.flags is not None
+    assert c2.optional_flags is not None
     assert c2.parent is None, "generate_relationships is False so this should not populate"
 
     assert c2.name != c2.long_name, "Checking that fields of the same type get unique values"
     assert c2.child_id != c2.parent_id, "Checking that fields of the same type get unique values"
     assert c2.created_at != c2.deleted_at, "Checking that fields of the same type get unique values"
+    assert c2.flags != c2.optional_flags, "Checking that fields of the same type get unique values"
 
     # validate that c1 != c2
     assert c1.name != c2.name, "Checking that different seed numbers yields different results"
@@ -327,6 +350,8 @@ def test_generate_sql_alchemy_instance_basic_values():
     assert c1.parent_id != c2.parent_id, "Checking that different seed numbers yields different results"
     assert c1.created_at != c2.created_at, "Checking that different seed numbers yields different results"
     assert c1.deleted_at != c2.deleted_at, "Checking that different seed numbers yields different results"
+    assert c1.flags != c2.flags, "Checking that different seed numbers yields different results"
+    assert c1.optional_flags != c2.optional_flags, "Checking that different seed numbers yields different results"
 
     # check optional_is_none
     c3: ChildClass = generate_class_instance(ChildClass, seed=456, optional_is_none=True)
@@ -337,6 +362,8 @@ def test_generate_sql_alchemy_instance_basic_values():
     assert c3.parent is None, "generate_relationships is False so this should not populate"
     assert c3.created_at is not None
     assert c3.deleted_at is None, "optional_is_none is True and this is optional"
+    assert c3.flags is not None
+    assert c3.optional_flags is None, "optional_is_none is True and this is optional"
 
 
 def test_generate_sql_alchemy_instance_single_relationships():
@@ -396,3 +423,36 @@ def test_generate_sql_alchemy_instance_multi_relationships():
     assert p2.children[0].long_name != p2.children[0].name, "Checking that fields of the same type get unique values"
     assert p1.children[0].created_at != p2.children[0].created_at, "Checking that different seed numbers yields different results"
     assert p1.children[0].deleted_at != p2.children[0].deleted_at, "Checking that different seed numbers yields different results"
+
+
+def test_clone_class_instance_sql_alchemy():
+    """Check that cloned sql alchemy classes are properly shallow cloned"""
+    original: ParentClass = generate_class_instance(ParentClass, generate_relationships=True)
+    clone: ParentClass = clone_class_instance(original)
+
+    assert clone
+    assert clone is not original
+    assert type(clone) == ParentClass
+
+    assert clone.parent_id is original.parent_id
+    assert clone.name is original.name
+    assert clone.created is original.created
+    assert clone.deleted is original.deleted
+    assert clone.disabled is original.disabled
+    assert clone.total is original.total
+
+
+def test_clone_class_instance_xml():
+    """Check that cloned xml classes are properly shallow cloned"""
+    original: FurtherXmlClass = generate_class_instance(FurtherXmlClass, generate_relationships=True)
+    clone: FurtherXmlClass = clone_class_instance(original)
+
+    assert clone
+    assert clone is not original
+    assert type(clone) == FurtherXmlClass
+
+    assert clone.myInt is original.myInt
+    assert clone.myStr is original.myStr
+    assert clone.myChildren is original.myChildren
+    assert clone.mySibling is original.mySibling
+    assert clone.myOtherInt is original.myOtherInt
