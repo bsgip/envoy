@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from envoy.server.model.site import Site
+from envoy.server.schema.csip_aus.connection_point import ConnectionPointLink
 from envoy.server.schema.sep2.end_device import (
     DeviceCategory,
     EndDeviceListResponse,
@@ -12,14 +13,16 @@ from envoy.server.schema.sep2.end_device import (
 class EndDeviceMapper:
     @staticmethod
     def map_to_response(site: Site) -> EndDeviceResponse:
+        edev_href = f"/edev/{site.site_id}"
         return EndDeviceResponse.validate(
             {
-                "href": f"/edev/{site.site_id}",
+                "href": edev_href,
                 "lFDI": site.lfdi,
                 "sFDI": site.sfdi,
                 "deviceCategory": f"{site.device_category:x}",  # deviceCategory is a hex string
                 "changedTime": int(site.changed_time.timestamp()),
                 "enabled": True,
+                "ConnectionPointLink": ConnectionPointLink(href=edev_href + "/cp")
             }
         )
 

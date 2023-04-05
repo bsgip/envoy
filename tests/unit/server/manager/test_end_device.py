@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
 from envoy.server.model.site import Site
+from envoy.server.schema.csip_aus.connection_point import ConnectionPoint
 from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from tests.data.fake.generator import generate_class_instance
 
@@ -183,3 +184,60 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(mock_EndDeviceL
                                                                      datetime.fromtimestamp(after),
                                                                      limit)
     mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, datetime.fromtimestamp(after))
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.select_single_site_with_site_id")
+@mock.patch("envoy.server.manager.end_device.ConnectionPointMapper")
+async def test_end_device_manager_fetch_existing_connection_point(mock_ConnectionPointMapper: mock.MagicMock,
+                                                                  mock_select_single_site_with_site_id: mock.MagicMock):
+    """Check that the manager will handle interacting with the DB and its responses"""
+
+    # Arrange
+    mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
+    site_id = 1
+    aggregator_id = 2
+    raw_site: Site = generate_class_instance(Site)
+    mapped_cp: ConnectionPoint = generate_class_instance(ConnectionPoint)
+
+    # Just do a simple passthrough
+    mock_select_single_site_with_site_id.return_value = raw_site
+    mock_ConnectionPointMapper.map_to_response = mock.Mock(return_value=mapped_cp)
+
+    # Act
+    result = await EndDeviceManager.fetch_connection_point_for_site(mock_session, site_id, aggregator_id)
+
+    # Assert
+    assert result is mapped_cp
+    mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
+    mock_select_single_site_with_site_id.assert_called_once_with(session=mock_session,
+                                                                 site_id=site_id,
+                                                                 aggregator_id=aggregator_id)
+    mock_ConnectionPointMapper.map_to_response.assert_called_once_with(raw_site)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.select_single_site_with_site_id")
+@mock.patch("envoy.server.manager.end_device.ConnectionPointMapper")
+async def test_end_device_manager_fetch_missing_connection_point(mock_ConnectionPointMapper: mock.MagicMock,
+                                                                 mock_select_single_site_with_site_id: mock.MagicMock):
+    """Check that the manager will handle interacting with the DB and its responses when the requested site DNE"""
+
+    # Arrange
+    mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
+    site_id = 1
+    aggregator_id = 2
+
+    mock_select_single_site_with_site_id.return_value = None  # database entity is missing / bad ID lookup
+    mock_ConnectionPointMapper.map_to_response = mock.Mock()
+
+    # Act
+    result = await EndDeviceManager.fetch_connection_point_for_site(mock_session, site_id, aggregator_id)
+
+    # Assert
+    assert result is None
+    mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
+    mock_select_single_site_with_site_id.assert_called_once_with(session=mock_session,
+                                                                 site_id=site_id,
+                                                                 aggregator_id=aggregator_id)
+    mock_ConnectionPointMapper.map_to_response.assert_not_called()  # Don't map if there's nothing in the DB

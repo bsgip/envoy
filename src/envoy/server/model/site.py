@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -11,7 +12,7 @@ class Site(Base):
     __tablename__ = "site"
 
     site_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    nmi: Mapped[str] = mapped_column(VARCHAR(length=11), nullable=True)
+    nmi: Mapped[Optional[str]] = mapped_column(VARCHAR(length=11), nullable=True)
     aggregator_id: Mapped[int] = mapped_column(
         ForeignKey("aggregator.aggregator_id"), nullable=False
     )

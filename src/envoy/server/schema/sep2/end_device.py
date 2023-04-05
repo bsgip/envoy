@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from pydantic_xml import attr, element
 
+from envoy.server.schema.csip_aus.connection_point import ConnectionPointLink as ConnectionPointLinkType
 from envoy.server.schema.sep2.base import HexBinary32, Link, ListLink, SubscribableList, SubscribableResource
 from envoy.server.schema.sep2.time import TimeType
 
@@ -53,6 +54,7 @@ class EndDeviceResponse(EndDeviceRequest, tag="EndDevice"):
     enabled: Optional[int] = element(default=1)
 
     # Links
+    ConnectionPointLink: Optional[ConnectionPointLinkType] = element()
     ConfigurationLink: Optional[str] = element()
     DeviceInformationLink: Optional[Link] = element()
     DeviceStatusLink: Optional[Link] = element()
