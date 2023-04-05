@@ -6,7 +6,7 @@ from pydantic_xml.element import SearchMode
 
 """ Abstract
 """
-nsmap = {"": "urn:ieee:std:2030.5:ns"}
+nsmap = {"": "urn:ieee:std:2030.5:ns", "csipaus": "http://csipaus.org/ns"}
 
 
 class BaseXmlModelWithNS(BaseXmlModel):

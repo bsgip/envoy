@@ -5,12 +5,15 @@ from pydantic_xml import BaseXmlModel
 
 SEP_XML_MIME: str = "application/sep+xml"
 
+LOCATION_HEADER_NAME: str = "Location"
+
 
 class XmlResponse(Response):
     media_type = SEP_XML_MIME
 
     def render(self, content: BaseXmlModel) -> bytes:
         return content.to_xml(skip_empty=True)
+
 
 T = TypeVar("T", bound=BaseXmlModel)
 

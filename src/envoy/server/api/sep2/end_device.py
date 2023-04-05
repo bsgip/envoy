@@ -1,12 +1,13 @@
 import logging
+from http import HTTPStatus
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
-from envoy.server.api.response import XmlRequest, XmlResponse
+from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
-from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy.server.schema.sep2.end_device import EndDeviceRequest
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ router = APIRouter()
 @router.head("/edev/{site_id}")
 @router.get(
     "/edev/{site_id}",
-    status_code=200,
+    status_code=HTTPStatus.OK,
 )
 async def get_enddevice(site_id: int, request: Request):
     """Responds with a single EndDevice resource.
@@ -34,22 +35,25 @@ async def get_enddevice(site_id: int, request: Request):
         end_device = await EndDeviceManager.fetch_enddevice_with_site_id(
             db.session, site_id, request.state.aggregator_id
         )
+        if end_device is None:
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+
     except NoResultFound as exc:
         logger.debug(exc)
-        raise HTTPException(status_code=404, detail="Not Found.")
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
     return XmlResponse(end_device)
 
 
 @router.head("/edev")
 @router.get(
     "/edev",
-    status_code=200,
+    status_code=HTTPStatus.OK,
 )
 async def get_enddevice_list(
     request: Request,
-    s: list[int] = Query([0]),
-    a: list[int] = Query([0]),
-    l: list[int] = Query([1]),
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
 ):
     """Responds with a EndDeviceList resource.
 
@@ -66,15 +70,14 @@ async def get_enddevice_list(
 
     return XmlResponse(
         await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
-            db.session, request.state.aggregator_id, start=s[0], after=a[0], limit=l[0]
+            db.session, request.state.aggregator_id, start=start[0], after=after[0], limit=limit[0]
         )
     )
 
 
-@router.post("/edev", status_code=201)
+@router.post("/edev", status_code=HTTPStatus.CREATED)
 async def create_end_device(
     request: Request,
-    response: Response,
     payload: EndDeviceRequest = Depends(XmlRequest(EndDeviceRequest)),
 ):
     """An EndDevice resource is generated with a unique reg_no (registration number).
@@ -94,9 +97,7 @@ async def create_end_device(
             db.session, request.state.aggregator_id, payload
         )
 
-        response.headers["location"] = f"/edev/{site_id}"
+        return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: f"/edev/{site_id}"})
     except IntegrityError as exc:
         logger.debug(exc)
-        raise HTTPException(detail="lFDI conflict.", status_code=409)
-
-    # TODO: different status_code if update
+        raise HTTPException(detail="lFDI conflict.", status_code=HTTPStatus.CONFLICT)

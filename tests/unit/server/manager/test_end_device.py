@@ -83,11 +83,12 @@ async def test_add_or_update_enddevice_for_aggregator(mock_datetime: mock.MagicM
     now: datetime = datetime(2020, 1, 2, 3, 4)
 
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
-    mock_upsert_site_for_aggregator.return_value
+    mock_upsert_site_for_aggregator.return_value = 4321
     mock_datetime.now = mock.Mock(return_value=now)
 
     # Act
-    await EndDeviceManager.add_or_update_enddevice_for_aggregator(mock_session, aggregator_id, end_device)
+    returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(mock_session, aggregator_id, end_device)
+    assert returned_site_id == mock_upsert_site_for_aggregator.return_value
 
     # Assert
     mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
