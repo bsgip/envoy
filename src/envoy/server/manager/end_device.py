@@ -12,7 +12,7 @@ from envoy.server.crud.end_device import (
 )
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
-from envoy.server.schema.csip_aus.connection_point import ConnectionPoint
+from envoy.server.schema.csip_aus.connection_point import ConnectionPointResponse
 from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 
 
@@ -40,7 +40,7 @@ class EndDeviceManager:
     @staticmethod
     async def fetch_connection_point_for_site(
         session: AsyncSession, site_id: int,  aggregator_id: int
-    ) -> Optional[ConnectionPoint]:
+    ) -> Optional[ConnectionPointResponse]:
         """Given a site ID and requesting aggregator. Fetch the connection point associated with a particular site"""
         site = await select_single_site_with_site_id(
             session=session, site_id=site_id, aggregator_id=aggregator_id

@@ -7,7 +7,7 @@ from sqlalchemy.exc import NoResultFound
 
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.manager.end_device import EndDeviceManager
-from envoy.server.schema.csip_aus.connection_point import ConnectionPoint
+from envoy.server.schema.csip_aus.connection_point import ConnectionPointRequest
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ router = APIRouter()
 @router.head("/edev/{site_id}/cp")
 @router.get("/edev/{site_id}/cp", status_code=HTTPStatus.OK)
 async def get_connectionpoint(site_id: int, request: Request):
-    """Responds with a single ConnectionPoint resource linked to the EndDevice (as per CSIP-Aus).
+    """Responds with a single ConnectionPointResponse resource linked to the EndDevice (as per CSIP-Aus).
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
@@ -41,12 +41,12 @@ async def get_connectionpoint(site_id: int, request: Request):
     return XmlResponse(connection_point)
 
 
-@router.put("/edev/{site_id}/cp")
-@router.post("/edev/{site_id}/cp", status_code=HTTPStatus.OK)
+@router.put("/edev/{site_id}/cp", status_code=HTTPStatus.CREATED)
+@router.post("/edev/{site_id}/cp", status_code=HTTPStatus.CREATED)
 async def update_connectionpoint(
     site_id: int,
     request: Request,
-    payload: ConnectionPoint = Depends(XmlRequest(ConnectionPoint)),
+    payload: ConnectionPointRequest = Depends(XmlRequest(ConnectionPointRequest)),
 ):
     """Updates the connection point details associated with an EndDevice resource.
 

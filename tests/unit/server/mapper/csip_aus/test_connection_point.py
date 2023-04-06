@@ -1,6 +1,6 @@
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
 from envoy.server.model.site import Site
-from envoy.server.schema.csip_aus.connection_point import ConnectionPoint
+from envoy.server.schema.csip_aus.connection_point import ConnectionPointResponse
 from tests.data.fake.generator import generate_class_instance
 
 
@@ -11,10 +11,10 @@ def test_map_to_response():
 
     result_all_set = ConnectionPointMapper.map_to_response(site_all_set)
     assert result_all_set is not None
-    assert isinstance(result_all_set, ConnectionPoint)
+    assert isinstance(result_all_set, ConnectionPointResponse)
     assert result_all_set.id == site_all_set.nmi
 
     result_optional = ConnectionPointMapper.map_to_response(site_optional)
     assert result_optional is not None
-    assert isinstance(result_optional, ConnectionPoint)
+    assert isinstance(result_optional, ConnectionPointResponse)
     assert result_optional.id == '', "None NMI maps to empty string"

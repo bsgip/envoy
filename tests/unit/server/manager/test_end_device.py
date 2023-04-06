@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
 from envoy.server.model.site import Site
-from envoy.server.schema.csip_aus.connection_point import ConnectionPoint
+from envoy.server.schema.csip_aus.connection_point import ConnectionPointResponse
 from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from tests.data.fake.generator import generate_class_instance
 
@@ -198,7 +198,7 @@ async def test_end_device_manager_fetch_existing_connection_point(mock_Connectio
     site_id = 1
     aggregator_id = 2
     raw_site: Site = generate_class_instance(Site)
-    mapped_cp: ConnectionPoint = generate_class_instance(ConnectionPoint)
+    mapped_cp: ConnectionPointResponse = generate_class_instance(ConnectionPointResponse)
 
     # Just do a simple passthrough
     mock_select_single_site_with_site_id.return_value = raw_site

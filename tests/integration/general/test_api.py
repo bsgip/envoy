@@ -12,18 +12,19 @@ EMPTY_XML_DOC = '<?xml version="1.0" encoding="UTF-8"?>\n<tag/>'
 
 @pytest.mark.parametrize(
     "request_content",
-    [("GET", "/tm", None),
-     ("GET", "/edev/1", None),
-     ("HEAD", "/edev/1", None),
-     ("GET", "/edev", None),
-     ("HEAD", "/edev", None),
-     ("POST", "/edev", EMPTY_XML_DOC)],
+    [(["GET"], "/tm", None),
+     (["GET", "HEAD"], "/edev/1", None),
+     (["GET", "HEAD"], "/edev", None),
+     (["POST"], "/edev", EMPTY_XML_DOC),
+     (["GET", "HEAD"], "/edev/1/cp", None),
+     (["POST", "PUT"], "/edev/1/cp", EMPTY_XML_DOC)]
 )
 @pytest.mark.anyio
-async def test_get_resource_unauthorised(request_content: tuple[str, str, Optional[Any]], client: AsyncClient):
+async def test_get_resource_unauthorised(request_content: tuple[list[str], str, Optional[Any]], client: AsyncClient):
     """Runs through the basic unauthorised tests for all parametized requests"""
-    (method, uri, body) = request_content
-    await run_basic_unauthorised_tests(client, uri, method=method, body=body)
+    (methods, uri, body) = request_content
+    for method in methods:
+        await run_basic_unauthorised_tests(client, uri, method=method, body=body)
 
 
 @pytest.mark.parametrize(
@@ -32,6 +33,7 @@ async def test_get_resource_unauthorised(request_content: tuple[str, str, Option
         ("/tm", [HTTPMethod.PUT, HTTPMethod.DELETE, HTTPMethod.POST, HTTPMethod.PATCH]),
         ("/edev/1", [HTTPMethod.PUT, HTTPMethod.POST, HTTPMethod.PATCH]),
         ("/edev", [HTTPMethod.PATCH, HTTPMethod.DELETE]),
+        ("/edev/1/cp", [HTTPMethod.PATCH, HTTPMethod.DELETE]),
     ],
 )
 @pytest.mark.anyio
