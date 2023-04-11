@@ -9,6 +9,8 @@ from tests.integration.response import assert_response_header, run_basic_unautho
 
 EMPTY_XML_DOC = '<?xml version="1.0" encoding="UTF-8"?>\n<tag/>'
 
+EMPTY_XML_DOC = '<?xml version="1.0" encoding="UTF-8"?>\n<tag/>'
+
 
 @pytest.mark.parametrize(
     "request_content",
