@@ -206,7 +206,7 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     assert parsed_response.deviceCategory == updated_device_category
 
     # now fire off a similar request that's with the wrong aggregator
-    update_request.deviceCategory = "{0:x}".format(int(DeviceCategory.COMBINED_HEAT_AND_POWER)) # update device category
+    update_request.deviceCategory = "{0:x}".format(int(DeviceCategory.COMBINED_HEAT_AND_POWER))  # update device category
     response = await client.post(
         edev_base_uri,
         headers={cert_pem_header: urllib.parse.quote(AGG_2_VALID_PEM)},

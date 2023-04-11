@@ -15,14 +15,14 @@ class XmlResponse(Response):
         return content.to_xml(skip_empty=True)
 
 
-T = TypeVar("T", bound=BaseXmlModel)
+TBaseXmlModel = TypeVar("TBaseXmlModel", bound=BaseXmlModel)
 
 
-class XmlRequest(Generic[T]):
-    def __init__(self, model_class: Type[T]):
+class XmlRequest(Generic[TBaseXmlModel]):
+    def __init__(self, model_class: Type[TBaseXmlModel]):
         self.model_class = model_class
 
-    async def __call__(self, request: Request) -> T:
+    async def __call__(self, request: Request) -> TBaseXmlModel:
         try:
             return self.model_class.from_xml(await request.body())
 

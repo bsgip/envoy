@@ -3,8 +3,8 @@ from typing import Union
 
 
 def assert_fuzzy_datetime_match(expected_time: Union[int, float, datetime],
-                    actual_time: Union[int, float, datetime],
-                    fuzziness_seconds: int = 2):
+                                actual_time: Union[int, float, datetime],
+                                fuzziness_seconds: int = 2):
     """Asserts that two datetimes are within fuzziness_seconds of eachother. If the times are numbers then they
     will be interpreted as a timestamp"""
     if type(expected_time) != datetime:
