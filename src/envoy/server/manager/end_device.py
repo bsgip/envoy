@@ -54,7 +54,7 @@ class EndDeviceManager:
         session: AsyncSession, aggregator_id: int, site_id: int, nmi: Optional[str]
     ) -> bool:
         """Attempts to update the NMI for a designated site. Returns True if the update proceeded successfully,
-        False if the Site doesn't exist / belong to aggregator_id """
+        False if the Site doesn't exist / belongs to another aggregator_id """
 
         site = await select_single_site_with_site_id(
             session=session, site_id=site_id, aggregator_id=aggregator_id
