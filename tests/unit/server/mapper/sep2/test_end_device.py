@@ -1,9 +1,13 @@
 from datetime import datetime
 
+import pytest
+
+from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
 from envoy.server.model.site import Site
 from envoy.server.schema.sep2.base import HexBinary32
 from envoy.server.schema.sep2.end_device import (
+    DEVICE_CATEGORY_ALL_SET,
     DeviceCategory,
     EndDeviceListResponse,
     EndDeviceRequest,
@@ -14,13 +18,15 @@ from tests.data.fake.generator import generate_class_instance, generate_value
 
 def test_device_category_round_trip():
     """Tests that the mapping for device_category from int to hex string works both ways"""
-    site: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
-    site.device_category = DeviceCategory(987654)
 
-    end_device = EndDeviceMapper.map_to_response(site)
+    for dc in [DEVICE_CATEGORY_ALL_SET] + [x for x in DeviceCategory]:
+        site: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
+        site.device_category = dc
 
-    roundtrip_site = EndDeviceMapper.map_from_request(end_device, 1, datetime.now())
-    assert roundtrip_site.device_category == site.device_category
+        end_device = EndDeviceMapper.map_to_response(site)
+
+        roundtrip_site = EndDeviceMapper.map_from_request(end_device, 1, datetime.now())
+        assert roundtrip_site.device_category == site.device_category
 
 
 def test_map_to_response():
@@ -106,3 +112,19 @@ def test_map_from_request():
     assert result_optional.lfdi == end_device_optional.lFDI
     assert type(result_all_set.device_category) == DeviceCategory
     assert result_optional.device_category == DeviceCategory(0)
+
+
+def test_map_from_request_invalid_device_category():
+    """Asserts that invalid device category values raise appropriate exceptions"""
+    dc_too_big: EndDeviceRequest = generate_class_instance(EndDeviceRequest, seed=101)
+    too_big_dc = int(DEVICE_CATEGORY_ALL_SET) + 1
+    dc_too_big.deviceCategory = f"{too_big_dc:x}"
+
+    dc_negative: EndDeviceRequest = generate_class_instance(EndDeviceRequest, seed=202)
+    dc_negative.deviceCategory = f"{-1:x}"
+
+    with pytest.raises(InvalidMappingError):
+        EndDeviceMapper.map_from_request(dc_too_big, 1, datetime.now())
+
+    with pytest.raises(InvalidMappingError):
+        EndDeviceMapper.map_from_request(dc_negative, 1, datetime.now())

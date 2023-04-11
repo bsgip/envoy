@@ -5,7 +5,13 @@ from http import HTTPStatus
 import pytest
 from httpx import AsyncClient
 
-from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy.server.schema.sep2.end_device import (
+    DeviceCategory,
+    EndDeviceListResponse,
+    EndDeviceRequest,
+    EndDeviceResponse,
+)
+from tests.assert_time import assert_nowish
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as AGG_2_VALID_PEM
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_PEM as AGG_3_VALID_PEM
@@ -36,7 +42,7 @@ def edev_fetch_uri_format():
      ([], AGG_3_VALID_PEM)],
 )
 @pytest.mark.anyio
-async def test_get_end_device_list_by_aggregator(client: AsyncClient, edev_base_uri: str, aggregator_details: tuple[list[str], str]):
+async def test_get_end_device_list_by_aggregator(client: AsyncClient, edev_base_uri: str, aggregator_details: tuple[list[int], str]):
     """Simple test of a valid get for different aggregator certs - validates that the response looks like XML
     and that it contains the expected end device SFDI's associated with each aggregator"""
     (site_sfdis, cert) = aggregator_details
@@ -129,7 +135,7 @@ async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
     """When creating an end_device check to see if it persists and is correctly assigned to the aggregator"""
     insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     insert_request.postRate = 123
-    insert_request.deviceCategory = "fa"
+    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
     response = await client.post(
         edev_base_uri,
         headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)},
@@ -145,7 +151,7 @@ async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
     response_body = read_response_body_string(response)
     assert len(response_body) > 0
     parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
-    assert abs(parsed_response.changedTime - int(datetime.now().timestamp())) < 20, "Expected changedTime to be nowish"
+    assert_nowish(parsed_response.changedTime)
     assert parsed_response.href == inserted_href
     assert parsed_response.enabled == 1
     assert parsed_response.lFDI == insert_request.lFDI
@@ -171,7 +177,7 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     """Test that an aggregator can update its own end_device but another aggregator cannot"""
 
     # Fire off an update that will succeed
-    updated_device_category = "cafe"
+    updated_device_category = "{0:x}".format(int(DeviceCategory.INTERIOR_LIGHTING))
     update_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     update_request.lFDI = "site1-lfdi"
     update_request.sFDI = 1111
@@ -192,7 +198,7 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     response_body = read_response_body_string(response)
     assert len(response_body) > 0
     parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
-    assert abs(parsed_response.changedTime - int(datetime.now().timestamp())) < 20, "Expected changedTime to be nowish"
+    assert_nowish(parsed_response.changedTime)
     assert parsed_response.href == inserted_href
     assert parsed_response.enabled == 1
     assert parsed_response.lFDI == update_request.lFDI
@@ -200,7 +206,7 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     assert parsed_response.deviceCategory == updated_device_category
 
     # now fire off a similar request that's with the wrong aggregator
-    update_request.deviceCategory = "dead"  # update device category
+    update_request.deviceCategory = "{0:x}".format(int(DeviceCategory.COMBINED_HEAT_AND_POWER)) # update device category
     response = await client.post(
         edev_base_uri,
         headers={cert_pem_header: urllib.parse.quote(AGG_2_VALID_PEM)},
@@ -229,3 +235,29 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     assert len(body) > 0
     parsed_response: EndDeviceListResponse = EndDeviceListResponse.from_xml(body)
     assert parsed_response.all_ == 3, f"received body:\n{body}"
+
+
+@pytest.mark.anyio
+async def test_update_end_device_bad_device_category(client: AsyncClient, edev_base_uri: str, edev_fetch_uri_format: str):
+    """Test that specifying a bad DeviceCategory returns a HTTP BadRequest"""
+
+    # Fire off an update that will bad request due to a bad device
+    update_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    update_request.lFDI = "site1-lfdi"
+    update_request.sFDI = 1111
+    update_request.deviceCategory = "efffffff"  # bad value
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)},
+        content=EndDeviceRequest.to_xml(update_request)
+    )
+    assert_response_header(response, HTTPStatus.BAD_REQUEST, expected_content_type=None)
+    assert_error_response(response)
+
+    # double check the deviceCategory is left alone
+    response = await client.get(edev_fetch_uri_format.format(site_id=1), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)})
+    assert_response_header(response, HTTPStatus.OK)
+    response_body = read_response_body_string(response)
+    assert len(response_body) > 0
+    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
+    assert parsed_response.deviceCategory == "0"  # Default value from the DB base config

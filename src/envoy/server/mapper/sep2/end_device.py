@@ -1,7 +1,9 @@
 from datetime import datetime
 
+from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.model.site import Site
 from envoy.server.schema.sep2.end_device import (
+    DEVICE_CATEGORY_ALL_SET,
     DeviceCategory,
     EndDeviceListResponse,
     EndDeviceRequest,
@@ -30,7 +32,12 @@ class EndDeviceMapper:
         # deviceCategory is a hex string
         device_category: DeviceCategory
         if end_device.deviceCategory:
-            device_category = DeviceCategory(int(end_device.deviceCategory, 16))
+            raw_dc = int(end_device.deviceCategory, 16)
+            if raw_dc > DEVICE_CATEGORY_ALL_SET or raw_dc < 0:
+                raise InvalidMappingError(
+                    f"deviceCategory: {end_device.deviceCategory} int({raw_dc}) doesn't map to a known DeviceCategory"
+                )
+            device_category = DeviceCategory(raw_dc)
         else:
             device_category = DeviceCategory(0)
 
