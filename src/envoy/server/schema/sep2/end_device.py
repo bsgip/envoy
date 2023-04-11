@@ -1,4 +1,5 @@
 from enum import IntFlag, auto
+from functools import reduce
 from typing import List, Optional
 
 from pydantic_xml import attr, element
@@ -12,6 +13,7 @@ class DeviceCategory(IntFlag):
     """DeviceCategory is a series of bit flags describing a category of EndDevice. Described in 2030.5"""
     PROGRAMMABLE_COMMUNICATING_THERMOSTAT = auto()
     STRIP_HEATERS = auto()
+    BASEBOARD_HEATERS = auto()
     WATER_HEATER = auto()
     POOL_PUMP = auto()
     SAUNA = auto()
@@ -26,7 +28,7 @@ class DeviceCategory(IntFlag):
     ENERGY_MANAGEMENT_SYSTEM = auto()
     SMART_ENERGY_MODULE = auto()
     ELECTRIC_VEHICLE = auto()
-    EVSE = auto()
+    ELECTRIC_VEHICLE_SUPPLY_EQUIPMENT = auto()
     VIRTUAL_OR_MIXED_DER = auto()
     RECIPROCATING_ENGINE = auto()
     FUEL_CELL = auto()
@@ -35,6 +37,10 @@ class DeviceCategory(IntFlag):
     COMBINED_PV_AND_STORAGE = auto()
     OTHER_GENERATION_SYSTEM = auto()
     OTHER_STORAGE_SYSTEM = auto()
+
+
+# The combination of ALL DeviceCategory bit flags
+DEVICE_CATEGORY_ALL_SET: DeviceCategory = reduce(lambda a, b: a | b, DeviceCategory)
 
 
 class AbstractDevice(SubscribableResource):

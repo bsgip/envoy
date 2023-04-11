@@ -16,13 +16,11 @@ class Site(Base):
     aggregator_id: Mapped[int] = mapped_column(
         ForeignKey("aggregator.aggregator_id"), nullable=False
     )
-    # dnsp_id = mapped_column(ForeignKey("dnsp.dnsp_id"), nullable=False) # TODO
 
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     lfdi: Mapped[str] = mapped_column(VARCHAR(length=42), nullable=False, unique=True)
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
-    # post_rate: Mapped[Integer] # TODO: should this live in notification/subscription tables?
 
     __table_args__ = (
         UniqueConstraint("sfdi", "aggregator_id", name="sfdi_aggregator_id_uc"),

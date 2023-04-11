@@ -264,6 +264,7 @@ async def test_upsert_site_for_aggregator_cant_change_agg_id(pg_base_config):
         site_db = await select_single_site_with_site_id(session, update_attempt_site.site_id, aggregator_id)
         assert site_db
         assert site_db.nmi == original_site.nmi, "nmi should NOT have changed"
+        assert site_db.aggregator_id == original_site.aggregator_id, "aggregator_id should NOT have changed"
 
         # Sanity check the site count hasn't changed
         assert await select_aggregator_site_count(session, 1, datetime.min) == 3
