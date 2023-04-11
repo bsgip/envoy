@@ -1,9 +1,18 @@
-from typing import Literal
+from typing import Optional
 
-import pydantic_xml
+from pydantic_xml import attr, element
 
-from envoy.server.schema.sep2.base import Resource
+from envoy.server.schema.sep2 import uri
+from envoy.server.schema.sep2.base import FunctionSetAssignmentBase, Link, ListLink
 
 
-class DeviceCapabilityResponse(Resource):
-    href: Literal["/dcap"] = pydantic_xml.attr()
+class DeviceCapabilityResponse(FunctionSetAssignmentBase):
+    href: str = attr(default=uri.DeviceCapabilityUri)
+    pollrate: int = attr(default=900)
+
+    # (0..1) Link
+    SelfDeviceLink: Optional[Link] = element()
+
+    # (0..1) ListLink
+    EndDeviceListLink: Optional[ListLink] = element()
+    MirrorUsagePointListLink: Optional[ListLink] = element()
