@@ -1,4 +1,3 @@
-import logging
 from http import HTTPStatus
 
 from fastapi import APIRouter, Request
@@ -9,8 +8,6 @@ from envoy.server.schema.sep2 import uri
 from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 router = APIRouter(tags=["device capability"])
-
-logger = logging.getLogger(__name__)
 
 
 # /dcap
@@ -28,8 +25,5 @@ async def device_capability(request: Request) -> XmlResponse:
     Returns:
         fastapi.Response object.
     """
-    # logger.info("Handling device capability request")
-    # dcap_dict = {"href": request.url.path, "pollrate": 900}
-    # dcap = DeviceCapabilityResponse(**dcap_dict)
-    device_capability = await DeviceCapabilityManager.fetch_device_capability()
+    device_capability = await DeviceCapabilityManager.fetch_device_capability(aggregator_id=request.state.aggregator_id)
     return XmlResponse(device_capability)

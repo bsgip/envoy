@@ -1,5 +1,9 @@
-import pydantic_xml
+from datetime import datetime
 
+import pydantic_xml
+from fastapi_async_sqlalchemy import db
+
+from envoy.server.crud import end_device
 from envoy.server.schema.sep2 import uri
 from envoy.server.schema.sep2.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
 
@@ -367,40 +371,66 @@ LINK_DATA = {
 }
 
 
+async def get_supported_links(model: pydantic_xml.BaseXmlModel, aggregator_id: int, uri_params: dict = {}) -> dict:
+    link_names = get_link_field_names(model.schema())
+    supported_links_names = filter(check_link_supported, link_names)
+    supported_links = get_formatted_links(supported_links_names, uri_params)
+    resource_counts = await get_resource_counts(supported_links.keys(), aggregator_id)
+    add_resource_counts_to_list_links(supported_links, resource_counts)
+
+    return supported_links
+
+
+async def get_resource_counts(link_names: list[str], aggregator_id: int) -> dict:
+    resource_counts = {}
+    for link_name in link_names:
+        if link_name.endswith("ListLink"):
+            try:
+                count = await get_resource_count(link_name, aggregator_id)
+                resource_counts[link_name] = str(count)
+            except NotImplementedError as e:
+                print(e)
+    return resource_counts
+
+
+async def get_resource_count(link_name: str, aggregator_id: int) -> int:
+    if link_name == "EndDeviceListLink":
+        count = await end_device.select_aggregator_site_count(db.session, aggregator_id, after=datetime.min)
+        return count
+    else:
+        raise NotImplementedError(f"No resource count implemented for '{link_name}'")
+
+
+def add_resource_counts_to_list_links(links: dict, resource_counts: dict):
+    for link_name, link_parameters in links.items():
+        if link_name in resource_counts:
+            link_parameters["all_"] = resource_counts[link_name]
+    return links
+
+
 def check_function_set_supported(function_set: FunctionSet, function_set_status: list = FUNCTION_SET_STATUS) -> bool:
     return function_set_status[function_set] == FunctionSetStatus.SUPPORTED
 
 
 def check_link_supported(
-    link: tuple,
+    link_name: str,
     link_data: dict = LINK_DATA,
 ):
     # Determine which function set the link is part of
-    link_name, _ = link
     function_set = link_data[link_name]["function-set"]
     # Check whether function set is supported by the server
     return check_function_set_supported(function_set)
-
-
-def get_supported_links(model: pydantic_xml.BaseXmlModel, uri_params: dict = {}) -> dict:
-    link_names = get_link_field_names(model.schema())
-    links = get_formatted_links(link_names, uri_params)
-    supported_links = dict(filter(check_link_supported, links.items()))
-    return supported_links
 
 
 def get_formatted_links(link_names: list, uri_params: dict = {}) -> dict:
     links = {}
     for link_name in link_names:
         if link_name in LINK_DATA:
-            link_parameters = {"href": LINK_DATA[link_name]["uri"].format(**uri_params)}
-            # if link_name.endswith("ListLink"):
-            #     link_parameters["all_"] = "0"
-            links[link_name] = link_parameters
+            links[link_name] = {"href": LINK_DATA[link_name]["uri"].format(**uri_params)}
     return links
 
 
-def get_link_field_names(schema: dict) -> list:
+def get_link_field_names(schema: dict) -> list[str]:
     """
     Inspect the pydantic schema and return all the field names for fields derived from 'Link' or 'ListLink'.
 

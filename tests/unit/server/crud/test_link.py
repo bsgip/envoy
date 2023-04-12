@@ -1,6 +1,6 @@
 import pytest
 
-from envoy.server.schema.sep2 import link
+from envoy.server.crud import link
 
 
 @pytest.mark.parametrize(
