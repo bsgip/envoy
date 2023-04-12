@@ -9,13 +9,14 @@ from envoy.server.model.site import Site
 
 
 async def select_aggregator_site_count(session: AsyncSession, aggregator_id: int, after: datetime) -> int:
-    """Fetches the number of sites 'owned' by the specifeid aggregator (with an additional filter on the site
+    """Fetches the number of sites 'owned' by the specified aggregator (with an additional filter on the site
     changed_time)
 
-    after: Only sites with a changed_time greater than this value will be counted (set to 0 to count everything)"""
+    after: Only sites with a changed_time greater than this value will be counted.
+           Set to 'datetime.min' to count all sites.
+    """
     stmt = select(func.count()).select_from(
-        select(Site.site_id)
-        .where((Site.aggregator_id == aggregator_id) & (Site.changed_time >= after))
+        select(Site.site_id).where((Site.aggregator_id == aggregator_id) & (Site.changed_time >= after))
     )
     resp = await session.execute(stmt)
     return resp.scalar_one()
@@ -46,13 +47,9 @@ async def select_all_sites_with_aggregator_id(
     return resp.scalars().all()
 
 
-async def select_single_site_with_site_id(
-    session: AsyncSession, site_id: int, aggregator_id: int
-) -> Optional[Site]:
+async def select_single_site_with_site_id(session: AsyncSession, site_id: int, aggregator_id: int) -> Optional[Site]:
     """Site and aggregator id need to be used to make sure the aggregator owns this site."""
-    stmt = select(Site).where(
-        (Site.aggregator_id == aggregator_id) & (Site.site_id == site_id)
-    )
+    stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.site_id == site_id))
 
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
@@ -74,9 +71,9 @@ async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, 
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns)]
     stmt = psql_insert(Site).values(**{k: getattr(site, k) for k in update_cols})
     stmt = stmt.on_conflict_do_update(
-            index_elements=[Site.aggregator_id, Site.sfdi],
-            set_={k: getattr(stmt.excluded, k) for k in update_cols},
-        ).returning(Site.site_id)
+        index_elements=[Site.aggregator_id, Site.sfdi],
+        set_={k: getattr(stmt.excluded, k) for k in update_cols},
+    ).returning(Site.site_id)
 
     resp = await session.execute(stmt)
     return resp.scalar_one()
