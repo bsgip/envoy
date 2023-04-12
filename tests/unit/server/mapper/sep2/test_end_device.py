@@ -72,7 +72,7 @@ def test_list_map_to_response():
     assert result is not None
     assert isinstance(result, EndDeviceListResponse)
     assert result.all_ == site_count
-    assert result.result == len(all_sites)
+    assert result.results == len(all_sites)
     assert isinstance(result.EndDevice, list)
     assert len(result.EndDevice) == len(all_sites)
     assert all([isinstance(ed, EndDeviceResponse) for ed in result.EndDevice])

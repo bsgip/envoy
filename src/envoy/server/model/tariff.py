@@ -32,8 +32,6 @@ class TariffGeneratedRate(Base):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the rate was created/changed
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the tariff comes into effect
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this rate applies for
-    
-
 
     tariff: Mapped["Tariff"] = relationship(back_populates="generated_rates")
 

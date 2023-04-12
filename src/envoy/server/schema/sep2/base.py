@@ -1,8 +1,11 @@
 import enum
 from typing import Optional
 
-from pydantic_xml import BaseXmlModel, attr
+from pydantic_xml import BaseXmlModel, attr, element
 from pydantic_xml.element import SearchMode
+
+from envoy.server.schema.sep2.metering import UomType
+from envoy.server.schema.sep2.time import DateTimeIntervalType, TimeType
 
 """ Abstract
 """
@@ -29,7 +32,7 @@ class PollRateType(BaseXmlModelWithNS):
 
 
 class Resource(BaseXmlModelWithNS):
-    pass
+    href: Optional[str] = attr()
 
 
 class PENType(int):
@@ -62,12 +65,20 @@ class SubscribableResource(Resource):
 
 
 class SubscribableList(SubscribableResource):
-    all_: int = attr(name="all")
-    result: int = attr()
+    """A List to which a Subscription can be requested. """
+    all_: int = attr(name="all")  # The number specifying "all" of the items in the list. Required on GET
+    results: int = attr()  # Indicates the number of items in this page of results.
+
+
+class List(Resource):
+    """Container to hold a collection of object instances or references. See Design Pattern section for additional
+    details."""
+    all_: int = attr(name="all")  # The number specifying "all" of the items in the list. Required on GET
+    results: int = attr()  # Indicates the number of items in this page of results.
 
 
 class Link(Resource):
-    href: str = attr()
+    pass
 
 
 class ListLink(Link):

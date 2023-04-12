@@ -2,7 +2,7 @@ from enum import IntFlag, auto
 from functools import reduce
 from typing import List, Optional
 
-from pydantic_xml import attr, element
+from pydantic_xml import element
 
 from envoy.server.schema.csip_aus.connection_point import ConnectionPointLink as ConnectionPointLinkType
 from envoy.server.schema.sep2.base import HexBinary32, Link, ListLink, SubscribableList, SubscribableResource
@@ -54,8 +54,6 @@ class EndDeviceRequest(AbstractDevice, tag="EndDevice"):
 
 
 class EndDeviceResponse(EndDeviceRequest, tag="EndDevice"):
-    href: Optional[str] = attr()
-
     changedTime: TimeType = element()
     enabled: Optional[int] = element(default=1)
 
@@ -78,6 +76,4 @@ class EndDeviceResponse(EndDeviceRequest, tag="EndDevice"):
 
 
 class EndDeviceListResponse(SubscribableList, tag="EndDeviceList"):
-    href: Optional[str] = attr()
-
     EndDevice: Optional[List[EndDeviceResponse]] = element()

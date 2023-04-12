@@ -53,7 +53,7 @@ async def test_get_end_device_list_by_aggregator(client: AsyncClient, edev_base_
     assert len(body) > 0
     parsed_response: EndDeviceListResponse = EndDeviceListResponse.from_xml(body)
     assert parsed_response.all_ == len(site_sfdis), f"received body:\n{body}"
-    assert parsed_response.result == len(site_sfdis), f"received body:\n{body}"
+    assert parsed_response.results == len(site_sfdis), f"received body:\n{body}"
 
     if len(site_sfdis) > 0:
         assert parsed_response.EndDevice, f"received body:\n{body}"
@@ -91,7 +91,7 @@ async def test_get_end_device_list_pagination(client: AsyncClient, edev_base_uri
     assert len(body) > 0
     parsed_response: EndDeviceListResponse = EndDeviceListResponse.from_xml(body)
     assert parsed_response.all_ == expected_total, f"received body:\n{body}"
-    assert parsed_response.result == len(site_sfdis), f"received body:\n{body}"
+    assert parsed_response.results == len(site_sfdis), f"received body:\n{body}"
 
     if len(site_sfdis) > 0:
         assert parsed_response.EndDevice, f"received body:\n{body}"
