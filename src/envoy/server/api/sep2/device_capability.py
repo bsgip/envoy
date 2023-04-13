@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.device_capability import DeviceCapabilityManager
-from envoy.server.schema.sep2 import uri
+from envoy.server.schema import uri
 from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 router = APIRouter(tags=["device capability"])
