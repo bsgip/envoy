@@ -5,7 +5,7 @@ from fastapi_async_sqlalchemy import db
 
 from envoy.server.crud import end_device
 from envoy.server.schema import uri
-from envoy.server.schema.sep2.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
+from envoy.server.schema.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
 
 LINK_DATA = {
     "AccountBalanceLink": {
