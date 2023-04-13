@@ -82,3 +82,30 @@ async def test_fetch_consumption_tariff_interval_list(mock_RateComponentManager:
     # check we validated the ids
     mock_RateComponentManager.parse_rate_component_id.assert_called_once_with(rate_component_id)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id.assert_called_once_with(time_tariff_interval)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.pricing.TimeTariffIntervalManager")
+@mock.patch("envoy.server.manager.pricing.RateComponentManager")
+async def test_fetch_consumption_tariff_interval(mock_RateComponentManager: mock.MagicMock,
+                                                 mock_TimeTariffIntervalManager: mock.MagicMock):
+    tariff_id = 665544
+    rate_component_id = '2023-02-01'
+    time_tariff_interval = '09:08'
+    price = -1456
+    mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=time(1, 2))
+    mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=date(2022, 1, 2))
+
+    cti = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval(tariff_id, rate_component_id, time_tariff_interval, price)
+    assert cti.consumptionBlock == ConsumptionBlockType.NOT_APPLICABLE
+    assert cti.price == price
+
+    # check that the href looks roughly okayish
+    assert quote(time_tariff_interval) in cti.href
+    assert quote(rate_component_id) in cti.href
+    assert str(tariff_id) in cti.href
+    assert str(price) in cti.href
+
+    # check we validated the ids
+    mock_RateComponentManager.parse_rate_component_id.assert_called_once_with(rate_component_id)
+    mock_TimeTariffIntervalManager.parse_time_tariff_interval_id.assert_called_once_with(time_tariff_interval)
