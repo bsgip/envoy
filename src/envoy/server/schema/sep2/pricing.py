@@ -5,9 +5,9 @@ from pydantic_xml import element
 
 from envoy.server.schema.sep2.base import IdentifiedObject, Link
 from envoy.server.schema.sep2.base import List as SepList
-from envoy.server.schema.sep2.base import ListLink
+from envoy.server.schema.sep2.base import ListLink, Resource
 from envoy.server.schema.sep2.event import RandomizableEvent
-from envoy.server.schema.sep2.metering import TOUType, UnitValueType
+from envoy.server.schema.sep2.metering import ConsumptionBlockType, TOUType, UnitValueType
 
 
 class CurrencyCode(IntEnum):
@@ -82,9 +82,13 @@ class TimeTariffIntervalResponse(RandomizableEvent, tag="TimeTariffInterval"):
     touTier: TOUType = element()
     ConsumptionTariffIntervalListLink: ListLink = element()
 
-class ConsumptionTariffIntervalResponse(RandomizableEvent, tag="ConsumptionTariffInterval"):
-    """One of a sequence of thresholds defined in terms of consumption quantity of a service such as electricity, water, gas, etc. It defines the steps or blocks in a step tariff structure, where startValue simultaneously defines the entry value of this step and the closing value of the previous step. Where consumption is greater than startValue, it falls within this block and where consumption is less than or equal to startValue, it falls within one of the previous blocks.
-"""
+
+class ConsumptionTariffIntervalResponse(Resource, tag="ConsumptionTariffInterval"):
+    """One of a sequence of thresholds defined in terms of consumption quantity of a service such as electricity,
+    water, gas, etc. It defines the steps or blocks in a step tariff structure, where startValue simultaneously
+    defines the entry value of this step and the closing value of the previous step. Where consumption is greater
+    than startValue, it falls within this block and where consumption is less than or equal to startValue, it falls
+    within one of the previous blocks."""
     consumptionBlock: ConsumptionBlockType = element()
     price: Optional[int] = element()  # The charge for this rate component, per unit of measure defined by the
                                       # associated ReadingType, in currency specified in TariffProfile.  # noqa e114
@@ -97,12 +101,12 @@ class TariffProfileListResponse(SepList, tag="TariffProfileList"):
 
 
 class RateComponentListResponse(SepList, tag="RateComponentList"):
-    RateComponent: Optional[List[RateComponentResponse]] = element()
+    RateComponent: Optional[list[RateComponentResponse]] = element()
 
 
 class TimeTariffIntervalListResponse(SepList, tag="TimeTariffIntervalList"):
-    TimeTariffInterval: Optional[List[TimeTariffIntervalResponse]] = element()
+    TimeTariffInterval: Optional[list[TimeTariffIntervalResponse]] = element()
 
 
 class ConsumptionTariffIntervalListResponse(SepList, tag="ConsumptionTariffIntervalList"):
-    ConsumptionTariffInterval: Optional[List[ConsumptionTariffInterval]] = element()
+    ConsumptionTariffInterval: Optional[list[ConsumptionTariffIntervalResponse]] = element()

@@ -1,11 +1,8 @@
 import enum
 from typing import Optional
 
-from pydantic_xml import BaseXmlModel, attr, element
+from pydantic_xml import BaseXmlModel, attr
 from pydantic_xml.element import SearchMode
-
-from envoy.server.schema.sep2.metering import UomType
-from envoy.server.schema.sep2.time import DateTimeIntervalType, TimeType
 
 """ Abstract
 """

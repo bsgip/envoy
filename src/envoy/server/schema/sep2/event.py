@@ -10,6 +10,7 @@ class OneHourRangeType(int):
     """A signed time offset, typically applied to a Time value, expressed in seconds, with range -3600 to 3600."""
     pass
 
+
 class RespondableResource(Resource):
     """A Resource to which a Response can be requested."""
     replyTo: Optional[str] = attr()
