@@ -14,8 +14,10 @@ class RateComponentManager:
     def parse_rate_component_id(id: str) -> date:
         """Validates that id looks like YYYY-MM-DD. Returns parsed date object if it does
         otherwise raises InvalidMappingError"""
-        if len(id) != 10 or id[4] != '-' or id[7] != '-':
-            raise InvalidMappingError(f"Expected YYYY-MM-DD for time_tariff_interval_id but got {id}")
+        try:
+            return date.fromisoformat(id)
+        except ValueError:
+            raise InvalidMappingError(f"Expected YYYY-MM-DD for rate_component_id but got {id}")
 
 
 class TimeTariffIntervalManager:
@@ -30,7 +32,6 @@ class TimeTariffIntervalManager:
 
 
 class ConsumptionTariffIntervalManager:
-    # /tp/{tariff_id}/rc/{rate_component_id}/tti/{tti_id}/cti/{price}
     @staticmethod
     def _generate_href(tariff_id: int, rate_component_id: str, time_tariff_interval: str, price: int):
         return f"/tp/{tariff_id}/rc/{quote(rate_component_id)}/tti/{quote(time_tariff_interval)}/cti/{price}/"
@@ -40,7 +41,14 @@ class ConsumptionTariffIntervalManager:
                                                      rate_component_id: str,
                                                      time_tariff_interval: str,
                                                      price: int) -> ConsumptionTariffIntervalListResponse:
-        """This is a fully virtualised entity 'lookup' that doesn't require interaction with the DB"""
+        """This is a fully virtualised entity 'lookup' that doesn't require interaction with the DB
+
+        It will validate IDs"""
+
+        # Validate ids
+        RateComponentManager.parse_rate_component_id(rate_component_id)
+        TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
+
         href = ConsumptionTariffIntervalManager._generate_href(
             tariff_id,
             rate_component_id,
