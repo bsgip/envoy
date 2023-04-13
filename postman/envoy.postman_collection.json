@@ -61,11 +61,12 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{HOST}}/{{EDEV_ID}}",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"edev",
 								"{{EDEV_ID}}"
 							]
 						}
@@ -131,11 +132,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{EDEV_ID}}/reg",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/reg",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"edev",
 								"{{EDEV_ID}}",
 								"reg"
 							]
@@ -160,11 +162,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{EDEV_ID}}/fsal?1=2",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsal?1=2",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"edev",
 								"{{EDEV_ID}}",
 								"fsal"
 							],
@@ -191,6 +194,11 @@
 							{
 								"key": "x-forwarded-client-cert",
 								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
 								"type": "text"
 							}
 						],
@@ -225,18 +233,18 @@
 								"type": "text"
 							},
 							{
-								"key": "Content-Type",
+								"key": "Accept",
 								"value": "application/sep+xml",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/dcap",
+							"raw": "{{HOST}}/dcap (DeviceCapabilities)",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"dcap"
+								"dcap (DeviceCapabilities)"
 							]
 						}
 					},
@@ -248,7 +256,7 @@
 			"name": "Meter Mirroring",
 			"item": [
 				{
-					"name": "/mup (MeterUsagePoint)",
+					"name": "/mup (Mirror Metering MeterUsagePoint)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -290,7 +298,7 @@
 					"response": []
 				},
 				{
-					"name": "/mup/0 (MirrorMeterReading)",
+					"name": "/mup/0 (Mirror Metering MirrorMeterReading)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -315,11 +323,12 @@
 							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <mRID>0800006CC8</mRID>\r\n    <MirrorReadingSet>\r\n        <mRID>0900006CC8</mRID>\r\n        <timePeriod>\r\n            <duration>86400</duration>\r\n            <start>1341579365</start>\r\n        </timePeriod>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>00</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>01</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>02</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>13</value>\r\n            <localID>03</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>12</value>\r\n            <localID>04</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>05</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>06</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>16</value>\r\n            <localID>07</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>08</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>7</value>\r\n            <localID>09</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>6</value>\r\n            <localID>0A</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>5</value>\r\n            <localID>0B</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>8</value>\r\n            <localID>0C</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>0D</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>0E</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>12</value>\r\n            <localID>0F</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>14</value>\r\n            <localID>10</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>13</value>\r\n            <localID>11</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>12</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>7</value>\r\n            <localID>13</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>8</value>\r\n            <localID>14</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>15</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>16</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>17</localID>\r\n        </Reading>\r\n    </MirrorReadingSet>\r\n</MirrorMeterReading>"
 						},
 						"url": {
-							"raw": "{{HOST}}/{{MUP_ID}}",
+							"raw": "{{HOST}}/mup/{{MUP_ID}}",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"mup",
 								"{{MUP_ID}}"
 							]
 						}
@@ -327,7 +336,45 @@
 					"response": []
 				},
 				{
-					"name": "/upt (MeterMirroring UsagePointList)",
+					"name": "mup/0 (Mirror Metering MirrorMeterReadingList)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<MirrorMeterReadingList xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <MirrorMeterReading>\r\n        <mRID>0700006CC8</mRID>\r\n        <Reading>\r\n            <value>574</value>\r\n        </Reading>\r\n    </MirrorMeterReading>\r\n    <MirrorMeterReading>\r\n        <mRID>0800006CC8</mRID>\r\n        <MirrorReadingSet>\r\n            <mRID>0900006CC8</mRID>\r\n            <timePeriod>\r\n                <duration>86400</duration>\r\n                <start>1341665765</start>\r\n            </timePeriod>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>00</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>01</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>02</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>13</value>\r\n                <localID>03</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>04</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>05</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>06</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>07</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>08</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>7</value>\r\n                <localID>09</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>6</value>\r\n                <localID>0A</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>5</value>\r\n                <localID>0B</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>8</value>\r\n                <localID>0C</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>0D</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>0E</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>0F</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>14</value>\r\n                <localID>10</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>13</value>\r\n                <localID>11</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>12</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>7</value>\r\n                <localID>13</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>8</value>\r\n                <localID>14</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>15</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>16</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>17</localID>\r\n            </Reading>\r\n        </MirrorReadingSet>\r\n    </MirrorMeterReading>\r\n</MirrorMeterReadingList>"
+						},
+						"url": {
+							"raw": "{{HOST}}/mup/{{MUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup",
+								"{{MUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/upt (Metering UsagePointList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -355,7 +402,7 @@
 					"response": []
 				},
 				{
-					"name": "/upt/1 (MeterMirroring MeterReadingList)",
+					"name": "/upt/1 (Mirror Metering MeterReadingList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -371,11 +418,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{UPT_ID}}/mr?s=0&l=10",
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"upt",
 								"{{UPT_ID}}",
 								"mr"
 							],
@@ -394,7 +442,7 @@
 					"response": []
 				},
 				{
-					"name": "/upt/1 (MeterMirroring ReadingType)",
+					"name": "/upt/1 (Mirror Metering ReadingType)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -410,11 +458,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{UPT_ID}}/mr/1/rt",
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rt",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"upt",
 								"{{UPT_ID}}",
 								"mr",
 								"1",
@@ -425,7 +474,7 @@
 					"response": []
 				},
 				{
-					"name": "/upt/1 (MeterMirroring ReadingSetList from Meter Server)",
+					"name": "/upt/1 (Metering ReadingSetList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -441,11 +490,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{UPT_ID}}/mr/1/rs?s=0&l=1",
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs?s=0&l=1",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"upt",
 								"{{UPT_ID}}",
 								"mr",
 								"1",
@@ -466,7 +516,7 @@
 					"response": []
 				},
 				{
-					"name": "/upt/1 (MeterMirroring ReadingList)",
+					"name": "/upt/1 (Mirror Metering ReadingList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -482,11 +532,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{UPT_ID}}/mr/1/rs/32/r?s=0&l=24",
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs/32/r?s=0&l=24",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"upt",
 								"{{UPT_ID}}",
 								"mr",
 								"1",
@@ -509,44 +560,7 @@
 					"response": []
 				},
 				{
-					"name": "mup/0 (MeterMirroring MirrorMeterReadingList)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/sep+xml",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "<MirrorMeterReadingList xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <MirrorMeterReading>\r\n        <mRID>0700006CC8</mRID>\r\n        <Reading>\r\n            <value>574</value>\r\n        </Reading>\r\n    </MirrorMeterReading>\r\n    <MirrorMeterReading>\r\n        <mRID>0800006CC8</mRID>\r\n        <MirrorReadingSet>\r\n            <mRID>0900006CC8</mRID>\r\n            <timePeriod>\r\n                <duration>86400</duration>\r\n                <start>1341665765</start>\r\n            </timePeriod>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>00</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>01</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>02</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>13</value>\r\n                <localID>03</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>04</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>05</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>06</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>07</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>08</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>7</value>\r\n                <localID>09</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>6</value>\r\n                <localID>0A</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>5</value>\r\n                <localID>0B</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>8</value>\r\n                <localID>0C</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>0D</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>0E</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>0F</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>14</value>\r\n                <localID>10</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>13</value>\r\n                <localID>11</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>12</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>7</value>\r\n                <localID>13</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>8</value>\r\n                <localID>14</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>15</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>16</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>17</localID>\r\n            </Reading>\r\n        </MirrorReadingSet>\r\n    </MirrorMeterReading>\r\n</MirrorMeterReadingList>"
-						},
-						"url": {
-							"raw": "{{HOST}}/{{MUP_ID}}",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"{{MUP_ID}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/upt/1 (ReadingSetList from Mirror Metering Server)",
+					"name": "/upt/1 (Mirror Metering ReadingSetList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -562,11 +576,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{UPT_ID}}/mr/1/rs?s=0&l=1",
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs?s=0&l=1",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"upt",
 								"{{UPT_ID}}",
 								"mr",
 								"1",
@@ -587,7 +602,7 @@
 					"response": []
 				},
 				{
-					"name": "/upt/1 (ReadingList from Mirror Metering Server)",
+					"name": "/upt/1 (Mirror Metering ReadingList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -603,11 +618,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{UPT_ID}}/mr/1/rs/33/r?s=0&l=24 HTTP/1.1",
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs/33/r?s=0&l=24 HTTP/1.1",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"upt",
 								"{{UPT_ID}}",
 								"mr",
 								"1",
@@ -651,11 +667,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{TP_ID}}",
+							"raw": "{{HOST}}/tp/{{TP_ID}}",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"tp",
 								"{{TP_ID}}"
 							]
 						}
@@ -679,11 +696,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{TP_ID}}/rc?l=1",
+							"raw": "{{HOST}}/tp/{{TP_ID}}/rc?l=1",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"tp",
 								"{{TP_ID}}",
 								"rc"
 							],
@@ -714,11 +732,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{RT_ID}}",
+							"raw": "{{HOST}}/rt/{{RT_ID}}",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"rt",
 								"{{RT_ID}}"
 							]
 						}
@@ -742,12 +761,14 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{TP_ID}}/{{RC_ID}}/tti?l=5",
+							"raw": "{{HOST}}/tp/{{TP_ID}}/rc/{{RC_ID}}/tti?l=5",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"tp",
 								"{{TP_ID}}",
+								"rc",
 								"{{RC_ID}}",
 								"tti"
 							],
@@ -778,18 +799,132 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/{{TP_ID}}/{{RC_ID}}/tti/5/cti?l=1",
+							"raw": "{{HOST}}/tp/{{TP_ID}}/rc/{{RC_ID}}/tti/5/cti?l=1",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
+								"tp",
 								"{{TP_ID}}",
+								"rc",
 								"{{RC_ID}}",
 								"tti",
 								"5",
 								"cti"
 							],
 							"query": [
+								{
+									"key": "l",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "DOEs",
+			"item": [
+				{
+					"name": "/derp (DERProgramList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/derp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"derp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/0 (EndDevice URI & DERControlListLink)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<subscription xmlns=\"urn:ieee:std:2030.5:ns\">\r\n<subscribedResource>http://server.example.com/derp/0/derc</subscribedResource>\r\n    <encoding>0</encoding>\r\n    <level>+S1</level>\r\n    <limit>0</limit>\r\n    <notificationURI>http://client.example.com/ntfy</notificationURI>\r\n</subscription>"
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/0/sub",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"0",
+								"sub"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/derp/0 (DERControls)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/derp/0/derc?s=0&l=1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"derp",
+								"0",
+								"derc"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
 								{
 									"key": "l",
 									"value": "1"
