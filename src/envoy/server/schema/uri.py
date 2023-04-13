@@ -1,12 +1,20 @@
+# Defines all the URIs
+# Some URIs have named parameters e.g. EndDeviceUri = "/edev/{site_id}". These are intended to be filled in with an
+# appropriate format statement, for example, EndDeviceUri.format(site_id=4) or EndDeviceUri
+# Note: 'id1', 'id2', 'id3' are placeholders and should be replaced with suitable names matching their purpose.
+
+# CSIP-Aus URIs
+
+# Sep2 URIs
 AccountBalanceUri = "/ppy/{id1}/ab"
 ActiveBillingPeriodListUri = "/bill/{id1}/ca/{id2}/actbp"
-ActiveCreditRegisterListUri = ""  # There is NO ActiveFlowReservationList in Sep2!!
+ActiveCreditRegisterListUri = ""  # noqa: E501. There is NO ActiveCreditRegisterList resource in Sep2 despite an ActiveCreditRegisterListLink being defined.
 ActiveDERControlListUri = "/derp/{id1}/actderc"
 ActiveEndDeviceControlListUri = "/dr/{id1}/actedc"
-ActiveFlowReservationListUri = ""  # There is NO ActiveFlowReservationList in Sep2!!
-ActiveProjectionReadingListUri = ""  # There is NO ActiveProjectionReadingList in Sep2!!
+ActiveFlowReservationListUri = ""  # noqa: E501. There is NO ActiveFlowReservationList resource in Sep2 despite an ActiveFlowReservationListLink being defined.
+ActiveProjectionReadingListUri = ""  # noqa: E501. There is NO ActiveProjectionReadingList in resource Sep2 despite an ActiveProjectionReadingListLink being defined.
 ActiveSupplyInterruptionOverrideListUri = "/ppy/{id1}/actsi"
-ActiveTargetReadingListUri = ""  # There is NO ActiveTargeReadingList in Sep2!!
+ActiveTargetReadingListUri = ""  # noqa: E501. There is NO ActiveTargetReadingList resource in Sep2 despite an ActiveTargetReadingListLink being defined.
 ActiveTextMessageListUri = "/msg/{id1}/acttxt"
 ActiveTimeTariffIntervalListUri = "/tp/{id1}/rc/{id2}/acttti"
 AssociatedDERProgramListUri = "/edev/{site_id}/der/{id2}/derp"
