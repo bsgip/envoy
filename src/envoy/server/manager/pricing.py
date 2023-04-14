@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.schema.sep2.metering import ConsumptionBlockType
-from envoy.server.schema.sep2.pricing import ConsumptionTariffIntervalListResponse, ConsumptionTariffIntervalResponse
+from envoy.server.schema.sep2.pricing import (
+    ConsumptionTariffIntervalListResponse,
+    ConsumptionTariffIntervalResponse,
+    TimeTariffIntervalListResponse,
+)
 
 
 class RateComponentManager:
@@ -29,6 +33,15 @@ class TimeTariffIntervalManager:
             return time.fromisoformat(id)
         except ValueError:
             raise InvalidMappingError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
+
+    @staticmethod
+    async def fetch_time_tariff_interval_list(tariff_id: int,
+                                              rate_component_id: str,
+                                              start: int,
+                                              after: int,
+                                              limit: int) -> TimeTariffIntervalListResponse:
+        """Fetches a page of TimeTariffInterval entities and returns them in a list response"""
+        raise NotImplementedError()
 
 
 class ConsumptionTariffIntervalManager:

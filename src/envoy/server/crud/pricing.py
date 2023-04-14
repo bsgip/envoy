@@ -1,0 +1,142 @@
+from datetime import date, datetime, time, timedelta
+from typing import Optional
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+
+
+async def select_tariff_count(session: AsyncSession, after: datetime) -> int:
+    """Fetches the number of tariffs stored
+
+    after: Only tariffs with a changed_time greater than this value will be counted (set to 0 to count everything)"""
+
+    # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
+    # groups of sites but this could be subject to change as the DNSP's requirements become more clear
+    stmt = select(func.count()).select_from(
+        select(Tariff.tariff_id)
+        .where((Tariff.changed_time >= after))
+    )
+    resp = await session.execute(stmt)
+    return resp.scalar_one()
+
+
+async def select_all_tariffs(
+    session: AsyncSession,
+    start: int,
+    changed_after: datetime,
+    limit: int,
+) -> list[Tariff]:
+    """Selects tariffs with some basic pagination / filtering based on change time
+
+    Results will be ordered according to 2030.5 spec which is just on id
+    
+    start: The number of matching entities to skip
+    limit: The maximum number of entities to return
+    changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)"""
+
+    # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
+    # groups of sites but this could be subject to change as the DNSP's requirements become more clear
+    stmt = (
+        select(Tariff)
+        .where((Tariff.changed_time >= changed_after))
+        .offset(start)
+        .limit(limit)
+        .order_by(
+            Tariff.tariff_id.desc(),
+        )
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
+
+
+async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optional[Tariff]:
+    """Requests a single tariff based on the primary key - returns None if it DNE"""
+
+    # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
+    # groups of sites but this could be subject to change as the DNSP's requirements become more clear
+    stmt = select(Tariff).where(
+        (Tariff.tariff_id == tariff_id)
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalar_one_or_none()
+
+
+async def select_tariff_rates_for_day(session: AsyncSession,
+                                      tariff_id: int,
+                                      day: date,
+                                      start: int,
+                                      changed_after: datetime,
+                                      limit: int) -> list[TariffGeneratedRate]:
+    """Selects TariffGeneratedRate entities (with pagination) for a single tariff date
+
+    tariff_id: The parent tariff primary key
+    day: The specific day of the year to restrict the lookup of values to
+    start: The number of matching entities to skip
+    limit: The maximum number of entities to return
+    changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)
+
+    Orders by 2030.5 requirements on TimeTariffInterval which is start ASC, creation DESC, id DESC"""
+
+    datetime_from = datetime.combine(day, time())
+    datetime_to = datetime.combine(day + timedelta(days=1), time())
+
+    # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
+    # groups of sites but this could be subject to change as the DNSP's requirements become more clear
+    stmt = (
+        select(TariffGeneratedRate)
+        .where(
+            (TariffGeneratedRate.tariff_id == tariff_id) &
+            (TariffGeneratedRate.start_time >= datetime_from) &
+            (TariffGeneratedRate.start_time < datetime_to) &
+            (TariffGeneratedRate.changed_time >= changed_after))
+        .offset(start)
+        .limit(limit)
+        .order_by(
+            TariffGeneratedRate.start_time.asc(),
+            TariffGeneratedRate.changed_time.desc(),
+            TariffGeneratedRate.tariff_generated_rate_id.desc())
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
+
+
+async def select_tariff_rate_for_day_time(session: AsyncSession,
+                                          tariff_id: int,
+                                          day: date,
+                                          time_of_day: time) -> Optional[TariffGeneratedRate]:
+    """Selects single TariffGeneratedRate entity for a single tariff date / interval start
+
+    time_of_day must be an EXACT match to return something (it's not enough to set it in the
+    middle of an interval + duration)
+
+    tariff_id: The parent tariff primary key
+    day: The specific day of the year to restrict the lookup of values to
+    time_of_day: The specific time of day to find a match"""
+
+    datetime_match = datetime.combine(day, time_of_day)
+
+    # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
+    # groups of sites but this could be subject to change as the DNSP's requirements become more clear
+    stmt = (
+        select(TariffGeneratedRate)
+        .where(
+            (TariffGeneratedRate.tariff_id == tariff_id) &
+            (TariffGeneratedRate.start_time == datetime_match) &
+            (TariffGeneratedRate.start_time < datetime_to))
+        .offset(start)
+        .limit(limit)
+        .order_by(
+            TariffGeneratedRate.start_time.asc(),
+            TariffGeneratedRate.changed_time.desc(),
+            TariffGeneratedRate.tariff_generated_rate_id.desc())
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
+
+    
