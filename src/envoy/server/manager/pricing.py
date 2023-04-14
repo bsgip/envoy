@@ -2,8 +2,10 @@
 from datetime import date, time
 from urllib.parse import quote
 
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.schema.sep2.metering import ConsumptionBlockType
 from envoy.server.schema.sep2.pricing import (
@@ -35,7 +37,9 @@ class TimeTariffIntervalManager:
             raise InvalidMappingError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
 
     @staticmethod
-    async def fetch_time_tariff_interval_list(tariff_id: int,
+    async def fetch_time_tariff_interval_list(aggregator_id: int,
+                                              tariff_id: int,
+                                              site_id: int,
                                               rate_component_id: str,
                                               start: int,
                                               after: int,
@@ -50,7 +54,10 @@ class ConsumptionTariffIntervalManager:
         return f"/tp/{tariff_id}/rc/{quote(rate_component_id)}/tti/{quote(time_tariff_interval)}/cti/{price}/"
 
     @staticmethod
-    async def fetch_consumption_tariff_interval_list(tariff_id: int,
+    async def fetch_consumption_tariff_interval_list(session: AsyncSession,
+                                                     aggregator_id: int,
+                                                     tariff_id: int,
+                                                     site_id: int,
                                                      rate_component_id: str,
                                                      time_tariff_interval: str,
                                                      price: int) -> ConsumptionTariffIntervalListResponse:
@@ -61,6 +68,10 @@ class ConsumptionTariffIntervalManager:
         # Validate ids
         RateComponentManager.parse_rate_component_id(rate_component_id)
         TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
+
+        # Validate access to site_id by aggregator_id
+        if (await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=aggregator_id)) is None:
+            raise NoResultFound(f"site_id {site_id} is not accessible / does not exist")
 
         href = ConsumptionTariffIntervalManager._generate_href(
             tariff_id,
@@ -79,7 +90,10 @@ class ConsumptionTariffIntervalManager:
         })
 
     @staticmethod
-    async def fetch_consumption_tariff_interval(tariff_id: int,
+    async def fetch_consumption_tariff_interval(session: AsyncSession,
+                                                aggregator_id: int,
+                                                tariff_id: int,
+                                                site_id: int,
                                                 rate_component_id: str,
                                                 time_tariff_interval: str,
                                                 price: int) -> ConsumptionTariffIntervalResponse:
@@ -90,6 +104,10 @@ class ConsumptionTariffIntervalManager:
         # Validate ids
         RateComponentManager.parse_rate_component_id(rate_component_id)
         TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
+
+        # Validate access to site_id by aggregator_id
+        if (await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=aggregator_id)) is None:
+            raise NoResultFound(f"site_id {site_id} is not accessible / does not exist")
 
         href = ConsumptionTariffIntervalManager._generate_href(
             tariff_id,
