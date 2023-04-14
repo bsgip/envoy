@@ -1,9 +1,11 @@
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import DECIMAL, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
+from envoy.server.model.site import Site
 from envoy.server.schema.sep2.pricing import CurrencyCode
 
 
@@ -16,8 +18,9 @@ class Tariff(Base):
     name: Mapped[str] = mapped_column(String(64))  # descriptive name of the tariff
     dnsp_code: Mapped[str] = mapped_column(String(20))  # code assigned by the DNSP for their own internal processes
     currency_code: Mapped[CurrencyCode] = mapped_column(Integer)  # ISO 4217 numerical currency code - eg AUD = 36
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the tariff was created/changed
 
-    generated_rates: Mapped[list["TariffGeneratedRate"]] = relationship(back_populates="tariff")
+    generated_rates: Mapped[list["TariffGeneratedRate"]] = relationship(back_populates="tariff", lazy="raise")
 
 
 class TariffGeneratedRate(Base):
@@ -32,8 +35,13 @@ class TariffGeneratedRate(Base):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the rate was created/changed
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the tariff comes into effect
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this rate applies for
+    import_active_price: Mapped[Decimal] = mapped_column(DECIMAL(4))  # calculated rate for importing active power
+    export_active_price: Mapped[Decimal] = mapped_column(DECIMAL(4))  # calculated rate for exporting active power
+    import_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(4))  # calculated rate for importing reactive power
+    export_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(4))  # calculated rate for exporting reactive power
 
-    tariff: Mapped["Tariff"] = relationship(back_populates="generated_rates")
+    tariff: Mapped["Tariff"] = relationship(back_populates="generated_rates", lazy="raise")
+    site: Mapped["Site"] = relationship(lazy="raise")
 
     __table_args__ = (
         UniqueConstraint("tariff_id", "site_id", "start_time", name="tariff_id_site_id_start_time_uc"),

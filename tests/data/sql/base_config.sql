@@ -32,3 +32,20 @@ INSERT INTO public.site("site_id", "nmi", "aggregator_id", "changed_time", "lfdi
 INSERT INTO public.site("site_id", "nmi", "aggregator_id", "changed_time", "lfdi", "sfdi", "device_category") VALUES (4, '4444444444', 1, '2022-02-03 11:12:13', 'site4-lfdi', 4444, 3);
 
 SELECT pg_catalog.setval('public.site_site_id_seq', 5, true);
+
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 11, '2023-01-02 11:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 22, '2023-01-02 12:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (3, 'tariff-3', 'tariff-dnsp-code-3', 33, '2023-01-02 13:01:02');
+
+SELECT pg_catalog.setval('public.tariff_tariff_id_seq', 4, true);
+
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (1, 1, 1, '2022-03-04 11:22:33', '2022-03-05 01:02', 11, 1.1, -1.2, 1.3, -1.4);
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (2, 1, 1, '2022-03-04 12:22:33', '2022-03-05 03:04', 12, 2.1, -2.2, 2.3, -2.4);
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (3, 1, 2, '2022-03-04 13:22:33', '2022-03-05 01:02', 13, 3.1, -3.2, 3.3, -3.4);
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (4, 1, 1, '2022-03-04 14:22:33', '2022-03-06 01:02', 14, 4.1, -4.2, 4.3, -4.4);
+
+SELECT pg_catalog.setval('public.tariff_generated_rate_tariff_generated_rate_id_seq', 5, true);

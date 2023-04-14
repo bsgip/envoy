@@ -4,6 +4,7 @@ from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 
@@ -30,8 +31,8 @@ async def select_all_tariffs(
 ) -> list[Tariff]:
     """Selects tariffs with some basic pagination / filtering based on change time
 
-    Results will be ordered according to 2030.5 spec which is just on id
-    
+    Results will be ordered according to 2030.5 spec which is just on id DESC
+
     start: The number of matching entities to skip
     limit: The maximum number of entities to return
     changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)"""
@@ -66,6 +67,7 @@ async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optiona
 
 
 async def select_tariff_rates_for_day(session: AsyncSession,
+                                      aggregator_id: int,
                                       tariff_id: int,
                                       day: date,
                                       start: int,
@@ -88,11 +90,13 @@ async def select_tariff_rates_for_day(session: AsyncSession,
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
     stmt = (
         select(TariffGeneratedRate)
+        .join(TariffGeneratedRate.site)
         .where(
             (TariffGeneratedRate.tariff_id == tariff_id) &
             (TariffGeneratedRate.start_time >= datetime_from) &
             (TariffGeneratedRate.start_time < datetime_to) &
-            (TariffGeneratedRate.changed_time >= changed_after))
+            (TariffGeneratedRate.changed_time >= changed_after) &
+            (Site.aggregator_id == aggregator_id))
         .offset(start)
         .limit(limit)
         .order_by(
@@ -106,6 +110,7 @@ async def select_tariff_rates_for_day(session: AsyncSession,
 
 
 async def select_tariff_rate_for_day_time(session: AsyncSession,
+                                          aggregator_id: int,
                                           tariff_id: int,
                                           day: date,
                                           time_of_day: time) -> Optional[TariffGeneratedRate]:
@@ -124,19 +129,12 @@ async def select_tariff_rate_for_day_time(session: AsyncSession,
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
     stmt = (
         select(TariffGeneratedRate)
+        .join(TariffGeneratedRate.site)
         .where(
             (TariffGeneratedRate.tariff_id == tariff_id) &
             (TariffGeneratedRate.start_time == datetime_match) &
-            (TariffGeneratedRate.start_time < datetime_to))
-        .offset(start)
-        .limit(limit)
-        .order_by(
-            TariffGeneratedRate.start_time.asc(),
-            TariffGeneratedRate.changed_time.desc(),
-            TariffGeneratedRate.tariff_generated_rate_id.desc())
+            (Site.aggregator_id == aggregator_id))
     )
 
     resp = await session.execute(stmt)
-    return resp.scalars().all()
-
-    
+    return resp.scalars().one_or_none()

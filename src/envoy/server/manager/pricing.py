@@ -50,8 +50,8 @@ class TimeTariffIntervalManager:
 
 class ConsumptionTariffIntervalManager:
     @staticmethod
-    def _generate_href(tariff_id: int, rate_component_id: str, time_tariff_interval: str, price: int):
-        return f"/tp/{tariff_id}/rc/{quote(rate_component_id)}/tti/{quote(time_tariff_interval)}/cti/{price}/"
+    def _generate_href(tariff_id: int, site_id: int, rate_component_id: str, time_tariff_interval: str, price: int):
+        return f"/tp/{tariff_id}/{site_id}/rc/{quote(rate_component_id)}/tti/{quote(time_tariff_interval)}/cti/{price}/"
 
     @staticmethod
     async def fetch_consumption_tariff_interval_list(session: AsyncSession,
@@ -61,7 +61,10 @@ class ConsumptionTariffIntervalManager:
                                                      rate_component_id: str,
                                                      time_tariff_interval: str,
                                                      price: int) -> ConsumptionTariffIntervalListResponse:
-        """This is a fully virtualised entity 'lookup' that doesn't require interaction with the DB
+        """This is a fully virtualised entity 'lookup' that only interacts with the DB to validate access.
+        All the information required to build the response is passed in via params
+
+        if site_id DNE is inaccessible to aggregator_id a NoResultFound will be raised
 
         rate_component_id and time_tariff_interval will be validated. raising InvalidMappingError if invalid"""
 
@@ -75,6 +78,7 @@ class ConsumptionTariffIntervalManager:
 
         href = ConsumptionTariffIntervalManager._generate_href(
             tariff_id,
+            site_id,
             rate_component_id,
             time_tariff_interval,
             price)
@@ -97,7 +101,10 @@ class ConsumptionTariffIntervalManager:
                                                 rate_component_id: str,
                                                 time_tariff_interval: str,
                                                 price: int) -> ConsumptionTariffIntervalResponse:
-        """This is a fully virtualised entity 'lookup' that doesn't require interaction with the DB
+        """This is a fully virtualised entity 'lookup' that only interacts with the DB to validate access.
+        All the information required to build the response is passed in via params
+
+        if site_id DNE is inaccessible to aggregator_id a NoResultFound will be raised
 
         rate_component_id and time_tariff_interval will be validated. raising InvalidMappingError if invalid"""
 
@@ -111,6 +118,7 @@ class ConsumptionTariffIntervalManager:
 
         href = ConsumptionTariffIntervalManager._generate_href(
             tariff_id,
+            site_id,
             rate_component_id,
             time_tariff_interval,
             price)
