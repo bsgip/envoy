@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "b490deca-70d2-488d-bb81-1e3366c2dc7e",
+		"_postman_id": "73064c83-2bef-4329-a2c3-56339798f40e",
 		"name": "envoy",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "26699271"
+		"_exporter_id": "24300585"
 	},
 	"item": [
 		{
@@ -96,7 +96,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <sFDI>789654321005</sFDI>\r\n    <changedTime>1379905200</changedTime>\r\n</EndDevice>",
+							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <lFDI>aa:bb:cc</lFDI>\r\n    <sFDI>789654321006</sFDI>\r\n</EndDevice>",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -220,7 +220,7 @@
 			"name": "Device Capability",
 			"item": [
 				{
-					"name": "/dcap",
+					"name": "/dcap  (DeviceCapabilities)",
 					"protocolProfileBehavior": {
 						"disabledSystemHeaders": {}
 					},
@@ -239,12 +239,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/dcap (DeviceCapabilities)",
+							"raw": "{{HOST}}/dcap",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"dcap (DeviceCapabilities)"
+								"dcap"
 							]
 						}
 					},
