@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 import pydantic_xml
@@ -7,7 +8,14 @@ from envoy.server.crud import end_device
 from envoy.server.schema import uri
 from envoy.server.schema.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
 
-LINK_DATA = {
+logger = logging.getLogger(__name__)
+
+
+class MissingUriParameterError(Exception):
+    pass
+
+
+SEP2_LINK_MAP = {
     "AccountBalanceLink": {
         "uri": uri.AccountBalanceUri,
         "function-set": FunctionSet.Prepayment,
@@ -371,10 +379,10 @@ LINK_DATA = {
 }
 
 
-async def get_supported_links(model: pydantic_xml.BaseXmlModel, aggregator_id: int, uri_params: dict = {}) -> dict:
+async def get_supported_links(model: pydantic_xml.BaseXmlModel, aggregator_id: int, uri_parameters: dict = {}) -> dict:
     link_names = get_link_field_names(model.schema())
     supported_links_names = filter(check_link_supported, link_names)
-    supported_links = get_formatted_links(supported_links_names, uri_params)
+    supported_links = get_formatted_links(supported_links_names, uri_parameters)
     resource_counts = await get_resource_counts(supported_links.keys(), aggregator_id)
     add_resource_counts_to_list_links(supported_links, resource_counts)
 
@@ -389,7 +397,7 @@ async def get_resource_counts(link_names: list[str], aggregator_id: int) -> dict
                 count = await get_resource_count(link_name, aggregator_id)
                 resource_counts[link_name] = str(count)
             except NotImplementedError as e:
-                print(e)
+                logger.debug(e)
     return resource_counts
 
 
@@ -414,19 +422,42 @@ def check_function_set_supported(function_set: FunctionSet, function_set_status:
 
 def check_link_supported(
     link_name: str,
-    link_data: dict = LINK_DATA,
+    link_map: dict = SEP2_LINK_MAP,
 ):
     # Determine which function set the link is part of
-    function_set = link_data[link_name]["function-set"]
+    function_set = link_map[link_name]["function-set"]
     # Check whether function set is supported by the server
     return check_function_set_supported(function_set)
 
 
-def get_formatted_links(link_names: list, uri_params: dict = {}) -> dict:
+def get_formatted_links(link_names: list, uri_parameters: dict = {}, link_map: dict = SEP2_LINK_MAP) -> dict:
+    """
+    Determines complete link URIs (formatted with the user-supplied parameters)
+
+    Example:
+        If link_names = ["EndDeviceLink"] and uri_parameters = {"site_id" = 5}
+        returns the mapping {"EndDeviceLink": {"href": "/edev/5"}}
+
+    Args:
+        link_names: A list of link-names.
+        uri_parameters: The parameters to be inserted into the link URI
+        link_map: Maps link-names to URIs. Defaults to using SEP2_LINK_MAP.
+
+    Returns:
+        A mapping from the link-name to the link's complete URI.
+
+    Raises:
+        MissingUriParameterError: when URI parameters are required by the URI but are not supplied.
+    """
+
+    class FailMissingParam(dict):
+        def __missing__(self, key):
+            raise MissingUriParameterError(f"{key} not found.")
+
     links = {}
     for link_name in link_names:
-        if link_name in LINK_DATA:
-            links[link_name] = {"href": LINK_DATA[link_name]["uri"].format(**uri_params)}
+        if link_name in link_map:
+            links[link_name] = {"href": link_map[link_name]["uri"].format_map(FailMissingParam(uri_parameters))}
     return links
 
 

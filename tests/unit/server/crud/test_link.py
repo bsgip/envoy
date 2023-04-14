@@ -4,9 +4,14 @@ from envoy.server.crud import link
 
 
 @pytest.mark.parametrize(
-    "link_names, uri_params, expected",
+    "link_names, uri_parameters, expected",
     [
-        (
+        (  # Test a link that requires a single uri parameter
+            ["EndDeviceLink"],
+            {"site_id": 5},
+            {"EndDeviceLink": {"href": "/edev/5"}},
+        ),
+        (  # Test a bunch of links that don't require uri parameters
             [
                 "CustomerAccountListLink",
                 "DERProgramListLink",
@@ -38,11 +43,29 @@ from envoy.server.crud import link
                 "TimeLink": {"href": "/tm"},
                 "UsagePointListLink": {"href": "/upt"},
             },
-        )
+        ),
     ],
 )
-def test_get_formatted_links(link_names, uri_params, expected):
-    assert link.get_formatted_links(link_names, uri_params) == expected
+def test_get_formatted_links(link_names, uri_parameters, expected):
+    assert link.get_formatted_links(link_names, uri_parameters) == expected
+
+
+@pytest.mark.parametrize(
+    "link_names, uri_parameters",
+    [
+        (  # Test a link that requires a single uri parameter that is missing
+            ["CustomerAccountLink"],
+            {},
+        ),
+        (  # Test a link that requires a single uri parameter that is missing (another supplied)
+            ["CustomerAccountLink"],
+            {"site_id": 5},
+        ),
+    ],
+)
+def test_get_formatted_links_raises_exception(link_names, uri_parameters):
+    with pytest.raises(link.MissingUriParameterError):
+        link.get_formatted_links(link_names, uri_parameters)
 
 
 @pytest.mark.parametrize(
