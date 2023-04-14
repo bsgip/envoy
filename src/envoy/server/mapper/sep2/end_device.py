@@ -62,7 +62,7 @@ class EndDeviceListMapper:
             {
                 "href": "/edev",
                 "all_": site_count,
-                "result": len(site_list),
+                "results": len(site_list),
                 "EndDevice": [
                     EndDeviceMapper.map_to_response(site) for site in site_list
                 ],
