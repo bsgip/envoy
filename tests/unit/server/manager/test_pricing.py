@@ -10,7 +10,9 @@ from envoy.server.manager.pricing import (
     TimeTariffIntervalManager,
 )
 from envoy.server.mapper.exception import InvalidMappingError
+from envoy.server.model.site import Site
 from envoy.server.schema.sep2.metering import ConsumptionBlockType
+from tests.data.fake.generator import generate_class_instance
 
 
 def test_parse_rate_component_id():
@@ -57,16 +59,22 @@ def test_parse_time_tariff_interval_id():
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.pricing.TimeTariffIntervalManager")
 @mock.patch("envoy.server.manager.pricing.RateComponentManager")
-async def test_fetch_consumption_tariff_interval_list(mock_RateComponentManager: mock.MagicMock,
+@mock.patch("envoy.server.crud.end_device.select_single_site_with_site_id")
+async def test_fetch_consumption_tariff_interval_list(mock_select_single_site_with_site_id: mock.MagicMock,
+                                                      mock_RateComponentManager: mock.MagicMock,
                                                       mock_TimeTariffIntervalManager: mock.MagicMock):
     tariff_id = 54321
+    site_id = 11223344
+    aggregator_id = 44322
     rate_component_id = '2022-02-01'
     time_tariff_interval = '13:37'
     price = 12345
+    mock_session = mock.Mock()
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=time(1, 2))
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=date(2022, 1, 2))
+    mock_select_single_site_with_site_id.return_value = generate_class_instance(Site)
 
-    result = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(tariff_id, rate_component_id, time_tariff_interval, price)
+    result = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(mock_session, aggregator_id, tariff_id, site_id, rate_component_id, time_tariff_interval, price)
     assert result.all_ == 1
     assert len(result.ConsumptionTariffInterval) == 1
     cti = result.ConsumptionTariffInterval[0]
@@ -82,6 +90,7 @@ async def test_fetch_consumption_tariff_interval_list(mock_RateComponentManager:
     # check we validated the ids
     mock_RateComponentManager.parse_rate_component_id.assert_called_once_with(rate_component_id)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id.assert_called_once_with(time_tariff_interval)
+    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, site_id=site_id, aggregator_id=aggregator_id)
 
 
 @pytest.mark.anyio

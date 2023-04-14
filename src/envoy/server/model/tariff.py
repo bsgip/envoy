@@ -35,10 +35,10 @@ class TariffGeneratedRate(Base):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the rate was created/changed
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the tariff comes into effect
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this rate applies for
-    import_active_price: Mapped[Decimal] = mapped_column(DECIMAL(4))  # calculated rate for importing active power
-    export_active_price: Mapped[Decimal] = mapped_column(DECIMAL(4))  # calculated rate for exporting active power
-    import_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(4))  # calculated rate for importing reactive power
-    export_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(4))  # calculated rate for exporting reactive power
+    import_active_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 4))  # calculated rate for importing active power
+    export_active_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 4))  # calculated rate for exporting active power
+    import_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 4))  # calculated rate for importing reactive power
+    export_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(10, 4))  # calculated rate for exporting reactive power
 
     tariff: Mapped["Tariff"] = relationship(back_populates="generated_rates", lazy="raise")
     site: Mapped["Site"] = relationship(lazy="raise")

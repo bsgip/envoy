@@ -69,6 +69,7 @@ async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optiona
 async def select_tariff_rates_for_day(session: AsyncSession,
                                       aggregator_id: int,
                                       tariff_id: int,
+                                      site_id: int,
                                       day: date,
                                       start: int,
                                       changed_after: datetime,
@@ -76,6 +77,7 @@ async def select_tariff_rates_for_day(session: AsyncSession,
     """Selects TariffGeneratedRate entities (with pagination) for a single tariff date
 
     tariff_id: The parent tariff primary key
+    site_id: The specific site rates are being requested for
     day: The specific day of the year to restrict the lookup of values to
     start: The number of matching entities to skip
     limit: The maximum number of entities to return
@@ -96,6 +98,7 @@ async def select_tariff_rates_for_day(session: AsyncSession,
             (TariffGeneratedRate.start_time >= datetime_from) &
             (TariffGeneratedRate.start_time < datetime_to) &
             (TariffGeneratedRate.changed_time >= changed_after) &
+            (TariffGeneratedRate.site_id == site_id) &
             (Site.aggregator_id == aggregator_id))
         .offset(start)
         .limit(limit)
@@ -112,13 +115,14 @@ async def select_tariff_rates_for_day(session: AsyncSession,
 async def select_tariff_rate_for_day_time(session: AsyncSession,
                                           aggregator_id: int,
                                           tariff_id: int,
+                                          site_id: int,
                                           day: date,
                                           time_of_day: time) -> Optional[TariffGeneratedRate]:
     """Selects single TariffGeneratedRate entity for a single tariff date / interval start
 
     time_of_day must be an EXACT match to return something (it's not enough to set it in the
     middle of an interval + duration)
-
+    site_id: The specific site rates are being requested for
     tariff_id: The parent tariff primary key
     day: The specific day of the year to restrict the lookup of values to
     time_of_day: The specific time of day to find a match"""
@@ -133,6 +137,7 @@ async def select_tariff_rate_for_day_time(session: AsyncSession,
         .where(
             (TariffGeneratedRate.tariff_id == tariff_id) &
             (TariffGeneratedRate.start_time == datetime_match) &
+            (TariffGeneratedRate.site_id == site_id) &
             (Site.aggregator_id == aggregator_id))
     )
 
