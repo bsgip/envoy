@@ -1,17 +1,20 @@
 
-from datetime import date, time
+from datetime import date, datetime, time
+from typing import Optional
 from urllib.parse import quote
 
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.crud.pricing import select_tariff_rate_for_day_time
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.schema.sep2.metering import ConsumptionBlockType
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
     TimeTariffIntervalListResponse,
+    TimeTariffIntervalResponse,
 )
 
 
@@ -42,9 +45,37 @@ class TimeTariffIntervalManager:
                                               site_id: int,
                                               rate_component_id: str,
                                               start: int,
-                                              after: int,
+                                              after: datetime,
                                               limit: int) -> TimeTariffIntervalListResponse:
         """Fetches a page of TimeTariffInterval entities and returns them in a list response"""
+        raise NotImplementedError()
+    
+    @staticmethod
+    async def fetch_time_tariff_interval(session: AsyncSession,
+                                         aggregator_id: int,
+                                         tariff_id: int,
+                                         site_id: int,
+                                         rate_component_id: str,
+                                         time_tariff_interval: str) -> Optional[TimeTariffIntervalResponse]:
+        """Fetches a single TimeTariffInterval entitiy matching the date/time. Time must be an exact
+        match.
+
+        Returns None if no rate exists for that interval/site
+
+        rate_component_id and time_tariff_interval will be validated. raising InvalidMappingError if invalid"""
+
+        day = RateComponentManager.parse_rate_component_id(rate_component_id)
+        time_of_day = TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
+
+        generated_rate = await select_tariff_rate_for_day_time(session,
+                                                               aggregator_id,
+                                                               tariff_id,
+                                                               site_id,
+                                                               day,
+                                                               time_of_day)
+        if generated_rate is None:
+            return None
+
         raise NotImplementedError()
 
 
