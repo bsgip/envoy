@@ -1,7 +1,8 @@
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Optional, Union
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.model.site import Site
@@ -15,8 +16,8 @@ async def select_tariff_count(session: AsyncSession, after: datetime) -> int:
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    stmt = select(func.count()).select_from(
-        select(Tariff.tariff_id)
+    stmt = (
+        select(func.count())
         .where((Tariff.changed_time >= after))
     )
     resp = await session.execute(stmt)
@@ -179,3 +180,38 @@ async def select_tariff_rate_for_day_time(session: AsyncSession,
 
     resp = await session.execute(stmt)
     return resp.scalars().one_or_none()
+
+
+@dataclass
+class TariffGeneratedRateStats:
+    total_rates: int  # total number of TariffGeneratedRate
+    first_rate: Optional[datetime]  # The lowest start_time for a TariffGeneratedRate (None if no rates)
+    last_rate: Optional[datetime]  # The highest start_time for a TariffGeneratedRate (None if no rates)    
+
+
+async def select_rate_stats(session: AsyncSession,
+                            aggregator_id: int,
+                            tariff_id: int,
+                            site_id: int,
+                            changed_after: datetime) -> TariffGeneratedRateStats:
+    """Calculates some basic statistics on TariffGeneratedRate
+
+    tariff_id: The parent tariff primary key
+    site_id: The specific site rates are being requested for
+    changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)"""
+    stmt = (
+            select(func.count(), func.max(TariffGeneratedRate.start_time), func.min(TariffGeneratedRate.start_time))
+            .join(TariffGeneratedRate.site)
+            .where(
+                (TariffGeneratedRate.tariff_id == tariff_id) &
+                (TariffGeneratedRate.site_id == site_id) &
+                (TariffGeneratedRate.changed_time >= changed_after) &
+                (Site.aggregator_id == aggregator_id))
+    )
+
+    resp = await session.execute(stmt)
+    (count, max_date, min_date) = resp.one()
+    if count == 0:
+        return TariffGeneratedRateStats(total_rates=count, first_rate=None, last_rate=None)
+    else:
+        return TariffGeneratedRateStats(total_rates=count, first_rate=min_date, last_rate=max_date)

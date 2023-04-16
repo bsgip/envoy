@@ -10,6 +10,7 @@ from envoy.server.crud.end_device import (
 )
 from envoy.server.model.site import Site
 from envoy.server.schema.sep2.end_device import DeviceCategory
+from tests.assert_time import assert_datetime_equal
 from tests.assert_type import assert_list_type
 from tests.data.fake.generator import clone_class_instance, generate_class_instance
 from tests.postgres_testing import generate_async_session
@@ -45,7 +46,7 @@ async def test_select_all_sites_with_aggregator_id_contents(pg_base_config):
         assert site_3.site_id == 3
         assert site_3.nmi == "3333333333"
         assert site_3.aggregator_id == 2
-        assert site_3.changed_time.timestamp() == datetime(2022, 2, 3, 8, 9, 10).timestamp()
+        assert_datetime_equal(site_3.changed_time, datetime(2022, 2, 3, 8, 9, 10))
         assert site_3.lfdi == 'site3-lfdi'
         assert site_3.sfdi == 3333
         assert site_3.device_category == DeviceCategory(2)
@@ -115,7 +116,7 @@ async def test_select_single_site_with_site_id(pg_base_config):
         assert site_3.site_id == 3
         assert site_3.nmi == "3333333333"
         assert site_3.aggregator_id == 2
-        assert site_3.changed_time.timestamp() == datetime(2022, 2, 3, 8, 9, 10).timestamp()
+        assert_datetime_equal(site_3.changed_time, datetime(2022, 2, 3, 8, 9, 10))
         assert site_3.lfdi == 'site3-lfdi'
         assert site_3.sfdi == 3333
         assert site_3.device_category == DeviceCategory(2)
@@ -126,7 +127,7 @@ async def test_select_single_site_with_site_id(pg_base_config):
         assert site_1.site_id == 1
         assert site_1.nmi == "1111111111"
         assert site_1.aggregator_id == 1
-        assert site_1.changed_time.timestamp() == datetime(2022, 2, 3, 4, 5, 6).timestamp()
+        assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6))
         assert site_1.lfdi == 'site1-lfdi'
         assert site_1.sfdi == 1111
         assert site_1.device_category == DeviceCategory(0)
@@ -174,7 +175,7 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
         assert site_1.site_id == 1
         assert site_1.nmi == "1111111111"
         assert site_1.aggregator_id == 1
-        assert site_1.changed_time.timestamp() == datetime(2022, 2, 3, 4, 5, 6).timestamp()
+        assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6))
         assert site_1.lfdi == 'site1-lfdi'
         assert site_1.sfdi == 1111
         assert site_1.device_category == DeviceCategory(0)
@@ -218,7 +219,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         assert site_db
         assert site_db.nmi == site_to_upsert.nmi
         assert site_db.aggregator_id == site_to_upsert.aggregator_id
-        assert site_db.changed_time.timestamp() == site_to_upsert.changed_time.timestamp()
+        assert_datetime_equal(site_db.changed_time, site_to_upsert.changed_time)
         assert site_db.lfdi == site_to_upsert.lfdi
         assert site_db.sfdi == site_to_upsert.sfdi
         assert site_db.device_category == site_to_upsert.device_category
@@ -229,7 +230,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         assert site_2.site_id == 2
         assert site_2.nmi == "2222222222"
         assert site_2.aggregator_id == aggregator_id
-        assert site_2.changed_time.timestamp() == datetime(2022, 2, 3, 5, 6, 7).timestamp()
+        assert_datetime_equal(site_2.changed_time, datetime(2022, 2, 3, 5, 6, 7))
         assert site_2.lfdi == 'site2-lfdi'
         assert site_2.sfdi == 2222
         assert site_2.device_category == DeviceCategory(1)

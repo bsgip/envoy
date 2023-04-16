@@ -11,7 +11,7 @@ from envoy.server.schema.sep2.end_device import (
     EndDeviceRequest,
     EndDeviceResponse,
 )
-from tests.assert_time import assert_nowish
+from tests.assert_time import assert_datetime_equal, assert_nowish
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as AGG_2_VALID_PEM
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_PEM as AGG_3_VALID_PEM

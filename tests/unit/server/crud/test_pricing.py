@@ -7,12 +7,14 @@ import pytest
 from envoy.server.crud.pricing import (
     count_tariff_rates_for_day,
     select_all_tariffs,
+    select_rate_stats,
     select_single_tariff,
     select_tariff_count,
     select_tariff_rate_for_day_time,
     select_tariff_rates_for_day,
 )
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+from tests.assert_time import assert_datetime_equal
 from tests.postgres_testing import generate_async_session
 
 
@@ -112,7 +114,7 @@ def assert_rate_for_id(expected_rate_id: Optional[int],
         assert actual_rate.import_reactive_price == Decimal(f"{expected_rate_id}.333")
         assert actual_rate.export_reactive_price == Decimal(f"-{expected_rate_id}.4444")
         if expected_date is not None and expected_time is not None:
-            assert actual_rate.start_time.timestamp() == datetime.combine(expected_date, expected_time).timestamp()
+            assert_datetime_equal(actual_rate.start_time, datetime.combine(expected_date, expected_time))
 
 
 @pytest.mark.parametrize(
@@ -186,3 +188,27 @@ async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config, fil
         assert len(rates) == count
         for (id, rate) in zip(expected_ids, rates):
             assert_rate_for_id(id, tariff_id, site_id, None, None, rate)
+
+
+@pytest.mark.parametrize(
+    "expected_results",
+    [
+        ((1, 1, 1, datetime.min), (3, datetime(2022, 3, 5, 1, 2), datetime(2022, 3, 6, 1, 2))),
+        ((1, 1, 1, datetime(2022, 3, 4, 12, 22, 32)), (2, datetime(2022, 3, 5, 3, 4), datetime(2022, 3, 6, 1, 2))),
+        ((1, 1, 1, datetime(2022, 3, 4, 14, 22, 32)), (1, datetime(2022, 3, 6, 1, 2), datetime(2022, 3, 6, 1, 2))),
+        ((1, 1, 1, datetime(2022, 3, 4, 14, 22, 34)), (0, None, None)),
+        ((3, 1, 1, datetime.min), (0, None, None)),
+        ((1, 3, 1, datetime.min), (0, None, None)),
+        ((1, 1, 4, datetime.min), (0, None, None)),
+     ],
+)
+@pytest.mark.anyio
+async def test_select_rate_stats(pg_base_config, expected_results: tuple[tuple[int, int, int, datetime], tuple[int, datetime, datetime]]):
+    """Tests the various filter options on select_rate_stats"""
+    ((agg_id, tariff_id, site_id, after), (expected_count, expected_first, expected_last)) = expected_results
+    async with generate_async_session(pg_base_config) as session:
+        stats = await select_rate_stats(session, agg_id, tariff_id, site_id, after)
+        assert stats
+        assert stats.total_rates == expected_count
+        assert_datetime_equal(stats.first_rate, expected_first)
+        assert_datetime_equal(stats.last_rate, expected_last)
