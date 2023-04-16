@@ -22,7 +22,7 @@ class RespondableSubscribableIdentifiedObject(RespondableResource):
     subscribable: Optional[SubscribableType] = attr()
 
     description: Optional[str] = element()
-    mrid: mRIDType = element()
+    mRID: mRIDType = element()
     version: VersionType = element()
 
 

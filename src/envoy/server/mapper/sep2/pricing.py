@@ -1,18 +1,31 @@
 from datetime import date, datetime, time
+from decimal import Decimal
 from enum import Enum, IntEnum, auto
 
+from envoy.server.mapper.common import generate_mrid
 from envoy.server.mapper.exception import InvalidMappingError
-from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
 from envoy.server.schema.sep2.base import Link, ListLink
-from envoy.server.schema.sep2.metering import CommodityType, FlowDirectionType, ReadingType, UnitValueType, UomType
+from envoy.server.schema.sep2.metering import (
+    CommodityType,
+    ConsumptionBlockType,
+    FlowDirectionType,
+    ReadingType,
+    TOUType,
+    UnitValueType,
+    UomType,
+)
 from envoy.server.schema.sep2.pricing import (
+    ConsumptionTariffIntervalResponse,
     PrimacyType,
     RateComponentListResponse,
     RateComponentResponse,
     RoleFlagsType,
     ServiceKind,
     TariffProfileResponse,
+    TimeTariffIntervalResponse,
 )
+from envoy.server.schema.sep2.time import DateTimeIntervalType
 
 
 class TariffProfileMapper:
@@ -27,7 +40,7 @@ class TariffProfileMapper:
                 "mRID": f"{tariff.tariff_id:x}",
                 "description": tariff.name,
                 "currency": tariff.currency_code,
-                "pricePowerOfTenMultiplier": 0,
+                "pricePowerOfTenMultiplier": PRICE_DECIMAL_PLACES,
                 "rateCode": tariff.dnsp_code,
                 "primacyType": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
@@ -38,16 +51,29 @@ class TariffProfileMapper:
 
 class PricingReadingType(IntEnum):
     """The different types of readings that can be priced"""
-    IMPORT_ACTIVE_POWER_KWH = 1
-    EXPORT_ACTIVE_POWER_KWH = 2
-    IMPORT_REACTIVE_POWER_KVARH = 3
-    EXPORT_REACTIVE_POWER_KVARH = 4
+    IMPORT_ACTIVE_POWER_KWH = auto()
+    EXPORT_ACTIVE_POWER_KWH = auto()
+    IMPORT_REACTIVE_POWER_KVARH = auto()
+    EXPORT_REACTIVE_POWER_KVARH = auto()
 
 
 class PricingReadingTypeMapper:
     @staticmethod
     def pricing_reading_type_href(rt: PricingReadingType) -> str:
         return f"/pricing/rt/{rt}"
+
+    @staticmethod
+    def extract_price(rt: PricingReadingType, rate: TariffGeneratedRate) -> Decimal:
+        if (rt == PricingReadingType.IMPORT_ACTIVE_POWER_KWH):
+            return rate.import_active_price
+        elif (rt == PricingReadingType.EXPORT_ACTIVE_POWER_KWH):
+            return rate.export_active_price
+        elif (rt == PricingReadingType.IMPORT_REACTIVE_POWER_KVARH):
+            return rate.import_reactive_price
+        elif (rt == PricingReadingType.EXPORT_REACTIVE_POWER_KVARH):
+            return rate.export_reactive_price
+        else:
+            raise InvalidMappingError(f"Unknown reading type {rt}")
 
     @staticmethod
     def create_reading_type(rt: PricingReadingType) -> ReadingType:
@@ -95,15 +121,80 @@ class RateComponentMapper:
     def map_to_response(total_rates: int, tariff_id: int, site_id: int,
                         pricing_reading: PricingReadingType, day: date) -> RateComponentResponse:
         """Maps/Creates a single rate component response describing a single type of reading"""
-
         start_date = day.isoformat()
         start_timestamp = int(datetime.combine(day, time()).timestamp())
         rc_href = f"/tp/{tariff_id}/{site_id}/rc/{start_date}/{pricing_reading}"
         return RateComponentResponse.validate({
             "href": rc_href,
-            "mRID": f"{tariff_id:x}{site_id:x}{start_timestamp:x}",
+            "mRID": generate_mrid(tariff_id, site_id, start_timestamp),
             "description": pricing_reading.name,
             "roleFlags": RoleFlagsType(0),
             "ReadingTypeLink": Link(href=PricingReadingTypeMapper.pricing_reading_type_href(pricing_reading)),
             "TimeTariffIntervalListLink": ListLink(href=rc_href + "/tti", all_=total_rates)
+        })
+
+
+class ConsumptionTariffIntervalMapper:
+    """This is a fully 'Virtual' entity that doesnt exist in the DB. Instead we create them based on a fixed price"""
+    @staticmethod
+    def database_price_to_sep2(price: Decimal) -> int:
+        """Converts a database price ($1.2345) to a sep2 price integer by multiplying it by the price power of 10
+        according to the value of PRICE_DECIMAL_PLACES"""
+        return int(price * PRICE_DECIMAL_POWER)
+
+    @staticmethod
+    def instance_href(tariff_id: int, site_id: int, pricing_reading: PricingReadingType, day: date,
+                      time_of_day: time, price: Decimal):
+        """Returns the href for a single instance of a ConsumptionTariffIntervalResponse at a set price"""
+        base = ConsumptionTariffIntervalMapper.list_href(tariff_id, site_id, pricing_reading, day, time_of_day, price)
+        return f"{base}/1"
+
+    @staticmethod
+    def list_href(tariff_id: int, site_id: int, pricing_reading: PricingReadingType, day: date,
+                  time_of_day: time, price: Decimal):
+        """Returns the href for a list that will hold a single instance of a ConsumptionTariffIntervalResponse at a
+        set price"""
+        start_date = day.isoformat()
+        start_time = time_of_day.isoformat("minutes")
+        sep2_price = ConsumptionTariffIntervalMapper.database_price_to_sep2(price)
+        return f"/tp/{tariff_id}/{site_id}/rc/{start_date}/{pricing_reading}/tti/{start_time}/cti/{sep2_price}"
+
+    @staticmethod
+    def map_to_response(tariff_id: int, site_id: int, pricing_rt: PricingReadingType, day: date,
+                        time_of_day: time, price: Decimal) -> ConsumptionTariffIntervalResponse:
+        """Returns a ConsumptionTariffIntervalResponse with price being set to an integer by adjusting to
+        PRICE_DECIMAL_PLACES"""
+        href = ConsumptionTariffIntervalMapper.instance_href(tariff_id, site_id, pricing_rt, day, time_of_day, price)
+        return ConsumptionTariffIntervalResponse.validate({
+            "href": href,
+            "consumptionBlock": ConsumptionBlockType.NOT_APPLICABLE,
+            "price": ConsumptionTariffIntervalMapper.database_price_to_sep2(price),
+            "startValue": 0,
+        })
+
+
+class TimeTariffIntervalMapper:
+    @staticmethod
+    def instance_href(tariff_id: int, site_id: int, day: date,
+                      pricing_reading: PricingReadingType, time_of_day: time):
+        start_date = day.isoformat()
+        start_time = time_of_day.isoformat("minutes")
+        return f"/tp/{tariff_id}/{site_id}/rc/{start_date}/{pricing_reading}/tti/{start_time}"
+
+    @staticmethod
+    def map_to_response(rate: TariffGeneratedRate, pricing_reading: PricingReadingType) -> TimeTariffIntervalResponse:
+        start_d = rate.start_time.date()
+        start_t = rate.start_time.time()
+        price = PricingReadingTypeMapper.extract_price(pricing_reading, rate)
+        href = TimeTariffIntervalMapper.instance_href(rate.tariff_id, rate.site_id, start_d, pricing_reading, start_t)
+        list_href = ConsumptionTariffIntervalMapper.list_href(rate.tariff_id, rate.site_id, pricing_reading, start_d,
+                                                              start_t, price)
+        return TimeTariffIntervalResponse.validate({
+            "href": href,
+            "mRID": f"{rate.tariff_generated_rate_id:x}",
+            "touTier": TOUType.NOT_APPLICABLE,
+            "creationTime": int(rate.changed_time.timestamp()),
+            "interval": DateTimeIntervalType(start=int(rate.start_time.timestamp()), duration=rate.duration_seconds),
+            "description": rate.start_time.isoformat(),
+            "ConsumptionTariffIntervalListLink": ListLink(href=list_href, all_=1),  # single rate
         })

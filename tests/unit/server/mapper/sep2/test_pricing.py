@@ -1,17 +1,20 @@
 
 import unittest.mock as mock
-from datetime import date
+from datetime import date, time
+from decimal import Decimal
 
 import pytest
 
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.mapper.sep2.pricing import (
+    ConsumptionTariffIntervalMapper,
     PricingReadingType,
     PricingReadingTypeMapper,
     RateComponentMapper,
     TariffProfileMapper,
+    TimeTariffIntervalMapper,
 )
-from envoy.server.model.tariff import Tariff
+from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, Tariff, TariffGeneratedRate
 from envoy.server.schema.sep2.pricing import CurrencyCode
 from tests.data.fake.generator import generate_class_instance
 
@@ -26,6 +29,25 @@ def test_create_reading_type(enum_val: PricingReadingType):
     assert result
     assert result.href
     assert result.flowDirection
+
+
+@pytest.mark.parametrize(
+    "enum_val",
+    PricingReadingType,
+)
+def test_extract_price(enum_val: PricingReadingType):
+    """Just makes sure we don't get any exceptions for the known enum types"""
+    result = PricingReadingTypeMapper.extract_price(enum_val, generate_class_instance(TariffGeneratedRate))
+    assert result
+
+
+def test_extract_price_unique_values():
+    """Just makes sure get unique values for the enum types for the same rate"""
+    vals: list[Decimal] = []
+    src: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate)
+    for e in PricingReadingType:
+        vals.append(PricingReadingTypeMapper.extract_price(e, src))
+    assert len(vals) == len(set(vals))
 
 
 @pytest.mark.parametrize(
@@ -49,6 +71,7 @@ def test_tariff_profile_mapping():
     mapped_all_set = TariffProfileMapper.map_to_response(all_set)
     assert mapped_all_set
     assert mapped_all_set.href
+    assert mapped_all_set.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
     assert mapped_all_set.rateCode == all_set.dnsp_code
     assert mapped_all_set.currency == all_set.currency_code
     assert mapped_all_set.RateComponentListLink
@@ -61,6 +84,7 @@ def test_tariff_profile_mapping():
     mapped_some_set = TariffProfileMapper.map_to_response(some_set)
     assert mapped_some_set
     assert mapped_some_set.href
+    assert mapped_some_set.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
     assert mapped_some_set.rateCode == some_set.dnsp_code
     assert mapped_some_set.currency == some_set.currency_code
     assert mapped_some_set.RateComponentListLink
@@ -93,3 +117,44 @@ def test_rate_component_mapping(mock_PricingReadingTypeMapper: mock.MagicMock):
     assert result.TimeTariffIntervalListLink.href.startswith(result.href)
 
     mock_PricingReadingTypeMapper.pricing_reading_type_href.assert_called_once_with(pricing_reading)
+
+
+@pytest.mark.parametrize(
+    "prices",
+    # These expected values are based on PRICE_DECIMAL_PLACES
+    [(Decimal("1.2345"), 12345),
+     (Decimal("1"), 10000),
+     (Decimal("0"), 0),
+     (Decimal("1.999999"), 19999),
+     (Decimal("-12.3456789"), -123456),
+     ],
+)
+def test_consumption_tariff_interval_mapping_prices(prices: tuple[Decimal, int]):
+    """Checks PRICE_DECIMAL_POWER is used to calculate sep2 integer price values"""
+    tariff_id: int = 1
+    site_id: int = 2
+    pricing_reading: PricingReadingType = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
+    day: date = date(2015, 9, 23)
+    time_of_day: time = time(9, 40)
+
+    (input_price, expected_price) = prices
+
+    mapped = ConsumptionTariffIntervalMapper.map_to_response(tariff_id, site_id, pricing_reading, day, time_of_day, input_price)
+    assert mapped.price == expected_price
+    assert mapped.href
+
+
+@mock.patch('envoy.server.mapper.sep2.pricing.ConsumptionTariffIntervalMapper')
+@mock.patch('envoy.server.mapper.sep2.pricing.ConsumptionTariffIntervalMapper')
+def test_time_tariff_interval_mapping(mock_ConsumptionTariffIntervalMapper: mock.MagicMock):
+    rate_all_set = generate_class_instance(TariffGeneratedRate, seed=101, optional_is_none=False)
+    rt = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
+    cti_list_href = 'abc/123'
+    mock_ConsumptionTariffIntervalMapper.list_href = mock.Mock(return_value=cti_list_href)
+
+    mapped_all_set = TimeTariffIntervalMapper.map_to_response(rate_all_set, rt)
+    assert mapped_all_set
+    assert mapped_all_set.href
+    assert mapped_all_set.ConsumptionTariffIntervalListLink.href.find(str(sep2_price))
+
+    mock_ConsumptionTariffIntervalMapper.list_href.assert_called_once_with(sep2_price)
