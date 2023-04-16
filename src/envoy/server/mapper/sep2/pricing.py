@@ -15,7 +15,7 @@ from envoy.server.schema.sep2.pricing import (
 )
 
 
-class TariffMapper:
+class TariffProfileMapper:
     @staticmethod
     def map_to_response(tariff: Tariff) -> TariffProfileResponse:
         """Returns a mapped sep2 entity. The href to RateComponentListLink will be to an endpoint
@@ -24,11 +24,14 @@ class TariffMapper:
         return TariffProfileResponse.validate(
             {
                 "href": tp_href,
+                "mRID": f"{tariff.tariff_id:x}",
+                "description": tariff.name,
                 "currency": tariff.currency_code,
                 "pricePowerOfTenMultiplier": 0,
+                "rateCode": tariff.dnsp_code,
                 "primacyType": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                "RateComponentListLink": ListLink(href=tp_href + '/rc', all=0),  # unspecified site' rate components
+                "RateComponentListLink": ListLink(href=tp_href + '/rc', all_=0),  # unspecified site' rate components
             }
         )
 
@@ -44,7 +47,7 @@ class PricingReadingType(IntEnum):
 class PricingReadingTypeMapper:
     @staticmethod
     def pricing_reading_type_href(rt: PricingReadingType) -> str:
-        return f"/pricing/rt/{rt.value}"
+        return f"/pricing/rt/{rt}"
 
     @staticmethod
     def create_reading_type(rt: PricingReadingType) -> ReadingType:
@@ -98,7 +101,7 @@ class RateComponentMapper:
         rc_href = f"/tp/{tariff_id}/{site_id}/rc/{start_date}/{pricing_reading}"
         return RateComponentResponse.validate({
             "href": rc_href,
-            "mrid": f"{tariff_id:x}{site_id:x}{start_timestamp:x}",
+            "mRID": f"{tariff_id:x}{site_id:x}{start_timestamp:x}",
             "description": pricing_reading.name,
             "roleFlags": RoleFlagsType(0),
             "ReadingTypeLink": Link(href=PricingReadingTypeMapper.pricing_reading_type_href(pricing_reading)),

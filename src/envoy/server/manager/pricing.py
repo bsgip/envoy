@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.crud.pricing import select_tariff_rate_for_day_time
 from envoy.server.mapper.exception import InvalidMappingError
+from envoy.server.mapper.sep2.pricing import PricingReadingType, TariffProfileMapper
 from envoy.server.schema.sep2.metering import ConsumptionBlockType
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
@@ -56,7 +57,8 @@ class TimeTariffIntervalManager:
                                          tariff_id: int,
                                          site_id: int,
                                          rate_component_id: str,
-                                         time_tariff_interval: str) -> Optional[TimeTariffIntervalResponse]:
+                                         time_tariff_interval: str,
+                                         pricing_type: PricingReadingType) -> Optional[TimeTariffIntervalResponse]:
         """Fetches a single TimeTariffInterval entitiy matching the date/time. Time must be an exact
         match.
 
