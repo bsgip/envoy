@@ -145,16 +145,31 @@ def test_consumption_tariff_interval_mapping_prices(prices: tuple[Decimal, int])
 
 
 @mock.patch('envoy.server.mapper.sep2.pricing.ConsumptionTariffIntervalMapper')
-@mock.patch('envoy.server.mapper.sep2.pricing.ConsumptionTariffIntervalMapper')
-def test_time_tariff_interval_mapping(mock_ConsumptionTariffIntervalMapper: mock.MagicMock):
-    rate_all_set = generate_class_instance(TariffGeneratedRate, seed=101, optional_is_none=False)
+@mock.patch('envoy.server.mapper.sep2.pricing.PricingReadingTypeMapper')
+def test_time_tariff_interval_mapping(mock_PricingReadingTypeMapper: mock.MagicMock,
+                                      mock_ConsumptionTariffIntervalMapper: mock.MagicMock):
+    """Non exhaustive test on TimeTariffInterval mapping - mainly to catch any validation issues"""
+    rate_all_set: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=101, optional_is_none=False)
     rt = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
     cti_list_href = 'abc/123'
+    extracted_price = Decimal('543.211')
+
+    mock_PricingReadingTypeMapper.extract_price = mock.Mock(return_value=extracted_price)
     mock_ConsumptionTariffIntervalMapper.list_href = mock.Mock(return_value=cti_list_href)
 
+    # Cursory check on values
     mapped_all_set = TimeTariffIntervalMapper.map_to_response(rate_all_set, rt)
     assert mapped_all_set
     assert mapped_all_set.href
-    assert mapped_all_set.ConsumptionTariffIntervalListLink.href.find(str(sep2_price))
+    assert mapped_all_set.ConsumptionTariffIntervalListLink.href == cti_list_href
 
-    mock_ConsumptionTariffIntervalMapper.list_href.assert_called_once_with(sep2_price)
+    # Assert we are utilising the inbuilt utils
+    mock_PricingReadingTypeMapper.extract_price.assert_called_once_with(rt, rate_all_set)
+    mock_ConsumptionTariffIntervalMapper.list_href.assert_called_once_with(
+        rate_all_set.tariff_id,
+        rate_all_set.site_id,
+        rt,
+        rate_all_set.start_time.date(),
+        rate_all_set.start_time.time(),
+        extracted_price
+    )
