@@ -1,6 +1,6 @@
 from datetime import date, datetime, time
 from decimal import Decimal
-from enum import Enum, IntEnum, auto
+from enum import IntEnum, auto
 
 from envoy.server.mapper.common import generate_mrid
 from envoy.server.mapper.exception import InvalidMappingError
@@ -12,13 +12,11 @@ from envoy.server.schema.sep2.metering import (
     FlowDirectionType,
     ReadingType,
     TOUType,
-    UnitValueType,
     UomType,
 )
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalResponse,
     PrimacyType,
-    RateComponentListResponse,
     RateComponentResponse,
     RoleFlagsType,
     ServiceKind,
@@ -177,12 +175,14 @@ class TimeTariffIntervalMapper:
     @staticmethod
     def instance_href(tariff_id: int, site_id: int, day: date,
                       pricing_reading: PricingReadingType, time_of_day: time):
+        """Creates a href that identify a single TimeTariffIntervalResponse with the specified values"""
         start_date = day.isoformat()
         start_time = time_of_day.isoformat("minutes")
         return f"/tp/{tariff_id}/{site_id}/rc/{start_date}/{pricing_reading}/tti/{start_time}"
 
     @staticmethod
     def map_to_response(rate: TariffGeneratedRate, pricing_reading: PricingReadingType) -> TimeTariffIntervalResponse:
+        """Creates a new TimeTariffIntervalResponse for the given rate and specific price reading"""
         start_d = rate.start_time.date()
         start_t = rate.start_time.time()
         price = PricingReadingTypeMapper.extract_price(pricing_reading, rate)
@@ -192,9 +192,10 @@ class TimeTariffIntervalMapper:
         return TimeTariffIntervalResponse.validate({
             "href": href,
             "mRID": f"{rate.tariff_generated_rate_id:x}",
+            "version": 0,
+            "description": rate.start_time.isoformat(),
             "touTier": TOUType.NOT_APPLICABLE,
             "creationTime": int(rate.changed_time.timestamp()),
             "interval": DateTimeIntervalType(start=int(rate.start_time.timestamp()), duration=rate.duration_seconds),
-            "description": rate.start_time.isoformat(),
             "ConsumptionTariffIntervalListLink": ListLink(href=list_href, all_=1),  # single rate
         })
