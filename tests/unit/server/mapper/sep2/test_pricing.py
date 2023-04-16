@@ -15,7 +15,7 @@ from envoy.server.mapper.sep2.pricing import (
     TimeTariffIntervalMapper,
 )
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, Tariff, TariffGeneratedRate
-from envoy.server.schema.sep2.pricing import CurrencyCode
+from envoy.server.schema.sep2.pricing import CurrencyCode, TimeTariffIntervalResponse
 from tests.data.fake.generator import generate_class_instance
 
 
@@ -173,3 +173,32 @@ def test_time_tariff_interval_mapping(mock_PricingReadingTypeMapper: mock.MagicM
         rate_all_set.start_time.time(),
         extracted_price
     )
+
+
+@mock.patch('envoy.server.mapper.sep2.pricing.ConsumptionTariffIntervalMapper')
+@mock.patch('envoy.server.mapper.sep2.pricing.PricingReadingTypeMapper')
+def test_time_tariff_interval_list_mapping(mock_PricingReadingTypeMapper: mock.MagicMock,
+                                           mock_ConsumptionTariffIntervalMapper: mock.MagicMock):
+    """Non exhaustive test on TimeTariffIntervalList mapping - mainly to catch any validation issues"""
+    rates: list[TariffGeneratedRate] = [
+        generate_class_instance(TariffGeneratedRate, seed=101, optional_is_none=False),
+        generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=True),
+    ]
+    rt = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
+    cti_list_href = 'abc/123'
+    extracted_price = Decimal('-543.211')
+    total = 632
+    mock_PricingReadingTypeMapper.extract_price = mock.Mock(return_value=extracted_price)
+    mock_ConsumptionTariffIntervalMapper.list_href = mock.Mock(return_value=cti_list_href)
+
+    mapped = TimeTariffIntervalMapper.map_to_list_response(rates, rt, total)
+    assert mapped.all_ == total
+    assert mapped.results == len(rates)
+    assert len(mapped.TimeTariffInterval) == len(rates)
+    assert all([type(x) == TimeTariffIntervalResponse for x in mapped.TimeTariffInterval]), "Checking all list items are the correct type"
+    list_items_mrids = [x.mRID for x in mapped.TimeTariffInterval]
+    assert len(list_items_mrids) == len(set(list_items_mrids)), "Checking all list items are unique"
+
+    # cursory check that we mapped each rate into the response
+    assert mock_PricingReadingTypeMapper.extract_price.call_count == len(rates)
+    assert mock_ConsumptionTariffIntervalMapper.list_href.call_count == len(rates)

@@ -21,6 +21,7 @@ from envoy.server.schema.sep2.pricing import (
     RoleFlagsType,
     ServiceKind,
     TariffProfileResponse,
+    TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
 from envoy.server.schema.sep2.time import DateTimeIntervalType
@@ -53,6 +54,9 @@ class PricingReadingType(IntEnum):
     EXPORT_ACTIVE_POWER_KWH = auto()
     IMPORT_REACTIVE_POWER_KVARH = auto()
     EXPORT_REACTIVE_POWER_KVARH = auto()
+
+
+TOTAL_PRICING_READING_TYPES = len(PricingReadingType)  # The total number of PricingReadingType enums
 
 
 class PricingReadingTypeMapper:
@@ -124,7 +128,7 @@ class RateComponentMapper:
         rc_href = f"/tp/{tariff_id}/{site_id}/rc/{start_date}/{pricing_reading}"
         return RateComponentResponse.validate({
             "href": rc_href,
-            "mRID": generate_mrid(tariff_id, site_id, start_timestamp),
+            "mRID": generate_mrid(tariff_id, site_id, start_timestamp, pricing_reading),
             "description": pricing_reading.name,
             "roleFlags": RoleFlagsType(0),
             "ReadingTypeLink": Link(href=PricingReadingTypeMapper.pricing_reading_type_href(pricing_reading)),
@@ -198,4 +202,14 @@ class TimeTariffIntervalMapper:
             "creationTime": int(rate.changed_time.timestamp()),
             "interval": DateTimeIntervalType(start=int(rate.start_time.timestamp()), duration=rate.duration_seconds),
             "ConsumptionTariffIntervalListLink": ListLink(href=list_href, all_=1),  # single rate
+        })
+
+    @staticmethod
+    def map_to_list_response(rates: list[TariffGeneratedRate], pricing_reading: PricingReadingType,
+                             total: int) -> TimeTariffIntervalListResponse:
+        """Creates a TimeTariffIntervalListResponse for a single page of entities."""
+        return TimeTariffIntervalListResponse.validate({
+            "all_": total,
+            "results": len(rates),
+            "TimeTariffInterval": [TimeTariffIntervalMapper.map_to_response(rate, pricing_reading) for rate in rates]
         })

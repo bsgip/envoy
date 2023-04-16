@@ -7,9 +7,13 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.end_device import select_single_site_with_site_id
-from envoy.server.crud.pricing import select_tariff_rate_for_day_time
+from envoy.server.crud.pricing import (
+    count_tariff_rates_for_day,
+    select_tariff_rate_for_day_time,
+    select_tariff_rates_for_day,
+)
 from envoy.server.mapper.exception import InvalidMappingError
-from envoy.server.mapper.sep2.pricing import PricingReadingType, TariffProfileMapper
+from envoy.server.mapper.sep2.pricing import PricingReadingType, TariffProfileMapper, TimeTariffIntervalMapper
 from envoy.server.schema.sep2.metering import ConsumptionBlockType
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
@@ -41,16 +45,23 @@ class TimeTariffIntervalManager:
             raise InvalidMappingError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
 
     @staticmethod
-    async def fetch_time_tariff_interval_list(aggregator_id: int,
+    async def fetch_time_tariff_interval_list(session: AsyncSession,
+                                              aggregator_id: int,
                                               tariff_id: int,
                                               site_id: int,
                                               rate_component_id: str,
+                                              pricing_type: PricingReadingType,
                                               start: int,
                                               after: datetime,
                                               limit: int) -> TimeTariffIntervalListResponse:
         """Fetches a page of TimeTariffInterval entities and returns them in a list response"""
-        raise NotImplementedError()
-    
+        day = RateComponentManager.parse_rate_component_id(rate_component_id)
+
+        rates = await select_tariff_rates_for_day(session, aggregator_id, tariff_id, site_id, day, start, after, limit)
+        total_rates = await count_tariff_rates_for_day(session, aggregator_id, tariff_id, site_id, day, after)
+
+        return TimeTariffIntervalMapper.map_to_list_response(rates, pricing_type, total_rates)
+
     @staticmethod
     async def fetch_time_tariff_interval(session: AsyncSession,
                                          aggregator_id: int,
@@ -78,7 +89,7 @@ class TimeTariffIntervalManager:
         if generated_rate is None:
             return None
 
-        raise NotImplementedError()
+        return TimeTariffIntervalMapper.map_to_response(generated_rate, pricing_type)
 
 
 class ConsumptionTariffIntervalManager:

@@ -5,6 +5,7 @@ from typing import Optional
 import pytest
 
 from envoy.server.crud.pricing import (
+    count_tariff_rates_for_day,
     select_all_tariffs,
     select_single_tariff,
     select_tariff_count,
@@ -174,11 +175,14 @@ async def test_select_tariff_rates_for_day_pagination(pg_base_config, page_detai
      ],
 )
 @pytest.mark.anyio
-async def test_select_tariff_rates_for_day_filters(pg_base_config, filter_details: tuple[list[int], int, int, int, date]):
-    """Tests out the basic pagination features"""
+async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config, filter_details: tuple[list[int], int, int, int, date]):
+    """Tests out the basic filters features and validates the associated count function too"""
     (expected_ids, agg_id, tariff_id, site_id, day) = filter_details
     async with generate_async_session(pg_base_config) as session:
         rates = await select_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, 0, datetime.min, 99)
+        count = await count_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, datetime.min)
+        assert type(count) == int
         assert len(rates) == len(expected_ids)
+        assert len(rates) == count
         for (id, rate) in zip(expected_ids, rates):
             assert_rate_for_id(id, tariff_id, site_id, None, None, rate)
