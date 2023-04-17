@@ -1,7 +1,9 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 from enum import IntEnum, auto
+from itertools import islice, product
 
+from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.mapper.common import generate_mrid
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
@@ -17,6 +19,7 @@ from envoy.server.schema.sep2.metering import (
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalResponse,
     PrimacyType,
+    RateComponentListResponse,
     RateComponentResponse,
     RoleFlagsType,
     ServiceKind,
@@ -133,6 +136,26 @@ class RateComponentMapper:
             "roleFlags": RoleFlagsType(0),
             "ReadingTypeLink": Link(href=PricingReadingTypeMapper.pricing_reading_type_href(pricing_reading)),
             "TimeTariffIntervalListLink": ListLink(href=rc_href + "/tti", all_=total_rates)
+        })
+
+    @staticmethod
+    def map_to_list_response(daily_rate_stats: TariffGeneratedRateDailyStats, skip_start: int, skip_end: int, tariff_id: int,
+                             site_id: int) -> RateComponentListResponse:
+        """Maps/creates a set of rate components under a RateComponentListResponse for a set of rate totals
+        organised by date"""
+        rc_list = []
+        iterator = islice(
+            product(daily_rate_stats.single_date_counts, PricingReadingType),  # Iterator
+            skip_start,  # Start index
+            (len(daily_rate_stats.single_date_counts) * TOTAL_PRICING_READING_TYPES) - skip_end  # End
+        )
+        for ((day, rate_count), pricing_type) in iterator:
+            rc_list.append(RateComponentMapper.map_to_response(rate_count, tariff_id, site_id, pricing_type, day))
+
+        return RateComponentListResponse.validate({
+            "all_": daily_rate_stats.total_distinct_dates * TOTAL_PRICING_READING_TYPES,
+            "results": len(rc_list),
+            "RateComponent": rc_list
         })
 
 

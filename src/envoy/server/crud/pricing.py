@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Optional, Union
 
-from sqlalchemy import func, select
+from sqlalchemy import Date, cast, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.model.site import Site
@@ -184,9 +184,17 @@ async def select_tariff_rate_for_day_time(session: AsyncSession,
 
 @dataclass
 class TariffGeneratedRateStats:
+    """Simple combo of some high level stats associated with TariffGenerateRate"""
     total_rates: int  # total number of TariffGeneratedRate
     first_rate: Optional[datetime]  # The lowest start_time for a TariffGeneratedRate (None if no rates)
-    last_rate: Optional[datetime]  # The highest start_time for a TariffGeneratedRate (None if no rates)    
+    last_rate: Optional[datetime]  # The highest start_time for a TariffGeneratedRate (None if no rates)
+
+
+@dataclass
+class TariffGeneratedRateDailyStats:
+    """Simple combo of some high level stats associated with TariffGenerateRate broken down by start_time.date"""
+    total_distinct_dates: int  # total number of distinct dates (not just the specified page of data)
+    single_date_counts: list[tuple[date, int]]  # each unique dates count of TariffGenerateRate instances. date ordered
 
 
 async def select_rate_stats(session: AsyncSession,
@@ -215,3 +223,44 @@ async def select_rate_stats(session: AsyncSession,
         return TariffGeneratedRateStats(total_rates=count, first_rate=None, last_rate=None)
     else:
         return TariffGeneratedRateStats(total_rates=count, first_rate=min_date, last_rate=max_date)
+
+
+async def select_rate_daily_stats(session: AsyncSession,
+                                  aggregator_id: int,
+                                  tariff_id: int,
+                                  site_id: int,
+                                  start: int,
+                                  changed_after: datetime,
+                                  limit: int) -> TariffGeneratedRateDailyStats:
+    """Fetches the aggregate totals of TariffGeneratedRate grouped by the date upon which they occured.
+
+    Results will be ordered by date ASC"""
+    stmt_date_page = (
+        select(cast(TariffGeneratedRate.start_time, Date).label("start_date"), func.count())
+        .join(TariffGeneratedRate.site)
+        .where(
+            (TariffGeneratedRate.tariff_id == tariff_id) &
+            (TariffGeneratedRate.site_id == site_id) &
+            (TariffGeneratedRate.changed_time >= changed_after) &
+            (Site.aggregator_id == aggregator_id))
+        .group_by("start_date")
+        .order_by("start_date")
+        .offset(start)
+        .limit(limit)
+    )
+    resp = await session.execute(stmt_date_page)
+    date_page = resp.fetchall()
+
+    stmt_date_count = (
+        select(func.count(distinct(cast(TariffGeneratedRate.start_time, Date))))
+        .join(TariffGeneratedRate.site)
+        .where(
+            (TariffGeneratedRate.tariff_id == tariff_id) &
+            (TariffGeneratedRate.site_id == site_id) &
+            (TariffGeneratedRate.changed_time >= changed_after) &
+            (Site.aggregator_id == aggregator_id))
+    )
+    resp = await session.execute(stmt_date_count)
+    count = resp.scalar_one()
+
+    return TariffGeneratedRateDailyStats(total_distinct_dates=count, single_date_counts=date_page)

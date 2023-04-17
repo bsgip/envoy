@@ -7,6 +7,7 @@ import pytest
 from envoy.server.crud.pricing import (
     count_tariff_rates_for_day,
     select_all_tariffs,
+    select_rate_daily_stats,
     select_rate_stats,
     select_single_tariff,
     select_tariff_count,
@@ -196,10 +197,10 @@ async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config, fil
         ((1, 1, 1, datetime.min), (3, datetime(2022, 3, 5, 1, 2), datetime(2022, 3, 6, 1, 2))),
         ((1, 1, 1, datetime(2022, 3, 4, 12, 22, 32)), (2, datetime(2022, 3, 5, 3, 4), datetime(2022, 3, 6, 1, 2))),
         ((1, 1, 1, datetime(2022, 3, 4, 14, 22, 32)), (1, datetime(2022, 3, 6, 1, 2), datetime(2022, 3, 6, 1, 2))),
-        ((1, 1, 1, datetime(2022, 3, 4, 14, 22, 34)), (0, None, None)),
-        ((3, 1, 1, datetime.min), (0, None, None)),
-        ((1, 3, 1, datetime.min), (0, None, None)),
-        ((1, 1, 4, datetime.min), (0, None, None)),
+        ((1, 1, 1, datetime(2022, 3, 4, 14, 22, 34)), (0, None, None)),  # filter miss on changed_after
+        ((3, 1, 1, datetime.min), (0, None, None)),  # filter miss on agg_id
+        ((1, 3, 1, datetime.min), (0, None, None)),  # filter miss on tariff_id
+        ((1, 1, 4, datetime.min), (0, None, None)),  # filter miss on site_id
      ],
 )
 @pytest.mark.anyio
@@ -212,3 +213,52 @@ async def test_select_rate_stats(pg_base_config, expected_results: tuple[tuple[i
         assert stats.total_rates == expected_count
         assert_datetime_equal(stats.first_rate, expected_first)
         assert_datetime_equal(stats.last_rate, expected_last)
+
+
+@pytest.mark.parametrize(
+    "expected_results",
+    [
+        ((1, 1, 1, datetime.min), [(date(2022, 3, 5), 2), (date(2022, 3, 6), 1)]),
+        ((1, 1, 1, datetime(2022, 3, 4, 12, 22, 32)), [(date(2022, 3, 5), 1), (date(2022, 3, 6), 1)]),
+        ((1, 1, 1, datetime(2022, 3, 4, 14, 22, 32)), [(date(2022, 3, 6), 1)]),
+        ((1, 1, 1, datetime(2022, 3, 4, 14, 22, 34)), []),  # filter miss on changed_after
+        ((3, 1, 1, datetime.min), []),  # filter miss on agg_id
+        ((1, 3, 1, datetime.min), []),  # filter miss on tariff_id
+        ((1, 1, 4, datetime.min), []),  # filter miss on site_id
+     ],
+)
+@pytest.mark.anyio
+async def test_select_rate_daily_stats_filtering(pg_base_config, expected_results: tuple[tuple[int, int, int, datetime], list[tuple[date, int]]]):
+    """Tests the various filter options on select_rate_daily_stats"""
+    ((agg_id, tariff_id, site_id, after), output_list) = expected_results
+    async with generate_async_session(pg_base_config) as session:
+        daily_stats = await select_rate_daily_stats(session, agg_id, tariff_id, site_id, 0, after, 99)
+        assert daily_stats.total_distinct_dates == len(daily_stats.single_date_counts), "Without pagination limits the total count will equal the page count"
+        assert daily_stats.single_date_counts == output_list
+        assert all([isinstance(d, date) for (d, _) in daily_stats.single_date_counts]), "Validating date type"
+        assert all([isinstance(c, int) for (_, c) in daily_stats.single_date_counts]), "Validating int type"
+
+
+@pytest.mark.parametrize(
+    "expected_results",
+    [
+        ((0, 99), [(date(2022, 3, 5), 2), (date(2022, 3, 6), 1)]),
+        ((1, 99), [(date(2022, 3, 6), 1)]),
+        ((2, 99), []),
+        ((0, 0), []),
+        ((0, 1), [(date(2022, 3, 5), 2)]),
+        ((1, 1), [(date(2022, 3, 6), 1)]),
+        ((2, 1), []),
+     ],
+)
+@pytest.mark.anyio
+async def test_select_rate_daily_stats_pagination(pg_base_config, expected_results: tuple[tuple[int, int], list[tuple[date, int]]]):
+    """Tests the various pagination options on select_rate_daily_stats"""
+    ((start, limit), output_list) = expected_results
+    expected_count = 2  # For agg/tariff/site = 1 (what we are testing here) - There are 2 distinct dates
+    async with generate_async_session(pg_base_config) as session:
+        daily_stats = await select_rate_daily_stats(session, 1, 1, 1, start, datetime.min, limit)
+        assert daily_stats.single_date_counts == output_list
+        assert daily_stats.total_distinct_dates == expected_count, "Date count is independent of pagination"
+        assert all([isinstance(d, date) for (d, _) in daily_stats.single_date_counts]), "Validating date type"
+        assert all([isinstance(c, int) for (_, c) in daily_stats.single_date_counts]), "Validating int type"

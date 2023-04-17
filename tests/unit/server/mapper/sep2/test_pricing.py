@@ -5,8 +5,10 @@ from decimal import Decimal
 
 import pytest
 
+from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.mapper.sep2.pricing import (
+    TOTAL_PRICING_READING_TYPES,
     ConsumptionTariffIntervalMapper,
     PricingReadingType,
     PricingReadingTypeMapper,
@@ -117,6 +119,81 @@ def test_rate_component_mapping(mock_PricingReadingTypeMapper: mock.MagicMock):
     assert result.TimeTariffIntervalListLink.href.startswith(result.href)
 
     mock_PricingReadingTypeMapper.pricing_reading_type_href.assert_called_once_with(pricing_reading)
+
+@pytest.mark.parametrize(
+    "rates",
+    # These expected values are based on PRICE_DECIMAL_PLACES
+    [
+        # Basic test case of get everything
+        (
+            ([(date(2022, 1, 1), 5), (date(2022, 1, 2), 4)], 0, 0),             # Input
+            (date(2022, 1, 1), 5, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2022, 1, 2), 4, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+        ),
+
+        # Skip start
+        (
+            ([(date(2022, 1, 1), 5), (date(2022, 1, 2), 4)], 2, 0),                 # Input
+            (date(2022, 1, 1), 5, PricingReadingType.IMPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
+            (date(2022, 1, 2), 4, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+        ),
+
+        # Skip end
+        (
+            ([(date(2022, 1, 1), 5), (date(2022, 1, 2), 4)], 0, 2),             # Input
+            (date(2022, 1, 1), 5, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2022, 1, 2), 4, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
+        ),
+
+        # Skip both
+        (
+            ([(date(2022, 1, 1), 5), (date(2022, 1, 2), 4)], 1, 2),             # Input
+            (date(2022, 1, 1), 5, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2022, 1, 2), 4, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
+        ),
+
+        # Big skip past entire dates
+        (
+            ([(date(2022, 1, 1), 5), (date(2022, 1, 2), 4), (date(2022, 1, 3), 3)], 5, 5),  # Input
+            (date(2022, 1, 2), 4, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),              # First output child RateComponent
+            (date(2022, 1, 2), 4, PricingReadingType.IMPORT_REACTIVE_POWER_KVARH),          # Last output child RateComponent
+        ),
+
+        # Singleton
+        (
+            ([(date(2022, 1, 1), 5)], 1, 2),                                    # Input
+            (date(2022, 1, 1), 5, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2022, 1, 1), 5, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
+        ),
+    ],
+)
+def test_rate_component_list_mapping_paging(rates):
+    """Tests the somewhat unique paging implementation that sees the client seeing 12 rates but in reality
+    there are only 3 under the hood. The test isn't exhaustive - it mainly checks that the 
+    mapping properly trims entries from the start/end of the list"""
+    ((input_date_counts, skip_start, skip_end), (first_date, first_count, first_price_type), (last_date, last_count, last_price_type)) = rates
+
+    stats = TariffGeneratedRateDailyStats(total_distinct_dates=9876, single_date_counts=input_date_counts)
+    expected_count = (len(input_date_counts) * TOTAL_PRICING_READING_TYPES) - skip_end - skip_start
+
+    list_response = RateComponentMapper.map_to_list_response(stats, skip_start, skip_end, 1, 1)
+
+    # check the overall structure of the list
+    assert list_response.all_ == 9876 * TOTAL_PRICING_READING_TYPES
+    assert list_response.results == len(list_response.RateComponent)
+    assert len(list_response.RateComponent) == expected_count
+
+    # validate the first / last RateComponents
+    if expected_count > 0:
+        first = list_response.RateComponent[0]
+        assert first.href.endswith(f"/{first_price_type}"), f"{first.href} should end with /{first_price_type}"
+        assert f"/{first_date.isoformat()}/" in first.href
+        assert first.TimeTariffIntervalListLink.all_ == first_count
+
+        last = list_response.RateComponent[-1]
+        assert last.href.endswith(f"/{last_price_type}"), f"{last.href} should end with /{last_price_type}"
+        assert f"/{last_date.isoformat()}/" in last.href
+        assert last.TimeTariffIntervalListLink.all_ == last_count
 
 
 @pytest.mark.parametrize(

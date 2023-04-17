@@ -8,16 +8,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.crud.pricing import (
+    TariffGeneratedRateDailyStats,
     count_tariff_rates_for_day,
+    select_rate_daily_stats,
+    select_rate_stats,
     select_tariff_rate_for_day_time,
     select_tariff_rates_for_day,
 )
 from envoy.server.mapper.exception import InvalidMappingError
-from envoy.server.mapper.sep2.pricing import PricingReadingType, TariffProfileMapper, TimeTariffIntervalMapper
+from envoy.server.mapper.sep2.pricing import (
+    TOTAL_PRICING_READING_TYPES,
+    PricingReadingType,
+    RateComponentMapper,
+    TariffProfileMapper,
+    TimeTariffIntervalMapper,
+)
 from envoy.server.schema.sep2.metering import ConsumptionBlockType
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
+    RateComponentListResponse,
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
@@ -32,6 +42,46 @@ class RateComponentManager:
             return date.fromisoformat(id)
         except ValueError:
             raise InvalidMappingError(f"Expected YYYY-MM-DD for rate_component_id but got {id}")
+
+    @staticmethod
+    async def fetch_rate_component_list(session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int,
+                                        start: int, changed_after: datetime, limit: int) -> RateComponentListResponse:
+        """RateComponent is a fully virtual entity - it has no corresponding model in our DB - it's essentialy
+        just a placeholder for date + price type filtering. This function will emulate pagination by taking the
+        dates with rates and then virtually expanding the page to account for iterating the various pricing readings"""
+
+        # From the client's perspective there is a rate component for every PricingReadingType. From our perspective
+        # we are just enumerating on the underlying date which means our pagination needs to be adjusted by
+        # the constant TOTAL_PRICING_READING_TYPES. There's a bit of shenanigans to get it going
+
+        db_adjusted_start = start // TOTAL_PRICING_READING_TYPES
+        db_adjusted_start_remainder = start % TOTAL_PRICING_READING_TYPES
+        db_adjusted_limit = (db_adjusted_start_remainder + limit) // TOTAL_PRICING_READING_TYPES
+        db_adjusted_limit_remainder = (db_adjusted_start_remainder + limit) % TOTAL_PRICING_READING_TYPES
+        if db_adjusted_limit_remainder > 0:
+            db_adjusted_limit = db_adjusted_limit + 1
+
+        # query for the raw underlying stats broken down by date
+        rate_stats: TariffGeneratedRateDailyStats = await select_rate_daily_stats(session,
+                                                                                  aggregator_id,
+                                                                                  tariff_id,
+                                                                                  site_id,
+                                                                                  db_adjusted_start,
+                                                                                  changed_after,
+                                                                                  db_adjusted_limit)
+
+        # If we are starting from a value that doesn't align with a multiple of TOTAL_PRICING_READING_TYPES we will
+        # need to cull those entries that exist before our real start value
+        leading_items_to_remove = db_adjusted_start_remainder
+
+        # if the client limit could actually "bite" we need to consider culling items off the end of the list
+        # to respect it
+        trailing_items_to_remove = 0
+        if (limit + leading_items_to_remove) < (len(rate_stats.single_date_counts) * TOTAL_PRICING_READING_TYPES):
+            trailing_items_to_remove = (TOTAL_PRICING_READING_TYPES - db_adjusted_limit_remainder) % TOTAL_PRICING_READING_TYPES  # noqa e501
+
+        return RateComponentMapper.map_to_list_response(rate_stats, leading_items_to_remove, trailing_items_to_remove,
+                                                        tariff_id, site_id)
 
 
 class TimeTariffIntervalManager:
