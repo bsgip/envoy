@@ -23,6 +23,7 @@ from envoy.server.schema.sep2.pricing import (
     RateComponentResponse,
     RoleFlagsType,
     ServiceKind,
+    TariffProfileListResponse,
     TariffProfileResponse,
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
@@ -47,6 +48,18 @@ class TariffProfileMapper:
                 "primacyType": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
                 "RateComponentListLink": ListLink(href=tp_href + '/rc', all_=0),  # unspecified site' rate components
+            }
+        )
+
+    @staticmethod
+    def map_to_list_response(tariffs: list[Tariff], total_tariffs: int) -> TariffProfileListResponse:
+        """Returns a list containing multiple sep2 entitie. The href to RateComponentListLink will be to an endpoint
+        for returning rate components for an unspecified site id"""
+        return TariffProfileListResponse.validate(
+            {
+                "all_": total_tariffs,
+                "results": len(tariffs),
+                "TariffProfile": [TariffProfileMapper.map_to_response(t) for t in tariffs],
             }
         )
 

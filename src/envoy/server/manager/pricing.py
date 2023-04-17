@@ -10,8 +10,10 @@ from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.crud.pricing import (
     TariffGeneratedRateDailyStats,
     count_tariff_rates_for_day,
+    select_all_tariffs,
     select_rate_daily_stats,
-    select_rate_stats,
+    select_single_tariff,
+    select_tariff_count,
     select_tariff_rate_for_day_time,
     select_tariff_rates_for_day,
 )
@@ -28,9 +30,38 @@ from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
     RateComponentListResponse,
+    RateComponentResponse,
+    TariffProfileListResponse,
+    TariffProfileResponse,
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
+
+
+class TariffProfileManager:
+    @staticmethod
+    async def fetch_tariff_profile_no_site(session: AsyncSession, tariff_id: int) -> Optional[TariffProfileResponse]:
+        """Fetches a single tariff in the form of a sep2 TariffProfile. This tariff will NOT contain
+        any useful RateComponent links due to a lack of a site ID scope
+
+        Its expected that function set assignments will assign appropriate tariff links"""
+        tariff = await select_single_tariff(session, tariff_id)
+        if tariff is None:
+            return None
+
+        return TariffProfileMapper.map_to_response(tariff)
+
+    @staticmethod
+    async def fetch_tariff_profile_list_no_site(session: AsyncSession, start: int, changed_after: datetime,
+                                                limit: int) -> Optional[TariffProfileListResponse]:
+        """Fetches a tariff list in the form of a sep2 TariffProfileList. These tariffs will NOT contain
+        any useful RateComponent links due to a lack of a site ID scope.
+
+        Its expected that function set assignments will assign appropriate tariff links"""
+        tariffs = await select_all_tariffs(session, start, changed_after, limit)
+        tariff_count = await select_tariff_count(session)
+
+        return TariffProfileMapper.map_to_list_response(tariffs, tariff_count)
 
 
 class RateComponentManager:
@@ -44,11 +75,25 @@ class RateComponentManager:
             raise InvalidMappingError(f"Expected YYYY-MM-DD for rate_component_id but got {id}")
 
     @staticmethod
+    async def fetch_rate_component(session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int,
+                                   rate_component_id: str, pricing_type: PricingReadingType,) -> RateComponentResponse:
+        """RateComponent is a fully virtual entity - it has no corresponding model in our DB - it's essentialy
+        just a placeholder for date + price type filtering
+
+        This function will construct the RateComponent directly"""
+
+        day = RateComponentManager.parse_rate_component_id(rate_component_id)
+        count = await count_tariff_rates_for_day(session, aggregator_id, tariff_id, site_id, day, datetime.min)
+        return RateComponentMapper.map_to_response(count, tariff_id, site_id, pricing_type, day)
+
+    @staticmethod
     async def fetch_rate_component_list(session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int,
                                         start: int, changed_after: datetime, limit: int) -> RateComponentListResponse:
         """RateComponent is a fully virtual entity - it has no corresponding model in our DB - it's essentialy
-        just a placeholder for date + price type filtering. This function will emulate pagination by taking the
-        dates with rates and then virtually expanding the page to account for iterating the various pricing readings"""
+        just a placeholder for date + price type filtering.
+
+        This function will emulate pagination by taking the dates with rates and then virtually expanding the page
+        to account for iterating the various pricing readings"""
 
         # From the client's perspective there is a rate component for every PricingReadingType. From our perspective
         # we are just enumerating on the underlying date which means our pagination needs to be adjusted by

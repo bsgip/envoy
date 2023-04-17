@@ -17,7 +17,7 @@ from envoy.server.mapper.sep2.pricing import (
     TimeTariffIntervalMapper,
 )
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, Tariff, TariffGeneratedRate
-from envoy.server.schema.sep2.pricing import CurrencyCode, TimeTariffIntervalResponse
+from envoy.server.schema.sep2.pricing import CurrencyCode, TariffProfileResponse, TimeTariffIntervalResponse
 from tests.data.fake.generator import generate_class_instance
 
 
@@ -93,6 +93,25 @@ def test_tariff_profile_mapping():
     assert mapped_some_set.RateComponentListLink.href
     assert mapped_some_set.RateComponentListLink.href.startswith(mapped_some_set.href)
     assert mapped_some_set.RateComponentListLink.all_ == 0, "Raw tariff mappings have no rates - need site info to get this information"
+
+
+def test_tariff_profile_list_mapping():
+    """Non exhaustive test of the tariff profile list mapping - mainly to sanity check important fields and ensure
+    that exceptions arent being raised"""
+    tariffs: list[Tariff] = [
+        generate_class_instance(Tariff, seed=101, optional_is_none=False),
+        generate_class_instance(Tariff, seed=202, optional_is_none=True),
+    ]
+    tariffs[0].currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
+    tariffs[1].currency_code = CurrencyCode.US_DOLLAR
+    count = 123
+    
+    mapped_all_set = TariffProfileMapper.map_to_list_response(tariffs, count)
+    assert mapped_all_set
+    assert mapped_all_set.all_ == 123
+    assert mapped_all_set.results == 2
+    assert len(mapped_all_set.TariffProfile) == 2
+    assert all([isinstance(tp, TariffProfileResponse) for tp in mapped_all_set.TariffProfile])
 
 
 @mock.patch('envoy.server.mapper.sep2.pricing.PricingReadingTypeMapper')
