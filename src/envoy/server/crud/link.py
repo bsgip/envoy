@@ -379,7 +379,9 @@ SEP2_LINK_MAP = {
 }
 
 
-async def get_supported_links(model: pydantic_xml.BaseXmlModel, aggregator_id: int, uri_parameters: dict = {}) -> dict:
+async def get_supported_links(
+    model: pydantic_xml.BaseXmlModel, aggregator_id: int, uri_parameters: dict = None
+) -> dict:
     link_names = get_link_field_names(model.schema())
     supported_links_names = filter(check_link_supported, link_names)
     supported_links = get_formatted_links(supported_links_names, uri_parameters)
@@ -437,9 +439,11 @@ def check_link_supported(
     """
     if link_name not in link_map:
         raise ValueError(f"Unknown Link or ListLink: {link_name}")
-
-    # Determine which function-set the link is part of
-    function_set = link_map[link_name]["function-set"]
+    try:
+        # Determine which function-set the link is part of
+        function_set = link_map[link_name]["function-set"]
+    except KeyError:
+        raise ValueError(f"Malformed link mapping {link_map}")
 
     # Check whether function-set is supported by the server
     return check_function_set_supported(function_set)
@@ -464,7 +468,7 @@ def check_function_set_supported(function_set: FunctionSet, function_set_status:
     return function_set_status[function_set] == FunctionSetStatus.SUPPORTED
 
 
-def get_formatted_links(link_names: list, uri_parameters: dict = {}, link_map: dict = SEP2_LINK_MAP) -> dict:
+def get_formatted_links(link_names: list, uri_parameters: dict = None, link_map: dict = SEP2_LINK_MAP) -> dict:
     """
     Determines complete link URIs (formatted with the user-supplied parameters)
 
