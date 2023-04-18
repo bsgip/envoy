@@ -152,8 +152,8 @@ class RateComponentMapper:
         })
 
     @staticmethod
-    def map_to_list_response(daily_rate_stats: TariffGeneratedRateDailyStats, skip_start: int, skip_end: int, tariff_id: int,
-                             site_id: int) -> RateComponentListResponse:
+    def map_to_list_response(daily_rate_stats: TariffGeneratedRateDailyStats, skip_start: int, skip_end: int,
+                             tariff_id: int, site_id: int) -> RateComponentListResponse:
         """Maps/creates a set of rate components under a RateComponentListResponse for a set of rate totals
         organised by date"""
         rc_list = []

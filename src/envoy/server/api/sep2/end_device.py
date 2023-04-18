@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
+from envoy.server.api.request import extract_aggregator_id
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
 from envoy.server.mapper.exception import InvalidMappingError
@@ -34,7 +35,7 @@ async def get_enddevice(site_id: int, request: Request) -> XmlResponse:
     """
     try:
         end_device = await EndDeviceManager.fetch_enddevice_with_site_id(
-            db.session, site_id, request.state.aggregator_id
+            db.session, site_id, extract_aggregator_id(request)
         )
     except NoResultFound as exc:
         logger.debug(exc)
@@ -71,7 +72,7 @@ async def get_enddevice_list(
 
     return XmlResponse(
         await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
-            db.session, request.state.aggregator_id, start=start[0], after=after[0], limit=limit[0]
+            db.session, extract_aggregator_id(request), start=start[0], after=after[0], limit=limit[0]
         )
     )
 
@@ -95,7 +96,7 @@ async def create_end_device(
     """
     try:
         site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
-            db.session, request.state.aggregator_id, payload
+            db.session, extract_aggregator_id(request), payload
         )
 
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: f"/edev/{site_id}"})
