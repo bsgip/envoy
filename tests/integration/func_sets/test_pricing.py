@@ -100,3 +100,4 @@ async def test_get_tariffprofile(client: AsyncClient, uri_tariff_profile_format:
         parsed_response: TariffProfileResponse = TariffProfileResponse.from_xml(body)
         assert parsed_response.href == expected_href
         assert parsed_response.currency
+

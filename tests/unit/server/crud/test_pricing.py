@@ -37,13 +37,17 @@ async def test_select_tariff_count(pg_base_config):
 
 def assert_tariff_by_id(expected_tariff_id: Optional[int], actual_tariff: Optional[Tariff]):
     """Asserts tariff matches all values expected from a tariff with that id"""
-
+    expected_currency_by_tariff_id = {
+        1: 36,
+        2: 124,
+        3: 840,
+    }
     if expected_tariff_id is None:
         assert actual_tariff is None
     else:
         assert actual_tariff
         assert actual_tariff.tariff_id == expected_tariff_id
-        assert actual_tariff.currency_code == expected_tariff_id * 10 + expected_tariff_id
+        assert actual_tariff.currency_code == expected_currency_by_tariff_id[expected_tariff_id]
         assert actual_tariff.dnsp_code == f"tariff-dnsp-code-{expected_tariff_id}"
         assert actual_tariff.name == f"tariff-{expected_tariff_id}"
 
