@@ -249,7 +249,7 @@ async def get_timetariffintervallist(tariff_id: int,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
             start=extract_start_from_paging_param(start),
-            changed_after=extract_datetime_from_paging_param(after),
+            after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit)
         )
     except InvalidMappingError as ex:

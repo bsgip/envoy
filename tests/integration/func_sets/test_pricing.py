@@ -13,6 +13,7 @@ from envoy.server.schema.sep2.pricing import (
     RateComponentResponse,
     TariffProfileListResponse,
     TariffProfileResponse,
+    TimeTariffIntervalListResponse,
 )
 from tests.assert_time import assert_datetime_equal, assert_nowish
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
@@ -62,6 +63,12 @@ def uri_rate_component_list_format():
 @pytest.fixture
 def uri_rate_component_format():
     return "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}"
+
+
+@pytest.fixture
+def uri_tti_list_format():
+    return "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti"
+
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("price_reading_type", PricingReadingType)
@@ -138,7 +145,7 @@ async def test_get_ratecomponentlist_nositescope(client: AsyncClient, uri_rate_c
     parsed_response: RateComponentListResponse = RateComponentListResponse.from_xml(body)
     assert parsed_response.results == 0
     assert parsed_response.all_ == 0
-    assert len(parsed_response.RateComponent) == 0
+    assert parsed_response.RateComponent is None or len(parsed_response.RateComponent) == 0
 
 
 @pytest.mark.anyio
@@ -203,3 +210,37 @@ async def test_get_ratecomponent(client: AsyncClient, uri_rate_component_format:
     assert parsed_response.ReadingTypeLink.href
     assert parsed_response.TimeTariffIntervalListLink
     assert parsed_response.TimeTariffIntervalListLink.all_ == expected_ttis
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("tariff_id, site_id, rc_id, pricing_reading, start, limit, changed_after, expected_ttis", [
+    (1, 1, "2022-03-05", 1, None, 5, None, ["/tp/1/1/rc/2022-03-05/1/tti/01:02", "/tp/1/1/rc/2022-03-05/1/tti/03:04"]),
+    (1, 1, "2022-03-06", 3, None, 5, None, ["/tp/1/1/rc/2022-03-06/3/tti/01:02"]),
+    (1, 1, "2022-03-07", 1, None, 5, None, []),
+    (1, 1, "2022-03-05", 2, None, None, None, ["/tp/1/1/rc/2022-03-05/2/tti/01:02"]),
+    (1, 1, "2022-03-05", 1, 1, 5, None, ["/tp/1/1/rc/2022-03-05/1/tti/03:04"]),
+    (1, 1, "2022-03-05", 1, 2, 5, None, []),
+    (1, 2, "2022-03-05", 1, None, 99, None, ["/tp/1/2/rc/2022-03-05/1/tti/01:02"]),
+])
+async def test_get_timetariffintervallist(client: AsyncClient, uri_tti_list_format: str, agg_1_headers,
+                                          tariff_id: int, site_id: int, rc_id: str, pricing_reading: int,
+                                          start: Optional[int], limit: Optional[int], changed_after: Optional[datetime],
+                                          expected_ttis: list[str]):
+    """Tests time tariff interval paging"""
+    path = uri_tti_list_format.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id, pricing_reading=pricing_reading)
+    query = build_paging_params(start=start, limit=limit, changed_after=changed_after)
+    response = await client.get(path + query, headers=agg_1_headers)
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    # should always be an empty list - there is no site scoping for us to lookup generated rates
+    parsed_response: TimeTariffIntervalListResponse = TimeTariffIntervalListResponse.from_xml(body)
+    assert parsed_response.results == len(expected_ttis)
+
+    if len(expected_ttis) == 0:
+        assert parsed_response.TimeTariffInterval is None or len(parsed_response.TimeTariffInterval) == len(expected_ttis)
+    else:
+        assert len(parsed_response.TimeTariffInterval) == len(expected_ttis)
+        assert expected_ttis == [tp.href for tp in parsed_response.TimeTariffInterval]
+

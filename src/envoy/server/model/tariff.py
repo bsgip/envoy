@@ -21,7 +21,7 @@ class Tariff(Base):
     name: Mapped[str] = mapped_column(String(64))  # descriptive name of the tariff
     dnsp_code: Mapped[str] = mapped_column(String(20))  # code assigned by the DNSP for their own internal processes
     currency_code: Mapped[CurrencyCode] = mapped_column(Integer)  # ISO 4217 numerical currency code - eg AUD = 36
-    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the tariff was created/changed
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=False))  # When the tariff was created/changed
 
     generated_rates: Mapped[list["TariffGeneratedRate"]] = relationship(back_populates="tariff", lazy="raise")
 
@@ -35,8 +35,8 @@ class TariffGeneratedRate(Base):
     tariff_id: Mapped[int] = mapped_column(ForeignKey("tariff.tariff_id"))  # The tariff
     site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id"))  # The site that this rate applies to
 
-    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the rate was created/changed
-    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the tariff comes into effect
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=False))  # When the rate was created/changed
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=False))  # Time that the tariff comes into effect
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this rate applies for
     import_active_price: Mapped[Decimal] = mapped_column(DECIMAL(10, PRICE_DECIMAL_PLACES))  # calculated rate for importing active power # noqa e501
     export_active_price: Mapped[Decimal] = mapped_column(DECIMAL(10, PRICE_DECIMAL_PLACES))  # calculated rate for exporting active power # noqa e501

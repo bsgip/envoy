@@ -229,6 +229,7 @@ class TimeTariffIntervalMapper:
         href = TimeTariffIntervalMapper.instance_href(rate.tariff_id, rate.site_id, start_d, pricing_reading, start_t)
         list_href = ConsumptionTariffIntervalMapper.list_href(rate.tariff_id, rate.site_id, pricing_reading, start_d,
                                                               start_t, price)
+        
         return TimeTariffIntervalResponse.validate({
             "href": href,
             "mRID": f"{rate.tariff_generated_rate_id:x}",
@@ -236,7 +237,10 @@ class TimeTariffIntervalMapper:
             "description": rate.start_time.isoformat(),
             "touTier": TOUType.NOT_APPLICABLE,
             "creationTime": int(rate.changed_time.timestamp()),
-            "interval": DateTimeIntervalType(start=int(rate.start_time.timestamp()), duration=rate.duration_seconds),
+            "interval": {
+                "start": int(rate.start_time.timestamp()),
+                "duration": rate.duration_seconds,
+            },
             "ConsumptionTariffIntervalListLink": ListLink(href=list_href, all_=1),  # single rate
         })
 
