@@ -416,10 +416,6 @@ def add_resource_counts_to_list_links(links: dict, resource_counts: dict):
     return links
 
 
-def check_function_set_supported(function_set: FunctionSet, function_set_status: list = FUNCTION_SET_STATUS) -> bool:
-    return function_set_status[function_set] == FunctionSetStatus.SUPPORTED
-
-
 def check_link_supported(
     link_name: str,
     link_map: dict = SEP2_LINK_MAP,
@@ -428,6 +424,24 @@ def check_link_supported(
     function_set = link_map[link_name]["function-set"]
     # Check whether function set is supported by the server
     return check_function_set_supported(function_set)
+
+
+def check_function_set_supported(function_set: FunctionSet, function_set_status: list = FUNCTION_SET_STATUS) -> bool:
+    """Checks whether a function set is fully supported.
+
+    Args:
+        function_set: A FunctionSet
+        function_set_status: Mapping between function set and function set status. Defaults to FUNCTION_SET_STATUS.
+
+    Returns:
+        True if the function set is fully supported else False for partial or no support.
+
+    Raises:
+        ValueError for unknown function sets (missing from function_set_status)
+    """
+    if function_set in function_set_status:
+        return function_set_status[function_set] == FunctionSetStatus.SUPPORTED
+    raise ValueError(f"Unknown function set '{function_set}'")
 
 
 def get_formatted_links(link_names: list, uri_parameters: dict = {}, link_map: dict = SEP2_LINK_MAP) -> dict:

@@ -1,6 +1,44 @@
 import pytest
 
 from envoy.server.crud import link
+from envoy.server.schema.function_set import FunctionSet, FunctionSetStatus
+
+
+@pytest.fixture
+def function_set_status_mapping():
+    # This is a stripped down subset of the full mapping found in envoy/server/schema/function_set.py
+    return {
+        FunctionSet.DeviceCapability: FunctionSetStatus.SUPPORTED,
+        FunctionSet.SelfDeviceResource: FunctionSetStatus.UNSUPPORTED,
+        FunctionSet.EndDeviceResource: FunctionSetStatus.PARTIAL_SUPPORT,
+    }
+
+
+@pytest.mark.parametrize(
+    "function_set, function_set_status",
+    [
+        (FunctionSet.DeviceCapability, True),
+        (FunctionSet.SelfDeviceResource, False),
+        (FunctionSet.EndDeviceResource, False),
+    ],
+)
+def test_check_function_set_supported(
+    function_set_status_mapping: dict, function_set: FunctionSet, function_set_status: FunctionSetStatus
+):
+    assert (
+        link.check_function_set_supported(function_set, function_set_status=function_set_status_mapping)
+        == function_set_status
+    )
+
+
+@pytest.mark.parametrize(
+    "function_set",
+    # These function sets don't exist in the function_set_status_mapping fixture
+    [FunctionSet.Billing, FunctionSet.ConfigurationResource],
+)
+def test_check_function_set_supported_raise_exception(function_set_status_mapping: dict, function_set: FunctionSet):
+    with pytest.raises(ValueError):
+        link.check_function_set_supported(function_set, function_set_status=function_set_status_mapping)
 
 
 @pytest.mark.parametrize(
