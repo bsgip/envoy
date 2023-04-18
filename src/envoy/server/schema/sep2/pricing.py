@@ -43,6 +43,7 @@ class ServiceKind(IntEnum):
 
 class RoleFlagsType(IntFlag):
     """Specifies the roles that apply to a usage point. Described in 2030.5. Other bits reserved"""
+    NONE = 0
     IS_MIRROR = auto()
     IS_PREMISES_AGGREGATION_POINT = auto()
     IS_PEV = auto()
@@ -70,7 +71,7 @@ class RateComponentResponse(IdentifiedObject, tag="RateComponent"):
     consumption price, for example. """
     flowRateEndLimit: Optional[UnitValueType] = element()
     flowRateStartLimit: Optional[UnitValueType] = element()
-    roleFlags: RoleFlagsType = element()
+    roleFlags: int = element()  # See RoleFlagsType
     ReadingTypeLink: Link = element()
     ActiveTimeTariffIntervalListLink: Optional[ListLink] = element()
     TimeTariffIntervalListLink: ListLink = element()

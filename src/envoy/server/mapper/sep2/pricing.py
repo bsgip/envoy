@@ -146,7 +146,7 @@ class RateComponentMapper:
             "href": rc_href,
             "mRID": generate_mrid(tariff_id, site_id, start_timestamp, pricing_reading),
             "description": pricing_reading.name,
-            "roleFlags": RoleFlagsType(0),
+            "roleFlags": RoleFlagsType.NONE,
             "ReadingTypeLink": Link(href=PricingReadingTypeMapper.pricing_reading_type_href(pricing_reading)),
             "TimeTariffIntervalListLink": ListLink(href=rc_href + "/tti", all_=total_rates)
         })
