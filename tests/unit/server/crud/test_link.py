@@ -6,6 +6,60 @@ from envoy.server.crud import link
 from envoy.server.schema.function_set import FunctionSet, FunctionSetStatus
 
 
+@pytest.mark.parametrize(
+    "links,resource_counts,updated_links",
+    [
+        ({}, {}, {}),  # Test empty arguments
+        (  # Test with empty link arguments (no href defined for links))
+            {
+                "CustomerAccountListLink": {},
+                "DERProgramListLink": {},
+            },
+            {"CustomerAccountListLink": 5, "DERProgramListLink": 6},
+            {
+                "CustomerAccountListLink": {"all_": "5"},
+                "DERProgramListLink": {"all_": "6"},
+            },
+        ),
+        (  # Test with counts given as integers
+            {
+                "CustomerAccountListLink": {"href": "/bill"},
+                "DERProgramListLink": {"href": "/derp"},
+            },
+            {"CustomerAccountListLink": 5, "DERProgramListLink": 6},
+            {
+                "CustomerAccountListLink": {"href": "/bill", "all_": "5"},
+                "DERProgramListLink": {"href": "/derp", "all_": "6"},
+            },
+        ),
+        (  # Test with counts given as strings
+            {
+                "CustomerAccountListLink": {"href": "/bill"},
+                "DERProgramListLink": {"href": "/derp"},
+            },
+            {"CustomerAccountListLink": "5", "DERProgramListLink": "6"},
+            {
+                "CustomerAccountListLink": {"href": "/bill", "all_": "5"},
+                "DERProgramListLink": {"href": "/derp", "all_": "6"},
+            },
+        ),
+        (  # Test with no resource counts
+            {
+                "CustomerAccountListLink": {"href": "/bill"},
+                "DERProgramListLink": {"href": "/derp"},
+            },
+            {},
+            {
+                "CustomerAccountListLink": {"href": "/bill"},
+                "DERProgramListLink": {"href": "/derp"},
+            },
+        ),
+    ],
+)
+def test_add_resource_counts_to_list_links(links, resource_counts, updated_links):
+    assert link.add_resource_counts_to_links(links, resource_counts) == updated_links
+
+
 @pytest.fixture
 def link_function_set_mapping():
     return {

@@ -386,7 +386,7 @@ async def get_supported_links(
     supported_links_names = filter(check_link_supported, link_names)
     supported_links = get_formatted_links(supported_links_names, uri_parameters)
     resource_counts = await get_resource_counts(supported_links.keys(), aggregator_id)
-    add_resource_counts_to_list_links(supported_links, resource_counts)
+    add_resource_counts_to_links(supported_links, resource_counts)
 
     return supported_links
 
@@ -397,7 +397,7 @@ async def get_resource_counts(link_names: list[str], aggregator_id: int) -> dict
         if link_name.endswith("ListLink"):
             try:
                 count = await get_resource_count(link_name, aggregator_id)
-                resource_counts[link_name] = str(count)
+                resource_counts[link_name] = count
             except NotImplementedError as e:
                 logger.debug(e)
     return resource_counts
@@ -411,10 +411,23 @@ async def get_resource_count(link_name: str, aggregator_id: int) -> int:
         raise NotImplementedError(f"No resource count implemented for '{link_name}'")
 
 
-def add_resource_counts_to_list_links(links: dict, resource_counts: dict):
+def add_resource_counts_to_links(links: dict, resource_counts: dict):
+    """Adds the resource counts to the links under the "all_" key.
+
+    Example:
+        if links = {"CustomerAccountListLink": {"href": "/bill"}} and resource_counts={"CustomerAccountListLink": "5"}
+        return {"CustomerAccountListLink": {"href": "/bill", "all_"="5"}}
+
+    Args:
+        links: dictionary containing the links and their parameters (typically only href)
+        resource_counts: dictionary mapping links to their resource counts.
+
+    Returns:
+        Updated links dictionary with the resource counts added.
+    """
     for link_name, link_parameters in links.items():
         if link_name in resource_counts:
-            link_parameters["all_"] = resource_counts[link_name]
+            link_parameters["all_"] = str(resource_counts[link_name])
     return links
 
 
