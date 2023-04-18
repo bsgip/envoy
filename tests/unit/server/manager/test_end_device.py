@@ -110,7 +110,7 @@ async def test_fetch_enddevicelist_with_aggregator_id(mock_EndDeviceListMapper: 
     mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
     aggregator_id = 3
     start = 4
-    after = 1678542014
+    after = datetime.now()
     limit = 5
     mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
     returned_site_count = 123
@@ -138,7 +138,7 @@ async def test_fetch_enddevicelist_with_aggregator_id(mock_EndDeviceListMapper: 
     mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session,
                                                                      aggregator_id,
                                                                      start,
-                                                                     datetime.fromtimestamp(after),
+                                                                     after,
                                                                      limit)
     mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, datetime.fromtimestamp(after))
 
@@ -156,7 +156,7 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(mock_EndDeviceL
     mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
     aggregator_id = 3
     start = 4
-    after = 1678542014
+    after = datetime.now()
     limit = 5
     mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
     returned_site_count = 123
@@ -181,7 +181,7 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(mock_EndDeviceL
     mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session,
                                                                      aggregator_id,
                                                                      start,
-                                                                     datetime.fromtimestamp(after),
+                                                                     after,
                                                                      limit)
     mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, datetime.fromtimestamp(after))
 

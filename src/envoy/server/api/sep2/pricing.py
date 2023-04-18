@@ -4,7 +4,12 @@ from http import HTTPStatus
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi_async_sqlalchemy import db
 
-from envoy.server.api.request import extract_aggregator_id
+from envoy.server.api.request import (
+    extract_aggregator_id,
+    extract_datetime_from_paging_param,
+    extract_limit_from_paging_param,
+    extract_start_from_paging_param,
+)
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.pricing import (
     ConsumptionTariffIntervalManager,
@@ -59,11 +64,11 @@ async def get_tariffprofilelist(request: Request,
 
     """
     try:
-        tp_list = TariffProfileManager.fetch_tariff_profile_list_no_site(
+        tp_list = await TariffProfileManager.fetch_tariff_profile_list_no_site(
             db.session,
-            start,
-            after,
-            limit,
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit)
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -87,7 +92,7 @@ async def get_singletariffprofile(tariff_id: int, request: Request) -> XmlRespon
 
     """
     try:
-        tp = TariffProfileManager.fetch_tariff_profile_no_site(
+        tp = await TariffProfileManager.fetch_tariff_profile_no_site(
             db.session,
             tariff_id
         )
@@ -155,14 +160,14 @@ async def get_ratecomponentlist(tariff_id: int,
 
     """
     try:
-        rc_list = RateComponentManager.fetch_rate_component_list(
+        rc_list = await RateComponentManager.fetch_rate_component_list(
             db.session,
-            extract_aggregator_id(request),
-            tariff_id,
-            site_id,
-            start,
-            after,
-            limit
+            aggregator_id=extract_aggregator_id(request),
+            tariff_id=tariff_id,
+            site_id=site_id,
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit)
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -194,11 +199,11 @@ async def get_singleratecomponent(tariff_id: int,
     try:
         rc = await RateComponentManager.fetch_rate_component(
             db.session,
-            extract_aggregator_id(request),
-            tariff_id,
-            site_id,
-            rate_component_id,
-            pricing_reading
+            aggregator_id=extract_aggregator_id(request),
+            tariff_id=tariff_id,
+            site_id=site_id,
+            rate_component_id=rate_component_id,
+            pricing_type=pricing_reading
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -238,14 +243,14 @@ async def get_timetariffintervallist(tariff_id: int,
     try:
         tti_list = await TimeTariffIntervalManager.fetch_time_tariff_interval_list(
             db.session,
-            extract_aggregator_id(request),
-            tariff_id,
-            site_id,
-            rate_component_id,
-            pricing_reading,
-            start,
-            after,
-            limit
+            aggregator_id=extract_aggregator_id(request),
+            tariff_id=tariff_id,
+            site_id=site_id,
+            rate_component_id=rate_component_id,
+            pricing_type=pricing_reading,
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit)
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -280,12 +285,12 @@ async def get_singletimetariffinterval(tariff_id: int,
     try:
         tti = await TimeTariffIntervalManager.fetch_time_tariff_interval(
             db.session,
-            extract_aggregator_id(request),
-            tariff_id,
-            site_id,
-            rate_component_id,
-            tti_id,
-            pricing_reading
+            aggregator_id=extract_aggregator_id(request),
+            tariff_id=tariff_id,
+            site_id=site_id,
+            rate_component_id=rate_component_id,
+            time_tariff_interval=tti_id,
+            pricing_type=pricing_reading
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -333,12 +338,12 @@ async def get_consumptiontariffintervallist(tariff_id: int,
     try:
         cti_list = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(
             db.session,
-            extract_aggregator_id(request),
-            tariff_id,
-            site_id,
-            rate_component_id,
-            tti_id,
-            price
+            aggregator_id=extract_aggregator_id(request),
+            tariff_id=tariff_id,
+            site_id=site_id,
+            rate_component_id=rate_component_id,
+            time_tariff_interval=tti_id,
+            price=price
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -378,12 +383,12 @@ async def get_singleconsumptiontariffinterval(tariff_id: int,
     try:
         cti = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval(
             db.session,
-            extract_aggregator_id(request),
-            tariff_id,
-            site_id,
-            rate_component_id,
-            tti_id,
-            price
+            aggregator_id=extract_aggregator_id(request),
+            tariff_id=tariff_id,
+            site_id=site_id,
+            rate_component_id=rate_component_id,
+            time_tariff_interval=tti_id,
+            price=price
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
-from envoy.server.api.request import extract_aggregator_id
+from envoy.server.api.request import (
+    extract_aggregator_id,
+    extract_datetime_from_paging_param,
+    extract_limit_from_paging_param,
+    extract_start_from_paging_param,
+)
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
 from envoy.server.mapper.exception import InvalidMappingError
@@ -72,7 +77,11 @@ async def get_enddevice_list(
 
     return XmlResponse(
         await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
-            db.session, extract_aggregator_id(request), start=start[0], after=after[0], limit=limit[0]
+            db.session,
+            extract_aggregator_id(request),
+            start=extract_start_from_paging_param(start),
+            after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit)
         )
     )
 

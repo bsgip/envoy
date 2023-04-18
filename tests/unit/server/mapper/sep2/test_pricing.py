@@ -216,7 +216,7 @@ def test_rate_component_list_mapping_paging(rates):
 
 
 @pytest.mark.parametrize(
-    "prices",
+    "input_price, expected_price",
     # These expected values are based on PRICE_DECIMAL_PLACES
     [(Decimal("1.2345"), 12345),
      (Decimal("1"), 10000),
@@ -225,15 +225,13 @@ def test_rate_component_list_mapping_paging(rates):
      (Decimal("-12.3456789"), -123456),
      ],
 )
-def test_consumption_tariff_interval_mapping_prices(prices: tuple[Decimal, int]):
+def test_consumption_tariff_interval_mapping_prices(input_price: Decimal, expected_price: int):
     """Checks PRICE_DECIMAL_POWER is used to calculate sep2 integer price values"""
     tariff_id: int = 1
     site_id: int = 2
     pricing_reading: PricingReadingType = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
     day: date = date(2015, 9, 23)
     time_of_day: time = time(9, 40)
-
-    (input_price, expected_price) = prices
 
     mapped = ConsumptionTariffIntervalMapper.map_to_response(tariff_id, site_id, pricing_reading, day, time_of_day, input_price)
     assert mapped.price == expected_price

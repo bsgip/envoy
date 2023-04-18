@@ -1,7 +1,7 @@
 import enum
 from typing import Optional
 
-from pydantic_xml import BaseXmlModel, attr
+from pydantic_xml import BaseXmlModel, attr, element
 from pydantic_xml.element import SearchMode
 
 """ Abstract
@@ -69,9 +69,9 @@ class mRIDType(HexBinary128):
 
 
 class IdentifiedObject(Resource):
-    description: Optional[str]
-    mRID: mRIDType
-    version: Optional[VersionType]
+    description: Optional[str] = element()
+    mRID: mRIDType = element()
+    version: Optional[VersionType] = element()
 
 
 class SubscribableType(enum.IntEnum):

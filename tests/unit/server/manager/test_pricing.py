@@ -30,7 +30,7 @@ from tests.postgres_testing import generate_async_session
 
 
 @pytest.mark.parametrize(
-    "expected_result",
+    "input, output",
     [
         ('2022-11-10', date(2022, 11, 10)),
         ('2036-09-30', date(2036, 9, 30)),
@@ -45,10 +45,8 @@ from tests.postgres_testing import generate_async_session
         ('2022-Nov-02', InvalidMappingError),
      ],
 )
-def test_parse_rate_component_id(expected_result: tuple[str, Union[time, type]]):
+def test_parse_rate_component_id(input: str, output: Union[date, type]):
     """Simple test on parser generating valid values / catching errors"""
-    (input, output) = expected_result
-
     if isinstance(output, date):
         assert RateComponentManager.parse_rate_component_id(input) == output
     else:
@@ -57,7 +55,7 @@ def test_parse_rate_component_id(expected_result: tuple[str, Union[time, type]])
 
 
 @pytest.mark.parametrize(
-    "expected_result",
+    "input, output",
     [
         ('11:59', time(11, 59)),
         ('13:01', time(13, 1)),
@@ -74,11 +72,8 @@ def test_parse_rate_component_id(expected_result: tuple[str, Union[time, type]])
         (' 12:13 ', InvalidMappingError),
      ],
 )
-def test_parse_time_tariff_interval_id(expected_result: tuple[str, Union[time, type]]):
+def test_parse_time_tariff_interval_id(input: str, output: Union[time, type]):
     """Simple test on parser generating valid values / catching errors"""
-
-    (input, output) = expected_result
-
     if isinstance(output, time):
         assert TimeTariffIntervalManager.parse_time_tariff_interval_id(input) == output
     else:
@@ -111,7 +106,7 @@ async def test_fetch_tariff_profile_list(mock_select_tariff_count: mock.MagicMoc
     assert response is mapped_tariffs
 
     mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit)
-    mock_select_tariff_count.assert_called_once_with(mock_session)
+    mock_select_tariff_count.assert_called_once_with(mock_session, changed)
     mock_TariffProfileMapper.map_to_list_response.assert_called_once_with(tariffs, count)
 
 

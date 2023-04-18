@@ -49,7 +49,7 @@ def assert_tariff_by_id(expected_tariff_id: Optional[int], actual_tariff: Option
 
 
 @pytest.mark.parametrize(
-    "tariff_details",
+    "expected_ids, start, after, limit",
     [([3, 2, 1], 0, datetime.min, 99),
      ([2, 1], 1, datetime.min, 99),
      ([1], 2, datetime.min, 99),
@@ -62,10 +62,8 @@ def assert_tariff_by_id(expected_tariff_id: Optional[int], actual_tariff: Option
      ],
 )
 @pytest.mark.anyio
-async def test_select_all_tariffs(pg_base_config, tariff_details: tuple[list[int], int, datetime, int]):
+async def test_select_all_tariffs(pg_base_config, expected_ids: list[int], start: int, after: datetime, limit: int):
     """Tests that the returned tariffs match what's in the DB"""
-    (expected_ids, start, after, limit) = tariff_details
-
     async with generate_async_session(pg_base_config) as session:
         tariffs = await select_all_tariffs(session, start, after, limit)
         assert len(tariffs) == len(expected_ids)
@@ -77,7 +75,7 @@ async def test_select_all_tariffs(pg_base_config, tariff_details: tuple[list[int
 
 
 @pytest.mark.parametrize(
-    "tariff_details",
+    "expected_id, requested_id",
     [(1, 1),
      (2, 2),
      (3, 3),
@@ -87,9 +85,8 @@ async def test_select_all_tariffs(pg_base_config, tariff_details: tuple[list[int
      ],
 )
 @pytest.mark.anyio
-async def test_select_single_tariff(pg_base_config, tariff_details: tuple[Optional[int], int]):
+async def test_select_single_tariff(pg_base_config, expected_id: Optional[int], requested_id: int):
     """Tests that singular tariffs can be returned by id"""
-    (expected_id, requested_id) = tariff_details
     async with generate_async_session(pg_base_config) as session:
         tariff = await select_single_tariff(session, requested_id)
         assert_tariff_by_id(expected_id, tariff)
@@ -119,7 +116,7 @@ def assert_rate_for_id(expected_rate_id: Optional[int],
 
 
 @pytest.mark.parametrize(
-    "rate_details",
+    "expected_rate_id, agg_id, tariff_id, site_id, d, t",
     # expected_id, agg_id, tariff_id, site_id
     [(1, 1, 1, 1, date(2022, 3, 5), time(1, 2)),
      (2, 1, 1, 1, date(2022, 3, 5), time(3, 4)),
@@ -134,16 +131,16 @@ def assert_rate_for_id(expected_rate_id: Optional[int],
      ],
 )
 @pytest.mark.anyio
-async def test_select_tariff_rate_for_day_time(pg_base_config, rate_details: tuple[Optional[int], int, int, int, date, time]):
+async def test_select_tariff_rate_for_day_time(pg_base_config, expected_rate_id: Optional[int], agg_id: int,
+                                               tariff_id: int, site_id: int, d: date, t: time):
     """Tests that fetching specific rates returns fully formed instances and respects all filter conditions"""
-    (expected_rate_id, agg_id, tariff_id, site_id, d, t) = rate_details
     async with generate_async_session(pg_base_config) as session:
         rate = await select_tariff_rate_for_day_time(session, agg_id, tariff_id, site_id, d, t)
         assert_rate_for_id(expected_rate_id, tariff_id, site_id, d, t, rate)
 
 
 @pytest.mark.parametrize(
-    "page_details",
+    "expected_ids, start, after, limit",
     [
         ([1, 2], 0, datetime.min, 99),
         ([1], 0, datetime.min, 1),
@@ -156,9 +153,9 @@ async def test_select_tariff_rate_for_day_time(pg_base_config, rate_details: tup
      ],
 )
 @pytest.mark.anyio
-async def test_select_tariff_rates_for_day_pagination(pg_base_config, page_details: tuple[list[int], int, datetime, int]):
+async def test_select_tariff_rates_for_day_pagination(pg_base_config, expected_ids: list[int], start: int,
+                                                      after: datetime, limit: int):
     """Tests out the basic pagination features"""
-    (expected_ids, start, after, limit) = page_details
     async with generate_async_session(pg_base_config) as session:
         rates = await select_tariff_rates_for_day(session, 1, 1, 1, date(2022, 3, 5), start, after, limit)
         assert len(rates) == len(expected_ids)
@@ -167,7 +164,7 @@ async def test_select_tariff_rates_for_day_pagination(pg_base_config, page_detai
 
 
 @pytest.mark.parametrize(
-    "filter_details",
+    "expected_ids, agg_id, tariff_id, site_id, day",
     [
         ([1, 2], 1, 1, 1, date(2022, 3, 5)),
 
@@ -178,9 +175,9 @@ async def test_select_tariff_rates_for_day_pagination(pg_base_config, page_detai
      ],
 )
 @pytest.mark.anyio
-async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config, filter_details: tuple[list[int], int, int, int, date]):
+async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config, expected_ids: list[int], agg_id: int,
+                                                             tariff_id: int, site_id: int, day: date):
     """Tests out the basic filters features and validates the associated count function too"""
-    (expected_ids, agg_id, tariff_id, site_id, day) = filter_details
     async with generate_async_session(pg_base_config) as session:
         rates = await select_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, 0, datetime.min, 99)
         count = await count_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, datetime.min)
@@ -192,7 +189,7 @@ async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config, fil
 
 
 @pytest.mark.parametrize(
-    "expected_results",
+    "filter, expected",
     [
         ((1, 1, 1, datetime.min), (3, datetime(2022, 3, 5, 1, 2), datetime(2022, 3, 6, 1, 2))),
         ((1, 1, 1, datetime(2022, 3, 4, 12, 22, 32)), (2, datetime(2022, 3, 5, 3, 4), datetime(2022, 3, 6, 1, 2))),
@@ -204,9 +201,10 @@ async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config, fil
      ],
 )
 @pytest.mark.anyio
-async def test_select_rate_stats(pg_base_config, expected_results: tuple[tuple[int, int, int, datetime], tuple[int, datetime, datetime]]):
+async def test_select_rate_stats(pg_base_config, filter: tuple[int, int, int, datetime], expected: tuple[int, datetime, datetime]):
     """Tests the various filter options on select_rate_stats"""
-    ((agg_id, tariff_id, site_id, after), (expected_count, expected_first, expected_last)) = expected_results
+    (agg_id, tariff_id, site_id, after) = filter
+    (expected_count, expected_first, expected_last) = expected
     async with generate_async_session(pg_base_config) as session:
         stats = await select_rate_stats(session, agg_id, tariff_id, site_id, after)
         assert stats
@@ -216,21 +214,21 @@ async def test_select_rate_stats(pg_base_config, expected_results: tuple[tuple[i
 
 
 @pytest.mark.parametrize(
-    "expected_results",
+    "agg_id, tariff_id, site_id, after, output_list",
     [
-        ((1, 1, 1, datetime.min), [(date(2022, 3, 5), 2), (date(2022, 3, 6), 1)]),
-        ((1, 1, 1, datetime(2022, 3, 4, 12, 22, 32)), [(date(2022, 3, 5), 1), (date(2022, 3, 6), 1)]),
-        ((1, 1, 1, datetime(2022, 3, 4, 14, 22, 32)), [(date(2022, 3, 6), 1)]),
-        ((1, 1, 1, datetime(2022, 3, 4, 14, 22, 34)), []),  # filter miss on changed_after
-        ((3, 1, 1, datetime.min), []),  # filter miss on agg_id
-        ((1, 3, 1, datetime.min), []),  # filter miss on tariff_id
-        ((1, 1, 4, datetime.min), []),  # filter miss on site_id
+        (1, 1, 1, datetime.min, [(date(2022, 3, 5), 2), (date(2022, 3, 6), 1)]),
+        (1, 1, 1, datetime(2022, 3, 4, 12, 22, 32), [(date(2022, 3, 5), 1), (date(2022, 3, 6), 1)]),
+        (1, 1, 1, datetime(2022, 3, 4, 14, 22, 32), [(date(2022, 3, 6), 1)]),
+        (1, 1, 1, datetime(2022, 3, 4, 14, 22, 34), []),  # filter miss on changed_after
+        (3, 1, 1, datetime.min, []),  # filter miss on agg_id
+        (1, 3, 1, datetime.min, []),  # filter miss on tariff_id
+        (1, 1, 4, datetime.min, []),  # filter miss on site_id
      ],
 )
 @pytest.mark.anyio
-async def test_select_rate_daily_stats_filtering(pg_base_config, expected_results: tuple[tuple[int, int, int, datetime], list[tuple[date, int]]]):
+async def test_select_rate_daily_stats_filtering(pg_base_config, agg_id: int, tariff_id: int, site_id: int,
+                                                 after: datetime, output_list: list[tuple[date, int]]):
     """Tests the various filter options on select_rate_daily_stats"""
-    ((agg_id, tariff_id, site_id, after), output_list) = expected_results
     async with generate_async_session(pg_base_config) as session:
         daily_stats = await select_rate_daily_stats(session, agg_id, tariff_id, site_id, 0, after, 99)
         assert daily_stats.total_distinct_dates == len(daily_stats.single_date_counts), "Without pagination limits the total count will equal the page count"
@@ -240,21 +238,21 @@ async def test_select_rate_daily_stats_filtering(pg_base_config, expected_result
 
 
 @pytest.mark.parametrize(
-    "expected_results",
+    "start, limit, output_list",
     [
-        ((0, 99), [(date(2022, 3, 5), 2), (date(2022, 3, 6), 1)]),
-        ((1, 99), [(date(2022, 3, 6), 1)]),
-        ((2, 99), []),
-        ((0, 0), []),
-        ((0, 1), [(date(2022, 3, 5), 2)]),
-        ((1, 1), [(date(2022, 3, 6), 1)]),
-        ((2, 1), []),
+        (0, 99, [(date(2022, 3, 5), 2), (date(2022, 3, 6), 1)]),
+        (1, 99, [(date(2022, 3, 6), 1)]),
+        (2, 99, []),
+        (0, 0, []),
+        (0, 1, [(date(2022, 3, 5), 2)]),
+        (1, 1, [(date(2022, 3, 6), 1)]),
+        (2, 1, []),
      ],
 )
 @pytest.mark.anyio
-async def test_select_rate_daily_stats_pagination(pg_base_config, expected_results: tuple[tuple[int, int], list[tuple[date, int]]]):
+async def test_select_rate_daily_stats_pagination(pg_base_config, start: int, limit: int,
+                                                  output_list: list[tuple[date, int]]):
     """Tests the various pagination options on select_rate_daily_stats"""
-    ((start, limit), output_list) = expected_results
     expected_count = 2  # For agg/tariff/site = 1 (what we are testing here) - There are 2 distinct dates
     async with generate_async_session(pg_base_config) as session:
         daily_stats = await select_rate_daily_stats(session, 1, 1, 1, start, datetime.min, limit)

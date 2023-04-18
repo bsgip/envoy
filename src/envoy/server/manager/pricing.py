@@ -59,7 +59,7 @@ class TariffProfileManager:
 
         Its expected that function set assignments will assign appropriate tariff links"""
         tariffs = await select_all_tariffs(session, start, changed_after, limit)
-        tariff_count = await select_tariff_count(session)
+        tariff_count = await select_tariff_count(session, changed_after)
 
         return TariffProfileMapper.map_to_list_response(tariffs, tariff_count)
 

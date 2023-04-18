@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional
+from typing import Optional
 
 import pytest
 from httpx import AsyncClient
@@ -9,48 +9,50 @@ from tests.integration.response import assert_response_header, run_basic_unautho
 
 EMPTY_XML_DOC = '<?xml version="1.0" encoding="UTF-8"?>\n<tag/>'
 
-EMPTY_XML_DOC = '<?xml version="1.0" encoding="UTF-8"?>\n<tag/>'
+# All of our endpoints with their supported method types
+ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
+    # time function set
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tm"),
 
+    # edev function set
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/edev"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST, HTTPMethod.PUT], "/edev/1/cp"),
 
-@pytest.mark.parametrize(
-    "request_content",
-    [(["GET"], "/tm", None),
-     (["GET", "HEAD"], "/edev/1", None),
-     (["GET", "HEAD"], "/edev", None),
-     (["POST"], "/edev", EMPTY_XML_DOC),
-     (["GET", "HEAD"], "/edev/1/cp", None),
-     (["POST", "PUT"], "/edev/1/cp", EMPTY_XML_DOC)]
-)
+    # Pricing function set
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/pricing/rt/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/rc"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1/tti"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1/tti/01%3A02"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1/tti/01%3A02/cti"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1/tti/01%3A02/cti/100"),
+]
+
+@pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
 @pytest.mark.anyio
-async def test_get_resource_unauthorised(request_content: tuple[list[str], str, Optional[Any]], client: AsyncClient):
+async def test_get_resource_unauthorised(valid_methods: list[HTTPMethod], uri: str, client: AsyncClient):
     """Runs through the basic unauthorised tests for all parametized requests"""
-    (methods, uri, body) = request_content
-    for method in methods:
-        await run_basic_unauthorised_tests(client, uri, method=method, body=body)
+    for method in valid_methods:
+        body: Optional[str] = None
+        if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
+            body = EMPTY_XML_DOC
+
+        await run_basic_unauthorised_tests(client, uri, method=method.name, body=body)
 
 
-@pytest.mark.parametrize(
-    "uri,invalid_methods",
-    [
-        ("/tm", [HTTPMethod.PUT, HTTPMethod.DELETE, HTTPMethod.POST, HTTPMethod.PATCH]),
-        ("/edev/1", [HTTPMethod.PUT, HTTPMethod.POST, HTTPMethod.PATCH]),
-        ("/edev", [HTTPMethod.PATCH, HTTPMethod.DELETE]),
-        ("/edev/1/cp", [HTTPMethod.PATCH, HTTPMethod.DELETE]),
-    ],
-)
+@pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
 @pytest.mark.anyio
-async def test_resource_with_invalid_methods(
-    uri: str, invalid_methods: list[HTTPMethod], client: AsyncClient, valid_headers: dict
-):
-    http_method_to_client_function_mapping = {
-        HTTPMethod.DELETE: client.delete,
-        HTTPMethod.GET: client.get,
-        HTTPMethod.HEAD: client.head,
-        HTTPMethod.POST: client.post,
-        HTTPMethod.PATCH: client.patch,
-        HTTPMethod.PUT: client.put,
-    }
-    for http_method in invalid_methods:
-        client_function = http_method_to_client_function_mapping[http_method]
-        response = await client_function(uri, headers=valid_headers)
+async def test_resource_with_invalid_methods(valid_methods: list[HTTPMethod], uri: str,
+                                             client: AsyncClient, valid_headers: dict):
+    """Runs through invalid HTTP methods for each endpoint"""
+    for method in [m for m in HTTPMethod if m not in valid_methods]:
+        body: Optional[str] = None
+        if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
+            body = EMPTY_XML_DOC
+
+        response = await client.request(method=method.name, url=uri, content=body, headers=valid_headers)
         assert_response_header(response, HTTPStatus.METHOD_NOT_ALLOWED, expected_content_type=None)

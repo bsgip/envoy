@@ -33,9 +33,9 @@ INSERT INTO public.site("site_id", "nmi", "aggregator_id", "changed_time", "lfdi
 
 SELECT pg_catalog.setval('public.site_site_id_seq', 5, true);
 
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 11, '2023-01-02 11:01:02');
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 22, '2023-01-02 12:01:02');
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (3, 'tariff-3', 'tariff-dnsp-code-3', 33, '2023-01-02 13:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 36, '2023-01-02 11:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 124, '2023-01-02 12:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (3, 'tariff-3', 'tariff-dnsp-code-3', 840, '2023-01-02 13:01:02');
 
 SELECT pg_catalog.setval('public.tariff_tariff_id_seq', 4, true);
 
