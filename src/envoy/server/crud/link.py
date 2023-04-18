@@ -420,28 +420,48 @@ def check_link_supported(
     link_name: str,
     link_map: dict = SEP2_LINK_MAP,
 ):
-    # Determine which function set the link is part of
+    """Checks if a link is supported by the server
+
+    Links and ListLinks belong to function-sets. If a function set is supported then the corresponding Link or ListLink
+    must also be supported.
+
+    Args:
+        link_name: The name of the link as string e.g. "EndDeviceListLink" or "TimeLink".
+        link_map: The mapping from links to their function set. Defaults to SEP2_LINK_MAP.
+
+    Return:
+        True if the link is part of a function set that is fully supported.
+
+    Raises:
+        ValueError: If `link_name` isn't recognized.
+    """
+    if link_name not in link_map:
+        raise ValueError(f"Unknown Link or ListLink: {link_name}")
+
+    # Determine which function-set the link is part of
     function_set = link_map[link_name]["function-set"]
-    # Check whether function set is supported by the server
+
+    # Check whether function-set is supported by the server
     return check_function_set_supported(function_set)
 
 
 def check_function_set_supported(function_set: FunctionSet, function_set_status: list = FUNCTION_SET_STATUS) -> bool:
-    """Checks whether a function set is fully supported.
+    """Checks whether a function-set is fully supported.
 
     Args:
         function_set: A FunctionSet
-        function_set_status: Mapping between function set and function set status. Defaults to FUNCTION_SET_STATUS.
+        function_set_status: Mapping between function-set and function-set statuses. Defaults to FUNCTION_SET_STATUS.
 
     Returns:
         True if the function set is fully supported else False for partial or no support.
 
     Raises:
-        ValueError for unknown function sets (missing from function_set_status)
+        ValueError for unknown function-sets (missing from function_set_status)
     """
-    if function_set in function_set_status:
-        return function_set_status[function_set] == FunctionSetStatus.SUPPORTED
-    raise ValueError(f"Unknown function set '{function_set}'")
+    if function_set not in function_set_status:
+        raise ValueError(f"Unknown function set '{function_set}'")
+
+    return function_set_status[function_set] == FunctionSetStatus.SUPPORTED
 
 
 def get_formatted_links(link_names: list, uri_parameters: dict = {}, link_map: dict = SEP2_LINK_MAP) -> dict:

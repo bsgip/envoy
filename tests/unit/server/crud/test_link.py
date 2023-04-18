@@ -1,7 +1,60 @@
+import unittest.mock as mock
+
 import pytest
 
 from envoy.server.crud import link
 from envoy.server.schema.function_set import FunctionSet, FunctionSetStatus
+
+
+@pytest.fixture
+def link_function_set_mapping():
+    return {
+        "DeviceCapabilityLink": {
+            "function-set": FunctionSet.DeviceCapability,
+        },
+        "EndDeviceListLink": {
+            "function-set": FunctionSet.EndDeviceResource,
+        },
+        "SelfDeviceLink": {
+            "function-set": FunctionSet.SelfDeviceResource,
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    "function_set_name",
+    ["DeviceCapabilityLink", "EndDeviceListLink", "SelfDeviceLink"],
+)
+@mock.patch("envoy.server.crud.link.check_function_set_supported")
+def test_check_link_supported(
+    mock_check_function_set_supported: mock.MagicMock,
+    link_function_set_mapping: dict,
+    function_set_name: str,
+):
+    # Arrange
+    mock_check_function_set_supported.return_value = True
+
+    # Act and Assert
+    assert link.check_link_supported(function_set_name, link_map=link_function_set_mapping)
+
+
+@pytest.mark.parametrize(
+    "function_set_name",
+    # These function sets names don't exist in the link_function_set_mapping fixture
+    ["AccountBalanceLink", "BillingPeriodListLink", "CustomerAccountLink"],
+)
+@mock.patch("envoy.server.crud.link.check_function_set_supported")
+def test_check_link_supported_raises_exception(
+    mock_check_function_set_supported: mock.MagicMock,
+    link_function_set_mapping: dict,
+    function_set_name: str,
+):
+    # Arrange
+    mock_check_function_set_supported.return_value = True
+
+    # Act and Assert
+    with pytest.raises(ValueError):
+        link.check_link_supported(function_set_name, link_map=link_function_set_mapping)
 
 
 @pytest.fixture
