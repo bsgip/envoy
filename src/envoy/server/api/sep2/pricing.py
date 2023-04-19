@@ -3,6 +3,7 @@ from http import HTTPStatus
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi_async_sqlalchemy import db
+from sqlalchemy.exc import NoResultFound
 
 from envoy.server.api.request import (
     extract_aggregator_id,
@@ -301,12 +302,13 @@ async def get_singletimetariffinterval(tariff_id: int,
     return XmlResponse(tti)
 
 
-@router.head("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti")
-@router.get("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti",
+@router.head("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}")
+@router.get("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}",
             status_code=HTTPStatus.OK)
 async def get_consumptiontariffintervallist(tariff_id: int,
                                             site_id: int,
                                             rate_component_id: str,
+                                            pricing_reading: PricingReadingType,
                                             tti_id: str,
                                             price: int,
                                             request: Request,
@@ -334,7 +336,6 @@ async def get_consumptiontariffintervallist(tariff_id: int,
         fastapi.Response object.
 
     """
-
     try:
         cti_list = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(
             db.session,
@@ -342,17 +343,20 @@ async def get_consumptiontariffintervallist(tariff_id: int,
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
+            pricing_type=pricing_reading,
             time_tariff_interval=tti_id,
             price=price
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NoResultFound:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(cti_list)
 
 
-@router.head("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}")
-@router.get("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}",
+@router.head("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}/1")
+@router.get("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}/1",
             status_code=HTTPStatus.OK)
 async def get_singleconsumptiontariffinterval(tariff_id: int,
                                               site_id: int,
@@ -387,11 +391,14 @@ async def get_singleconsumptiontariffinterval(tariff_id: int,
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
+            pricing_type=pricing_reading,
             time_tariff_interval=tti_id,
             price=price
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NoResultFound:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found.")
 
     if cti is None:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")

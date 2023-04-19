@@ -1,7 +1,5 @@
-
 from datetime import date, datetime, time
 from typing import Optional
-from urllib.parse import quote
 
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +18,7 @@ from envoy.server.crud.pricing import (
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.mapper.sep2.pricing import (
     TOTAL_PRICING_READING_TYPES,
+    ConsumptionTariffIntervalMapper,
     PricingReadingType,
     RateComponentMapper,
     TariffProfileMapper,
@@ -189,15 +188,12 @@ class TimeTariffIntervalManager:
 
 class ConsumptionTariffIntervalManager:
     @staticmethod
-    def _generate_href(tariff_id: int, site_id: int, rate_component_id: str, time_tariff_interval: str, price: int):
-        return f"/tp/{tariff_id}/{site_id}/rc/{quote(rate_component_id)}/tti/{quote(time_tariff_interval)}/cti/{price}/"
-
-    @staticmethod
     async def fetch_consumption_tariff_interval_list(session: AsyncSession,
                                                      aggregator_id: int,
                                                      tariff_id: int,
                                                      site_id: int,
                                                      rate_component_id: str,
+                                                     pricing_type: PricingReadingType,
                                                      time_tariff_interval: str,
                                                      price: int) -> ConsumptionTariffIntervalListResponse:
         """This is a fully virtualised entity 'lookup' that only interacts with the DB to validate access.
@@ -208,29 +204,19 @@ class ConsumptionTariffIntervalManager:
         rate_component_id and time_tariff_interval will be validated. raising InvalidMappingError if invalid"""
 
         # Validate ids
-        RateComponentManager.parse_rate_component_id(rate_component_id)
-        TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
+        day = RateComponentManager.parse_rate_component_id(rate_component_id)
+        time_of_day = TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
 
         # Validate access to site_id by aggregator_id
         if (await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=aggregator_id)) is None:
             raise NoResultFound(f"site_id {site_id} is not accessible / does not exist")
 
-        href = ConsumptionTariffIntervalManager._generate_href(
-            tariff_id,
-            site_id,
-            rate_component_id,
-            time_tariff_interval,
-            price)
-        return ConsumptionTariffIntervalListResponse.validate({
-            "all_": 1,
-            "results": 1,
-            "ConsumptionTariffInterval": [{
-                "href": href,
-                "consumptionBlock": ConsumptionBlockType.NOT_APPLICABLE,
-                "price": price,
-                "startValue": 0
-            }]
-        })
+        return ConsumptionTariffIntervalMapper.map_to_list_response(tariff_id,
+                                                                    site_id,
+                                                                    pricing_type,
+                                                                    day,
+                                                                    time_of_day,
+                                                                    price)
 
     @staticmethod
     async def fetch_consumption_tariff_interval(session: AsyncSession,
@@ -238,6 +224,7 @@ class ConsumptionTariffIntervalManager:
                                                 tariff_id: int,
                                                 site_id: int,
                                                 rate_component_id: str,
+                                                pricing_type: PricingReadingType,
                                                 time_tariff_interval: str,
                                                 price: int) -> ConsumptionTariffIntervalResponse:
         """This is a fully virtualised entity 'lookup' that only interacts with the DB to validate access.
@@ -248,22 +235,16 @@ class ConsumptionTariffIntervalManager:
         rate_component_id and time_tariff_interval will be validated. raising InvalidMappingError if invalid"""
 
         # Validate ids
-        RateComponentManager.parse_rate_component_id(rate_component_id)
-        TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
+        day = RateComponentManager.parse_rate_component_id(rate_component_id)
+        time_of_day = TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
 
         # Validate access to site_id by aggregator_id
         if (await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=aggregator_id)) is None:
             raise NoResultFound(f"site_id {site_id} is not accessible / does not exist")
 
-        href = ConsumptionTariffIntervalManager._generate_href(
-            tariff_id,
-            site_id,
-            rate_component_id,
-            time_tariff_interval,
-            price)
-        return ConsumptionTariffIntervalResponse.validate({
-            "href": href,
-            "consumptionBlock": ConsumptionBlockType.NOT_APPLICABLE,
-            "price": price,
-            "startValue": 0
-        })
+        return ConsumptionTariffIntervalMapper.map_to_list_response(tariff_id,
+                                                                    site_id,
+                                                                    pricing_type,
+                                                                    day,
+                                                                    time_of_day,
+                                                                    price)

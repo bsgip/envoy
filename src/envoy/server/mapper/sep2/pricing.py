@@ -17,6 +17,7 @@ from envoy.server.schema.sep2.metering import (
     UomType,
 )
 from envoy.server.schema.sep2.pricing import (
+    ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
     PrimacyType,
     RateComponentListResponse,
@@ -210,6 +211,18 @@ class ConsumptionTariffIntervalMapper:
             "startValue": 0,
         })
 
+    @staticmethod
+    def map_to_list_response(tariff_id: int, site_id: int, pricing_rt: PricingReadingType, day: date,
+                             time_of_day: time, price: Decimal) -> ConsumptionTariffIntervalResponse:
+        """Returns a ConsumptionTariffIntervalListResponse with price being set to an integer by adjusting to
+        PRICE_DECIMAL_PLACES"""
+        cti = ConsumptionTariffIntervalMapper.map_to_response(tariff_id, site_id, pricing_rt, day, time_of_day, price)
+        return ConsumptionTariffIntervalListResponse.validate({
+            "all_": 1,
+            "results": 1,
+            "ConsumptionTariffInterval": [cti]
+        })
+
 
 class TimeTariffIntervalMapper:
     @staticmethod
@@ -229,7 +242,7 @@ class TimeTariffIntervalMapper:
         href = TimeTariffIntervalMapper.instance_href(rate.tariff_id, rate.site_id, start_d, pricing_reading, start_t)
         list_href = ConsumptionTariffIntervalMapper.list_href(rate.tariff_id, rate.site_id, pricing_reading, start_d,
                                                               start_t, price)
-        
+
         return TimeTariffIntervalResponse.validate({
             "href": href,
             "mRID": f"{rate.tariff_generated_rate_id:x}",
