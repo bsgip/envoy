@@ -1,5 +1,6 @@
 import unittest.mock as mock
 from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Union
 from urllib.parse import quote
 
@@ -18,6 +19,8 @@ from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 from envoy.server.schema.sep2.metering import ConsumptionBlockType
 from envoy.server.schema.sep2.pricing import (
+    ConsumptionTariffIntervalListResponse,
+    ConsumptionTariffIntervalResponse,
     RateComponentListResponse,
     RateComponentResponse,
     TariffProfileListResponse,
@@ -365,7 +368,9 @@ async def test_fetch_rate_component_list_full_db(pg_base_config, page_data):
 @mock.patch("envoy.server.manager.pricing.TimeTariffIntervalManager")
 @mock.patch("envoy.server.manager.pricing.RateComponentManager")
 @mock.patch("envoy.server.manager.pricing.select_single_site_with_site_id")
-async def test_fetch_consumption_tariff_interval_list(mock_select_single_site_with_site_id: mock.MagicMock,
+@mock.patch("envoy.server.manager.pricing.ConsumptionTariffIntervalMapper")
+async def test_fetch_consumption_tariff_interval_list(mock_ConsumptionTariffIntervalMapper: mock.MagicMock,
+                                                      mock_select_single_site_with_site_id: mock.MagicMock,
                                                       mock_RateComponentManager: mock.MagicMock,
                                                       mock_TimeTariffIntervalManager: mock.MagicMock):
     tariff_id = 54321
@@ -374,35 +379,43 @@ async def test_fetch_consumption_tariff_interval_list(mock_select_single_site_wi
     rate_component_id = '2022-02-01'
     time_tariff_interval = '13:37'
     price = 12345
+    pricing_type = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
+    mapped_cti_list = generate_class_instance(ConsumptionTariffIntervalListResponse)
     mock_session = mock.Mock()
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=date(2022, 1, 2))
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=time(1, 2))
     mock_select_single_site_with_site_id.return_value = generate_class_instance(Site)
+    mock_ConsumptionTariffIntervalMapper.map_to_list_response = mock.Mock(return_value=mapped_cti_list)
 
-    result = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(mock_session, aggregator_id, tariff_id, site_id, rate_component_id, time_tariff_interval, price)
-    assert result.all_ == 1
-    assert len(result.ConsumptionTariffInterval) == 1
-    cti = result.ConsumptionTariffInterval[0]
-    assert cti.consumptionBlock == ConsumptionBlockType.NOT_APPLICABLE
-    assert cti.price == price
-
-    # check that the href looks roughly okayish
-    assert quote(time_tariff_interval) in cti.href
-    assert quote(rate_component_id) in cti.href
-    assert str(tariff_id) in cti.href
-    assert str(price) in cti.href
+    result = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(mock_session,
+                                                                                           aggregator_id,
+                                                                                           tariff_id,
+                                                                                           site_id,
+                                                                                           rate_component_id,
+                                                                                           pricing_type,
+                                                                                           time_tariff_interval,
+                                                                                           price)
+    assert result is mapped_cti_list
 
     # check we validated the ids
     mock_RateComponentManager.parse_rate_component_id.assert_called_once_with(rate_component_id)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id.assert_called_once_with(time_tariff_interval)
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, site_id=site_id, aggregator_id=aggregator_id)
+    mock_ConsumptionTariffIntervalMapper.map_to_list_response.assert_called_once_with(tariff_id,
+                                                                                      site_id,
+                                                                                      pricing_type,
+                                                                                      date(2022, 1, 2),
+                                                                                      time(1, 2),
+                                                                                      Decimal("1.2345")) # converted price
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.pricing.TimeTariffIntervalManager")
 @mock.patch("envoy.server.manager.pricing.RateComponentManager")
 @mock.patch("envoy.server.manager.pricing.select_single_site_with_site_id")
-async def test_fetch_consumption_tariff_interval(mock_select_single_site_with_site_id: mock.MagicMock,
+@mock.patch("envoy.server.manager.pricing.ConsumptionTariffIntervalMapper")
+async def test_fetch_consumption_tariff_interval(mock_ConsumptionTariffIntervalMapper: mock.MagicMock,
+                                                 mock_select_single_site_with_site_id: mock.MagicMock,
                                                  mock_RateComponentManager: mock.MagicMock,
                                                  mock_TimeTariffIntervalManager: mock.MagicMock):
     tariff_id = 665544
@@ -410,32 +423,35 @@ async def test_fetch_consumption_tariff_interval(mock_select_single_site_with_si
     aggregator_id = 44322
     rate_component_id = '2023-02-01'
     time_tariff_interval = '09:08'
-    price = -1456
+    price = -14567
+    pricing_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
+    mapped_cti = generate_class_instance(ConsumptionTariffIntervalResponse)
     mock_session = mock.Mock()
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=date(2022, 1, 2))
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=time(1, 2))
     mock_select_single_site_with_site_id.return_value = generate_class_instance(Site)
+    mock_ConsumptionTariffIntervalMapper.map_to_response = mock.Mock(return_value=mapped_cti)
 
     cti = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval(mock_session,
                                                                                    aggregator_id,
                                                                                    tariff_id,
                                                                                    site_id,
                                                                                    rate_component_id,
+                                                                                   pricing_type,
                                                                                    time_tariff_interval,
                                                                                    price)
-    assert cti.consumptionBlock == ConsumptionBlockType.NOT_APPLICABLE
-    assert cti.price == price
-
-    # check that the href looks roughly okayish
-    assert quote(time_tariff_interval) in cti.href
-    assert quote(rate_component_id) in cti.href
-    assert str(tariff_id) in cti.href
-    assert str(price) in cti.href
+    assert cti is mapped_cti
 
     # check we validated the ids
     mock_RateComponentManager.parse_rate_component_id.assert_called_once_with(rate_component_id)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id.assert_called_once_with(time_tariff_interval)
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, site_id=site_id, aggregator_id=aggregator_id)
+    mock_ConsumptionTariffIntervalMapper.map_to_response.assert_called_once_with(tariff_id,
+                                                                                 site_id,
+                                                                                 pricing_type,
+                                                                                 date(2022, 1, 2),
+                                                                                 time(1, 2),
+                                                                                 Decimal("-1.4567")) # converted price
 
 
 @pytest.mark.anyio

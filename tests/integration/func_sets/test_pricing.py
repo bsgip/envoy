@@ -7,9 +7,11 @@ import pytest
 from httpx import AsyncClient
 
 from envoy.server.mapper.sep2.pricing import PricingReadingType
+from envoy.server.model.tariff import PRICE_DECIMAL_PLACES
 from envoy.server.schema.sep2.metering import ReadingType
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
+    ConsumptionTariffIntervalResponse,
     RateComponentListResponse,
     RateComponentResponse,
     TariffProfileListResponse,
@@ -17,19 +19,10 @@ from envoy.server.schema.sep2.pricing import (
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
-from tests.assert_time import assert_datetime_equal, assert_nowish
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
-from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as AGG_2_VALID_PEM
-from tests.data.certificates.certificate5 import TEST_CERTIFICATE_PEM as AGG_3_VALID_PEM
-from tests.data.fake.generator import generate_class_instance
 from tests.integration.integration_server import cert_pem_header
 from tests.integration.request import build_paging_params
-from tests.integration.response import (
-    assert_error_response,
-    assert_response_header,
-    read_location_header,
-    read_response_body_string,
-)
+from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
 
 
 @pytest.fixture
@@ -147,6 +140,7 @@ async def test_get_tariffprofile(client: AsyncClient, uri_tariff_profile_format:
         parsed_response: TariffProfileResponse = TariffProfileResponse.from_xml(body)
         assert parsed_response.href == expected_href
         assert parsed_response.currency
+        assert parsed_response.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
 
 
 @pytest.mark.anyio
@@ -305,14 +299,15 @@ async def test_get_timetariffinterval(client: AsyncClient, uri_tti_format: str, 
     (1, 1, "2022-03-05", 1, '01:02', 11000),
     (1, 1, "2022-03-05", 2, '01:02', -12200),
 
-    (1, 3, "2022-03-05", 2, '01:02', None),  # bad site 
+    (1, 3, "2022-03-05", 2, '01:02', None),  # bad site
 ])
 async def test_get_cti_list(client: AsyncClient, uri_cti_list_format: str, agg_1_headers,
                             tariff_id: int, site_id: int, rc_id: str, pricing_reading: int, tti_id: str,
                             expected_price: Optional[int]):
     """Consumption Tariff Intervals aren't really a list - they're just a wrapper around a single already encoded
     price. """
-    path = uri_cti_list_format.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id, pricing_reading=pricing_reading, tti_id=tti_id, price=expected_price)
+    sent_price = 1 if expected_price is None else expected_price
+    path = uri_cti_list_format.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id, pricing_reading=pricing_reading, tti_id=tti_id, price=sent_price)
     response = await client.get(path, headers=agg_1_headers)
 
     if expected_price is None:
@@ -328,4 +323,34 @@ async def test_get_cti_list(client: AsyncClient, uri_cti_list_format: str, agg_1
         assert len(parsed_response.ConsumptionTariffInterval) == 1
         cti_href = parsed_response.ConsumptionTariffInterval[0].href
         assert cti_href
-        assert cti_href.endswith(f"/{expected_price}"), f"expected CTI href {cti_href} to encode price {expected_price}"
+        assert cti_href.endswith(f"/{expected_price}/1"), f"expected CTI href {cti_href} to have price {expected_price}"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("tariff_id, site_id, rc_id, pricing_reading, tti_id, expected_price", [
+    (1, 1, "2022-03-05", 1, '01:02', 11000),
+    (1, 1, "2022-03-05", 2, '01:02', -12200),
+
+    (1, 3, "2022-03-05", 2, '01:02', None),  # bad site
+])
+async def test_get_cti(client: AsyncClient, uri_cti_format: str, agg_1_headers,
+                       tariff_id: int, site_id: int, rc_id: str, pricing_reading: int, tti_id: str,
+                       expected_price: Optional[int]):
+    """Consumption Tariff Intervals aren't really a list - they're just a wrapper around a single already encoded
+    price. """
+    sent_price = 1 if expected_price is None else expected_price
+    path = uri_cti_format.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id, pricing_reading=pricing_reading, tti_id=tti_id, price=sent_price)
+    response = await client.get(path, headers=agg_1_headers)
+
+    if expected_price is None:
+        assert_response_header(response, HTTPStatus.NOT_FOUND)
+        assert_error_response(response)
+    else:
+        assert_response_header(response, HTTPStatus.OK)
+        body = read_response_body_string(response)
+        assert len(body) > 0
+        parsed_response: ConsumptionTariffIntervalResponse = ConsumptionTariffIntervalResponse.from_xml(body)
+        assert parsed_response.price == expected_price
+        cti_href = parsed_response.href
+        assert cti_href
+        assert cti_href.endswith(f"/{expected_price}/1"), f"expected CTI href {cti_href} to have price {expected_price}"

@@ -29,7 +29,6 @@ from envoy.server.schema.sep2.pricing import (
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
-from envoy.server.schema.sep2.time import DateTimeIntervalType
 
 
 class TariffProfileMapper:
@@ -213,11 +212,13 @@ class ConsumptionTariffIntervalMapper:
 
     @staticmethod
     def map_to_list_response(tariff_id: int, site_id: int, pricing_rt: PricingReadingType, day: date,
-                             time_of_day: time, price: Decimal) -> ConsumptionTariffIntervalResponse:
+                             time_of_day: time, price: Decimal) -> ConsumptionTariffIntervalListResponse:
         """Returns a ConsumptionTariffIntervalListResponse with price being set to an integer by adjusting to
         PRICE_DECIMAL_PLACES"""
+        href = ConsumptionTariffIntervalMapper.list_href(tariff_id, site_id, pricing_rt, day, time_of_day, price)
         cti = ConsumptionTariffIntervalMapper.map_to_response(tariff_id, site_id, pricing_rt, day, time_of_day, price)
         return ConsumptionTariffIntervalListResponse.validate({
+            "href": href,
             "all_": 1,
             "results": 1,
             "ConsumptionTariffInterval": [cti]

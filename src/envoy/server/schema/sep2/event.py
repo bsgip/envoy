@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic_xml import attr, element
 
-from envoy.server.schema.sep2.base import HexBinary32, HexBinary128, Resource, SubscribableType, VersionType, mRIDType
+from envoy.server.schema.sep2.base import HexBinary32, HexBinary128, Resource, SubscribableType, VersionType
 from envoy.server.schema.sep2.time import DateTimeIntervalType, TimeType
 
 

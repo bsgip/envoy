@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy.exc import NoResultFound
@@ -24,7 +25,7 @@ from envoy.server.mapper.sep2.pricing import (
     TariffProfileMapper,
     TimeTariffIntervalMapper,
 )
-from envoy.server.schema.sep2.metering import ConsumptionBlockType
+from envoy.server.model.tariff import PRICE_DECIMAL_POWER
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
@@ -195,9 +196,11 @@ class ConsumptionTariffIntervalManager:
                                                      rate_component_id: str,
                                                      pricing_type: PricingReadingType,
                                                      time_tariff_interval: str,
-                                                     price: int) -> ConsumptionTariffIntervalListResponse:
+                                                     sep2_price: int) -> ConsumptionTariffIntervalListResponse:
         """This is a fully virtualised entity 'lookup' that only interacts with the DB to validate access.
         All the information required to build the response is passed in via params
+
+        sep2_price should be an integer price that a sep2 client will communicate
 
         if site_id DNE is inaccessible to aggregator_id a NoResultFound will be raised
 
@@ -211,6 +214,7 @@ class ConsumptionTariffIntervalManager:
         if (await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=aggregator_id)) is None:
             raise NoResultFound(f"site_id {site_id} is not accessible / does not exist")
 
+        price = Decimal(sep2_price) / Decimal(PRICE_DECIMAL_POWER)
         return ConsumptionTariffIntervalMapper.map_to_list_response(tariff_id,
                                                                     site_id,
                                                                     pricing_type,
@@ -226,9 +230,11 @@ class ConsumptionTariffIntervalManager:
                                                 rate_component_id: str,
                                                 pricing_type: PricingReadingType,
                                                 time_tariff_interval: str,
-                                                price: int) -> ConsumptionTariffIntervalResponse:
+                                                sep2_price: int) -> ConsumptionTariffIntervalResponse:
         """This is a fully virtualised entity 'lookup' that only interacts with the DB to validate access.
         All the information required to build the response is passed in via params
+
+        sep2_price should be an integer price that a sep2 client will communicate
 
         if site_id DNE is inaccessible to aggregator_id a NoResultFound will be raised
 
@@ -242,9 +248,10 @@ class ConsumptionTariffIntervalManager:
         if (await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=aggregator_id)) is None:
             raise NoResultFound(f"site_id {site_id} is not accessible / does not exist")
 
-        return ConsumptionTariffIntervalMapper.map_to_list_response(tariff_id,
-                                                                    site_id,
-                                                                    pricing_type,
-                                                                    day,
-                                                                    time_of_day,
-                                                                    price)
+        price = Decimal(sep2_price) / Decimal(PRICE_DECIMAL_POWER)
+        return ConsumptionTariffIntervalMapper.map_to_response(tariff_id,
+                                                               site_id,
+                                                               pricing_type,
+                                                               day,
+                                                               time_of_day,
+                                                               price)

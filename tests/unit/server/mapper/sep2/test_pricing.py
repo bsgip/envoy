@@ -236,6 +236,15 @@ def test_consumption_tariff_interval_mapping_prices(input_price: Decimal, expect
     mapped = ConsumptionTariffIntervalMapper.map_to_response(tariff_id, site_id, pricing_reading, day, time_of_day, input_price)
     assert mapped.price == expected_price
     assert mapped.href
+    assert str(expected_price) in mapped.href
+
+    mapped_list = ConsumptionTariffIntervalMapper.map_to_list_response(tariff_id, site_id, pricing_reading, day, time_of_day, input_price)
+    assert str(expected_price) in mapped_list.href
+    assert mapped_list.ConsumptionTariffInterval
+    assert len(mapped_list.ConsumptionTariffInterval) == 1
+    child = mapped_list.ConsumptionTariffInterval[0]
+    assert str(expected_price) in child.href
+    assert child.href != mapped_list.href
 
 
 @mock.patch('envoy.server.mapper.sep2.pricing.ConsumptionTariffIntervalMapper')

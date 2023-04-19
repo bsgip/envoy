@@ -28,8 +28,8 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1/tti"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1/tti/01%3A02"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1/tti/01%3A02/cti"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1/tti/01%3A02/cti/100"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-01-02/1/tti/01%3A02/cti/100/1"),
 ]
 
 @pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)

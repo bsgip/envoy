@@ -345,7 +345,7 @@ async def get_consumptiontariffintervallist(tariff_id: int,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
             time_tariff_interval=tti_id,
-            price=price
+            sep2_price=price
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -393,7 +393,7 @@ async def get_singleconsumptiontariffinterval(tariff_id: int,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
             time_tariff_interval=tti_id,
-            price=price
+            sep2_price=price
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
