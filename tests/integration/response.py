@@ -24,8 +24,8 @@ def assert_response_header(response: httpx.Response,
             return
 
     body = read_response_body_string(response)
-    assert response.status_code == expected_status_code, f"Got HTTP {response.status_code} expected HTTP {expected_status_code}\nResponse body:\n{body}"
-    assert expected_content_type is not None and actual_content_type == expected_content_type, f"Got Content {actual_content_type} expected {expected_content_type}\nResponse body:\n{body}"
+    assert response.status_code == expected_status_code, f"Got HTTP {response.status_code} expected HTTP {expected_status_code} request: {response.request.url.path}\nResponse body:\n{body}"
+    assert expected_content_type is not None and actual_content_type == expected_content_type, f"Got Content {actual_content_type} expected {expected_content_type} request: {response.request.url.path}\nResponse body:\n{body}"
 
 
 def assert_error_response(response: httpx.Response):
@@ -45,7 +45,7 @@ def read_location_header(response: httpx.Response) -> str:
     if LOCATION_HEADER_NAME not in response.headers:
         raise Exception(f"Location header '{LOCATION_HEADER_NAME}' was not returned in response (status code {response.status_code}). Headers: {response.headers.keys()}")
     return response.headers[LOCATION_HEADER_NAME]
-    
+
 
 def read_response_body_string(response: httpx.Response) -> str:
     """Takes a response - reads the body as a string"""
