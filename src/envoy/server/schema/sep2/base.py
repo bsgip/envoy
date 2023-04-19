@@ -63,7 +63,7 @@ class SubscribableResource(Resource):
 
 class SubscribableList(SubscribableResource):
     all_: int = attr(name="all")
-    result: int = attr()
+    results: int = attr()
 
 
 class Link(Resource):
