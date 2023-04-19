@@ -392,6 +392,18 @@ async def get_supported_links(
 
 
 async def get_resource_counts(link_names: list[str], aggregator_id: int) -> dict:
+    """
+    Returns the resource counts for all the ListLinks in list.
+
+    Calls 'get_resource_count' for each ListLink.
+
+    Args:
+        link_names: A list of Links. This can be a mixture of both Links and ListLinks.
+        aggregator_id: The id of the aggregator (determines which resources are accessible)
+
+    Returns:
+        A mapping for each ListList to it's resource count.
+    """
     resource_counts = {}
     for link_name in link_names:
         if link_name.endswith("ListLink"):
@@ -412,7 +424,7 @@ async def get_resource_count(list_link_name: str, aggregator_id: int) -> int:
 
     Args:
         list_link_name: The name of the ListLink e.g. "EndDeviceListLink"
-        aggregator_id: The id of the aggregator
+        aggregator_id: The id of the aggregator (determines which resources are accessible)
 
     Returns:
         The resource count.

@@ -7,8 +7,30 @@ from envoy.server.schema.function_set import FunctionSet, FunctionSetStatus
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize(
+    "link_names, expected_resource_counts",
+    [
+        (
+            ["EndDeviceListLink", "FakeListLink", "JustALink", "AnotherLink"],
+            {"EndDeviceListLink": 4, "FakeListLink": 4},
+        ),
+        (  # Check no ListLinks
+            ["JustALink", "AnotherLink"],
+            {},
+        ),
+    ],
+)
+async def test_get_resource_counts(link_names: list[str], expected_resource_counts: dict):
+    with mock.patch("envoy.server.crud.link.get_resource_count", return_value=4):
+        resource_counts = await link.get_resource_counts(link_names, aggregator_id=1)
+        assert resource_counts == expected_resource_counts
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize("link_name, resource_count", [("EndDeviceListLink", 5)])
-@mock.patch("fastapi_async_sqlalchemy.middleware.DBSessionMeta.session")
+@mock.patch(  # Tricky patch to mock the db.session parameter passed to select_aggregator_site_count
+    "fastapi_async_sqlalchemy.middleware.DBSessionMeta.session"
+)
 async def test_get_resource_count(_: mock.Mock, link_name: str, resource_count: int):
     with mock.patch("envoy.server.crud.end_device.select_aggregator_site_count", return_value=resource_count):
         assert await link.get_resource_count(link_name, aggregator_id=1) == resource_count
