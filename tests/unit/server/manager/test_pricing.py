@@ -2,7 +2,6 @@ import unittest.mock as mock
 from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Union
-from urllib.parse import quote
 
 import pytest
 
@@ -17,7 +16,6 @@ from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.mapper.sep2.pricing import TOTAL_PRICING_READING_TYPES, PricingReadingType
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
-from envoy.server.schema.sep2.metering import ConsumptionBlockType
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
@@ -68,10 +66,12 @@ def test_parse_rate_component_id(input: str, output: Union[date, type]):
 
         ('', InvalidMappingError),
         ('12:3', InvalidMappingError),
+        ('1:32', InvalidMappingError),
         ('12:60', InvalidMappingError),
         ('24:01', InvalidMappingError),
         ('11-12', InvalidMappingError),
         ('11 12', InvalidMappingError),
+        ('11', InvalidMappingError),
         (' 12:13 ', InvalidMappingError),
      ],
 )

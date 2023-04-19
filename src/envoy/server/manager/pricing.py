@@ -69,6 +69,11 @@ class RateComponentManager:
     def parse_rate_component_id(id: str) -> date:
         """Validates that id looks like YYYY-MM-DD. Returns parsed date object if it does
         otherwise raises InvalidMappingError"""
+        # certain python versions allow all sorts of funny things through so we layer some additional
+        # checks over the top of the isoformat
+        if len(id) != 10 or id[4] != '-' or id[7] != '-':
+            raise InvalidMappingError(f"Expected YYYY-MM-DD for rate_component_id but got {id}")
+
         try:
             return date.fromisoformat(id)
         except ValueError:
@@ -134,6 +139,11 @@ class TimeTariffIntervalManager:
     def parse_time_tariff_interval_id(id: str) -> time:
         """Validates that id looks like HH:MM. Returns parsed time object if it does
         otherwise raises InvalidMappingError"""
+        # certain python versions allow all sorts of funny things through so we layer some additional
+        # checks over the top of the isoformat
+        if len(id) != 5 or id[2] != ':':
+            raise InvalidMappingError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
+
         try:
             return time.fromisoformat(id)
         except ValueError:
