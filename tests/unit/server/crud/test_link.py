@@ -6,6 +6,21 @@ from envoy.server.crud import link
 from envoy.server.schema.function_set import FunctionSet, FunctionSetStatus
 
 
+@pytest.mark.anyio
+@pytest.mark.parametrize("link_name, resource_count", [("EndDeviceListLink", 5)])
+@mock.patch("fastapi_async_sqlalchemy.middleware.DBSessionMeta.session")
+async def test_get_resource_count(_: mock.Mock, link_name: str, resource_count: int):
+    with mock.patch("envoy.server.crud.end_device.select_aggregator_site_count", return_value=resource_count):
+        assert await link.get_resource_count(link_name, aggregator_id=1) == resource_count
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("link_name", [("NotASupportedListLink")])
+async def test_get_resource_count_raises_exception(link_name: str):
+    with pytest.raises(NotImplementedError):
+        await link.get_resource_count(link_name, aggregator_id=1)
+
+
 @pytest.mark.parametrize(
     "links,resource_counts,updated_links",
     [
@@ -56,7 +71,7 @@ from envoy.server.schema.function_set import FunctionSet, FunctionSetStatus
         ),
     ],
 )
-def test_add_resource_counts_to_list_links(links, resource_counts, updated_links):
+def test_add_resource_counts_to_list_links(links: dict, resource_counts: dict, updated_links: dict):
     assert link.add_resource_counts_to_links(links, resource_counts) == updated_links
 
 

@@ -403,12 +403,28 @@ async def get_resource_counts(link_names: list[str], aggregator_id: int) -> dict
     return resource_counts
 
 
-async def get_resource_count(link_name: str, aggregator_id: int) -> int:
-    if link_name == "EndDeviceListLink":
+async def get_resource_count(list_link_name: str, aggregator_id: int) -> int:
+    """
+    Returns the resource count for given ListLink.
+
+    For example, for EndDeviceListLink the resource count is the number
+    of end devices associated with the aggregator.
+
+    Args:
+        list_link_name: The name of the ListLink e.g. "EndDeviceListLink"
+        aggregator_id: The id of the aggregator
+
+    Returns:
+        The resource count.
+
+    Raises:
+        NotImplementedError: Raised when a ListLink doesn't have a resource count lookup method.
+    """
+    if list_link_name == "EndDeviceListLink":
         count = await end_device.select_aggregator_site_count(db.session, aggregator_id, after=datetime.min)
         return count
     else:
-        raise NotImplementedError(f"No resource count implemented for '{link_name}'")
+        raise NotImplementedError(f"No resource count implemented for '{list_link_name}'")
 
 
 def add_resource_counts_to_links(links: dict, resource_counts: dict):
