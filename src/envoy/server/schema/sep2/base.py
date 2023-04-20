@@ -91,6 +91,12 @@ class SubscribableList(SubscribableResource):
     results: int = attr()  # Indicates the number of items in this page of results.
 
 
+class SubscribableIdentifiedObject(SubscribableResource):
+    description: Optional[str] = element()  # The description is a human readable text describing or naming the object. 
+    mRID: mRIDType = element()  # The global identifier of the object
+    version: Optional[VersionType] = element()  # Contains the version number of the object.
+
+
 class List(Resource):
     """Container to hold a collection of object instances or references. See Design Pattern section for additional
     details."""
