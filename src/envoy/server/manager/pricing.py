@@ -65,7 +65,7 @@ class TariffProfileManager:
             return None
 
         return TariffProfileMapper.map_to_nosite_response(tariff)
-    
+
     @staticmethod
     async def fetch_tariff_profile_list_no_site(session: AsyncSession, start: int, changed_after: datetime,
                                                 limit: int) -> Optional[TariffProfileListResponse]:
