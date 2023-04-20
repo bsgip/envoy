@@ -225,6 +225,25 @@ async def select_rate_stats(session: AsyncSession,
         return TariffGeneratedRateStats(total_rates=count, first_rate=min_date, last_rate=max_date)
 
 
+async def count_unique_rate_days(session: AsyncSession,
+                                 aggregator_id: int,
+                                 tariff_id: int,
+                                 site_id: int,
+                                 changed_after: datetime) -> int:
+    """Counts the number of unique dates (not counting the time) that a site has TariffGeneratedRate's for"""
+    stmt = (
+        select(func.count(distinct(cast(TariffGeneratedRate.start_time, Date))))
+        .join(TariffGeneratedRate.site)
+        .where(
+            (TariffGeneratedRate.tariff_id == tariff_id) &
+            (TariffGeneratedRate.site_id == site_id) &
+            (TariffGeneratedRate.changed_time >= changed_after) &
+            (Site.aggregator_id == aggregator_id))
+    )
+    resp = await session.execute(stmt)
+    return resp.scalar_one()
+
+
 async def select_rate_daily_stats(session: AsyncSession,
                                   aggregator_id: int,
                                   tariff_id: int,
@@ -235,7 +254,7 @@ async def select_rate_daily_stats(session: AsyncSession,
     """Fetches the aggregate totals of TariffGeneratedRate grouped by the date upon which they occured.
 
     Results will be ordered by date ASC"""
-    stmt_date_page = (
+    stmt = (
         select(cast(TariffGeneratedRate.start_time, Date).label("start_date"), func.count())
         .join(TariffGeneratedRate.site)
         .where(
@@ -248,19 +267,9 @@ async def select_rate_daily_stats(session: AsyncSession,
         .offset(start)
         .limit(limit)
     )
-    resp = await session.execute(stmt_date_page)
+    resp = await session.execute(stmt)
     date_page = resp.fetchall()
 
-    stmt_date_count = (
-        select(func.count(distinct(cast(TariffGeneratedRate.start_time, Date))))
-        .join(TariffGeneratedRate.site)
-        .where(
-            (TariffGeneratedRate.tariff_id == tariff_id) &
-            (TariffGeneratedRate.site_id == site_id) &
-            (TariffGeneratedRate.changed_time >= changed_after) &
-            (Site.aggregator_id == aggregator_id))
-    )
-    resp = await session.execute(stmt_date_count)
-    count = resp.scalar_one()
+    count = await count_unique_rate_days(session, aggregator_id, tariff_id, site_id, changed_after)
 
     return TariffGeneratedRateDailyStats(total_distinct_dates=count, single_date_counts=date_page)

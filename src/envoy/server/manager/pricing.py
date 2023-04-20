@@ -9,6 +9,7 @@ from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.crud.pricing import (
     TariffGeneratedRateDailyStats,
     count_tariff_rates_for_day,
+    count_unique_rate_days,
     select_all_tariffs,
     select_rate_daily_stats,
     select_single_tariff,
@@ -40,6 +41,20 @@ from envoy.server.schema.sep2.pricing import (
 
 class TariffProfileManager:
     @staticmethod
+    async def fetch_tariff_profile(session: AsyncSession, aggregator_id: int, tariff_id: int,
+                                   site_id: int) -> Optional[TariffProfileResponse]:
+        """Fetches a single tariff in the form of a sep2 TariffProfile thats specific to a single site."""
+
+        tariff = await select_single_tariff(session, tariff_id)
+        if tariff is None:
+            return None
+
+        unique_rate_days = await count_unique_rate_days(session, aggregator_id, tariff_id, site_id, datetime.min)
+        return TariffProfileMapper.map_to_response(tariff,
+                                                   site_id,
+                                                   unique_rate_days * TOTAL_PRICING_READING_TYPES)
+
+    @staticmethod
     async def fetch_tariff_profile_no_site(session: AsyncSession, tariff_id: int) -> Optional[TariffProfileResponse]:
         """Fetches a single tariff in the form of a sep2 TariffProfile. This tariff will NOT contain
         any useful RateComponent links due to a lack of a site ID scope
@@ -49,8 +64,8 @@ class TariffProfileManager:
         if tariff is None:
             return None
 
-        return TariffProfileMapper.map_to_response(tariff)
-
+        return TariffProfileMapper.map_to_nosite_response(tariff)
+    
     @staticmethod
     async def fetch_tariff_profile_list_no_site(session: AsyncSession, start: int, changed_after: datetime,
                                                 limit: int) -> Optional[TariffProfileListResponse]:

@@ -65,12 +65,12 @@ def test_create_reading_type_failure(bad_enum_val):
         PricingReadingTypeMapper.create_reading_type(bad_enum_val)
 
 
-def test_tariff_profile_mapping():
+def test_tariff_profile_nosite_mapping():
     """Non exhaustive test of the tariff profile mapping - mainly to sanity check important fields and ensure
     that exceptions arent being raised"""
     all_set: Tariff = generate_class_instance(Tariff, seed=101, optional_is_none=False)
     all_set.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
-    mapped_all_set = TariffProfileMapper.map_to_response(all_set)
+    mapped_all_set = TariffProfileMapper.map_to_nosite_response(all_set)
     assert mapped_all_set
     assert mapped_all_set.href
     assert mapped_all_set.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
@@ -83,7 +83,7 @@ def test_tariff_profile_mapping():
 
     some_set: Tariff = generate_class_instance(Tariff, seed=202, optional_is_none=True)
     some_set.currency_code = CurrencyCode.US_DOLLAR
-    mapped_some_set = TariffProfileMapper.map_to_response(some_set)
+    mapped_some_set = TariffProfileMapper.map_to_nosite_response(some_set)
     assert mapped_some_set
     assert mapped_some_set.href
     assert mapped_some_set.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
@@ -93,6 +93,40 @@ def test_tariff_profile_mapping():
     assert mapped_some_set.RateComponentListLink.href
     assert mapped_some_set.RateComponentListLink.href.startswith(mapped_some_set.href)
     assert mapped_some_set.RateComponentListLink.all_ == 0, "Raw tariff mappings have no rates - need site info to get this information"
+
+
+def test_tariff_profile_mapping():
+    """Non exhaustive test of the tariff profile mapping - mainly to sanity check important fields and ensure
+    that exceptions arent being raised"""
+    site_id = 9876
+    total_rates = 76543
+    all_set: Tariff = generate_class_instance(Tariff, seed=101, optional_is_none=False)
+    all_set.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
+    mapped_all_set = TariffProfileMapper.map_to_response(all_set, site_id, total_rates)
+    assert mapped_all_set
+    assert mapped_all_set.href
+    assert mapped_all_set.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
+    assert mapped_all_set.rateCode == all_set.dnsp_code
+    assert mapped_all_set.currency == all_set.currency_code
+    assert mapped_all_set.RateComponentListLink
+    assert mapped_all_set.RateComponentListLink.href
+    assert mapped_all_set.RateComponentListLink.href.startswith(mapped_all_set.href)
+    assert str(site_id) in mapped_all_set.RateComponentListLink.href
+    assert mapped_all_set.RateComponentListLink.all_ == total_rates
+
+    some_set: Tariff = generate_class_instance(Tariff, seed=202, optional_is_none=True)
+    some_set.currency_code = CurrencyCode.US_DOLLAR
+    mapped_some_set = TariffProfileMapper.map_to_response(some_set, site_id, total_rates)
+    assert mapped_some_set
+    assert mapped_some_set.href
+    assert mapped_some_set.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
+    assert mapped_some_set.rateCode == some_set.dnsp_code
+    assert mapped_some_set.currency == some_set.currency_code
+    assert mapped_some_set.RateComponentListLink
+    assert mapped_some_set.RateComponentListLink.href
+    assert mapped_some_set.RateComponentListLink.href.startswith(mapped_some_set.href)
+    assert str(site_id) in mapped_some_set.RateComponentListLink.href
+    assert mapped_some_set.RateComponentListLink.all_ == total_rates
 
 
 def test_tariff_profile_list_mapping():

@@ -41,8 +41,13 @@ def uri_tariff_profile_list():
 
 
 @pytest.fixture
-def uri_tariff_profile_format():
+def uri_tariff_profile_nosite_format():
     return "/tp/{tariff_id}"
+
+
+@pytest.fixture
+def uri_tariff_profile_format():
+    return "/tp/{tariff_id}/{site_id}"
 
 
 @pytest.fixture
@@ -125,10 +130,10 @@ async def test_get_tariffprofilelist(client: AsyncClient, uri_tariff_profile_lis
     (3, "/tp/3"),
     (4, None),
 ])
-async def test_get_tariffprofile(client: AsyncClient, uri_tariff_profile_format: str, agg_1_headers,
-                                 tariff_id: int, expected_href: Optional[str]):
-    """Tests that the list pagination works correctly"""
-    response = await client.get(uri_tariff_profile_format.format(tariff_id=tariff_id), headers=agg_1_headers)
+async def test_get_tariffprofile_nosite(client: AsyncClient, uri_tariff_profile_nosite_format: str, agg_1_headers,
+                                        tariff_id: int, expected_href: Optional[str]):
+    """Tests that the single entity fetch works correctly"""
+    response = await client.get(uri_tariff_profile_nosite_format.format(tariff_id=tariff_id), headers=agg_1_headers)
     if expected_href is None:
         assert_response_header(response, HTTPStatus.NOT_FOUND)
         assert_error_response(response)
@@ -141,6 +146,37 @@ async def test_get_tariffprofile(client: AsyncClient, uri_tariff_profile_format:
         assert parsed_response.href == expected_href
         assert parsed_response.currency
         assert parsed_response.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("tariff_id, site_id, expected_href, expected_ratecount", [
+    (1, 1, "/tp/1/1", 8),
+    (1, 2, "/tp/1/2", 4),
+    (1, 3, "/tp/1/3", 0),
+    (1, 4, "/tp/1/4", 0),
+    (2, 1, "/tp/2/1", 0),
+    (3, 1, "/tp/3/1", 0),
+    (4, 1, None, None),
+])
+async def test_get_tariffprofile(client: AsyncClient, uri_tariff_profile_format: str, agg_1_headers,
+                                 tariff_id: int, site_id: int, expected_href: Optional[str],
+                                 expected_ratecount: Optional[int]):
+    """Tests that the list pagination works correctly"""
+    response = await client.get(uri_tariff_profile_format.format(tariff_id=tariff_id, site_id=site_id), headers=agg_1_headers)
+    if expected_href is None:
+        assert_response_header(response, HTTPStatus.NOT_FOUND)
+        assert_error_response(response)
+    else:
+        assert_response_header(response, HTTPStatus.OK)
+        body = read_response_body_string(response)
+        assert len(body) > 0
+
+        parsed_response: TariffProfileResponse = TariffProfileResponse.from_xml(body)
+        assert parsed_response.href == expected_href
+        assert parsed_response.currency
+        assert parsed_response.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
+        assert parsed_response.RateComponentListLink
+        assert parsed_response.RateComponentListLink.all_ == expected_ratecount
 
 
 @pytest.mark.anyio

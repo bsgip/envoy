@@ -5,7 +5,7 @@ from typing import Union
 
 import pytest
 
-from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
+from envoy.server.crud.pricing import TariffGeneratedRateDailyStats, TariffGeneratedRateStats
 from envoy.server.manager.pricing import (
     ConsumptionTariffIntervalManager,
     RateComponentManager,
@@ -116,8 +116,8 @@ async def test_fetch_tariff_profile_list(mock_select_tariff_count: mock.MagicMoc
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.pricing.TariffProfileMapper")
 @mock.patch("envoy.server.manager.pricing.select_single_tariff")
-async def test_fetch_tariff_profile(mock_select_single_tariff: mock.MagicMock,
-                                    mock_TariffProfileMapper: mock.MagicMock):
+async def test_fetch_tariff_profile_nosite(mock_select_single_tariff: mock.MagicMock,
+                                           mock_TariffProfileMapper: mock.MagicMock):
     """Simple test to ensure dependencies are called correctly"""
     mock_session = mock.Mock()
     tariff_id = 111
@@ -125,18 +125,18 @@ async def test_fetch_tariff_profile(mock_select_single_tariff: mock.MagicMock,
     mapped_tp = generate_class_instance(TariffProfileResponse)
 
     mock_select_single_tariff.return_value = tariff
-    mock_TariffProfileMapper.map_to_response = mock.Mock(return_value=mapped_tp)
+    mock_TariffProfileMapper.map_to_nosite_response = mock.Mock(return_value=mapped_tp)
 
     response = await TariffProfileManager.fetch_tariff_profile_no_site(mock_session, tariff_id)
     assert response is mapped_tp
 
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
-    mock_TariffProfileMapper.map_to_response.assert_called_once_with(tariff)
+    mock_TariffProfileMapper.map_to_nosite_response.assert_called_once_with(tariff)
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.pricing.select_single_tariff")
-async def test_fetch_tariff_profile_missing(mock_select_single_tariff: mock.MagicMock):
+async def test_fetch_tariff_profile_nosite_missing(mock_select_single_tariff: mock.MagicMock):
     """Simple test to ensure dependencies are called correctly"""
     mock_session = mock.Mock()
     tariff_id = 111
@@ -148,6 +148,51 @@ async def test_fetch_tariff_profile_missing(mock_select_single_tariff: mock.Magi
 
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
 
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.pricing.TariffProfileMapper")
+@mock.patch("envoy.server.manager.pricing.select_single_tariff")
+@mock.patch("envoy.server.manager.pricing.count_unique_rate_days")
+async def test_fetch_tariff_profile(mock_count_unique_rate_days: mock.MagicMock,
+                                    mock_select_single_tariff: mock.MagicMock,
+                                    mock_TariffProfileMapper: mock.MagicMock):
+    """Simple test to ensure dependencies are called correctly"""
+    mock_session = mock.Mock()
+    agg_id = 111
+    tariff_id = 222
+    site_id = 333
+    rates = 444
+
+    tariff = generate_class_instance(Tariff)
+    mapped_tp = generate_class_instance(TariffProfileResponse)
+
+    mock_select_single_tariff.return_value = tariff
+    mock_count_unique_rate_days.return_value = rates
+    mock_TariffProfileMapper.map_to_response = mock.Mock(return_value=mapped_tp)
+
+    response = await TariffProfileManager.fetch_tariff_profile(mock_session, agg_id, tariff_id, site_id)
+    assert response is mapped_tp
+
+    mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
+    expected_count = rates * TOTAL_PRICING_READING_TYPES
+    mock_TariffProfileMapper.map_to_response.assert_called_once_with(tariff, site_id, expected_count)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.pricing.select_single_tariff")
+async def test_fetch_tariff_profile_missing(mock_select_single_tariff: mock.MagicMock):
+    """Simple test to ensure dependencies are called correctly"""
+    mock_session = mock.Mock()
+    agg_id = 111
+    tariff_id = 222
+    site_id = 333
+
+    mock_select_single_tariff.return_value = None
+
+    response = await TariffProfileManager.fetch_tariff_profile(mock_session, agg_id, tariff_id, site_id)
+    assert response is None
+
+    mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.pricing.RateComponentMapper")

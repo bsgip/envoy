@@ -6,6 +6,7 @@ import pytest
 
 from envoy.server.crud.pricing import (
     count_tariff_rates_for_day,
+    count_unique_rate_days,
     select_all_tariffs,
     select_rate_daily_stats,
     select_rate_stats,
@@ -232,10 +233,12 @@ async def test_select_rate_stats(pg_base_config, filter: tuple[int, int, int, da
 @pytest.mark.anyio
 async def test_select_rate_daily_stats_filtering(pg_base_config, agg_id: int, tariff_id: int, site_id: int,
                                                  after: datetime, output_list: list[tuple[date, int]]):
-    """Tests the various filter options on select_rate_daily_stats"""
+    """Tests the various filter options on select_rate_daily_stats and count_unique_rate_days"""
     async with generate_async_session(pg_base_config) as session:
         daily_stats = await select_rate_daily_stats(session, agg_id, tariff_id, site_id, 0, after, 99)
+        unique_rate_days = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
         assert daily_stats.total_distinct_dates == len(daily_stats.single_date_counts), "Without pagination limits the total count will equal the page count"
+        assert unique_rate_days == daily_stats.total_distinct_dates
         assert daily_stats.single_date_counts == output_list
         assert all([isinstance(d, date) for (d, _) in daily_stats.single_date_counts]), "Validating date type"
         assert all([isinstance(c, int) for (_, c) in daily_stats.single_date_counts]), "Validating int type"

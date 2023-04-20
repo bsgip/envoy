@@ -33,10 +33,7 @@ from envoy.server.schema.sep2.pricing import (
 
 class TariffProfileMapper:
     @staticmethod
-    def map_to_response(tariff: Tariff) -> TariffProfileResponse:
-        """Returns a mapped sep2 entity. The href to RateComponentListLink will be to an endpoint
-        for returning rate components for an unspecified site id"""
-        tp_href = f"/tp/{tariff.tariff_id}"
+    def _map_to_response(tariff: Tariff, tp_href: str, total_rates: int) -> TariffProfileResponse:
         return TariffProfileResponse.validate(
             {
                 "href": tp_href,
@@ -47,9 +44,22 @@ class TariffProfileMapper:
                 "rateCode": tariff.dnsp_code,
                 "primacyType": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                "RateComponentListLink": ListLink(href=tp_href + '/rc', all_=0),  # unspecified site' rate components
+                "RateComponentListLink": ListLink(href=tp_href + '/rc', all_=total_rates),
             }
         )
+
+    @staticmethod
+    def map_to_response(tariff: Tariff, site_id: int, total_rates: int) -> TariffProfileResponse:
+        """Returns a mapped sep2 entity."""
+        tp_href = f"/tp/{tariff.tariff_id}/{site_id}"
+        return TariffProfileMapper._map_to_response(tariff, tp_href, total_rates)
+
+    @staticmethod
+    def map_to_nosite_response(tariff: Tariff) -> TariffProfileResponse:
+        """Returns a mapped sep2 entity. The href to RateComponentListLink will be to an endpoint
+        for returning rate components for an unspecified site id"""
+        tp_href = f"/tp/{tariff.tariff_id}"
+        return TariffProfileMapper._map_to_response(tariff, tp_href, 0)
 
     @staticmethod
     def map_to_list_response(tariffs: list[Tariff], total_tariffs: int) -> TariffProfileListResponse:
@@ -59,7 +69,7 @@ class TariffProfileMapper:
             {
                 "all_": total_tariffs,
                 "results": len(tariffs),
-                "TariffProfile": [TariffProfileMapper.map_to_response(t) for t in tariffs],
+                "TariffProfile": [TariffProfileMapper.map_to_nosite_response(t) for t in tariffs],
             }
         )
 

@@ -46,10 +46,10 @@ async def get_pricingreadingtype(reading_type: PricingReadingType) -> XmlRespons
 
 @router.head("/tp")
 @router.get("/tp", status_code=HTTPStatus.OK)
-async def get_tariffprofilelist(request: Request,
-                                start: list[int] = Query([0], alias="s"),
-                                after: list[int] = Query([0], alias="a"),
-                                limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
+async def get_tariffprofilelist_nositescope(request: Request,
+                                            start: list[int] = Query([0], alias="s"),
+                                            after: list[int] = Query([0], alias="a"),
+                                            limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
     """Responds with a paginated list of tariff profiles available to the current client. These tariffs
     will not lead to any prices directly as prices are specific to site/end devices which can be
     discovered via function set assignments. This endpoint is purely for strict 2030.5 compliance
@@ -79,7 +79,7 @@ async def get_tariffprofilelist(request: Request,
 
 @router.head("/tp/{tariff_id}")
 @router.get("/tp/{tariff_id}", status_code=HTTPStatus.OK)
-async def get_singletariffprofile(tariff_id: int, request: Request) -> XmlResponse:
+async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) -> XmlResponse:
     """Responds with a single TariffProfile resource identified by tariff_id. These tariffs
     will not lead to any prices directly as prices are specific to site/end devices which can be
     discovered via function set assignments. This endpoint is purely for strict 2030.5 compliance
@@ -136,6 +136,36 @@ async def get_ratecomponentlist_nositescope(tariff_id: int,
         "results": 0,
         "href": request.url.path
     }))
+
+
+@router.head("/tp/{tariff_id}/{site_id}")
+@router.get("/tp/{tariff_id}/{site_id}", status_code=HTTPStatus.OK)
+async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request) -> XmlResponse:
+    """Responds with a single TariffProfile resource identified by tariff_id for a specific site id.
+
+    Args:
+        tariff_id: Path parameter, the target TariffProfile's internal registration number.
+        site_id: Path parameter - the site that the underlying rates will be scoped to
+        request: FastAPI request object.
+
+    Returns:
+        fastapi.Response object.
+
+    """
+    try:
+        tp = await TariffProfileManager.fetch_tariff_profile(
+            db.session,
+            extract_aggregator_id(request),
+            tariff_id,
+            site_id
+        )
+    except InvalidMappingError as ex:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+
+    if tp is None:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(tp)
 
 
 @router.head("/tp/{tariff_id}/{site_id}/rc")
