@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "73064c83-2bef-4329-a2c3-56339798f40e",
+		"_postman_id": "b490deca-70d2-488d-bb81-1e3366c2dc7e",
 		"name": "envoy",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "24300585"
+		"_exporter_id": "26699271"
 	},
 	"item": [
 		{
@@ -96,7 +96,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <lFDI>aa:bb:cc</lFDI>\r\n    <sFDI>789654321006</sFDI>\r\n</EndDevice>",
+							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <sFDI>789654321005</sFDI>\r\n    <changedTime>1379905200</changedTime>\r\n</EndDevice>",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -180,6 +180,42 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "/edev/3 (EndDevice FunctionSetAssignments)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsal?",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"fsal"
+							],
+							"query": [
+								{
+									"key": "",
+									"value": null
+								}
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -220,7 +256,7 @@
 			"name": "Device Capability",
 			"item": [
 				{
-					"name": "/dcap  (DeviceCapabilities)",
+					"name": "/dcap",
 					"protocolProfileBehavior": {
 						"disabledSystemHeaders": {}
 					},
@@ -239,12 +275,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/dcap",
+							"raw": "{{HOST}}/dcap (DeviceCapabilities)",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"dcap"
+								"dcap (DeviceCapabilities)"
 							]
 						}
 					},
@@ -680,6 +716,36 @@
 					"response": []
 				},
 				{
+					"name": "/tp/1/3 (TariffProfile)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/1/3",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"1",
+								"3"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "/tp/3 (RateComponentList from Pricing Server)",
 					"request": {
 						"method": "GET",
@@ -703,6 +769,43 @@
 							"path": [
 								"tp",
 								"{{TP_ID}}",
+								"rc"
+							],
+							"query": [
+								{
+									"key": "l",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/1/3 (RateComponentLis)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/1/3/rc?l=1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"1",
+								"3",
 								"rc"
 							],
 							"query": [
@@ -776,6 +879,46 @@
 								{
 									"key": "l",
 									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/1/3 (TimeTariffInterval)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/1/3/rc/2023-03-05/1/tti?l=288",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"1",
+								"3",
+								"rc",
+								"2023-03-05",
+								"1",
+								"tti"
+							],
+							"query": [
+								{
+									"key": "l",
+									"value": "288"
 								}
 							]
 						}
