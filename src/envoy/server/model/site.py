@@ -17,6 +17,7 @@ class Site(Base):
         ForeignKey("aggregator.aggregator_id"), nullable=False
     )
 
+    timezone_id: Mapped[str] = mapped_column(VARCHAR(length=64), nullable=False)  # tz_id name of the local timezone
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     lfdi: Mapped[str] = mapped_column(VARCHAR(length=42), nullable=False, unique=True)
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
