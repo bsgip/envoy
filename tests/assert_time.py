@@ -27,4 +27,4 @@ def assert_datetime_equal(a: Optional[datetime], b: Optional[datetime]):
     if a is None or b is None:
         assert a is None and b is None
     else:
-        assert a.timestamp() == b.timestamp(), f"Comparing {a} to {b}"
+        assert a.timestamp() == b.timestamp(), f"Comparing {a} ({a.timestamp()}) to {b} ({b.timestamp()})"

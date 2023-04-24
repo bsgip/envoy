@@ -10,6 +10,7 @@ from envoy.server.schema.sep2.end_device import (
     EndDeviceRequest,
     EndDeviceResponse,
 )
+from envoy.server.settings import settings
 
 
 class EndDeviceMapper:
@@ -49,7 +50,8 @@ class EndDeviceMapper:
             sfdi=end_device.sFDI,
             changed_time=changed_time,
             aggregator_id=aggregator_id,
-            device_category=device_category
+            device_category=device_category,
+            timezone_id=settings.default_timezone
         )
 
 

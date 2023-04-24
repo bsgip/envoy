@@ -1,5 +1,5 @@
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Optional
 
@@ -105,7 +105,7 @@ async def test_get_pricingreadingtype(client: AsyncClient, uri_pricing_type_form
 @pytest.mark.parametrize("start,limit,changed_after,expected_tariffs", [
     (None, None, None, ["/tp/3"]),
     (0, 99, None, ["/tp/3", "/tp/2", "/tp/1"]),
-    (0, 99, datetime(2023, 1, 2, 12, 1, 2), ["/tp/3", "/tp/2"]),
+    (0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), ["/tp/3", "/tp/2"]),
     (1, 1, None, ["/tp/2"]),
 ])
 async def test_get_tariffprofilelist(client: AsyncClient, uri_tariff_profile_list: str, agg_1_headers,

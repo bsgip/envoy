@@ -7,12 +7,7 @@ from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 from envoy.server.api import routers
 from envoy.server.api.depends import LFDIAuthDepends
 from envoy.server.api.error_handler import general_exception_handler, http_exception_handler
-from envoy.server.settings import AppSettings
-
-
-def generate_settings() -> AppSettings:
-    """Generates and configures a new instance of the AppSettings"""
-    return AppSettings()
+from envoy.server.settings import AppSettings, settings
 
 
 def generate_app(new_settings: AppSettings):
@@ -31,7 +26,6 @@ def generate_app(new_settings: AppSettings):
 logging.basicConfig(style="{", level=logging.INFO)
 
 # Setup app
-settings = generate_settings()
 app = generate_app(settings)
 
 if __name__ == "__main__":

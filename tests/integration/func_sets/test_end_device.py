@@ -1,5 +1,5 @@
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 from http import HTTPStatus
 
 import pytest
@@ -73,8 +73,8 @@ async def test_get_end_device_list_by_aggregator(client: AsyncClient, edev_base_
 
      # add in timestamp filtering
      # This will filter down to Site 2,3,4
-     (build_paging_params(limit=5, changed_after=datetime(2022, 2, 3, 5, 0, 0)), [4444, 2222], 2, AGG_1_VALID_PEM),
-     (build_paging_params(limit=5, start=1, changed_after=datetime(2022, 2, 3, 5, 0, 0)), [2222], 2, AGG_1_VALID_PEM),
+     (build_paging_params(limit=5, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc)), [4444, 2222], 2, AGG_1_VALID_PEM),
+     (build_paging_params(limit=5, start=1, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc)), [2222], 2, AGG_1_VALID_PEM),
 
      (build_paging_params(limit=2, start=1), [], 1, AGG_2_VALID_PEM),
      (build_paging_params(limit=2, start=1), [], 0, AGG_3_VALID_PEM),
@@ -109,7 +109,7 @@ async def test_get_enddevice(client: AsyncClient, edev_fetch_uri_format: str):
     body = read_response_body_string(response)
     assert len(body) > 0
     parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(body)
-    assert parsed_response.changedTime == int(datetime(2022, 2, 3, 5, 6, 7).timestamp())
+    assert parsed_response.changedTime == int(datetime(2022, 2, 3, 5, 6, 7, tzinfo=timezone.utc).timestamp())
     assert parsed_response.href == uri
     assert parsed_response.enabled == 1
     assert parsed_response.lFDI == "site2-lfdi"
