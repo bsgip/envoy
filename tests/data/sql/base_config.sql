@@ -50,3 +50,14 @@ INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id"
 VALUES (4, 1, 1, '2022-03-04 14:22:33', '2022-03-06 01:02+10', 14, 4.1, -4.22, 4.333, -4.4444);
 
 SELECT pg_catalog.setval('public.tariff_generated_rate_tariff_generated_rate_id_seq', 5, true);
+
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 1, '2022-05-06 11:22:33', '2022-05-07 01:02+10', 11, 1.11, -1.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (2, 1, '2022-05-06 12:22:33', '2022-05-07 03:04+10', 22, 2.11, -2.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (3, 2, '2022-05-06 13:22:33', '2022-05-07 01:02+10', 33, 3.11, -3.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (4, 1, '2022-05-06 14:22:33', '2022-05-08 01:02+10', 44, 4.11, -4.22);
+
+SELECT pg_catalog.setval('public.dynamic_operating_envelope_dynamic_operating_envelope_id_seq', 5, true);

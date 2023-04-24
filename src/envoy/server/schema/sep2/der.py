@@ -3,14 +3,18 @@ from typing import Optional
 
 from pydantic_xml import element
 
-from envoy.server.schema.sep2.base import BaseXmlModelWithNS, Link, SubscribableIdentifiedObject, SubscribableList
+from envoy.server.schema.sep2.base import BaseXmlModelWithNS, IdentifiedObject, Link
+from envoy.server.schema.sep2.base import List as Sep2List
+from envoy.server.schema.sep2.base import ListLink, SubscribableIdentifiedObject, SubscribableList
 from envoy.server.schema.sep2.end_device import DeviceCategory
 from envoy.server.schema.sep2.event import RandomizableEvent
+from envoy.server.schema.sep2.pricing import PrimacyType
 
 
 class SignedPerCent(int):
     # Used for signed percentages, specified in hundredths of a percent, -10000 - 10000. (10000 = 100%)
     pass
+
 
 class PerCent(int):
     # Used for percentages, specified in hundredths of a percent, 0 - 10000. (10000 = 100%)
@@ -107,3 +111,38 @@ class DERControlResponse(RandomizableEvent, tag="DERControl"):
 
 class DERControlListResponse(SubscribableList, tag="DERControlList"):
     DERControl: Optional[list[DERControlResponse]] = element()
+
+
+class DERProgramResponse(SubscribableIdentifiedObject, tag="DERProgram"):
+    """sep2 DERProgram"""
+    primacy: PrimacyType = element()
+    DefaultDERControlLink: Optional[Link] = element()
+    ActiveDERControlListLink: Optional[ListLink] = element()
+    DERControlListLink: Optional[ListLink] = element()
+    DERCurveListLink: Optional[ListLink] = element()
+
+
+class DERProgramListResponse(SubscribableList, tag="DERProgramList"):
+    DERProgram: list[DERProgramResponse] = element()
+    pollRate: Optional[int] = element()  # The default polling rate for this resource and all resources below in seconds
+
+
+class DemandResponseProgramResponse(IdentifiedObject, tag="DemandResponseProgram"):
+    """sep2 Demand response program"""
+    availabilityUpdatePercentChangeThreshold: Optional[PerCent] = element()
+    availabilityUpdatePowerChangeThreshold: Optional[ActivePower] = element()
+    primacy: PrimacyType = element()
+    ActiveEndDeviceControlListLink: Optional[ListLink] = element()
+    EndDeviceControlListLink: Optional[ListLink] = element()
+
+
+class DemandResponseProgramListResponse(Sep2List, tag="DemandResponseProgramList"):
+    DemandResponseProgram: Optional[list[DemandResponseProgramResponse]] = element()
+
+
+class EndDeviceControlResponse(RandomizableEvent, tag="EndDeviceControl"):
+    """Instructs an EndDevice to perform a specified action."""
+    deviceCategory: DeviceCategory = element()
+    drProgramMandatory: bool = element()
+    loadShiftForward: bool = element()
+    overrideDuration: Optional[int] = element()

@@ -18,8 +18,8 @@ class DynamicOperatingEnvelope(Base):
     dynamic_operating_envelope_id: Mapped[int] = mapped_column(primary_key=True)
     site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id"))  # The site that this doe applies to
 
-    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=False))  # When the doe was created/changed
-    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=False))  # Time that the doe comes into effect
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the doe was created/changed
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the doe comes into effect
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this doe applies for
     import_limit_active_watts: Mapped[Decimal] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES))  # Constraint on imported active power  # noqa e501
     export_limit_watts: Mapped[Decimal] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES))  # Constraint on exported active/reactive power # noqa e501
