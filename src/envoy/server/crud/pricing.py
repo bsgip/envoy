@@ -94,18 +94,21 @@ async def _tariff_rates_for_day(is_counting: bool,
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    expr_start_at_site_tz = func.timezone(Site.timezone_id, TariffGeneratedRate.start_time)
     if is_counting:
         select_clause = select(TariffGeneratedRate.tariff_generated_rate_id)
     else:
         select_clause = select(TariffGeneratedRate, Site.timezone_id)
+
+    # To best utilise the rate indexes - we map our literal start/end times to the site local time zone
+    tz_adjusted_from_expr = func.timezone(Site.timezone_id, cast(day, TIMESTAMP))
+    tz_adjusted_to_expr = func.timezone(Site.timezone_id, cast(day + timedelta(days=1), TIMESTAMP))
     stmt = (
         select_clause
         .join(TariffGeneratedRate.site)
         .where(
             (TariffGeneratedRate.tariff_id == tariff_id) &
-            (expr_start_at_site_tz >= func.timezone(Site.timezone_id, cast(day, TIMESTAMP))) &
-            (expr_start_at_site_tz < func.timezone(Site.timezone_id, cast(day + timedelta(days=1), TIMESTAMP))) &
+            (TariffGeneratedRate.start_time >= tz_adjusted_from_expr) &
+            (TariffGeneratedRate.start_time < tz_adjusted_to_expr) &
             (TariffGeneratedRate.changed_time >= changed_after) &
             (TariffGeneratedRate.site_id == site_id) &
             (Site.aggregator_id == aggregator_id))

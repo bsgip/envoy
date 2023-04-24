@@ -223,8 +223,9 @@ async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config,
 @pytest.mark.parametrize(
     "expected_id_and_starts, agg_id, tariff_id, site_id, day",
     [
-        ([(1, datetime(2022, 3, 4, 7, 2)), (2, datetime(2022, 3, 4, 9, 4))], 1, 1, 1, date(2022, 3, 3)),  # Adjusted for LA time
-        ([], 1, 1, 1, date(2022, 3, 5)),    # Adjusted for LA time
+        ([(1, datetime(2022, 3, 4, 7, 2)), (2, datetime(2022, 3, 4, 9, 4))], 1, 1, 1, date(2022, 3, 4)),  # Adjusted for LA time
+        ([(4, datetime(2022, 3, 5, 7, 2))], 1, 1, 1, date(2022, 3, 5)),    # Adjusted for LA time
+        ([], 1, 1, 1, date(2022, 3, 6)),    # Adjusted for LA time
      ],
 )
 @pytest.mark.anyio
