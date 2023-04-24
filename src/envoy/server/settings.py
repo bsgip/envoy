@@ -13,6 +13,7 @@ class AppSettings(BaseSettings):
     version: str = "0.0.0"
 
     cert_pem_header: str = "x-forwarded-client-cert"
+    default_timezone: str = "Australia/Brisbane"
 
     database_url: PostgresDsn
     commit_on_exit: str = False
@@ -37,3 +38,11 @@ class AppSettings(BaseSettings):
     @property
     def db_middleware_kwargs(self) -> Dict[str, Any]:
         return {"db_url": self.database_url, "commit_on_exit": self.commit_on_exit}
+
+
+def generate_settings() -> AppSettings:
+    """Generates and configures a new instance of the AppSettings"""
+    return AppSettings()
+
+
+settings = generate_settings()

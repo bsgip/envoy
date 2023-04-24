@@ -121,6 +121,7 @@ def assert_rate_for_id(expected_rate_id: Optional[int],
         if expected_date is not None and expected_time is not None:
             tz = ZoneInfo(expected_tz)
             assert_datetime_equal(actual_rate.start_time, datetime.combine(expected_date, expected_time, tzinfo=tz))
+            assert actual_rate.start_time.tzname() == tz.tzname(actual_rate.start_time), "Start time should be returned in local time"
 
 
 @pytest.mark.parametrize(
@@ -150,8 +151,8 @@ async def test_select_tariff_rate_for_day_time(pg_base_config, expected_rate_id:
 @pytest.mark.parametrize(
     "expected_rate_id, agg_id, tariff_id, site_id, d, t",
     # expected_id, agg_id, tariff_id, site_id
-    [(1, 1, 1, 1, date(2022, 3, 5), time(1, 2)),
-     (2, 1, 1, 1, date(2022, 3, 5), time(3, 4)),
+    [(1, 1, 1, 1, date(2022, 3, 4), time(7, 2)),  # Adjusted LA Time
+     (2, 1, 1, 1, date(2022, 3, 4), time(9, 4)),  # Adjusted LA Time
      ],
 )
 @pytest.mark.anyio
@@ -186,11 +187,11 @@ async def test_select_tariff_rates_for_day_pagination(pg_base_config, expected_i
         for (id, rate) in zip(expected_ids, rates):
             assert_rate_for_id(id, 1, 1, None, None, None, rate)
 
-
+# 2022-03-05 01:02
 @pytest.mark.parametrize(
-    "expected_ids, agg_id, tariff_id, site_id, day",
+    "expected_id_and_starts, agg_id, tariff_id, site_id, day",
     [
-        ([1, 2], 1, 1, 1, date(2022, 3, 5)),
+        ([(1, datetime(2022, 3, 5, 1, 2)), (2, datetime(2022, 3, 5, 3, 4))], 1, 1, 1, date(2022, 3, 5)),
 
         ([], 2, 1, 1, date(2022, 3, 5)),
         ([], 1, 3, 1, date(2022, 3, 5)),
@@ -199,28 +200,36 @@ async def test_select_tariff_rates_for_day_pagination(pg_base_config, expected_i
      ],
 )
 @pytest.mark.anyio
-async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config, expected_ids: list[int], agg_id: int,
-                                                             tariff_id: int, site_id: int, day: date):
+async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config,
+                                                             expected_id_and_starts: list[tuple[int, datetime]],
+                                                             agg_id: int, tariff_id: int, site_id: int, day: date):
     """Tests out the basic filters features and validates the associated count function too"""
     async with generate_async_session(pg_base_config) as session:
         rates = await select_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, 0, datetime.min, 99)
         count = await count_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, datetime.min)
         assert type(count) == int
-        assert len(rates) == len(expected_ids)
+        assert len(rates) == len(expected_id_and_starts)
         assert len(rates) == count
-        for (id, rate) in zip(expected_ids, rates):
-            assert_rate_for_id(id, tariff_id, site_id, None, None, None, rate)
+        for ((id, expected_datetime), rate) in zip(expected_id_and_starts, rates):
+            assert_rate_for_id(id,
+                               tariff_id,
+                               site_id,
+                               expected_datetime.date(),
+                               expected_datetime.time(),
+                               "Australia/Brisbane",
+                               rate)
 
 
 @pytest.mark.parametrize(
-    "expected_ids, agg_id, tariff_id, site_id, day",
+    "expected_id_and_starts, agg_id, tariff_id, site_id, day",
     [
-        ([1], 1, 1, 1, date(2022, 3, 5)),
-        ([2], 1, 1, 1, date(2022, 3, 6)),
+        ([(1, datetime(2022, 3, 4, 7, 2)), (2, datetime(2022, 3, 4, 9, 4))], 1, 1, 1, date(2022, 3, 3)),  # Adjusted for LA time
+        ([], 1, 1, 1, date(2022, 3, 5)),    # Adjusted for LA time
      ],
 )
 @pytest.mark.anyio
-async def test_select_and_count_tariff_rates_for_day_filters_la_time(pg_la_timezone, expected_ids: list[int],
+async def test_select_and_count_tariff_rates_for_day_filters_la_time(pg_la_timezone,
+                                                                     expected_id_and_starts: list[tuple[int, datetime]],
                                                                      agg_id: int, tariff_id: int, site_id: int,
                                                                      day: date):
     """Builds on test_select_and_count_tariff_rates_for_day_filters with the la timezone"""
@@ -228,10 +237,16 @@ async def test_select_and_count_tariff_rates_for_day_filters_la_time(pg_la_timez
         rates = await select_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, 0, datetime.min, 99)
         count = await count_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, datetime.min)
         assert type(count) == int
-        assert len(rates) == len(expected_ids)
+        assert len(rates) == len(expected_id_and_starts)
         assert len(rates) == count
-        for (id, rate) in zip(expected_ids, rates):
-            assert_rate_for_id(id, tariff_id, site_id, None, None, None, rate)
+        for ((id, expected_datetime), rate) in zip(expected_id_and_starts, rates):
+            assert_rate_for_id(id,
+                               tariff_id,
+                               site_id,
+                               expected_datetime.date(),
+                               expected_datetime.time(),
+                               "America/Los_Angeles",
+                               rate)
 
 @pytest.mark.parametrize(
     "filter, expected",
@@ -256,6 +271,34 @@ async def test_select_rate_stats(pg_base_config, filter: tuple[int, int, int, da
         assert stats.total_rates == expected_count
         assert_datetime_equal(stats.first_rate, expected_first)
         assert_datetime_equal(stats.last_rate, expected_last)
+        if stats.first_rate:
+            assert stats.first_rate.tzname() == ZoneInfo("Australia/Brisbane").tzname(stats.first_rate), "Expected datetime in local time"
+        if stats.last_rate:
+            assert stats.last_rate.tzname() == ZoneInfo("Australia/Brisbane").tzname(stats.last_rate), "Expected datetime in local time"
+
+
+@pytest.mark.parametrize(
+    "filter, expected",
+    [
+        ((1, 1, 1, datetime.min), (3, datetime(2022, 3, 4, 7, 2), datetime(2022, 3, 5, 7, 2))),  # Adjusted to LA time
+     ],
+)
+@pytest.mark.anyio
+async def test_select_rate_stats_la_time(pg_la_timezone, filter: tuple[int, int, int, datetime],
+                                         expected: tuple[int, datetime, datetime]):
+    """Tests the various filter options on select_rate_stats"""
+    (agg_id, tariff_id, site_id, after) = filter
+    (expected_count, expected_first, expected_last) = expected
+    async with generate_async_session(pg_la_timezone) as session:
+        stats = await select_rate_stats(session, agg_id, tariff_id, site_id, after)
+        assert stats
+        assert stats.total_rates == expected_count
+        assert_datetime_equal(stats.first_rate, expected_first)
+        assert_datetime_equal(stats.last_rate, expected_last)
+        if stats.first_rate:
+            assert stats.first_rate.tzname() == ZoneInfo("America/Los_Angeles").tzname(stats.first_rate), "Expected datetime in local time"
+        if stats.last_rate:
+            assert stats.last_rate.tzname() == ZoneInfo("America/Los_Angeles").tzname(stats.last_rate), "Expected datetime in local time"
 
 
 @pytest.mark.parametrize(
@@ -275,6 +318,26 @@ async def test_select_rate_daily_stats_filtering(pg_base_config, agg_id: int, ta
                                                  after: datetime, output_list: list[tuple[date, int]]):
     """Tests the various filter options on select_rate_daily_stats and count_unique_rate_days"""
     async with generate_async_session(pg_base_config) as session:
+        daily_stats = await select_rate_daily_stats(session, agg_id, tariff_id, site_id, 0, after, 99)
+        unique_rate_days = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
+        assert daily_stats.total_distinct_dates == len(daily_stats.single_date_counts), "Without pagination limits the total count will equal the page count"
+        assert unique_rate_days == daily_stats.total_distinct_dates
+        assert daily_stats.single_date_counts == output_list
+        assert all([isinstance(d, date) for (d, _) in daily_stats.single_date_counts]), "Validating date type"
+        assert all([isinstance(c, int) for (_, c) in daily_stats.single_date_counts]), "Validating int type"
+
+
+@pytest.mark.parametrize(
+    "agg_id, tariff_id, site_id, after, output_list",
+    [
+        (1, 1, 1, datetime.min, [(date(2022, 3, 4), 2), (date(2022, 3, 5), 1)]),  # Adjusted LA time
+     ],
+)
+@pytest.mark.anyio
+async def test_select_rate_daily_stats_filtering_la_time(pg_la_timezone, agg_id: int, tariff_id: int, site_id: int,
+                                                         after: datetime, output_list: list[tuple[date, int]]):
+    """Extends test_select_rate_daily_stats_filtering with a test on different site timezones"""
+    async with generate_async_session(pg_la_timezone) as session:
         daily_stats = await select_rate_daily_stats(session, agg_id, tariff_id, site_id, 0, after, 99)
         unique_rate_days = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
         assert daily_stats.total_distinct_dates == len(daily_stats.single_date_counts), "Without pagination limits the total count will equal the page count"

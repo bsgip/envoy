@@ -1,12 +1,25 @@
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Optional, Union
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import TIMESTAMP, Date, cast, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+
+
+def _localize_start_time(rate_and_tz: Optional[tuple[TariffGeneratedRate, str]]) -> Optional[TariffGeneratedRate]:
+    """Localizes a TariffGeneratedRate.start_time to be in the local timezone passed in as the second
+    element in the tuple. Returns the TariffGeneratedRate (it will be modified in place)"""
+    if rate_and_tz is None:
+        return None
+
+    (rate, tz_name) = rate_and_tz
+    tz = ZoneInfo(tz_name)
+    rate.start_time = rate.start_time.astimezone(tz)
+    return rate
 
 
 async def select_tariff_count(session: AsyncSession, after: datetime) -> int:
@@ -49,7 +62,6 @@ async def select_all_tariffs(
             Tariff.tariff_id.desc(),
         )
     )
-
     resp = await session.execute(stmt)
     return resp.scalars().all()
 
@@ -83,8 +95,12 @@ async def _tariff_rates_for_day(is_counting: bool,
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
     expr_start_at_site_tz = func.timezone(Site.timezone_id, TariffGeneratedRate.start_time)
+    if is_counting:
+        select_clause = select(TariffGeneratedRate.tariff_generated_rate_id)
+    else:
+        select_clause = select(TariffGeneratedRate, Site.timezone_id)
     stmt = (
-        select(TariffGeneratedRate.tariff_generated_rate_id if is_counting else TariffGeneratedRate)
+        select_clause
         .join(TariffGeneratedRate.site)
         .where(
             (TariffGeneratedRate.tariff_id == tariff_id) &
@@ -103,12 +119,11 @@ async def _tariff_rates_for_day(is_counting: bool,
 
     if is_counting:
         stmt = select(func.count()).select_from(stmt)
-
     resp = await session.execute(stmt)
     if is_counting:
         return resp.scalar_one()
     else:
-        return resp.scalars().all()
+        return [_localize_start_time(rate_and_tz) for rate_and_tz in resp.all()]
 
 
 async def count_tariff_rates_for_day(session: AsyncSession,
@@ -171,7 +186,7 @@ async def select_tariff_rate_for_day_time(session: AsyncSession,
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
     expr_start_at_site_tz = func.timezone(Site.timezone_id, TariffGeneratedRate.start_time)
     stmt = (
-        select(TariffGeneratedRate)
+        select(TariffGeneratedRate, Site.timezone_id)
         .join(TariffGeneratedRate.site)
         .where(
             (TariffGeneratedRate.tariff_id == tariff_id) &
@@ -181,7 +196,7 @@ async def select_tariff_rate_for_day_time(session: AsyncSession,
     )
 
     resp = await session.execute(stmt)
-    return resp.scalars().one_or_none()
+    return _localize_start_time(resp.one_or_none())
 
 
 @dataclass
@@ -212,7 +227,10 @@ async def select_rate_stats(session: AsyncSession,
     changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)"""
     expr_start_at_site_tz = func.timezone(Site.timezone_id, TariffGeneratedRate.start_time)
     stmt = (
-            select(func.count(), func.max(expr_start_at_site_tz), func.min(expr_start_at_site_tz))
+            select(func.count(),
+                   func.max(expr_start_at_site_tz),
+                   func.min(expr_start_at_site_tz),
+                   func.max(Site.timezone_id))  # There will only be a single tz_name due to site being 1-1 relationship
             .join(TariffGeneratedRate.site)
             .where(
                 (TariffGeneratedRate.tariff_id == tariff_id) &
@@ -222,10 +240,14 @@ async def select_rate_stats(session: AsyncSession,
     )
 
     resp = await session.execute(stmt)
-    (count, max_date, min_date) = resp.one()
+    (count, max_date, min_date, tz_name) = resp.one()
     if count == 0:
         return TariffGeneratedRateStats(total_rates=count, first_rate=None, last_rate=None)
     else:
+        # Adjust max/min to use site local time
+        tz = ZoneInfo(tz_name)
+        max_date = max_date.astimezone(tz)
+        min_date = min_date.astimezone(tz)
         return TariffGeneratedRateStats(total_rates=count, first_rate=min_date, last_rate=max_date)
 
 
