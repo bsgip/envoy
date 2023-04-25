@@ -533,6 +533,9 @@ def get_formatted_links(link_names: list, uri_parameters: dict = None, link_map:
         def __missing__(self, key):
             raise MissingUriParameterError(f"{key} not found.")
 
+    if uri_parameters is None:
+        uri_parameters = {}
+
     links = {}
     for link_name in link_names:
         if link_name in link_map:
