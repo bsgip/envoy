@@ -4,8 +4,18 @@ from decimal import Decimal
 
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from envoy.server.schema.csip_aus.doe import CSIPAusDERControlBase
-from envoy.server.schema.sep2.der import ActivePower, DERControlListResponse, DERControlResponse
+from envoy.server.schema.sep2.base import ListLink
+from envoy.server.schema.sep2.der import (
+    ActivePower,
+    DERControlListResponse,
+    DERControlResponse,
+    DERProgramListResponse,
+    DERProgramResponse,
+)
+from envoy.server.schema.sep2.pricing import PrimacyType
 from envoy.server.schema.sep2.time import DateTimeIntervalType
+
+DOE_PROGRAM_MRID: str = 'd0e'
 
 
 class DERControlMapper:
@@ -37,13 +47,18 @@ class DERControlMapper:
         })
 
     @staticmethod
+    def doe_list_href(site_id: int) -> str:
+        """Returns a href for a particular site's set of DER Controls"""
+        return f"/derp/{site_id}/doe/derc"
+
+    @staticmethod
     def map_to_list_response(does: list[DynamicOperatingEnvelope], total_does: int,
                              site_id: int) -> DERControlListResponse:
         """Maps a page of DOEs into a DERControlListResponse. total_does should be the total of all DOEs accessible
         to a particular site"""
         return DERControlListResponse.validate(
             {
-                "href": f"/derp/{site_id}/doe/derc",
+                "href": DERControlMapper.doe_list_href(site_id),
                 "all_": total_does,
                 "results": len(does),
                 "DERControl": [
@@ -51,3 +66,39 @@ class DERControlMapper:
                 ],
             }
         )
+
+
+class DERProgramMapper:
+    @staticmethod
+    def doe_href(site_id: int) -> str:
+        """Returns a href for a particular site's DER Program for Dynamic Operating Envelopes"""
+        return f"/derp/{site_id}/doe"
+
+    @staticmethod
+    def doe_list_href(site_id: int) -> str:
+        """Returns a href for a particular site's DER Program list"""
+        return f"/derp/{site_id}"
+
+    @staticmethod
+    def doe_program_response(site_id: int, total_does: int) -> DERProgramResponse:
+        """Returns a static Dynamic Operating Envelope program response"""
+        return DERProgramResponse.validate({
+            "href": DERProgramMapper.doe_href(site_id),
+            "mRID": f"{DOE_PROGRAM_MRID}{site_id:x}",
+            "primacy": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
+            "description": "Dynamic Operating Envelope",
+            "DERControlListLink": ListLink.validate({
+                "href": DERControlMapper.doe_list_href(site_id),
+                "all_": total_does,
+            })
+        })
+
+    @staticmethod
+    def doe_program_list_response(site_id: int, total_does: int) -> DERProgramListResponse:
+        """Returns a fixed list of just the DOE Program"""
+        return DERProgramListResponse.validate({
+            "href": DERProgramMapper.doe_list_href(site_id),
+            "DERProgram": [DERProgramMapper.doe_program_response(site_id, total_does)],
+            "all_": 1,
+            "results": 1,
+        })

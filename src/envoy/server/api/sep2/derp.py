@@ -1,8 +1,20 @@
 import logging
 from http import HTTPStatus
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi_async_sqlalchemy import db
+from sqlalchemy.exc import NoResultFound
+
+from envoy.server.api.request import (
+    extract_aggregator_id,
+    extract_datetime_from_paging_param,
+    extract_limit_from_paging_param,
+    extract_start_from_paging_param,
+)
+from envoy.server.api.response import XmlResponse
+from envoy.server.manager.derp import DERControlManager, DERProgramManager
+from envoy.server.manager.pricing import RateComponentManager
+from envoy.server.mapper.exception import InvalidMappingError
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +39,18 @@ async def get_derprogram_list(request: Request,
     Returns:
         fastapi.Response object.
     """
-    raise NotImplementedError()
+    try:
+        derp_list = await DERProgramManager.fetch_list_for_site(
+            db.session,
+            aggregator_id=extract_aggregator_id(request),
+            site_id=site_id,
+        )
+    except InvalidMappingError as ex:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NoResultFound:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(derp_list)
 
 
 @router.head("/derp/{site_id}/doe")
@@ -41,7 +64,19 @@ async def get_derprogram_doe(request: Request,
     Returns:
         fastapi.Response object.
     """
-    raise NotImplementedError()
+    try:
+        derp = await DERProgramManager.fetch_doe_program_for_site(
+            db.session,
+            aggregator_id=extract_aggregator_id(request),
+            site_id=site_id,
+        )
+    except InvalidMappingError as ex:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NoResultFound:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(derp)
+
 
 @router.head("/derp/{site_id}/doe/derc")
 @router.get("/derp/{site_id}/doe/derc", status_code=HTTPStatus.OK)
@@ -62,7 +97,21 @@ async def get_dercontrol_list(request: Request,
     Returns:
         fastapi.Response object.
     """
-    raise NotImplementedError()
+    try:
+        derc_list = await DERControlManager.fetch_doe_controls_for_site(
+            db.session,
+            aggregator_id=extract_aggregator_id(request),
+            site_id=site_id,
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit)
+        )
+    except InvalidMappingError as ex:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NoResultFound:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(derc_list)
 
 
 @router.head("/derp/{site_id}/doe/derc/{date}")
@@ -86,5 +135,19 @@ async def get_dercontrol_list_for_date(request: Request,
     Returns:
         fastapi.Response object.
     """
-    raise NotImplementedError()
+    try:
+        derc_list = await DERControlManager.fetch_doe_controls_for_site_day(
+            db.session,
+            aggregator_id=extract_aggregator_id(request),
+            site_id=site_id,
+            day=RateComponentManager.parse_rate_component_id(date),
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit)
+        )
+    except InvalidMappingError as ex:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NoResultFound:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
+    return XmlResponse(derc_list)

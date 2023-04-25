@@ -1,11 +1,16 @@
-from envoy.server.mapper.csip_aus.doe import DERControlMapper
+from envoy.server.mapper.csip_aus.doe import DERControlMapper, DERProgramMapper
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from envoy.server.schema.csip_aus.doe import CSIPAusDERControlBase
-from envoy.server.schema.sep2.der import DERControlListResponse, DERControlResponse
+from envoy.server.schema.sep2.der import (
+    DERControlListResponse,
+    DERControlResponse,
+    DERProgramListResponse,
+    DERProgramResponse,
+)
 from tests.data.fake.generator import generate_class_instance
 
 
-def test_map_to_response():
+def test_map_derc_to_response():
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
     doe: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=101, optional_is_none=False)
     doe_opt: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True)
@@ -33,7 +38,7 @@ def test_map_to_response():
     assert result_optional.DERControlBase_.opModExpLimW.value == int(doe_opt.export_limit_watts * DOE_DECIMAL_POWER)
 
 
-def test_map_to_list_response():
+def test_map_derc_to_list_response():
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
     doe1: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=303, optional_is_none=False, generate_relationships=False)
     doe2: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=404, optional_is_none=False, generate_relationships=True)
@@ -61,3 +66,35 @@ def test_map_to_list_response():
     assert empty_result.all_ == site_count
     assert isinstance(empty_result.DERControl, list)
     assert len(empty_result.DERControl) == 0
+
+
+def test_map_derp_doe_program_response():
+    """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
+    site_id = 123
+    total_does = 456
+
+    result = DERProgramMapper.doe_program_response(site_id, total_does)
+    assert result is not None
+    assert isinstance(result, DERProgramResponse)
+    assert result.href
+    assert result.DERControlListLink is not None
+    assert result.DERControlListLink.all_ == total_does
+    assert result.DERControlListLink.href
+    assert result.DERControlListLink.href != result.href
+
+
+def test_map_derp_doe_program_list_response():
+    """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
+    site_id = 123
+    total_does = 456
+
+    result = DERProgramMapper.doe_program_list_response(site_id, total_does)
+    assert result is not None
+    assert isinstance(result, DERProgramListResponse)
+    assert result.href
+    assert result.DERProgram is not None
+    assert len(result.DERProgram) == 1
+    assert all([isinstance(p, DERProgramResponse) for p in result.DERProgram])
+    assert result.all_ == 1
+    assert result.results == 1
+    

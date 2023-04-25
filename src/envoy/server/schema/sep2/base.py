@@ -92,7 +92,7 @@ class SubscribableList(SubscribableResource):
 
 
 class SubscribableIdentifiedObject(SubscribableResource):
-    description: Optional[str] = element()  # The description is a human readable text describing or naming the object. 
+    description: Optional[str] = element()  # The description is a human readable text describing or naming the object.
     mRID: mRIDType = element()  # The global identifier of the object
     version: Optional[VersionType] = element()  # Contains the version number of the object.
 

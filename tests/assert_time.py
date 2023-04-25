@@ -22,9 +22,14 @@ def assert_nowish(expected_time: Union[int, float, datetime], fuzziness_seconds:
     assert_fuzzy_datetime_match(expected_time, datetime.now(), fuzziness_seconds=fuzziness_seconds)
 
 
-def assert_datetime_equal(a: Optional[datetime], b: Optional[datetime]):
-    """Asserts datetime equality based on timestamp (handles None too)"""
+def assert_datetime_equal(a: Optional[Union[datetime, int, float]], b: Optional[Union[datetime, int, float]]):
+    """Asserts datetime equality based on timestamp (handles None too). If the times are numbers then they
+    will be interpreted as a timestamp"""
     if a is None or b is None:
         assert a is None and b is None
     else:
+        if type(a) != datetime:
+            a = datetime.fromtimestamp(float(a))
+        if type(b) != datetime:
+            b = datetime.fromtimestamp(float(b))
         assert a.timestamp() == b.timestamp(), f"Comparing {a} ({a.timestamp()}) to {b} ({b.timestamp()})"
