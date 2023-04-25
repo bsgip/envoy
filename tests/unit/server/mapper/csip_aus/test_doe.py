@@ -1,7 +1,7 @@
 from envoy.server.mapper.csip_aus.doe import DERControlMapper, DERProgramMapper
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
-from envoy.server.schema.csip_aus.doe import CSIPAusDERControlBase
 from envoy.server.schema.sep2.der import (
+    DERControlBase,
     DERControlListResponse,
     DERControlResponse,
     DERProgramListResponse,
@@ -20,7 +20,7 @@ def test_map_derc_to_response():
     assert isinstance(result_all_set, DERControlResponse)
     assert result_all_set.interval.start == doe.start_time.timestamp()
     assert result_all_set.interval.duration == doe.duration_seconds
-    assert isinstance(result_all_set.DERControlBase_, CSIPAusDERControlBase)
+    assert isinstance(result_all_set.DERControlBase_, DERControlBase)
     assert result_all_set.DERControlBase_.opModImpLimW.multiplier == DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModExpLimW.multiplier == DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * DOE_DECIMAL_POWER)
@@ -31,7 +31,7 @@ def test_map_derc_to_response():
     assert isinstance(result_optional, DERControlResponse)
     assert result_optional.interval.start == doe_opt.start_time.timestamp()
     assert result_optional.interval.duration == doe_opt.duration_seconds
-    assert isinstance(result_optional.DERControlBase_, CSIPAusDERControlBase)
+    assert isinstance(result_optional.DERControlBase_, DERControlBase)
     assert result_optional.DERControlBase_.opModImpLimW.multiplier == DOE_DECIMAL_PLACES
     assert result_optional.DERControlBase_.opModExpLimW.multiplier == DOE_DECIMAL_PLACES
     assert result_optional.DERControlBase_.opModImpLimW.value == int(doe_opt.import_limit_active_watts * DOE_DECIMAL_POWER)

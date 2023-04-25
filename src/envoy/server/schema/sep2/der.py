@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic_xml import element
 
-from envoy.server.schema.sep2.base import BaseXmlModelWithNS, IdentifiedObject, Link
+from envoy.server.schema.sep2.base import BaseXmlModelWithNS, HexBinary32, IdentifiedObject, Link
 from envoy.server.schema.sep2.base import List as Sep2List
 from envoy.server.schema.sep2.base import ListLink, SubscribableIdentifiedObject, SubscribableList
 from envoy.server.schema.sep2.end_device import DeviceCategory
@@ -61,33 +61,34 @@ class ActivePower(BaseXmlModelWithNS):
 
 class DERControlBase(BaseXmlModelWithNS):
     """Distributed Energy Resource (DER) control values."""
-    # opModConnect: Optional[bool] = element()  # Set DER as connected (true) or disconnected (false).
-    # opModEnergize: Optional[bool] = element()  # Set DER as energized (true) or de-energized (false).
-    # opModFixedPFAbsorbW: Optional[PowerFactorWithExcitation] = element()  # requested PF when AP is being absorbed
-    # opModFixedPFInjectW: Optional[PowerFactorWithExcitation] = element()  # requested PF when AP is being injected
-    # opModFixedVar: Optional[FixedVar] = element()  # specifies the delivered or received RP setpoint.
-    # opModFixedW: Optional[SignedPerCent] = element()  # specifies a requested charge/discharge mode setpoint
-    # opModFreqDroop: Optional[int] = element()  # Specifies a frequency-watt operation
-    # opModFreqWatt: Optional[Link] = element()  # Specify DERCurveLink for curveType == 0
-    # opModHFRTMayTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 1
-    # opModHFRTMustTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 2
-    # opModHVRTMayTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 3
-    # opModHVRTMomentaryCessation: Optional[Link] = element()  # Specify DERCurveLink for curveType == 4
-    # opModHVRTMustTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 5
-    # opModLFRTMayTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 6
-    # opModLFRTMustTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 7
-    # opModLVRTMayTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 8
-    # opModLVRTMomentaryCessation: Optional[Link] = element()  # Specify DERCurveLink for curveType == 9
-    # opModLVRTMustTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 10
-    # opModMaxLimW: Optional[PerCent] = element()  # maximum active power generation level at electrical coupling point
-    # opModTargetVar: Optional[ReactivePower] = element()  # Target reactive power, in var
-    # opModTargetW: Optional[ActivePower] = element()  # Target active power, in Watts
-    # opModVoltVar: Optional[Link] = element()  # Specify DERCurveLink for curveType == 11
-    # opModVoltWatt: Optional[Link] = element()  # Specify DERCurveLink for curveType == 12
-    # opModWattPF: Optional[Link] = element()  # Specify DERCurveLink for curveType == 13
-    # opModWattVar: Optional[Link] = element()  # Specify DERCurveLink for curveType == 14
-    # rampTms: Optional[int] = element()  # Requested ramp time, in hundredths of a second
+    opModConnect: Optional[bool] = element()  # Set DER as connected (true) or disconnected (false).
+    opModEnergize: Optional[bool] = element()  # Set DER as energized (true) or de-energized (false).
+    opModFixedPFAbsorbW: Optional[PowerFactorWithExcitation] = element()  # requested PF when AP is being absorbed
+    opModFixedPFInjectW: Optional[PowerFactorWithExcitation] = element()  # requested PF when AP is being injected
+    opModFixedVar: Optional[FixedVar] = element()  # specifies the delivered or received RP setpoint.
+    opModFixedW: Optional[SignedPerCent] = element()  # specifies a requested charge/discharge mode setpoint
+    opModFreqDroop: Optional[int] = element()  # Specifies a frequency-watt operation
+    opModFreqWatt: Optional[Link] = element()  # Specify DERCurveLink for curveType == 0
+    opModHFRTMayTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 1
+    opModHFRTMustTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 2
+    opModHVRTMayTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 3
+    opModHVRTMomentaryCessation: Optional[Link] = element()  # Specify DERCurveLink for curveType == 4
+    opModHVRTMustTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 5
+    opModLFRTMayTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 6
+    opModLFRTMustTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 7
+    opModLVRTMayTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 8
+    opModLVRTMomentaryCessation: Optional[Link] = element()  # Specify DERCurveLink for curveType == 9
+    opModLVRTMustTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 10
+    opModMaxLimW: Optional[PerCent] = element()  # maximum active power generation level at electrical coupling point
+    opModTargetVar: Optional[ReactivePower] = element()  # Target reactive power, in var
+    opModTargetW: Optional[ActivePower] = element()  # Target active power, in Watts
+    opModVoltVar: Optional[Link] = element()  # Specify DERCurveLink for curveType == 11
+    opModVoltWatt: Optional[Link] = element()  # Specify DERCurveLink for curveType == 12
+    opModWattPF: Optional[Link] = element()  # Specify DERCurveLink for curveType == 13
+    opModWattVar: Optional[Link] = element()  # Specify DERCurveLink for curveType == 14
+    rampTms: Optional[int] = element()  # Requested ramp time, in hundredths of a second
 
+    # CSIP Aus Extensions (encoded here as it makes decoding a whole lot simpler)
     opModImpLimW: Optional[ActivePower] = element(ns="csipaus")  # constraint on the imported AP at the connection point
     opModExpLimW: Optional[ActivePower] = element(ns="csipaus")  # constraint on the exported AP at the connection point
     opModGenLimW: Optional[ActivePower] = element(ns="csipaus")  # max limit on discharge watts for a single DER
@@ -110,7 +111,7 @@ class DefaultDERControl(SubscribableIdentifiedObject):
 
 class DERControlResponse(RandomizableEvent, tag="DERControl"):
     """Distributed Energy Resource (DER) time/event-based control."""
-    deviceCategory: Optional[DeviceCategory] = element()  # the bitmap indicating device categories that SHOULD respond.
+    deviceCategory: Optional[HexBinary32] = element()  # the bitmap indicating device categories that SHOULD respond.
     DERControlBase_: DERControlBase = element(name="DERControlBase")
 
 

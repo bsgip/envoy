@@ -3,10 +3,10 @@
 from decimal import Decimal
 
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
-from envoy.server.schema.csip_aus.doe import CSIPAusDERControlBase
 from envoy.server.schema.sep2.base import ListLink
 from envoy.server.schema.sep2.der import (
     ActivePower,
+    DERControlBase,
     DERControlListResponse,
     DERControlResponse,
     DERProgramListResponse,
@@ -40,7 +40,7 @@ class DERControlMapper:
             }),
             "creationTime": doe.changed_time.timestamp(),
 
-            "DERControlBase_": CSIPAusDERControlBase.validate({
+            "DERControlBase_": DERControlBase.validate({
                 "opModImpLimW": DERControlMapper.map_to_active_power(doe.import_limit_active_watts),
                 "opModExpLimW": DERControlMapper.map_to_active_power(doe.export_limit_watts),
             })
