@@ -386,9 +386,9 @@ async def get_supported_links(
     supported_links_names = filter(check_link_supported, link_names)
     supported_links = get_formatted_links(supported_links_names, uri_parameters)
     resource_counts = await get_resource_counts(supported_links.keys(), aggregator_id)
-    add_resource_counts_to_links(supported_links, resource_counts)
+    updated_supported_links = add_resource_counts_to_links(supported_links, resource_counts)
 
-    return supported_links
+    return updated_supported_links
 
 
 async def get_resource_counts(link_names: list[str], aggregator_id: int) -> dict:
@@ -447,7 +447,7 @@ def add_resource_counts_to_links(links: dict, resource_counts: dict):
         return {"CustomerAccountListLink": {"href": "/bill", "all_"="5"}}
 
     Args:
-        links: dictionary containing the links and their parameters (typically only href)
+        links: dictionary containing the links and their parameters to be updated (typically only href)
         resource_counts: dictionary mapping links to their resource counts.
 
     Returns:
