@@ -24,7 +24,7 @@ SEP2_LINK_MAP = {
         "uri": uri.ActiveBillingPeriodListUri,
         "function-set": FunctionSet.Billing,
     },
-    "ActiveCreditRegisterListLink": {  # There is NO ActiveFlowReservationList in Sep2!!
+    "ActiveCreditRegisterListLink": {  # There is NO ActiveCreditRegisterList in Sep2!!
         "uri": uri.ActiveCreditRegisterListUri,
         "function-set": FunctionSet.Unknown,
     },
@@ -381,7 +381,35 @@ SEP2_LINK_MAP = {
 
 async def get_supported_links(
     model: pydantic_xml.BaseXmlModel, aggregator_id: int, uri_parameters: dict = None
-) -> dict:
+) -> dict[str, dict[str, str]]:
+    """
+    Generates all support links for a given model.
+
+    A link is supported if the function set it belongs has been implemented.
+
+    The following steps are performed:
+    - Finds all the Links and ListLink in the model
+    - Discards any that belong to unsupported function sets
+    - Inserts the uri_parameters in the link's URI
+    - If a ListLink also determines the resource counts ("all_" key)
+    - Returns a mapping from the link name to the URI and resource counts e.g.
+
+    {
+        "EndDeviceListLink": {
+            "href": "/edev",
+            "all_": 10,
+        }
+    }
+
+    Args:
+        model: A pydantic model e.g. DeviceCapabilityResponse
+        aggregator_id: The aggregator id
+        uri_parameters: A dictionary containing parameters to be inserted into the URIs e.g. {"site_id": 5}
+
+    Returns:
+        Mapping from Link Name to the formatted URI and if Link is a ListLink the resource counts.
+
+    """
     link_names = get_link_field_names(model.schema())
     supported_links_names = filter(check_link_supported, link_names)
     supported_links = get_formatted_links(supported_links_names, uri_parameters)
@@ -391,7 +419,7 @@ async def get_supported_links(
     return updated_supported_links
 
 
-async def get_resource_counts(link_names: list[str], aggregator_id: int) -> dict:
+async def get_resource_counts(link_names: list[str], aggregator_id: int) -> dict[str, int]:
     """
     Returns the resource counts for all the ListLinks in list.
 
@@ -439,7 +467,7 @@ async def get_resource_count(list_link_name: str, aggregator_id: int) -> int:
         raise NotImplementedError(f"No resource count implemented for '{list_link_name}'")
 
 
-def add_resource_counts_to_links(links: dict, resource_counts: dict):
+def add_resource_counts_to_links(links: dict[str, dict[str, str]], resource_counts: dict[str, int]):
     """Adds the resource counts to the links under the "all_" key.
 
     Example:
@@ -462,7 +490,7 @@ def add_resource_counts_to_links(links: dict, resource_counts: dict):
 def check_link_supported(
     link_name: str,
     link_map: dict = SEP2_LINK_MAP,
-):
+) -> bool:
     """Checks if a link is supported by the server
 
     Links and ListLinks belong to function-sets. If a function set is supported then the corresponding Link or ListLink
@@ -509,7 +537,9 @@ def check_function_set_supported(function_set: FunctionSet, function_set_status:
     return function_set_status[function_set] == FunctionSetStatus.SUPPORTED
 
 
-def get_formatted_links(link_names: list, uri_parameters: dict = None, link_map: dict = SEP2_LINK_MAP) -> dict:
+def get_formatted_links(
+    link_names: list, uri_parameters: dict = None, link_map: dict = SEP2_LINK_MAP
+) -> dict[str, dict[str, str]]:
     """
     Determines complete link URIs (formatted with the user-supplied parameters)
 
