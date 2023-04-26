@@ -4,6 +4,7 @@
 # Note: 'id1', 'id2', 'id3' are placeholders and should be replaced with suitable names matching their purpose.
 
 # CSIP-Aus URIs
+ConnectionPointUri = "/edev/{site_id}/cp"
 
 # Sep2 URIs
 AccountBalanceUri = "/ppy/{id1}/ab"
