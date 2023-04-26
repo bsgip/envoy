@@ -2,6 +2,7 @@ from http import HTTPStatus
 
 from fastapi import APIRouter, Request
 
+from envoy.server.api.request import extract_aggregator_id
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.device_capability import DeviceCapabilityManager
 from envoy.server.schema import uri
@@ -25,5 +26,6 @@ async def device_capability(request: Request) -> XmlResponse:
     Returns:
         fastapi.Response object.
     """
-    device_capability = await DeviceCapabilityManager.fetch_device_capability(aggregator_id=request.state.aggregator_id)
+    device_capability = await DeviceCapabilityManager.fetch_device_capability(
+        aggregator_id=extract_aggregator_id(request))
     return XmlResponse(device_capability)
