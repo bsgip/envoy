@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 
 import pydantic_xml
-from fastapi_async_sqlalchemy import db
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud import end_device
 from envoy.server.schema import uri
@@ -380,7 +380,7 @@ SEP2_LINK_MAP = {
 
 
 async def get_supported_links(
-    model: pydantic_xml.BaseXmlModel, aggregator_id: int, uri_parameters: dict = None
+    session: AsyncSession, model: pydantic_xml.BaseXmlModel, aggregator_id: int, uri_parameters: dict = None
 ) -> dict[str, dict[str, str]]:
     """
     Generates all support links for a given model.
@@ -410,16 +410,18 @@ async def get_supported_links(
         Mapping from Link Name to the formatted URI and if Link is a ListLink the resource counts.
 
     """
-    link_names = get_link_field_names(model.schema())
+    link_names = get_link_field_names(schema=model.schema())
     supported_links_names = filter(check_link_supported, link_names)
-    supported_links = get_formatted_links(supported_links_names, uri_parameters)
-    resource_counts = await get_resource_counts(supported_links.keys(), aggregator_id)
-    updated_supported_links = add_resource_counts_to_links(supported_links, resource_counts)
+    supported_links = get_formatted_links(link_names=supported_links_names, uri_parameters=uri_parameters)
+    resource_counts = await get_resource_counts(
+        session=session, link_names=supported_links.keys(), aggregator_id=aggregator_id
+    )
+    updated_supported_links = add_resource_counts_to_links(links=supported_links, resource_counts=resource_counts)
 
     return updated_supported_links
 
 
-async def get_resource_counts(link_names: list[str], aggregator_id: int) -> dict[str, int]:
+async def get_resource_counts(session: AsyncSession, link_names: list[str], aggregator_id: int) -> dict[str, int]:
     """
     Returns the resource counts for all the ListLinks in list.
 
@@ -436,14 +438,14 @@ async def get_resource_counts(link_names: list[str], aggregator_id: int) -> dict
     for link_name in link_names:
         if link_name.endswith("ListLink"):
             try:
-                count = await get_resource_count(link_name, aggregator_id)
+                count = await get_resource_count(session=session, list_link_name=link_name, aggregator_id=aggregator_id)
                 resource_counts[link_name] = count
             except NotImplementedError as e:
                 logger.debug(e)
     return resource_counts
 
 
-async def get_resource_count(list_link_name: str, aggregator_id: int) -> int:
+async def get_resource_count(session: AsyncSession, list_link_name: str, aggregator_id: int) -> int:
     """
     Returns the resource count for given ListLink.
 
@@ -461,7 +463,9 @@ async def get_resource_count(list_link_name: str, aggregator_id: int) -> int:
         NotImplementedError: Raised when a ListLink doesn't have a resource count lookup method.
     """
     if list_link_name == "EndDeviceListLink":
-        count = await end_device.select_aggregator_site_count(db.session, aggregator_id, after=datetime.min)
+        count = await end_device.select_aggregator_site_count(
+            session=session, aggregator_id=aggregator_id, after=datetime.min
+        )
         return count
     else:
         raise NotImplementedError(f"No resource count implemented for '{list_link_name}'")

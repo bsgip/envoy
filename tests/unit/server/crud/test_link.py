@@ -19,9 +19,9 @@ async def test_get_supported_links_calls_get_link_field_names_with_model_schema(
     model = mock.Mock(spec=pydantic_xml.BaseXmlModel)
 
     with mock.patch("envoy.server.crud.link.get_link_field_names") as get_link_field_names:
-        await link.get_supported_links(model=model, aggregator_id=1)
+        await link.get_supported_links(session=mock.Mock(), model=model, aggregator_id=1)
 
-    get_link_field_names.assert_called_once_with(model.schema.return_value)
+    get_link_field_names.assert_called_once_with(schema=model.schema.return_value)
 
 
 @pytest.mark.anyio
@@ -38,7 +38,7 @@ async def test_get_supported_links_calls_filter_with_check_link_supported_and_li
     with mock.patch("envoy.server.crud.link.get_link_field_names", return_value=link_names), mock.patch(
         "envoy.server.crud.link.check_link_supported", return_value=True
     ) as check_link_supported, mock.patch("envoy.server.crud.link.filter") as patched_filter:
-        await link.get_supported_links(model=mock.Mock(), aggregator_id=123)
+        await link.get_supported_links(session=mock.Mock(), model=mock.Mock(), aggregator_id=123)
 
     patched_filter.assert_called_with(check_link_supported, link_names)
 
@@ -60,9 +60,11 @@ async def test_get_supported_links_calls_get_formatted_links_with_supported_link
     with mock.patch("envoy.server.crud.link.filter", return_value=supported_links_names), mock.patch(
         "envoy.server.crud.link.get_formatted_links"
     ) as get_formatted_links:
-        await link.get_supported_links(model=mock.Mock(), aggregator_id=123, uri_parameters=uri_parameters)
+        await link.get_supported_links(
+            session=mock.Mock(), model=mock.Mock(), aggregator_id=123, uri_parameters=uri_parameters
+        )
 
-    get_formatted_links.assert_called_once_with(supported_links_names, uri_parameters)
+    get_formatted_links.assert_called_once_with(link_names=supported_links_names, uri_parameters=uri_parameters)
 
 
 @pytest.mark.anyio
@@ -78,13 +80,14 @@ async def test_get_supported_links_awaits_get_resource_counts_with_supported_lin
     **kwargs: mock.Mock,
 ) -> None:
     supported_links = mock.Mock()
+    session = mock.Mock()
 
     with mock.patch("envoy.server.crud.link.get_formatted_links", return_value=supported_links), mock.patch(
         "envoy.server.crud.link.get_resource_counts"
     ) as get_resource_counts:
-        await link.get_supported_links(model=mock.Mock(), aggregator_id=123)
+        await link.get_supported_links(session=session, model=mock.Mock(), aggregator_id=123)
 
-    get_resource_counts.assert_awaited_once_with(supported_links.keys(), 123)
+    get_resource_counts.assert_awaited_once_with(session=session, link_names=supported_links.keys(), aggregator_id=123)
 
 
 @pytest.mark.anyio
@@ -92,7 +95,6 @@ async def test_get_supported_links_awaits_get_resource_counts_with_supported_lin
     "envoy.server.crud.link",
     get_link_field_names=mock.DEFAULT,
     check_link_supported=mock.DEFAULT,
-    add_resource_counts_to_links=mock.DEFAULT,
 )
 async def test_get_supported_links_calls_add_resource_counts_to_links_with_supported_links_and_resource_counts(
     **kwargs: mock.Mock,
@@ -103,9 +105,9 @@ async def test_get_supported_links_calls_add_resource_counts_to_links_with_suppo
     with mock.patch("envoy.server.crud.link.get_formatted_links", return_value=supported_links), mock.patch(
         "envoy.server.crud.link.get_resource_counts", return_value=resource_counts
     ), mock.patch("envoy.server.crud.link.add_resource_counts_to_links") as add_resource_counts_to_links:
-        await link.get_supported_links(model=mock.Mock(), aggregator_id=123)
+        await link.get_supported_links(session=mock.Mock(), model=mock.Mock(), aggregator_id=123)
 
-    add_resource_counts_to_links.assert_called_once_with(supported_links, resource_counts)
+    add_resource_counts_to_links.assert_called_once_with(links=supported_links, resource_counts=resource_counts)
 
 
 @pytest.mark.anyio
@@ -124,7 +126,7 @@ async def test_get_supported_links_calls_add_resource_counts_to_links_with_suppo
 )
 async def test_get_resource_counts(link_names: list[str], expected_resource_counts: dict):
     with mock.patch("envoy.server.crud.link.get_resource_count", return_value=4):
-        resource_counts = await link.get_resource_counts(link_names, aggregator_id=1)
+        resource_counts = await link.get_resource_counts(session=mock.Mock(), link_names=link_names, aggregator_id=1)
         assert resource_counts == expected_resource_counts
 
 
@@ -135,14 +137,17 @@ async def test_get_resource_counts(link_names: list[str], expected_resource_coun
 )
 async def test_get_resource_count(_: mock.Mock, link_name: str, resource_count: int):
     with mock.patch("envoy.server.crud.end_device.select_aggregator_site_count", return_value=resource_count):
-        assert await link.get_resource_count(link_name, aggregator_id=1) == resource_count
+        assert (
+            await link.get_resource_count(session=mock.Mock(), list_link_name=link_name, aggregator_id=1)
+            == resource_count
+        )
 
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("link_name", [("NotASupportedListLink")])
 async def test_get_resource_count_raises_exception(link_name: str):
     with pytest.raises(NotImplementedError):
-        await link.get_resource_count(link_name, aggregator_id=1)
+        await link.get_resource_count(session=mock.Mock(), list_link_name=link_name, aggregator_id=1)
 
 
 @pytest.mark.parametrize(
