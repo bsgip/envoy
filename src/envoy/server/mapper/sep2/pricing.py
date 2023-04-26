@@ -7,6 +7,7 @@ from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.mapper.common import generate_mrid
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
+from envoy.server.schema import uri
 from envoy.server.schema.sep2.base import Link, ListLink
 from envoy.server.schema.sep2.metering import (
     CommodityType,
@@ -88,7 +89,7 @@ TOTAL_PRICING_READING_TYPES = len(PricingReadingType)  # The total number of Pri
 class PricingReadingTypeMapper:
     @staticmethod
     def pricing_reading_type_href(rt: PricingReadingType) -> str:
-        return f"/pricing/rt/{rt}"
+        return uri.PricingReadingTypeUri.format(reading_type=rt)
 
     @staticmethod
     def extract_price(rt: PricingReadingType, rate: TariffGeneratedRate) -> Decimal:

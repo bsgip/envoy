@@ -20,6 +20,7 @@ from envoy.server.manager.pricing import (
 )
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.mapper.sep2.pricing import PricingReadingType, PricingReadingTypeMapper
+from envoy.server.schema import uri
 from envoy.server.schema.sep2.pricing import RateComponentListResponse
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.head("/pricing/rt/{reading_type}")
-@router.get("/pricing/rt/{reading_type}", status_code=HTTPStatus.OK)
+@router.head(uri.PricingReadingTypeUri)
+@router.get(uri.PricingReadingTypeUri, status_code=HTTPStatus.OK)
 async def get_pricingreadingtype(reading_type: PricingReadingType) -> XmlResponse:
     """Responds with ReadingType describing the priced type of reading. This is to handle the ReadingType link
     referenced href callback from RateComponent.ReadingTypeLink.
