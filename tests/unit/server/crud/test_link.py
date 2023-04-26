@@ -4,6 +4,7 @@ import pydantic_xml
 import pytest
 
 from envoy.server.crud import link
+from envoy.server.crud.link import LinkParameters
 from envoy.server.schema.function_set import FunctionSet, FunctionSetStatus
 
 
@@ -207,15 +208,9 @@ def test_add_resource_counts_to_list_links(links: dict, resource_counts: dict, u
 @pytest.fixture
 def link_function_set_mapping():
     return {
-        "DeviceCapabilityLink": {
-            "function-set": FunctionSet.DeviceCapability,
-        },
-        "EndDeviceListLink": {
-            "function-set": FunctionSet.EndDeviceResource,
-        },
-        "SelfDeviceLink": {
-            "function-set": FunctionSet.SelfDeviceResource,
-        },
+        "DeviceCapabilityLink": LinkParameters(uri="", function_set=FunctionSet.DeviceCapability),
+        "EndDeviceListLink": LinkParameters(uri="", function_set=FunctionSet.EndDeviceResource),
+        "SelfDeviceLink": LinkParameters(uri="", function_set=FunctionSet.SelfDeviceResource),
     }
 
 
