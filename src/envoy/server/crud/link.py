@@ -182,7 +182,7 @@ async def get_supported_links(
     - Finds all the Links and ListLink in the model
     - Discards any that belong to unsupported function sets
     - Inserts the uri_parameters in the link's URI
-    - If a ListLink also determines the resource counts ("all_" key)
+    - If the Link is a ListLink: also determines the resource counts ("all_" key)
     - Returns a mapping from the link name to the URI and resource counts e.g.
 
     {
