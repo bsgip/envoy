@@ -106,13 +106,13 @@ class DefaultDERControl(SubscribableIdentifiedObject):
     setESRandomDelay: Optional[int] = element()  # Enter service randomized delay, in hundredths of a second.
     setGradW: Optional[int] = element()  # Set default rate of change (ramp rate) of active power output
     setSoftGradW: Optional[int] = element()  # Set soft-start rate of change (soft-start ramp rate) of AP output
-    DERControlBase_: DERControlBase = element(name="DERControlBase")
+    DERControlBase_: DERControlBase = element(tag="DERControlBase")
 
 
 class DERControlResponse(RandomizableEvent, tag="DERControl"):
     """Distributed Energy Resource (DER) time/event-based control."""
     deviceCategory: Optional[HexBinary32] = element()  # the bitmap indicating device categories that SHOULD respond.
-    DERControlBase_: DERControlBase = element(name="DERControlBase")
+    DERControlBase_: DERControlBase = element(tag="DERControlBase")
 
 
 class DERControlListResponse(SubscribableList, tag="DERControlList"):
