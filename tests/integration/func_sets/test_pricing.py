@@ -8,6 +8,7 @@ from httpx import AsyncClient
 
 from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES
+from envoy.server.schema import uri
 from envoy.server.schema.sep2.metering import ReadingType
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
@@ -30,67 +31,12 @@ def agg_1_headers():
     return {cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)}
 
 
-@pytest.fixture
-def uri_pricing_type_format():
-    return "/pricing/rt/{pricing_type}"
-
-
-@pytest.fixture
-def uri_tariff_profile_list():
-    return "/tp"
-
-
-@pytest.fixture
-def uri_tariff_profile_nosite_format():
-    return "/tp/{tariff_id}"
-
-
-@pytest.fixture
-def uri_tariff_profile_format():
-    return "/tp/{tariff_id}/{site_id}"
-
-
-@pytest.fixture
-def uri_rate_component_list_no_site_format():
-    return "/tp/{tariff_id}/rc"
-
-
-@pytest.fixture
-def uri_rate_component_list_format():
-    return "/tp/{tariff_id}/{site_id}/rc"
-
-
-@pytest.fixture
-def uri_rate_component_format():
-    return "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}"
-
-
-@pytest.fixture
-def uri_tti_list_format():
-    return "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti"
-
-
-@pytest.fixture
-def uri_tti_format():
-    return "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}"
-
-
-@pytest.fixture
-def uri_cti_list_format():
-    return "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}"
-
-
-@pytest.fixture
-def uri_cti_format():
-    return "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}/1"
-
-
 @pytest.mark.anyio
 @pytest.mark.parametrize("price_reading_type", PricingReadingType)
-async def test_get_pricingreadingtype(client: AsyncClient, uri_pricing_type_format: str,
-                                      price_reading_type: PricingReadingType, agg_1_headers):
+async def test_get_pricingreadingtype(client: AsyncClient, price_reading_type: PricingReadingType, agg_1_headers):
     """Checks we get a valid pricing reading type for each enum value."""
-    response = await client.get(uri_pricing_type_format.format(pricing_type=price_reading_type.value), headers=agg_1_headers)
+    path = uri.PricingReadingTypeUri.format(reading_type=price_reading_type.value)
+    response = await client.get(path, headers=agg_1_headers)
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
@@ -108,11 +54,11 @@ async def test_get_pricingreadingtype(client: AsyncClient, uri_pricing_type_form
     (0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), ["/tp/3", "/tp/2"]),
     (1, 1, None, ["/tp/2"]),
 ])
-async def test_get_tariffprofilelist(client: AsyncClient, uri_tariff_profile_list: str, agg_1_headers,
-                                     start: Optional[int], limit: Optional[int], changed_after: Optional[datetime],
-                                     expected_tariffs: list[str]):
+async def test_get_tariffprofilelist(client: AsyncClient, agg_1_headers, start: Optional[int], limit: Optional[int],
+                                     changed_after: Optional[datetime], expected_tariffs: list[str]):
     """Tests that the list pagination works correctly"""
-    response = await client.get(uri_tariff_profile_list + build_paging_params(start, limit, changed_after), headers=agg_1_headers)
+    path = uri.TariffProfileListUnscopedUri + build_paging_params(start, limit, changed_after)
+    response = await client.get(path, headers=agg_1_headers)
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
@@ -130,10 +76,11 @@ async def test_get_tariffprofilelist(client: AsyncClient, uri_tariff_profile_lis
     (3, "/tp/3"),
     (4, None),
 ])
-async def test_get_tariffprofile_nosite(client: AsyncClient, uri_tariff_profile_nosite_format: str, agg_1_headers,
-                                        tariff_id: int, expected_href: Optional[str]):
+async def test_get_tariffprofile_nosite(client: AsyncClient, agg_1_headers, tariff_id: int,
+                                        expected_href: Optional[str]):
     """Tests that the single entity fetch works correctly"""
-    response = await client.get(uri_tariff_profile_nosite_format.format(tariff_id=tariff_id), headers=agg_1_headers)
+    path = uri.TariffProfileUnscopedUri.format(tariff_id=tariff_id)
+    response = await client.get(path, headers=agg_1_headers)
     if expected_href is None:
         assert_response_header(response, HTTPStatus.NOT_FOUND)
         assert_error_response(response)
@@ -158,11 +105,11 @@ async def test_get_tariffprofile_nosite(client: AsyncClient, uri_tariff_profile_
     (3, 1, "/tp/3/1", 0),
     (4, 1, None, None),
 ])
-async def test_get_tariffprofile(client: AsyncClient, uri_tariff_profile_format: str, agg_1_headers,
-                                 tariff_id: int, site_id: int, expected_href: Optional[str],
-                                 expected_ratecount: Optional[int]):
+async def test_get_tariffprofile(client: AsyncClient, agg_1_headers, tariff_id: int, site_id: int,
+                                 expected_href: Optional[str], expected_ratecount: Optional[int]):
     """Tests that the list pagination works correctly"""
-    response = await client.get(uri_tariff_profile_format.format(tariff_id=tariff_id, site_id=site_id), headers=agg_1_headers)
+    path = uri.TariffProfileUri.format(tariff_id=tariff_id, site_id=site_id)
+    response = await client.get(path, headers=agg_1_headers)
     if expected_href is None:
         assert_response_header(response, HTTPStatus.NOT_FOUND)
         assert_error_response(response)
@@ -180,10 +127,10 @@ async def test_get_tariffprofile(client: AsyncClient, uri_tariff_profile_format:
 
 
 @pytest.mark.anyio
-async def test_get_ratecomponentlist_nositescope(client: AsyncClient, uri_rate_component_list_no_site_format: str,
-                                                 agg_1_headers):
+async def test_get_ratecomponentlist_nositescope(client: AsyncClient, agg_1_headers):
     """The underlying implementation is a placeholder - this test will just make sure it doesn't crash out"""
-    response = await client.get(uri_rate_component_list_no_site_format.format(tariff_id=1), headers=agg_1_headers)
+    path = uri.RateComponentListUnscopedUri.format(tariff_id=1)
+    response = await client.get(path, headers=agg_1_headers)
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
@@ -205,11 +152,11 @@ async def test_get_ratecomponentlist_nositescope(client: AsyncClient, uri_rate_c
     (1, 2, None, None, None, ["/tp/1/2/rc/2022-03-05/1"]),
     (1, 2, None, 5, None, ["/tp/1/2/rc/2022-03-05/1", "/tp/1/2/rc/2022-03-05/2", "/tp/1/2/rc/2022-03-05/3", "/tp/1/2/rc/2022-03-05/4"]),
 ])
-async def test_get_ratecomponentlist(client: AsyncClient, uri_rate_component_list_format: str, agg_1_headers,
-                                     tariff_id: int, site_id: int, start: Optional[int], limit: Optional[int],
-                                     changed_after: Optional[datetime], expected_rates: list[str]):
+async def test_get_ratecomponentlist(client: AsyncClient, agg_1_headers, tariff_id: int, site_id: int,
+                                     start: Optional[int], limit: Optional[int], changed_after: Optional[datetime],
+                                     expected_rates: list[str]):
     """Validates the complicated virtual mapping of RateComponents"""
-    path = uri_rate_component_list_format.format(tariff_id=tariff_id, site_id=site_id)
+    path = uri.RateComponentListUri.format(tariff_id=tariff_id, site_id=site_id)
     query = build_paging_params(start=start, limit=limit, changed_after=changed_after)
     response = await client.get(path + query, headers=agg_1_headers)
     assert_response_header(response, HTTPStatus.OK)
@@ -236,14 +183,14 @@ async def test_get_ratecomponentlist(client: AsyncClient, uri_rate_component_lis
     (1, 3, "2022-03-05", 1, "/tp/1/3/rc/2022-03-05/1", 0),
     (3, 1, "2022-03-05", 1, "/tp/3/1/rc/2022-03-05/1", 0),
 ])
-async def test_get_ratecomponent(client: AsyncClient, uri_rate_component_format: str, agg_1_headers,
-                                 tariff_id: int, site_id: int, rc_id: str, pricing_reading: int,
-                                 expected_href: Optional[str], expected_ttis: int):
+async def test_get_ratecomponent(client: AsyncClient, agg_1_headers, tariff_id: int, site_id: int, rc_id: str,
+                                 pricing_reading: int, expected_href: Optional[str], expected_ttis: int):
     """Tests that single rate component lookups ALWAYS return (they are virtual of course). The way we
     check whether it's working or not is by inspecting the count of TimeTariffIntervals (tti) underneath
     the RateComponent"""
-    uri = uri_rate_component_format.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id, pricing_reading=pricing_reading)
-    response = await client.get(uri, headers=agg_1_headers)
+    path = uri.RateComponentUri.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id,
+                                       pricing_reading=pricing_reading)
+    response = await client.get(path, headers=agg_1_headers)
 
     # always responds - doesn't always have links to TTIs
     assert_response_header(response, HTTPStatus.OK)
@@ -269,12 +216,12 @@ async def test_get_ratecomponent(client: AsyncClient, uri_rate_component_format:
     (1, 1, "2022-03-05", 1, 2, 5, None, []),  # page off the end
     (1, 2, "2022-03-05", 1, None, 99, None, [("/tp/1/2/rc/2022-03-05/1/tti/01:02", 31000)]),
 ])
-async def test_get_timetariffintervallist(client: AsyncClient, uri_tti_list_format: str, agg_1_headers,
-                                          tariff_id: int, site_id: int, rc_id: str, pricing_reading: int,
-                                          start: Optional[int], limit: Optional[int], changed_after: Optional[datetime],
-                                          expected_ttis: list[tuple[str, int]]):
+async def test_get_timetariffintervallist(client: AsyncClient, agg_1_headers, tariff_id: int, site_id: int, rc_id: str,
+                                          pricing_reading: int, start: Optional[int], limit: Optional[int],
+                                          changed_after: Optional[datetime], expected_ttis: list[tuple[str, int]]):
     """Tests time tariff interval paging - validates the encoded URIs and prices"""
-    path = uri_tti_list_format.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id, pricing_reading=pricing_reading)
+    path = uri.TimeTariffIntervalListUri.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id,
+                                                pricing_reading=pricing_reading)
     query = build_paging_params(start=start, limit=limit, changed_after=changed_after)
     response = await client.get(path + query, headers=agg_1_headers)
     assert_response_header(response, HTTPStatus.OK)
@@ -309,11 +256,11 @@ async def test_get_timetariffintervallist(client: AsyncClient, uri_tti_list_form
     (1, 3, "2022-03-05", 1, '01:02', None),  # bad site
     (1, 1, "2022-03-07", 1, '01:02', None),  # bad date
 ])
-async def test_get_timetariffinterval(client: AsyncClient, uri_tti_format: str, agg_1_headers,
-                                      tariff_id: int, site_id: int, rc_id: str, pricing_reading: int, tti_id: str,
-                                      expected_price: Optional[int]):
+async def test_get_timetariffinterval(client: AsyncClient, agg_1_headers, tariff_id: int, site_id: int, rc_id: str,
+                                      pricing_reading: int, tti_id: str, expected_price: Optional[int]):
     """Tests time tariff interval paging - validates the encoded URIs and prices"""
-    path = uri_tti_format.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id, pricing_reading=pricing_reading, tti_id=tti_id)
+    path = uri.TimeTariffIntervalUri.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id,
+                                            pricing_reading=pricing_reading, tti_id=tti_id)
     response = await client.get(path, headers=agg_1_headers)
 
     if expected_price is None:
@@ -337,13 +284,14 @@ async def test_get_timetariffinterval(client: AsyncClient, uri_tti_format: str, 
 
     (1, 3, "2022-03-05", 2, '01:02', None),  # bad site
 ])
-async def test_get_cti_list(client: AsyncClient, uri_cti_list_format: str, agg_1_headers,
-                            tariff_id: int, site_id: int, rc_id: str, pricing_reading: int, tti_id: str,
-                            expected_price: Optional[int]):
+async def test_get_cti_list(client: AsyncClient, agg_1_headers, tariff_id: int, site_id: int, rc_id: str,
+                            pricing_reading: int, tti_id: str, expected_price: Optional[int]):
     """Consumption Tariff Intervals aren't really a list - they're just a wrapper around a single already encoded
     price. """
     sent_price = 1 if expected_price is None else expected_price
-    path = uri_cti_list_format.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id, pricing_reading=pricing_reading, tti_id=tti_id, price=sent_price)
+    path = uri.ConsumptionTariffIntervalListUri.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id,
+                                                       pricing_reading=pricing_reading, tti_id=tti_id,
+                                                       sep2_price=sent_price)
     response = await client.get(path, headers=agg_1_headers)
 
     if expected_price is None:
@@ -369,13 +317,14 @@ async def test_get_cti_list(client: AsyncClient, uri_cti_list_format: str, agg_1
 
     (1, 3, "2022-03-05", 2, '01:02', None),  # bad site
 ])
-async def test_get_cti(client: AsyncClient, uri_cti_format: str, agg_1_headers,
-                       tariff_id: int, site_id: int, rc_id: str, pricing_reading: int, tti_id: str,
-                       expected_price: Optional[int]):
+async def test_get_cti(client: AsyncClient, agg_1_headers, tariff_id: int, site_id: int, rc_id: str,
+                       pricing_reading: int, tti_id: str, expected_price: Optional[int]):
     """Consumption Tariff Intervals aren't really a list - they're just a wrapper around a single already encoded
     price. """
     sent_price = 1 if expected_price is None else expected_price
-    path = uri_cti_format.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id, pricing_reading=pricing_reading, tti_id=tti_id, price=sent_price)
+    path = uri.ConsumptionTariffIntervalUri.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id,
+                                                   pricing_reading=pricing_reading, tti_id=tti_id,
+                                                   sep2_price=sent_price)
     response = await client.get(path, headers=agg_1_headers)
 
     if expected_price is None:

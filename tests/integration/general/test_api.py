@@ -15,6 +15,9 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     # time function set
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tm"),
 
+    # device capability function set
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/dcap"),
+
     # edev function set
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1"),
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/edev"),

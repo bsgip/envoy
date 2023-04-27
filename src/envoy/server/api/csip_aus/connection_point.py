@@ -8,6 +8,7 @@ from sqlalchemy.exc import NoResultFound
 from envoy.server.api.request import extract_aggregator_id
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.manager.end_device import EndDeviceManager
+from envoy.server.schema import uri
 from envoy.server.schema.csip_aus.connection_point import ConnectionPointRequest
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.head("/edev/{site_id}/cp")
-@router.get("/edev/{site_id}/cp", status_code=HTTPStatus.OK)
+@router.head(uri.ConnectionPointUri)
+@router.get(uri.ConnectionPointUri, status_code=HTTPStatus.OK)
 async def get_connectionpoint(site_id: int, request: Request):
     """Responds with a single ConnectionPointResponse resource linked to the EndDevice (as per CSIP-Aus).
 
@@ -42,8 +43,8 @@ async def get_connectionpoint(site_id: int, request: Request):
     return XmlResponse(connection_point)
 
 
-@router.put("/edev/{site_id}/cp", status_code=HTTPStatus.CREATED)
-@router.post("/edev/{site_id}/cp", status_code=HTTPStatus.CREATED)
+@router.put(uri.ConnectionPointUri, status_code=HTTPStatus.CREATED)
+@router.post(uri.ConnectionPointUri, status_code=HTTPStatus.CREATED)
 async def update_connectionpoint(
     site_id: int,
     request: Request,
@@ -65,4 +66,6 @@ async def update_connectionpoint(
     if not updated:
         return Response(status_code=HTTPStatus.NOT_FOUND)
 
-    return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: f"/edev/{site_id}/cp"})
+    return Response(
+        status_code=HTTPStatus.CREATED,
+        headers={LOCATION_HEADER_NAME: uri.ConnectionPointUri.format(site_id=site_id)})

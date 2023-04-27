@@ -20,6 +20,7 @@ from envoy.server.manager.pricing import (
 )
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.mapper.sep2.pricing import PricingReadingType, PricingReadingTypeMapper
+from envoy.server.schema import uri
 from envoy.server.schema.sep2.pricing import RateComponentListResponse
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.head("/pricing/rt/{reading_type}")
-@router.get("/pricing/rt/{reading_type}", status_code=HTTPStatus.OK)
+@router.head(uri.PricingReadingTypeUri)
+@router.get(uri.PricingReadingTypeUri, status_code=HTTPStatus.OK)
 async def get_pricingreadingtype(reading_type: PricingReadingType) -> XmlResponse:
     """Responds with ReadingType describing the priced type of reading. This is to handle the ReadingType link
     referenced href callback from RateComponent.ReadingTypeLink.
@@ -44,8 +45,8 @@ async def get_pricingreadingtype(reading_type: PricingReadingType) -> XmlRespons
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Unsupported reading_type {reading_type}")
 
 
-@router.head("/tp")
-@router.get("/tp", status_code=HTTPStatus.OK)
+@router.head(uri.TariffProfileListUnscopedUri)
+@router.get(uri.TariffProfileListUnscopedUri, status_code=HTTPStatus.OK)
 async def get_tariffprofilelist_nositescope(request: Request,
                                             start: list[int] = Query([0], alias="s"),
                                             after: list[int] = Query([0], alias="a"),
@@ -77,8 +78,8 @@ async def get_tariffprofilelist_nositescope(request: Request,
     return XmlResponse(tp_list)
 
 
-@router.head("/tp/{tariff_id}")
-@router.get("/tp/{tariff_id}", status_code=HTTPStatus.OK)
+@router.head(uri.TariffProfileUnscopedUri)
+@router.get(uri.TariffProfileUnscopedUri, status_code=HTTPStatus.OK)
 async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) -> XmlResponse:
     """Responds with a single TariffProfile resource identified by tariff_id. These tariffs
     will not lead to any prices directly as prices are specific to site/end devices which can be
@@ -106,8 +107,8 @@ async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) 
     return XmlResponse(tp)
 
 
-@router.head("/tp/{tariff_id}/rc")
-@router.get("/tp/{tariff_id}/rc", status_code=HTTPStatus.OK)
+@router.head(uri.RateComponentListUnscopedUri)
+@router.get(uri.RateComponentListUnscopedUri, status_code=HTTPStatus.OK)
 async def get_ratecomponentlist_nositescope(tariff_id: int,
                                             request: Request,
                                             start: list[int] = Query([0], alias="s"),
@@ -138,8 +139,8 @@ async def get_ratecomponentlist_nositescope(tariff_id: int,
     }))
 
 
-@router.head("/tp/{tariff_id}/{site_id}")
-@router.get("/tp/{tariff_id}/{site_id}", status_code=HTTPStatus.OK)
+@router.head(uri.TariffProfileUri)
+@router.get(uri.TariffProfileUri, status_code=HTTPStatus.OK)
 async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request) -> XmlResponse:
     """Responds with a single TariffProfile resource identified by tariff_id for a specific site id.
 
@@ -168,8 +169,8 @@ async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request
     return XmlResponse(tp)
 
 
-@router.head("/tp/{tariff_id}/{site_id}/rc")
-@router.get("/tp/{tariff_id}/{site_id}/rc", status_code=HTTPStatus.OK)
+@router.head(uri.RateComponentListUri)
+@router.get(uri.RateComponentListUri, status_code=HTTPStatus.OK)
 async def get_ratecomponentlist(tariff_id: int,
                                 site_id: int,
                                 request: Request,
@@ -206,8 +207,8 @@ async def get_ratecomponentlist(tariff_id: int,
     return XmlResponse(rc_list)
 
 
-@router.head("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}")
-@router.get("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}", status_code=HTTPStatus.OK)
+@router.head(uri.RateComponentUri)
+@router.get(uri.RateComponentUri, status_code=HTTPStatus.OK)
 async def get_singleratecomponent(tariff_id: int,
                                   site_id: int,
                                   rate_component_id: str,
@@ -245,8 +246,8 @@ async def get_singleratecomponent(tariff_id: int,
     return XmlResponse(rc)
 
 
-@router.head("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti")
-@router.get("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti", status_code=HTTPStatus.OK)
+@router.head(uri.TimeTariffIntervalListUri)
+@router.get(uri.TimeTariffIntervalListUri, status_code=HTTPStatus.OK)
 async def get_timetariffintervallist(tariff_id: int,
                                      site_id: int,
                                      rate_component_id: str,
@@ -289,9 +290,8 @@ async def get_timetariffintervallist(tariff_id: int,
     return XmlResponse(tti_list)
 
 
-@router.head("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}")
-@router.get("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}",
-            status_code=HTTPStatus.OK)
+@router.head(uri.TimeTariffIntervalUri)
+@router.get(uri.TimeTariffIntervalUri, status_code=HTTPStatus.OK)
 async def get_singletimetariffinterval(tariff_id: int,
                                        site_id: int,
                                        rate_component_id: str,
@@ -332,15 +332,14 @@ async def get_singletimetariffinterval(tariff_id: int,
     return XmlResponse(tti)
 
 
-@router.head("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}")
-@router.get("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}",
-            status_code=HTTPStatus.OK)
+@router.head(uri.ConsumptionTariffIntervalListUri)
+@router.get(uri.ConsumptionTariffIntervalListUri, status_code=HTTPStatus.OK)
 async def get_consumptiontariffintervallist(tariff_id: int,
                                             site_id: int,
                                             rate_component_id: str,
                                             pricing_reading: PricingReadingType,
                                             tti_id: str,
-                                            price: int,
+                                            sep2_price: int,
                                             request: Request,
                                             start: list[int] = Query([0], alias="s"),
                                             after: list[int] = Query([0], alias="a"),
@@ -356,7 +355,7 @@ async def get_consumptiontariffintervallist(tariff_id: int,
         rate_component_id: Path parameter, the target RateComponent id (should be a date in YYYY-MM-DD format)
         pricing_reading: Path parameter - the specific type of readings the prices should be associated with
         tti_id: Path parameter, the target TimeTariffInterval id (should be a time in 24 hour HH:MM format)
-        price: The price encoded in the URI from the parent TimeTariffInterval.ConsumptionTariffIntervalListLink href
+        sep2_price: The price encoded in the URI from the parent TimeTariffInterval.ConsumptionTariffIntervalListLink
         request: FastAPI request object.
         start: list query parameter for the start index value. Default 0.
         after: list query parameter for lists with a datetime primary index. Default 0.
@@ -375,7 +374,7 @@ async def get_consumptiontariffintervallist(tariff_id: int,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
             time_tariff_interval=tti_id,
-            sep2_price=price
+            sep2_price=sep2_price
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -385,15 +384,14 @@ async def get_consumptiontariffintervallist(tariff_id: int,
     return XmlResponse(cti_list)
 
 
-@router.head("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}/1")
-@router.get("/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{price}/1",
-            status_code=HTTPStatus.OK)
+@router.head(uri.ConsumptionTariffIntervalUri)
+@router.get(uri.ConsumptionTariffIntervalUri, status_code=HTTPStatus.OK)
 async def get_singleconsumptiontariffinterval(tariff_id: int,
                                               site_id: int,
                                               rate_component_id: str,
                                               pricing_reading: PricingReadingType,
                                               tti_id: str,
-                                              price: int,
+                                              sep2_price: int,
                                               request: Request) -> XmlResponse:
     """Responds with a single ConsumptionTariffInterval resource.
 
@@ -406,7 +404,7 @@ async def get_singleconsumptiontariffinterval(tariff_id: int,
         rate_component_id: Path parameter, the target RateComponent id (should be a date in YYYY-MM-DD format)
         pricing_reading: Path parameter - the specific type of readings the prices should be associated with
         tti_id: Path parameter, the target TimeTariffInterval id (should be a time in 24 hour HH:MM format)
-        price: The price encoded in the URI from the parent TimeTariffInterval.ConsumptionTariffIntervalListLink href
+        sep2_price: The price encoded in the URI from the parent TimeTariffInterval.ConsumptionTariffIntervalListLink
         request: FastAPI request object.
 
     Returns:
@@ -423,7 +421,7 @@ async def get_singleconsumptiontariffinterval(tariff_id: int,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
             time_tariff_interval=tti_id,
-            sep2_price=price
+            sep2_price=sep2_price
         )
     except InvalidMappingError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

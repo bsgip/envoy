@@ -3,9 +3,9 @@ import hashlib
 import urllib.parse
 
 from fastapi import HTTPException, Request
+from fastapi_async_sqlalchemy import db
 
 from envoy.server.crud import auth
-from fastapi_async_sqlalchemy import db
 
 
 class LFDIAuthDepends:
@@ -21,9 +21,7 @@ class LFDIAuthDepends:
 
     async def __call__(self, request: Request) -> int:
         if self.cert_pem_header not in request.headers.keys():
-            raise HTTPException(
-                status_code=500, detail="Missing certificate PEM header from gateway."
-            )  # Malformed
+            raise HTTPException(status_code=500, detail="Missing certificate PEM header from gateway.")  # Malformed
 
         cert_fingerprint = request.headers[self.cert_pem_header]
 
@@ -34,9 +32,7 @@ class LFDIAuthDepends:
             client_ids = await auth.select_client_ids_using_lfdi(lfdi, db.session)
 
         if not client_ids:
-            raise HTTPException(
-                status_code=403, detail="Unrecognised certificate ID."
-            )  # Forbidden
+            raise HTTPException(status_code=403, detail="Unrecognised certificate ID.")  # Forbidden
 
         request.state.certificate_id = client_ids["certificate_id"]
         request.state.aggregator_id = client_ids["aggregator_id"]
@@ -59,9 +55,7 @@ class LFDIAuthDepends:
             The lFDI as a hex string.
         """
         # generate lfdi
-        return self._cert_fingerprint_to_lfdi(
-            self._cert_pem_to_cert_fingerprint(cert_pem)
-        )
+        return self._cert_fingerprint_to_lfdi(self._cert_pem_to_cert_fingerprint(cert_pem))
 
     @staticmethod
     def _cert_fingerprint_to_lfdi(cert_fingerprint: str) -> str:
@@ -72,7 +66,7 @@ class LFDIAuthDepends:
     def _cert_pem_to_cert_fingerprint(cert_pem: str) -> str:
         """The certificate fingerprint is the result of performing a SHA256 operation over the whole DER-encoded
         certificate and is used to derive the SFDI and LFDI"""
-        # URL/percent decode
+        # Replace %xx escapes with their single-character equivalent
         cert_pem = urllib.parse.unquote(cert_pem)
 
         # remove header/footer

@@ -1,6 +1,7 @@
 import enum
 from typing import Optional
 
+import pydantic
 from pydantic_xml import BaseXmlModel, attr, element
 from pydantic_xml.element import SearchMode
 
@@ -110,3 +111,39 @@ class Link(Resource):
 
 class ListLink(Link):
     all_: Optional[int] = attr(name="all")
+
+
+class FunctionSetAssignmentBase(Resource):
+    href: pydantic.AnyUrl = attr()
+
+    # Optional (0..1) Links
+    TimeLink: Optional[Link] = element()
+
+    # Optional (0..1) ListLinks
+    CustomerAccountListLink: Optional[ListLink] = element()
+    DemandResponseProgramListLink: Optional[ListLink] = element()
+    DERProgramListLink: Optional[ListLink] = element()
+    FileListLink: Optional[ListLink] = element()
+    MessagingProgramListLink: Optional[ListLink] = element()
+    PrepaymentListLink: Optional[ListLink] = element()
+    ResponseSetListLink: Optional[ListLink] = element()
+    TariffProfileListLink: Optional[ListLink] = element()
+    UsagePointListLink: Optional[ListLink] = element()
+
+
+class FunctionSetAssignmentBase(Resource):
+    href: pydantic.AnyUrl = attr()
+
+    # Optional (0..1) Links
+    TimeLink: Optional[Link] = element()
+
+    # Optional (0..1) ListLinks
+    CustomerAccountListLink: Optional[ListLink] = element()
+    DemandResponseProgramListLink: Optional[ListLink] = element()
+    DERProgramListLink: Optional[ListLink] = element()
+    FileListLink: Optional[ListLink] = element()
+    MessagingProgramListLink: Optional[ListLink] = element()
+    PrepaymentListLink: Optional[ListLink] = element()
+    ResponseSetListLink: Optional[ListLink] = element()
+    TariffProfileListLink: Optional[ListLink] = element()
+    UsagePointListLink: Optional[ListLink] = element()
