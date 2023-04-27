@@ -6,23 +6,58 @@ model parsed from the given file name, and the output XML model (ElementTree.Ele
 and return True if the comparison conditions implied by that Callable are passed.
 """
 
+from typing import List, Tuple
 from xml.etree import ElementTree as ET
 
 from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceResponse
 
 
 # example comparison function
-def func1(x: ET.Element, y: ET.Element):
-    return True
+def compare_ET_Element_to_reference_ET_Element(ref: ET.Element, model: ET.Element) -> Tuple[bool, List[str]]:
+    """Compare an ElementTree.Element object against some reference object of the
+    same type. We expect each element in ref to exist in model. The model is considered
+    equivalent to ref iff:
+    (a) the tags of the parent elements match exactly,
+    (b) the attrib of the parent elements match exactly
+    (c) each child Element in the ref is present in the model
+        (where present is defined by possessing matching tags), and
+    (d) for each child Element in the ref, the child attributes and their values
+        match the attributes and the values of the model exactly.
+    """
+
+    error_messages = []
+
+    if model.tag != ref.tag:
+        error_messages.append(f"Input tag ({model.tag}) does not match reference tag ({ref.tag})")
+
+    # a weaker assertion would be to check each item in the attrib dict for equality
+    if model.attrib != ref.attrib:
+        error_messages.append(f"Input attrib ({model.attrib}) does not match reference attrib ({ref.attrib})")
+
+    # check if each element in the reference is present in the input model
+    for child in ref:
+        matches = [m for m in model if m.tag == child.tag]
+        if len(matches) != 1:
+            error_messages.append(f"Could not find matching child element for {child.tag} in reference.")
+
+        else:
+            result, child_errors = compare_ET_Element_to_reference_ET_Element(child, matches[0])
+            if not result:
+                error_messages.append(f"Child element ({child.tag}) failed comparison: {child_errors}")
+
+    if error_messages:
+        return False, error_messages
+    else:
+        return True, []
 
 
 # example list of assertions for EndDeviceListResponse instances
 enddevicelist_assertions = [
-    func1,
+    compare_ET_Element_to_reference_ET_Element,
 ]
 
 enddevice_assertions = [
-    func1,
+    compare_ET_Element_to_reference_ET_Element,
 ]
 
 MAPPINGS = [
