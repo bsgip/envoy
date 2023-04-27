@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
+from envoy.server.schema import uri
 from envoy.server.schema.sep2.base import ListLink
 from envoy.server.schema.sep2.der import (
     ActivePower,
@@ -16,6 +17,7 @@ from envoy.server.schema.sep2.pricing import PrimacyType
 from envoy.server.schema.sep2.time import DateTimeIntervalType
 
 DOE_PROGRAM_MRID: str = 'd0e'
+DOE_PROGRAM_ID: str = 'doe'
 
 
 class DERControlMapper:
@@ -49,7 +51,7 @@ class DERControlMapper:
     @staticmethod
     def doe_list_href(site_id: int) -> str:
         """Returns a href for a particular site's set of DER Controls"""
-        return f"/derp/{site_id}/doe/derc"
+        return uri.DERControlListUri.format(site_id=site_id, der_program_id=DOE_PROGRAM_ID)
 
     @staticmethod
     def map_to_list_response(does: list[DynamicOperatingEnvelope], total_does: int,
@@ -72,12 +74,12 @@ class DERProgramMapper:
     @staticmethod
     def doe_href(site_id: int) -> str:
         """Returns a href for a particular site's DER Program for Dynamic Operating Envelopes"""
-        return f"/derp/{site_id}/doe"
+        return uri.DERProgramUri.format(site_id=site_id, der_program_id=DOE_PROGRAM_ID)
 
     @staticmethod
     def doe_list_href(site_id: int) -> str:
         """Returns a href for a particular site's DER Program list"""
-        return f"/derp/{site_id}"
+        return uri.DERProgramListUri.format(site_id=site_id)
 
     @staticmethod
     def doe_program_response(site_id: int, total_does: int) -> DERProgramResponse:

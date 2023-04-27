@@ -14,15 +14,17 @@ from envoy.server.api.request import (
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.manager.pricing import RateComponentManager
+from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.exception import InvalidMappingError
+from envoy.server.schema import uri
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.head("/derp/{site_id}")
-@router.get("/derp/{site_id}", status_code=HTTPStatus.OK)
+@router.head(uri.DERProgramListUri)
+@router.get(uri.DERProgramListUri, status_code=HTTPStatus.OK)
 async def get_derprogram_list(request: Request,
                               site_id: int,
                               start: list[int] = Query([0], alias="s"),
@@ -53,17 +55,22 @@ async def get_derprogram_list(request: Request,
     return XmlResponse(derp_list)
 
 
-@router.head("/derp/{site_id}/doe")
-@router.get("/derp/{site_id}/doe", status_code=HTTPStatus.OK)
+@router.head(uri.DERProgramUri)
+@router.get(uri.DERProgramUri, status_code=HTTPStatus.OK)
 async def get_derprogram_doe(request: Request,
-                             site_id: int):
+                             site_id: int,
+                             der_program_id: str):
     """Responds with a single DERProgramResponse for the DER Program specific to dynamic operating envelopes
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
+        der_program_id: DERProgramID - only 'doe' is supported
     Returns:
         fastapi.Response object.
     """
+    if der_program_id != DOE_PROGRAM_ID:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
     try:
         derp = await DERProgramManager.fetch_doe_program_for_site(
             db.session,
@@ -78,10 +85,11 @@ async def get_derprogram_doe(request: Request,
     return XmlResponse(derp)
 
 
-@router.head("/derp/{site_id}/doe/derc")
-@router.get("/derp/{site_id}/doe/derc", status_code=HTTPStatus.OK)
+@router.head(uri.DERControlListUri)
+@router.get(uri.DERControlListUri, status_code=HTTPStatus.OK)
 async def get_dercontrol_list(request: Request,
                               site_id: int,
+                              der_program_id: str,
                               start: list[int] = Query([0], alias="s"),
                               after: list[int] = Query([0], alias="a"),
                               limit: list[int] = Query([1], alias="l")):
@@ -90,6 +98,7 @@ async def get_dercontrol_list(request: Request,
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
+        der_program_id: DERProgramID - only 'doe' is supported
         start: list query parameter for the start index value. Default 0.
         after: list query parameter for lists with a datetime primary index. Default 0.
         limit: list query parameter for the maximum number of objects to return. Default 1.
@@ -97,6 +106,9 @@ async def get_dercontrol_list(request: Request,
     Returns:
         fastapi.Response object.
     """
+    if der_program_id != DOE_PROGRAM_ID:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_site(
             db.session,
@@ -114,10 +126,11 @@ async def get_dercontrol_list(request: Request,
     return XmlResponse(derc_list)
 
 
-@router.head("/derp/{site_id}/doe/derc/{date}")
-@router.get("/derp/{site_id}/doe/derc/{date}", status_code=HTTPStatus.OK)
+@router.head(uri.DERControlListByDateUri)
+@router.get(uri.DERControlListByDateUri, status_code=HTTPStatus.OK)
 async def get_dercontrol_list_for_date(request: Request,
                                        site_id: int,
+                                       der_program_id: str,
                                        date: str,
                                        start: list[int] = Query([0], alias="s"),
                                        after: list[int] = Query([0], alias="a"),
@@ -127,6 +140,7 @@ async def get_dercontrol_list_for_date(request: Request,
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
+        der_program_id: DERProgramID - only 'doe' is supported
         date: Path parameter, the YYYY-MM-DD in site local time that controls will be filtered to
         start: list query parameter for the start index value. Default 0.
         after: list query parameter for lists with a datetime primary index. Default 0.
@@ -135,6 +149,9 @@ async def get_dercontrol_list_for_date(request: Request,
     Returns:
         fastapi.Response object.
     """
+    if der_program_id != DOE_PROGRAM_ID:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_site_day(
             db.session,

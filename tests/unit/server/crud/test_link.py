@@ -298,7 +298,6 @@ def test_check_function_set_supported_raise_exception(function_set_status_mappin
         (  # Test a bunch of links that don't require uri parameters
             [
                 "CustomerAccountListLink",
-                "DERProgramListLink",
                 "DemandResponseProgramListLink",
                 "EndDeviceListLink",
                 "FileListLink",
@@ -314,7 +313,6 @@ def test_check_function_set_supported_raise_exception(function_set_status_mappin
             {},
             {
                 "CustomerAccountListLink": {"href": "/bill"},
-                "DERProgramListLink": {"href": "/derp"},
                 "DemandResponseProgramListLink": {"href": "/dr"},
                 "EndDeviceListLink": {"href": "/edev"},
                 "FileListLink": {"href": "/file"},
