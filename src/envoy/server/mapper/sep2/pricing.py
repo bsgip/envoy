@@ -52,14 +52,14 @@ class TariffProfileMapper:
     @staticmethod
     def map_to_response(tariff: Tariff, site_id: int, total_rates: int) -> TariffProfileResponse:
         """Returns a mapped sep2 entity."""
-        tp_href = f"/tp/{tariff.tariff_id}/{site_id}"
+        tp_href = uri.TariffProfileUri.format(tariff_id=tariff.tariff_id, site_id=site_id)
         return TariffProfileMapper._map_to_response(tariff, tp_href, total_rates)
 
     @staticmethod
     def map_to_nosite_response(tariff: Tariff) -> TariffProfileResponse:
         """Returns a mapped sep2 entity. The href to RateComponentListLink will be to an endpoint
         for returning rate components for an unspecified site id"""
-        tp_href = f"/tp/{tariff.tariff_id}"
+        tp_href = uri.TariffProfileUnscopedUri.format(tariff_id=tariff.tariff_id)
         return TariffProfileMapper._map_to_response(tariff, tp_href, 0)
 
     @staticmethod
@@ -150,9 +150,12 @@ class RateComponentMapper:
     def map_to_response(total_rates: int, tariff_id: int, site_id: int,
                         pricing_reading: PricingReadingType, day: date) -> RateComponentResponse:
         """Maps/Creates a single rate component response describing a single type of reading"""
-        start_date = day.isoformat()
+        rate_component_id = day.isoformat()
         start_timestamp = int(datetime.combine(day, time()).timestamp())
-        rc_href = f"/tp/{tariff_id}/{site_id}/rc/{start_date}/{pricing_reading}"
+        rc_href = uri.RateComponentUri.format(tariff_id=tariff_id,
+                                              site_id=site_id,
+                                              rate_component_id=rate_component_id,
+                                              pricing_reading=pricing_reading)
         return RateComponentResponse.validate({
             "href": rc_href,
             "mRID": generate_mrid(tariff_id, site_id, start_timestamp, pricing_reading),
@@ -203,10 +206,15 @@ class ConsumptionTariffIntervalMapper:
                   time_of_day: time, price: Decimal):
         """Returns the href for a list that will hold a single instance of a ConsumptionTariffIntervalResponse at a
         set price"""
-        start_date = day.isoformat()
-        start_time = time_of_day.isoformat("minutes")
+        rate_component_id = day.isoformat()
+        tti_id = time_of_day.isoformat("minutes")
         sep2_price = ConsumptionTariffIntervalMapper.database_price_to_sep2(price)
-        return f"/tp/{tariff_id}/{site_id}/rc/{start_date}/{pricing_reading}/tti/{start_time}/cti/{sep2_price}"
+        return uri.ConsumptionTariffIntervalListUri.format(tariff_id=tariff_id,
+                                                           site_id=site_id,
+                                                           rate_component_id=rate_component_id,
+                                                           pricing_reading=pricing_reading,
+                                                           tti_id=tti_id,
+                                                           sep2_price=sep2_price)
 
     @staticmethod
     def map_to_response(tariff_id: int, site_id: int, pricing_rt: PricingReadingType, day: date,
@@ -241,9 +249,13 @@ class TimeTariffIntervalMapper:
     def instance_href(tariff_id: int, site_id: int, day: date,
                       pricing_reading: PricingReadingType, time_of_day: time):
         """Creates a href that identify a single TimeTariffIntervalResponse with the specified values"""
-        start_date = day.isoformat()
-        start_time = time_of_day.isoformat("minutes")
-        return f"/tp/{tariff_id}/{site_id}/rc/{start_date}/{pricing_reading}/tti/{start_time}"
+        rate_component_id = day.isoformat()
+        tti_id = time_of_day.isoformat("minutes")
+        return uri.TimeTariffIntervalUri.format(tariff_id=tariff_id,
+                                                site_id=site_id,
+                                                rate_component_id=rate_component_id,
+                                                pricing_reading=pricing_reading,
+                                                tti_id=tti_id)
 
     @staticmethod
     def map_to_response(rate: TariffGeneratedRate, pricing_reading: PricingReadingType) -> TimeTariffIntervalResponse:
