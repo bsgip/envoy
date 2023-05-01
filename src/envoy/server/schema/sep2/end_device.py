@@ -40,7 +40,7 @@ class DeviceCategory(IntFlag):
 
 
 # The combination of ALL DeviceCategory bit flags
-DEVICE_CATEGORY_ALL_SET: DeviceCategory = reduce(lambda a, b: a | b, DeviceCategory)
+DEVICE_CATEGORY_ALL_SET: DeviceCategory = reduce(lambda a, b: a | b, DeviceCategory)  # type: ignore
 
 
 class AbstractDevice(SubscribableResource):

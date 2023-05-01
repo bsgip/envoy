@@ -12,7 +12,7 @@ from envoy.server.settings import AppSettings
 
 def generate_settings() -> AppSettings:
     """Generates and configures a new instance of the AppSettings"""
-    return AppSettings()
+    return AppSettings()  # type: ignore [call-arg]
 
 
 def generate_app(new_settings: AppSettings):
