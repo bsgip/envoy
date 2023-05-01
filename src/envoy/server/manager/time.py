@@ -26,7 +26,6 @@ def get_tz_key(dt: datetime) -> Optional[str]:
 
     # tzlocal.get_localzone can return a _PytzShimTimezone which defines _key instead of key. Need to check
     # for this and respond accordingly
-    key: Optional[str]
     if hasattr(tzinfo, 'key'):
         return getattr(tzinfo, 'key')
     elif hasattr(tzinfo, '_key'):
