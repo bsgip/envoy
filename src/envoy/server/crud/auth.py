@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional
 
 from sqlalchemy import select
@@ -7,9 +8,15 @@ from sqlalchemy.sql import func
 from envoy.server.model import AggregatorCertificateAssignment, Certificate
 
 
+@dataclass
+class ClientIdDetails:
+    certificate_id: int
+    aggregator_id: int
+
+
 async def select_client_ids_using_lfdi(
     lfdi: str, session: AsyncSession
-) -> Optional[dict]:
+) -> Optional[ClientIdDetails]:
     """Query to retrieve certificate and aggregator IDs, if existing.
     NB. Assumption is that only aggregator clients are allowed to communicate with envoy.
 
@@ -30,4 +37,8 @@ async def select_client_ids_using_lfdi(
 
     resp = await session.execute(stmt)
 
-    return resp.mappings().one_or_none()
+    mapping = resp.mappings().one_or_none()
+    if not mapping:
+        return None
+
+    return ClientIdDetails(certificate_id=mapping["certificate_id"], aggregator_id=mapping["aggregator_id"])

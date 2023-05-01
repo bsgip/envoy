@@ -21,7 +21,7 @@ def get_tz_key(dt: datetime) -> Optional[str]:
     pytz shim timezones or ZoneInfo timezones"""
     tzinfo = dt.tzinfo
     if tzinfo is None:
-        logger.warn("No tzinfo specified on supplied datetime, returning zero dst info.")
+        logger.warning("No tzinfo specified on supplied datetime, returning zero dst info.")
         return None
 
     # tzlocal.get_localzone can return a _PytzShimTimezone which defines _key instead of key. Need to check
@@ -31,7 +31,7 @@ def get_tz_key(dt: datetime) -> Optional[str]:
     elif hasattr(tzinfo, '_key'):
         return getattr(tzinfo, '_key')
     else:
-        logger.warn(f"No timezone key accessible for supplied datetime's tzinfo: {tzinfo}")
+        logger.warning(f"No timezone key accessible for supplied datetime's tzinfo: {tzinfo}")
         return None
 
 
@@ -58,7 +58,7 @@ def get_dst_info(now_time: datetime) -> DaylightSavingsTimeInfo:
 
     tzif_obj = tz.gettz(tzinfo_key)
     if tzif_obj is None:
-        logger.warn(f"Unknown timezone name {tzinfo_key}, returning zero dst info.")
+        logger.warning(f"Unknown timezone name {tzinfo_key}, returning zero dst info.")
         return dst_zero
 
     if now_time.tzinfo == ZoneInfo("UTC"):

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Sequence
 
 from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.model.site import Site
@@ -56,7 +57,7 @@ class EndDeviceMapper:
 class EndDeviceListMapper:
     @staticmethod
     def map_to_response(
-        site_list: list[Site], site_count: int
+        site_list: Sequence[Site], site_count: int
     ) -> EndDeviceListResponse:
         return EndDeviceListResponse.validate(
             {

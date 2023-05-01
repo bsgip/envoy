@@ -13,8 +13,9 @@ async def select_aggregator_site_count(session: AsyncSession, aggregator_id: int
     changed_time)
 
     after: Only sites with a changed_time greater than this value will be counted (set to 0 to count everything)"""
-    stmt = select(func.count()).select_from(
-        select(Site.site_id)
+    stmt = (
+        select(func.count())
+        .select_from(Site)
         .where((Site.aggregator_id == aggregator_id) & (Site.changed_time >= after))
     )
     resp = await session.execute(stmt)
@@ -71,7 +72,7 @@ async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, 
         raise ValueError(f"Specified aggregator_id {aggregator_id} mismatches site.aggregator_id {site.aggregator_id}")
 
     table = Site.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns)]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns)]  # type: ignore [attr-defined]
     stmt = psql_insert(Site).values(**{k: getattr(site, k) for k in update_cols})
     stmt = stmt.on_conflict_do_update(
             index_elements=[Site.aggregator_id, Site.sfdi],

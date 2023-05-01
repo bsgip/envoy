@@ -38,8 +38,8 @@ class LFDIAuthDepends:
                 status_code=403, detail="Unrecognised certificate ID."
             )  # Forbidden
 
-        request.state.certificate_id = client_ids["certificate_id"]
-        request.state.aggregator_id = client_ids["aggregator_id"]
+        request.state.certificate_id = client_ids.certificate_id
+        request.state.aggregator_id = client_ids.aggregator_id
 
     def generate_lfdi_from_pem(self, cert_pem: str) -> str:
         """This function generates the 2030.5-2018 lFDI (Long-form device identifier) from the device's

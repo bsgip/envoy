@@ -60,24 +60,24 @@ async def run_basic_unauthorised_tests(client: httpx.AsyncClient,
     secured with our LFDI auth dependency"""
 
     # check expired certs don't work
-    response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: EXPIRED_PEM})
+    response = await client.request(method=method, url=uri, content=body, headers={cert_pem_header: EXPIRED_PEM})
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
 
     # check unregistered certs don't work
-    response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: UNKNOWN_PEM})
+    response = await client.request(method=method, url=uri, content=body, headers={cert_pem_header: UNKNOWN_PEM})
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
 
     # missing cert (register as 500 as the gateway should be handling this)
-    response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: ''})
+    response = await client.request(method=method, url=uri, content=body, headers={cert_pem_header: ''})
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
-    response = await client.request(method=method, url=uri, data=body)
+    response = await client.request(method=method, url=uri, content=body)
     assert_response_header(response, HTTPStatus.INTERNAL_SERVER_ERROR)
     assert_error_response(response)
 
     # malformed cert
-    response = await client.request(method=method, url=uri, data=body, headers={cert_pem_header: 'abc-123'})
+    response = await client.request(method=method, url=uri, content=body, headers={cert_pem_header: 'abc-123'})
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
