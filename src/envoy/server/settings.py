@@ -15,7 +15,7 @@ class AppSettings(BaseSettings):
     cert_pem_header: str = "x-forwarded-client-cert"
 
     database_url: PostgresDsn
-    commit_on_exit: str = False
+    commit_on_exit: bool = False
 
     class Config:
         validate_assignment = True

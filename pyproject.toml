@@ -8,6 +8,9 @@ testpaths = "tests"
 [tool.bandit]
 exclude_dirs = ["tests"]
 
+[tool.mypy]
+exclude = ["src/envoy/server/alembic", "tests"]
+
 [build-system]
 requires = ["setuptools >= 40.9.0", "wheel"]
 build-backend = "setuptools.build_meta"

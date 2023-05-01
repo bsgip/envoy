@@ -1,11 +1,9 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column
-from sqlalchemy import DateTime, VARCHAR
+from sqlalchemy import VARCHAR, DateTime
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from sqlalchemy import MetaData
 
-metadata = MetaData()
-
-Base = declarative_base(metadata=metadata)
+class Base(DeclarativeBase):
+    pass
 
 
 class Certificate(Base):

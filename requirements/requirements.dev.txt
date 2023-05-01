@@ -1,2 +1,6 @@
 bandit
 flake8
+mypy
+sqlalchemy[mypy]
+types-python-dateutil
+types-tzlocal

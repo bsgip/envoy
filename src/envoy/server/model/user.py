@@ -1,6 +1,7 @@
-from base import Base
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
+
+from envoy.server.model import Base
 
 
 class User(Base):

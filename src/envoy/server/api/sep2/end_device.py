@@ -80,7 +80,7 @@ async def get_enddevice_list(
 async def create_end_device(
     request: Request,
     payload: EndDeviceRequest = Depends(XmlRequest(EndDeviceRequest)),
-) -> XmlResponse:
+) -> Response:
     """An EndDevice resource is generated with a unique reg_no (registration number).
     This reg_no is used to set the resource path i.e.'/edev/reg_no' which is
     sent to the client in the response 'Location' header.

@@ -27,7 +27,7 @@ jobs:
           name: Security report
           path: output/security_report.txt
 
-  flake8_py39:
+  flake8_py311:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,7 +47,31 @@ jobs:
           pip install flake8
           flake8 . --count --statistics
   
-  pytest_py39:
+  mypy_py311:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.1.0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4.2.0
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements/requirements.dev.txt
+          pip install .
+
+      - name: Add mypy annotator
+        uses: pr-annotators/mypy-pr-annotator@v1.0.0
+
+      - name: Run mypy
+        run: |
+          mypy src/
+
+  pytest_py311:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
