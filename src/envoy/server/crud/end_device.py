@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
@@ -27,7 +27,7 @@ async def select_all_sites_with_aggregator_id(
     start: int,
     after: datetime,
     limit: int,
-) -> list[Site]:
+) -> Sequence[Site]:
     """Selects sites for an aggregator with some basic pagination / filtering based on change time
 
     Results will be ordered according to 2030.5 spec which is changedTime then sfdi"""
