@@ -9,6 +9,7 @@ from envoy.server.model.site import Site
 from envoy.server.schema.csip_aus.connection_point import ConnectionPointResponse
 from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from tests.data.fake.generator import generate_class_instance
+from tests.unit.mocks import assert_mock_session, create_mock_session
 
 
 @pytest.mark.anyio
@@ -19,7 +20,7 @@ async def test_end_device_manager_fetch_existing_device(mock_EndDeviceMapper: mo
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
-    mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
+    mock_session: AsyncSession = create_mock_session()
     site_id = 1
     aggregator_id = 2
     raw_site: Site = generate_class_instance(Site)
@@ -34,7 +35,7 @@ async def test_end_device_manager_fetch_existing_device(mock_EndDeviceMapper: mo
 
     # Assert
     assert result is mapped_ed
-    mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
+    assert_mock_session(mock_session, committed=False)
     mock_select_single_site_with_site_id.assert_called_once_with(session=mock_session,
                                                                  site_id=site_id,
                                                                  aggregator_id=aggregator_id)
@@ -49,7 +50,7 @@ async def test_end_device_manager_fetch_missing_device(mock_EndDeviceMapper: moc
     """Check that the manager will handle interacting with the DB and its responses when the requested site DNE"""
 
     # Arrange
-    mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
+    mock_session: AsyncSession = create_mock_session()
     site_id = 1
     aggregator_id = 2
 
@@ -61,7 +62,7 @@ async def test_end_device_manager_fetch_missing_device(mock_EndDeviceMapper: moc
 
     # Assert
     assert result is None
-    mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
+    assert_mock_session(mock_session, committed=False)
     mock_select_single_site_with_site_id.assert_called_once_with(session=mock_session,
                                                                  site_id=site_id,
                                                                  aggregator_id=aggregator_id)
@@ -77,7 +78,7 @@ async def test_add_or_update_enddevice_for_aggregator(mock_datetime: mock.MagicM
                                                       mock_upsert_site_for_aggregator: mock.MagicMock):
     """Checks that the enddevice update just passes through to the relevant CRUD"""
     # Arrange
-    mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
+    mock_session: AsyncSession = create_mock_session()
     aggregator_id = 3
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     mapped_site: Site = generate_class_instance(Site)
@@ -92,7 +93,7 @@ async def test_add_or_update_enddevice_for_aggregator(mock_datetime: mock.MagicM
     assert returned_site_id == mock_upsert_site_for_aggregator.return_value
 
     # Assert
-    mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
+    assert_mock_session(mock_session, committed=True)
     mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
     mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
     mock_datetime.now.assert_called_once()
@@ -107,7 +108,7 @@ async def test_fetch_enddevicelist_with_aggregator_id(mock_EndDeviceListMapper: 
                                                       mock_select_all_sites_with_aggregator_id: mock.MagicMock):
     """Checks that fetching the enddevice list just passes through to the relevant CRUD"""
     # Arrange
-    mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
+    mock_session: AsyncSession = create_mock_session()
     aggregator_id = 3
     start = 4
     after = 1678542014
@@ -132,7 +133,7 @@ async def test_fetch_enddevicelist_with_aggregator_id(mock_EndDeviceListMapper: 
 
     # Assert
     assert result is mapped_ed_list
-    mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
+    assert_mock_session(mock_session, committed=False)
 
     mock_EndDeviceListMapper.map_to_response.assert_called_once_with(returned_sites, returned_site_count)
     mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session,
@@ -153,7 +154,7 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(mock_EndDeviceL
     """Checks that fetching the enddevice list just passes through to the relevant CRUD
     even when empty list is returned"""
     # Arrange
-    mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
+    mock_session: AsyncSession = create_mock_session()
     aggregator_id = 3
     start = 4
     after = 1678542014
@@ -175,7 +176,7 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(mock_EndDeviceL
 
     # Assert
     assert result is mapped_ed_list
-    mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
+    assert_mock_session(mock_session, committed=False)
 
     mock_EndDeviceListMapper.map_to_response.assert_called_once_with(returned_sites, returned_site_count)
     mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session,
@@ -194,7 +195,7 @@ async def test_end_device_manager_fetch_existing_connection_point(mock_Connectio
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
-    mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
+    mock_session: AsyncSession = create_mock_session()
     site_id = 1
     aggregator_id = 2
     raw_site: Site = generate_class_instance(Site)
@@ -209,7 +210,7 @@ async def test_end_device_manager_fetch_existing_connection_point(mock_Connectio
 
     # Assert
     assert result is mapped_cp
-    mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
+    assert_mock_session(mock_session, committed=False)
     mock_select_single_site_with_site_id.assert_called_once_with(session=mock_session,
                                                                  site_id=site_id,
                                                                  aggregator_id=aggregator_id)
@@ -224,7 +225,7 @@ async def test_end_device_manager_fetch_missing_connection_point(mock_Connection
     """Check that the manager will handle interacting with the DB and its responses when the requested site DNE"""
 
     # Arrange
-    mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
+    mock_session: AsyncSession = create_mock_session()
     site_id = 1
     aggregator_id = 2
 
@@ -236,7 +237,7 @@ async def test_end_device_manager_fetch_missing_connection_point(mock_Connection
 
     # Assert
     assert result is None
-    mock_session.assert_not_called()  # Ensure the session isn't modified outside of just passing it down the call stack
+    assert_mock_session(mock_session, committed=False)
     mock_select_single_site_with_site_id.assert_called_once_with(session=mock_session,
                                                                  site_id=site_id,
                                                                  aggregator_id=aggregator_id)

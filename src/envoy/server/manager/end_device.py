@@ -35,7 +35,9 @@ class EndDeviceManager:
         site = EndDeviceMapper.map_from_request(
             end_device, aggregator_id, datetime.now(tz=get_localzone())
         )
-        return await upsert_site_for_aggregator(session, aggregator_id, site)
+        result = await upsert_site_for_aggregator(session, aggregator_id, site)
+        await session.commit()
+        return result
 
     @staticmethod
     async def fetch_connection_point_for_site(

@@ -97,7 +97,6 @@ async def create_end_device(
         site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
             db.session, request.state.aggregator_id, payload
         )
-
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: f"/edev/{site_id}"})
     except InvalidMappingError as exc:
         logger.debug(exc)
