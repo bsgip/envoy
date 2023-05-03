@@ -23,7 +23,7 @@ router = APIRouter(tags=["time"])
     status_code=200,
 )
 async def get_time_resource(request: Request):
-    """Returns the 2030.5 time resource response.
+    """Returns the sep2 time resource response.
 
     Pages 77-78 Discusses how timezones should be implemented. Report in the hosts timezone. Devices
     have their own time resource.

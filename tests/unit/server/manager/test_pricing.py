@@ -5,14 +5,14 @@ from typing import Union
 
 import pytest
 
-from envoy.server.crud.pricing import TariffGeneratedRateDailyStats, TariffGeneratedRateStats
+from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
+from envoy.server.exception import InvalidIdError
 from envoy.server.manager.pricing import (
     ConsumptionTariffIntervalManager,
     RateComponentManager,
     TariffProfileManager,
     TimeTariffIntervalManager,
 )
-from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.mapper.sep2.pricing import TOTAL_PRICING_READING_TYPES, PricingReadingType
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
@@ -38,12 +38,12 @@ from tests.postgres_testing import generate_async_session
         ('1985-01-02', date(1985, 1, 2)),
         ('2020-02-29', date(2020, 2, 29)),
 
-        ('', InvalidMappingError),
-        ('2022', InvalidMappingError),
-        ('2022/10/09', InvalidMappingError),
-        ('2022-11-31', InvalidMappingError),  # There is no 31st Nov
-        ('2021-02-29', InvalidMappingError),  # Not a leap year
-        ('2022-Nov-02', InvalidMappingError),
+        ('', InvalidIdError),
+        ('2022', InvalidIdError),
+        ('2022/10/09', InvalidIdError),
+        ('2022-11-31', InvalidIdError),  # There is no 31st Nov
+        ('2021-02-29', InvalidIdError),  # Not a leap year
+        ('2022-Nov-02', InvalidIdError),
      ],
 )
 def test_parse_rate_component_id(input: str, output: Union[date, type]):
@@ -64,15 +64,15 @@ def test_parse_rate_component_id(input: str, output: Union[date, type]):
         ('00:00', time(0, 0)),
         ('23:59', time(23, 59)),
 
-        ('', InvalidMappingError),
-        ('12:3', InvalidMappingError),
-        ('1:32', InvalidMappingError),
-        ('12:60', InvalidMappingError),
-        ('24:01', InvalidMappingError),
-        ('11-12', InvalidMappingError),
-        ('11 12', InvalidMappingError),
-        ('11', InvalidMappingError),
-        (' 12:13 ', InvalidMappingError),
+        ('', InvalidIdError),
+        ('12:3', InvalidIdError),
+        ('1:32', InvalidIdError),
+        ('12:60', InvalidIdError),
+        ('24:01', InvalidIdError),
+        ('11-12', InvalidIdError),
+        ('11 12', InvalidIdError),
+        ('11', InvalidIdError),
+        (' 12:13 ', InvalidIdError),
      ],
 )
 def test_parse_time_tariff_interval_id(input: str, output: Union[time, type]):

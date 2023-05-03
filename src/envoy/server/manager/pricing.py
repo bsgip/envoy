@@ -2,7 +2,6 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.end_device import select_single_site_with_site_id
@@ -17,7 +16,7 @@ from envoy.server.crud.pricing import (
     select_tariff_rate_for_day_time,
     select_tariff_rates_for_day,
 )
-from envoy.server.mapper.exception import InvalidMappingError
+from envoy.server.exception import InvalidIdError, NotFoundError
 from envoy.server.mapper.sep2.pricing import (
     TOTAL_PRICING_READING_TYPES,
     ConsumptionTariffIntervalMapper,
@@ -83,21 +82,21 @@ class RateComponentManager:
     @staticmethod
     def parse_rate_component_id(id: str) -> date:
         """Validates that id looks like YYYY-MM-DD. Returns parsed date object if it does
-        otherwise raises InvalidMappingError"""
+        otherwise raises InvalidIdError"""
         # certain python versions allow all sorts of funny things through so we layer some additional
         # checks over the top of the isoformat
         if len(id) != 10 or id[4] != '-' or id[7] != '-':
-            raise InvalidMappingError(f"Expected YYYY-MM-DD for rate_component_id but got {id}")
+            raise InvalidIdError(f"Expected YYYY-MM-DD for rate_component_id but got {id}")
 
         try:
             return date.fromisoformat(id)
         except ValueError:
-            raise InvalidMappingError(f"Expected YYYY-MM-DD for rate_component_id but got {id}")
+            raise InvalidIdError(f"Expected YYYY-MM-DD for rate_component_id but got {id}")
 
     @staticmethod
     async def fetch_rate_component(session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int,
                                    rate_component_id: str, pricing_type: PricingReadingType,) -> RateComponentResponse:
-        """RateComponent is a fully virtual entity - it has no corresponding model in our DB - it's essentialy
+        """RateComponent is a fully virtual entity - it has no corresponding model in our DB - it's essentially
         just a placeholder for date + price type filtering
 
         This function will construct the RateComponent directly"""
@@ -109,7 +108,7 @@ class RateComponentManager:
     @staticmethod
     async def fetch_rate_component_list(session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int,
                                         start: int, changed_after: datetime, limit: int) -> RateComponentListResponse:
-        """RateComponent is a fully virtual entity - it has no corresponding model in our DB - it's essentialy
+        """RateComponent is a fully virtual entity - it has no corresponding model in our DB - it's essentially
         just a placeholder for date + price type filtering.
 
         This function will emulate pagination by taking the dates with rates and then virtually expanding the page
@@ -153,16 +152,16 @@ class TimeTariffIntervalManager:
     @staticmethod
     def parse_time_tariff_interval_id(id: str) -> time:
         """Validates that id looks like HH:MM. Returns parsed time object if it does
-        otherwise raises InvalidMappingError"""
+        otherwise raises InvalidIdError"""
         # certain python versions allow all sorts of funny things through so we layer some additional
         # checks over the top of the isoformat
         if len(id) != 5 or id[2] != ':':
-            raise InvalidMappingError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
+            raise InvalidIdError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
 
         try:
             return time.fromisoformat(id)
         except ValueError:
-            raise InvalidMappingError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
+            raise InvalidIdError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
 
     @staticmethod
     async def fetch_time_tariff_interval_list(session: AsyncSession,
@@ -190,12 +189,12 @@ class TimeTariffIntervalManager:
                                          rate_component_id: str,
                                          time_tariff_interval: str,
                                          pricing_type: PricingReadingType) -> Optional[TimeTariffIntervalResponse]:
-        """Fetches a single TimeTariffInterval entitiy matching the date/time. Time must be an exact
+        """Fetches a single TimeTariffInterval entity matching the date/time. Time must be an exact
         match.
 
         Returns None if no rate exists for that interval/site
 
-        rate_component_id and time_tariff_interval will be validated. raising InvalidMappingError if invalid"""
+        rate_component_id and time_tariff_interval will be validated. raising InvalidIdError if invalid"""
 
         day = RateComponentManager.parse_rate_component_id(rate_component_id)
         time_of_day = TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
@@ -227,9 +226,9 @@ class ConsumptionTariffIntervalManager:
 
         sep2_price should be an integer price that a sep2 client will communicate
 
-        if site_id DNE is inaccessible to aggregator_id a NoResultFound will be raised
+        if site_id does not exist or is inaccessible to aggregator_id a NotFoundError will be raised
 
-        rate_component_id and time_tariff_interval will be validated. raising InvalidMappingError if invalid"""
+        rate_component_id and time_tariff_interval will be validated. raising InvalidIdError if invalid"""
 
         # Validate ids
         day = RateComponentManager.parse_rate_component_id(rate_component_id)
@@ -237,7 +236,7 @@ class ConsumptionTariffIntervalManager:
 
         # Validate access to site_id by aggregator_id
         if (await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=aggregator_id)) is None:
-            raise NoResultFound(f"site_id {site_id} is not accessible / does not exist")
+            raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
         price = Decimal(sep2_price) / Decimal(PRICE_DECIMAL_POWER)
         return ConsumptionTariffIntervalMapper.map_to_list_response(tariff_id,
@@ -261,9 +260,9 @@ class ConsumptionTariffIntervalManager:
 
         sep2_price should be an integer price that a sep2 client will communicate
 
-        if site_id DNE is inaccessible to aggregator_id a NoResultFound will be raised
+        if site_id does not exist or is inaccessible to aggregator_id a NotFoundError will be raised
 
-        rate_component_id and time_tariff_interval will be validated. raising InvalidMappingError if invalid"""
+        rate_component_id and time_tariff_interval will be validated. raising InvalidIdError if invalid"""
 
         # Validate ids
         day = RateComponentManager.parse_rate_component_id(rate_component_id)
@@ -271,7 +270,7 @@ class ConsumptionTariffIntervalManager:
 
         # Validate access to site_id by aggregator_id
         if (await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=aggregator_id)) is None:
-            raise NoResultFound(f"site_id {site_id} is not accessible / does not exist")
+            raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
         price = Decimal(sep2_price) / Decimal(PRICE_DECIMAL_POWER)
         return ConsumptionTariffIntervalMapper.map_to_response(tariff_id,

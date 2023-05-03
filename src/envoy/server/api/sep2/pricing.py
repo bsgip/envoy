@@ -3,7 +3,6 @@ from http import HTTPStatus
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi_async_sqlalchemy import db
-from sqlalchemy.exc import NoResultFound
 
 from envoy.server.api.request import (
     extract_aggregator_id,
@@ -12,13 +11,13 @@ from envoy.server.api.request import (
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import XmlResponse
+from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.pricing import (
     ConsumptionTariffIntervalManager,
     RateComponentManager,
     TariffProfileManager,
     TimeTariffIntervalManager,
 )
-from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.mapper.sep2.pricing import PricingReadingType, PricingReadingTypeMapper
 from envoy.server.schema import uri
 from envoy.server.schema.sep2.pricing import RateComponentListResponse
@@ -41,7 +40,7 @@ async def get_pricingreadingtype(reading_type: PricingReadingType) -> XmlRespons
     """
     try:
         return XmlResponse(PricingReadingTypeMapper.create_reading_type(reading_type))
-    except InvalidMappingError:
+    except BadRequestError:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Unsupported reading_type {reading_type}")
 
 
@@ -53,7 +52,7 @@ async def get_tariffprofilelist_nositescope(request: Request,
                                             limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
     """Responds with a paginated list of tariff profiles available to the current client. These tariffs
     will not lead to any prices directly as prices are specific to site/end devices which can be
-    discovered via function set assignments. This endpoint is purely for strict 2030.5 compliance
+    discovered via function set assignments. This endpoint is purely for strict sep2 compliance
 
     Args:
         tariff_id: Path parameter, the target TariffProfile's internal registration number.
@@ -72,7 +71,7 @@ async def get_tariffprofilelist_nositescope(request: Request,
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit)
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     return XmlResponse(tp_list)
@@ -83,7 +82,7 @@ async def get_tariffprofilelist_nositescope(request: Request,
 async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) -> XmlResponse:
     """Responds with a single TariffProfile resource identified by tariff_id. These tariffs
     will not lead to any prices directly as prices are specific to site/end devices which can be
-    discovered via function set assignments. This endpoint is purely for strict 2030.5 compliance
+    discovered via function set assignments. This endpoint is purely for strict sep2 compliance
 
     Args:
         tariff_id: Path parameter, the target TariffProfile's internal registration number.
@@ -98,7 +97,7 @@ async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) 
             db.session,
             tariff_id
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     if tp is None:
@@ -115,7 +114,7 @@ async def get_ratecomponentlist_nositescope(tariff_id: int,
                                             after: list[int] = Query([0], alias="a"),
                                             limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
     """Responds with a paginated list of RateComponents belonging to tariff_id. This will
-    always be empty as all prices are site specific. This endpoint is purely for strict 2030.5 compliance.
+    always be empty as all prices are site specific. This endpoint is purely for strict sep2 compliance.
 
     Args:
         tariff_id: Path parameter, the target TariffProfile's internal registration number.
@@ -160,7 +159,7 @@ async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request
             tariff_id,
             site_id
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     if tp is None:
@@ -201,7 +200,7 @@ async def get_ratecomponentlist(tariff_id: int,
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit)
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     return XmlResponse(rc_list)
@@ -237,7 +236,7 @@ async def get_singleratecomponent(tariff_id: int,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     if rc is None:
@@ -284,7 +283,7 @@ async def get_timetariffintervallist(tariff_id: int,
             after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit)
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     return XmlResponse(tti_list)
@@ -323,7 +322,7 @@ async def get_singletimetariffinterval(tariff_id: int,
             time_tariff_interval=tti_id,
             pricing_type=pricing_reading
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     if tti is None:
@@ -347,7 +346,7 @@ async def get_consumptiontariffintervallist(tariff_id: int,
     """Responds with a paginated list of ConsumptionTariffInterval belonging to specified parent ids.
 
     This endpoint is not necessary as it will always return a single price that is already encoded in the URI. It's
-    implemented for the purposes of remaining 2030.5 compliant but clients to this implementation can avoid this call
+    implemented for the purposes of remaining sep2 compliant but clients to this implementation can avoid this call
 
     Args:
         tariff_id: Path parameter, the target TariffProfile's internal registration number.
@@ -376,9 +375,9 @@ async def get_consumptiontariffintervallist(tariff_id: int,
             time_tariff_interval=tti_id,
             sep2_price=sep2_price
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NoResultFound:
+    except NotFoundError:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(cti_list)
@@ -396,7 +395,7 @@ async def get_singleconsumptiontariffinterval(tariff_id: int,
     """Responds with a single ConsumptionTariffInterval resource.
 
     This endpoint is not necessary as it will always return a single price that is already encoded in the URI. It's
-    implemented for the purposes of remaining 2030.5 compliant but clients to this implementation can avoid this call
+    implemented for the purposes of remaining sep2 compliant but clients to this implementation can avoid this call
 
     Args:
         tariff_id: Path parameter, the target TariffProfile's internal registration number.
@@ -423,9 +422,9 @@ async def get_singleconsumptiontariffinterval(tariff_id: int,
             time_tariff_interval=tti_id,
             sep2_price=sep2_price
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NoResultFound:
+    except NotFoundError:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found.")
 
     if cti is None:

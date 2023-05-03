@@ -132,7 +132,7 @@ async def test_get_tariffprofile(client: AsyncClient, agg_1_headers, tariff_id: 
 
 @pytest.mark.anyio
 async def test_get_ratecomponentlist_nositescope(client: AsyncClient, agg_1_headers):
-    """The underlying endpoint implementation is just fulfilling the requirements of 2030.5. It doesnt do anything
+    """The underlying endpoint implementation is just fulfilling the requirements of sep2. It doesnt do anything
     useful and this test will just make sure it doesn't raise on error upon execution"""
     path = uri.RateComponentListUnscopedUri.format(tariff_id=1)
     response = await client.get(path, headers=agg_1_headers)

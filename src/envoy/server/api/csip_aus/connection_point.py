@@ -3,7 +3,6 @@ from http import HTTPStatus
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi_async_sqlalchemy import db
-from sqlalchemy.exc import NoResultFound
 
 from envoy.server.api.request import extract_aggregator_id
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
@@ -30,15 +29,10 @@ async def get_connectionpoint(site_id: int, request: Request):
         fastapi.Response object.
 
     """
-    try:
-        connection_point = await EndDeviceManager.fetch_connection_point_for_site(
-            db.session, site_id, extract_aggregator_id(request)
-        )
-        if connection_point is None:
-            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
-
-    except NoResultFound as exc:
-        logger.debug(exc)
+    connection_point = await EndDeviceManager.fetch_connection_point_for_site(
+        db.session, site_id, extract_aggregator_id(request)
+    )
+    if connection_point is None:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
     return XmlResponse(connection_point)
 

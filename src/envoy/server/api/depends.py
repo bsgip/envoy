@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import urllib.parse
+from http import HTTPStatus
 
 from fastapi import HTTPException, Request
 from fastapi_async_sqlalchemy import db
@@ -9,7 +10,7 @@ from envoy.server.crud import auth
 
 
 class LFDIAuthDepends:
-    """Depedency class for generating the Long Form Device Identifier (LFDI) from a client TLS
+    """Dependency class for generating the Long Form Device Identifier (LFDI) from a client TLS
     certificate in Privacy-Enhanced Mail (PEM) format. The client certificate is expected to be
     included in the request header by the TLS termination proxy.
 
@@ -21,7 +22,8 @@ class LFDIAuthDepends:
 
     async def __call__(self, request: Request) -> int:
         if self.cert_pem_header not in request.headers.keys():
-            raise HTTPException(status_code=500, detail="Missing certificate PEM header from gateway.")  # Malformed
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                                detail="Missing certificate PEM header from gateway.")
 
         cert_fingerprint = request.headers[self.cert_pem_header]
 
@@ -32,15 +34,15 @@ class LFDIAuthDepends:
             client_ids = await auth.select_client_ids_using_lfdi(lfdi, db.session)
 
         if not client_ids:
-            raise HTTPException(status_code=403, detail="Unrecognised certificate ID.")  # Forbidden
+            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised certificate ID.")
 
         request.state.certificate_id = client_ids["certificate_id"]
         request.state.aggregator_id = client_ids["aggregator_id"]
 
     def generate_lfdi_from_pem(self, cert_pem: str) -> str:
-        """This function generates the 2030.5-2018 lFDI (Long-form device identifier) from the device's
+        """This function generates the sep2 / 2030.5-2018 lFDI (Long-form device identifier) from the device's
         TLS certificate in pem (Privacy Enhanced Mail) format, i.e. Base64 encoded DER
-        (Distinguished Encoding Rules) certificate, as decribed in Section 6.3.4
+        (Distinguished Encoding Rules) certificate, as described in Section 6.3.4
         of IEEE Std 2030.5-2018.
 
         The lFDI is derived, from the certificate in PEM format, according to the following steps:

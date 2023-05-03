@@ -45,7 +45,7 @@ async def select_all_tariffs(
 ) -> list[Tariff]:
     """Selects tariffs with some basic pagination / filtering based on change time
 
-    Results will be ordered according to 2030.5 spec which is just on id DESC
+    Results will be ordered according to sep2 spec which is just on id DESC
 
     start: The number of matching entities to skip
     limit: The maximum number of entities to return
@@ -67,7 +67,7 @@ async def select_all_tariffs(
 
 
 async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optional[Tariff]:
-    """Requests a single tariff based on the primary key - returns None if it DNE"""
+    """Requests a single tariff based on the primary key - returns None if it does not exist"""
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
@@ -79,7 +79,7 @@ async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optiona
     return resp.scalar_one_or_none()
 
 
-async def _tariff_rates_for_day(is_counting: bool,
+async def _tariff_rates_for_day(only_count: bool,
                                 session: AsyncSession,
                                 aggregator_id: int,
                                 tariff_id: int,
@@ -88,13 +88,13 @@ async def _tariff_rates_for_day(is_counting: bool,
                                 start: int,
                                 changed_after: datetime,
                                 limit: Optional[int]) -> Union[list[TariffGeneratedRate], int]:
-    """Internal utility for making _tariff_rates_for_day that either count or return the entities
+    """Internal utility for making _tariff_rates_for_day that either counts the entities or returns the entities
 
-    Orders by 2030.5 requirements on TimeTariffInterval which is start ASC, creation DESC, id DESC"""
+    Orders by sep2 requirements on TimeTariffInterval which is start ASC, creation DESC, id DESC"""
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    if is_counting:
+    if only_count:
         select_clause = select(TariffGeneratedRate.tariff_generated_rate_id)
     else:
         select_clause = select(TariffGeneratedRate, Site.timezone_id)
@@ -120,10 +120,10 @@ async def _tariff_rates_for_day(is_counting: bool,
             TariffGeneratedRate.tariff_generated_rate_id.desc())
     )
 
-    if is_counting:
+    if only_count:
         stmt = select(func.count()).select_from(stmt)
     resp = await session.execute(stmt)
-    if is_counting:
+    if only_count:
         return resp.scalar_one()
     else:
         return [_localize_start_time(rate_and_tz) for rate_and_tz in resp.all()]
@@ -161,7 +161,7 @@ async def select_tariff_rates_for_day(session: AsyncSession,
     limit: The maximum number of entities to return
     changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)
 
-    Orders by 2030.5 requirements on TimeTariffInterval which is start ASC, creation DESC, id DESC"""
+    Orders by sep2 requirements on TimeTariffInterval which is start ASC, creation DESC, id DESC"""
 
     return await _tariff_rates_for_day(False, session, aggregator_id, tariff_id, site_id, day, start, changed_after,
                                        limit)
@@ -282,7 +282,7 @@ async def select_rate_daily_stats(session: AsyncSession,
                                   start: int,
                                   changed_after: datetime,
                                   limit: int) -> TariffGeneratedRateDailyStats:
-    """Fetches the aggregate totals of TariffGeneratedRate grouped by the date upon which they occured. The occurence
+    """Fetches the aggregate totals of TariffGeneratedRate grouped by the date upon which they occurred. The occurrence
     date will be in the local timezone for the site
 
     Results will be ordered by date ASC"""

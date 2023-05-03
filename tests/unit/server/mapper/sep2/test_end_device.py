@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 
-from envoy.server.mapper.exception import InvalidMappingError
+from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
 from envoy.server.model.site import Site
 from envoy.server.schema.csip_aus.connection_point import ConnectionPointLink

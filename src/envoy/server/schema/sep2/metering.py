@@ -7,7 +7,7 @@ from envoy.server.schema.sep2.base import BaseXmlModelWithNS, Resource
 
 
 class AccumulationBehaviourType(IntEnum):
-    """2030.5 AccumulationBehaviourType type. All other values are reserved"""
+    """sep2 AccumulationBehaviourType type. All other values are reserved"""
     NOT_APPLICABLE = 0
     CUMULATIVE = 3
     DELTA_DATA = 4
@@ -17,7 +17,7 @@ class AccumulationBehaviourType(IntEnum):
 
 
 class UomType(IntEnum):
-    """Described in 2030.5 as:
+    """Described in sep2 as:
 
     The following values are recommended values sourced from the unit of measure enumeration in IEC 61968-9 [61968].
     Other values from the unit of measure enumeration in IEC 61968-9 [61968] MAY be used."""
