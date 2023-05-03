@@ -1,7 +1,6 @@
 import enum
 from typing import Optional
 
-import pydantic
 from pydantic_xml import BaseXmlModel, attr, element
 from pydantic_xml.element import SearchMode
 

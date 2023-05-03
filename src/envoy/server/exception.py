@@ -8,7 +8,7 @@ class BadRequestError(Exception):
 
 
 class NotFoundError(Exception):
-    """Raised whenever the incoming request cannot find the specified resource/entity and is an 
+    """Raised whenever the incoming request cannot find the specified resource/entity and is an
     indication that a HTTP NotFound should be returned"""
     message: str
 
