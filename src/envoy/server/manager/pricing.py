@@ -25,7 +25,7 @@ from envoy.server.mapper.sep2.pricing import (
     TariffProfileMapper,
     TimeTariffIntervalMapper,
 )
-from envoy.server.model.tariff import PRICE_DECIMAL_POWER, Tariff
+from envoy.server.model.tariff import PRICE_DECIMAL_POWER
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,

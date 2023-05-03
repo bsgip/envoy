@@ -110,6 +110,7 @@ async def get_tariffprofilelist(request: Request,
 
     return XmlResponse(tp_list)
 
+
 @router.head(uri.TariffProfileUnscopedUri)
 @router.get(uri.TariffProfileUnscopedUri, status_code=HTTPStatus.OK)
 async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) -> XmlResponse:
