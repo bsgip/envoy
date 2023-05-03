@@ -25,6 +25,7 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
 
     # Pricing function set
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/pricing/rt/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1"),  # Tariff - no site scoping
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/rc"),  # Tariff - no site scoping

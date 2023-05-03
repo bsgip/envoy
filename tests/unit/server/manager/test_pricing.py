@@ -88,9 +88,9 @@ def test_parse_time_tariff_interval_id(input: str, output: Union[time, type]):
 @mock.patch("envoy.server.manager.pricing.TariffProfileMapper")
 @mock.patch("envoy.server.manager.pricing.select_all_tariffs")
 @mock.patch("envoy.server.manager.pricing.select_tariff_count")
-async def test_fetch_tariff_profile_list(mock_select_tariff_count: mock.MagicMock,
-                                         mock_select_all_tariffs: mock.MagicMock,
-                                         mock_TariffProfileMapper: mock.MagicMock):
+async def test_fetch_tariff_profile_list_no_site(mock_select_tariff_count: mock.MagicMock,
+                                                 mock_select_all_tariffs: mock.MagicMock,
+                                                 mock_TariffProfileMapper: mock.MagicMock):
     """Simple test to ensure dependencies are called correctly"""
     mock_session = mock.Mock()
     start = 111
@@ -103,14 +103,78 @@ async def test_fetch_tariff_profile_list(mock_select_tariff_count: mock.MagicMoc
     
     mock_select_all_tariffs.return_value = tariffs
     mock_select_tariff_count.return_value = count
-    mock_TariffProfileMapper.map_to_list_response = mock.Mock(return_value=mapped_tariffs)
+    mock_TariffProfileMapper.map_to_list_nosite_response = mock.Mock(return_value=mapped_tariffs)
 
     response = await TariffProfileManager.fetch_tariff_profile_list_no_site(mock_session, start, changed, limit)
     assert response is mapped_tariffs
 
     mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit)
     mock_select_tariff_count.assert_called_once_with(mock_session, changed)
-    mock_TariffProfileMapper.map_to_list_response.assert_called_once_with(tariffs, count)
+    mock_TariffProfileMapper.map_to_list_nosite_response.assert_called_once_with(tariffs, count)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.pricing.TariffProfileMapper")
+@mock.patch("envoy.server.manager.pricing.select_all_tariffs")
+@mock.patch("envoy.server.manager.pricing.select_tariff_count")
+@mock.patch("envoy.server.manager.pricing.count_unique_rate_days")
+async def test_fetch_tariff_profile_list(mock_count_unique_rate_days: mock.MagicMock,
+                                         mock_select_tariff_count: mock.MagicMock,
+                                         mock_select_all_tariffs: mock.MagicMock,
+                                         mock_TariffProfileMapper: mock.MagicMock):
+    """Simple test to ensure dependencies are called correctly"""
+    # Arrange
+    mock_session = mock.Mock()
+    start = 111
+    changed = datetime.now()
+    limit = 222
+    agg_id = 543
+    site_id = 987
+    tariff_count = 33
+    tariff_1: Tariff = generate_class_instance(Tariff, seed=101)
+    tariff_2: Tariff = generate_class_instance(Tariff, seed=202)
+    tariff_1_rate_count = 9814
+    tariff_2_rate_count = 4521
+    tariffs = [tariff_1, tariff_2]
+    mapped_tariffs = generate_class_instance(TariffProfileListResponse)
+
+    def count_unique_rate_days_handler(session, aggregator_id: int, tariff_id: int, site_id: int,
+                                       changed_after: datetime) -> int:
+        if tariff_id == tariff_1.tariff_id:
+            return tariff_1_rate_count
+        elif tariff_id == tariff_2.tariff_id:
+            return tariff_2_rate_count
+        else:
+            raise Exception(f"unknown tariff_id {tariff_id}")
+
+    mock_select_all_tariffs.return_value = tariffs
+    mock_select_tariff_count.return_value = tariff_count
+    mock_TariffProfileMapper.map_to_list_response = mock.Mock(return_value=mapped_tariffs)
+    mock_count_unique_rate_days.side_effect = count_unique_rate_days_handler
+
+    # Act
+    response = await TariffProfileManager.fetch_tariff_profile_list(mock_session, agg_id, site_id, start, changed,
+                                                                    limit)
+
+    # Assert
+    assert response is mapped_tariffs
+    mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit)
+    mock_select_tariff_count.assert_called_once_with(mock_session, changed)
+
+    # We called count_unique_rate_days for each tariff returned
+    all_mock_count_args = [c.args for c in mock_count_unique_rate_days.call_args_list]
+    assert mock_count_unique_rate_days.call_count == 2
+    assert (mock_session, agg_id, tariff_1.tariff_id, site_id, changed) in all_mock_count_args
+    assert (mock_session, agg_id, tariff_2.tariff_id, site_id, changed) in all_mock_count_args
+
+    # make sure we properly bundled up the resulting tariff + rate count tuples and passed it along to the mapper
+    mock_TariffProfileMapper.map_to_list_response.assert_called_once()
+    call_args = mock_TariffProfileMapper.map_to_list_response.call_args_list[0].args
+    (tariffs_with_rates, total_tariffs, called_site_id) = call_args
+    assert list(tariffs_with_rates) == [(tariff_1, tariff_1_rate_count * TOTAL_PRICING_READING_TYPES),
+                                        (tariff_2, tariff_2_rate_count * TOTAL_PRICING_READING_TYPES)]
+    assert total_tariffs == tariff_count
+    assert called_site_id == site_id
 
 
 @pytest.mark.anyio
