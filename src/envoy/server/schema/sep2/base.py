@@ -1,7 +1,6 @@
 import enum
 from typing import Optional
 
-import pydantic
 from pydantic_xml import BaseXmlModel, attr, element
 from pydantic_xml.element import SearchMode
 
@@ -29,8 +28,11 @@ class PollRateType(BaseXmlModelWithNS):
     pollRate: Optional[int] = attr()
 
 
+DEFAULT_POLLRATE = PollRateType(pollRate=900)
+
+
 class Resource(BaseXmlModelWithNS):
-    pass
+    href: str = attr()
 
 
 class PENType(int):
@@ -68,7 +70,7 @@ class SubscribableList(SubscribableResource):
 
 
 class Link(Resource):
-    href: str = attr()
+    pass
 
 
 class ListLink(Link):
@@ -87,9 +89,7 @@ class HexBinary32(str):
         return cls(v)
 
 
-class FunctionSetAssignmentBase(Resource):
-    href: pydantic.AnyUrl = attr()
-
+class FunctionSetAssignmentsBase(Resource):
     # Optional (0..1) Links
     TimeLink: Optional[Link] = element()
 
