@@ -4,6 +4,7 @@
 # Note: 'id1', 'id2', 'id3' are placeholders and should be replaced with suitable names matching their purpose.
 
 # CSIP-Aus URIs
+ConnectionPointUri = "/edev/{site_id}/cp"
 
 # Sep2 URIs
 AccountBalanceUri = "/ppy/{id1}/ab"
@@ -73,11 +74,11 @@ PrepaymentListUri = "/ppy"
 PrepaymentUri = "/ppy/{id1}"
 PrepayOperationStatusUri = "/ppy/{id1}/os"
 PriceResponseCfgListUri = "/edev/{site_id}/cfg/prcfg"
+PricingReadingTypeUri = "/pricing/rt/{reading_type}"
 ProjectionReadingListUri = "/bill/{id1}/ca/{id2}/pro"
 RateComponentListUnscopedUri = "/tp/{tariff_id}/rc"
 RateComponentListUri = "/tp/{tariff_id}/{site_id}/rc"
 RateComponentUri = "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}"
-ReadingListUri = "/upt/{id1}/mr/{id2}/rs/{id3}/r"
 ReadingListUri = "/upt/{id1}/mr/{id2}/rs/{id3}/r"
 ReadingSetListUri = "/upt/{id1}/mr/{id2}/rs"
 ReadingTypeUri = "/upt/{id1}/mr/{id2}/rt"

@@ -160,7 +160,7 @@ SEP2_LINK_MAP = {
         uri=uri.SupportedLocaleListUri, function_set=FunctionSet.DeviceInformation
     ),
     "TargetReadingListLink": LinkParameters(uri=uri.TargetReadingListUri, function_set=FunctionSet.Billing),
-    "TariffProfileListLink": LinkParameters(uri=uri.TariffProfileListUri, function_set=FunctionSet.Pricing),
+    "TariffProfileListLink": LinkParameters(uri=uri.TariffProfileListUnscopedUri, function_set=FunctionSet.Pricing),
     "TariffProfileLink": LinkParameters(uri=uri.TariffProfileUri, function_set=FunctionSet.Pricing),
     "TextMessageListLink": LinkParameters(uri=uri.TextMessageListUri, function_set=FunctionSet.Messaging),
     "TimeTariffIntervalListLink": LinkParameters(uri=uri.TimeTariffIntervalListUri, function_set=FunctionSet.Pricing),

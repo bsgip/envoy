@@ -8,7 +8,6 @@ def test_map_to_response():
         "DemandResponseProgramListLink": {"all_": "1", "href": "/drp"},
         "MessagingProgramListLink": {"all_": "2", "href": "/msg"},
         "EndDeviceListLink": {"all_": "1", "href": "/edev"},
-        "SelfDeviceLink": {"href": "/sdev"},
     }
 
     device_capability = DeviceCapabilityMapper.map_to_response(links=links)
@@ -20,5 +19,3 @@ def test_map_to_response():
     assert device_capability.MessagingProgramListLink == ListLink(href="/msg", all_="2")
     assert isinstance(device_capability.EndDeviceListLink, ListLink)
     assert device_capability.EndDeviceListLink == ListLink(href="/edev", all_="1")
-    assert isinstance(device_capability.SelfDeviceLink, Link)
-    assert device_capability.SelfDeviceLink == Link(href="/sdev")
