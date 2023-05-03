@@ -4,8 +4,8 @@ from enum import IntEnum, auto
 from itertools import islice, product
 
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
+from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_mrid
-from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
 from envoy.server.schema import uri
 from envoy.server.schema.sep2.base import Link, ListLink
@@ -64,7 +64,7 @@ class TariffProfileMapper:
 
     @staticmethod
     def map_to_list_response(tariffs: list[Tariff], total_tariffs: int) -> TariffProfileListResponse:
-        """Returns a list containing multiple sep2 entitie. The href to RateComponentListLink will be to an endpoint
+        """Returns a list containing multiple sep2 entities. The href to RateComponentListLink will be to an endpoint
         for returning rate components for an unspecified site id"""
         return TariffProfileListResponse.validate(
             {
@@ -130,7 +130,7 @@ class PricingReadingTypeMapper:
                 "href": href,
                 "commodity": CommodityType.ELECTRICITY_SECONDARY_METERED_VALUE,
                 "flowDirection": FlowDirectionType.FORWARD,
-                "powerOfTenMultiplier": 3,  # kvar hours
+                "powerOfTenMultiplier": 3,  # kvarh hours
                 "uom": UomType.REACTIVE_ENERGY_VARH
             })
         elif rt == PricingReadingType.EXPORT_REACTIVE_POWER_KVARH:
@@ -138,7 +138,7 @@ class PricingReadingTypeMapper:
                 "href": href,
                 "commodity": CommodityType.ELECTRICITY_SECONDARY_METERED_VALUE,
                 "flowDirection": FlowDirectionType.REVERSE,
-                "powerOfTenMultiplier": 3,  # kvar hours
+                "powerOfTenMultiplier": 3,  # kvarh hours
                 "uom": UomType.REACTIVE_ENERGY_VARH
             })
         else:
@@ -187,7 +187,7 @@ class RateComponentMapper:
 
 
 class ConsumptionTariffIntervalMapper:
-    """This is a fully 'Virtual' entity that doesnt exist in the DB. Instead we create them based on a fixed price"""
+    """This is a fully 'Virtual' entity that doesn't exist in the DB. Instead we create them based on a fixed price"""
     @staticmethod
     def database_price_to_sep2(price: Decimal) -> int:
         """Converts a database price ($1.2345) to a sep2 price integer by multiplying it by the price power of 10
@@ -248,7 +248,7 @@ class TimeTariffIntervalMapper:
     @staticmethod
     def instance_href(tariff_id: int, site_id: int, day: date,
                       pricing_reading: PricingReadingType, time_of_day: time):
-        """Creates a href that identify a single TimeTariffIntervalResponse with the specified values"""
+        """Creates a href that identifies a single TimeTariffIntervalResponse with the specified values"""
         rate_component_id = day.isoformat()
         tti_id = time_of_day.isoformat("minutes")
         return uri.TimeTariffIntervalUri.format(tariff_id=tariff_id,
@@ -284,7 +284,7 @@ class TimeTariffIntervalMapper:
     @staticmethod
     def map_to_list_response(rates: list[TariffGeneratedRate], pricing_reading: PricingReadingType,
                              total: int) -> TimeTariffIntervalListResponse:
-        """Creates a TimeTariffIntervalListResponse for a single page of entities."""
+        """Creates a TimeTariffIntervalListResponse for a single set of rates."""
         return TimeTariffIntervalListResponse.validate({
             "all_": total,
             "results": len(rates),

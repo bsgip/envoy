@@ -60,9 +60,6 @@ SEP2_LINK_MAP = {
     "BillingReadingListLink": LinkParameters(uri=uri.BillingReadingListUri, function_set=FunctionSet.Billing),
     "BillingReadingSetListLink": LinkParameters(uri=uri.BillingReadingSetListUri, function_set=FunctionSet.Billing),
     "ConfigurationLink": LinkParameters(uri=uri.ConfigurationUri, function_set=FunctionSet.ConfigurationResource),
-    "ConsumptionTariffIntervalUri": LinkParameters(
-        uri=uri.ConsumptionTariffIntervalUri, function_set=FunctionSet.Pricing
-    ),
     "ConsumptionTariffIntervalListLink": LinkParameters(
         uri=uri.ConsumptionTariffIntervalListUri, function_set=FunctionSet.Pricing
     ),

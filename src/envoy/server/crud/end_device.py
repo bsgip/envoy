@@ -31,7 +31,7 @@ async def select_all_sites_with_aggregator_id(
 ) -> list[Site]:
     """Selects sites for an aggregator with some basic pagination / filtering based on change time
 
-    Results will be ordered according to 2030.5 spec which is changedTime then sfdi"""
+    Results will be ordered according to sep2 spec which is changedTime then sfdi"""
     stmt = (
         select(Site)
         .where((Site.aggregator_id == aggregator_id) & (Site.changed_time >= after))

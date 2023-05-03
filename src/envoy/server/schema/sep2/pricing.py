@@ -11,7 +11,7 @@ from envoy.server.schema.sep2.metering import ConsumptionBlockType, TOUType, Uni
 
 
 class CurrencyCode(IntEnum):
-    """Non exhaustive set of numerical ISO 4217 currency codes. Described in 2030.5 / ISO 4217"""
+    """Non exhaustive set of numerical ISO 4217 currency codes. Described in sep2 / ISO 4217"""
     NOT_APPLICABLE = 0
     AUSTRALIAN_DOLLAR = 36
     CANADIAN_DOLLAR = 124
@@ -20,7 +20,7 @@ class CurrencyCode(IntEnum):
 
 
 class PrimacyType(IntEnum):
-    """Values possible for indication of Primary provider. Described in 2030.5.
+    """Values possible for indication of Primary provider. Described in sep2.
 
     It's worth noting that Values 3-64 are reserved, values 65-191 are user defineable and 192-255 are also reserved
 
@@ -31,7 +31,7 @@ class PrimacyType(IntEnum):
 
 
 class ServiceKind(IntEnum):
-    """2030.5 ServiceKind type. All other values are reserved"""
+    """sep2 ServiceKind type. All other values are reserved"""
     ELECTRICITY = 0
     GAS = 1
     WATER = 2
@@ -42,7 +42,7 @@ class ServiceKind(IntEnum):
 
 
 class RoleFlagsType(IntFlag):
-    """Specifies the roles that apply to a usage point. Described in 2030.5. Other bits reserved"""
+    """Specifies the roles that apply to a usage point. Described in sep2. Other bits reserved"""
     NONE = 0
     IS_MIRROR = auto()
     IS_PREMISES_AGGREGATION_POINT = auto()
@@ -53,7 +53,7 @@ class RoleFlagsType(IntFlag):
     IS_SUBMETER = auto()
 
 
-class TariffProfileResponse(IdentifiedObject):
+class TariffProfileResponse(IdentifiedObject, tag="TariffProfile"):
     """A schedule of charges; structure that allows the definition of tariff structures such as step (block) and
     time of use (tier) when used in conjunction with TimeTariffInterval and ConsumptionTariffInterval."""
 

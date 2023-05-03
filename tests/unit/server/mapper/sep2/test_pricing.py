@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
-from envoy.server.mapper.exception import InvalidMappingError
+from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.pricing import (
     TOTAL_PRICING_READING_TYPES,
     ConsumptionTariffIntervalMapper,

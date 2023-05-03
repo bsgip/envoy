@@ -16,23 +16,28 @@ from tests.data.fake.generator import clone_class_instance, generate_class_insta
 from tests.postgres_testing import generate_async_session
 
 
+@pytest.mark.parametrize("aggregator_id, changed_after, expected_count", [
+    # Test the basic config is there and accessible
+    (1, datetime.min, 3),
+    (2, datetime.min, 1),
+    (3, datetime.min, 0),
+
+    # try with after filter being set
+    (1, datetime(2022, 2, 3, 0, 0, 0, tzinfo=timezone.utc), 3),
+    (1, datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc), 2),
+    (1, datetime(2022, 2, 3, 8, 0, 0, tzinfo=timezone.utc), 1),
+    (1, datetime(2022, 2, 3, 13, 0, 0, tzinfo=timezone.utc), 0),
+
+    # These aggregators don't exist
+    (4, datetime.min, 0),
+    (-1, datetime.min, 0),
+])
 @pytest.mark.anyio
-async def test_select_aggregator_site_count(pg_base_config):
+async def test_select_aggregator_site_count(pg_base_config, aggregator_id: int, changed_after: datetime,
+                                            expected_count: int):
     """Simple tests to ensure the counts work for both valid / invalid IDs"""
     async with generate_async_session(pg_base_config) as session:
-        # Test the basic config is there and accessible
-        assert await select_aggregator_site_count(session, 1, datetime.min) == 3
-        assert await select_aggregator_site_count(session, 2, datetime.min) == 1
-        assert await select_aggregator_site_count(session, 3, datetime.min) == 0
-
-        # try with after filter being set
-        assert await select_aggregator_site_count(session, 1, datetime(2022, 2, 3, 0, 0, 0, tzinfo=timezone.utc)) == 3
-        assert await select_aggregator_site_count(session, 1, datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc)) == 2
-        assert await select_aggregator_site_count(session, 1, datetime(2022, 2, 3, 8, 0, 0, tzinfo=timezone.utc)) == 1
-
-        # These aggregators don't exist
-        assert await select_aggregator_site_count(session, 4, datetime.min) == 0
-        assert await select_aggregator_site_count(session, -1, datetime.min) == 0
+        assert await select_aggregator_site_count(session, aggregator_id, changed_after) == expected_count
 
 
 @pytest.mark.anyio

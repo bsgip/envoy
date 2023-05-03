@@ -46,7 +46,8 @@ async def test_end_device_manager_fetch_existing_device(mock_EndDeviceMapper: mo
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
 async def test_end_device_manager_fetch_missing_device(mock_EndDeviceMapper: mock.MagicMock,
                                                        mock_select_single_site_with_site_id: mock.MagicMock):
-    """Check that the manager will handle interacting with the DB and its responses when the requested site DNE"""
+    """Check that the manager will handle interacting with the DB and its responses when the requested site
+    does not exist"""
 
     # Arrange
     mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
@@ -221,7 +222,8 @@ async def test_end_device_manager_fetch_existing_connection_point(mock_Connectio
 @mock.patch("envoy.server.manager.end_device.ConnectionPointMapper")
 async def test_end_device_manager_fetch_missing_connection_point(mock_ConnectionPointMapper: mock.MagicMock,
                                                                  mock_select_single_site_with_site_id: mock.MagicMock):
-    """Check that the manager will handle interacting with the DB and its responses when the requested site DNE"""
+    """Check that the manager will handle interacting with the DB and its responses when the
+    requested site does not exist"""
 
     # Arrange
     mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly

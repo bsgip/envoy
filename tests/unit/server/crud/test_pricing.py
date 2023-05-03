@@ -183,11 +183,11 @@ async def test_select_tariff_rates_for_day_pagination(pg_base_config, expected_i
     """Tests out the basic pagination features"""
     async with generate_async_session(pg_base_config) as session:
         rates = await select_tariff_rates_for_day(session, 1, 1, 1, date(2022, 3, 5), start, after, limit)
-        assert len(rates) == len(expected_ids)
-        for (id, rate) in zip(expected_ids, rates):
-            assert_rate_for_id(id, 1, 1, None, None, None, rate)
+    assert len(rates) == len(expected_ids)
+    for (id, rate) in zip(expected_ids, rates):
+        assert_rate_for_id(id, 1, 1, None, None, None, rate)
 
-# 2022-03-05 01:02
+
 @pytest.mark.parametrize(
     "expected_id_and_starts, agg_id, tariff_id, site_id, day",
     [
@@ -207,17 +207,17 @@ async def test_select_and_count_tariff_rates_for_day_filters(pg_base_config,
     async with generate_async_session(pg_base_config) as session:
         rates = await select_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, 0, datetime.min, 99)
         count = await count_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, datetime.min)
-        assert type(count) == int
-        assert len(rates) == len(expected_id_and_starts)
-        assert len(rates) == count
-        for ((id, expected_datetime), rate) in zip(expected_id_and_starts, rates):
-            assert_rate_for_id(id,
-                               tariff_id,
-                               site_id,
-                               expected_datetime.date(),
-                               expected_datetime.time(),
-                               "Australia/Brisbane",
-                               rate)
+    assert type(count) == int
+    assert len(rates) == len(expected_id_and_starts)
+    assert len(rates) == count
+    for ((id, expected_datetime), rate) in zip(expected_id_and_starts, rates):
+        assert_rate_for_id(id,
+                           tariff_id,
+                           site_id,
+                           expected_datetime.date(),
+                           expected_datetime.time(),
+                           "Australia/Brisbane",
+                           rate)
 
 
 @pytest.mark.parametrize(

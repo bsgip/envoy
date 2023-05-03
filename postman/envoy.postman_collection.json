@@ -1,8 +1,9 @@
 {
 	"info": {
-		"_postman_id": "080e23aa-5be1-475a-9879-7c2f05673996",
+		"_postman_id": "5f4005bf-e832-427e-8182-55e96f01d4b5",
 		"name": "envoy",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "24300585"
 	},
 	"item": [
 		{
@@ -17,12 +18,17 @@
 								"key": "x-forwarded-client-cert",
 								"value": "{{CLIENT_CERTIFICATE}}",
 								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "{{SERVER}}/edev",
+							"raw": "{{HOST}}/edev",
 							"host": [
-								"{{SERVER}}"
+								"{{HOST}}"
 							],
 							"path": [
 								"edev"
@@ -32,7 +38,10 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1 (EndDevice)",
+					"name": "/edev/3 (EndDevice)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
 					"request": {
 						"method": "GET",
 						"header": [
@@ -40,16 +49,169 @@
 								"key": "x-forwarded-client-cert",
 								"value": "{{CLIENT_CERTIFICATE}}",
 								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
 							}
 						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
 						"url": {
-							"raw": "{{SERVER}}/edev/1",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}",
 							"host": [
-								"{{SERVER}}"
+								"{{HOST}}"
 							],
 							"path": [
 								"edev",
-								"1"
+								"{{EDEV_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev (EndDevice Create)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <sFDI>789654321005</sFDI>\r\n    <changedTime>1379905200</changedTime>\r\n</EndDevice>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/3 (EndDevice Registration)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/reg",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"reg"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/3 (EndDevice FunctionSetAssignment)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsal?1=2",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"fsal"
+							],
+							"query": [
+								{
+									"key": "1",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/3 (EndDevice FunctionSetAssignments)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsal?",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"fsal"
+							],
+							"query": [
+								{
+									"key": "",
+									"value": ""
+								}
 							]
 						}
 					},
@@ -68,6 +230,11 @@
 							{
 								"key": "x-forwarded-client-cert",
 								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
 								"type": "text"
 							}
 						],
@@ -100,15 +267,972 @@
 								"key": "x-forwarded-client-cert",
 								"value": "{{CLIENT_CERTIFICATE}}",
 								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/dcap",
+							"raw": "{{HOST}}/dcap (DeviceCapabilities)",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"dcap"
+								"dcap (DeviceCapabilities)"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Meter Mirroring",
+			"item": [
+				{
+					"name": "/mup (Mirror Metering MeterUsagePoint)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <mRID>0600006CC8</mRID>\r\n    <description>Gas Mirroring</description>\r\n    <roleFlags>13</roleFlags>\r\n    <serviceCategoryKind>1</serviceCategoryKind>\r\n    <status>1</status>\r\n    <deviceLFDI>00</deviceLFDI>\r\n    <MirrorMeterReading>\r\n        <mRID>0700006CC8</mRID>\r\n        <Reading>\r\n            <value>125</value>\r\n        </Reading>\r\n        <ReadingType>\r\n            <accumulationBehaviour>9</accumulationBehaviour>\r\n            <commodity>7</commodity>\r\n            <dataQualifier>0</dataQualifier>\r\n            <flowDirection>1</flowDirection>\r\n            <powerOfTenMultiplier>3</powerOfTenMultiplier>\r\n            <uom>119</uom>\r\n        </ReadingType>\r\n    </MirrorMeterReading>\r\n</MirrorUsagePoint>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/mup",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/mup/0 (Mirror Metering MirrorMeterReading)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <mRID>0800006CC8</mRID>\r\n    <MirrorReadingSet>\r\n        <mRID>0900006CC8</mRID>\r\n        <timePeriod>\r\n            <duration>86400</duration>\r\n            <start>1341579365</start>\r\n        </timePeriod>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>00</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>01</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>02</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>13</value>\r\n            <localID>03</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>12</value>\r\n            <localID>04</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>05</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>06</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>16</value>\r\n            <localID>07</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>08</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>7</value>\r\n            <localID>09</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>6</value>\r\n            <localID>0A</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>5</value>\r\n            <localID>0B</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>8</value>\r\n            <localID>0C</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>0D</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>0E</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>12</value>\r\n            <localID>0F</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>14</value>\r\n            <localID>10</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>13</value>\r\n            <localID>11</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>12</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>7</value>\r\n            <localID>13</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>8</value>\r\n            <localID>14</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>15</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>16</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>17</localID>\r\n        </Reading>\r\n    </MirrorReadingSet>\r\n</MirrorMeterReading>"
+						},
+						"url": {
+							"raw": "{{HOST}}/mup/{{MUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup",
+								"{{MUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "mup/0 (Mirror Metering MirrorMeterReadingList)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<MirrorMeterReadingList xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <MirrorMeterReading>\r\n        <mRID>0700006CC8</mRID>\r\n        <Reading>\r\n            <value>574</value>\r\n        </Reading>\r\n    </MirrorMeterReading>\r\n    <MirrorMeterReading>\r\n        <mRID>0800006CC8</mRID>\r\n        <MirrorReadingSet>\r\n            <mRID>0900006CC8</mRID>\r\n            <timePeriod>\r\n                <duration>86400</duration>\r\n                <start>1341665765</start>\r\n            </timePeriod>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>00</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>01</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>02</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>13</value>\r\n                <localID>03</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>04</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>05</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>06</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>07</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>08</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>7</value>\r\n                <localID>09</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>6</value>\r\n                <localID>0A</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>5</value>\r\n                <localID>0B</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>8</value>\r\n                <localID>0C</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>0D</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>0E</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>0F</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>14</value>\r\n                <localID>10</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>13</value>\r\n                <localID>11</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>12</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>7</value>\r\n                <localID>13</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>8</value>\r\n                <localID>14</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>15</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>16</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>17</localID>\r\n            </Reading>\r\n        </MirrorReadingSet>\r\n    </MirrorMeterReading>\r\n</MirrorMeterReadingList>"
+						},
+						"url": {
+							"raw": "{{HOST}}/mup/{{MUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup",
+								"{{MUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/upt (Metering UsagePointList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/upt",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"upt"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/upt/1 (Mirror Metering MeterReadingList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"upt",
+								"{{UPT_ID}}",
+								"mr"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/upt/1 (Mirror Metering ReadingType)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rt",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"upt",
+								"{{UPT_ID}}",
+								"mr",
+								"1",
+								"rt"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/upt/1 (Metering ReadingSetList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs?s=0&l=1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"upt",
+								"{{UPT_ID}}",
+								"mr",
+								"1",
+								"rs"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/upt/1 (Mirror Metering ReadingList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs/32/r?s=0&l=24",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"upt",
+								"{{UPT_ID}}",
+								"mr",
+								"1",
+								"rs",
+								"32",
+								"r"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "24"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/upt/1 (Mirror Metering ReadingSetList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs?s=0&l=1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"upt",
+								"{{UPT_ID}}",
+								"mr",
+								"1",
+								"rs"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/upt/1 (Mirror Metering ReadingList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs/33/r?s=0&l=24 HTTP/1.1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"upt",
+								"{{UPT_ID}}",
+								"mr",
+								"1",
+								"rs",
+								"33",
+								"r"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "24 HTTP/1.1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Pricing",
+			"item": [
+				{
+					"name": "/pricing/rt/1 (Pricing ReadingType)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/pricing/rt/{{PRICING_RT}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"pricing",
+								"rt",
+								"{{PRICING_RT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp (TariffProfileList (unscoped))",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/3 (TariffProfile (unscoped))",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/{{TP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"{{TP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/1/rc (RateComponent (unscoped))",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/{{TP_ID}}/rc",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"{{TP_ID}}",
+								"rc"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/1/1 (TariffProfile)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/{{TP_ID}}/{{EDEV_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"{{TP_ID}}",
+								"{{EDEV_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/1/1/rc (RateComponentList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/{{TP_ID}}/{{EDEV_ID}}/rc?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"{{TP_ID}}",
+								"{{EDEV_ID}}",
+								"rc"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/1/1/rc/YYYY-MM-DD/1 (RateComponent)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/{{TP_ID}}/{{EDEV_ID}}/rc/{{DATE}}/{{PRICING_RT}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"{{TP_ID}}",
+								"{{EDEV_ID}}",
+								"rc",
+								"{{DATE}}",
+								"{{PRICING_RT}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/1/1/rc/YYYY-MM-DD/1/tti (TimeTariffIntervalList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/{{TP_ID}}/{{EDEV_ID}}/rc/{{DATE}}/{{PRICING_RT}}/tti?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"{{TP_ID}}",
+								"{{EDEV_ID}}",
+								"rc",
+								"{{DATE}}",
+								"{{PRICING_RT}}",
+								"tti"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/1/1/rc/YYYY-MM-DD/1/tti/HH:MM (TimeTariffInterval)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/{{TP_ID}}/{{EDEV_ID}}/rc/{{DATE}}/{{PRICING_RT}}/tti/{{TIME}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"{{TP_ID}}",
+								"{{EDEV_ID}}",
+								"rc",
+								"{{DATE}}",
+								"{{PRICING_RT}}",
+								"tti",
+								"{{TIME}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/1/1/rc/YYYY-MM-DD/1/tti/HH:MM/cti/12345 (ConsumptionTariffIntervalList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/{{TP_ID}}/{{EDEV_ID}}/rc/{{DATE}}/{{PRICING_RT}}/tti/{{TIME}}/cti/12345?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"{{TP_ID}}",
+								"{{EDEV_ID}}",
+								"rc",
+								"{{DATE}}",
+								"{{PRICING_RT}}",
+								"tti",
+								"{{TIME}}",
+								"cti",
+								"12345"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tp/1/1/rc/YYYY-MM-DD/1/tti/HH:MM/cti/12345/1 (ConsumptionTariffInterval)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/tp/{{TP_ID}}/{{EDEV_ID}}/rc/{{DATE}}/{{PRICING_RT}}/tti/{{TIME}}/cti/12345/1?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tp",
+								"{{TP_ID}}",
+								"{{EDEV_ID}}",
+								"rc",
+								"{{DATE}}",
+								"{{PRICING_RT}}",
+								"tti",
+								"{{TIME}}",
+								"cti",
+								"12345",
+								"1"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "DOEs",
+			"item": [
+				{
+					"name": "/derp/1 (DERProgramList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/derp/{{EDEV_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"derp",
+								"{{EDEV_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/derp/1/doe (DERProgram - DOE)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/derp/{{EDEV_ID}}/doe",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"derp",
+								"{{EDEV_ID}}",
+								"doe"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/derp/1/doe/derc (DERControls - DOE)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/derp/{{EDEV_ID}}/doe/derc?s=0&l=1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"derp",
+								"{{EDEV_ID}}",
+								"doe",
+								"derc"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/derp/1/doe/derc/date (DERControls - DOE by Date)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/derp/{{EDEV_ID}}/doe/derc/{{DATE}}?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"derp",
+								"{{EDEV_ID}}",
+								"doe",
+								"derc",
+								"{{DATE}}"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
 							]
 						}
 					},
@@ -147,6 +1271,45 @@
 			"key": "CLIENT_CERTIFICATE",
 			"value": "-----BEGIN%20CERTIFICATE-----%0A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%0AfSCR9LWxGyGL+iGNC19NciZUuY1kLr8=%0A-----END%20CERTIFICATE-----",
 			"type": "default"
+		},
+		{
+			"key": "EDEV_ID",
+			"value": "1"
+		},
+		{
+			"key": "MUP_ID",
+			"value": "0"
+		},
+		{
+			"key": "UPT_ID",
+			"value": "1"
+		},
+		{
+			"key": "TP_ID",
+			"value": "1"
+		},
+		{
+			"key": "RT_ID",
+			"value": "1"
+		},
+		{
+			"key": "RC_ID",
+			"value": "3"
+		},
+		{
+			"key": "DATE",
+			"value": "2022-03-05",
+			"type": "string"
+		},
+		{
+			"key": "TIME",
+			"value": "01:02",
+			"type": "string"
+		},
+		{
+			"key": "PRICING_RT",
+			"value": "1",
+			"type": "string"
 		}
 	]
 }

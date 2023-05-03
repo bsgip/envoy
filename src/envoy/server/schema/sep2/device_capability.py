@@ -3,15 +3,16 @@ from typing import Optional
 from pydantic_xml import attr, element
 
 from envoy.server.schema import uri
-from envoy.server.schema.sep2.base import FunctionSetAssignmentBase, Link, ListLink
+from envoy.server.schema.sep2.base import DEFAULT_POLLRATE, FunctionSetAssignmentsBase, ListLink, PollRateType
 
 
-class DeviceCapabilityResponse(FunctionSetAssignmentBase):
+class DeviceCapabilityResponse(FunctionSetAssignmentsBase):
     href: str = attr(default=uri.DeviceCapabilityUri)
-    pollrate: int = attr(default=900)
+    pollrate: PollRateType = DEFAULT_POLLRATE
 
     # (0..1) Link
-    SelfDeviceLink: Optional[Link] = element()
+    # Not supported at this time
+    # SelfDeviceLink: Optional[Link] = element()
 
     # (0..1) ListLink
     EndDeviceListLink: Optional[ListLink] = element()

@@ -122,7 +122,7 @@ async def test_get_enddevice(client: AsyncClient, edev_fetch_uri_format: str):
     assert_response_header(response, HTTPStatus.NOT_FOUND)
     assert_error_response(response)
 
-    # check fetching an ID that DNE
+    # check fetching an ID that does not exist
     uri = edev_fetch_uri_format.format(site_id=9999)  # This does not exist
     response = await client.get(uri, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)})
     assert_response_header(response, HTTPStatus.NOT_FOUND)
