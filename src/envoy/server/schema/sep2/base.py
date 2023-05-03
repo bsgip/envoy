@@ -29,6 +29,9 @@ class PollRateType(BaseXmlModelWithNS):
     pollRate: Optional[int] = attr()
 
 
+DEFAULT_POLLRATE = PollRateType(pollRate=900)
+
+
 class Resource(BaseXmlModelWithNS):
     href: Optional[str] = attr()
 
@@ -107,9 +110,7 @@ class ListLink(Link):
     all_: Optional[int] = attr(name="all")
 
 
-class FunctionSetAssignmentBase(Resource):
-    href: pydantic.AnyUrl = attr()
-
+class FunctionSetAssignmentsBase(Resource):
     # Optional (0..1) Links
     TimeLink: Optional[Link] = element()
 
