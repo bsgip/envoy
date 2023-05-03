@@ -2,8 +2,8 @@ import unittest.mock as mock
 from datetime import date, datetime
 
 import pytest
-from sqlalchemy.exc import NoResultFound
 
+from envoy.server.exception import NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
@@ -56,7 +56,7 @@ async def test_program_fetch_list_site_dne(mock_DERProgramMapper: mock.MagicMock
     mock_select_single_site_with_site_id.return_value = None
 
     # Act
-    with pytest.raises(NoResultFound):
+    with pytest.raises(NotFoundError):
         await DERProgramManager.fetch_list_for_site(mock_session, agg_id, site_id)
 
     # Assert
@@ -110,7 +110,7 @@ async def test_program_fetch_site_dne(mock_DERProgramMapper: mock.MagicMock,
     mock_select_single_site_with_site_id.return_value = None
 
     # Act
-    with pytest.raises(NoResultFound):
+    with pytest.raises(NotFoundError):
         await DERProgramManager.fetch_doe_program_for_site(mock_session, agg_id, site_id)
 
     # Assert

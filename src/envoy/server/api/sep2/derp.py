@@ -3,7 +3,6 @@ from http import HTTPStatus
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi_async_sqlalchemy import db
-from sqlalchemy.exc import NoResultFound
 
 from envoy.server.api.request import (
     extract_aggregator_id,
@@ -12,10 +11,10 @@ from envoy.server.api.request import (
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import XmlResponse
+from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.manager.pricing import RateComponentManager
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
-from envoy.server.mapper.exception import InvalidMappingError
 from envoy.server.schema import uri
 
 logger = logging.getLogger(__name__)
@@ -47,9 +46,9 @@ async def get_derprogram_list(request: Request,
             aggregator_id=extract_aggregator_id(request),
             site_id=site_id,
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NoResultFound:
+    except NotFoundError:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derp_list)
@@ -77,9 +76,9 @@ async def get_derprogram_doe(request: Request,
             aggregator_id=extract_aggregator_id(request),
             site_id=site_id,
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NoResultFound:
+    except NotFoundError:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derp)
@@ -118,9 +117,9 @@ async def get_dercontrol_list(request: Request,
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit)
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NoResultFound:
+    except NotFoundError:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derc_list)
@@ -162,9 +161,9 @@ async def get_dercontrol_list_for_date(request: Request,
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit)
         )
-    except InvalidMappingError as ex:
+    except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NoResultFound:
+    except NotFoundError:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derc_list)
