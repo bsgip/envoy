@@ -27,5 +27,4 @@ async def test_get_supported_links(
 ):
     async with generate_async_session(pg_base_config) as session:
         links = await link.get_supported_links(session=session, model=DeviceCapabilityResponse, aggregator_id=1)
-        print(links)
     assert links == expected_links

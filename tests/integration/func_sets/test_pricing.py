@@ -89,8 +89,10 @@ async def test_get_tariffprofile_nosite(client: AsyncClient, agg_1_headers, tari
         body = read_response_body_string(response)
         assert len(body) > 0
 
+        # Sanity check that the response looks like valid XML. Unit test coverage will do the heavy lifting
+        # to validate the contents in greater details
         parsed_response: TariffProfileResponse = TariffProfileResponse.from_xml(body)
-        assert parsed_response.href == expected_href
+        assert parsed_response.href == expected_href, "We received the wrong reading type"
         assert parsed_response.currency
         assert parsed_response.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
 
@@ -118,8 +120,10 @@ async def test_get_tariffprofile(client: AsyncClient, agg_1_headers, tariff_id: 
         body = read_response_body_string(response)
         assert len(body) > 0
 
+        # Sanity check that the response looks like valid XML. Unit test coverage will do the heavy lifting
+        # to validate the contents in greater details
         parsed_response: TariffProfileResponse = TariffProfileResponse.from_xml(body)
-        assert parsed_response.href == expected_href
+        assert parsed_response.href == expected_href, "We received the wrong entity id"
         assert parsed_response.currency
         assert parsed_response.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
         assert parsed_response.RateComponentListLink
@@ -128,7 +132,8 @@ async def test_get_tariffprofile(client: AsyncClient, agg_1_headers, tariff_id: 
 
 @pytest.mark.anyio
 async def test_get_ratecomponentlist_nositescope(client: AsyncClient, agg_1_headers):
-    """The underlying implementation is a placeholder - this test will just make sure it doesn't crash out"""
+    """The underlying endpoint implementation is just fulfilling the requirements of 2030.5. It doesnt do anything
+    useful and this test will just make sure it doesn't raise on error upon execution"""
     path = uri.RateComponentListUnscopedUri.format(tariff_id=1)
     response = await client.get(path, headers=agg_1_headers)
     assert_response_header(response, HTTPStatus.OK)
@@ -287,7 +292,8 @@ async def test_get_timetariffinterval(client: AsyncClient, agg_1_headers, tariff
 async def test_get_cti_list(client: AsyncClient, agg_1_headers, tariff_id: int, site_id: int, rc_id: str,
                             pricing_reading: int, tti_id: str, expected_price: Optional[int]):
     """Consumption Tariff Intervals aren't really a list - they're just a wrapper around a single already encoded
-    price. """
+    price. This test validates that the prices sent match the prices returned and that the response is always a
+    single CTI entity"""
     sent_price = 1 if expected_price is None else expected_price
     path = uri.ConsumptionTariffIntervalListUri.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id,
                                                        pricing_reading=pricing_reading, tti_id=tti_id,
@@ -319,9 +325,12 @@ async def test_get_cti_list(client: AsyncClient, agg_1_headers, tariff_id: int, 
 ])
 async def test_get_cti(client: AsyncClient, agg_1_headers, tariff_id: int, site_id: int, rc_id: str,
                        pricing_reading: int, tti_id: str, expected_price: Optional[int]):
-    """Consumption Tariff Intervals aren't really a list - they're just a wrapper around a single already encoded
-    price. """
-    sent_price = 1 if expected_price is None else expected_price
+    """Consumption Tariff Intervals don't map to anything in the db - they're just a wrapper around a single already
+    encoded price. This test validates that the prices sent match the prices returned and that requesting an
+    invalid site returns a HTTP 404"""
+    sent_price = 1
+    if expected_price is not None:
+        sent_price = expected_price
     path = uri.ConsumptionTariffIntervalUri.format(tariff_id=tariff_id, site_id=site_id, rate_component_id=rc_id,
                                                    pricing_reading=pricing_reading, tti_id=tti_id,
                                                    sep2_price=sent_price)
