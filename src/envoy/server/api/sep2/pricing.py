@@ -55,7 +55,6 @@ async def get_tariffprofilelist_nositescope(request: Request,
     discovered via function set assignments. This endpoint is purely for strict sep2 compliance
 
     Args:
-        tariff_id: Path parameter, the target TariffProfile's internal registration number.
         start: list query parameter for the start index value. Default 0.
         after: list query parameter for lists with a datetime primary index. Default 0.
         limit: list query parameter for the maximum number of objects to return. Default 1.
@@ -67,6 +66,41 @@ async def get_tariffprofilelist_nositescope(request: Request,
     try:
         tp_list = await TariffProfileManager.fetch_tariff_profile_list_no_site(
             db.session,
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit)
+        )
+    except BadRequestError as ex:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+
+    return XmlResponse(tp_list)
+
+
+@router.head(uri.TariffProfileListUri)
+@router.get(uri.TariffProfileListUri, status_code=HTTPStatus.OK)
+async def get_tariffprofilelist(request: Request,
+                                site_id: int,
+                                start: list[int] = Query([0], alias="s"),
+                                after: list[int] = Query([0], alias="a"),
+                                limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
+    """Responds with a paginated list of tariff profiles available to the current client. These tariffs
+    will be scoped specifically to the specified site_id
+
+    Args:
+        site_id: Path parameter - the site that the underlying rates will be scoped to
+        start: list query parameter for the start index value. Default 0.
+        after: list query parameter for lists with a datetime primary index. Default 0.
+        limit: list query parameter for the maximum number of objects to return. Default 1.
+
+    Returns:
+        fastapi.Response object.
+
+    """
+    try:
+        tp_list = await TariffProfileManager.fetch_tariff_profile_list(
+            db.session,
+            aggregator_id=extract_aggregator_id(request),
+            site_id=site_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit)

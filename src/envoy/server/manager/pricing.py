@@ -54,6 +54,22 @@ class TariffProfileManager:
                                                    unique_rate_days * TOTAL_PRICING_READING_TYPES)
 
     @staticmethod
+    async def fetch_tariff_profile_list(session: AsyncSession, aggregator_id: int, site_id: int, start: int,
+                                        changed_after: datetime, limit: int) -> Optional[TariffProfileListResponse]:
+        """Fetches all tariffs accessible to a specific site."""
+
+        tariffs = await select_all_tariffs(session, start, changed_after, limit)
+        tariff_count = await select_tariff_count(session, changed_after)
+
+        # we need the rate counts associated with each Tariff+Site. Those are derived from dates with a Rate
+        tariff_rate_counts: list[int] = []
+        for tariff in tariffs:
+            rate_days = await count_unique_rate_days(session, aggregator_id, tariff.tariff_id, site_id, changed_after)
+            tariff_rate_counts.append(rate_days * TOTAL_PRICING_READING_TYPES)
+
+        return TariffProfileMapper.map_to_list_response(zip(tariffs, tariff_rate_counts), tariff_count, site_id)
+
+    @staticmethod
     async def fetch_tariff_profile_no_site(session: AsyncSession, tariff_id: int) -> Optional[TariffProfileResponse]:
         """Fetches a single tariff in the form of a sep2 TariffProfile. This tariff will NOT contain
         any useful RateComponent links due to a lack of a site ID scope
@@ -75,7 +91,7 @@ class TariffProfileManager:
         tariffs = await select_all_tariffs(session, start, changed_after, limit)
         tariff_count = await select_tariff_count(session, changed_after)
 
-        return TariffProfileMapper.map_to_list_response(tariffs, tariff_count)
+        return TariffProfileMapper.map_to_list_nosite_response(tariffs, tariff_count)
 
 
 class RateComponentManager:

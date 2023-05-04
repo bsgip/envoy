@@ -2,6 +2,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from enum import IntEnum, auto
 from itertools import islice, product
+from typing import Iterator
 
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
@@ -63,7 +64,7 @@ class TariffProfileMapper:
         return TariffProfileMapper._map_to_response(tariff, tp_href, 0)
 
     @staticmethod
-    def map_to_list_response(tariffs: list[Tariff], total_tariffs: int) -> TariffProfileListResponse:
+    def map_to_list_nosite_response(tariffs: list[Tariff], total_tariffs: int) -> TariffProfileListResponse:
         """Returns a list containing multiple sep2 entities. The href to RateComponentListLink will be to an endpoint
         for returning rate components for an unspecified site id"""
         return TariffProfileListResponse.validate(
@@ -71,6 +72,28 @@ class TariffProfileMapper:
                 "all_": total_tariffs,
                 "results": len(tariffs),
                 "TariffProfile": [TariffProfileMapper.map_to_nosite_response(t) for t in tariffs],
+            }
+        )
+
+    @staticmethod
+    def map_to_list_response(tariffs: Iterator[tuple[Tariff, int]], total_tariffs: int,
+                             site_id: int) -> TariffProfileListResponse:
+        """Returns a list containing multiple sep2 entities. The href's will be to the site specific
+        TimeTariffProfile and RateComponentListLink
+
+        tariffs should be a list of tuples combining the individual tariffs with the underlying count
+        of rate components"""
+        tariff_profiles: list[TariffProfileResponse] = []
+        tariffs_count: int = 0
+        for (tariff, rc_count) in tariffs:
+            tariff_profiles.append(TariffProfileMapper.map_to_response(tariff, site_id, rc_count))
+            tariffs_count = tariffs_count + 1
+
+        return TariffProfileListResponse.validate(
+            {
+                "all_": total_tariffs,
+                "results": tariffs_count,
+                "TariffProfile": tariff_profiles,
             }
         )
 

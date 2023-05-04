@@ -129,7 +129,7 @@ def test_tariff_profile_mapping():
     assert mapped_some_set.RateComponentListLink.all_ == total_rates
 
 
-def test_tariff_profile_list_mapping():
+def test_tariff_profile_list_nosite_mapping():
     """Non exhaustive test of the tariff profile list mapping - mainly to sanity check important fields and ensure
     that exceptions arent being raised"""
     tariffs: list[Tariff] = [
@@ -140,12 +140,42 @@ def test_tariff_profile_list_mapping():
     tariffs[1].currency_code = CurrencyCode.US_DOLLAR
     count = 123
     
-    mapped_all_set = TariffProfileMapper.map_to_list_response(tariffs, count)
+    mapped_all_set = TariffProfileMapper.map_to_list_nosite_response(tariffs, count)
     assert mapped_all_set
-    assert mapped_all_set.all_ == 123
+    assert mapped_all_set.all_ == count
     assert mapped_all_set.results == 2
     assert len(mapped_all_set.TariffProfile) == 2
     assert all([isinstance(tp, TariffProfileResponse) for tp in mapped_all_set.TariffProfile])
+
+
+def test_tariff_profile_list_mapping():
+    """Non exhaustive test of the tariff profile list mapping - mainly to sanity check important fields and ensure
+    that exceptions arent being raised"""
+    tariffs: list[Tariff] = [
+        generate_class_instance(Tariff, seed=101, optional_is_none=False),
+        generate_class_instance(Tariff, seed=202, optional_is_none=True),
+    ]
+    tariff_rate_counts = [
+        456,
+        789
+    ]
+    tariffs[0].currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
+    tariffs[1].currency_code = CurrencyCode.US_DOLLAR
+    tariff_count = 123
+    site_id = 112234
+    
+    mapped_all_set = TariffProfileMapper.map_to_list_response(zip(tariffs, tariff_rate_counts), tariff_count, site_id)
+    assert mapped_all_set
+    assert mapped_all_set.all_ == tariff_count
+    assert mapped_all_set.results == 2
+    assert len(mapped_all_set.TariffProfile) == 2
+    assert all([isinstance(tp, TariffProfileResponse) for tp in mapped_all_set.TariffProfile])
+    assert all([str(site_id) in tp.href for tp in mapped_all_set.TariffProfile])
+    assert all([str(site_id) in tp.RateComponentListLink.href for tp in mapped_all_set.TariffProfile])
+
+    # Double check our rate component counts get handed down to the child lists correctly
+    assert mapped_all_set.TariffProfile[0].RateComponentListLink.all_ == tariff_rate_counts[0]
+    assert mapped_all_set.TariffProfile[1].RateComponentListLink.all_ == tariff_rate_counts[1]
 
 
 @mock.patch('envoy.server.mapper.sep2.pricing.PricingReadingTypeMapper')
