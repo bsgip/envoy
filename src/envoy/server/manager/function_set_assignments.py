@@ -29,10 +29,8 @@ class FunctionSetAssignmentsManager:
         session: AsyncSession,
         aggregator_id: int,
         site_id: int,
-        start: int,
-        limit: int,
     ) -> FunctionSetAssignmentsListResponse:
-        # At present a function sets assignments list response will only return 1 function set assigments response
+        # At present a function sets assignments list response will only return 1 function set assignments response
         # We hard-code the fsa_id to be 1
         DEFAULT_FSA_ID = 1
 

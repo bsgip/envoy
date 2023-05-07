@@ -6,11 +6,7 @@ from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import NoResultFound
 
 from envoy.server.api import query
-from envoy.server.api.request import (
-    extract_aggregator_id,
-    extract_limit_from_paging_param,
-    extract_start_from_paging_param,
-)
+from envoy.server.api.request import extract_aggregator_id
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
 from envoy.server.schema import uri
@@ -74,13 +70,15 @@ async def get_function_set_assignments_list(
         fastapi.Response object.
     """
 
+    # This function accepts the start and limit query parameters because it is a GET request for a List response
+    # however FunctionSetAssignment will only ever return 1 FunctionSetAssignment per site so we ignore `start`
+    # `limit`.
+
     function_set_assignments_list = (
         await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_aggregator_and_site(
             session=db.session,
             site_id=site_id,
             aggregator_id=extract_aggregator_id(request),
-            start=extract_start_from_paging_param(start),
-            limit=extract_limit_from_paging_param(limit),
         )
     )
     return XmlResponse(function_set_assignments_list)
