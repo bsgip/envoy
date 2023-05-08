@@ -2,7 +2,7 @@ from enum import IntFlag, auto
 from functools import reduce
 from typing import List, Optional
 
-from pydantic_xml import attr, element
+from pydantic_xml import element
 
 from envoy.server.schema.csip_aus.connection_point import ConnectionPointLink as ConnectionPointLinkType
 from envoy.server.schema.sep2.base import HexBinary32, Link, ListLink, SubscribableList, SubscribableResource
@@ -10,7 +10,7 @@ from envoy.server.schema.sep2.time import TimeType
 
 
 class DeviceCategory(IntFlag):
-    """DeviceCategory is a series of bit flags describing a category of EndDevice. Described in 2030.5"""
+    """DeviceCategory is a series of bit flags describing a category of EndDevice. Described in sep2"""
     PROGRAMMABLE_COMMUNICATING_THERMOSTAT = auto()
     STRIP_HEATERS = auto()
     BASEBOARD_HEATERS = auto()
@@ -54,8 +54,6 @@ class EndDeviceRequest(AbstractDevice, tag="EndDevice"):
 
 
 class EndDeviceResponse(EndDeviceRequest, tag="EndDevice"):
-    href: Optional[str] = attr()
-
     changedTime: TimeType = element()
     enabled: Optional[int] = element(default=1)
 
@@ -65,19 +63,17 @@ class EndDeviceResponse(EndDeviceRequest, tag="EndDevice"):
     DeviceInformationLink: Optional[Link] = element()
     DeviceStatusLink: Optional[Link] = element()
     IPInterfaceListLink: Optional[Link] = element()
-    LoadSheAvailabilityListLink: Optional[ListLink] = element()
-    LogEventsListLink: Optional[Link] = element()
+    LoadShedAvailabilityListLink: Optional[ListLink] = element()
+    LogEventListLink: Optional[Link] = element()
     PowerStatusLink: Optional[Link] = element()
     FileStatusLink: Optional[Link] = element()
     DERListLink: Optional[ListLink] = element()
     FunctionSetAssignmentsListLink: Optional[ListLink] = element()
     RegistrationLink: Optional[Link] = element()
-    SubscriptionLink: Optional[Link] = element()
+    SubscriptionListLink: Optional[ListLink] = element()
     FlowReservationRequestListLink: Optional[Link] = element()
     FlowReservationResponseListLink: Optional[Link] = element()
 
 
 class EndDeviceListResponse(SubscribableList, tag="EndDeviceList"):
-    href: Optional[str] = attr()
-
     EndDevice: Optional[List[EndDeviceResponse]] = element()

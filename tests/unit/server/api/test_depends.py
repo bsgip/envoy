@@ -19,7 +19,7 @@ from tests.integration.integration_server import cert_pem_header
 
 
 def test_generate_lfdi_from_fingerprint():
-    """2030.5 defines LFDI as the first 20 octets of the sha256 certificate hash. This test
+    """sep2 defines LFDI as the first 20 octets of the sha256 certificate hash. This test
     is pulled direct from an example in the standard"""
     lfdi = LFDIAuthDepends._cert_fingerprint_to_lfdi(
         "3e4f45ab31edfe5b67e343e5e4562e31984e23e5349e2ad745672ed145ee213a"

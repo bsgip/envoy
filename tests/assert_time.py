@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Union
+from typing import Optional, Union
 
 
 def assert_fuzzy_datetime_match(expected_time: Union[int, float, datetime],
@@ -20,3 +20,11 @@ def assert_fuzzy_datetime_match(expected_time: Union[int, float, datetime],
 def assert_nowish(expected_time: Union[int, float, datetime], fuzziness_seconds: int = 20):
     """Asserts that datetime is within fuzziness_seconds of now"""
     assert_fuzzy_datetime_match(expected_time, datetime.now(), fuzziness_seconds=fuzziness_seconds)
+
+
+def assert_datetime_equal(a: Optional[datetime], b: Optional[datetime]):
+    """Asserts datetime equality based on timestamp (handles None too)"""
+    if a is None or b is None:
+        assert a is None and b is None
+    else:
+        assert a.timestamp() == b.timestamp(), f"Comparing {a} ({a.timestamp()}) to {b} ({b.timestamp()})"

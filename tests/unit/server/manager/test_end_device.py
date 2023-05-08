@@ -46,7 +46,8 @@ async def test_end_device_manager_fetch_existing_device(mock_EndDeviceMapper: mo
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
 async def test_end_device_manager_fetch_missing_device(mock_EndDeviceMapper: mock.MagicMock,
                                                        mock_select_single_site_with_site_id: mock.MagicMock):
-    """Check that the manager will handle interacting with the DB and its responses when the requested site DNE"""
+    """Check that the manager will handle interacting with the DB and its responses when the requested site
+    does not exist"""
 
     # Arrange
     mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
@@ -110,7 +111,7 @@ async def test_fetch_enddevicelist_with_aggregator_id(mock_EndDeviceListMapper: 
     mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
     aggregator_id = 3
     start = 4
-    after = 1678542014
+    after = datetime.now()
     limit = 5
     mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
     returned_site_count = 123
@@ -138,9 +139,9 @@ async def test_fetch_enddevicelist_with_aggregator_id(mock_EndDeviceListMapper: 
     mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session,
                                                                      aggregator_id,
                                                                      start,
-                                                                     datetime.fromtimestamp(after),
+                                                                     after,
                                                                      limit)
-    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, datetime.fromtimestamp(after))
+    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, after)
 
 
 @pytest.mark.anyio
@@ -156,7 +157,7 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(mock_EndDeviceL
     mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly
     aggregator_id = 3
     start = 4
-    after = 1678542014
+    after = datetime.now()
     limit = 5
     mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
     returned_site_count = 123
@@ -181,9 +182,9 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(mock_EndDeviceL
     mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session,
                                                                      aggregator_id,
                                                                      start,
-                                                                     datetime.fromtimestamp(after),
+                                                                     after,
                                                                      limit)
-    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, datetime.fromtimestamp(after))
+    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, after)
 
 
 @pytest.mark.anyio
@@ -221,7 +222,8 @@ async def test_end_device_manager_fetch_existing_connection_point(mock_Connectio
 @mock.patch("envoy.server.manager.end_device.ConnectionPointMapper")
 async def test_end_device_manager_fetch_missing_connection_point(mock_ConnectionPointMapper: mock.MagicMock,
                                                                  mock_select_single_site_with_site_id: mock.MagicMock):
-    """Check that the manager will handle interacting with the DB and its responses when the requested site DNE"""
+    """Check that the manager will handle interacting with the DB and its responses when the
+    requested site does not exist"""
 
     # Arrange
     mock_session: AsyncSession = mock.Mock(spec_set={})  # The session should not be interacted with directly

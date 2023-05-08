@@ -4,7 +4,8 @@ import pytest
 from httpx import AsyncClient
 from psycopg import Connection
 
-from envoy.server.main import generate_app, generate_settings
+from envoy.server.main import generate_app
+from envoy.server.settings import generate_settings
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as VALID_PEM
 from tests.integration.integration_server import cert_pem_header
 
