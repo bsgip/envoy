@@ -307,3 +307,9 @@ class ReasonCodeType(IntEnum):
 
     # Custom values outside sep2 specification
     internal_error = 16384  # Unspecified error due to an issue with some internal logic/system
+
+
+class OneHourRangeType(int):
+    """A signed time offset, typically applied to a Time value, expressed in seconds, with range -3600 to 3600."""
+
+    pass
