@@ -227,3 +227,26 @@ class DeviceCategory(IntFlag):
 
 # The combination of ALL DeviceCategory bit flags
 DEVICE_CATEGORY_ALL_SET: DeviceCategory = reduce(lambda a, b: a | b, DeviceCategory)
+
+
+class TimeType(int):
+    # Unix time
+    pass
+
+
+class TimeOffsetType(int):
+    # A sign time offset, typically applied to a TimeType value, expressed in seconds.
+    pass
+
+
+class TimeQualityType(IntEnum):
+    authoritative_source = 3
+    level_3_source = 4
+    level_4_source = 5
+    level_5_source = 6
+    intentionally_uncoordinated = 7
+
+
+class DateTimeIntervalType(base.BaseXmlModelWithNS):
+    duration: int = element()
+    start: TimeType = element()

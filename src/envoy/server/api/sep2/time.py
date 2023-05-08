@@ -6,7 +6,8 @@ from tzlocal import get_localzone
 
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.time import get_dst_info
-from envoy.server.schema.sep2.time import TimeQualityType, TimeResponse
+from envoy.server.schema.sep2.time import TimeResponse
+from envoy.server.schema.sep2.types import TimeQualityType
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ from pydantic_xml import attr, element
 
 from envoy.server.schema.sep2 import primitive_types, types
 from envoy.server.schema.sep2.identification import Resource
-from envoy.server.schema.sep2.time import DateTimeIntervalType, TimeType
+from envoy.server.schema.sep2.types import DateTimeIntervalType, TimeType
 
 
 class OneHourRangeType(int):
