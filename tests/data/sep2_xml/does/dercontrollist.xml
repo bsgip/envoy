@@ -1,6 +1,5 @@
 <!-- IEEE Std 2030.5-2018 Table C.11 Step 8 Example Server Response from GET /derp/0/derc?s=0&l=1 -->
-<DERControlList all="2" href="/derp/0/derc" results="1" subscribable="1"
-    xmlns="urn:ieee:std:2030.5:ns">
+<DERControlList all="2" href="/derp/0/derc" results="1" subscribable="1" xmlns="urn:ieee:std:2030.5:ns">
     <DERControl>
         <mRID>02BE7A7E57</mRID>
         <description>Example DERControl 1</description>

@@ -1,6 +1,5 @@
 <!-- IEEE Std 2030.5-2018 Table C.1 Step 9 Example Server Response from GET /edev/3 -->
-<EndDevice href="/edev/3" subscribable="0"
-    xmlns="urn:ieee:std:2030.5:ns">
+<EndDevice href="/edev/3" subscribable="0" xmlns="urn:ieee:std:2030.5:ns">
     <ConfigurationLink href="/edev/3/cfg"/>
     <DeviceInformationLink href="/edev/3/di"/>
     <DeviceStatusLink href="/edev/3/ds"/>

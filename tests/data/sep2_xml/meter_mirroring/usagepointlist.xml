@@ -1,6 +1,5 @@
 <!-- IEEE Std 2030.5-2018 Table C.15 Step 6 Example Server Response from GET /upt -->
-<UsagePointList all="2" href="/upt" results="2" subscribable="0"
-    xmlns="urn:ieee:std:2030.5:ns">
+<UsagePointList all="2" href="/upt" results="2" subscribable="0" xmlns="urn:ieee:std:2030.5:ns">
     <UsagePoint href="/upt/0">
         <mRID>0B00006CC8</mRID>
         <description>Usage Point</description>

@@ -1,6 +1,5 @@
 <!-- IEEE Std 2030.5-2018 Table C.16 Step 2 Example Server Response from GET /tp/3 -->
-<TariffProfile href="/tp/3"
-    xmlns="urn:ieee:std:2030.5:ns">
+<TariffProfile href="/tp/3" xmlns="urn:ieee:std:2030.5:ns">
     <mRID>799794f4620b17e00000e566</mRID>
     <description>PEV TOU Rate</description>
     <currency>840</currency>

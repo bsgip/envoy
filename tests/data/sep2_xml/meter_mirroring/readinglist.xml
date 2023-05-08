@@ -1,7 +1,6 @@
 <!-- IEEE Std 2030.5-2018 Table C.15 Step 14 Example Server Response from GET /upt/1/mr/1/rs/32/r?s=0&l=24 -->
 <!-- Note this is functionally identical to example in Table C.15 Step 20 -->
-<ReadingList all="24" href="/upt/1/mr/1/rs/32/r" results="24"
-    xmlns="urn:ieee:std:2030.5:ns">
+<ReadingList all="24" href="/upt/1/mr/1/rs/32/r" results="24" xmlns="urn:ieee:std:2030.5:ns">
     <Reading href="/upt/1/mr/1/rs/32/r/4">
         <value>9</value>
         <localID>00</localID>

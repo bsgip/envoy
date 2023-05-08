@@ -1,6 +1,5 @@
 <!-- IEEE Std 2030.5-2018 Table C.16 Step 8 Example Server Response from GET /tp/3/rc/3/tti?l=5 -->
-<TimeTariffIntervalList all="5" href="/tp/3/rc/3/tti" results="5" subscribable="1"
-    xmlns="urn:ieee:std:2030.5:ns">
+<TimeTariffIntervalList all="5" href="/tp/3/rc/3/tti" results="5" subscribable="1" xmlns="urn:ieee:std:2030.5:ns">
     <TimeTariffInterval href="/tp/3/rc/3/tti/5" subscribable="1">
         <mRID>ef06fa23dc0a0f650000e566</mRID>
         <description>Off-Peak 1</description>

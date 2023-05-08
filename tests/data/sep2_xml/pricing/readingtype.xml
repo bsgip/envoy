@@ -1,6 +1,5 @@
 <!-- IEEE Std 2030.5-2018 Table C.16 Step 6 Example Server Response from GET /rt/1 -->
-<ReadingType href="/rt/1"
-    xmlns="urn:ieee:std:2030.5:ns">
+<ReadingType href="/rt/1" xmlns="urn:ieee:std:2030.5:ns">
     <accumulationBehaviour>4</accumulationBehaviour>
     <commodity>1</commodity>
     <dataQualifier>12</dataQualifier>
