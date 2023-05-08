@@ -1,4 +1,5 @@
-import enum
+from enum import IntEnum, IntFlag, auto
+from functools import reduce
 from typing import Optional
 
 from pydantic_xml import attr, element
@@ -18,7 +19,7 @@ class mRIDType(primitive_types.HexBinary128):
     pass
 
 
-class AccumulationBehaviourType(enum.IntEnum):
+class AccumulationBehaviourType(IntEnum):
     """sep2 AccumulationBehaviourType type. All other values are reserved"""
 
     NOT_APPLICABLE = 0
@@ -29,7 +30,7 @@ class AccumulationBehaviourType(enum.IntEnum):
     INSTANTANEOUS = 12
 
 
-class UomType(enum.IntEnum):
+class UomType(IntEnum):
     """Described in sep2 as:
 
     The following values are recommended values sourced from the unit of measure enumeration in IEC 61968-9 [61968].
@@ -66,7 +67,7 @@ class UomType(enum.IntEnum):
     VOLUME_LITER_PER_HOUR = 137
 
 
-class CommodityType(enum.IntEnum):
+class CommodityType(IntEnum):
     """All other values reserved"""
 
     NOT_APPLICABLE = 0
@@ -82,7 +83,7 @@ class CommodityType(enum.IntEnum):
     COOLING_FLUID = 13
 
 
-class DataQualifierType(enum.IntEnum):
+class DataQualifierType(IntEnum):
     """All other values reserved"""
 
     NOT_APPLICABLE = 0
@@ -94,7 +95,7 @@ class DataQualifierType(enum.IntEnum):
     STD_DEVIATION_OF_SAMPLE = 30
 
 
-class FlowDirectionType(enum.IntEnum):
+class FlowDirectionType(IntEnum):
     """All other values reserved"""
 
     NOT_APPLICABLE = 0
@@ -102,7 +103,7 @@ class FlowDirectionType(enum.IntEnum):
     REVERSE = 19  # received from customer
 
 
-class KindType(enum.IntEnum):
+class KindType(IntEnum):
     """All other values reserved"""
 
     NOT_APPLICABLE = 0
@@ -112,7 +113,7 @@ class KindType(enum.IntEnum):
     POWER = 37
 
 
-class PhaseCode(enum.IntEnum):
+class PhaseCode(IntEnum):
     """All other values reserved"""
 
     NOT_APPLICABLE = 0
@@ -128,7 +129,7 @@ class PhaseCode(enum.IntEnum):
     PHASE_ABC = 224
 
 
-class TOUType(enum.IntEnum):
+class TOUType(IntEnum):
     """All other values reserved"""
 
     NOT_APPLICABLE = 0
@@ -149,7 +150,7 @@ class TOUType(enum.IntEnum):
     TOU_O = 15
 
 
-class ConsumptionBlockType(enum.IntEnum):
+class ConsumptionBlockType(IntEnum):
     """All other values reserved"""
 
     NOT_APPLICABLE = 0
@@ -171,7 +172,7 @@ class ConsumptionBlockType(enum.IntEnum):
     BLOCK_16 = 16
 
 
-class SubscribableType(enum.IntEnum):
+class SubscribableType(IntEnum):
     resource_does_not_support_subscriptions = 0
     resource_supports_non_conditional_subscriptions = 1
     resource_supports_conditional_subscriptions = 2
@@ -191,3 +192,38 @@ class PollRateType(base.BaseXmlModelWithNS):
 
 
 DEFAULT_POLLRATE = PollRateType(pollRate=900)
+
+
+class DeviceCategory(IntFlag):
+    """DeviceCategory is a series of bit flags describing a category of EndDevice. Described in sep2"""
+
+    PROGRAMMABLE_COMMUNICATING_THERMOSTAT = auto()
+    STRIP_HEATERS = auto()
+    BASEBOARD_HEATERS = auto()
+    WATER_HEATER = auto()
+    POOL_PUMP = auto()
+    SAUNA = auto()
+    HOT_TUB = auto()
+    SMART_APPLIANCE = auto()
+    IRRIGATION_PUMP = auto()
+    MANAGED_COMMERCIAL_AND_INDUSTRIAL_LOADS = auto()
+    SIMPLE_MISC_LOADS = auto()
+    EXTERIOR_LIGHTING = auto()
+    INTERIOR_LIGHTING = auto()
+    LOAD_CONTROL_SWITCH = auto()
+    ENERGY_MANAGEMENT_SYSTEM = auto()
+    SMART_ENERGY_MODULE = auto()
+    ELECTRIC_VEHICLE = auto()
+    ELECTRIC_VEHICLE_SUPPLY_EQUIPMENT = auto()
+    VIRTUAL_OR_MIXED_DER = auto()
+    RECIPROCATING_ENGINE = auto()
+    FUEL_CELL = auto()
+    PHOTOVOLTAIC_SYSTEM = auto()
+    COMBINED_HEAT_AND_POWER = auto()
+    COMBINED_PV_AND_STORAGE = auto()
+    OTHER_GENERATION_SYSTEM = auto()
+    OTHER_STORAGE_SYSTEM = auto()
+
+
+# The combination of ALL DeviceCategory bit flags
+DEVICE_CATEGORY_ALL_SET: DeviceCategory = reduce(lambda a, b: a | b, DeviceCategory)

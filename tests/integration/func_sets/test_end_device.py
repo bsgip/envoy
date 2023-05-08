@@ -5,12 +5,8 @@ from http import HTTPStatus
 import pytest
 from httpx import AsyncClient
 
-from envoy.server.schema.sep2.end_device import (
-    DeviceCategory,
-    EndDeviceListResponse,
-    EndDeviceRequest,
-    EndDeviceResponse,
-)
+from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy.server.schema.sep2.types import DeviceCategory
 from tests.assert_time import assert_nowish
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as AGG_2_VALID_PEM
@@ -38,16 +34,17 @@ def edev_fetch_uri_format():
 
 @pytest.mark.parametrize(
     "site_sfdis,cert",
-    [([4444, 2222, 1111], AGG_1_VALID_PEM),
-     ([3333], AGG_2_VALID_PEM),
-     ([], AGG_3_VALID_PEM)],
+    [([4444, 2222, 1111], AGG_1_VALID_PEM), ([3333], AGG_2_VALID_PEM), ([], AGG_3_VALID_PEM)],
 )
 @pytest.mark.anyio
-async def test_get_end_device_list_by_aggregator(client: AsyncClient, edev_base_uri: str,
-                                                 site_sfdis: list[int], cert: str):
+async def test_get_end_device_list_by_aggregator(
+    client: AsyncClient, edev_base_uri: str, site_sfdis: list[int], cert: str
+):
     """Simple test of a valid get for different aggregator certs - validates that the response looks like XML
     and that it contains the expected end device SFDI's associated with each aggregator"""
-    response = await client.get(edev_base_uri + build_paging_params(limit=100), headers={cert_pem_header: urllib.parse.quote(cert)})
+    response = await client.get(
+        edev_base_uri + build_paging_params(limit=100), headers={cert_pem_header: urllib.parse.quote(cert)}
+    )
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
@@ -63,26 +60,37 @@ async def test_get_end_device_list_by_aggregator(client: AsyncClient, edev_base_
 
 @pytest.mark.parametrize(
     "query_string, site_sfdis, expected_total, cert",
-    [(build_paging_params(limit=1), [4444], 3, AGG_1_VALID_PEM),
-     (build_paging_params(limit=2), [4444, 2222], 3, AGG_1_VALID_PEM),
-     (build_paging_params(limit=2, start=1), [2222, 1111], 3, AGG_1_VALID_PEM),
-     (build_paging_params(limit=1, start=1), [2222], 3, AGG_1_VALID_PEM),
-     (build_paging_params(limit=1, start=2), [1111], 3, AGG_1_VALID_PEM),
-     (build_paging_params(limit=1, start=3), [], 3, AGG_1_VALID_PEM),
-     (build_paging_params(limit=2, start=2), [1111], 3, AGG_1_VALID_PEM),
-
-     # add in timestamp filtering
-     # This will filter down to Site 2,3,4
-     (build_paging_params(limit=5, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc)), [4444, 2222], 2, AGG_1_VALID_PEM),
-     (build_paging_params(limit=5, start=1, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc)), [2222], 2, AGG_1_VALID_PEM),
-
-     (build_paging_params(limit=2, start=1), [], 1, AGG_2_VALID_PEM),
-     (build_paging_params(limit=2, start=1), [], 0, AGG_3_VALID_PEM),
-     (build_paging_params(), [], 0, AGG_3_VALID_PEM)],
+    [
+        (build_paging_params(limit=1), [4444], 3, AGG_1_VALID_PEM),
+        (build_paging_params(limit=2), [4444, 2222], 3, AGG_1_VALID_PEM),
+        (build_paging_params(limit=2, start=1), [2222, 1111], 3, AGG_1_VALID_PEM),
+        (build_paging_params(limit=1, start=1), [2222], 3, AGG_1_VALID_PEM),
+        (build_paging_params(limit=1, start=2), [1111], 3, AGG_1_VALID_PEM),
+        (build_paging_params(limit=1, start=3), [], 3, AGG_1_VALID_PEM),
+        (build_paging_params(limit=2, start=2), [1111], 3, AGG_1_VALID_PEM),
+        # add in timestamp filtering
+        # This will filter down to Site 2,3,4
+        (
+            build_paging_params(limit=5, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc)),
+            [4444, 2222],
+            2,
+            AGG_1_VALID_PEM,
+        ),
+        (
+            build_paging_params(limit=5, start=1, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc)),
+            [2222],
+            2,
+            AGG_1_VALID_PEM,
+        ),
+        (build_paging_params(limit=2, start=1), [], 1, AGG_2_VALID_PEM),
+        (build_paging_params(limit=2, start=1), [], 0, AGG_3_VALID_PEM),
+        (build_paging_params(), [], 0, AGG_3_VALID_PEM),
+    ],
 )
 @pytest.mark.anyio
-async def test_get_end_device_list_pagination(client: AsyncClient, edev_base_uri: str, query_string: str,
-                                              site_sfdis: list[str], expected_total: int, cert: str):
+async def test_get_end_device_list_pagination(
+    client: AsyncClient, edev_base_uri: str, query_string: str, site_sfdis: list[str], expected_total: int, cert: str
+):
     """Tests that pagination variables on the list endpoint are respected"""
     response = await client.get(edev_base_uri + query_string, headers={cert_pem_header: urllib.parse.quote(cert)})
     assert_response_header(response, HTTPStatus.OK)
@@ -138,7 +146,7 @@ async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
     response = await client.post(
         edev_base_uri,
         headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)},
-        content=EndDeviceRequest.to_xml(insert_request)
+        content=EndDeviceRequest.to_xml(insert_request),
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
     assert len(read_response_body_string(response)) == 0
@@ -163,7 +171,9 @@ async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
     assert_error_response(response)
 
     # check the new end_device count for aggregator 1
-    response = await client.get(edev_base_uri + build_paging_params(limit=100), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)})
+    response = await client.get(
+        edev_base_uri + build_paging_params(limit=100), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)}
+    )
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
@@ -184,12 +194,12 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     response = await client.post(
         edev_base_uri,
         headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)},
-        content=EndDeviceRequest.to_xml(update_request)
+        content=EndDeviceRequest.to_xml(update_request),
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
     assert len(read_response_body_string(response)) == 0
     inserted_href = read_location_header(response)
-    assert inserted_href.endswith('/1'), "Updating site 1"
+    assert inserted_href.endswith("/1"), "Updating site 1"
 
     # now lets grab the end device we just updated
     response = await client.get(inserted_href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)})
@@ -205,11 +215,13 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     assert parsed_response.deviceCategory == updated_device_category
 
     # now fire off a similar request that's with the wrong aggregator
-    update_request.deviceCategory = "{0:x}".format(int(DeviceCategory.COMBINED_HEAT_AND_POWER))  # update device category
+    update_request.deviceCategory = "{0:x}".format(
+        int(DeviceCategory.COMBINED_HEAT_AND_POWER)
+    )  # update device category
     response = await client.post(
         edev_base_uri,
         headers={cert_pem_header: urllib.parse.quote(AGG_2_VALID_PEM)},
-        content=EndDeviceRequest.to_xml(update_request)
+        content=EndDeviceRequest.to_xml(update_request),
     )
     assert_response_header(response, HTTPStatus.CONFLICT)  # conflict because the LFDI isn't unique to this agg
     assert_error_response(response)
@@ -228,7 +240,9 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     assert parsed_response.deviceCategory == updated_device_category
 
     # check the new end_device count for aggregator 1
-    response = await client.get(edev_base_uri + build_paging_params(limit=100), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)})
+    response = await client.get(
+        edev_base_uri + build_paging_params(limit=100), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)}
+    )
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
@@ -237,7 +251,9 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
 
 
 @pytest.mark.anyio
-async def test_update_end_device_bad_device_category(client: AsyncClient, edev_base_uri: str, edev_fetch_uri_format: str):
+async def test_update_end_device_bad_device_category(
+    client: AsyncClient, edev_base_uri: str, edev_fetch_uri_format: str
+):
     """Test that specifying a bad DeviceCategory returns a HTTP BadRequest"""
 
     # Fire off an update that will bad request due to a bad device
@@ -248,13 +264,15 @@ async def test_update_end_device_bad_device_category(client: AsyncClient, edev_b
     response = await client.post(
         edev_base_uri,
         headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)},
-        content=EndDeviceRequest.to_xml(update_request)
+        content=EndDeviceRequest.to_xml(update_request),
     )
     assert_response_header(response, HTTPStatus.BAD_REQUEST, expected_content_type=None)
     assert_error_response(response)
 
     # double check the deviceCategory is left alone
-    response = await client.get(edev_fetch_uri_format.format(site_id=1), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)})
+    response = await client.get(
+        edev_fetch_uri_format.format(site_id=1), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)}
+    )
     assert_response_header(response, HTTPStatus.OK)
     response_body = read_response_body_string(response)
     assert len(response_body) > 0

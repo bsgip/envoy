@@ -9,32 +9,34 @@ from envoy.server.crud.end_device import (
     upsert_site_for_aggregator,
 )
 from envoy.server.model.site import Site
-from envoy.server.schema.sep2.end_device import DeviceCategory
+from envoy.server.schema.sep2.types import DeviceCategory
 from tests.assert_time import assert_datetime_equal
 from tests.assert_type import assert_list_type
 from tests.data.fake.generator import clone_class_instance, generate_class_instance
 from tests.postgres_testing import generate_async_session
 
 
-@pytest.mark.parametrize("aggregator_id, changed_after, expected_count", [
-    # Test the basic config is there and accessible
-    (1, datetime.min, 3),
-    (2, datetime.min, 1),
-    (3, datetime.min, 0),
-
-    # try with after filter being set
-    (1, datetime(2022, 2, 3, 0, 0, 0, tzinfo=timezone.utc), 3),
-    (1, datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc), 2),
-    (1, datetime(2022, 2, 3, 8, 0, 0, tzinfo=timezone.utc), 1),
-    (1, datetime(2022, 2, 3, 13, 0, 0, tzinfo=timezone.utc), 0),
-
-    # These aggregators don't exist
-    (4, datetime.min, 0),
-    (-1, datetime.min, 0),
-])
+@pytest.mark.parametrize(
+    "aggregator_id, changed_after, expected_count",
+    [
+        # Test the basic config is there and accessible
+        (1, datetime.min, 3),
+        (2, datetime.min, 1),
+        (3, datetime.min, 0),
+        # try with after filter being set
+        (1, datetime(2022, 2, 3, 0, 0, 0, tzinfo=timezone.utc), 3),
+        (1, datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc), 2),
+        (1, datetime(2022, 2, 3, 8, 0, 0, tzinfo=timezone.utc), 1),
+        (1, datetime(2022, 2, 3, 13, 0, 0, tzinfo=timezone.utc), 0),
+        # These aggregators don't exist
+        (4, datetime.min, 0),
+        (-1, datetime.min, 0),
+    ],
+)
 @pytest.mark.anyio
-async def test_select_aggregator_site_count(pg_base_config, aggregator_id: int, changed_after: datetime,
-                                            expected_count: int):
+async def test_select_aggregator_site_count(
+    pg_base_config, aggregator_id: int, changed_after: datetime, expected_count: int
+):
     """Simple tests to ensure the counts work for both valid / invalid IDs"""
     async with generate_async_session(pg_base_config) as session:
         assert await select_aggregator_site_count(session, aggregator_id, changed_after) == expected_count
@@ -52,7 +54,7 @@ async def test_select_all_sites_with_aggregator_id_contents(pg_base_config):
         assert site_3.nmi == "3333333333"
         assert site_3.aggregator_id == 2
         assert_datetime_equal(site_3.changed_time, datetime(2022, 2, 3, 8, 9, 10, tzinfo=timezone.utc))
-        assert site_3.lfdi == 'site3-lfdi'
+        assert site_3.lfdi == "site3-lfdi"
         assert site_3.sfdi == 3333
         assert site_3.device_category == DeviceCategory(2)
 
@@ -84,7 +86,9 @@ async def test_select_all_sites_with_aggregator_id_filters(pg_base_config):
         assert_list_type(Site, sites, count=0)
 
         # Add a datetime filter
-        sites = await select_all_sites_with_aggregator_id(session, 1, 0, datetime(2022, 2, 3, 6, 0, 0, tzinfo=timezone.utc), 100)
+        sites = await select_all_sites_with_aggregator_id(
+            session, 1, 0, datetime(2022, 2, 3, 6, 0, 0, tzinfo=timezone.utc), 100
+        )
         assert_list_type(Site, sites, count=1)
         assert sorted([s.site_id for s in sites]) == [4]  # Checks the id's match our expected filter
 
@@ -106,7 +110,9 @@ async def test_select_all_sites_with_aggregator_id_filters(pg_base_config):
         assert_list_type(Site, sites, count=0)
 
         # combination date + skip filter
-        sites = await select_all_sites_with_aggregator_id(session, 1, 1, datetime(2022, 2, 3, 4, 30, 0, tzinfo=timezone.utc), 100)
+        sites = await select_all_sites_with_aggregator_id(
+            session, 1, 1, datetime(2022, 2, 3, 4, 30, 0, tzinfo=timezone.utc), 100
+        )
         assert_list_type(Site, sites, count=1)
         assert sorted([s.site_id for s in sites]) == [2]  # Checks the id's match our expected filter
 
@@ -122,7 +128,7 @@ async def test_select_single_site_with_site_id(pg_base_config):
         assert site_3.nmi == "3333333333"
         assert site_3.aggregator_id == 2
         assert_datetime_equal(site_3.changed_time, datetime(2022, 2, 3, 8, 9, 10, tzinfo=timezone.utc))
-        assert site_3.lfdi == 'site3-lfdi'
+        assert site_3.lfdi == "site3-lfdi"
         assert site_3.sfdi == 3333
         assert site_3.device_category == DeviceCategory(2)
 
@@ -133,7 +139,7 @@ async def test_select_single_site_with_site_id(pg_base_config):
         assert site_1.nmi == "1111111111"
         assert site_1.aggregator_id == 1
         assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc))
-        assert site_1.lfdi == 'site1-lfdi'
+        assert site_1.lfdi == "site1-lfdi"
         assert site_1.sfdi == 1111
         assert site_1.device_category == DeviceCategory(0)
 
@@ -163,7 +169,6 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
 
     # Validate the state of the DB in a new session
     async with generate_async_session(pg_base_config) as session:
-
         # check it exists
         inserted_site = await select_single_site_with_site_id(session, inserted_id, 1)
         assert inserted_site
@@ -181,7 +186,7 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
         assert site_1.nmi == "1111111111"
         assert site_1.aggregator_id == 1
         assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc))
-        assert site_1.lfdi == 'site1-lfdi'
+        assert site_1.lfdi == "site1-lfdi"
         assert site_1.sfdi == 1111
         assert site_1.device_category == DeviceCategory(0)
 
@@ -218,7 +223,6 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
 
     # Validate the state of the DB in a new session
     async with generate_async_session(pg_base_config) as session:
-
         # check it exists
         site_db = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
         assert site_db
@@ -237,7 +241,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         assert site_2.nmi == "2222222222"
         assert site_2.aggregator_id == aggregator_id
         assert_datetime_equal(site_2.changed_time, datetime(2022, 2, 3, 5, 6, 7, tzinfo=timezone.utc))
-        assert site_2.lfdi == 'site2-lfdi'
+        assert site_2.lfdi == "site2-lfdi"
         assert site_2.sfdi == 2222
         assert site_2.device_category == DeviceCategory(1)
 
