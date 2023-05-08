@@ -296,3 +296,14 @@ class RoleFlagsType(IntFlag):
     IS_REVENUE_QUALITY = auto()
     IS_DC = auto()
     IS_SUBMETER = auto()
+
+
+class ReasonCodeType(IntEnum):
+    invalid_request_format = 0
+    invalid_request_values = 1
+    resource_limit_reached = 2
+    conditional_subscription_field_not_supported = 3
+    maximum_request_frequency_exceeded = 4
+
+    # Custom values outside sep2 specification
+    internal_error = 16384  # Unspecified error due to an issue with some internal logic/system

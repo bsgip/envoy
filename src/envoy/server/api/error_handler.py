@@ -5,7 +5,8 @@ from typing import Optional
 from fastapi import HTTPException, Request, Response
 
 from envoy.server.api.response import XmlResponse
-from envoy.server.schema.sep2.error import ErrorResponse, ReasonCodeType
+from envoy.server.schema.sep2.error import ErrorResponse
+from envoy.server.schema.sep2.types import ReasonCodeType
 
 logger = logging.getLogger(__name__)
 
@@ -19,19 +20,17 @@ def http_status_code_to_reason_code(status_code: HTTPStatus) -> ReasonCodeType:
         return ReasonCodeType.invalid_request_format
 
 
-def generate_error_response(status_code: HTTPStatus,
-                            message: Optional[str] = None,
-                            max_retry_duration: Optional[int] = None) -> Response:
+def generate_error_response(
+    status_code: HTTPStatus, message: Optional[str] = None, max_retry_duration: Optional[int] = None
+) -> Response:
     """Generates an XML response loaded with a sep2 Error object"""
     reason_code = http_status_code_to_reason_code(status_code)
 
     return XmlResponse(
         status_code=status_code,
-        content=ErrorResponse(**{
-            "reasonCode": reason_code,
-            "message": message,
-            "maxRetryDuration": max_retry_duration
-        })
+        content=ErrorResponse(
+            **{"reasonCode": reason_code, "message": message, "maxRetryDuration": max_retry_duration}
+        ),
     )
 
 
