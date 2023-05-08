@@ -6,7 +6,7 @@ from envoy.server.schema import uri
 from envoy.server.schema.sep2.base import DEFAULT_POLLRATE, FunctionSetAssignmentsBase, ListLink, PollRateType
 
 
-class DeviceCapabilityResponse(FunctionSetAssignmentsBase):
+class DeviceCapabilityResponse(FunctionSetAssignmentsBase, tag="DeviceCapability"):
     href: str = attr(default=uri.DeviceCapabilityUri)
     pollrate: PollRateType = DEFAULT_POLLRATE
 

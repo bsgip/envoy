@@ -59,7 +59,7 @@ class TariffProfileResponse(IdentifiedObject, tag="TariffProfile"):
 
     currency: Optional[CurrencyCode] = element()
     pricePowerOfTenMultiplier: Optional[int] = element()
-    primacyType: PrimacyType = element()
+    primacyType: Optional[PrimacyType] = element()
     rateCode: Optional[str] = element()
     serviceCategoryKind: ServiceKind = element()
 

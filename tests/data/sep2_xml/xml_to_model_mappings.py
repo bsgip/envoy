@@ -9,7 +9,14 @@ and return True if the comparison conditions implied by that Callable are passed
 from typing import List, Tuple
 from xml.etree import ElementTree as ET
 
+from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
 from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceResponse
+from envoy.server.schema.sep2.metering import ReadingType
+from envoy.server.schema.sep2.pricing import (
+    ConsumptionTariffIntervalListResponse,
+    RateComponentListResponse,
+    TariffProfileResponse,
+)
 
 
 def compare_ET_Element_to_reference_ET_Element(
@@ -20,9 +27,10 @@ def compare_ET_Element_to_reference_ET_Element(
     equivalent to ref iff:
     (a) the tags of the parent elements match exactly,
     (b) the attrib of the parent elements match exactly
-    (c) each child Element in the ref is present in the model
+    (c) the text of the parent elements match exactly (after stripping)
+    (d) each child Element in the ref is present in the model
         (where present is defined by possessing matching tags), and
-    (d) for each child Element in the ref, the child attributes and their values
+    (e) for each child Element in the ref, the child attributes and their values
         match the attributes and the values of the model exactly.
     """
 
@@ -31,9 +39,17 @@ def compare_ET_Element_to_reference_ET_Element(
     if model.tag != ref.tag:
         error_messages.append(f"Input tag ({model.tag}) does not match reference tag ({ref.tag})")
 
-    # a weaker assertion would be to check each item in the attrib dict for equality
-    if model.attrib != ref.attrib:
-        error_messages.append(f"Input attrib ({model.attrib}) does not match reference attrib ({ref.attrib})")
+    for k, v in ref.attrib.items():
+        match = model.get(k, None)
+
+        if not match:
+            if strict and k not in allowed_missing:
+                error_messages.append(f"Missing key ({k}) in input attrib ({model.attrib})")
+
+        elif v != match:
+            error_messages.append(
+                f"Key ({k}) in input attrib ({model.attrib}) does not match ref attrib ({ref.attrib})"
+            )
 
     # reference inputs have trailing whitespace when read from buffer
     # there's no 'right' way to deal with this in the absence of an XML schema
@@ -46,24 +62,18 @@ def compare_ET_Element_to_reference_ET_Element(
     # check if each element in the reference is present in the input model
     for c in ref:
         matches = [m for m in model if m.tag == c.tag]
+        required = xml_type.schema().get("required", [])
 
-        # Four conditions to consider, if there are no matches:
-        # 1. We are strict: error
-        # 2. Not strict and tag is required but we've explicitly allowed it to be missing: pass
-        # 3. Not strict and tag is required and we haven't allowed it to be missing: error
-        # 4. Not strict and tag is not required: pass
+        # Two conditions to consider, if there are no matches:
+        # 1. Strict and tag is required and we haven't allowed it to be missing: error
+        # 2. Strict and tag is not required and we haven't allowed it to be missing: error
 
-        if not matches and strict:
-            error_messages.append(f"No matching child for {c.tag} in reference (strict = True).")
+        if not matches:
+            if strict and c.tag in required and c.tag not in allowed_missing:
+                error_messages.append(f"No matching required child for {c.tag} in reference (tag required).")
 
-        elif not matches and not strict and c.tag in xml_type.schema()["required"] and c.tag in allowed_missing:
-            pass
-
-        elif not matches and not strict and c.tag in xml_type.schema()["required"] and c.tag not in allowed_missing:
-            error_messages.append(f"No matching required child for {c.tag} in reference (tag required).")
-
-        elif not matches and not strict and c.tag not in xml_type.schema()["required"]:
-            pass
+            elif strict and c.tag not in required and c.tag not in allowed_missing:
+                error_messages.append(f"No matching optional child for {c.tag} in reference.")
 
         else:
             result, child_errors = compare_ET_Element_to_reference_ET_Element(
@@ -78,30 +88,67 @@ def compare_ET_Element_to_reference_ET_Element(
         return True, []
 
 
-enddevicelist_assertions = [
-    compare_ET_Element_to_reference_ET_Element,
-]
-
-enddevice_assertions = [
-    compare_ET_Element_to_reference_ET_Element,
-]
+enddevicelist_assertions = [compare_ET_Element_to_reference_ET_Element]
+enddevice_assertions = [compare_ET_Element_to_reference_ET_Element]
+devicecapability_assertions = [compare_ET_Element_to_reference_ET_Element]
+readingtype_assertions = [compare_ET_Element_to_reference_ET_Element]
+consumptiontariffintervallist_assertions = [compare_ET_Element_to_reference_ET_Element]
+ratecomponentlist_assertions = [compare_ET_Element_to_reference_ET_Element]
+tariffprofile_assertions = [compare_ET_Element_to_reference_ET_Element]
+timetariffintervallist_assertions = [compare_ET_Element_to_reference_ET_Element]
 
 MAPPINGS = [
-    # ("device_capability/devicecapability.xml", ..., ...),
+    (
+        "device_capability/devicecapability.xml",
+        DeviceCapabilityResponse,
+        devicecapability_assertions,
+        ["{urn:ieee:std:2030.5:ns}SelfDeviceLink"],
+        True,
+    ),
     # ("does/dercontrollist.xml", ..., ...),
     # ("does/derprogramlist.xml", ..., ...),
-    ("end_device_resource/enddevicelist.xml", EndDeviceListResponse, enddevicelist_assertions, [], False),
-    ("end_device_resource/enddevice.xml", EndDeviceResponse, enddevice_assertions, [], False),
+    (
+        "end_device_resource/enddevicelist.xml",
+        EndDeviceListResponse,
+        enddevicelist_assertions,
+        ["{urn:ieee:std:2030.5:ns}ConfigurationLink"],
+        True,
+    ),
+    (
+        "end_device_resource/enddevice.xml",
+        EndDeviceResponse,
+        enddevice_assertions,
+        ["{urn:ieee:std:2030.5:ns}ConfigurationLink"],
+        True,
+    ),
     # ("end_device_resource/functionsetassignmentslist.xml", ..., ...),
     # ("end_device_resource/registration.xml", ..., ...),
     # ("meter_mirroring/meterreadinglist.xml", ..., ...),
     # ("meter_mirroring/readinglist.xml", ..., ...),
     # ("meter_mirroring/readingsetlist.xml, ..., ..."),
-    # ("meter_mirroring/readingtype.xml, ..., ..."),
+    ("meter_mirroring/readingtype.xml", ReadingType, readingtype_assertions, [], True),
     # ("meter_mirroring/usagepointlist.xml, ..., ..."),
-    # ("pricing/consumptiontariffintervallist.xml, ..., ..."),
-    # ("pricing/ratecomponentlist.xml, ..., ..."),
-    # ("pricing/readingtype.xml, ..., ..."),
-    # ("pricing/tariffprofile.xml, ..., ..."),
-    # ("pricing/timetariffintervallist.xml, ..., ..."),
+    (
+        "pricing/consumptiontariffintervallist.xml",
+        ConsumptionTariffIntervalListResponse,
+        consumptiontariffintervallist_assertions,
+        [],
+        True,
+    ),
+    ("pricing/ratecomponentlist.xml", RateComponentListResponse, ratecomponentlist_assertions, [], True),
+    ("pricing/readingtype.xml", ReadingType, readingtype_assertions, [], True),
+    (
+        "pricing/tariffprofile.xml",
+        TariffProfileResponse,
+        tariffprofile_assertions,
+        ["{urn:ieee:std:2030.5:ns}primacy"],
+        True,
+    ),
+    # (
+    #     "pricing/timetariffintervallist.xml",
+    #     TimeTariffIntervalListResponse,
+    #     timetariffintervallist_assertions,
+    #     ["subscribable", "{urn:ieee:std:2030.5:ns}EventStatus"],
+    #     True,
+    # ),
 ]
