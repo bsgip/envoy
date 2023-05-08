@@ -298,6 +298,7 @@ def test_check_function_set_supported_raise_exception(function_set_status_mappin
         (  # Test a bunch of links that don't require uri parameters
             [
                 "CustomerAccountListLink",
+                # "DERProgramListLink",
                 "DemandResponseProgramListLink",
                 "EndDeviceListLink",
                 "FileListLink",
@@ -306,13 +307,15 @@ def test_check_function_set_supported_raise_exception(function_set_status_mappin
                 "PrepaymentListLink",
                 "ResponseSetListLink",
                 "SelfDeviceLink",
-                "TariffProfileListLink",
+                # "TariffProfileListLink",
                 "TimeLink",
                 "UsagePointListLink",
             ],
             {},
             {
                 "CustomerAccountListLink": {"href": "/bill"},
+                # DERProgramListLink is now site scoped
+                # "DERProgramListLink": {"href": "/derp"},
                 "DemandResponseProgramListLink": {"href": "/dr"},
                 "EndDeviceListLink": {"href": "/edev"},
                 "FileListLink": {"href": "/file"},
@@ -321,7 +324,8 @@ def test_check_function_set_supported_raise_exception(function_set_status_mappin
                 "PrepaymentListLink": {"href": "/ppy"},
                 "ResponseSetListLink": {"href": "/rsps"},
                 "SelfDeviceLink": {"href": "/sdev"},
-                "TariffProfileListLink": {"href": "/tp"},
+                # TariffProfileListLink is now site scoped
+                # "TariffProfileListLink": {"href": "/tp"},
                 "TimeLink": {"href": "/tm"},
                 "UsagePointListLink": {"href": "/upt"},
             },
