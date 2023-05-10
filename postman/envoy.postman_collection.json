@@ -379,7 +379,7 @@
 			"name": "Function Set Assignments",
 			"item": [
 				{
-					"name": "/edev/1/fsa (FuntionSetAssigmentsList)",
+					"name": "/edev/1/fsa (FuntionSetAssignmentsList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -404,7 +404,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/fsa/1 (FunctionSetAssigments)",
+					"name": "/edev/1/fsa/1 (FunctionSetAssignments)",
 					"request": {
 						"method": "GET",
 						"header": [
