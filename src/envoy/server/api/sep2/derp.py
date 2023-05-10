@@ -6,6 +6,7 @@ from fastapi_async_sqlalchemy import db
 
 from envoy.server.api.request import (
     extract_aggregator_id,
+    extract_date_from_iso_string,
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
     extract_start_from_paging_param,
@@ -13,7 +14,6 @@ from envoy.server.api.request import (
 from envoy.server.api.response import XmlResponse
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
-from envoy.server.manager.pricing import RateComponentManager
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.schema import uri
 
@@ -24,11 +24,13 @@ router = APIRouter()
 
 @router.head(uri.DERProgramListUri)
 @router.get(uri.DERProgramListUri, status_code=HTTPStatus.OK)
-async def get_derprogram_list(request: Request,
-                              site_id: int,
-                              start: list[int] = Query([0], alias="s"),
-                              after: list[int] = Query([0], alias="a"),
-                              limit: list[int] = Query([1], alias="l")):
+async def get_derprogram_list(
+    request: Request,
+    site_id: int,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+):
     """Responds with a single DERProgramListResponse containing DER programs for the specified site
 
     Args:
@@ -56,9 +58,7 @@ async def get_derprogram_list(request: Request,
 
 @router.head(uri.DERProgramUri)
 @router.get(uri.DERProgramUri, status_code=HTTPStatus.OK)
-async def get_derprogram_doe(request: Request,
-                             site_id: int,
-                             der_program_id: str):
+async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str):
     """Responds with a single DERProgramResponse for the DER Program specific to dynamic operating envelopes
 
     Args:
@@ -86,12 +86,14 @@ async def get_derprogram_doe(request: Request,
 
 @router.head(uri.DERControlListUri)
 @router.get(uri.DERControlListUri, status_code=HTTPStatus.OK)
-async def get_dercontrol_list(request: Request,
-                              site_id: int,
-                              der_program_id: str,
-                              start: list[int] = Query([0], alias="s"),
-                              after: list[int] = Query([0], alias="a"),
-                              limit: list[int] = Query([1], alias="l")):
+async def get_dercontrol_list(
+    request: Request,
+    site_id: int,
+    der_program_id: str,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+):
     """Responds with a single DERControlListResponse containing DER Controls for the specified site under the
     dynamic operating envelope program.
 
@@ -115,7 +117,7 @@ async def get_dercontrol_list(request: Request,
             site_id=site_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
-            limit=extract_limit_from_paging_param(limit)
+            limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -127,13 +129,15 @@ async def get_dercontrol_list(request: Request,
 
 @router.head(uri.DERControlListByDateUri)
 @router.get(uri.DERControlListByDateUri, status_code=HTTPStatus.OK)
-async def get_dercontrol_list_for_date(request: Request,
-                                       site_id: int,
-                                       der_program_id: str,
-                                       date: str,
-                                       start: list[int] = Query([0], alias="s"),
-                                       after: list[int] = Query([0], alias="a"),
-                                       limit: list[int] = Query([1], alias="l")):
+async def get_dercontrol_list_for_date(
+    request: Request,
+    site_id: int,
+    der_program_id: str,
+    date: str,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+):
     """Responds with a single DERControlListResponse containing DER Controls for the specified site under the
     dynamic operating envelope program. Results will be filtered to the specified date
 
@@ -151,15 +155,19 @@ async def get_dercontrol_list_for_date(request: Request,
     if der_program_id != DOE_PROGRAM_ID:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
+    day = extract_date_from_iso_string(date)
+    if day is None:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Expected YYYY-MM-DD date")
+
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_site_day(
             db.session,
             aggregator_id=extract_aggregator_id(request),
             site_id=site_id,
-            day=RateComponentManager.parse_rate_component_id(date),
+            day=day,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
-            limit=extract_limit_from_paging_param(limit)
+            limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

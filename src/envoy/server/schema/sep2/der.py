@@ -23,6 +23,7 @@ class PerCent(int):
 
 class DERUnitRefType(IntEnum):
     """Specifies context for interpreting percent values:. All other values are reserved"""
+
     NOT_APPLICABLE = 0
     PERC_SET_MAX_W = 1
     PERC_SET_MAX_VAR = 2
@@ -35,6 +36,7 @@ class DERUnitRefType(IntEnum):
 
 class FixedVar(BaseXmlModelWithNS):
     """Specifies a signed setpoint for reactive power."""
+
     refType: DERUnitRefType = element()  # Signed setpoint for reactive power
     value: SignedPerCent = element()  # Specify a signed setpoint for reactive power in %
 
@@ -42,6 +44,7 @@ class FixedVar(BaseXmlModelWithNS):
 class PowerFactorWithExcitation(BaseXmlModelWithNS):
     """Specifies a setpoint for Displacement Power Factor, the ratio between apparent and active powers at the
     fundamental frequency (e.g. 60 Hz) and includes an excitation flag."""
+
     displacement: int = element()  # Significand of an unsigned value of cos(theta) between 0 and 1.0.
     excitation: bool = element()  # True = DER absorbing, False = DER injecting reactive power
     multiplier: int = element()  # Specifies exponent of 'displacement'.
@@ -49,18 +52,21 @@ class PowerFactorWithExcitation(BaseXmlModelWithNS):
 
 class ReactivePower(BaseXmlModelWithNS):
     """The reactive power Q"""
+
     value: int = element()  # Value in volt-amperes reactive (var) (uom 63)
     multiplier: int = element()  # Specifies exponent of 'value'.
 
 
 class ActivePower(BaseXmlModelWithNS):
     """The active/real power P"""
+
     value: int = element()  # Value in volt-amperes reactive (var) (uom 63)
     multiplier: int = element()  # Specifies exponent of 'value'.
 
 
 class DERControlBase(BaseXmlModelWithNS):
     """Distributed Energy Resource (DER) control values."""
+
     opModConnect: Optional[bool] = element()  # Set DER as connected (true) or disconnected (false).
     opModEnergize: Optional[bool] = element()  # Set DER as energized (true) or de-energized (false).
     opModFixedPFAbsorbW: Optional[PowerFactorWithExcitation] = element()  # requested PF when AP is being absorbed
@@ -97,6 +103,7 @@ class DERControlBase(BaseXmlModelWithNS):
 
 class DefaultDERControl(SubscribableIdentifiedObject):
     """Contains control mode information to be used if no active DERControl is found."""
+
     setESDelay: Optional[int] = element()  # Enter service delay, in hundredths of a second.
     setESHighFreq: Optional[int] = element()  # Enter service frequency high. Specified in hundredths of Hz
     setESHighVolt: Optional[int] = element()  # Enter service voltage high. Specified as an effective percent voltage,
@@ -111,6 +118,7 @@ class DefaultDERControl(SubscribableIdentifiedObject):
 
 class DERControlResponse(RandomizableEvent, tag="DERControl"):
     """Distributed Energy Resource (DER) time/event-based control."""
+
     deviceCategory: Optional[HexBinary32] = element()  # the bitmap indicating device categories that SHOULD respond.
     DERControlBase_: DERControlBase = element(tag="DERControlBase")
 
@@ -121,6 +129,7 @@ class DERControlListResponse(SubscribableList, tag="DERControlList"):
 
 class DERProgramResponse(SubscribableIdentifiedObject, tag="DERProgram"):
     """sep2 DERProgram"""
+
     primacy: PrimacyType = element()
     DefaultDERControlLink: Optional[Link] = element()
     ActiveDERControlListLink: Optional[ListLink] = element()
@@ -135,6 +144,7 @@ class DERProgramListResponse(SubscribableList, tag="DERProgramList"):
 
 class DemandResponseProgramResponse(IdentifiedObject, tag="DemandResponseProgram"):
     """sep2 Demand response program"""
+
     availabilityUpdatePercentChangeThreshold: Optional[PerCent] = element()
     availabilityUpdatePowerChangeThreshold: Optional[ActivePower] = element()
     primacy: PrimacyType = element()
@@ -148,6 +158,7 @@ class DemandResponseProgramListResponse(Sep2List, tag="DemandResponseProgramList
 
 class EndDeviceControlResponse(RandomizableEvent, tag="EndDeviceControl"):
     """Instructs an EndDevice to perform a specified action."""
+
     deviceCategory: DeviceCategory = element()
     drProgramMandatory: bool = element()
     loadShiftForward: bool = element()

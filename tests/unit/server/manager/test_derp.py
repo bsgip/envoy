@@ -15,9 +15,12 @@ from tests.data.fake.generator import generate_class_instance
 @mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.derp.count_does")
 @mock.patch("envoy.server.manager.derp.DERProgramMapper")
-async def test_program_fetch_list(mock_DERProgramMapper: mock.MagicMock,
-                                  mock_count_does: mock.MagicMock,
-                                  mock_select_single_site_with_site_id: mock.MagicMock):
+async def test_program_fetch_list(
+    mock_DERProgramMapper: mock.MagicMock,
+    mock_count_does: mock.MagicMock,
+    mock_select_single_site_with_site_id: mock.MagicMock,
+):
+    """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
     agg_id = 123
     site_id = 456
@@ -44,10 +47,12 @@ async def test_program_fetch_list(mock_DERProgramMapper: mock.MagicMock,
 @mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.derp.count_does")
 @mock.patch("envoy.server.manager.derp.DERProgramMapper")
-async def test_program_fetch_list_site_dne(mock_DERProgramMapper: mock.MagicMock,
-                                           mock_count_does: mock.MagicMock,
-                                           mock_select_single_site_with_site_id: mock.MagicMock):
-    """Checks that if a site DNE then an exception is raised"""
+async def test_program_fetch_list_site_dne(
+    mock_DERProgramMapper: mock.MagicMock,
+    mock_count_does: mock.MagicMock,
+    mock_select_single_site_with_site_id: mock.MagicMock,
+):
+    """Checks that if the crud layer indicates site doesn't exist then the manager will raise an exception"""
     # Arrange
     agg_id = 123
     site_id = 456
@@ -69,9 +74,12 @@ async def test_program_fetch_list_site_dne(mock_DERProgramMapper: mock.MagicMock
 @mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.derp.count_does")
 @mock.patch("envoy.server.manager.derp.DERProgramMapper")
-async def test_program_fetch(mock_DERProgramMapper: mock.MagicMock,
-                             mock_count_does: mock.MagicMock,
-                             mock_select_single_site_with_site_id: mock.MagicMock):
+async def test_program_fetch(
+    mock_DERProgramMapper: mock.MagicMock,
+    mock_count_does: mock.MagicMock,
+    mock_select_single_site_with_site_id: mock.MagicMock,
+):
+    """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
     agg_id = 123
     site_id = 456
@@ -98,10 +106,12 @@ async def test_program_fetch(mock_DERProgramMapper: mock.MagicMock,
 @mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.derp.count_does")
 @mock.patch("envoy.server.manager.derp.DERProgramMapper")
-async def test_program_fetch_site_dne(mock_DERProgramMapper: mock.MagicMock,
-                                      mock_count_does: mock.MagicMock,
-                                      mock_select_single_site_with_site_id: mock.MagicMock):
-    """Checks that if a site DNE then an exception is raised"""
+async def test_program_fetch_site_dne(
+    mock_DERProgramMapper: mock.MagicMock,
+    mock_count_does: mock.MagicMock,
+    mock_select_single_site_with_site_id: mock.MagicMock,
+):
+    """Checks that if the crud layer indicates site doesn't exist then the manager will raise an exception"""
     # Arrange
     agg_id = 123
     site_id = 456
@@ -123,19 +133,20 @@ async def test_program_fetch_site_dne(mock_DERProgramMapper: mock.MagicMock,
 @mock.patch("envoy.server.manager.derp.select_does")
 @mock.patch("envoy.server.manager.derp.count_does")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
-async def test_fetch_doe_controls_for_site(mock_DERControlMapper: mock.MagicMock,
-                                           mock_count_does: mock.MagicMock,
-                                           mock_select_does: mock.MagicMock):
+async def test_fetch_doe_controls_for_site(
+    mock_DERControlMapper: mock.MagicMock, mock_count_does: mock.MagicMock, mock_select_does: mock.MagicMock
+):
+    """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
     agg_id = 123
     site_id = 456
     doe_count = 789
-    start = 11,
+    start = 11
     limit = 34
     changed_after = datetime(2022, 11, 12, 4, 5, 6)
     does_page = [
         generate_class_instance(DynamicOperatingEnvelope, seed=101, optional_is_none=False),
-        generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True)
+        generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True),
     ]
     mapped_list = generate_class_instance(DERControlListResponse)
 
@@ -145,12 +156,9 @@ async def test_fetch_doe_controls_for_site(mock_DERControlMapper: mock.MagicMock
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
 
     # Act
-    result = await DERControlManager.fetch_doe_controls_for_site(mock_session,
-                                                                 agg_id,
-                                                                 site_id,
-                                                                 start,
-                                                                 changed_after,
-                                                                 limit)
+    result = await DERControlManager.fetch_doe_controls_for_site(
+        mock_session, agg_id, site_id, start, changed_after, limit
+    )
 
     # Assert
     assert result is mapped_list
@@ -164,20 +172,23 @@ async def test_fetch_doe_controls_for_site(mock_DERControlMapper: mock.MagicMock
 @mock.patch("envoy.server.manager.derp.select_does_for_day")
 @mock.patch("envoy.server.manager.derp.count_does_for_day")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
-async def test_fetch_doe_controls_for_site_for_day(mock_DERControlMapper: mock.MagicMock,
-                                                   mock_count_does_for_day: mock.MagicMock,
-                                                   mock_select_does_for_day: mock.MagicMock):
+async def test_fetch_doe_controls_for_site_for_day(
+    mock_DERControlMapper: mock.MagicMock,
+    mock_count_does_for_day: mock.MagicMock,
+    mock_select_does_for_day: mock.MagicMock,
+):
+    """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
     agg_id = 123
     site_id = 456
     doe_count = 789
-    start = 11,
+    start = 11
     limit = 34
     changed_after = datetime(2022, 11, 12, 4, 5, 7)
     day = date(2023, 4, 28)
     does_page = [
         generate_class_instance(DynamicOperatingEnvelope, seed=101, optional_is_none=False),
-        generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True)
+        generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True),
     ]
     mapped_list = generate_class_instance(DERControlListResponse)
 
@@ -187,13 +198,9 @@ async def test_fetch_doe_controls_for_site_for_day(mock_DERControlMapper: mock.M
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
 
     # Act
-    result = await DERControlManager.fetch_doe_controls_for_site_day(mock_session,
-                                                                     agg_id,
-                                                                     site_id,
-                                                                     day,
-                                                                     start,
-                                                                     changed_after,
-                                                                     limit)
+    result = await DERControlManager.fetch_doe_controls_for_site_day(
+        mock_session, agg_id, site_id, day, start, changed_after, limit
+    )
 
     # Assert
     assert result is mapped_list

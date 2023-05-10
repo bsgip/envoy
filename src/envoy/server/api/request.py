@@ -1,5 +1,4 @@
-
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from http import HTTPStatus
 from typing import Optional
 
@@ -16,8 +15,10 @@ def extract_aggregator_id(request: Request) -> int:
     raises a HTTPException if the id does not exist"""
     id = None if request.state is None else request.state.aggregator_id
     if id is None:
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                            detail="aggregator_id has not been been extracted correctly by Envoy middleware.")
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail="aggregator_id has not been been extracted correctly by Envoy middleware.",
+        )
     return id
 
 
@@ -46,3 +47,18 @@ def extract_datetime_from_paging_param(after: Optional[list[int]] = None) -> dat
         return DEFAULT_DATETIME
 
     return datetime.fromtimestamp(after[0], tz=timezone.utc)
+
+
+def extract_date_from_iso_string(iso_date: Optional[str] = None) -> Optional[date]:
+    """Attempts to extract a date from a YYYY-MM-DD formatted string. This will be a strict
+    extraction - any deviation from the format will result in None being returned"""
+    if iso_date is None:
+        return None
+
+    if len(iso_date) != 10 or iso_date[4] != "-" or iso_date[7] != "-":
+        return None
+
+    try:
+        return date.fromisoformat(iso_date)
+    except ValueError:
+        return None

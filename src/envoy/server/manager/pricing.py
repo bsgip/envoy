@@ -4,6 +4,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.api.request import extract_date_from_iso_string
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.crud.pricing import (
     TariffGeneratedRateDailyStats,
@@ -40,8 +41,9 @@ from envoy.server.schema.sep2.pricing import (
 
 class TariffProfileManager:
     @staticmethod
-    async def fetch_tariff_profile(session: AsyncSession, aggregator_id: int, tariff_id: int,
-                                   site_id: int) -> Optional[TariffProfileResponse]:
+    async def fetch_tariff_profile(
+        session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int
+    ) -> Optional[TariffProfileResponse]:
         """Fetches a single tariff in the form of a sep2 TariffProfile thats specific to a single site."""
 
         tariff = await select_single_tariff(session, tariff_id)
@@ -49,13 +51,12 @@ class TariffProfileManager:
             return None
 
         unique_rate_days = await count_unique_rate_days(session, aggregator_id, tariff_id, site_id, datetime.min)
-        return TariffProfileMapper.map_to_response(tariff,
-                                                   site_id,
-                                                   unique_rate_days * TOTAL_PRICING_READING_TYPES)
+        return TariffProfileMapper.map_to_response(tariff, site_id, unique_rate_days * TOTAL_PRICING_READING_TYPES)
 
     @staticmethod
-    async def fetch_tariff_profile_list(session: AsyncSession, aggregator_id: int, site_id: int, start: int,
-                                        changed_after: datetime, limit: int) -> Optional[TariffProfileListResponse]:
+    async def fetch_tariff_profile_list(
+        session: AsyncSession, aggregator_id: int, site_id: int, start: int, changed_after: datetime, limit: int
+    ) -> Optional[TariffProfileListResponse]:
         """Fetches all tariffs accessible to a specific site."""
 
         tariffs = await select_all_tariffs(session, start, changed_after, limit)
@@ -82,8 +83,9 @@ class TariffProfileManager:
         return TariffProfileMapper.map_to_nosite_response(tariff)
 
     @staticmethod
-    async def fetch_tariff_profile_list_no_site(session: AsyncSession, start: int, changed_after: datetime,
-                                                limit: int) -> Optional[TariffProfileListResponse]:
+    async def fetch_tariff_profile_list_no_site(
+        session: AsyncSession, start: int, changed_after: datetime, limit: int
+    ) -> Optional[TariffProfileListResponse]:
         """Fetches a tariff list in the form of a sep2 TariffProfileList. These tariffs will NOT contain
         any useful RateComponent links due to a lack of a site ID scope.
 
@@ -99,19 +101,21 @@ class RateComponentManager:
     def parse_rate_component_id(id: str) -> date:
         """Validates that id looks like YYYY-MM-DD. Returns parsed date object if it does
         otherwise raises InvalidIdError"""
-        # certain python versions allow all sorts of funny things through so we layer some additional
-        # checks over the top of the isoformat
-        if len(id) != 10 or id[4] != '-' or id[7] != '-':
+        date = extract_date_from_iso_string(id)
+        if date is None:
             raise InvalidIdError(f"Expected YYYY-MM-DD for rate_component_id but got {id}")
 
-        try:
-            return date.fromisoformat(id)
-        except ValueError:
-            raise InvalidIdError(f"Expected YYYY-MM-DD for rate_component_id but got {id}")
+        return date
 
     @staticmethod
-    async def fetch_rate_component(session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int,
-                                   rate_component_id: str, pricing_type: PricingReadingType,) -> RateComponentResponse:
+    async def fetch_rate_component(
+        session: AsyncSession,
+        aggregator_id: int,
+        tariff_id: int,
+        site_id: int,
+        rate_component_id: str,
+        pricing_type: PricingReadingType,
+    ) -> RateComponentResponse:
         """RateComponent is a fully virtual entity - it has no corresponding model in our DB - it's essentially
         just a placeholder for date + price type filtering
 
@@ -122,8 +126,15 @@ class RateComponentManager:
         return RateComponentMapper.map_to_response(count, tariff_id, site_id, pricing_type, day)
 
     @staticmethod
-    async def fetch_rate_component_list(session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int,
-                                        start: int, changed_after: datetime, limit: int) -> RateComponentListResponse:
+    async def fetch_rate_component_list(
+        session: AsyncSession,
+        aggregator_id: int,
+        tariff_id: int,
+        site_id: int,
+        start: int,
+        changed_after: datetime,
+        limit: int,
+    ) -> RateComponentListResponse:
         """RateComponent is a fully virtual entity - it has no corresponding model in our DB - it's essentially
         just a placeholder for date + price type filtering.
 
@@ -142,13 +153,9 @@ class RateComponentManager:
             db_adjusted_limit = db_adjusted_limit + 1
 
         # query for the raw underlying stats broken down by date
-        rate_stats: TariffGeneratedRateDailyStats = await select_rate_daily_stats(session,
-                                                                                  aggregator_id,
-                                                                                  tariff_id,
-                                                                                  site_id,
-                                                                                  db_adjusted_start,
-                                                                                  changed_after,
-                                                                                  db_adjusted_limit)
+        rate_stats: TariffGeneratedRateDailyStats = await select_rate_daily_stats(
+            session, aggregator_id, tariff_id, site_id, db_adjusted_start, changed_after, db_adjusted_limit
+        )
 
         # If we are starting from a value that doesn't align with a multiple of TOTAL_PRICING_READING_TYPES we will
         # need to cull those entries that exist before our real start value
@@ -158,10 +165,13 @@ class RateComponentManager:
         # to respect it
         trailing_items_to_remove = 0
         if (limit + leading_items_to_remove) < (len(rate_stats.single_date_counts) * TOTAL_PRICING_READING_TYPES):
-            trailing_items_to_remove = (TOTAL_PRICING_READING_TYPES - db_adjusted_limit_remainder) % TOTAL_PRICING_READING_TYPES  # noqa e501
+            trailing_items_to_remove = (
+                TOTAL_PRICING_READING_TYPES - db_adjusted_limit_remainder
+            ) % TOTAL_PRICING_READING_TYPES  # noqa e501
 
-        return RateComponentMapper.map_to_list_response(rate_stats, leading_items_to_remove, trailing_items_to_remove,
-                                                        tariff_id, site_id)
+        return RateComponentMapper.map_to_list_response(
+            rate_stats, leading_items_to_remove, trailing_items_to_remove, tariff_id, site_id
+        )
 
 
 class TimeTariffIntervalManager:
@@ -171,7 +181,7 @@ class TimeTariffIntervalManager:
         otherwise raises InvalidIdError"""
         # certain python versions allow all sorts of funny things through so we layer some additional
         # checks over the top of the isoformat
-        if len(id) != 5 or id[2] != ':':
+        if len(id) != 5 or id[2] != ":":
             raise InvalidIdError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
 
         try:
@@ -180,15 +190,17 @@ class TimeTariffIntervalManager:
             raise InvalidIdError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
 
     @staticmethod
-    async def fetch_time_tariff_interval_list(session: AsyncSession,
-                                              aggregator_id: int,
-                                              tariff_id: int,
-                                              site_id: int,
-                                              rate_component_id: str,
-                                              pricing_type: PricingReadingType,
-                                              start: int,
-                                              after: datetime,
-                                              limit: int) -> TimeTariffIntervalListResponse:
+    async def fetch_time_tariff_interval_list(
+        session: AsyncSession,
+        aggregator_id: int,
+        tariff_id: int,
+        site_id: int,
+        rate_component_id: str,
+        pricing_type: PricingReadingType,
+        start: int,
+        after: datetime,
+        limit: int,
+    ) -> TimeTariffIntervalListResponse:
         """Fetches a page of TimeTariffInterval entities and returns them in a list response"""
         day = RateComponentManager.parse_rate_component_id(rate_component_id)
 
@@ -198,13 +210,15 @@ class TimeTariffIntervalManager:
         return TimeTariffIntervalMapper.map_to_list_response(rates, pricing_type, total_rates)
 
     @staticmethod
-    async def fetch_time_tariff_interval(session: AsyncSession,
-                                         aggregator_id: int,
-                                         tariff_id: int,
-                                         site_id: int,
-                                         rate_component_id: str,
-                                         time_tariff_interval: str,
-                                         pricing_type: PricingReadingType) -> Optional[TimeTariffIntervalResponse]:
+    async def fetch_time_tariff_interval(
+        session: AsyncSession,
+        aggregator_id: int,
+        tariff_id: int,
+        site_id: int,
+        rate_component_id: str,
+        time_tariff_interval: str,
+        pricing_type: PricingReadingType,
+    ) -> Optional[TimeTariffIntervalResponse]:
         """Fetches a single TimeTariffInterval entity matching the date/time. Time must be an exact
         match.
 
@@ -215,12 +229,9 @@ class TimeTariffIntervalManager:
         day = RateComponentManager.parse_rate_component_id(rate_component_id)
         time_of_day = TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
 
-        generated_rate = await select_tariff_rate_for_day_time(session,
-                                                               aggregator_id,
-                                                               tariff_id,
-                                                               site_id,
-                                                               day,
-                                                               time_of_day)
+        generated_rate = await select_tariff_rate_for_day_time(
+            session, aggregator_id, tariff_id, site_id, day, time_of_day
+        )
         if generated_rate is None:
             return None
 
@@ -229,14 +240,16 @@ class TimeTariffIntervalManager:
 
 class ConsumptionTariffIntervalManager:
     @staticmethod
-    async def fetch_consumption_tariff_interval_list(session: AsyncSession,
-                                                     aggregator_id: int,
-                                                     tariff_id: int,
-                                                     site_id: int,
-                                                     rate_component_id: str,
-                                                     pricing_type: PricingReadingType,
-                                                     time_tariff_interval: str,
-                                                     sep2_price: int) -> ConsumptionTariffIntervalListResponse:
+    async def fetch_consumption_tariff_interval_list(
+        session: AsyncSession,
+        aggregator_id: int,
+        tariff_id: int,
+        site_id: int,
+        rate_component_id: str,
+        pricing_type: PricingReadingType,
+        time_tariff_interval: str,
+        sep2_price: int,
+    ) -> ConsumptionTariffIntervalListResponse:
         """This is a fully virtualised entity 'lookup' that only interacts with the DB to validate access.
         All the information required to build the response is passed in via params
 
@@ -255,22 +268,21 @@ class ConsumptionTariffIntervalManager:
             raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
         price = Decimal(sep2_price) / Decimal(PRICE_DECIMAL_POWER)
-        return ConsumptionTariffIntervalMapper.map_to_list_response(tariff_id,
-                                                                    site_id,
-                                                                    pricing_type,
-                                                                    day,
-                                                                    time_of_day,
-                                                                    price)
+        return ConsumptionTariffIntervalMapper.map_to_list_response(
+            tariff_id, site_id, pricing_type, day, time_of_day, price
+        )
 
     @staticmethod
-    async def fetch_consumption_tariff_interval(session: AsyncSession,
-                                                aggregator_id: int,
-                                                tariff_id: int,
-                                                site_id: int,
-                                                rate_component_id: str,
-                                                pricing_type: PricingReadingType,
-                                                time_tariff_interval: str,
-                                                sep2_price: int) -> ConsumptionTariffIntervalResponse:
+    async def fetch_consumption_tariff_interval(
+        session: AsyncSession,
+        aggregator_id: int,
+        tariff_id: int,
+        site_id: int,
+        rate_component_id: str,
+        pricing_type: PricingReadingType,
+        time_tariff_interval: str,
+        sep2_price: int,
+    ) -> ConsumptionTariffIntervalResponse:
         """This is a fully virtualised entity 'lookup' that only interacts with the DB to validate access.
         All the information required to build the response is passed in via params
 
@@ -289,9 +301,6 @@ class ConsumptionTariffIntervalManager:
             raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
         price = Decimal(sep2_price) / Decimal(PRICE_DECIMAL_POWER)
-        return ConsumptionTariffIntervalMapper.map_to_response(tariff_id,
-                                                               site_id,
-                                                               pricing_type,
-                                                               day,
-                                                               time_of_day,
-                                                               price)
+        return ConsumptionTariffIntervalMapper.map_to_response(
+            tariff_id, site_id, pricing_type, day, time_of_day, price
+        )

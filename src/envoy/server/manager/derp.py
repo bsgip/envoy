@@ -38,8 +38,9 @@ class DERProgramManager:
 
 class DERControlManager:
     @staticmethod
-    async def fetch_doe_controls_for_site(session: AsyncSession, aggregator_id: int, site_id: int, start: int,
-                                          changed_after: datetime, limit: int) -> DERControlListResponse:
+    async def fetch_doe_controls_for_site(
+        session: AsyncSession, aggregator_id: int, site_id: int, start: int, changed_after: datetime, limit: int
+    ) -> DERControlListResponse:
         """DER Controls are how Dynamic Operating Envelopes are communicated. This will provide a pagination API
         for iterating DOE's stored against a particular site"""
 
@@ -48,9 +49,15 @@ class DERControlManager:
         return DERControlMapper.map_to_list_response(does, total_count, site_id)
 
     @staticmethod
-    async def fetch_doe_controls_for_site_day(session: AsyncSession, aggregator_id: int, site_id: int, day: date,
-                                              start: int, changed_after: datetime,
-                                              limit: int) -> DERControlListResponse:
+    async def fetch_doe_controls_for_site_day(
+        session: AsyncSession,
+        aggregator_id: int,
+        site_id: int,
+        day: date,
+        start: int,
+        changed_after: datetime,
+        limit: int,
+    ) -> DERControlListResponse:
         """Similar to fetch_doe_controls_for_site but filtered to a specific day (in site local time)"""
 
         does = await select_does_for_day(session, aggregator_id, site_id, day, start, changed_after, limit)
