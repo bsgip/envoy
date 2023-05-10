@@ -265,7 +265,9 @@ async def test_get_dercontrol_list(
     expected_does: list[tuple[datetime, float, float]],
 ):
     """Tests that the list pagination works correctly for various combinations of start/limit/changed_after"""
-    path = uri_derc_list_format.format(site_id=site_id) + build_paging_params(start, limit, changed_after)
+    path = uri_derc_list_format.format(site_id=site_id, der_program_id="doe") + build_paging_params(
+        start, limit, changed_after
+    )
     response = await client.get(path, headers=generate_headers(cert))
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
@@ -388,9 +390,9 @@ async def test_get_dercontrol_list_day(
     day: date,
 ):
     """Tests that the list pagination works correctly for various combinations of start/limit/changed_after"""
-    path = uri_derc_day_list_format.format(site_id=site_id, date=day.isoformat()) + build_paging_params(
-        start, limit, changed_after
-    )
+    path = uri_derc_day_list_format.format(
+        site_id=site_id, der_program_id="doe", date=day.isoformat()
+    ) + build_paging_params(start, limit, changed_after)
     response = await client.get(path, headers=generate_headers(cert))
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
