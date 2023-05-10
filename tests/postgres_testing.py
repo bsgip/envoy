@@ -10,7 +10,7 @@ def generate_async_conn_str_from_connection(db: Connection) -> str:
     """Utility for extracting a (async) connection string from a postgres connection. This is only really suitable for
     working with a test database - it's not production code"""
     cps = db.pgconn
-    return f"postgresql+asyncpg://{cps.user.decode('UTF-8')}@{cps.host.decode('UTF-8')}:{cps.port.decode('UTF-8')}/{cps.db.decode('UTF-8')}"
+    return f"postgresql+asyncpg://{cps.user.decode('UTF-8')}:{cps.password.decode('UTF-8')}@{cps.host.decode('UTF-8')}:{cps.port.decode('UTF-8')}/{cps.db.decode('UTF-8')}"
 
 
 @asynccontextmanager

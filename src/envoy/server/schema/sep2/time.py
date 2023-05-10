@@ -29,8 +29,8 @@ class TimeQualityType(enum.IntEnum):
 
 
 class DateTimeIntervalType(BaseXmlModelWithNS):
-    duration: int
-    start: TimeType
+    duration: int = element()
+    start: TimeType = element()
 
 
 class TimeResponse(Resource, tag="Time"):

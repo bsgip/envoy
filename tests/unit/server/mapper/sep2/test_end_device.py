@@ -1,8 +1,9 @@
+import unittest.mock as mock
 from datetime import datetime
 
 import pytest
 
-from envoy.server.mapper.exception import InvalidMappingError
+from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
 from envoy.server.model.site import Site
 from envoy.server.schema.csip_aus.connection_point import ConnectionPointLink
@@ -72,7 +73,7 @@ def test_list_map_to_response():
     assert result is not None
     assert isinstance(result, EndDeviceListResponse)
     assert result.all_ == site_count
-    assert result.result == len(all_sites)
+    assert result.results == len(all_sites)
     assert isinstance(result.EndDevice, list)
     assert len(result.EndDevice) == len(all_sites)
     assert all([isinstance(ed, EndDeviceResponse) for ed in result.EndDevice])
@@ -93,8 +94,11 @@ def test_list_map_to_response():
     assert len(no_result.EndDevice) == 0
 
 
-def test_map_from_request():
+@mock.patch("envoy.server.mapper.sep2.end_device.settings")
+def test_map_from_request(mock_settings: mock.MagicMock):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
+    mock_settings.default_timezone = "abc/123"
+
     end_device_all_set: EndDeviceRequest = generate_class_instance(EndDeviceRequest, seed=101, optional_is_none=False)
     end_device_all_set.deviceCategory = "c0ffee"  # needs to be a hex string
     end_device_optional: EndDeviceRequest = generate_class_instance(EndDeviceRequest, seed=202, optional_is_none=True)
@@ -110,6 +114,7 @@ def test_map_from_request():
     assert result_all_set.lfdi == end_device_all_set.lFDI
     assert type(result_all_set.device_category) == DeviceCategory
     assert result_all_set.device_category == int("c0ffee", 16)
+    assert result_all_set.timezone_id == "abc/123"
 
     result_optional = EndDeviceMapper.map_from_request(end_device_optional, aggregator_id, changed_time)
     assert result_optional is not None
@@ -119,6 +124,7 @@ def test_map_from_request():
     assert result_optional.lfdi == end_device_optional.lFDI
     assert type(result_all_set.device_category) == DeviceCategory
     assert result_optional.device_category == DeviceCategory(0)
+    assert result_optional.timezone_id == "abc/123"
 
 
 def test_map_from_request_invalid_device_category():

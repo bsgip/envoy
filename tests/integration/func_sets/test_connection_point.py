@@ -25,7 +25,7 @@ def connection_point_uri_format():
 
 
 @pytest.mark.parametrize(
-    "test_detail",
+    "site_id,expected_nmi,cert,expected_status_response",
     [(1, '1111111111', AGG_1_VALID_PEM, HTTPStatus.OK),
      (2, '2222222222', AGG_1_VALID_PEM, HTTPStatus.OK),
      (3, '3333333333', AGG_2_VALID_PEM, HTTPStatus.OK),
@@ -36,10 +36,9 @@ def connection_point_uri_format():
      (99, None, AGG_1_VALID_PEM, HTTPStatus.NOT_FOUND),  # Site 99 does not exist
      ])
 @pytest.mark.anyio
-async def test_get_connectionpoint(client: AsyncClient, connection_point_uri_format: str, test_detail: tuple[int, Optional[str], str, HTTPStatus]):
+async def test_get_connectionpoint(client: AsyncClient, connection_point_uri_format: str, site_id: int,
+                                   expected_nmi: Optional[str], cert: str, expected_status_response: HTTPStatus):
     """Tests getting a variety of connection points for the sites - tests successful / unsuccessful responses"""
-    (site_id, expected_nmi, cert, expected_status_response) = test_detail
-
     response = await client.get(connection_point_uri_format.format(site_id=site_id), headers={cert_pem_header: urllib.parse.quote(cert)})
     assert_response_header(response, expected_status_response)
 

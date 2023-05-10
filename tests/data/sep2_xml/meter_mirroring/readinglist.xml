@@ -1,0 +1,100 @@
+<!-- IEEE Std 2030.5-2018 Table C.15 Step 14 Example Server Response from GET /upt/1/mr/1/rs/32/r?s=0&l=24 -->
+<!-- Note this is functionally identical to example in Table C.15 Step 20 -->
+<ReadingList all="24" href="/upt/1/mr/1/rs/32/r" results="24" xmlns="urn:ieee:std:2030.5:ns">
+    <Reading href="/upt/1/mr/1/rs/32/r/4">
+        <value>9</value>
+        <localID>00</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/5">
+        <value>11</value>
+        <localID>01</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/6">
+        <value>10</value>
+        <localID>02</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/7">
+        <value>13</value>
+        <localID>03</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/8">
+        <value>12</value>
+        <localID>04</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/9">
+        <value>11</value>
+        <localID>05</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/a">
+        <value>10</value>
+        <localID>06</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/b">
+        <value>16</value>
+        <localID>07</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/c">
+        <value>9</value>
+        <localID>08</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/d">
+        <value>7</value>
+        <localID>09</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/e">
+        <value>6</value>
+        <localID>0A</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/f">
+        <value>5</value>
+        <localID>0B</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/10">
+        <value>8</value>
+        <localID>0C</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/11">
+        <value>9</value>
+        <localID>0D</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/12">
+        <value>10</value>
+        <localID>0E</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/13">
+        <value>12</value>
+        <localID>0F</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/14">
+        <value>14</value>
+        <localID>10</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/15">
+        <value>13</value>
+        <localID>11</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/16">
+        <value>11</value>
+        <localID>12</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/17">
+        <value>7</value>
+        <localID>13</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/0">
+        <value>8</value>
+        <localID>14</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/1">
+        <value>10</value>
+        <localID>15</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/2">
+        <value>10</value>
+        <localID>16</localID>
+    </Reading>
+    <Reading href="/upt/1/mr/1/rs/32/r/3">
+        <value>10</value>
+        <localID>17</localID>
+    </Reading>
+</ReadingList>
