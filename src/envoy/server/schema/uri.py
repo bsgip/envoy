@@ -24,8 +24,12 @@ BillingPeriodListUri = "/bill/{id1}/ca/{id2}/bp"
 BillingReadingListUri = "/brs/{id1}/br"
 BillingReadingSetListUri = "/brs"
 ConfigurationUri = "/edev/{site_id}/cfg"
-ConsumptionTariffIntervalListUri = "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{sep2_price}"  # noqa e501
-ConsumptionTariffIntervalUri = "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{sep2_price}/1"  # noqa e501
+ConsumptionTariffIntervalListUri = (
+    "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{sep2_price}"  # noqa e501
+)
+ConsumptionTariffIntervalUri = (
+    "/tp/{tariff_id}/{site_id}/rc/{rate_component_id}/{pricing_reading}/tti/{tti_id}/cti/{sep2_price}/1"  # noqa e501
+)
 CreditRegisterListUri = "/ppy/{id1}/cr"
 CustomerAccountListUri = "/bill"
 CustomerAccountUri = "/bill/{id1}"
@@ -35,13 +39,16 @@ DemandResponseProgramListUri = "/dr"  # /drp used in Step 11 p275 of Sep2
 DemandResponseProgramUri = "/dr/{id1}"
 DERAvailabilityUri = "/edev/{site_id}/der/{id2}/dera"
 DERCapabilityUri = "/edev/{site_id}/der/{id2}/dercap"
-DERControlListUri = "/derp/{site_id}/{der_program_id}/derc"
-DERControlListByDateUri = "/derp/{site_id}/{der_program_id}/derc/{date}"
+DERControlListUri = "/edev/{site_id}/derp/{der_program_id}/derc"
+DERControlListByDateUri = "/edev/{site_id}/derp/{der_program_id}/derc/{date}"
 DERCurveListUri = "/derp/{id1}/dc"
 DERCurveUri = "/derp/{id1}/dc/{id2}"
 DERListUri = "/edev/{site_id}/der"
-DERProgramListUri = "/derp/{site_id}"
-DERProgramUri = "/derp/{site_id}/{der_program_id}"
+# DERProgramListUri = "/derp"
+# DERProgramUri = "/derp/{id1}"
+# Modify DERProgram URIs to be site-scoped
+DERProgramListUri = "/edev/{site_id}/derp"
+DERProgramUri = "/edev/{site_id}/derp/{der_program_id}"
 DERSettingsUri = "/edev/{site_id}/der/{id2}/derg"
 DERStatusUri = "/edev/{site_id}/der/{id2}/ders"
 DERUri = "/edev/{site_id}/der/{id2}"

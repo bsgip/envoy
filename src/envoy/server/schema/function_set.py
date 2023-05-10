@@ -36,10 +36,10 @@ class FunctionSetStatus(Enum):
 
 FUNCTION_SET_STATUS = {
     FunctionSet.Unknown: FunctionSetStatus.UNSUPPORTED,
-    FunctionSet.DeviceCapability: FunctionSetStatus.UNSUPPORTED,
+    FunctionSet.DeviceCapability: FunctionSetStatus.SUPPORTED,
     FunctionSet.SelfDeviceResource: FunctionSetStatus.SUPPORTED,
     FunctionSet.EndDeviceResource: FunctionSetStatus.SUPPORTED,
-    FunctionSet.FunctionSetAssignments: FunctionSetStatus.UNSUPPORTED,
+    FunctionSet.FunctionSetAssignments: FunctionSetStatus.SUPPORTED,
     FunctionSet.SubscriptionAndNotification: FunctionSetStatus.UNSUPPORTED,
     FunctionSet.Response: FunctionSetStatus.UNSUPPORTED,
     FunctionSet.Time: FunctionSetStatus.UNSUPPORTED,

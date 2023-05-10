@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from httpx import AsyncClient
 
+import envoy.server.schema.uri as uri
 from envoy.server.model.doe import DOE_DECIMAL_PLACES
 from envoy.server.schema.sep2.der import (
     DERControlListResponse,
@@ -33,22 +34,22 @@ def agg_1_headers():
 
 @pytest.fixture
 def uri_derp_list_format():
-    return "/derp/{site_id}"
+    return uri.DERProgramListUri
 
 
 @pytest.fixture
 def uri_derp_doe_format():
-    return "/derp/{site_id}/doe"
+    return uri.DERProgramUri
 
 
 @pytest.fixture
 def uri_derc_list_format():
-    return "/derp/{site_id}/doe/derc"
+    return uri.DERControlListUri
 
 
 @pytest.fixture
 def uri_derc_day_list_format():
-    return "/derp/{site_id}/doe/derc/{date}"
+    return uri.DERControlListByDateUri
 
 
 BRISBANE_TZ = ZoneInfo("Australia/Brisbane")
@@ -96,9 +97,11 @@ async def test_get_derprogram_list(
         assert parsed_response.all_ == 1
         assert parsed_response.results == 1
         assert len(parsed_response.DERProgram) == 1
-        assert parsed_response.DERProgram[0].href == uri_derp_doe_format.format(site_id=site_id)
+        assert parsed_response.DERProgram[0].href == uri_derp_doe_format.format(site_id=site_id, der_program_id="doe")
         assert parsed_response.DERProgram[0].DERControlListLink.all_ == expected_doe_count
-        assert parsed_response.DERProgram[0].DERControlListLink.href == uri_derc_list_format.format(site_id=site_id)
+        assert parsed_response.DERProgram[0].DERControlListLink.href == uri_derc_list_format.format(
+            site_id=site_id, der_program_id="doe"
+        )
 
 
 @pytest.mark.anyio
@@ -122,7 +125,8 @@ async def get_derprogram_doe(
 ):
     """Tests getting DERPrograms for various sites and validates access constraints"""
 
-    path = uri_derp_doe_format.format(site_id=site_id)
+    # Test a known site
+    path = uri_derp_doe_format.format(site_id=site_id, der_program_id="doe")
     response = await client.get(path, headers=agg_1_headers)
 
     if expected_doe_count is None:
@@ -133,9 +137,11 @@ async def get_derprogram_doe(
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response: DERProgramResponse = DERProgramResponse.from_xml(body)
-        assert parsed_response.href == uri_derp_doe_format.format(site_id=site_id)
+        assert parsed_response.href == uri_derp_doe_format.format(site_id=site_id, der_program_id="doe")
         assert parsed_response.DERControlListLink.all_ == expected_doe_count
-        assert parsed_response.DERControlListLink.href == uri_derc_list_format.format(site_id=site_id)
+        assert parsed_response.DERControlListLink.href == uri_derc_list_format.format(
+            site_id=site_id, der_program_id="doe"
+        )
 
 
 @pytest.mark.anyio
