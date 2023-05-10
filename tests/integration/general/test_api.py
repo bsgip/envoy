@@ -26,9 +26,8 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST, HTTPMethod.PUT], "/edev/1/cp"),
 
     # function-set-assignments function set
-    # TODO Re-enable after DOE funcset is merged in
-    #([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/fsa"),
-    # ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/fsa/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/fsa"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/fsa/1"),
 
     # Pricing function set
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/pricing/rt/1"),
