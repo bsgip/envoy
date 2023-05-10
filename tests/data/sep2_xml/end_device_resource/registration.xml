@@ -1,0 +1,6 @@
+<!-- IEEE Std 2030.5-2018 Table C.1 Step 11 Example Server Response from GET /edev/3/reg -->
+<!-- Not implemented -->
+<Registration href="/edev/3/reg" xmlns="urn:ieee:std:2030.5:ns">
+    <dateTimeRegistered>1364774400</dateTimeRegistered>
+    <pIN>123455</pIN>
+</Registration>

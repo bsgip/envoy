@@ -4,8 +4,17 @@ import os
 import alembic.config
 import pytest
 from psycopg import Connection
+from pytest_postgresql import factories
 
 from tests.postgres_testing import generate_async_conn_str_from_connection
+
+# Redefine postgresql fixture if the environment variable, TEST_WITH_DOCKER is True
+# The postgresql fixture comes from the pytest-postgresql plugin. See https://pypi.org/project/pytest-postgresql/)
+test_with_docker = os.getenv("TEST_WITH_DOCKER", "False").lower() in ("true", "1", "t", "True", "TRUE", "T")
+if test_with_docker:
+    # The password needs to match the password set in docker-compose.testing.yaml
+    postgresql_in_docker = factories.postgresql_noproc(port=5433, password="adminpass")
+    postgresql = factories.postgresql("postgresql_in_docker")
 
 
 @pytest.fixture
@@ -13,25 +22,29 @@ def pg_empty_config(postgresql) -> Connection:
     """Sets up the testing DB, applies alembic migrations but does NOT add any entities"""
 
     # Install the DATABASE_URL before running alembic
-    os.environ['DATABASE_URL'] = generate_async_conn_str_from_connection(postgresql)
+    os.environ["DATABASE_URL"] = generate_async_conn_str_from_connection(postgresql)
 
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()
     try:
-        os.chdir('./src/envoy/server/')
+        os.chdir("./src/envoy/server/")
 
         # Create migrations (if none are there)
-        if len(glob.glob('alembic/versions/*.py')) == 0:
+        if len(glob.glob("alembic/versions/*.py")) == 0:
             alembicArgs = [
-                '--raiseerr',
-                'revision', '--autogenerate', '-m', 'init',
+                "--raiseerr",
+                "revision",
+                "--autogenerate",
+                "-m",
+                "init",
             ]
             alembic.config.main(argv=alembicArgs)
 
         # Apply migrations
         alembicArgs = [
-            '--raiseerr',
-            'upgrade', 'head',
+            "--raiseerr",
+            "upgrade",
+            "head",
         ]
         alembic.config.main(argv=alembicArgs)
     finally:
@@ -72,4 +85,4 @@ def pg_la_timezone(pg_base_config) -> Connection:
 def anyio_backend():
     """async backends to test against
     see: https://anyio.readthedocs.io/en/stable/testing.html"""
-    return 'asyncio'
+    return "asyncio"

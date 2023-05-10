@@ -85,3 +85,103 @@ The Postman collection in postman/envoy.postman_collection.json uses certificate
 ### Docker Hosted
 
 TODO: Depending on Dockerfile
+
+### Docker Hosted - Running envoy
+
+#### Setup
+
+1. Create this `docker-compose.yaml` file in the project root:
+
+```yaml
+```
+
+You may need to check whether the directory `/var/lib/postgresql/data/` which is where the database is persisted.
+
+2. Bring up the database server
+
+```shell
+docker compose up -d
+```
+
+3. Connect to the server
+
+```shell
+docker exec -it envoy-timescaledb-1 psql -U postgres
+```
+
+You will probably need to replace the name of the container (use `docker ps -a` to find the name of your running container).
+
+4. At the psql prompt running the following commands to set up the database.
+
+```
+create database envoydb;
+create user envoyuser with encrypted password 'mypass';
+grant all privileges on database envoydb to envoyuser;
+exit
+```
+
+5. Update the `DATABASE_URL` in the `.env` to use this database (**note** the use of port 5433 to prevent a clash with any locally installed postgres server)
+
+DATABASE_URL=postgresql+asyncpg://envoyuser:mypass@localhost:5433/envoydb
+
+6. Generate and apply the migrations
+
+```
+cd src/envoy/server
+ln -s ../../../.env
+alembic revision --autogenerate -m "Init"
+alembic upgrade head
+```
+
+
+### Docker Hosted - Database only set up to allow running the test suite
+
+#### Setup
+
+1. Create this `docker-compose.testing.yaml` file in the project root:
+
+```yaml
+version: '3'
+
+services:
+  testdb:
+    image: timescale/timescaledb:latest-pg14
+    environment:
+      # 'POSTGRES_PASSWORD' needs to match the password used in tests/conftest.py
+      - POSTGRES_PASSWORD=adminpass
+      # If the mapping of the /etc/localtime fails (see volumes section) then comment out that line and
+      # uncomment the following two lines (making sure to set the timezone to the same as your host system).
+      # - TZ=Australia/Brisbane
+      # - PGTZ=Australia/Brisbane
+    ports:
+      # Expose postgresql on port 5433 to prevent a clash with any local installation of postgresql server (default=5432).
+      - 5433:5432
+    volumes:
+      # Map in the localtime. This results in the timezone of postgresql being set to the same as host system.
+      - "/etc/localtime:/etc/localtime:ro"
+
+# Create a new network separate than the one created for docker.compose.yaml
+networks:
+  default:
+    name: envoy-testing
+```
+
+Since the test suite brings up the database each time there is no docker volume for persisting the database.
+
+#### Running the tests
+
+1. Bring up the database server to make sure it available to the test suite
+
+```shell
+docker compose -f docker-compose.testing.yaml up -d
+```
+
+2. Run the test suite
+
+```
+TEST_WITH_DOCKER=1 pytest
+```
+
+The environment variable `TEST_WITH_DOCKER` forces the pytest to use postgresql server in the docker container rather
+than any local postgresql server.
+

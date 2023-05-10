@@ -1,0 +1,8 @@
+<!-- IEEE Std 2030.5-2018 Table C.16 Step 10 Example Server Response from GET /tp/3/rc/3/tti/5/cti?l=1 -->
+<ConsumptionTariffIntervalList all="1" href="/tp/3/rc/3/tti/5/cti" results="1" xmlns="urn:ieee:std:2030.5:ns">
+    <ConsumptionTariffInterval href="/tp/3/rc/3/tti/5/cti/1">
+        <consumptionBlock>1</consumptionBlock>
+        <price>113000</price>
+        <startValue>0</startValue>
+    </ConsumptionTariffInterval>
+</ConsumptionTariffIntervalList>

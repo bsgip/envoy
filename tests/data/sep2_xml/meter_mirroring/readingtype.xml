@@ -1,0 +1,8 @@
+<!-- IEEE Std 2030.5-2018 Table C.15 Step 10 Example Server Response from GET /upt/1/rt -->
+<ReadingType href="/upt/1/mr/1/rt" xmlns="urn:ieee:std:2030.5:ns">
+    <accumulationBehaviour>4</accumulationBehaviour>
+    <commodity>7</commodity>
+    <flowDirection>1</flowDirection>
+    <powerOfTenMultiplier>3</powerOfTenMultiplier>
+    <uom>119</uom>
+</ReadingType>

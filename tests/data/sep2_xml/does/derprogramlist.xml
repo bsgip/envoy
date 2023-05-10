@@ -1,0 +1,9 @@
+<!-- IEEE Std 2030.5-2018 Table C.11 Step 3 Example Server Response from GET /derp -->
+<DERProgramList all="1" href="/derp" results="1" xmlns="urn:ieee:std:2030.5:ns">
+    <DERProgram href="/derp/0">
+        <mRID>01BE7A7E57</mRID>
+        <description>Example DER Program</description>
+        <DERControlListLink all="2" href="/derp/0/derc"/>
+        <primacy>2</primacy>
+    </DERProgram>
+</DERProgramList>

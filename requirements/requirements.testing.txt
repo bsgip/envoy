@@ -5,3 +5,4 @@ pytest-mock
 pytest-postgresql
 psycopg
 httpx
+defusedxml

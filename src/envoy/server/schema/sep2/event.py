@@ -23,7 +23,7 @@ class RespondableSubscribableIdentifiedObject(RespondableResource):
 
     description: Optional[str] = element()
     mRID: HexBinary128 = element()
-    version: VersionType = element()
+    version: Optional[VersionType] = element()
 
 
 class Event(RespondableSubscribableIdentifiedObject):

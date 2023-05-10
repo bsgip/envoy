@@ -1,0 +1,15 @@
+<!-- IEEE Std 2030.5-2018 Table C.15 Step 8 Example Server Response from GET /upt/1/mr?s=0&l=10 -->
+<MeterReadingList all="2" href="/upt/1/mr" results="2" subscribable="0" xmlns="urn:ieee:std:2030.5:ns">
+    <MeterReading href="/upt/1/mr/0">
+        <mRID>0700006CC8</mRID>
+        <description>Cumulative Reading for Gas</description>
+        <ReadingLink href="/upt/1/mr/0/r"/>
+        <ReadingTypeLink href="/upt/1/mr/0/rt"/>
+    </MeterReading>
+    <MeterReading href="/upt/1/mr/1">
+        <mRID>0800006CC8</mRID>
+        <description> Interval Readings for Gas</description>
+        <ReadingSetListLink all="1" href="/upt/1/mr/1/rs"/>
+        <ReadingTypeLink href="/upt/1/mr/1/rt"/>
+    </MeterReading>
+</MeterReadingList>

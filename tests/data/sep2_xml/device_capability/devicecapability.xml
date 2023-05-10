@@ -1,0 +1,8 @@
+<!-- IEEE Std 2030.5-2018 Table C.5 Step 11 Example Server Response from GET /dcap -->
+<!-- Not implemented -->
+<DeviceCapability href="/dcap" xmlns="urn:ieee:std:2030.5:ns">
+    <DemandResponseProgramListLink all="1" href="/drp"/>
+    <MessagingProgramListLink all="2" href="/msg"/>
+    <EndDeviceListLink all="1" href="/edev"/>
+    <SelfDeviceLink href="/sdev"/>
+</DeviceCapability>

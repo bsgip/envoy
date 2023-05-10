@@ -1,0 +1,19 @@
+<!-- IEEE Std 2030.5-2018 Table C.15 Step 6 Example Server Response from GET /upt -->
+<UsagePointList all="2" href="/upt" results="2" subscribable="0" xmlns="urn:ieee:std:2030.5:ns">
+    <UsagePoint href="/upt/0">
+        <mRID>0B00006CC8</mRID>
+        <description>Usage Point</description>
+        <roleFlags>12</roleFlags>
+        <serviceCategoryKind>0</serviceCategoryKind>
+        <status>1</status>
+        <MeterReadingListLink all="6" href="/upt/0/mr"/>
+    </UsagePoint>
+    <UsagePoint href="/upt/1">
+        <mRID>0C00006CC8</mRID>
+        <description>Usage Point</description>
+        <roleFlags>13</roleFlags>
+        <serviceCategoryKind>1</serviceCategoryKind>
+        <status>1</status>
+        <MeterReadingListLink all="2" href="/upt/1/mr"/>
+    </UsagePoint>
+</UsagePointList>

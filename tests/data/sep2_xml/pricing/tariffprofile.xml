@@ -1,0 +1,11 @@
+<!-- IEEE Std 2030.5-2018 Table C.16 Step 2 Example Server Response from GET /tp/3 -->
+<TariffProfile href="/tp/3" xmlns="urn:ieee:std:2030.5:ns">
+    <mRID>799794f4620b17e00000e566</mRID>
+    <description>PEV TOU Rate</description>
+    <currency>840</currency>
+    <pricePowerOfTenMultiplier>-6</pricePowerOfTenMultiplier>
+    <primacy>0</primacy>
+    <rateCode>TOU-D-PEV Baseline 6</rateCode>
+    <RateComponentListLink all="1" href="/tp/3/rc"/>
+    <serviceCategoryKind>0</serviceCategoryKind>
+</TariffProfile>
