@@ -12,7 +12,7 @@ from tests.integration.response import assert_response_header, read_response_bod
 
 
 @pytest.mark.anyio
-async def test_get_function_set_assigments(client: AsyncClient, valid_headers: dict):
+async def test_get_function_set_assignments(client: AsyncClient, valid_headers: dict):
     """Simple test of a valid get - validates that the response looks like XML"""
 
     # Arrange
@@ -33,7 +33,7 @@ async def test_get_function_set_assigments(client: AsyncClient, valid_headers: d
 
 
 @pytest.mark.anyio
-async def test_get_function_set_assigments_list(client: AsyncClient, valid_headers: dict):
+async def test_get_function_set_assignments_list(client: AsyncClient, valid_headers: dict):
     """Simple test of a valid get - validates that the response looks like XML"""
 
     # Arrange

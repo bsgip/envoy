@@ -25,6 +25,11 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/edev"),
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST, HTTPMethod.PUT], "/edev/1/cp"),
 
+    # function-set-assignments function set
+    # TODO Re-enable after DOE funcset is merged in
+    #([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/fsa"),
+    # ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/fsa/1"),
+
     # Pricing function set
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/pricing/rt/1"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp"),
@@ -46,6 +51,8 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc/2022-05-07"),
 ]
 # fmt: on
+
+
 @pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
 @pytest.mark.anyio
 async def test_get_resource_unauthorised(valid_methods: list[HTTPMethod], uri: str, client: AsyncClient):

@@ -32,7 +32,6 @@ async def get_function_set_assignments(site_id: int, fsa_id: int, request: Reque
     Returns:
         fastapi.Response object.
     """
-    logger.info("get here?")
     try:
         function_set_assignments = (
             await FunctionSetAssignmentsManager.fetch_function_set_assignments_for_aggregator_and_site(

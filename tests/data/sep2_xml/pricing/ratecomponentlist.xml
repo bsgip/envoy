@@ -1,0 +1,21 @@
+<!-- IEEE Std 2030.5-2018 Table C.16 Step 4 Example Server Response from GET /tp/3/rc?l=1 -->
+<RateComponentList all="1" href="/tp/3/rc" results="1" xmlns="urn:ieee:std:2030.5:ns">
+    <RateComponent href="/tp/3/rc/3">
+        <mRID>fc000b07143d24fc0000e566</mRID>
+        <description>TOU-D-PEV</description>
+        <ActiveTimeTariffIntervalListLink all="0" href="/tp/3/rc/3/acttti"/>
+        <flowRateEndLimit>
+            <multiplier>0</multiplier>
+            <unit>38</unit>
+            <value>400</value>
+        </flowRateEndLimit>
+        <flowRateStartLimit>
+            <multiplier>0</multiplier>
+            <unit>38</unit>
+            <value>0</value>
+        </flowRateStartLimit>
+        <ReadingTypeLink href="/rt/1"/>
+        <roleFlags>12</roleFlags>
+        <TimeTariffIntervalListLink all="5" href="/tp/3/rc/3/tti"/>
+    </RateComponent>
+</RateComponentList>

@@ -1,0 +1,12 @@
+<!-- IEEE Std 2030.5-2018 Table C.15 Step 10 Example Server Response from GET /upt/1/mr/1/rs?s=0&l=1 -->
+<!-- Note this is functionally identical to example in Table C.15 Step 18 -->
+<ReadingSetList all="1" href="/upt/1/mr/1/rs" results="1" subscribable="0" xmlns="urn:ieee:std:2030.5:ns">
+    <ReadingSet href="/upt/1/mr/1/rs/32">
+        <mRID>2000006CC8</mRID>
+        <timePeriod>
+            <duration>86400</duration>
+            <start>1341579365</start>
+        </timePeriod>
+        <ReadingListLink all="24" href="/upt/1/mr/1/rs/32/r"/>
+    </ReadingSet>
+</ReadingSetList>

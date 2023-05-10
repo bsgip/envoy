@@ -1,0 +1,93 @@
+<!-- IEEE Std 2030.5-2018 Table C.16 Step 8 Example Server Response from GET /tp/3/rc/3/tti?l=5 -->
+<TimeTariffIntervalList all="5" href="/tp/3/rc/3/tti" results="5" subscribable="1" xmlns="urn:ieee:std:2030.5:ns">
+    <TimeTariffInterval href="/tp/3/rc/3/tti/5" subscribable="1">
+        <mRID>ef06fa23dc0a0f650000e566</mRID>
+        <description>Off-Peak 1</description>
+        <creationTime>1357430400</creationTime>
+        <EventStatus>
+            <currentStatus>0</currentStatus>
+            <dateTime>1357430400</dateTime>
+            <potentiallySuperseded>false</potentiallySuperseded>
+        </EventStatus>
+        <interval>
+            <duration>28800</duration>
+            <start>1357516800</start>
+        </interval>
+        <randomizeDuration>300</randomizeDuration>
+        <randomizeStart>300</randomizeStart>
+        <ConsumptionTariffIntervalListLink all="1" href="/tp/3/rc/3/tti/5/cti"/>
+        <touTier>1</touTier>
+    </TimeTariffInterval>
+    <TimeTariffInterval href="/tp/3/rc/3/tti/6" subscribable="1">
+        <mRID>41fc7c07e16820770000e566</mRID>
+        <description>Mid-Peak 1</description>
+        <creationTime>1357430400</creationTime>
+        <EventStatus>
+            <currentStatus>0</currentStatus>
+            <dateTime>1357430400</dateTime>
+            <potentiallySuperseded>false</potentiallySuperseded>
+        </EventStatus>
+        <interval>
+            <duration>14400</duration>
+            <start>1357545600</start>
+        </interval>
+        <randomizeDuration>300</randomizeDuration>
+        <randomizeStart>300</randomizeStart>
+        <ConsumptionTariffIntervalListLink all="1" href="/tp/3/rc/3/tti/6/cti"/>
+        <touTier>2</touTier>
+    </TimeTariffInterval>
+    <TimeTariffInterval href="/tp/3/rc/3/tti/7" subscribable="1">
+        <mRID>63eed7b30c1c87a40000e566</mRID>
+        <description>On-Peak</description>
+        <creationTime>1357430400</creationTime>
+        <EventStatus>
+            <currentStatus>0</currentStatus>
+            <dateTime>1357430400</dateTime>
+            <potentiallySuperseded>false</potentiallySuperseded>
+        </EventStatus>
+        <interval>
+            <duration>21600</duration>
+            <start>1357552800</start>
+        </interval>
+        <randomizeDuration>300</randomizeDuration>
+        <randomizeStart>300</randomizeStart>
+        <ConsumptionTariffIntervalListLink all="1" href="/tp/3/rc/3/tti/7/cti"/>
+        <touTier>3</touTier>
+    </TimeTariffInterval>
+    <TimeTariffInterval href="/tp/3/rc/3/tti/8" subscribable="1">
+        <mRID>9b04f0713e9212d90000e566</mRID>
+        <description>Mid-Peak 2</description>
+        <creationTime>1357430400</creationTime>
+        <EventStatus>
+            <currentStatus>0</currentStatus>
+            <dateTime>1357430400</dateTime>
+            <potentiallySuperseded>false</potentiallySuperseded>
+        </EventStatus>
+        <interval>
+            <duration>18000</duration>
+            <start>1357574400</start>
+        </interval>
+        <randomizeDuration>300</randomizeDuration>
+        <randomizeStart>300</randomizeStart>
+        <ConsumptionTariffIntervalListLink all="1" href="/tp/3/rc/3/tti/8/cti"/>
+        <touTier>2</touTier>
+    </TimeTariffInterval>
+    <TimeTariffInterval href="/tp/3/rc/3/tti/9" subscribable="1">
+        <mRID>c13c8755dc39b5950000e566</mRID>
+        <description>Off-Peak 2</description>
+        <creationTime>1357430400</creationTime>
+        <EventStatus>
+            <currentStatus>0</currentStatus>
+            <dateTime>1357430400</dateTime>
+            <potentiallySuperseded>false</potentiallySuperseded>
+        </EventStatus>
+        <interval>
+            <duration>10800</duration>
+            <start>1357592400</start>
+        </interval>
+        <randomizeDuration>300</randomizeDuration>
+        <randomizeStart>300</randomizeStart>
+        <ConsumptionTariffIntervalListLink all="1" href="/tp/3/rc/3/tti/9/cti"/>
+        <touTier>1</touTier>
+    </TimeTariffInterval>
+</TimeTariffIntervalList>

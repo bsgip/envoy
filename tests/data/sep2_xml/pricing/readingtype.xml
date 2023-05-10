@@ -1,0 +1,15 @@
+<!-- IEEE Std 2030.5-2018 Table C.16 Step 6 Example Server Response from GET /rt/1 -->
+<ReadingType href="/rt/1" xmlns="urn:ieee:std:2030.5:ns">
+    <accumulationBehaviour>4</accumulationBehaviour>
+    <commodity>1</commodity>
+    <dataQualifier>12</dataQualifier>
+    <flowDirection>1</flowDirection>
+    <intervalLength>3600</intervalLength>
+    <kind>12</kind>
+    <numberOfConsumptionBlocks>1</numberOfConsumptionBlocks>
+    <numberOfTouTiers>3</numberOfTouTiers>
+    <phase>0</phase>
+    <powerOfTenMultiplier>3</powerOfTenMultiplier>
+    <tieredConsumptionBlocks>false</tieredConsumptionBlocks>
+    <uom>72</uom>
+</ReadingType>

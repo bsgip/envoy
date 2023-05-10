@@ -189,6 +189,189 @@
 			]
 		},
 		{
+			"name": "Device Capability",
+			"item": [
+				{
+					"name": "/dcap (Device Capability)",
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {}
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/dcap",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"dcap"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "DOEs",
+			"item": [
+				{
+					"name": "/derp/1 (DERProgramList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/derp/{{EDEV_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"derp",
+								"{{EDEV_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/derp/1/doe (DERProgram - DOE)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/derp/{{EDEV_ID}}/doe",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"derp",
+								"{{EDEV_ID}}",
+								"doe"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/derp/1/doe/derc (DERControls - DOE)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/derp/{{EDEV_ID}}/doe/derc?s=0&l=1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"derp",
+								"{{EDEV_ID}}",
+								"doe",
+								"derc"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/derp/1/doe/derc/date (DERControls - DOE by Date)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/derp/{{EDEV_ID}}/doe/derc/{{DATE}}?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"derp",
+								"{{EDEV_ID}}",
+								"doe",
+								"derc",
+								"{{DATE}}"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "End Device Resource",
 			"item": [
 				{
@@ -377,6 +560,7 @@
 		},
 		{
 			"name": "Function Set Assignments",
+			"name": "Function Set Assignments",
 			"item": [
 				{
 					"name": "/edev/1/fsa (FuntionSetAssigmentsList)",
@@ -386,16 +570,19 @@
 							{
 								"key": "x-forwarded-client-cert",
 								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "default"
+								"type": "default""type": "default"
 							}
 						],
 						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa",
 							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
 								"edev",
+								"{{EDEV_ID}}",
+								"fsa""edev",
 								"{{EDEV_ID}}",
 								"fsa"
 							]
@@ -411,16 +598,20 @@
 							{
 								"key": "x-forwarded-client-cert",
 								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "default"
+								"type": "default""type": "default"
 							}
 						],
 						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa/{{FSA_ID}}",
 							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa/{{FSA_ID}}",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
 								"edev",
+								"{{EDEV_ID}}",
+								"fsa",
+								"{{FSA_ID}}""edev",
 								"{{EDEV_ID}}",
 								"fsa",
 								"{{FSA_ID}}"

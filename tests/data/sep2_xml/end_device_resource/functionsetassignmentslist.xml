@@ -1,0 +1,15 @@
+<!-- IEEE Std 2030.5-2018 Table C.4 Step 11 Example Server Response from GET /edev/3/fsal?1=2 -->
+<!-- Not implemented -->
+<FunctionSetAssignmentsList all="2" href="/edev/3/fsal" results="2" subscribable="0" xmlns="urn:ieee:std:2030.5:ns">
+    <FunctionSetAssignments href="/edev/3/fsal/0" subscribable="0">
+        <DemandResponseProgramListLink all="2" href="/edev/3/fsa1/0/drpl"/>
+        <MessagingProgramListLink all="1" href="/edev/3/fsa1/0/msgl"/>
+        <mRID>0ED30F5A0000</mRID>
+        <description>FunctionSetAssignment Suave</description>
+    </FunctionSetAssignments>
+    <FunctionSetAssignments href="/edev/3/fsal/1" subscribable="0">
+        <MessagingProgramListLink all="1" href="/edev/3/fsa1/1/msgl"/>
+        <mRID>0ED30F5A0001</mRID>
+        <description>FunctionSetAssignment Guttural</description>
+    </FunctionSetAssignments>
+</FunctionSetAssignmentsList>
