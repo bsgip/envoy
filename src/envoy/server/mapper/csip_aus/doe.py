@@ -3,7 +3,6 @@ from typing import Sequence
 
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from envoy.server.schema import uri
-from envoy.server.schema.sep2.base import ListLink
 from envoy.server.schema.sep2.der import (
     ActivePower,
     DERControlBase,
@@ -12,8 +11,9 @@ from envoy.server.schema.sep2.der import (
     DERProgramListResponse,
     DERProgramResponse,
 )
+from envoy.server.schema.sep2.identification import ListLink
 from envoy.server.schema.sep2.pricing import PrimacyType
-from envoy.server.schema.sep2.time import DateTimeIntervalType
+from envoy.server.schema.sep2.types import DateTimeIntervalType
 
 DOE_PROGRAM_MRID: str = "d0e"
 DOE_PROGRAM_ID: str = "doe"

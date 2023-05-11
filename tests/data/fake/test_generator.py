@@ -25,6 +25,7 @@ from tests.data.fake.generator import (
 
 class CustomFlags(IntFlag):
     """Various bit flags"""
+
     FLAG_1 = auto()
     FLAG_2 = auto()
     FLAG_3 = auto()
@@ -33,6 +34,7 @@ class CustomFlags(IntFlag):
 
 class ParentClass(Base):
     """This is to stress test our data faking tools. It will never be installed in a database"""
+
     __tablename__ = "_parent"
 
     parent_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -48,6 +50,7 @@ class ParentClass(Base):
 
 class ChildClass(Base):
     """This is to stress test our data faking tools. It will never be installed in a database"""
+
     __tablename__ = "_child"
 
     child_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -226,7 +229,10 @@ def test_get_first_generatable_primitive():
     assert get_first_generatable_primitive(Mapped[str], include_optional=True) == str
     assert get_first_generatable_primitive(Mapped[Optional[str]], include_optional=True) == Optional[str]
     assert get_first_generatable_primitive(Mapped[Optional[Union[str, int]]], include_optional=True) == Optional[str]
-    assert get_first_generatable_primitive(Mapped[Optional[Union[StringExtension, int]]], include_optional=True) == Optional[str]
+    assert (
+        get_first_generatable_primitive(Mapped[Optional[Union[StringExtension, int]]], include_optional=True)
+        == Optional[str]
+    )
 
     assert get_first_generatable_primitive(Mapped[ParentClass], include_optional=True) is None
     assert get_first_generatable_primitive(ParentClass, include_optional=True) is None
@@ -294,7 +300,6 @@ def test_generate_xml_instance_relationships():
     p1: FurtherXmlClass = generate_class_instance(FurtherXmlClass, generate_relationships=True)
     assert p1.myChildren is not None and len(p1.myChildren) == 1 and isinstance(p1.myChildren[0], ChildXmlClass)
     assert p1.mySibling is not None and isinstance(p1.mySibling, SiblingXmlClass)
-
 
     p2: FurtherXmlClass = generate_class_instance(FurtherXmlClass, seed=112, generate_relationships=True)
     assert p2.myChildren is not None and len(p2.myChildren) == 1 and isinstance(p2.myChildren[0], ChildXmlClass)
@@ -400,7 +405,9 @@ def test_generate_sql_alchemy_instance_multi_relationships():
 
     p1: ParentClass = generate_class_instance(ParentClass, generate_relationships=True)
 
-    assert p1.children is not None and len(p1.children) == 1, "generate_relationships is True so this should be populated"
+    assert (
+        p1.children is not None and len(p1.children) == 1
+    ), "generate_relationships is True so this should be populated"
     assert isinstance(p1.children[0], ChildClass)
     assert p1.children[0].child_id is not None
     assert p1.children[0].name is not None
@@ -408,7 +415,9 @@ def test_generate_sql_alchemy_instance_multi_relationships():
     assert p1.children[0].created_at is not None
     assert p1.children[0].deleted_at is not None
     assert p1.children[0].parent is not None and p1.children[0].parent == p1, "Backreference should self reference"
-    assert p1.children[0].created_at != p1.children[0].deleted_at, "Checking that fields of the same type get unique values"
+    assert (
+        p1.children[0].created_at != p1.children[0].deleted_at
+    ), "Checking that fields of the same type get unique values"
     assert p1.children[0].long_name != p1.children[0].name, "Checking that fields of the same type get unique values"
 
     p2: ParentClass = generate_class_instance(ParentClass, seed=2, generate_relationships=True)
@@ -419,10 +428,16 @@ def test_generate_sql_alchemy_instance_multi_relationships():
     assert p2.children[0].created_at is not None
     assert p2.children[0].deleted_at is not None
     assert p2.children[0].parent is not None and p2.children[0].parent == p2, "Backreference should self reference"
-    assert p2.children[0].created_at != p2.children[0].deleted_at, "Checking that fields of the same type get unique values"
+    assert (
+        p2.children[0].created_at != p2.children[0].deleted_at
+    ), "Checking that fields of the same type get unique values"
     assert p2.children[0].long_name != p2.children[0].name, "Checking that fields of the same type get unique values"
-    assert p1.children[0].created_at != p2.children[0].created_at, "Checking that different seed numbers yields different results"
-    assert p1.children[0].deleted_at != p2.children[0].deleted_at, "Checking that different seed numbers yields different results"
+    assert (
+        p1.children[0].created_at != p2.children[0].created_at
+    ), "Checking that different seed numbers yields different results"
+    assert (
+        p1.children[0].deleted_at != p2.children[0].deleted_at
+    ), "Checking that different seed numbers yields different results"
 
 
 def test_clone_class_instance_sql_alchemy():

@@ -1,67 +1,15 @@
-from enum import IntEnum
 from typing import Optional
 
 from pydantic_xml import element
 
-from envoy.server.schema.sep2.base import BaseXmlModelWithNS, HexBinary32, IdentifiedObject, Link
-from envoy.server.schema.sep2.base import List as Sep2List
-from envoy.server.schema.sep2.base import ListLink, SubscribableIdentifiedObject, SubscribableList
-from envoy.server.schema.sep2.end_device import DeviceCategory
+from envoy.server.schema.sep2 import primitive_types, types
+from envoy.server.schema.sep2.base import BaseXmlModelWithNS
+from envoy.server.schema.sep2.der_control_types import ActivePower, FixedVar, PowerFactorWithExcitation, ReactivePower
 from envoy.server.schema.sep2.event import RandomizableEvent
+from envoy.server.schema.sep2.identification import IdentifiedObject, Link
+from envoy.server.schema.sep2.identification import List as Sep2List
+from envoy.server.schema.sep2.identification import ListLink, SubscribableIdentifiedObject, SubscribableList
 from envoy.server.schema.sep2.pricing import PrimacyType
-
-
-class SignedPerCent(int):
-    # Used for signed percentages, specified in hundredths of a percent, -10000 - 10000. (10000 = 100%)
-    pass
-
-
-class PerCent(int):
-    # Used for percentages, specified in hundredths of a percent, 0 - 10000. (10000 = 100%)
-    pass
-
-
-class DERUnitRefType(IntEnum):
-    """Specifies context for interpreting percent values:. All other values are reserved"""
-
-    NOT_APPLICABLE = 0
-    PERC_SET_MAX_W = 1
-    PERC_SET_MAX_VAR = 2
-    PERC_STAT_VAR_AVAIL = 3
-    PERC_SET_EFFECTIVE_V = 4
-    PERC_SET_MAX_CHARGE_RATE_W = 5
-    PERC_SET_MAX_DISCHARGE_RATE_W = 6
-    PERC_STAT_W_AVAIL = 7
-
-
-class FixedVar(BaseXmlModelWithNS):
-    """Specifies a signed setpoint for reactive power."""
-
-    refType: DERUnitRefType = element()  # Signed setpoint for reactive power
-    value: SignedPerCent = element()  # Specify a signed setpoint for reactive power in %
-
-
-class PowerFactorWithExcitation(BaseXmlModelWithNS):
-    """Specifies a setpoint for Displacement Power Factor, the ratio between apparent and active powers at the
-    fundamental frequency (e.g. 60 Hz) and includes an excitation flag."""
-
-    displacement: int = element()  # Significand of an unsigned value of cos(theta) between 0 and 1.0.
-    excitation: bool = element()  # True = DER absorbing, False = DER injecting reactive power
-    multiplier: int = element()  # Specifies exponent of 'displacement'.
-
-
-class ReactivePower(BaseXmlModelWithNS):
-    """The reactive power Q"""
-
-    value: int = element()  # Value in volt-amperes reactive (var) (uom 63)
-    multiplier: int = element()  # Specifies exponent of 'value'.
-
-
-class ActivePower(BaseXmlModelWithNS):
-    """The active/real power P"""
-
-    value: int = element()  # Value in volt-amperes reactive (var) (uom 63)
-    multiplier: int = element()  # Specifies exponent of 'value'.
 
 
 class DERControlBase(BaseXmlModelWithNS):
@@ -72,7 +20,7 @@ class DERControlBase(BaseXmlModelWithNS):
     opModFixedPFAbsorbW: Optional[PowerFactorWithExcitation] = element()  # requested PF when AP is being absorbed
     opModFixedPFInjectW: Optional[PowerFactorWithExcitation] = element()  # requested PF when AP is being injected
     opModFixedVar: Optional[FixedVar] = element()  # specifies the delivered or received RP setpoint.
-    opModFixedW: Optional[SignedPerCent] = element()  # specifies a requested charge/discharge mode setpoint
+    opModFixedW: Optional[types.SignedPerCent] = element()  # specifies a requested charge/discharge mode setpoint
     opModFreqDroop: Optional[int] = element()  # Specifies a frequency-watt operation
     opModFreqWatt: Optional[Link] = element()  # Specify DERCurveLink for curveType == 0
     opModHFRTMayTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 1
@@ -85,7 +33,7 @@ class DERControlBase(BaseXmlModelWithNS):
     opModLVRTMayTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 8
     opModLVRTMomentaryCessation: Optional[Link] = element()  # Specify DERCurveLink for curveType == 9
     opModLVRTMustTrip: Optional[Link] = element()  # Specify DERCurveLink for curveType == 10
-    opModMaxLimW: Optional[PerCent] = element()  # maximum active power generation level at electrical coupling point
+    opModMaxLimW: Optional[types.PerCent] = element()  # max active power generation level at electrical coupling point
     opModTargetVar: Optional[ReactivePower] = element()  # Target reactive power, in var
     opModTargetW: Optional[ActivePower] = element()  # Target active power, in Watts
     opModVoltVar: Optional[Link] = element()  # Specify DERCurveLink for curveType == 11
@@ -119,7 +67,9 @@ class DefaultDERControl(SubscribableIdentifiedObject):
 class DERControlResponse(RandomizableEvent, tag="DERControl"):
     """Distributed Energy Resource (DER) time/event-based control."""
 
-    deviceCategory: Optional[HexBinary32] = element()  # the bitmap indicating device categories that SHOULD respond.
+    deviceCategory: Optional[
+        primitive_types.HexBinary32
+    ] = element()  # the bitmap indicating device categories that SHOULD respond.
     DERControlBase_: DERControlBase = element(tag="DERControlBase")
 
 
@@ -145,7 +95,7 @@ class DERProgramListResponse(SubscribableList, tag="DERProgramList"):
 class DemandResponseProgramResponse(IdentifiedObject, tag="DemandResponseProgram"):
     """sep2 Demand response program"""
 
-    availabilityUpdatePercentChangeThreshold: Optional[PerCent] = element()
+    availabilityUpdatePercentChangeThreshold: Optional[types.PerCent] = element()
     availabilityUpdatePowerChangeThreshold: Optional[ActivePower] = element()
     primacy: PrimacyType = element()
     ActiveEndDeviceControlListLink: Optional[ListLink] = element()
@@ -159,7 +109,7 @@ class DemandResponseProgramListResponse(Sep2List, tag="DemandResponseProgramList
 class EndDeviceControlResponse(RandomizableEvent, tag="EndDeviceControl"):
     """Instructs an EndDevice to perform a specified action."""
 
-    deviceCategory: DeviceCategory = element()
+    deviceCategory: types.DeviceCategory = element()
     drProgramMandatory: bool = element()
     loadShiftForward: bool = element()
     overrideDuration: Optional[int] = element()

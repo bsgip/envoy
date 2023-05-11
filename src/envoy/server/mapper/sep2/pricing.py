@@ -9,27 +9,27 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_mrid
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
 from envoy.server.schema import uri
-from envoy.server.schema.sep2.base import Link, ListLink
-from envoy.server.schema.sep2.metering import (
-    CommodityType,
-    ConsumptionBlockType,
-    FlowDirectionType,
-    ReadingType,
-    TOUType,
-    UomType,
-)
+from envoy.server.schema.sep2.identification import Link, ListLink
+from envoy.server.schema.sep2.metering import ReadingType
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
-    PrimacyType,
     RateComponentListResponse,
     RateComponentResponse,
-    RoleFlagsType,
-    ServiceKind,
     TariffProfileListResponse,
     TariffProfileResponse,
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
+)
+from envoy.server.schema.sep2.types import (
+    CommodityType,
+    ConsumptionBlockType,
+    FlowDirectionType,
+    PrimacyType,
+    RoleFlagsType,
+    ServiceKind,
+    TOUType,
+    UomType,
 )
 
 

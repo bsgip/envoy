@@ -3,7 +3,7 @@ from envoy.server.mapper.sep2.function_set_assignments import (
     FunctionSetAssignmentsMapper,
     FunctionSetAssignmentsResponse,
 )
-from envoy.server.schema.sep2 import base
+from envoy.server.schema.sep2 import identification
 from tests.data.fake import generator
 
 
@@ -18,9 +18,9 @@ def test_map_to_response():
     )
     assert result is not None
     assert isinstance(result, FunctionSetAssignmentsResponse)
-    assert isinstance(result.TimeLink, base.Link)
-    assert isinstance(result.DERProgramListLink, base.ListLink)
-    assert isinstance(result.TariffProfileListLink, base.ListLink)
+    assert isinstance(result.TimeLink, identification.Link)
+    assert isinstance(result.DERProgramListLink, identification.ListLink)
+    assert isinstance(result.TariffProfileListLink, identification.ListLink)
 
 
 def test_map_to_list_response():

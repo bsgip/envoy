@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
 from envoy.server.model.site import Site
-from envoy.server.schema.sep2.pricing import CurrencyCode
+from envoy.server.schema.sep2.types import CurrencyCode
 
 PRICE_DECIMAL_PLACES = 4  # How many decimal places do we store / distribute prices with?
 PRICE_DECIMAL_POWER = pow(10, PRICE_DECIMAL_PLACES)
@@ -38,14 +38,20 @@ class TariffGeneratedRate(Base):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the rate was created/changed
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the tariff comes into effect
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this rate applies for
-    import_active_price: Mapped[Decimal] = mapped_column(DECIMAL(10, PRICE_DECIMAL_PLACES))  # calculated rate for importing active power # noqa e501
-    export_active_price: Mapped[Decimal] = mapped_column(DECIMAL(10, PRICE_DECIMAL_PLACES))  # calculated rate for exporting active power # noqa e501
-    import_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(10, PRICE_DECIMAL_PLACES))  # calculated rate for importing reactive power # noqa e501
-    export_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(10, PRICE_DECIMAL_PLACES))  # calculated rate for exporting reactive power # noqa e501
+    import_active_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(10, PRICE_DECIMAL_PLACES)
+    )  # calculated rate for importing active power # noqa e501
+    export_active_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(10, PRICE_DECIMAL_PLACES)
+    )  # calculated rate for exporting active power # noqa e501
+    import_reactive_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(10, PRICE_DECIMAL_PLACES)
+    )  # calculated rate for importing reactive power # noqa e501
+    export_reactive_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(10, PRICE_DECIMAL_PLACES)
+    )  # calculated rate for exporting reactive power # noqa e501
 
     tariff: Mapped["Tariff"] = relationship(back_populates="generated_rates", lazy="raise")
     site: Mapped["Site"] = relationship(lazy="raise")
 
-    __table_args__ = (
-        UniqueConstraint("tariff_id", "site_id", "start_time", name="tariff_id_site_id_start_time_uc"),
-    )
+    __table_args__ = (UniqueConstraint("tariff_id", "site_id", "start_time", name="tariff_id_site_id_start_time_uc"),)

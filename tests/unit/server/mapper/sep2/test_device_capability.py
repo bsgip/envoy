@@ -1,6 +1,6 @@
 from envoy.server.mapper.sep2.device_capability import DeviceCapabilityMapper
-from envoy.server.schema.sep2.base import Link, ListLink
 from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
+from envoy.server.schema.sep2.identification import Link, ListLink
 
 
 def test_map_to_response():

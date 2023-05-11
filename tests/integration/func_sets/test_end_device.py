@@ -5,12 +5,8 @@ from http import HTTPStatus
 import pytest
 from httpx import AsyncClient
 
-from envoy.server.schema.sep2.end_device import (
-    DeviceCategory,
-    EndDeviceListResponse,
-    EndDeviceRequest,
-    EndDeviceResponse,
-)
+from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy.server.schema.sep2.types import DeviceCategory
 from tests.assert_time import assert_nowish
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as AGG_2_VALID_PEM
