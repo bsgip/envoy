@@ -14,17 +14,23 @@ from envoy.server.schema.sep2.metering import ReadingType
 from envoy.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
-    PrimacyType,
     RateComponentListResponse,
     RateComponentResponse,
-    RoleFlagsType,
-    ServiceKind,
     TariffProfileListResponse,
     TariffProfileResponse,
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
-from envoy.server.schema.sep2.types import CommodityType, ConsumptionBlockType, FlowDirectionType, TOUType, UomType
+from envoy.server.schema.sep2.types import (
+    CommodityType,
+    ConsumptionBlockType,
+    FlowDirectionType,
+    PrimacyType,
+    RoleFlagsType,
+    ServiceKind,
+    TOUType,
+    UomType,
+)
 
 
 class TariffProfileMapper:

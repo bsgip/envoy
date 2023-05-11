@@ -1,4 +1,3 @@
-from enum import IntEnum, IntFlag, auto
 from typing import Optional
 
 from pydantic_xml import element
@@ -7,53 +6,14 @@ from envoy.server.schema.sep2.event import RandomizableEvent
 from envoy.server.schema.sep2.identification import IdentifiedObject, Link
 from envoy.server.schema.sep2.identification import List as SepList
 from envoy.server.schema.sep2.identification import ListLink, Resource
-from envoy.server.schema.sep2.types import ConsumptionBlockType, TOUType, UnitValueType
-
-
-class CurrencyCode(IntEnum):
-    """Non exhaustive set of numerical ISO 4217 currency codes. Described in sep2 / ISO 4217"""
-
-    NOT_APPLICABLE = 0
-    AUSTRALIAN_DOLLAR = 36
-    CANADIAN_DOLLAR = 124
-    US_DOLLAR = 840
-    EURO = 978
-
-
-class PrimacyType(IntEnum):
-    """Values possible for indication of Primary provider. Described in sep2.
-
-    It's worth noting that Values 3-64 are reserved, values 65-191 are user defineable and 192-255 are also reserved
-
-    Lower numbers indicate higher priority"""
-
-    IN_HOME_ENERGY_MANAGEMENT_SYSTEM = 0
-    CONTRACTED_PREMISES_SERVICE_PROVIDER = 1
-
-
-class ServiceKind(IntEnum):
-    """sep2 ServiceKind type. All other values are reserved"""
-
-    ELECTRICITY = 0
-    GAS = 1
-    WATER = 2
-    TIME = 3
-    PRESSURE = 4
-    HEAT = 5
-    COOLING = 6
-
-
-class RoleFlagsType(IntFlag):
-    """Specifies the roles that apply to a usage point. Described in sep2. Other bits reserved"""
-
-    NONE = 0
-    IS_MIRROR = auto()
-    IS_PREMISES_AGGREGATION_POINT = auto()
-    IS_PEV = auto()
-    IS_DER = auto()
-    IS_REVENUE_QUALITY = auto()
-    IS_DC = auto()
-    IS_SUBMETER = auto()
+from envoy.server.schema.sep2.types import (
+    ConsumptionBlockType,
+    CurrencyCode,
+    PrimacyType,
+    ServiceKind,
+    TOUType,
+    UnitValueType,
+)
 
 
 class TariffProfileResponse(IdentifiedObject, tag="TariffProfile"):

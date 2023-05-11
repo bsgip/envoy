@@ -1,8 +1,7 @@
 from envoy.server.schema.sep2.der import DERControlBase, DERControlResponse
 from envoy.server.schema.sep2.end_device import AbstractDevice
 from envoy.server.schema.sep2.identification import IdentifiedObject
-from envoy.server.schema.sep2.time import DateTimeIntervalType
-from envoy.server.schema.sep2.types import SubscribableType
+from envoy.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
 from tests.data.fake.generator import generate_class_instance
 
 
