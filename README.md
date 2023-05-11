@@ -21,6 +21,20 @@ The `requirements/` directory contains seperate `requirements.XXX.txt` files for
 
 The latest stable/frozen set of requirements can be found in `requirements/requirements.prod.txt`. This file can be regenerated (from a clean virtual environment) using `pip freeze > requirements/requirements.prod.txt`
 
+## Contributing
+
+The following linters/checkers are run on every PR. It's highly recommended to have these running as part of your development setup. `vscode` has plugins to make this easy or run the below manually
+
+`pip install -r requirements/requirements.dev.txt`
+
+| **Tool** | **Running** | **Purpose** |
+| -------- | ----------- | ----------- |
+| `bandit` | `bandit .` | checking for common security issues |
+| `black` | `black --check .` | validating code style/formatting |
+| `mypy` | `mypy src/` | enforce type hints and other associated linting - excluding tests |
+| `pytest` | `pytest` | Runs all tests (more info below) |
+
+
 ## Running Locally
 
 ### Locally Hosted
