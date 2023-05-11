@@ -5,7 +5,8 @@ from typing import Literal, Optional
 
 from pydantic_xml import attr, element
 
-from envoy.server.schema.sep2.base import BaseXmlModelWithNS, Resource
+from envoy.server.schema.sep2 import base
+from envoy.server.schema.sep2.identification import Resource
 
 
 # p170
@@ -28,7 +29,7 @@ class TimeQualityType(enum.IntEnum):
     intentionally_uncoordinated = 7
 
 
-class DateTimeIntervalType(BaseXmlModelWithNS):
+class DateTimeIntervalType(base.BaseXmlModelWithNS):
     duration: int = element()
     start: TimeType = element()
 

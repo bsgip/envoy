@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic_xml import element
 
-from envoy.server.schema.sep2.base import BaseXmlModelWithNS
+from envoy.server.schema.sep2 import base
 
 
 class ReasonCodeType(enum.IntEnum):
@@ -17,8 +17,9 @@ class ReasonCodeType(enum.IntEnum):
     internal_error = 16384  # Unspecified error due to an issue with some internal logic/system
 
 
-class ErrorResponse(BaseXmlModelWithNS, tag="Error"):
+class ErrorResponse(base.BaseXmlModelWithNS, tag="Error"):
     """Represents a description of a request error and how the client should respond"""
+
     maxRetryDuration: Optional[int] = element()  # Contains the number of seconds the client SHOULD wait before retrying
     reasonCode: ReasonCodeType = element()  # Code indicating the reason for failure.
 
