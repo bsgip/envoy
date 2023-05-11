@@ -4,6 +4,7 @@ line-length = 120
 [tool.pytest.ini_options]
 pythonpath = ["src/"]
 testpaths = "tests"
+filterwarnings = ["error"]
 
 [tool.bandit]
 exclude_dirs = ["tests"]
