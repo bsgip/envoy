@@ -83,13 +83,13 @@ async def test_get_tariffprofilelist_nosite(
     "site_id, start, limit, changed_after, expected_tariffs_with_count",
     [
         # basic pagination
-        (1, None, None, None, [("/tp/3/1", 0)]),
-        (1, 0, 99, None, [("/tp/3/1", 0), ("/tp/2/1", 0), ("/tp/1/1", 8)]),
-        (1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), [("/tp/3/1", 0), ("/tp/2/1", 0)]),
-        (1, 1, 1, None, [("/tp/2/1", 0)]),
+        (1, None, None, None, [("/edev/1/tp/3", 0)]),
+        (1, 0, 99, None, [("/edev/1/tp/3", 0), ("/edev/1/tp/2", 0), ("/edev/1/tp/1", 8)]),
+        (1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), [("/edev/1/tp/3", 0), ("/edev/1/tp/2", 0)]),
+        (1, 1, 1, None, [("/edev/1/tp/2", 0)]),
         # changing site id
-        (2, 0, 99, None, [("/tp/3/2", 0), ("/tp/2/2", 0), ("/tp/1/2", 4)]),
-        (3, 0, 99, None, [("/tp/3/3", 0), ("/tp/2/3", 0), ("/tp/1/3", 0)]),  # no access to this site
+        (2, 0, 99, None, [("/edev/2/tp/3", 0), ("/edev/2/tp/2", 0), ("/edev/2/tp/1", 4)]),
+        (3, 0, 99, None, [("/edev/3/tp/3", 0), ("/edev/3/tp/2", 0), ("/edev/3/tp/1", 0)]),  # no access to this site
     ],
 )
 async def test_get_tariffprofilelist(
@@ -156,12 +156,12 @@ async def test_get_tariffprofile_nosite(
 @pytest.mark.parametrize(
     "tariff_id, site_id, expected_href, expected_ratecount",
     [
-        (1, 1, "/tp/1/1", 8),
-        (1, 2, "/tp/1/2", 4),
-        (1, 3, "/tp/1/3", 0),
-        (1, 4, "/tp/1/4", 0),
-        (2, 1, "/tp/2/1", 0),
-        (3, 1, "/tp/3/1", 0),
+        (1, 1, "/edev/1/tp/1", 8),
+        (1, 2, "/edev/2/tp/1", 4),
+        (1, 3, "/edev/3/tp/1", 0),
+        (1, 4, "/edev/4/tp/1", 0),
+        (2, 1, "/edev/1/tp/2", 0),
+        (3, 1, "/edev/1/tp/3", 0),
         (4, 1, None, None),
     ],
 )
@@ -222,11 +222,11 @@ async def test_get_ratecomponentlist_nositescope(client: AsyncClient, agg_1_head
             5,
             None,
             [
-                "/tp/1/1/rc/2022-03-05/1",
-                "/tp/1/1/rc/2022-03-05/2",
-                "/tp/1/1/rc/2022-03-05/3",
-                "/tp/1/1/rc/2022-03-05/4",
-                "/tp/1/1/rc/2022-03-06/1",
+                "/edev/1/tp/1/rc/2022-03-05/1",
+                "/edev/1/tp/1/rc/2022-03-05/2",
+                "/edev/1/tp/1/rc/2022-03-05/3",
+                "/edev/1/tp/1/rc/2022-03-05/4",
+                "/edev/1/tp/1/rc/2022-03-06/1",
             ],
         ),
         (
@@ -236,11 +236,11 @@ async def test_get_ratecomponentlist_nositescope(client: AsyncClient, agg_1_head
             5,
             None,
             [
-                "/tp/1/1/rc/2022-03-05/4",
-                "/tp/1/1/rc/2022-03-06/1",
-                "/tp/1/1/rc/2022-03-06/2",
-                "/tp/1/1/rc/2022-03-06/3",
-                "/tp/1/1/rc/2022-03-06/4",
+                "/edev/1/tp/1/rc/2022-03-05/4",
+                "/edev/1/tp/1/rc/2022-03-06/1",
+                "/edev/1/tp/1/rc/2022-03-06/2",
+                "/edev/1/tp/1/rc/2022-03-06/3",
+                "/edev/1/tp/1/rc/2022-03-06/4",
             ],
         ),
         (
@@ -250,15 +250,22 @@ async def test_get_ratecomponentlist_nositescope(client: AsyncClient, agg_1_head
             5,
             None,
             [
-                "/tp/1/1/rc/2022-03-06/1",
-                "/tp/1/1/rc/2022-03-06/2",
-                "/tp/1/1/rc/2022-03-06/3",
-                "/tp/1/1/rc/2022-03-06/4",
+                "/edev/1/tp/1/rc/2022-03-06/1",
+                "/edev/1/tp/1/rc/2022-03-06/2",
+                "/edev/1/tp/1/rc/2022-03-06/3",
+                "/edev/1/tp/1/rc/2022-03-06/4",
             ],
         ),
-        (1, 1, 5, 5, None, ["/tp/1/1/rc/2022-03-06/2", "/tp/1/1/rc/2022-03-06/3", "/tp/1/1/rc/2022-03-06/4"]),
+        (
+            1,
+            1,
+            5,
+            5,
+            None,
+            ["/edev/1/tp/1/rc/2022-03-06/2", "/edev/1/tp/1/rc/2022-03-06/3", "/edev/1/tp/1/rc/2022-03-06/4"],
+        ),
         (2, 1, None, None, None, []),
-        (1, 2, None, None, None, ["/tp/1/2/rc/2022-03-05/1"]),
+        (1, 2, None, None, None, ["/edev/2/tp/1/rc/2022-03-05/1"]),
         (
             1,
             2,
@@ -266,10 +273,10 @@ async def test_get_ratecomponentlist_nositescope(client: AsyncClient, agg_1_head
             5,
             None,
             [
-                "/tp/1/2/rc/2022-03-05/1",
-                "/tp/1/2/rc/2022-03-05/2",
-                "/tp/1/2/rc/2022-03-05/3",
-                "/tp/1/2/rc/2022-03-05/4",
+                "/edev/2/tp/1/rc/2022-03-05/1",
+                "/edev/2/tp/1/rc/2022-03-05/2",
+                "/edev/2/tp/1/rc/2022-03-05/3",
+                "/edev/2/tp/1/rc/2022-03-05/4",
             ],
         ),
     ],
@@ -307,12 +314,12 @@ async def test_get_ratecomponentlist(
 @pytest.mark.parametrize(
     "tariff_id, site_id, rc_id, pricing_reading, expected_href, expected_ttis",
     [
-        (1, 1, "2022-03-05", 1, "/tp/1/1/rc/2022-03-05/1", 2),
-        (1, 1, "2022-03-05", 2, "/tp/1/1/rc/2022-03-05/2", 2),
-        (1, 1, "2022-03-06", 3, "/tp/1/1/rc/2022-03-06/3", 1),
-        (1, 3, "2022-03-06", 3, "/tp/1/3/rc/2022-03-06/3", 0),
-        (1, 3, "2022-03-05", 1, "/tp/1/3/rc/2022-03-05/1", 0),
-        (3, 1, "2022-03-05", 1, "/tp/3/1/rc/2022-03-05/1", 0),
+        (1, 1, "2022-03-05", 1, "/edev/1/tp/1/rc/2022-03-05/1", 2),
+        (1, 1, "2022-03-05", 2, "/edev/1/tp/1/rc/2022-03-05/2", 2),
+        (1, 1, "2022-03-06", 3, "/edev/1/tp/1/rc/2022-03-06/3", 1),
+        (1, 3, "2022-03-06", 3, "/edev/3/tp/1/rc/2022-03-06/3", 0),
+        (1, 3, "2022-03-05", 1, "/edev/3/tp/1/rc/2022-03-05/1", 0),
+        (3, 1, "2022-03-05", 1, "/edev/1/tp/3/rc/2022-03-05/1", 0),
     ],
 )
 async def test_get_ratecomponent(
@@ -359,14 +366,14 @@ async def test_get_ratecomponent(
             None,
             5,
             None,
-            [("/tp/1/1/rc/2022-03-05/1/tti/01:02", 11000), ("/tp/1/1/rc/2022-03-05/1/tti/03:04", 21000)],
+            [("/edev/1/tp/1/rc/2022-03-05/1/tti/01:02", 11000), ("/edev/1/tp/1/rc/2022-03-05/1/tti/03:04", 21000)],
         ),
-        (1, 1, "2022-03-06", 3, None, 5, None, [("/tp/1/1/rc/2022-03-06/3/tti/01:02", 43330)]),
+        (1, 1, "2022-03-06", 3, None, 5, None, [("/edev/1/tp/1/rc/2022-03-06/3/tti/01:02", 43330)]),
         (1, 1, "2022-03-07", 1, None, 5, None, []),  # bad date
-        (1, 1, "2022-03-05", 4, None, None, None, [("/tp/1/1/rc/2022-03-05/4/tti/01:02", -14444)]),
-        (1, 1, "2022-03-05", 2, 1, 5, None, [("/tp/1/1/rc/2022-03-05/2/tti/03:04", -22200)]),
+        (1, 1, "2022-03-05", 4, None, None, None, [("/edev/1/tp/1/rc/2022-03-05/4/tti/01:02", -14444)]),
+        (1, 1, "2022-03-05", 2, 1, 5, None, [("/edev/1/tp/1/rc/2022-03-05/2/tti/03:04", -22200)]),
         (1, 1, "2022-03-05", 1, 2, 5, None, []),  # page off the end
-        (1, 2, "2022-03-05", 1, None, 99, None, [("/tp/1/2/rc/2022-03-05/1/tti/01:02", 31000)]),
+        (1, 2, "2022-03-05", 1, None, 99, None, [("/edev/2/tp/1/rc/2022-03-05/1/tti/01:02", 31000)]),
     ],
 )
 async def test_get_timetariffintervallist(

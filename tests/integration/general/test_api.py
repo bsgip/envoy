@@ -35,13 +35,13 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1"),  # Tariff - no site scoping
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/rc"),  # Tariff - no site scoping
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-03-05/1"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-03-05/1/tti"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-03-05/1/tti/01%3A02"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-03-05/1/tti/01%3A02/cti/100"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/1/rc/2022-03-05/1/tti/01%3A02/cti/100/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp/1/rc"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp/1/rc/2022-03-05/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp/1/rc/2022-03-05/1/tti"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp/1/rc/2022-03-05/1/tti/01%3A02"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp/1/rc/2022-03-05/1/tti/01%3A02/cti/100"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp/1/rc/2022-03-05/1/tti/01%3A02/cti/100/1"),
 
     # derp/derc function set
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp"),
