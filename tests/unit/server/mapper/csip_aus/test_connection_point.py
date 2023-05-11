@@ -17,4 +17,4 @@ def test_map_to_response():
     result_optional = ConnectionPointMapper.map_to_response(site_optional)
     assert result_optional is not None
     assert isinstance(result_optional, ConnectionPointResponse)
-    assert result_optional.id == '', "None NMI maps to empty string"
+    assert result_optional.id == "", "None NMI maps to empty string"

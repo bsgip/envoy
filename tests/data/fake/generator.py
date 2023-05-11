@@ -124,15 +124,17 @@ def is_optional_type(t: type) -> bool:
 
 
 def is_member_public(member_name: str) -> bool:
-    """Simple heuristic to test if a member is public (True) or private/internal (False) """
-    return len(member_name) > 0 and member_name[0] != '_'
+    """Simple heuristic to test if a member is public (True) or private/internal (False)"""
+    return len(member_name) > 0 and member_name[0] != "_"
 
 
-def generate_class_instance(t: type,
-                            seed: int = 1,
-                            optional_is_none: bool = False,
-                            generate_relationships: bool = False,
-                            visited_types: Optional[set[type]] = None) -> Any:
+def generate_class_instance(
+    t: type,
+    seed: int = 1,
+    optional_is_none: bool = False,
+    generate_relationships: bool = False,
+    visited_types: Optional[set[type]] = None,
+) -> Any:
     """Given a child class of a key to CLASS_INSTANCE_GENERATORS - generate an instance of that class
     with all properties being assigned unique values based off of seed. The values will match type hints
 
@@ -165,7 +167,6 @@ def generate_class_instance(t: type,
     current_seed = seed
     values: dict[str, Any] = {}
     for member_name in CLASS_MEMBER_FETCHERS[t_generatable_base](t):
-
         # Skip members that are private OR that are public members of the base class
         if not is_member_public(member_name):
             continue
@@ -257,7 +258,6 @@ def clone_class_instance(obj: Any) -> Any:
     # Those values can be basic primitive values or optionally populated
     values: dict[str, Any] = {}
     for member_name in CLASS_MEMBER_FETCHERS[t_generatable_base](t):
-
         # Skip members that are private OR that are public members of the base class
         if not is_member_public(member_name):
             continue
@@ -267,6 +267,7 @@ def clone_class_instance(obj: Any) -> Any:
         values[member_name] = getattr(obj, member_name)
 
     return CLASS_INSTANCE_GENERATORS[t_generatable_base](t, values)
+
 
 # ---------------------------------------
 #
@@ -294,7 +295,7 @@ CLASS_INSTANCE_GENERATORS: dict[type, Callable[[type, dict[str, Any]], Any]] = {
 # the set of functions for accessing all members of a class (keyed by the base class for accessing those members)
 CLASS_MEMBER_FETCHERS: dict[type, Callable[[type], list[str]]] = {
     Base: lambda target: [name for (name, _) in inspect.getmembers(target)],
-    BaseXmlModel: lambda target: list(target.schema()['properties'].keys())
+    BaseXmlModel: lambda target: list(target.schema()["properties"].keys()),
 }
 
 # the set all base class public members keyed by the base class that generated them

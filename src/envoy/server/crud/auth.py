@@ -14,19 +14,14 @@ class ClientIdDetails:
     aggregator_id: int
 
 
-async def select_client_ids_using_lfdi(
-    lfdi: str, session: AsyncSession
-) -> Optional[ClientIdDetails]:
+async def select_client_ids_using_lfdi(lfdi: str, session: AsyncSession) -> Optional[ClientIdDetails]:
     """Query to retrieve certificate and aggregator IDs, if existing.
     NB. Assumption is that only aggregator clients are allowed to communicate with envoy.
 
     Expired certificates will NOT be returned by this function
     """
     stmt = (
-        select(
-            Certificate.certificate_id,
-            AggregatorCertificateAssignment.aggregator_id
-        )
+        select(Certificate.certificate_id, AggregatorCertificateAssignment.aggregator_id)
         .join(
             AggregatorCertificateAssignment,
             Certificate.certificate_id == AggregatorCertificateAssignment.certificate_id,

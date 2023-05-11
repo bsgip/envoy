@@ -13,11 +13,7 @@ from tests.postgres_testing import generate_async_session
 @pytest.mark.parametrize(
     "model, expected_links, uri_parameters",
     [
-        (
-            DeviceCapabilityResponse,
-            {"EndDeviceListLink": {"href": "/edev", "all_": "3"}},
-            {}
-        ),
+        (DeviceCapabilityResponse, {"EndDeviceListLink": {"href": "/edev", "all_": "3"}}, {}),
         # (
         #     EndDeviceListResponse,
         #     {"EndDeviceListLink": {"href": "/edev", "all_": "3"},},
@@ -30,9 +26,14 @@ from tests.postgres_testing import generate_async_session
         # ),
     ],
 )
-async def test_get_supported_links(pg_base_config, model: pydantic_xml.BaseXmlModel,
-                                   expected_links: dict[str, dict[str, str]], uri_parameters: dict[str, Any]):
+async def test_get_supported_links(
+    pg_base_config,
+    model: pydantic_xml.BaseXmlModel,
+    expected_links: dict[str, dict[str, str]],
+    uri_parameters: dict[str, Any],
+):
     async with generate_async_session(pg_base_config) as session:
-        links = await link.get_supported_links(session=session, model=model, aggregator_id=1,
-                                               uri_parameters=uri_parameters)
+        links = await link.get_supported_links(
+            session=session, model=model, aggregator_id=1, uri_parameters=uri_parameters
+        )
     assert links == expected_links
