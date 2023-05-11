@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Sequence
 
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from envoy.server.schema import uri
@@ -60,7 +61,7 @@ class DERControlMapper:
 
     @staticmethod
     def map_to_list_response(
-        does: list[DynamicOperatingEnvelope], total_does: int, site_id: int
+        does: Sequence[DynamicOperatingEnvelope], total_does: int, site_id: int
     ) -> DERControlListResponse:
         """Maps a page of DOEs into a DERControlListResponse. total_does should be the total of all DOEs accessible
         to a particular site"""

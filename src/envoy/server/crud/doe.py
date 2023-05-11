@@ -39,7 +39,6 @@ async def _does_for_day(
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
     select_clause: Union[Select[tuple[int]], Select[tuple[DOE, str]]]
     if is_counting:
-        # select_clause = select(DOE.dynamic_operating_envelope_id)
         select_clause = select(func.count()).select_from(DOE)
     else:
         select_clause = select(DOE, Site.timezone_id)
@@ -85,7 +84,7 @@ async def count_does(session: AsyncSession, aggregator_id: int, site_id: int, ch
 
 async def select_does(
     session: AsyncSession, aggregator_id: int, site_id: int, start: int, changed_after: datetime, limit: int
-) -> list[DOE]:
+) -> Sequence[DOE]:
     """Selects DynamicOperatingEnvelope entities (with pagination). Date will be assessed in the local
     timezone for the site
 
@@ -98,7 +97,7 @@ async def select_does(
 
     return await _does_for_day(
         False, session, aggregator_id, site_id, None, start, changed_after, limit
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
 
 
 async def count_does_for_day(
@@ -116,7 +115,7 @@ async def count_does_for_day(
 
 async def select_does_for_day(
     session: AsyncSession, aggregator_id: int, site_id: int, day: date, start: int, changed_after: datetime, limit: int
-) -> list[DOE]:
+) -> Sequence[DOE]:
     """Selects DynamicOperatingEnvelope entities (with pagination) for a single date. Date will be assessed in the
     local timezone for the site
 
@@ -130,4 +129,4 @@ async def select_does_for_day(
 
     return await _does_for_day(
         False, session, aggregator_id, site_id, day, start, changed_after, limit
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list

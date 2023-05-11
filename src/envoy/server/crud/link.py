@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Iterable, Optional
 
 import pydantic_xml
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -171,7 +172,10 @@ SEP2_LINK_MAP = {
 
 
 async def get_supported_links(
-    session: AsyncSession, model: pydantic_xml.BaseXmlModel, aggregator_id: int, uri_parameters: dict = None
+    session: AsyncSession,
+    model: type[pydantic_xml.BaseXmlModel],
+    aggregator_id: int,
+    uri_parameters: Optional[dict] = None,
 ) -> dict[str, dict[str, str]]:
     """
     Generates all support links for a given model.
@@ -212,7 +216,7 @@ async def get_supported_links(
     return updated_supported_links
 
 
-async def get_resource_counts(session: AsyncSession, link_names: list[str], aggregator_id: int) -> dict[str, int]:
+async def get_resource_counts(session: AsyncSession, link_names: Iterable[str], aggregator_id: int) -> dict[str, int]:
     """
     Returns the resource counts for all the ListLinks in list.
 
@@ -311,7 +315,7 @@ def check_link_supported(
     return check_function_set_supported(function_set)
 
 
-def check_function_set_supported(function_set: FunctionSet, function_set_status: list = FUNCTION_SET_STATUS) -> bool:
+def check_function_set_supported(function_set: FunctionSet, function_set_status: dict = FUNCTION_SET_STATUS) -> bool:
     """Checks whether a function-set is fully supported.
 
     Args:
@@ -331,7 +335,9 @@ def check_function_set_supported(function_set: FunctionSet, function_set_status:
 
 
 def get_formatted_links(
-    link_names: list, uri_parameters: dict = None, link_map: dict[str, LinkParameters] = SEP2_LINK_MAP
+    link_names: Iterable[str],
+    uri_parameters: Optional[dict] = None,
+    link_map: dict[str, LinkParameters] = SEP2_LINK_MAP,
 ) -> dict[str, dict[str, str]]:
     """
     Determines complete link URIs (formatted with the user-supplied parameters)

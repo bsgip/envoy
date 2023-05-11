@@ -13,6 +13,7 @@ FUNCTION_SET_ASSIGNMENTS_MRID_PREFIX = int("F5A", 16)
 
 
 class FunctionSetAssignmentsMapper:
+    @staticmethod
     def map_to_response(fsa_id: int, site_id: int, doe_count: int, tariff_count: int) -> FunctionSetAssignmentsResponse:
         return FunctionSetAssignmentsResponse.validate(
             {
@@ -30,6 +31,7 @@ class FunctionSetAssignmentsMapper:
             }
         )
 
+    @staticmethod
     def map_to_list_response(
         function_set_assignments: list[FunctionSetAssignmentsResponse], site_id: int
     ) -> FunctionSetAssignmentsListResponse:
