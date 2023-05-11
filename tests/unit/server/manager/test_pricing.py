@@ -28,6 +28,7 @@ from envoy.server.schema.sep2.pricing import (
 )
 from tests.data.fake.generator import generate_class_instance
 from tests.postgres_testing import generate_async_session
+from tests.unit.mocks import assert_mock_session, create_mock_session
 
 
 @pytest.mark.parametrize(
@@ -92,7 +93,7 @@ async def test_fetch_tariff_profile_list_no_site(
     mock_TariffProfileMapper: mock.MagicMock,
 ):
     """Simple test to ensure dependencies are called correctly"""
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     start = 111
     changed = datetime.now()
     limit = 222
@@ -111,6 +112,7 @@ async def test_fetch_tariff_profile_list_no_site(
     mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit)
     mock_select_tariff_count.assert_called_once_with(mock_session, changed)
     mock_TariffProfileMapper.map_to_list_nosite_response.assert_called_once_with(tariffs, count)
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
@@ -126,7 +128,7 @@ async def test_fetch_tariff_profile_list(
 ):
     """Simple test to ensure dependencies are called correctly"""
     # Arrange
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     start = 111
     changed = datetime.now()
     limit = 222
@@ -164,6 +166,7 @@ async def test_fetch_tariff_profile_list(
     assert response is mapped_tariffs
     mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit)
     mock_select_tariff_count.assert_called_once_with(mock_session, changed)
+    assert_mock_session(mock_session)
 
     # We called count_unique_rate_days for each tariff returned
     all_mock_count_args = [c.args for c in mock_count_unique_rate_days.call_args_list]
@@ -190,7 +193,7 @@ async def test_fetch_tariff_profile_nosite(
     mock_select_single_tariff: mock.MagicMock, mock_TariffProfileMapper: mock.MagicMock
 ):
     """Simple test to ensure dependencies are called correctly"""
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     tariff_id = 111
     tariff = generate_class_instance(Tariff)
     mapped_tp = generate_class_instance(TariffProfileResponse)
@@ -203,13 +206,14 @@ async def test_fetch_tariff_profile_nosite(
 
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
     mock_TariffProfileMapper.map_to_nosite_response.assert_called_once_with(tariff)
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.pricing.select_single_tariff")
 async def test_fetch_tariff_profile_nosite_missing(mock_select_single_tariff: mock.MagicMock):
     """Simple test to ensure dependencies are called correctly"""
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     tariff_id = 111
 
     mock_select_single_tariff.return_value = None
@@ -218,6 +222,7 @@ async def test_fetch_tariff_profile_nosite_missing(mock_select_single_tariff: mo
     assert response is None
 
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
@@ -230,7 +235,7 @@ async def test_fetch_tariff_profile(
     mock_TariffProfileMapper: mock.MagicMock,
 ):
     """Simple test to ensure dependencies are called correctly"""
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     agg_id = 111
     tariff_id = 222
     site_id = 333
@@ -249,13 +254,14 @@ async def test_fetch_tariff_profile(
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
     expected_count = rates * TOTAL_PRICING_READING_TYPES
     mock_TariffProfileMapper.map_to_response.assert_called_once_with(tariff, site_id, expected_count)
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.pricing.select_single_tariff")
 async def test_fetch_tariff_profile_missing(mock_select_single_tariff: mock.MagicMock):
     """Simple test to ensure dependencies are called correctly"""
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     agg_id = 111
     tariff_id = 222
     site_id = 333
@@ -266,6 +272,7 @@ async def test_fetch_tariff_profile_missing(mock_select_single_tariff: mock.Magi
     assert response is None
 
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
@@ -275,7 +282,7 @@ async def test_fetch_rate_component(
     mock_count_tariff_rates_for_day: mock.MagicMock, mock_RateComponentMapper: mock.MagicMock
 ):
     """Simple test to ensure dependencies are called correctly"""
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     tariff_id = 111
     agg_id = 222
     site_id = 333
@@ -298,6 +305,7 @@ async def test_fetch_rate_component(
     mock_RateComponentMapper.map_to_response.assert_called_once_with(
         count, tariff_id, site_id, pricing_type, date(2012, 2, 3)
     )
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
@@ -307,7 +315,7 @@ async def test_fetch_rate_component_list(
     mock_select_rate_daily_stats: mock.MagicMock, mock_RateComponentMapper: mock.MagicMock
 ):
     """Tests usage of basic dependencies in a simple case"""
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     tariff_id = 111
     agg_id = 222
     site_id = 333
@@ -334,6 +342,7 @@ async def test_fetch_rate_component_list(
         mock_session, agg_id, tariff_id, site_id, 1, changed_after, 2  # adjusted start
     )  # adjusted limit
     mock_RateComponentMapper.map_to_list_response.assert_called_once_with(rate_stats, 0, 0, tariff_id, site_id)
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.parametrize(
@@ -405,7 +414,7 @@ async def test_fetch_rate_component_list_pagination(mock_select_rate_daily_stats
         expected_count,
     ) = page_data
 
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     tariff_id = 111
     agg_id = 222
     site_id = 333
@@ -436,6 +445,7 @@ async def test_fetch_rate_component_list_pagination(mock_select_rate_daily_stats
 
     # check mock assumptions
     mock_select_rate_daily_stats.assert_called_once()
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
@@ -513,7 +523,7 @@ async def test_fetch_consumption_tariff_interval_list(
     price = 12345
     pricing_type = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
     mapped_cti_list = generate_class_instance(ConsumptionTariffIntervalListResponse)
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=date(2022, 1, 2))
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=time(1, 2))
     mock_select_single_site_with_site_id.return_value = generate_class_instance(Site)
@@ -533,6 +543,7 @@ async def test_fetch_consumption_tariff_interval_list(
     mock_ConsumptionTariffIntervalMapper.map_to_list_response.assert_called_once_with(
         tariff_id, site_id, pricing_type, date(2022, 1, 2), time(1, 2), Decimal("1.2345")
     )  # converted price
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
@@ -554,7 +565,7 @@ async def test_fetch_consumption_tariff_interval(
     price = -14567
     pricing_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
     mapped_cti = generate_class_instance(ConsumptionTariffIntervalResponse)
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=date(2022, 1, 2))
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=time(1, 2))
     mock_select_single_site_with_site_id.return_value = generate_class_instance(Site)
@@ -574,6 +585,7 @@ async def test_fetch_consumption_tariff_interval(
     mock_ConsumptionTariffIntervalMapper.map_to_response.assert_called_once_with(
         tariff_id, site_id, pricing_type, date(2022, 1, 2), time(1, 2), Decimal("-1.4567")
     )  # converted price
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
@@ -596,7 +608,7 @@ async def test_fetch_time_tariff_interval_existing(
     pricing_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
     existing_rate: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate)
     mapped_interval: TimeTariffIntervalResponse = generate_class_instance(TimeTariffIntervalResponse)
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     parsed_date = date(2022, 1, 2)
     parsed_time = time(3, 4)
 
@@ -618,6 +630,7 @@ async def test_fetch_time_tariff_interval_existing(
         mock_session, aggregator_id, tariff_id, site_id, parsed_date, parsed_time
     )
     mock_TimeTariffIntervalMapper.map_to_response.assert_called_once_with(existing_rate, pricing_type)
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
@@ -636,7 +649,7 @@ async def test_fetch_time_tariff_interval_missing(
     rate_component_id = "2023-02-01"
     time_tariff_interval = "09:08"
     pricing_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     parsed_date = date(2022, 1, 2)
     parsed_time = time(3, 4)
 
@@ -656,6 +669,7 @@ async def test_fetch_time_tariff_interval_missing(
     mock_select_tariff_rate_for_day_time.assert_called_once_with(
         mock_session, aggregator_id, tariff_id, site_id, parsed_date, parsed_time
     )
+    assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
@@ -678,7 +692,7 @@ async def test_fetch_time_tariff_interval_list(
     existing_rates: list[TariffGeneratedRate] = [generate_class_instance(TariffGeneratedRate)]
     mapped_list_response: TimeTariffIntervalListResponse = generate_class_instance(TimeTariffIntervalListResponse)
     total_rate_count = 542
-    mock_session = mock.Mock()
+    mock_session = create_mock_session()
     parsed_date = date(2022, 1, 2)
     start = 2
     after = datetime(2023, 1, 2, 3, 4)
@@ -706,3 +720,4 @@ async def test_fetch_time_tariff_interval_list(
     mock_TimeTariffIntervalMapper.map_to_list_response.assert_called_once_with(
         existing_rates, pricing_type, total_rate_count
     )
+    assert_mock_session(mock_session)

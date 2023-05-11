@@ -71,6 +71,35 @@ jobs:
         run: |
           mypy src/
 
+  pytest_py310:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.1.0
+        
+      - name: Setup Python
+        uses: actions/setup-python@v4.2.0
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install .
+      
+      - name: Run Pytest
+        run: |
+          sudo apt install -y postgresql
+          pip install -r requirements/requirements.testing.txt
+          pytest --junit-xml=.test_report.xml
+        env:
+         DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"
+      - name: Upload Results
+        uses: test-summary/action@v1
+        with:
+          paths: .test_report.xml
+        if: always()
+
   pytest_py311:
     runs-on: ubuntu-latest
     steps:

@@ -6,7 +6,7 @@ from http import HTTPStatus
 from fastapi import HTTPException, Request
 from fastapi_async_sqlalchemy import db
 
-from envoy.server.crud import auth
+from envoy.server.crud.auth import select_client_ids_using_lfdi
 
 
 class LFDIAuthDepends:
@@ -32,7 +32,7 @@ class LFDIAuthDepends:
         lfdi = self.generate_lfdi_from_pem(cert_fingerprint)
 
         async with db():
-            client_ids = await auth.select_client_ids_using_lfdi(lfdi, db.session)
+            client_ids = await select_client_ids_using_lfdi(lfdi, db.session)
 
         if not client_ids:
             raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised certificate ID.")

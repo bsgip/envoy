@@ -70,7 +70,8 @@ def test_xml_round_trip(
     the example"""
 
     file_loc = os.path.join(INPUT_DIR, file_name)
-    buff = open(file_loc).read()
+    with open(file_loc) as fp:
+        buff = fp.read()
 
     # parse the input buffer to ElementTree.Element
     ref_as_XML = ElementTree.fromstring(buff)

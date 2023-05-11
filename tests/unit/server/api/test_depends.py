@@ -21,9 +21,7 @@ from tests.integration.integration_server import cert_pem_header
 def test_generate_lfdi_from_fingerprint():
     """sep2 defines LFDI as the first 20 octets of the sha256 certificate hash. This test
     is pulled direct from an example in the standard"""
-    lfdi = LFDIAuthDepends._cert_fingerprint_to_lfdi(
-        "3e4f45ab31edfe5b67e343e5e4562e31984e23e5349e2ad745672ed145ee213a"
-    )
+    lfdi = LFDIAuthDepends._cert_fingerprint_to_lfdi("3e4f45ab31edfe5b67e343e5e4562e31984e23e5349e2ad745672ed145ee213a")
 
     assert lfdi == "3e4f45ab31edfe5b67e343e5e4562e31984e23e5"
 
@@ -50,16 +48,17 @@ async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response
 
 
 @pytest.mark.anyio
-@mock.patch("envoy.server.crud.auth.select_client_ids_using_lfdi")
+@mock.patch("envoy.server.api.depends.select_client_ids_using_lfdi")
+@mock.patch("envoy.server.api.depends.db")
 async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_response(
-    mock_select_client_ids_using_lfdi: mock.MagicMock
+    mock_db: mock.MagicMock, mock_select_client_ids_using_lfdi: mock.MagicMock
 ):
     # Arrange
     mock_select_client_ids_using_lfdi.return_value = None
     req = Request(
         {
             "type": "http",
-            "headers": Headers({cert_pem_header: TEST_CERTIFICATE_PEM_1.decode('utf-8')}).raw,
+            "headers": Headers({cert_pem_header: TEST_CERTIFICATE_PEM_1.decode("utf-8")}).raw,
         }
     )
 
