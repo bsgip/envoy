@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from datetime import date, time
+from datetime import date, datetime, time
 from decimal import Decimal
 
 import pytest
@@ -376,3 +376,27 @@ def test_time_tariff_interval_list_mapping(
     # cursory check that we mapped each rate into the response
     assert mock_PricingReadingTypeMapper.extract_price.call_count == len(rates)
     assert mock_ConsumptionTariffIntervalMapper.list_href.call_count == len(rates)
+
+
+def test_mrid_uniqueness():
+    """Test our mrid's for the mapped entities differ from each other despite sharing database ids"""
+    id = 1
+    reading_type = PricingReadingType(id)
+    day = datetime.fromtimestamp(id).date()
+
+    tariff: Tariff = generate_class_instance(Tariff)
+    rate: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate)
+    tariff.tariff_id = id
+    tariff.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
+
+    rate.tariff_generated_rate_id = id
+    rate.tariff_id = id
+    rate.site_id = id
+
+    tti = TimeTariffIntervalMapper.map_to_response(rate, reading_type)
+    rc = RateComponentMapper.map_to_response(999, id, id, reading_type, day)
+    tp = TariffProfileMapper.map_to_response(tariff, id, 999)
+
+    assert tti.mRID != rc.mRID
+    assert tti.mRID != tp.mRID
+    assert rc.mRID != tp.mRID

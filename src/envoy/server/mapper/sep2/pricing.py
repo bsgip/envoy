@@ -32,6 +32,9 @@ from envoy.server.schema.sep2.types import (
     UomType,
 )
 
+TARIFF_PROFILE_MRID_PREFIX: int = int("B111", 16)
+RATE_MRID_PREFIX: int = int("D01A", 16)
+
 
 class TariffProfileMapper:
     @staticmethod
@@ -39,7 +42,7 @@ class TariffProfileMapper:
         return TariffProfileResponse.validate(
             {
                 "href": tp_href,
-                "mRID": f"{tariff.tariff_id:x}",
+                "mRID": generate_mrid(TARIFF_PROFILE_MRID_PREFIX, tariff.tariff_id),
                 "description": tariff.name,
                 "currency": tariff.currency_code,
                 "pricePowerOfTenMultiplier": PRICE_DECIMAL_PLACES,
@@ -192,7 +195,7 @@ class RateComponentMapper:
         return RateComponentResponse.validate(
             {
                 "href": rc_href,
-                "mRID": generate_mrid(tariff_id, site_id, start_timestamp, pricing_reading),
+                "mRID": generate_mrid(TARIFF_PROFILE_MRID_PREFIX, tariff_id, site_id, start_timestamp, pricing_reading),
                 "description": pricing_reading.name,
                 "roleFlags": RoleFlagsType.NONE,
                 "ReadingTypeLink": Link(href=PricingReadingTypeMapper.pricing_reading_type_href(pricing_reading)),
@@ -316,7 +319,11 @@ class TimeTariffIntervalMapper:
         return TimeTariffIntervalResponse.validate(
             {
                 "href": href,
-                "mRID": f"{rate.tariff_generated_rate_id:x}",
+                "mRID": generate_mrid(
+                    RATE_MRID_PREFIX,
+                    rate.tariff_generated_rate_id,
+                    pricing_reading,
+                ),
                 "version": 0,
                 "description": rate.start_time.isoformat(),
                 "touTier": TOUType.NOT_APPLICABLE,

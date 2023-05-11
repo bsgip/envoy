@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Sequence
 
+from envoy.server.mapper.common import generate_mrid
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from envoy.server.schema import uri
 from envoy.server.schema.sep2.der import (
@@ -15,7 +16,7 @@ from envoy.server.schema.sep2.identification import ListLink
 from envoy.server.schema.sep2.pricing import PrimacyType
 from envoy.server.schema.sep2.types import DateTimeIntervalType
 
-DOE_PROGRAM_MRID: str = "d0e"
+DOE_PROGRAM_MRID_PREFIX: int = int("D0E", 16)
 DOE_PROGRAM_ID: str = "doe"
 
 
@@ -35,7 +36,7 @@ class DERControlMapper:
         """Creates a csip aus compliant DERControlResponse from the specific doe"""
         return DERControlResponse.validate(
             {
-                "mRID": f"{doe.dynamic_operating_envelope_id:x}",  # mrid must be a hex encoded string
+                "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, doe.site_id, doe.dynamic_operating_envelope_id),
                 "version": 1,
                 "description": doe.start_time.isoformat(),
                 "interval": DateTimeIntervalType.validate(
@@ -92,7 +93,7 @@ class DERProgramMapper:
         return DERProgramResponse.validate(
             {
                 "href": DERProgramMapper.doe_href(site_id),
-                "mRID": f"{DOE_PROGRAM_MRID}{site_id:x}",  # mrid must be a hex encoded string
+                "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, site_id),
                 "primacy": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
                 "description": "Dynamic Operating Envelope",
                 "DERControlListLink": ListLink.validate(

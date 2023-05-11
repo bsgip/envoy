@@ -111,3 +111,15 @@ def test_map_derp_doe_program_list_response():
     assert all([isinstance(p, DERProgramResponse) for p in result.DERProgram])
     assert result.all_ == 1
     assert result.results == 1
+
+
+def test_mrid_uniqueness():
+    """Test our mrids for controls differ from programs even when the ID's are the same"""
+    site_id = 1
+    doe: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope)
+    doe.site_id = site_id
+    doe.dynamic_operating_envelope_id = site_id  # intentionally the same as site_id
+
+    program = DERProgramMapper.doe_program_response(site_id, 999)
+    control = DERControlMapper.map_to_response(doe)
+    assert program.mRID != control.mRID
