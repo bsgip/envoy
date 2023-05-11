@@ -1,27 +1,9 @@
 from typing import Optional
 
-from pydantic_xml import attr, element
+from pydantic_xml import element
 
-from envoy.server.schema.sep2 import primitive_types, types
-from envoy.server.schema.sep2.identification import Resource
+from envoy.server.schema.sep2.identification import RespondableSubscribableIdentifiedObject
 from envoy.server.schema.sep2.types import DateTimeIntervalType, OneHourRangeType, TimeType
-
-
-class RespondableResource(Resource):
-    """A Resource to which a Response can be requested."""
-
-    replyTo: Optional[str] = attr()
-    responseRequired: Optional[primitive_types.HexBinary32] = attr()
-
-
-class RespondableSubscribableIdentifiedObject(RespondableResource):
-    """An IdentifiedObject to which a Response can be requested."""
-
-    subscribable: Optional[types.SubscribableType] = attr()
-
-    description: Optional[str] = element()
-    mRID: primitive_types.HexBinary128 = element()
-    version: Optional[types.VersionType] = element()
 
 
 class Event(RespondableSubscribableIdentifiedObject):
