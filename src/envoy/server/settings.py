@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from pydantic import BaseSettings, PostgresDsn
 
@@ -15,13 +15,13 @@ class AppSettings(BaseSettings):
     cert_pem_header: str = "x-forwarded-client-cert"
     default_timezone: str = "Australia/Brisbane"
 
-    database_url: PostgresDsn
+    database_url: Optional[PostgresDsn]
     commit_on_exit: bool = False
 
     class Config:
         validate_assignment = True
-        env_file: str = '.env'
-        env_file_encoding: str = 'utf-8'
+        env_file: str = ".env"
+        env_file_encoding: str = "utf-8"
 
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:

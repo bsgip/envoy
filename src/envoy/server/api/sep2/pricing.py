@@ -46,10 +46,12 @@ async def get_pricingreadingtype(reading_type: PricingReadingType) -> XmlRespons
 
 @router.head(uri.TariffProfileListUnscopedUri)
 @router.get(uri.TariffProfileListUnscopedUri, status_code=HTTPStatus.OK)
-async def get_tariffprofilelist_nositescope(request: Request,
-                                            start: list[int] = Query([0], alias="s"),
-                                            after: list[int] = Query([0], alias="a"),
-                                            limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
+async def get_tariffprofilelist_nositescope(
+    request: Request,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> XmlResponse:
     """Responds with a paginated list of tariff profiles available to the current client. These tariffs
     will not lead to any prices directly as prices are specific to site/end devices which can be
     discovered via function set assignments. This endpoint is purely for strict sep2 compliance
@@ -68,7 +70,7 @@ async def get_tariffprofilelist_nositescope(request: Request,
             db.session,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
-            limit=extract_limit_from_paging_param(limit)
+            limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -78,11 +80,13 @@ async def get_tariffprofilelist_nositescope(request: Request,
 
 @router.head(uri.TariffProfileListUri)
 @router.get(uri.TariffProfileListUri, status_code=HTTPStatus.OK)
-async def get_tariffprofilelist(request: Request,
-                                site_id: int,
-                                start: list[int] = Query([0], alias="s"),
-                                after: list[int] = Query([0], alias="a"),
-                                limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
+async def get_tariffprofilelist(
+    request: Request,
+    site_id: int,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> XmlResponse:
     """Responds with a paginated list of tariff profiles available to the current client. These tariffs
     will be scoped specifically to the specified site_id
 
@@ -103,7 +107,7 @@ async def get_tariffprofilelist(request: Request,
             site_id=site_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
-            limit=extract_limit_from_paging_param(limit)
+            limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -127,10 +131,7 @@ async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) 
 
     """
     try:
-        tp = await TariffProfileManager.fetch_tariff_profile_no_site(
-            db.session,
-            tariff_id
-        )
+        tp = await TariffProfileManager.fetch_tariff_profile_no_site(db.session, tariff_id)
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
@@ -142,11 +143,13 @@ async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) 
 
 @router.head(uri.RateComponentListUnscopedUri)
 @router.get(uri.RateComponentListUnscopedUri, status_code=HTTPStatus.OK)
-async def get_ratecomponentlist_nositescope(tariff_id: int,
-                                            request: Request,
-                                            start: list[int] = Query([0], alias="s"),
-                                            after: list[int] = Query([0], alias="a"),
-                                            limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
+async def get_ratecomponentlist_nositescope(
+    tariff_id: int,
+    request: Request,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> XmlResponse:
     """Responds with a paginated list of RateComponents belonging to tariff_id. This will
     always be empty as all prices are site specific. This endpoint is purely for strict sep2 compliance.
 
@@ -165,11 +168,7 @@ async def get_ratecomponentlist_nositescope(tariff_id: int,
     # return an empty list - clients will only discover this endpoint by querying for tariff profiles
     # directly. Tariff profiles need to be discovered via function set assignments and from there
     # they will directed to the appropriate endpoint describing site scoped rates
-    return XmlResponse(RateComponentListResponse.validate({
-        "all_": 0,
-        "results": 0,
-        "href": request.url.path
-    }))
+    return XmlResponse(RateComponentListResponse.validate({"all_": 0, "results": 0, "href": request.url.path}))
 
 
 @router.head(uri.TariffProfileUri)
@@ -188,10 +187,7 @@ async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request
     """
     try:
         tp = await TariffProfileManager.fetch_tariff_profile(
-            db.session,
-            extract_aggregator_id(request),
-            tariff_id,
-            site_id
+            db.session, extract_aggregator_id(request), tariff_id, site_id
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -204,12 +200,14 @@ async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request
 
 @router.head(uri.RateComponentListUri)
 @router.get(uri.RateComponentListUri, status_code=HTTPStatus.OK)
-async def get_ratecomponentlist(tariff_id: int,
-                                site_id: int,
-                                request: Request,
-                                start: list[int] = Query([0], alias="s"),
-                                after: list[int] = Query([0], alias="a"),
-                                limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
+async def get_ratecomponentlist(
+    tariff_id: int,
+    site_id: int,
+    request: Request,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> XmlResponse:
     """Responds with a paginated list of RateComponents belonging to tariff_id/site_id.
 
     Args:
@@ -232,7 +230,7 @@ async def get_ratecomponentlist(tariff_id: int,
             site_id=site_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
-            limit=extract_limit_from_paging_param(limit)
+            limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -242,11 +240,9 @@ async def get_ratecomponentlist(tariff_id: int,
 
 @router.head(uri.RateComponentUri)
 @router.get(uri.RateComponentUri, status_code=HTTPStatus.OK)
-async def get_singleratecomponent(tariff_id: int,
-                                  site_id: int,
-                                  rate_component_id: str,
-                                  pricing_reading: PricingReadingType,
-                                  request: Request) -> XmlResponse:
+async def get_singleratecomponent(
+    tariff_id: int, site_id: int, rate_component_id: str, pricing_reading: PricingReadingType, request: Request
+) -> XmlResponse:
     """Responds with a single RateComponent resource identified by the parent tariff_id and target rate_component_id.
 
 
@@ -268,7 +264,7 @@ async def get_singleratecomponent(tariff_id: int,
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
-            pricing_type=pricing_reading
+            pricing_type=pricing_reading,
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -281,14 +277,16 @@ async def get_singleratecomponent(tariff_id: int,
 
 @router.head(uri.TimeTariffIntervalListUri)
 @router.get(uri.TimeTariffIntervalListUri, status_code=HTTPStatus.OK)
-async def get_timetariffintervallist(tariff_id: int,
-                                     site_id: int,
-                                     rate_component_id: str,
-                                     pricing_reading: PricingReadingType,
-                                     request: Request,
-                                     start: list[int] = Query([0], alias="s"),
-                                     after: list[int] = Query([0], alias="a"),
-                                     limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
+async def get_timetariffintervallist(
+    tariff_id: int,
+    site_id: int,
+    rate_component_id: str,
+    pricing_reading: PricingReadingType,
+    request: Request,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> XmlResponse:
     """Responds with a paginated list of TimeTariffInterval entities belonging to the specified tariff/rate_component.
 
     Args:
@@ -315,7 +313,7 @@ async def get_timetariffintervallist(tariff_id: int,
             pricing_type=pricing_reading,
             start=extract_start_from_paging_param(start),
             after=extract_datetime_from_paging_param(after),
-            limit=extract_limit_from_paging_param(limit)
+            limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -325,12 +323,14 @@ async def get_timetariffintervallist(tariff_id: int,
 
 @router.head(uri.TimeTariffIntervalUri)
 @router.get(uri.TimeTariffIntervalUri, status_code=HTTPStatus.OK)
-async def get_singletimetariffinterval(tariff_id: int,
-                                       site_id: int,
-                                       rate_component_id: str,
-                                       pricing_reading: PricingReadingType,
-                                       tti_id: str,
-                                       request: Request) -> XmlResponse:
+async def get_singletimetariffinterval(
+    tariff_id: int,
+    site_id: int,
+    rate_component_id: str,
+    pricing_reading: PricingReadingType,
+    tti_id: str,
+    request: Request,
+) -> XmlResponse:
     """Responds with a single TimeTariffInterval resource identified by the set of ID's.
 
 
@@ -354,7 +354,7 @@ async def get_singletimetariffinterval(tariff_id: int,
             site_id=site_id,
             rate_component_id=rate_component_id,
             time_tariff_interval=tti_id,
-            pricing_type=pricing_reading
+            pricing_type=pricing_reading,
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -367,16 +367,18 @@ async def get_singletimetariffinterval(tariff_id: int,
 
 @router.head(uri.ConsumptionTariffIntervalListUri)
 @router.get(uri.ConsumptionTariffIntervalListUri, status_code=HTTPStatus.OK)
-async def get_consumptiontariffintervallist(tariff_id: int,
-                                            site_id: int,
-                                            rate_component_id: str,
-                                            pricing_reading: PricingReadingType,
-                                            tti_id: str,
-                                            sep2_price: int,
-                                            request: Request,
-                                            start: list[int] = Query([0], alias="s"),
-                                            after: list[int] = Query([0], alias="a"),
-                                            limit: list[int] = Query([1], alias="l"),) -> XmlResponse:
+async def get_consumptiontariffintervallist(
+    tariff_id: int,
+    site_id: int,
+    rate_component_id: str,
+    pricing_reading: PricingReadingType,
+    tti_id: str,
+    sep2_price: int,
+    request: Request,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> XmlResponse:
     """Responds with a paginated list of ConsumptionTariffInterval belonging to specified parent ids.
 
     This endpoint is not necessary as it will always return a single price that is already encoded in the URI. It's
@@ -407,7 +409,7 @@ async def get_consumptiontariffintervallist(tariff_id: int,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
             time_tariff_interval=tti_id,
-            sep2_price=sep2_price
+            sep2_price=sep2_price,
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -419,13 +421,15 @@ async def get_consumptiontariffintervallist(tariff_id: int,
 
 @router.head(uri.ConsumptionTariffIntervalUri)
 @router.get(uri.ConsumptionTariffIntervalUri, status_code=HTTPStatus.OK)
-async def get_singleconsumptiontariffinterval(tariff_id: int,
-                                              site_id: int,
-                                              rate_component_id: str,
-                                              pricing_reading: PricingReadingType,
-                                              tti_id: str,
-                                              sep2_price: int,
-                                              request: Request) -> XmlResponse:
+async def get_singleconsumptiontariffinterval(
+    tariff_id: int,
+    site_id: int,
+    rate_component_id: str,
+    pricing_reading: PricingReadingType,
+    tti_id: str,
+    sep2_price: int,
+    request: Request,
+) -> XmlResponse:
     """Responds with a single ConsumptionTariffInterval resource.
 
     This endpoint is not necessary as it will always return a single price that is already encoded in the URI. It's
@@ -454,7 +458,7 @@ async def get_singleconsumptiontariffinterval(tariff_id: int,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
             time_tariff_interval=tti_id,
-            sep2_price=sep2_price
+            sep2_price=sep2_price,
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

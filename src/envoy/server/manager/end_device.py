@@ -21,9 +21,7 @@ class EndDeviceManager:
     async def fetch_enddevice_with_site_id(
         session: AsyncSession, site_id: int, aggregator_id: int
     ) -> Optional[EndDeviceResponse]:
-        site = await select_single_site_with_site_id(
-            session=session, site_id=site_id, aggregator_id=aggregator_id
-        )
+        site = await select_single_site_with_site_id(session=session, site_id=site_id, aggregator_id=aggregator_id)
         if site is None:
             return None
         return EndDeviceMapper.map_to_response(site)
@@ -32,35 +30,27 @@ class EndDeviceManager:
     async def add_or_update_enddevice_for_aggregator(
         session: AsyncSession, aggregator_id: int, end_device: EndDeviceRequest
     ) -> int:
-        site = EndDeviceMapper.map_from_request(
-            end_device, aggregator_id, datetime.now(tz=get_localzone())
-        )
+        site = EndDeviceMapper.map_from_request(end_device, aggregator_id, datetime.now(tz=get_localzone()))
         result = await upsert_site_for_aggregator(session, aggregator_id, site)
         await session.commit()
         return result
 
     @staticmethod
     async def fetch_connection_point_for_site(
-        session: AsyncSession, site_id: int,  aggregator_id: int
+        session: AsyncSession, site_id: int, aggregator_id: int
     ) -> Optional[ConnectionPointResponse]:
         """Given a site ID and requesting aggregator. Fetch the connection point associated with a particular site"""
-        site = await select_single_site_with_site_id(
-            session=session, site_id=site_id, aggregator_id=aggregator_id
-        )
+        site = await select_single_site_with_site_id(session=session, site_id=site_id, aggregator_id=aggregator_id)
         if site is None:
             return None
         return ConnectionPointMapper.map_to_response(site)
 
     @staticmethod
-    async def update_nmi_for_site(
-        session: AsyncSession, aggregator_id: int, site_id: int, nmi: Optional[str]
-    ) -> bool:
+    async def update_nmi_for_site(session: AsyncSession, aggregator_id: int, site_id: int, nmi: Optional[str]) -> bool:
         """Attempts to update the NMI for a designated site. Returns True if the update proceeded successfully,
-        False if the Site doesn't exist / belongs to another aggregator_id """
+        False if the Site doesn't exist / belongs to another aggregator_id"""
 
-        site = await select_single_site_with_site_id(
-            session=session, site_id=site_id, aggregator_id=aggregator_id
-        )
+        site = await select_single_site_with_site_id(session=session, site_id=site_id, aggregator_id=aggregator_id)
         if site is None:
             return False
 
@@ -78,8 +68,6 @@ class EndDeviceListManager:
         after: datetime,
         limit: int,
     ) -> EndDeviceListResponse:
-        site_list = await select_all_sites_with_aggregator_id(
-            session, aggregator_id, start, after, limit
-        )
+        site_list = await select_all_sites_with_aggregator_id(session, aggregator_id, start, after, limit)
         site_count = await select_aggregator_site_count(session, aggregator_id, after)
         return EndDeviceListMapper.map_to_response(site_list, site_count)

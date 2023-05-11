@@ -28,6 +28,6 @@ async def device_capability(request: Request) -> XmlResponse:
         fastapi.Response object.
     """
     device_capability = await DeviceCapabilityManager.fetch_device_capability(
-        session=db.session,
-        aggregator_id=extract_aggregator_id(request))
+        session=db.session, aggregator_id=extract_aggregator_id(request)
+    )
     return XmlResponse(device_capability)

@@ -20,6 +20,7 @@ def test_get_tz_key_via_zoneinfo():
     assert get_tz_key(now_time) == "Australia/Brisbane"
 
 
+# fmt: off
 @pytest.mark.parametrize("dt, dst_start, dst_end, dst_offset", [
     # Currently in DST. start indicates the time in the past that DST turned on. End indicates when it swaps in the near future
     (datetime(2022, 2, 3, 4, 5, 6, tzinfo=ZoneInfo("Australia/Sydney")), 1633190400, 1648915200, 3600),
@@ -32,6 +33,7 @@ def test_get_tz_key_via_zoneinfo():
     (datetime(2022, 2, 3, 4, 5, 6), 0, 0, 0),  # No Timezone
     (datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc), 0, 0, 0),  # UTC Timezone
 ])
+# fmt: on
 def test_get_dst_info(dt: datetime, dst_end: int, dst_start: int, dst_offset: int):
     result = get_dst_info(dt)
 

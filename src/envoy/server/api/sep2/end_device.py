@@ -76,7 +76,7 @@ async def get_enddevice_list(
             extract_aggregator_id(request),
             start=extract_start_from_paging_param(start),
             after=extract_datetime_from_paging_param(after),
-            limit=extract_limit_from_paging_param(limit)
+            limit=extract_limit_from_paging_param(limit),
         )
     )
 

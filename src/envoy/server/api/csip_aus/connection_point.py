@@ -61,5 +61,5 @@ async def update_connectionpoint(
         return Response(status_code=HTTPStatus.NOT_FOUND)
 
     return Response(
-        status_code=HTTPStatus.CREATED,
-        headers={LOCATION_HEADER_NAME: uri.ConnectionPointUri.format(site_id=site_id)})
+        status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: uri.ConnectionPointUri.format(site_id=site_id)}
+    )

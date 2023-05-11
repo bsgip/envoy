@@ -26,14 +26,12 @@ class EndDeviceMapper:
                 "deviceCategory": f"{site.device_category:x}",  # deviceCategory is a hex string
                 "changedTime": int(site.changed_time.timestamp()),
                 "enabled": True,
-                "ConnectionPointLink": ConnectionPointLink(href=edev_href + "/cp")
+                "ConnectionPointLink": ConnectionPointLink(href=edev_href + "/cp"),
             }
         )
 
     @staticmethod
-    def map_from_request(
-        end_device: EndDeviceRequest, aggregator_id: int, changed_time: datetime
-    ) -> Site:
+    def map_from_request(end_device: EndDeviceRequest, aggregator_id: int, changed_time: datetime) -> Site:
         # deviceCategory is a hex string
         device_category: DeviceCategory
         if end_device.deviceCategory:
@@ -52,22 +50,18 @@ class EndDeviceMapper:
             changed_time=changed_time,
             aggregator_id=aggregator_id,
             device_category=device_category,
-            timezone_id=settings.default_timezone
+            timezone_id=settings.default_timezone,
         )
 
 
 class EndDeviceListMapper:
     @staticmethod
-    def map_to_response(
-        site_list: Sequence[Site], site_count: int
-    ) -> EndDeviceListResponse:
+    def map_to_response(site_list: Sequence[Site], site_count: int) -> EndDeviceListResponse:
         return EndDeviceListResponse.validate(
             {
                 "href": "/edev",
                 "all_": site_count,
                 "results": len(site_list),
-                "EndDevice": [
-                    EndDeviceMapper.map_to_response(site) for site in site_list
-                ],
+                "EndDevice": [EndDeviceMapper.map_to_response(site) for site in site_list],
             }
         )

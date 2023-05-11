@@ -6,7 +6,9 @@ def assert_list_type(expected_element_type: type, obj: Any, count: Optional[int]
 
     if count is specified - an additional assert will be made on the count of elements in obj"""
     assert obj is not None
-    assert type(obj) == list or get_origin(type(obj)) == list, f"Expected a list type for obj but got {type(obj)} instead"
+    assert (
+        type(obj) == list or get_origin(type(obj)) == list
+    ), f"Expected a list type for obj but got {type(obj)} instead"
     assert_iterable_type(expected_element_type, obj, count=count)
 
 
@@ -22,7 +24,9 @@ def assert_iterable_type(expected_element_type: type, obj: Any, count: Optional[
         assert False, f"Expected {type(obj)} to be iterable but calling iter(obj) raises {ex}"
 
     for i, val in enumerate(obj):
-        assert type(val) == expected_element_type, f"obj[{i}]: Element has type {type(val)} instead of {expected_element_type}"
+        assert (
+            type(val) == expected_element_type
+        ), f"obj[{i}]: Element has type {type(val)} instead of {expected_element_type}"
 
     if count is not None:
         assert len(obj) == count
