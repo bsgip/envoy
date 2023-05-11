@@ -226,7 +226,7 @@ class DeviceCategory(IntFlag):
 
 
 # The combination of ALL DeviceCategory bit flags
-DEVICE_CATEGORY_ALL_SET: DeviceCategory = reduce(lambda a, b: a | b, DeviceCategory)  # type: ignore [assignment]
+DEVICE_CATEGORY_ALL_SET: DeviceCategory = reduce(lambda a, b: a | b, DeviceCategory)  # type: ignore # py311 issue
 
 
 class TimeType(int):
