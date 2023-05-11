@@ -313,3 +313,26 @@ class OneHourRangeType(int):
     """A signed time offset, typically applied to a Time value, expressed in seconds, with range -3600 to 3600."""
 
     pass
+
+
+class SignedPerCent(int):
+    # Used for signed percentages, specified in hundredths of a percent, -10000 - 10000. (10000 = 100%)
+    pass
+
+
+class PerCent(int):
+    # Used for percentages, specified in hundredths of a percent, 0 - 10000. (10000 = 100%)
+    pass
+
+
+class DERUnitRefType(IntEnum):
+    """Specifies context for interpreting percent values:. All other values are reserved"""
+
+    NOT_APPLICABLE = 0
+    PERC_SET_MAX_W = 1
+    PERC_SET_MAX_VAR = 2
+    PERC_STAT_VAR_AVAIL = 3
+    PERC_SET_EFFECTIVE_V = 4
+    PERC_SET_MAX_CHARGE_RATE_W = 5
+    PERC_SET_MAX_DISCHARGE_RATE_W = 6
+    PERC_STAT_W_AVAIL = 7
