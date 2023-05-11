@@ -1,10 +1,10 @@
 from envoy.server.mapper.common import generate_mrid
 from envoy.server.schema import uri
-from envoy.server.schema.sep2.base import Link, ListLink
 from envoy.server.schema.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,
     FunctionSetAssignmentsResponse,
 )
+from envoy.server.schema.sep2.identification import Link, ListLink
 
 # Function set assignments are virtual i.e. there are no corresponding tables in the database
 # We use the generate_mrid function to create a fake mRID and use FUNCTION_SET_ASSIGNMENTS_MRID_PREFIX

@@ -3,11 +3,12 @@ from typing import Optional
 
 from pydantic_xml import element
 
-from envoy.server.schema.sep2.base import BaseXmlModelWithNS, HexBinary32, IdentifiedObject, Link
-from envoy.server.schema.sep2.base import List as Sep2List
-from envoy.server.schema.sep2.base import ListLink, SubscribableIdentifiedObject, SubscribableList
-from envoy.server.schema.sep2.end_device import DeviceCategory
+from envoy.server.schema.sep2 import primitive_types, types
+from envoy.server.schema.sep2.base import BaseXmlModelWithNS
 from envoy.server.schema.sep2.event import RandomizableEvent
+from envoy.server.schema.sep2.identification import IdentifiedObject, Link
+from envoy.server.schema.sep2.identification import List as Sep2List
+from envoy.server.schema.sep2.identification import ListLink, SubscribableIdentifiedObject, SubscribableList
 from envoy.server.schema.sep2.pricing import PrimacyType
 
 
@@ -119,7 +120,9 @@ class DefaultDERControl(SubscribableIdentifiedObject):
 class DERControlResponse(RandomizableEvent, tag="DERControl"):
     """Distributed Energy Resource (DER) time/event-based control."""
 
-    deviceCategory: Optional[HexBinary32] = element()  # the bitmap indicating device categories that SHOULD respond.
+    deviceCategory: Optional[
+        primitive_types.HexBinary32
+    ] = element()  # the bitmap indicating device categories that SHOULD respond.
     DERControlBase_: DERControlBase = element(tag="DERControlBase")
 
 
@@ -159,7 +162,7 @@ class DemandResponseProgramListResponse(Sep2List, tag="DemandResponseProgramList
 class EndDeviceControlResponse(RandomizableEvent, tag="EndDeviceControl"):
     """Instructs an EndDevice to perform a specified action."""
 
-    deviceCategory: DeviceCategory = element()
+    deviceCategory: types.DeviceCategory = element()
     drProgramMandatory: bool = element()
     loadShiftForward: bool = element()
     overrideDuration: Optional[int] = element()
