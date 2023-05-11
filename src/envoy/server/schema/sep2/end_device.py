@@ -11,6 +11,7 @@ from envoy.server.schema.sep2.time import TimeType
 
 class DeviceCategory(IntFlag):
     """DeviceCategory is a series of bit flags describing a category of EndDevice. Described in sep2"""
+
     PROGRAMMABLE_COMMUNICATING_THERMOSTAT = auto()
     STRIP_HEATERS = auto()
     BASEBOARD_HEATERS = auto()
@@ -40,7 +41,7 @@ class DeviceCategory(IntFlag):
 
 
 # The combination of ALL DeviceCategory bit flags
-DEVICE_CATEGORY_ALL_SET: DeviceCategory = reduce(lambda a, b: a | b, DeviceCategory)  # type: ignore
+DEVICE_CATEGORY_ALL_SET: DeviceCategory = reduce(lambda a, b: a | b, DeviceCategory)
 
 
 class AbstractDevice(SubscribableResource):

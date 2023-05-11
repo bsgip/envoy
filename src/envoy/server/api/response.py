@@ -12,7 +12,7 @@ LOCATION_HEADER_NAME: str = "Location"
 class XmlResponse(Response):
     media_type = SEP_XML_MIME
 
-    def render(self, content: BaseXmlModel) -> Union[str, bytes]:  # type: ignore [override]
+    def render(self, content: BaseXmlModel) -> Union[str, bytes]:  # type: ignore [override] # Base is too restrictive
         return content.to_xml(skip_empty=True)
 
 
