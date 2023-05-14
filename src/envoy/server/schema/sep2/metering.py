@@ -44,3 +44,9 @@ class ReadingType(Resource):
     supplyLimit: Optional[int] = element()
     tieredConsumptionBlocks: Optional[bool] = element()
     uom: Optional[types.UomType] = element()
+
+
+class UsagePointBase(IdentifiedObject):
+    roleFlags: int = element()  # This should be of type RoleFlagsType
+    serviceCategoryKind: types.ServiceKind = element()
+    status: int = element()
