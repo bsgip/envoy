@@ -1,13 +1,199 @@
 {
 	"info": {
-		"_postman_id": "5f4005bf-e832-427e-8182-55e96f01d4b5",
+		"_postman_id": "015dd57b-8b0b-4311-909d-fe5776bbd938",
 		"name": "envoy",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "24300585"
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "End Device Resource",
+			"name": "Device Capability",
+			"item": [
+				{
+					"name": "/dcap (Device Capability)",
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {}
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/dcap",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"dcap"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "DER (DOEs)",
+			"item": [
+				{
+					"name": "/edev/1/derp (DERProgramList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/derp/doe (DERProgram - DOE)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/doe",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp",
+								"doe"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/derp/doe/derc (DERControls - DOE)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/doe/derc?s=0&l=1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp",
+								"doe",
+								"derc"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/derp/doe/derc/date (DERControls - DOE by Date)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/doe/derc/2022-05-07?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp",
+								"doe",
+								"derc",
+								"2022-05-07"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "End Device",
 			"item": [
 				{
 					"name": "/edev (EndDeviceList)",
@@ -225,195 +411,8 @@
 			]
 		},
 		{
-			"name": "Time",
+			"name": "Metering",
 			"item": [
-				{
-					"name": "/tm",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/tm",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"tm"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Device Capability",
-			"item": [
-				{
-					"name": "/dcap (Device Capability)",
-					"protocolProfileBehavior": {
-						"disabledSystemHeaders": {}
-					},
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/dcap",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"dcap"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Meter Mirroring",
-			"item": [
-				{
-					"name": "/mup (Mirror Metering MeterUsagePoint)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/sep+xml",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <mRID>0600006CC8</mRID>\r\n    <description>Gas Mirroring</description>\r\n    <roleFlags>13</roleFlags>\r\n    <serviceCategoryKind>1</serviceCategoryKind>\r\n    <status>1</status>\r\n    <deviceLFDI>00</deviceLFDI>\r\n    <MirrorMeterReading>\r\n        <mRID>0700006CC8</mRID>\r\n        <Reading>\r\n            <value>125</value>\r\n        </Reading>\r\n        <ReadingType>\r\n            <accumulationBehaviour>9</accumulationBehaviour>\r\n            <commodity>7</commodity>\r\n            <dataQualifier>0</dataQualifier>\r\n            <flowDirection>1</flowDirection>\r\n            <powerOfTenMultiplier>3</powerOfTenMultiplier>\r\n            <uom>119</uom>\r\n        </ReadingType>\r\n    </MirrorMeterReading>\r\n</MirrorUsagePoint>",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{HOST}}/mup",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"mup"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/mup/0 (Mirror Metering MirrorMeterReading)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/sep+xml",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <mRID>0800006CC8</mRID>\r\n    <MirrorReadingSet>\r\n        <mRID>0900006CC8</mRID>\r\n        <timePeriod>\r\n            <duration>86400</duration>\r\n            <start>1341579365</start>\r\n        </timePeriod>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>00</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>01</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>02</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>13</value>\r\n            <localID>03</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>12</value>\r\n            <localID>04</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>05</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>06</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>16</value>\r\n            <localID>07</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>08</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>7</value>\r\n            <localID>09</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>6</value>\r\n            <localID>0A</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>5</value>\r\n            <localID>0B</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>8</value>\r\n            <localID>0C</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>0D</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>0E</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>12</value>\r\n            <localID>0F</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>14</value>\r\n            <localID>10</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>13</value>\r\n            <localID>11</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>12</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>7</value>\r\n            <localID>13</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>8</value>\r\n            <localID>14</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>15</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>16</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>17</localID>\r\n        </Reading>\r\n    </MirrorReadingSet>\r\n</MirrorMeterReading>"
-						},
-						"url": {
-							"raw": "{{HOST}}/mup/{{MUP_ID}}",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"mup",
-								"{{MUP_ID}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "mup/0 (Mirror Metering MirrorMeterReadingList)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/sep+xml",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "<MirrorMeterReadingList xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <MirrorMeterReading>\r\n        <mRID>0700006CC8</mRID>\r\n        <Reading>\r\n            <value>574</value>\r\n        </Reading>\r\n    </MirrorMeterReading>\r\n    <MirrorMeterReading>\r\n        <mRID>0800006CC8</mRID>\r\n        <MirrorReadingSet>\r\n            <mRID>0900006CC8</mRID>\r\n            <timePeriod>\r\n                <duration>86400</duration>\r\n                <start>1341665765</start>\r\n            </timePeriod>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>00</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>01</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>02</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>13</value>\r\n                <localID>03</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>04</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>05</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>06</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>07</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>08</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>7</value>\r\n                <localID>09</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>6</value>\r\n                <localID>0A</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>5</value>\r\n                <localID>0B</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>8</value>\r\n                <localID>0C</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>0D</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>0E</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>0F</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>14</value>\r\n                <localID>10</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>13</value>\r\n                <localID>11</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>12</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>7</value>\r\n                <localID>13</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>8</value>\r\n                <localID>14</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>15</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>16</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>17</localID>\r\n            </Reading>\r\n        </MirrorReadingSet>\r\n    </MirrorMeterReading>\r\n</MirrorMeterReadingList>"
-						},
-						"url": {
-							"raw": "{{HOST}}/mup/{{MUP_ID}}",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"mup",
-								"{{MUP_ID}}"
-							]
-						}
-					},
-					"response": []
-				},
 				{
 					"name": "/upt (Metering UsagePointList)",
 					"request": {
@@ -681,6 +680,217 @@
 									"key": "l",
 									"value": "24 HTTP/1.1"
 								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Metering Mirror",
+			"item": [
+				{
+					"name": "/mup (MeterUsagePointList)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/mup",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/mup (MeterUsagePoint)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <mRID>0600006CC8</mRID>\r\n    <description>Gas Mirroring</description>\r\n    <roleFlags>13</roleFlags>\r\n    <serviceCategoryKind>1</serviceCategoryKind>\r\n    <status>1</status>\r\n    <deviceLFDI>00</deviceLFDI>\r\n    <MirrorMeterReading>\r\n        <mRID>0700006CC8</mRID>\r\n        <Reading>\r\n            <value>125</value>\r\n        </Reading>\r\n        <ReadingType>\r\n            <accumulationBehaviour>9</accumulationBehaviour>\r\n            <commodity>7</commodity>\r\n            <dataQualifier>0</dataQualifier>\r\n            <flowDirection>1</flowDirection>\r\n            <powerOfTenMultiplier>3</powerOfTenMultiplier>\r\n            <uom>119</uom>\r\n        </ReadingType>\r\n    </MirrorMeterReading>\r\n</MirrorUsagePoint>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/mup",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/mup/0 (MirrorUsagePoint)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <mRID>0600006CC8</mRID>\r\n    <description>Gas Mirroring</description>\r\n    <roleFlags>13</roleFlags>\r\n    <serviceCategoryKind>1</serviceCategoryKind>\r\n    <status>1</status>\r\n    <deviceLFDI>00</deviceLFDI>\r\n    <MirrorMeterReading>\r\n        <mRID>0700006CC8</mRID>\r\n        <Reading>\r\n            <value>125</value>\r\n        </Reading>\r\n        <ReadingType>\r\n            <accumulationBehaviour>9</accumulationBehaviour>\r\n            <commodity>7</commodity>\r\n            <dataQualifier>0</dataQualifier>\r\n            <flowDirection>1</flowDirection>\r\n            <powerOfTenMultiplier>3</powerOfTenMultiplier>\r\n            <uom>119</uom>\r\n        </ReadingType>\r\n    </MirrorMeterReading>\r\n</MirrorUsagePoint>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/mup/0",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup",
+								"0"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/mup/0 (MirrorMeterReading)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <mRID>0800006CC8</mRID>\r\n    <MirrorReadingSet>\r\n        <mRID>0900006CC8</mRID>\r\n        <timePeriod>\r\n            <duration>86400</duration>\r\n            <start>1341579365</start>\r\n        </timePeriod>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>00</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>01</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>02</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>13</value>\r\n            <localID>03</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>12</value>\r\n            <localID>04</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>05</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>06</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>16</value>\r\n            <localID>07</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>08</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>7</value>\r\n            <localID>09</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>6</value>\r\n            <localID>0A</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>5</value>\r\n            <localID>0B</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>8</value>\r\n            <localID>0C</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>0D</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>0E</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>12</value>\r\n            <localID>0F</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>14</value>\r\n            <localID>10</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>13</value>\r\n            <localID>11</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>12</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>7</value>\r\n            <localID>13</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>8</value>\r\n            <localID>14</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>15</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>16</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>17</localID>\r\n        </Reading>\r\n    </MirrorReadingSet>\r\n</MirrorMeterReading>"
+						},
+						"url": {
+							"raw": "{{HOST}}/mup/{{MUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup",
+								"{{MUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "mup/0 (MirrorMeterReadingList)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<MirrorMeterReadingList xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <MirrorMeterReading>\r\n        <mRID>0700006CC8</mRID>\r\n        <Reading>\r\n            <value>574</value>\r\n        </Reading>\r\n    </MirrorMeterReading>\r\n    <MirrorMeterReading>\r\n        <mRID>0800006CC8</mRID>\r\n        <MirrorReadingSet>\r\n            <mRID>0900006CC8</mRID>\r\n            <timePeriod>\r\n                <duration>86400</duration>\r\n                <start>1341665765</start>\r\n            </timePeriod>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>00</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>01</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>02</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>13</value>\r\n                <localID>03</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>04</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>05</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>06</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>07</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>08</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>7</value>\r\n                <localID>09</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>6</value>\r\n                <localID>0A</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>5</value>\r\n                <localID>0B</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>8</value>\r\n                <localID>0C</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>9</value>\r\n                <localID>0D</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>0E</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>12</value>\r\n                <localID>0F</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>14</value>\r\n                <localID>10</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>13</value>\r\n                <localID>11</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>11</value>\r\n                <localID>12</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>7</value>\r\n                <localID>13</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>8</value>\r\n                <localID>14</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>15</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>16</localID>\r\n            </Reading>\r\n            <Reading>\r\n                <value>10</value>\r\n                <localID>17</localID>\r\n            </Reading>\r\n        </MirrorReadingSet>\r\n    </MirrorMeterReading>\r\n</MirrorMeterReadingList>"
+						},
+						"url": {
+							"raw": "{{HOST}}/mup/{{MUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup",
+								"{{MUP_ID}}"
 							]
 						}
 					},
@@ -1147,10 +1357,10 @@
 			]
 		},
 		{
-			"name": "DOEs",
+			"name": "Time",
 			"item": [
 				{
-					"name": "/edev/1/derp (DERProgramList)",
+					"name": "/tm",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1166,130 +1376,12 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp",
+							"raw": "{{HOST}}/tm",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"derp"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1/derp/doe (DERProgram - DOE)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/doe",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"derp",
-								"doe"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1/derp/doe/derc (DERControls - DOE)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/doe/derc?s=0&l=1",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"derp",
-								"doe",
-								"derc"
-							],
-							"query": [
-								{
-									"key": "s",
-									"value": "0"
-								},
-								{
-									"key": "l",
-									"value": "1"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1/derp/doe/derc/date (DERControls - DOE by Date)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/doe/derc/2022-05-07?s=0&l=10",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"derp",
-								"doe",
-								"derc",
-								"2022-05-07"
-							],
-							"query": [
-								{
-									"key": "s",
-									"value": "0"
-								},
-								{
-									"key": "l",
-									"value": "10"
-								}
+								"tm"
 							]
 						}
 					},
