@@ -8,7 +8,9 @@ from envoy.server.schema.sep2.identification import IdentifiedObject, Resource
 
 class ReadingBase(Resource):
     consumptionBlock: Optional[types.ConsumptionBlockType] = element(default=0)
-    qualityFlags: Optional[primitive_types.HexBinary16] = element(default=primitive_types.HexBinary16("00"))
+    qualityFlags: Optional[primitive_types.HexBinary16] = element(
+        default=primitive_types.HexBinary16("00")
+    )  # string (hex encoded) form that maps to QualityFlagsType
     timePeriod: Optional[types.DateTimeIntervalType] = element()
     touTier: Optional[types.TOUType] = element(default=0)
     value: Optional[int] = element()

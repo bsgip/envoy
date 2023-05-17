@@ -336,3 +336,17 @@ class DERUnitRefType(IntEnum):
     PERC_SET_MAX_CHARGE_RATE_W = 5
     PERC_SET_MAX_DISCHARGE_RATE_W = 6
     PERC_STAT_W_AVAIL = 7
+
+
+class QualityFlagsType(IntFlag):
+    """There is no corresponding definition of this within sep2 - it's instead outlined on the HexBinary16 definition
+    of ReadingBase.qualityFlags"""
+
+    NONE = 0
+    VALID = auto()  # data that has gone through all required validation checks is now considered valid / verified
+    MANUALLY_EDITED = auto()  # manually edited: Replaced or approved by a human
+    ESTIMATED_BY_DAY = auto()  # value was replaced by a machine computed value based on analysis of historical data
+    ESTIMATED_BY_LINEAR = auto()  # data value was computed using linear interp based on the readings before / after it
+    QUESTIONABLE = auto()  # data that has failed one or more checks
+    DERIVED = auto()  # data that has been calculated (using logic or mathematical operations), not measured directly
+    FORECAST = auto()  # data that has been calculated as a projection or forecast of future readings
