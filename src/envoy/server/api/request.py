@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import HTTPException, Request
 
+MAX_LIMIT = 500
 DEFAULT_LIMIT = 1
 DEFAULT_START = 0
 DEFAULT_DATETIME = datetime.min
@@ -28,7 +29,11 @@ def extract_limit_from_paging_param(limit: Optional[list[int]] = None) -> int:
     if limit is None or len(limit) == 0:
         return DEFAULT_LIMIT
 
-    return limit[0]
+    limit_val = limit[0]
+    if limit_val > MAX_LIMIT:
+        return MAX_LIMIT
+
+    return limit_val
 
 
 def extract_start_from_paging_param(start: Optional[list[int]] = None) -> int:
