@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 import pytest
 
 from envoy.server.crud.end_device import (
     select_aggregator_site_count,
     select_all_sites_with_aggregator_id,
+    select_single_site_with_sfdi,
     select_single_site_with_site_id,
     upsert_site_for_aggregator,
 )
@@ -117,41 +119,95 @@ async def test_select_all_sites_with_aggregator_id_filters(pg_base_config):
         assert sorted([s.site_id for s in sites]) == [2]  # Checks the id's match our expected filter
 
 
+@pytest.mark.parametrize(
+    "site_id, agg_id, expected_vals",
+    [
+        (
+            3,
+            2,
+            ("3333333333", "site3-lfdi", 3333, DeviceCategory(2), datetime(2022, 2, 3, 8, 9, 10, tzinfo=timezone.utc)),
+        ),
+        (
+            1,
+            1,
+            ("1111111111", "site1-lfdi", 1111, DeviceCategory(0), datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc)),
+        ),
+        # test mismatched ids
+        (1, 2, None),
+        (3, 1, None),
+        (3, 3, None),
+        # test bad ids
+        (1, 99, None),
+        (99, 1, None),
+        (-1, -1, None),
+    ],
+)
 @pytest.mark.anyio
-async def test_select_single_site_with_site_id(pg_base_config):
+async def test_select_single_site_with_site_id(
+    pg_base_config, site_id: int, agg_id: int, expected_vals: Optional[tuple[str, str, int, DeviceCategory, datetime]]
+):
     """Tests that the returned objects match the DB contents (and handle lookup misses)"""
     async with generate_async_session(pg_base_config) as session:
-        # Site 3 for Agg 2
-        site_3 = await select_single_site_with_site_id(session, 3, 2)
-        assert type(site_3) == Site
-        assert site_3.site_id == 3
-        assert site_3.nmi == "3333333333"
-        assert site_3.aggregator_id == 2
-        assert_datetime_equal(site_3.changed_time, datetime(2022, 2, 3, 8, 9, 10, tzinfo=timezone.utc))
-        assert site_3.lfdi == "site3-lfdi"
-        assert site_3.sfdi == 3333
-        assert site_3.device_category == DeviceCategory(2)
+        site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=agg_id)
 
-        # Site 1 for Agg 1
-        site_1 = await select_single_site_with_site_id(session, 1, 1)
-        assert type(site_1) == Site
-        assert site_1.site_id == 1
-        assert site_1.nmi == "1111111111"
-        assert site_1.aggregator_id == 1
-        assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc))
-        assert site_1.lfdi == "site1-lfdi"
-        assert site_1.sfdi == 1111
-        assert site_1.device_category == DeviceCategory(0)
+        if expected_vals is None:
+            assert site is None
+        else:
+            (nmi, lfdi, sfdi, dc, changed_time) = expected_vals
+            assert type(site) == Site
+            assert site.site_id == site_id
+            assert site.aggregator_id == agg_id
+            assert site.nmi == nmi
+            assert site.lfdi == lfdi
+            assert site.sfdi == sfdi
+            assert site.device_category == dc
+            assert_datetime_equal(site.changed_time, changed_time)
 
+
+@pytest.mark.parametrize(
+    "sfdi, agg_id, expected_vals",
+    [
+        (
+            3333,
+            2,
+            (3, "3333333333", "site3-lfdi", DeviceCategory(2), datetime(2022, 2, 3, 8, 9, 10, tzinfo=timezone.utc)),
+        ),
+        (
+            1111,
+            1,
+            (1, "1111111111", "site1-lfdi", DeviceCategory(0), datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc)),
+        ),
         # test mismatched ids
-        assert await select_single_site_with_site_id(session, 1, 2) is None
-        assert await select_single_site_with_site_id(session, 3, 1) is None
-        assert await select_single_site_with_site_id(session, 3, 3) is None
-
+        (1111, 2, None),
+        (3333, 1, None),
+        (3333, 3, None),
         # test bad ids
-        assert await select_single_site_with_site_id(session, 1, 99) is None
-        assert await select_single_site_with_site_id(session, 99, 1) is None
-        assert await select_single_site_with_site_id(session, -1, -1) is None
+        (1, 1, None),
+        (1111, 99, None),
+        (99, 1, None),
+        (-1, -1, None),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_single_site_with_sfdi(
+    pg_base_config, sfdi: int, agg_id: int, expected_vals: Optional[tuple[int, str, str, DeviceCategory, datetime]]
+):
+    """Tests that the returned objects match the DB contents (and handle lookup misses)"""
+    async with generate_async_session(pg_base_config) as session:
+        site = await select_single_site_with_sfdi(session, sfdi=sfdi, aggregator_id=agg_id)
+
+        if expected_vals is None:
+            assert site is None
+        else:
+            (site_id, nmi, lfdi, dc, changed_time) = expected_vals
+            assert type(site) == Site
+            assert site.site_id == site_id
+            assert site.aggregator_id == agg_id
+            assert site.nmi == nmi
+            assert site.lfdi == lfdi
+            assert site.sfdi == sfdi
+            assert site.device_category == dc
+            assert_datetime_equal(site.changed_time, changed_time)
 
 
 @pytest.mark.anyio
