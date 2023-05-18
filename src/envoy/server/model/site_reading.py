@@ -21,7 +21,7 @@ class SiteReadingType(Base):
 
     __tablename__ = "site_reading_type"
 
-    site_reading_type_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    site_reading_type_id: Mapped[int] = mapped_column(primary_key=True)
     aggregator_id: Mapped[int] = mapped_column(
         ForeignKey("aggregator.aggregator_id")
     )  # Tracks aggregator at time of write
@@ -69,7 +69,7 @@ class SiteReading(Base):
 
     __tablename__ = "site_reading"
 
-    site_reading_id: Mapped[int] = mapped_column(primary=True, autoincrement=True)
+    site_reading_id: Mapped[int] = mapped_column(primary_key=True)
     site_reading_type_id: Mapped[int] = mapped_column(ForeignKey("site_reading_type.site_reading_type_id"))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading was last altered
 
@@ -82,5 +82,5 @@ class SiteReading(Base):
     )  # actual reading value - type/power of ten are defined in the parent reading set
 
     __table_args__ = (
-        UniqueConstraint("site_reading_type_id", "start_time", name="site_reading_type_id_start_time_uc"),
+        UniqueConstraint("site_reading_type_id", "time_period_start", name="site_reading_type_id_time_period_start_uc"),
     )
