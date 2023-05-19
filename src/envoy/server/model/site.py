@@ -21,4 +21,7 @@ class Site(Base):
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
 
-    __table_args__ = (UniqueConstraint("sfdi", "aggregator_id", name="sfdi_aggregator_id_uc"),)
+    __table_args__ = (
+        UniqueConstraint("sfdi", "aggregator_id", name="sfdi_aggregator_id_uc"),
+        UniqueConstraint("lfdi", "aggregator_id", name="lfdi_aggregator_id_uc"),  # Mirror Metering requires unique lfdi
+    )
