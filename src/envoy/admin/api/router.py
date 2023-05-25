@@ -22,7 +22,7 @@ async def post_tariffgeneratedrate(site_id: int, request: Request):
     (Will have to reference a parent tariff)
     """
 
-    pass
+    return 1
 
 
 @router.post(uri.AdminDoeUri, status_code=HTTPStatus.OK)
@@ -39,17 +39,4 @@ async def post_doe(doe: DynamicOperatingEnvelopeAdmin):
     doe/creation details
     """
 
-    # TODO what validation exists on DOEs?
-    # TODO should the DOE model take an dynamic_operating_envelope_id
-    # or should that be autoincremented?
-    # TODO should the site id be passed as a separate arg? Rather than in the DOE model
-
-    committed = await AdminManager.commit_doe(db.session, doe)
-
-    if not committed:
-        pass
-        # return Response(status_code=HTTPStatus.IT_BROKED)
-
-    return Response(
-        status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: uri.AdminDoeUri.format(site_id=site_id)}
-    )
+    return 1
