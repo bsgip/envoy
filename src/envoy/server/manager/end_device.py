@@ -55,6 +55,7 @@ class EndDeviceManager:
             return False
 
         site.nmi = nmi
+        site.changed_time = datetime.now(tz=get_localzone())
         await session.commit()
         return True
 

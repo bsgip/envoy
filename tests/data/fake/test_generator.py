@@ -10,6 +10,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from envoy.server.model.base import Base
 from envoy.server.schema.sep2.base import BaseXmlModelWithNS
 from tests.data.fake.generator import (
+    assert_class_instance_equality,
+    check_class_instance_equality,
     clone_class_instance,
     generate_class_instance,
     generate_value,
@@ -471,3 +473,92 @@ def test_clone_class_instance_xml():
     assert clone.myChildren is original.myChildren
     assert clone.mySibling is original.mySibling
     assert clone.myOtherInt is original.myOtherInt
+
+
+def test_assert_class_instance_equality():
+    """test_check_class_instance_equality does the heavy lifting - this just ensures an assertion is raised"""
+    assert_class_instance_equality(
+        FurtherXmlClass,
+        generate_class_instance(FurtherXmlClass, seed=1),
+        generate_class_instance(FurtherXmlClass, seed=1),
+    )
+
+    with pytest.raises(Exception):
+        assert_class_instance_equality(
+            FurtherXmlClass,
+            generate_class_instance(FurtherXmlClass, seed=1),
+            generate_class_instance(FurtherXmlClass, seed=2),
+        )
+
+
+def test_check_class_instance_equality():
+    # Check basic equality
+    assert (
+        check_class_instance_equality(
+            FurtherXmlClass,
+            generate_class_instance(FurtherXmlClass, seed=1, generate_relationships=True, optional_is_none=True),
+            generate_class_instance(FurtherXmlClass, seed=1, generate_relationships=True, optional_is_none=True),
+        )
+        == []
+    )
+
+    assert (
+        check_class_instance_equality(
+            ChildClass,
+            generate_class_instance(ChildClass, seed=2, generate_relationships=False, optional_is_none=True),
+            generate_class_instance(ChildClass, seed=2, generate_relationships=False, optional_is_none=True),
+        )
+        == []
+    )
+
+    assert (
+        check_class_instance_equality(
+            ChildClass,
+            generate_class_instance(ChildClass, seed=3, generate_relationships=False, optional_is_none=False),
+            generate_class_instance(ChildClass, seed=3, generate_relationships=False, optional_is_none=False),
+        )
+        == []
+    )
+
+    assert (
+        check_class_instance_equality(
+            ParentClass,
+            generate_class_instance(ParentClass, seed=4, generate_relationships=True, optional_is_none=True),
+            generate_class_instance(ParentClass, seed=4, generate_relationships=True, optional_is_none=True),
+        )
+        == []
+    )
+
+    # check every property being mismatched
+    assert (
+        len(
+            check_class_instance_equality(
+                ParentClass,
+                generate_class_instance(ParentClass, seed=1, generate_relationships=False, optional_is_none=True),
+                generate_class_instance(ParentClass, seed=2, generate_relationships=True, optional_is_none=True),
+            )
+        )
+        != 0
+    )
+
+    # check a single property being out
+    expected: ParentClass = generate_class_instance(
+        ParentClass, seed=1, generate_relationships=False, optional_is_none=True
+    )
+    actual: ParentClass = generate_class_instance(
+        ParentClass, seed=1, generate_relationships=False, optional_is_none=True
+    )
+    actual.name = actual.name + "-changed"
+    assert (
+        len(
+            check_class_instance_equality(
+                ParentClass,
+                expected,
+                actual,
+            )
+        )
+        == 1
+    )
+
+    # check ignoring works ok
+    assert len(check_class_instance_equality(ParentClass, expected, actual, ignored_properties=set(["name"]))) == 0

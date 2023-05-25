@@ -52,7 +52,13 @@ async def select_all_sites_with_aggregator_id(
 async def select_single_site_with_site_id(session: AsyncSession, site_id: int, aggregator_id: int) -> Optional[Site]:
     """Site and aggregator id need to be used to make sure the aggregator owns this site."""
     stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.site_id == site_id))
+    resp = await session.execute(stmt)
+    return resp.scalar_one_or_none()
 
+
+async def select_single_site_with_lfdi(session: AsyncSession, lfdi: str, aggregator_id: int) -> Optional[Site]:
+    """Site and aggregator id need to be used to make sure the aggregator owns this site."""
+    stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.lfdi == lfdi))
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
 
