@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from fastapi_async_sqlalchemy import db
 
-from envoy.admin.api.manager.pricing import TariffManager
+from envoy.admin.manager.pricing import TariffManager
 from envoy.admin.schema.pricing import TariffRequest
 from envoy.admin.schema.uri import TariffCreateUri, TariffUpdateUri
 
