@@ -2,9 +2,9 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import BIGINT, INTEGER, DateTime, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from envoy.server.model import Base
+from envoy.server.model import Base, Site
 from envoy.server.schema.sep2.types import (
     AccumulationBehaviourType,
     DataQualifierType,
@@ -43,6 +43,8 @@ class SiteReadingType(Base):
 
     # These are the properties that can change via upsert
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading set was last altered
+
+    site: Mapped["Site"] = relationship()
 
     # We want to minimise duplicated reading types - we do this by essentially making the entire entity
     # into one big unique index

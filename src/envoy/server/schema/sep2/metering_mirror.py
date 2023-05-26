@@ -50,7 +50,8 @@ class MirrorMeterReadingListRequest(Resource, tag="MirrorMeterReadingList"):
     mirrorMeterReadings: Optional[List[MirrorMeterReading]] = element(tag="MirrorMeterReading")
 
 
-class MirrorUsagePointListResponse(Resource, tag="MirrorUsagePointList"):
+class MirrorUsagePointListResponse(Sep2List, tag="MirrorUsagePointList"):
+    mirrorUsagePoints: Optional[list[MirrorUsagePoint]] = element(tag="MirrorUsagePoint")
     pass
 
 

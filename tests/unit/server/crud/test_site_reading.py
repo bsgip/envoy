@@ -5,7 +5,10 @@ from typing import Optional, Sequence
 import pytest
 from sqlalchemy import select
 
-from envoy.server.crud.site_reading import upsert_site_reading_type_for_aggregator
+from envoy.server.crud.site_reading import (
+    fetch_site_reading_type_for_aggregator,
+    upsert_site_reading_type_for_aggregator,
+)
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.schema.sep2.types import DeviceCategory
 from tests.assert_time import assert_datetime_equal
@@ -37,6 +40,74 @@ async def fetch_site_reading_type(session, aggregator_id: int, site_reading_type
 
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
+
+
+# VINSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+# VALUES (2, -- site_reading_type_id
+#     3, -- aggregator_id
+#     1, -- site_id
+#     61, -- uom
+#     2, -- data_qualifier
+#     1, -- flow_direction
+#     3, -- accumulation_behaviour
+#     37, -- kind
+#     64, -- phase
+#     0, -- power_of_ten_multiplier
+#     NULL, -- default_interval_seconds
+#     '2022-05-06 12:22:33' -- changed_time
+#     );
+
+
+@pytest.mark.parametrize(
+    "aggregator_id, site_reading_type_id, expected",
+    [
+        (
+            1,
+            1,
+            SiteReadingType(
+                site_reading_type_id=1,
+                aggregator_id=1,
+                site_id=1,
+                uom=38,
+                data_qualifier=2,
+                flow_direction=1,
+                accumulation_behaviour=3,
+                kind=37,
+                phase=64,
+                power_of_ten_multiplier=3,
+                default_interval_seconds=None,
+                changed_time=datetime(2022, 5, 6, 11, 22, 33, tzinfo=timezone.utc),
+            ),
+        ),
+        (
+            3,
+            2,
+            SiteReadingType(
+                site_reading_type_id=2,
+                aggregator_id=3,
+                site_id=1,
+                uom=61,
+                data_qualifier=2,
+                flow_direction=1,
+                accumulation_behaviour=3,
+                kind=37,
+                phase=64,
+                power_of_ten_multiplier=0,
+                default_interval_seconds=None,
+                changed_time=datetime(2022, 5, 6, 12, 22, 33, tzinfo=timezone.utc),
+            ),
+        ),
+        (2, 1, None),  # Wrong aggregator
+        (1, 99, None),  # Wrong site_reading_type_id
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_site_reading_type_for_aggregator(
+    pg_base_config, aggregator_id: int, site_reading_type_id: int, expected: Optional[SiteReadingType]
+):
+    async with generate_async_session(pg_base_config) as session:
+        actual = await fetch_site_reading_type_for_aggregator(session, aggregator_id, site_reading_type_id)
+        assert_class_instance_equality(SiteReadingType, expected, actual)
 
 
 @pytest.mark.anyio

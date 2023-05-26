@@ -284,6 +284,15 @@ def check_class_instance_equality(
 
     returns a list of error messages (or an empty list if expected == actual)"""
 
+    if expected is None and actual is None:
+        return []
+
+    if expected is None:
+        return [f"expected is None but actual is {actual}"]
+
+    if actual is None:
+        return [f"actual is None but expected is {expected}"]
+
     t = remove_passthrough_type(t)
 
     # We can only generate class instances of classes that inherit from a known base

@@ -1,9 +1,93 @@
-from typing import Iterable
+from datetime import datetime
+from typing import Iterable, Optional, Sequence, Union
 
+from sqlalchemy import Select, func, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
+
+
+async def fetch_site_reading_type_for_aggregator(
+    session: AsyncSession, aggregator_id: int, site_reading_type_id: int
+) -> Optional[SiteReadingType]:
+    """Fetches the SiteReadingType by ID (also validating aggregator_id) - returns None if it can't be found"""
+    stmt = select(SiteReadingType).where(
+        (SiteReadingType.site_reading_type_id == site_reading_type_id)
+        & (SiteReadingType.aggregator_id == aggregator_id)
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalar_one_or_none()
+
+
+async def _site_reading_types_for_aggregator(
+    only_count: bool,
+    session: AsyncSession,
+    aggregator_id: int,
+    start: int,
+    changed_after: datetime,
+    limit: Optional[int],
+) -> Union[Sequence[SiteReadingType], int]:
+    """Internal utility for making site_reading_types_for_aggregator  requests that either counts the entities or
+    returns a page of the entities
+
+    Orders by sep2 requirements on MirrorUsagePoint which is id DESC"""
+
+    select_clause: Union[Select[tuple[int]], Select[tuple[SiteReadingType]]]
+    if only_count:
+        select_clause = select(func.count()).select_from(SiteReadingType)
+    else:
+        select_clause = select(SiteReadingType)
+
+    stmt = (
+        select_clause.join(Site)
+        .where(
+            (SiteReadingType.aggregator_id == aggregator_id)
+            & (SiteReadingType.changed_time >= changed_after)
+            & (Site.aggregator_id == aggregator_id)  # Only fetch sites that are currently assigned to this aggregator
+        )
+        .offset(start)
+        .limit(limit)
+    )
+
+    if not only_count:
+        stmt = stmt.options(selectinload(SiteReadingType.site)).order_by(
+            SiteReadingType.site_reading_type_id.desc(),
+        )
+
+    resp = await session.execute(stmt)
+    if only_count:
+        return resp.scalar_one()
+    else:
+        return resp.scalars().all()
+
+
+async def fetch_site_reading_types_page_for_aggregator(
+    session: AsyncSession,
+    aggregator_id: int,
+    start: int,
+    limit: int,
+    changed_after: datetime,
+) -> Sequence[SiteReadingType]:
+    """Fetches a page of SiteReadingType for a particular aggregator_id. The SiteReadingType will have the
+    reference Site included"""
+    return await _site_reading_types_for_aggregator(
+        False, session, aggregator_id=aggregator_id, start=start, limit=limit, changed_after=changed_after
+    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+
+
+async def count_site_reading_types_for_aggregator(
+    session: AsyncSession,
+    aggregator_id: int,
+    changed_after: datetime,
+) -> int:
+    """Fetches a page of SiteReadingType for a particular aggregator_id"""
+    return await _site_reading_types_for_aggregator(
+        True, session, aggregator_id=aggregator_id, start=0, limit=None, changed_after=changed_after
+    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
 
 
 async def upsert_site_reading_type_for_aggregator(

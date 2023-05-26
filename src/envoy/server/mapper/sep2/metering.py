@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Sequence
 
 import envoy.server.schema.uri as uris
 from envoy.server.exception import InvalidMappingError
@@ -7,10 +7,11 @@ from envoy.server.mapper.common import generate_mrid
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.schema.sep2.metering import Reading
-from envoy.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint
-from envoy.server.schema.sep2.types import QualityFlagsType, RoleFlagsType, ServiceKind
+from envoy.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint, MirrorUsagePointListResponse
+from envoy.server.schema.sep2.types import KindType, PhaseCode, QualityFlagsType, RoleFlagsType, ServiceKind
 
 MIRROR_USAGE_POINT_MRID_PREFIX: int = int("f051", 16)
+MIRROR_METER_READING_MRID_PREFIX: int = int("4ead", 16)
 
 
 class MirrorUsagePointMapper:
@@ -27,6 +28,18 @@ class MirrorUsagePointMapper:
             raise InvalidMappingError("ReadingType was not specified")
         if not rt.uom:
             raise InvalidMappingError("ReadingType.uom was not specified")
+        if rt.kind is None:
+            kind = KindType.NOT_APPLICABLE
+        else:
+            kind = rt.kind
+        if rt.phase is None:
+            phase = PhaseCode.NOT_APPLICABLE
+        else:
+            phase = rt.phase
+        if rt.powerOfTenMultiplier is None:
+            power_of_ten_multiplier = 0
+        else:
+            power_of_ten_multiplier = rt.powerOfTenMultiplier
 
         return SiteReadingType(
             aggregator_id=aggregator_id,
@@ -35,9 +48,9 @@ class MirrorUsagePointMapper:
             data_qualifier=rt.dataQualifier,
             flow_direction=rt.flowDirection,
             accumulation_behaviour=rt.accumulationBehaviour,
-            kind=rt.kind,
-            phase=rt.phase,
-            power_of_ten_multiplier=rt.powerOfTenMultiplier,
+            kind=kind,
+            phase=phase,
+            power_of_ten_multiplier=power_of_ten_multiplier,
             default_interval_seconds=rt.intervalLength,
             changed_time=changed_time,
         )
@@ -57,6 +70,9 @@ class MirrorUsagePointMapper:
                 "mRID": generate_mrid(MIRROR_USAGE_POINT_MRID_PREFIX, srt.site_reading_type_id),
                 "mirrorMeterReadings": [
                     {
+                        "mRID": generate_mrid(
+                            MIRROR_USAGE_POINT_MRID_PREFIX, srt.site_reading_type_id, MIRROR_METER_READING_MRID_PREFIX
+                        ),
                         "readingType": {
                             "accumulationBehaviour": srt.accumulation_behaviour,
                             "dataQualifier": srt.data_qualifier,
@@ -66,9 +82,20 @@ class MirrorUsagePointMapper:
                             "phase": srt.phase,
                             "powerOfTenMultiplier": srt.power_of_ten_multiplier,
                             "uom": srt.uom,
-                        }
+                        },
                     }
                 ],
+            }
+        )
+
+    @staticmethod
+    def map_to_list_response(srts: Sequence[SiteReadingType], srt_count: int) -> MirrorUsagePointListResponse:
+        return MirrorUsagePointListResponse.validate(
+            {
+                "href": uris.MirrorUsagePointListUri,
+                "all_": srt_count,
+                "results": len(srts),
+                "mirrorUsagePoints": [MirrorUsagePointMapper.map_to_response(srt, srt.site) for srt in srts],
             }
         )
 
@@ -86,10 +113,15 @@ class MirrorMeterReadingMapper:
         if reading.timePeriod is None:
             raise InvalidMappingError("Reading.timePeriod was not specified")
 
+        if reading.localID is None:
+            local_id = None
+        else:
+            local_id = int(reading.localID, 16)
+
         return SiteReading(
             site_reading_type_id=site_reading_type_id,
             changed_time=changed_time,
-            local_id=reading.localID,
+            local_id=local_id,
             quality_flags=quality_flags,
             time_period_start=datetime.fromtimestamp(reading.timePeriod.start, timezone.utc),
             time_period_seconds=reading.timePeriod.duration,
