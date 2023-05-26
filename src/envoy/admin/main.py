@@ -2,16 +2,29 @@ import logging
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 
 from envoy.admin.api.depends import AdminAuthDepends
-from envoy.admin.api.router import router
-from envoy.admin.settings import admin_settings
+from envoy.admin.api import routers
+from envoy.admin.settings import AppSettings, settings  # TODO
 
+
+def generate_app(new_settings: AppSettings):
+    """Generates a new app instance utilising the specific settings instance"""
+    admin_auth = AdminAuthDepends(settings.admin_username, settings.admin_password)
+    new_app = FastAPI(**new_settings.fastapi_kwargs, dependencies=[Depends(admin_auth)])
+    new_app.add_middleware(SQLAlchemyMiddleware, **new_settings.db_middleware_kwargs)
+    for router in routers:
+        new_app.include_router(router)
+    return new_app
+
+
+# Setup logs
 logging.basicConfig(style="{", level=logging.INFO)
 
-admin_auth = AdminAuthDepends(admin_settings.admin_username, admin_settings.admin_password)
-app = FastAPI(dependencies=[Depends(admin_auth)])
-app.include_router(router)
+# Setup app
+app = generate_app(settings)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=9999)
