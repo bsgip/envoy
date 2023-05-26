@@ -12,6 +12,15 @@ class TariffRequest(BaseModel):
     name: str
     dnsp_code: str
     currency_code: CurrencyCode
+
+
+class TariffResponse(BaseModel):
+    """TODO"""
+
+    tariff_id: int
+    name: str
+    dnsp_code: str
+    currency_code: CurrencyCode
     changed_time: datetime
 
 

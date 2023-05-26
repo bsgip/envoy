@@ -1,13 +1,13 @@
 import logging
 from http import HTTPStatus
-from typing import Union, List
+from typing import Union, Optional, List
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, Query
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from fastapi_async_sqlalchemy import db
 
-from envoy.admin.manager.pricing import TariffManager
-from envoy.admin.schema.pricing import TariffRequest
+from envoy.admin.manager.pricing import TariffManager, TariffListManager
+from envoy.admin.schema.pricing import TariffRequest, TariffResponse
 from envoy.admin.schema.uri import TariffCreateUri, TariffUpdateUri
 
 
@@ -16,9 +16,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# @router.get(TariffCreateUri, status_code=HTTPStatus.OK, response_model=List[TariffRequest])
-# async def get_all_tariffs():
-#     pass
+@router.get(TariffCreateUri, status_code=HTTPStatus.OK, response_model=List[TariffResponse])
+async def get_all_tariffs(start: int = 0, limit: Optional[int] = None):
+    return await TariffListManager.fetch_many_tariffs(db.session, start, limit)
+
+
+@router.get(TariffUpdateUri, status_code=HTTPStatus.OK, response_model=List[TariffResponse])
+async def get_tariff(tariff_id: int):
+    return await TariffManager.fetch_tariff(db.session, tariff_id)
 
 
 @router.post(TariffCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
