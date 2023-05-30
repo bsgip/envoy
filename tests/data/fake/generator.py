@@ -1,5 +1,5 @@
 import inspect
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Callable, Optional, Union, get_args, get_origin, get_type_hints
 
@@ -269,6 +269,88 @@ def clone_class_instance(obj: Any) -> Any:
     return CLASS_INSTANCE_GENERATORS[t_generatable_base](t, values)
 
 
+def check_class_instance_equality(
+    t: type,
+    expected: Any,
+    actual: Any,
+    ignored_properties: Optional[set[str]] = None,
+) -> list[str]:
+    """Given a type t and two instances. Run through the public members of t and assert that the values all match up.
+    This will only compare properties whose type passes is_generatable_type.
+
+    Any "private" members beginning with '_' will be skipped
+
+    ignored properties are a set of property names that will NOT be asserted for equality
+
+    returns a list of error messages (or an empty list if expected == actual)"""
+
+    if expected is None and actual is None:
+        return []
+
+    if expected is None:
+        return [f"expected is None but actual is {actual}"]
+
+    if actual is None:
+        return [f"actual is None but expected is {expected}"]
+
+    t = remove_passthrough_type(t)
+
+    # We can only generate class instances of classes that inherit from a known base
+    t_generatable_base = get_generatable_class_base(t)
+    if t_generatable_base is None:
+        raise Exception(f"Type {t} does not inherit from one of {CLASS_INSTANCE_GENERATORS.keys()}")
+
+    type_hints = get_type_hints(t)
+
+    # We will be creating a dict of property names and their generated values
+    # Those values can be basic primitive values or optionally populated
+    error_messages = []
+    for member_name in CLASS_MEMBER_FETCHERS[t_generatable_base](t):
+        # Skip members that are private OR that are public members of the base class
+        if not is_member_public(member_name):
+            continue
+        if member_name in BASE_CLASS_PUBLIC_MEMBERS[t_generatable_base]:
+            continue
+        if ignored_properties and member_name in ignored_properties:
+            continue
+
+        if member_name not in type_hints:
+            raise Exception(f"Type {t} has property {member_name} that is missing a type hint")
+
+        member_type = remove_passthrough_type(type_hints[member_name])
+        if not is_generatable_type(member_type):
+            continue
+
+        expected_val = getattr(expected, member_name)
+        actual_val = getattr(actual, member_name)
+
+        if expected_val is None and actual_val is None:
+            continue
+
+        if expected_val != actual_val:
+            error_messages.append(
+                f"{member_name}: {type_hints[member_name]} expected {expected_val} but got {actual_val}"
+            )
+
+    return error_messages
+
+
+def assert_class_instance_equality(
+    t: type,
+    expected: Any,
+    actual: Any,
+    ignored_properties: Optional[set[str]] = None,
+):
+    """Given a type t and two instances. Run through the public members of t and assert that the values all match up.
+    This will only compare properties whose type passes is_generatable_type.
+
+    Any "private" members beginning with '_' will be skipped
+
+    ignored properties are a set of property names that will NOT be asserted for equality"""
+    errors = check_class_instance_equality(t, expected, actual, ignored_properties)
+    assert len(errors) == 0, "\n".join(errors)
+
+
 # ---------------------------------------
 #
 # The below global values describe the main extension points for adding support for more types to generate
@@ -283,7 +365,7 @@ PRIMITIVE_VALUE_GENERATORS: dict[type, Callable[[int], Any]] = {
     float: lambda seed: float(seed),
     bool: lambda seed: (seed % 2) == 0,
     Decimal: lambda seed: Decimal(seed),
-    datetime: lambda seed: datetime(2010, 1, 1) + timedelta(days=seed) + timedelta(seconds=seed),
+    datetime: lambda seed: datetime(2010, 1, 1, tzinfo=timezone.utc) + timedelta(days=seed) + timedelta(seconds=seed),
 }
 
 # the set of all generators (target: type, kwargs: dict[str, Any) -> class instance (keyed by the base type of the generated type))
