@@ -120,3 +120,47 @@ VALUES (4, -- site_reading_type_id
     );
 
 SELECT pg_catalog.setval('public.site_reading_type_site_reading_type_id_seq', 5, true);
+
+
+INSERT INTO public.site_reading("site_reading_id", "site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (1, -- site_reading_id
+    1, -- site_reading_type_id
+    '2022-06-07 11:22:33', -- changed_time
+    11111, -- local_id
+    1, -- quality_flags
+    '2022-06-07 01:00:00+10', -- time_period_start
+    300, -- time_period_seconds
+    11 -- value
+    );
+INSERT INTO public.site_reading("site_reading_id", "site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (2, -- site_reading_id
+    1, -- site_reading_type_id
+    '2022-06-07 12:22:33', -- changed_time
+    22222, -- local_id
+    2, -- quality_flags
+    '2022-06-07 02:00:00+10', -- time_period_start
+    300, -- time_period_seconds
+    12 -- value
+    );
+INSERT INTO public.site_reading("site_reading_id", "site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (3, -- site_reading_id
+    2, -- site_reading_type_id
+    '2022-06-07 13:22:33', -- changed_time
+    33333, -- local_id
+    3, -- quality_flags
+    '2022-06-07 01:00:00+10', -- time_period_start
+    300, -- time_period_seconds
+    13 -- value
+    );
+INSERT INTO public.site_reading("site_reading_id", "site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (4, -- site_reading_id
+    4, -- site_reading_type_id
+    '2022-06-07 14:22:33', -- changed_time
+    44444, -- local_id
+    4, -- quality_flags
+    '2022-06-07 01:00:00+10', -- time_period_start
+    300, -- time_period_seconds
+    14 -- value
+    );
+
+SELECT pg_catalog.setval('public.site_reading_site_reading_id_seq', 5, true);

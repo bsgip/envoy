@@ -1,6 +1,6 @@
-import json
 from datetime import datetime, timezone
 from typing import Optional, Sequence
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import select
@@ -8,11 +8,11 @@ from sqlalchemy import select
 from envoy.server.crud.site_reading import (
     fetch_site_reading_type_for_aggregator,
     upsert_site_reading_type_for_aggregator,
+    upsert_site_readings,
 )
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.schema.sep2.types import DeviceCategory
+from envoy.server.schema.sep2.types import QualityFlagsType
 from tests.assert_time import assert_datetime_equal
-from tests.assert_type import assert_list_type
 from tests.data.fake.generator import assert_class_instance_equality, clone_class_instance, generate_class_instance
 from tests.postgres_testing import generate_async_session
 
@@ -42,20 +42,11 @@ async def fetch_site_reading_type(session, aggregator_id: int, site_reading_type
     return resp.scalar_one_or_none()
 
 
-# VINSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
-# VALUES (2, -- site_reading_type_id
-#     3, -- aggregator_id
-#     1, -- site_id
-#     61, -- uom
-#     2, -- data_qualifier
-#     1, -- flow_direction
-#     3, -- accumulation_behaviour
-#     37, -- kind
-#     64, -- phase
-#     0, -- power_of_ten_multiplier
-#     NULL, -- default_interval_seconds
-#     '2022-05-06 12:22:33' -- changed_time
-#     );
+async def fetch_site_readings(session) -> Sequence[SiteReading]:
+    stmt = select(SiteReading).order_by(SiteReading.site_reading_id)
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
 
 
 @pytest.mark.parametrize(
@@ -210,3 +201,79 @@ async def test_upsert_site_reading_type_for_aggregator_cant_change_agg_id(pg_bas
         db_srt = await fetch_site_reading_type(session, aggregator_id, site_id_to_update)
         assert db_srt
         assert_datetime_equal(db_srt.changed_time, datetime(2022, 5, 6, 11, 22, 33, tzinfo=timezone.utc))
+
+
+@pytest.mark.anyio
+async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
+    """Tests an upsert on site_readings with a mix of inserts/updates"""
+    aest = ZoneInfo("Australia/Brisbane")
+    site_readings: list[SiteReading] = [
+        # Insert
+        SiteReading(
+            site_reading_type_id=1,
+            changed_time=datetime(2022, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+            local_id=1234,
+            quality_flags=QualityFlagsType.VALID,
+            time_period_start=datetime(2022, 8, 9, 4, 5, 6, tzinfo=timezone.utc),
+            time_period_seconds=456,
+            value=789,
+        ),
+        # Update everything non index
+        SiteReading(
+            site_reading_type_id=1,  # Index col to match existing
+            changed_time=datetime(2022, 6, 7, 8, 9, 10, tzinfo=timezone.utc),
+            local_id=4567,
+            quality_flags=QualityFlagsType.VALID,
+            time_period_start=datetime(2022, 6, 7, 2, 0, 0, tzinfo=aest),  # Index col to match existing
+            time_period_seconds=27,
+            value=-45,
+        ),
+        # Insert (partial match on unique constraint)
+        SiteReading(
+            site_reading_type_id=3,  # Won't match existing reading
+            changed_time=datetime(2022, 10, 11, 12, 13, 14, tzinfo=timezone.utc),
+            local_id=111,
+            quality_flags=QualityFlagsType.FORECAST,
+            time_period_start=datetime(2022, 6, 7, 2, 0, 0, tzinfo=aest),  # Will match existing reading
+            time_period_seconds=563,
+            value=123,
+        ),
+    ]
+
+    # Perform the upsert
+    async with generate_async_session(pg_base_config) as session:
+        await upsert_site_readings(session, site_readings)
+        await session.commit()
+
+    # Check the data persisted
+    async with generate_async_session(pg_base_config) as session:
+        all_db_readings = await fetch_site_readings(session)
+        assert len(all_db_readings) == 6, "Two readings inserted - one updated"
+
+        # assert the inserts of the DB
+        sr_5 = all_db_readings[-2]
+        assert_class_instance_equality(SiteReading, site_readings[0], sr_5, ignored_properties=set(["site_reading_id"]))
+
+        sr_6 = all_db_readings[-1]
+        assert_class_instance_equality(SiteReading, site_readings[2], sr_6, ignored_properties=set(["site_reading_id"]))
+
+        # assert the update
+        sr_2 = all_db_readings[1]
+        assert_class_instance_equality(SiteReading, site_readings[1], sr_2, ignored_properties=set(["site_reading_id"]))
+
+        # Assert other fields are untouched
+        sr_1 = all_db_readings[0]
+        assert_class_instance_equality(
+            SiteReading,
+            SiteReading(
+                site_reading_id=1,
+                site_reading_type_id=1,
+                changed_time=datetime(2022, 6, 7, 11, 22, 33, tzinfo=timezone.utc),
+                local_id=11111,
+                quality_flags=QualityFlagsType.VALID,
+                time_period_start=datetime(2022, 6, 7, 1, 0, 0, tzinfo=aest),  # Will match existing reading
+                time_period_seconds=300,
+                value=11,
+            ),
+            sr_1,
+        ),

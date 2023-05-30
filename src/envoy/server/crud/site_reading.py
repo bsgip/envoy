@@ -136,7 +136,7 @@ async def upsert_site_readings(session: AsyncSession, site_readings: Iterable[Si
 
     table = SiteReading.__table__
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns)]  # type: ignore [attr-defined]
-    stmt = psql_insert(SiteReadingType).values([{k: getattr(sr, k) for k in update_cols} for sr in site_readings])
+    stmt = psql_insert(SiteReading).values([{k: getattr(sr, k) for k in update_cols} for sr in site_readings])
     stmt = stmt.on_conflict_do_update(
         index_elements=[
             SiteReading.site_reading_type_id,
