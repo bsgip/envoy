@@ -8,7 +8,6 @@ from envoy.server.schema.sep2.types import CurrencyCode
 class TariffRequest(BaseModel):
     """TODO"""
 
-    tariff_id: int
     name: str
     dnsp_code: str
     currency_code: CurrencyCode
@@ -28,8 +27,8 @@ class TariffGeneratedRateRequest(BaseModel):
     """TODO"""
 
     tariff_id: int
-    tariff_generated_rate_id: int
     site_id: int
+    start_time: datetime
     duration_seconds: int
     import_active_price: float
     export_active_price: float

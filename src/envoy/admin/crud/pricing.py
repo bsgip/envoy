@@ -4,15 +4,17 @@ from typing import Optional, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, Result
 
-from envoy.server.model.tariff import Tariff
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 
 async def insert_single_tariff(session: AsyncSession, tariff: Tariff) -> None:
+    """Inserts a single tariff entry into the DB. Returns None"""
     session.add(tariff)
 
 
 async def update_single_tariff(session: AsyncSession, updated_tariff: Tariff) -> None:
-    resp = await session.execute(select(Tariff).filter_by(tariff_id=updated_tariff.tariff_id))
+    """Updates a single existing tariff entry in the DB."""
+    resp = await session.execute(select(Tariff).where(Tariff.tariff_id == updated_tariff.tariff_id))
     tariff = resp.scalar_one()
 
     tariff.changed_time = updated_tariff.changed_time
@@ -21,6 +23,6 @@ async def update_single_tariff(session: AsyncSession, updated_tariff: Tariff) ->
     tariff.currency_code = updated_tariff.currency_code
 
 
-async def select_many_tariffs(session: AsyncSession, limit: int = 5) -> Result:
-    stmt = select(Tariff).order_by(Tariff.changed_time).limit(limit)
-    return await session.execute(stmt)
+async def insert_single_tariff_genrate(session: AsyncSession, tariff_genrate: TariffGeneratedRate) -> None:
+    """Inserts a single tariff generated rate entry into the DB. Returns None"""
+    session.add(tariff_genrate)
