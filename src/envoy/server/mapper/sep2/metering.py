@@ -21,7 +21,7 @@ class MirrorUsagePointMapper:
     ) -> SiteReadingType:
         """Takes a MirrorUsagePoint, validates it and creates an equivalent SiteReadingType"""
         if not mup.mirrorMeterReadings or len(mup.mirrorMeterReadings) == 0:
-            raise InvalidMappingError("Not MirrorMeterReading / ReadingType specified")
+            raise InvalidMappingError("No MirrorMeterReading / ReadingType specified")
         rt = mup.mirrorMeterReadings[0].readingType
 
         if not rt:
@@ -90,6 +90,8 @@ class MirrorUsagePointMapper:
 
     @staticmethod
     def map_to_list_response(srts: Sequence[SiteReadingType], srt_count: int) -> MirrorUsagePointListResponse:
+        """Maps a set of SiteReadingType (requires the associated site relationship being populated for each
+        SiteReadingType)"""
         return MirrorUsagePointListResponse.validate(
             {
                 "href": uris.MirrorUsagePointListUri,

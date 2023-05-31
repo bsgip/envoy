@@ -35,7 +35,7 @@ class MirrorMeteringManager:
         )
 
         srt_id = await upsert_site_reading_type_for_aggregator(
-            session, aggregator_id=aggregator_id, site_reading_type=srt
+            session=session, aggregator_id=aggregator_id, site_reading_type=srt
         )
         await session.commit()
         return srt_id
@@ -48,7 +48,7 @@ class MirrorMeteringManager:
 
         raises NotFoundError if the underlying site_reading_type_id DNE/doesn't belong to aggregator_id"""
         srt = await fetch_site_reading_type_for_aggregator(
-            session, aggregator_id=aggregator_id, site_reading_type_id=site_reading_type_id
+            session=session, aggregator_id=aggregator_id, site_reading_type_id=site_reading_type_id
         )
         if srt is None:
             raise NotFoundError(f"MirrorUsagePoint with id {site_reading_type_id} doesn't exist or is inaccessible")
@@ -68,11 +68,11 @@ class MirrorMeteringManager:
     ) -> MirrorUsagePointListResponse:
         """Fetches a paginated set of MirrorUsagePoint accessible to the specified aggregator"""
         srts = await fetch_site_reading_types_page_for_aggregator(
-            session, aggregator_id=aggregator_id, start=start, limit=limit, changed_after=changed_after
+            session=session, aggregator_id=aggregator_id, start=start, limit=limit, changed_after=changed_after
         )
 
         count = await count_site_reading_types_for_aggregator(
-            session, aggregator_id=aggregator_id, changed_after=changed_after
+            session=session, aggregator_id=aggregator_id, changed_after=changed_after
         )
 
         return MirrorUsagePointMapper.map_to_list_response(srts, count)
