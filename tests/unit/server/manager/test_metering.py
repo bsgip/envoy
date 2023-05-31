@@ -76,7 +76,66 @@ async def test_create_or_fetch_mirror_usage_point_no_site(mock_select_single_sit
     # Assert
     assert_mock_session(mock_session, committed=False)
     mock_select_single_site_with_lfdi.assert_called_once_with(
-        session=mock_session, lfdi=mup.deviceLFDI, aggregator_id=aggregator_id
+        session=mock_session,
+        lfdi=mup.deviceLFDI,
+        aggregator_id=aggregator_id,
+    )
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.metering.fetch_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.metering.MirrorUsagePointMapper")
+async def test_fetch_mirror_usage_point(
+    mock_MirrorUsagePointMapper: mock.MagicMock,
+    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+):
+    """Check that the manager will handle interacting with the DB and its responses"""
+
+    # Arrange
+    mock_session: AsyncSession = create_mock_session()
+    aggregator_id = 2
+    srt_id = 3
+    mapped_mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
+    existing_srt: SiteReadingType = generate_class_instance(SiteReadingType)
+    existing_srt.site = generate_class_instance(Site)
+
+    mock_fetch_site_reading_type_for_aggregator.return_value = existing_srt
+    mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
+
+    # Act
+    result = await MirrorMeteringManager.fetch_mirror_usage_point(mock_session, aggregator_id, srt_id)
+
+    # Assert
+    assert result is mapped_mup
+    assert_mock_session(mock_session, committed=False)
+    mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
+        session=mock_session, aggregator_id=aggregator_id, site_reading_type_id=srt_id, include_site_relation=True
+    )
+    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(existing_srt, existing_srt.site)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.metering.fetch_site_reading_type_for_aggregator")
+async def test_fetch_mirror_usage_point_no_srt(
+    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+):
+    """Check that the manager will handle interacting with the DB and its responses"""
+
+    # Arrange
+    mock_session: AsyncSession = create_mock_session()
+    aggregator_id = 2
+    srt_id = 3
+
+    mock_fetch_site_reading_type_for_aggregator.return_value = None
+
+    # Act
+    with pytest.raises(NotFoundError):
+        await MirrorMeteringManager.fetch_mirror_usage_point(mock_session, aggregator_id, srt_id)
+
+    # Assert
+    assert_mock_session(mock_session, committed=False)
+    mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
+        session=mock_session, aggregator_id=aggregator_id, site_reading_type_id=srt_id, include_site_relation=True
     )
 
 
@@ -108,7 +167,10 @@ async def test_add_or_update_readings(
     # Assert
     assert_mock_session(mock_session, committed=True)
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
-        session=mock_session, aggregator_id=aggregator_id, site_reading_type_id=site_reading_type_id
+        session=mock_session,
+        aggregator_id=aggregator_id,
+        site_reading_type_id=site_reading_type_id,
+        include_site_relation=False,
     )
     mock_upsert_site_readings.assert_called_once_with(mock_session, mapped_readings)
 
@@ -139,7 +201,10 @@ async def test_add_or_update_readings_no_srt(mock_fetch_site_reading_type_for_ag
     # Assert
     assert_mock_session(mock_session, committed=False)
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
-        session=mock_session, aggregator_id=aggregator_id, site_reading_type_id=site_reading_type_id
+        session=mock_session,
+        aggregator_id=aggregator_id,
+        site_reading_type_id=site_reading_type_id,
+        include_site_relation=False,
     )
 
 

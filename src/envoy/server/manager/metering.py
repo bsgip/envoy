@@ -41,6 +41,23 @@ class MirrorMeteringManager:
         return srt_id
 
     @staticmethod
+    async def fetch_mirror_usage_point(
+        session: AsyncSession, aggregator_id: int, site_reading_type_id: int
+    ) -> MirrorUsagePoint:
+        """Fetches a MirrorUsagePoint with the specified site_reading_type_id. Raises NotFoundError if it can't be
+        located"""
+        srt = await fetch_site_reading_type_for_aggregator(
+            session=session,
+            aggregator_id=aggregator_id,
+            site_reading_type_id=site_reading_type_id,
+            include_site_relation=True,
+        )
+        if srt is None:
+            raise NotFoundError(f"MirrorUsagePoint with id {site_reading_type_id} doesn't exist or is inaccessible")
+
+        return MirrorUsagePointMapper.map_to_response(srt, srt.site)
+
+    @staticmethod
     async def add_or_update_readings(
         session: AsyncSession, aggregator_id: int, site_reading_type_id: int, mmr: MirrorMeterReading
     ):
@@ -48,7 +65,10 @@ class MirrorMeteringManager:
 
         raises NotFoundError if the underlying site_reading_type_id DNE/doesn't belong to aggregator_id"""
         srt = await fetch_site_reading_type_for_aggregator(
-            session=session, aggregator_id=aggregator_id, site_reading_type_id=site_reading_type_id
+            session=session,
+            aggregator_id=aggregator_id,
+            site_reading_type_id=site_reading_type_id,
+            include_site_relation=False,
         )
         if srt is None:
             raise NotFoundError(f"MirrorUsagePoint with id {site_reading_type_id} doesn't exist or is inaccessible")

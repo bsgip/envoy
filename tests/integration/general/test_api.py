@@ -48,6 +48,10 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc/2022-05-07"),
+
+    # mirror metering function set
+    ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/mup"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/mup/1"),
 ]
 # fmt: on
 
@@ -55,7 +59,7 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
 @pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
 @pytest.mark.anyio
 async def test_get_resource_unauthorised(valid_methods: list[HTTPMethod], uri: str, client: AsyncClient):
-    """Runs through the basic unauthorised tests for all parametized requests"""
+    """Runs through the basic unauthorised tests for all parametrized requests"""
     for method in valid_methods:
         body: Optional[str] = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:

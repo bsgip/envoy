@@ -11,13 +11,19 @@ from envoy.server.model.site_reading import SiteReading, SiteReadingType
 
 
 async def fetch_site_reading_type_for_aggregator(
-    session: AsyncSession, aggregator_id: int, site_reading_type_id: int
+    session: AsyncSession, aggregator_id: int, site_reading_type_id: int, include_site_relation: bool
 ) -> Optional[SiteReadingType]:
-    """Fetches the SiteReadingType by ID (also validating aggregator_id) - returns None if it can't be found"""
+    """Fetches the SiteReadingType by ID (also validating aggregator_id) - returns None if it can't be found
+
+    if include_site_relation is True - the site relation will also be populated (defaults to raise otherwise)
+    """
     stmt = select(SiteReadingType).where(
         (SiteReadingType.site_reading_type_id == site_reading_type_id)
         & (SiteReadingType.aggregator_id == aggregator_id)
     )
+
+    if include_site_relation:
+        stmt = stmt.options(selectinload(SiteReadingType.site))
 
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()

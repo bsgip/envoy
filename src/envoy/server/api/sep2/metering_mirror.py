@@ -20,6 +20,7 @@ from envoy.server.schema import uri
 from envoy.server.schema.sep2.metering_mirror import (
     MirrorMeterReadingListRequest,
     MirrorMeterReadingRequest,
+    MirrorUsagePoint,
     MirrorUsagePointListResponse,
     MirrorUsagePointRequest,
 )
@@ -127,6 +128,41 @@ async def put_mirror_usage_point(
     )
 
 
+# GET /mup/{mup_id}
+@router.head(uri.MirrorUsagePointUri)
+@router.get(
+    uri.MirrorUsagePointUri,
+    response_class=XmlResponse,
+    response_model=MirrorUsagePoint,
+    status_code=HTTPStatus.OK,
+)
+async def get_mirror_usage_point(
+    request: Request,
+    mup_id: int,
+) -> XmlResponse:
+    """Responds with a MirrorUsagePoint for the specified mup_id (if the client can access the mup)
+    or returns a HTTP 404 otherwise.
+
+    Args:
+        mup_id: The MirrorUsagePoint id to request
+
+    Returns:
+        fastapi.Response object.
+    """
+    try:
+        mup_list = await MirrorMeteringManager.fetch_mirror_usage_point(
+            db.session,
+            aggregator_id=extract_aggregator_id(request),
+            site_reading_type_id=mup_id,
+        )
+    except BadRequestError as ex:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NotFoundError as ex:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+
+    return XmlResponse(mup_list)
+
+
 # POST /mup/{mup_id}
 @router.post(uri.MirrorUsagePointUri, status_code=HTTPStatus.CREATED)
 async def post_mirror_usage_point(
@@ -150,9 +186,3 @@ async def post_mirror_usage_point(
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
 
     return Response(status_code=HTTPStatus.CREATED)
-
-
-# DELETE /mup/{mup_id}
-@router.delete(uri.MirrorUsagePointUri, status_code=HTTPStatus.OK)
-async def delete_mirror_usage_point(request: Request) -> Response:
-    return Response(status_code=HTTPStatus.OK)

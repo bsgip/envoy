@@ -44,7 +44,7 @@ class SiteReadingType(Base):
     # These are the properties that can change via upsert
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading set was last altered
 
-    site: Mapped["Site"] = relationship()
+    site: Mapped["Site"] = relationship(lazy="raise")
 
     # We want to minimise duplicated reading types - we do this by essentially making the entire entity
     # into one big unique index

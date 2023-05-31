@@ -96,9 +96,29 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
 async def test_fetch_site_reading_type_for_aggregator(
     pg_base_config, aggregator_id: int, site_reading_type_id: int, expected: Optional[SiteReadingType]
 ):
+    """Tests the contents of the returned SiteReadingType"""
     async with generate_async_session(pg_base_config) as session:
-        actual = await fetch_site_reading_type_for_aggregator(session, aggregator_id, site_reading_type_id)
+        actual = await fetch_site_reading_type_for_aggregator(
+            session, aggregator_id, site_reading_type_id, include_site_relation=False
+        )
         assert_class_instance_equality(SiteReadingType, expected, actual)
+
+
+@pytest.mark.anyio
+async def test_fetch_site_reading_type_for_aggregator_relationship(pg_base_config):
+    """Tests the relationship fetching behaviour"""
+    async with generate_async_session(pg_base_config) as session:
+        # test with no site relation (ensure raise loading is enabled)
+        actual_no_relation = await fetch_site_reading_type_for_aggregator(session, 1, 1, include_site_relation=False)
+        with pytest.raises(Exception):
+            actual_no_relation.site.lfdi
+
+        # Test site relation can be navigated for different sites
+        actual_with_relation = await fetch_site_reading_type_for_aggregator(session, 1, 1, include_site_relation=True)
+        assert actual_with_relation.site.lfdi == "site1-lfdi"
+
+        actual_4_with_relation = await fetch_site_reading_type_for_aggregator(session, 1, 4, include_site_relation=True)
+        assert actual_4_with_relation.site.lfdi == "site2-lfdi"
 
 
 @pytest.mark.anyio
