@@ -63,7 +63,7 @@ async def create_tariff(tariff: TariffRequest, response: Response) -> Union[None
         None
     """
     tariff_id = await TariffManager.add_new_tariff(db.session, tariff)
-    response.headers["Location"] = TariffUpdateUri.format(tariff_id=tariff.tariff_id)
+    response.headers["Location"] = TariffUpdateUri.format(tariff_id=tariff_id)
 
 
 @router.put(TariffUpdateUri, status_code=HTTPStatus.OK, response_model=None)
@@ -79,11 +79,8 @@ async def update_tariff(tariff_id: int, tariff: TariffRequest) -> Union[None, Re
     Returns:
         None
     """
-    if tariff.tariff_id != tariff_id:
-        raise HTTPException(detail="tariff_id Mistmatch.", status_code=HTTPStatus.BAD_REQUEST)
-
     try:
-        await TariffManager.update_existing_tariff(db.session, tariff)
+        await TariffManager.update_existing_tariff(db.session, tariff_id, tariff)
     except NoResultFound as exc:
         logger.debug(exc)
         raise HTTPException(detail="Not found", status_code=HTTPStatus.NOT_FOUND)
@@ -107,7 +104,11 @@ async def create_tariff_genrate(
     if tariff_generate.tariff_id != tariff_id:
         raise HTTPException(detail="tariff_id Mistmatch.", status_code=HTTPStatus.BAD_REQUEST)
 
-    tariff_genrate_id = await TariffGeneratedRateManager.add_tariff_genrate(db.session, tariff_generate)
-    response.headers["Location"] = TariffGeneratedRateUpdateUri.format(
-        tariff_id=tariff_id, tariff_generated_rate_id=tariff_genrate_id
-    )
+    try:
+        tariff_genrate_id = await TariffGeneratedRateManager.add_tariff_genrate(db.session, tariff_generate)
+        response.headers["Location"] = TariffGeneratedRateUpdateUri.format(
+            tariff_id=tariff_id, tariff_generated_rate_id=tariff_genrate_id
+        )
+    except NoResultFound as exc:
+        logger.debug(exc)
+        raise HTTPException(detail="tariff_id or site_id not found.", status_code=HTTPStatus.BAD_REQUEST)
