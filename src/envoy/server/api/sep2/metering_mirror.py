@@ -1,6 +1,6 @@
 import logging
 from http import HTTPStatus
-from typing import Annotated, Union
+from typing import Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi_async_sqlalchemy import db
