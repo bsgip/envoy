@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import BIGINT, INTEGER, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import INTEGER, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base, Site
@@ -75,7 +75,7 @@ class SiteReading(Base):
     site_reading_type_id: Mapped[int] = mapped_column(ForeignKey("site_reading_type.site_reading_type_id"))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading was last altered
 
-    local_id: Mapped[Optional[int]] = mapped_column(BIGINT, nullable=True)  # Internal id assigned by aggregator
+    local_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # Internal id assigned by aggregator
     quality_flags: Mapped[QualityFlagsType] = mapped_column(INTEGER)
     time_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading starts
     time_period_seconds: Mapped[int] = mapped_column(INTEGER)  # Length of the reading in seconds

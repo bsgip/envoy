@@ -22,7 +22,7 @@ def assert_fuzzy_datetime_match(
 def assert_nowish(expected_time: Union[int, float, datetime], fuzziness_seconds: int = 20):
     """Asserts that datetime is within fuzziness_seconds of now"""
 
-    if expected_time.tzinfo is None:
+    if not isinstance(expected_time, datetime) or expected_time.tzinfo is None:
         now = datetime.now()
     else:
         now = datetime.now(timezone.utc)
