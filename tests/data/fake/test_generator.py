@@ -458,6 +458,18 @@ def test_clone_class_instance_sql_alchemy():
     assert clone.disabled is original.disabled
     assert clone.total is original.total
 
+    clone_with_ignores: ParentClass = clone_class_instance(original, ignored_properties=set(["created", "total"]))
+    assert clone_with_ignores
+    assert clone_with_ignores is not original
+    assert type(clone_with_ignores) == ParentClass
+
+    assert clone_with_ignores.parent_id is original.parent_id
+    assert clone_with_ignores.name is original.name
+    assert clone_with_ignores.created is None, "This property is ignored"
+    assert clone_with_ignores.deleted is original.deleted
+    assert clone_with_ignores.disabled is original.disabled
+    assert clone_with_ignores.total is None, "This property is ignored"
+
 
 def test_clone_class_instance_xml():
     """Check that cloned xml classes are properly shallow cloned"""

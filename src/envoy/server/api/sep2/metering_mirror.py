@@ -105,7 +105,7 @@ async def post_mirror_usage_point_list(
 @router.put(uri.MirrorUsagePointListUri, status_code=HTTPStatus.OK)
 async def put_mirror_usage_point(
     request: Request,
-    payload: Annotated[MirrorUsagePointRequest, Depends(XmlRequest(MirrorUsagePointRequest))],
+    payload: MirrorUsagePointRequest = Depends(XmlRequest(MirrorUsagePointRequest)),
 ) -> Response:
     """Creates/Updates a mirror usage point for the current client. If the mup aligns with an existing mup for the
     specified site / aggregator then that will be returned instead

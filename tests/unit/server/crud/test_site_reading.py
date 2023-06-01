@@ -66,7 +66,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 kind=37,
                 phase=64,
                 power_of_ten_multiplier=3,
-                default_interval_seconds=None,
+                default_interval_seconds=0,
                 changed_time=datetime(2022, 5, 6, 11, 22, 33, tzinfo=timezone.utc),
             ),
         ),
@@ -84,7 +84,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 kind=37,
                 phase=64,
                 power_of_ten_multiplier=0,
-                default_interval_seconds=None,
+                default_interval_seconds=0,
                 changed_time=datetime(2022, 5, 6, 12, 22, 33, tzinfo=timezone.utc),
             ),
         ),
@@ -101,7 +101,7 @@ async def test_fetch_site_reading_type_for_aggregator(
         actual = await fetch_site_reading_type_for_aggregator(
             session, aggregator_id, site_reading_type_id, include_site_relation=False
         )
-        assert_class_instance_equality(SiteReadingType, expected, actual)
+        assert_class_instance_equality(SiteReadingType, expected, actual, ignored_properties=set(["site"]))
 
 
 @pytest.mark.anyio
@@ -206,7 +206,7 @@ async def test_upsert_site_reading_type_for_aggregator_cant_change_agg_id(pg_bas
         original_srt = await fetch_site_reading_type(session, aggregator_id, site_id_to_update)
         assert original_srt
 
-        update_attempt_srt = clone_class_instance(original_srt)
+        update_attempt_srt = clone_class_instance(original_srt, ignored_properties=set(["site"]))
         update_attempt_srt.aggregator_id = 3
         update_attempt_srt.changed_time = datetime.utcnow()
 
