@@ -73,7 +73,7 @@ VALUES (1, -- site_reading_type_id
     37, -- kind
     64, -- phase
     3, -- power_of_ten_multiplier
-    NULL, -- default_interval_seconds
+    0, -- default_interval_seconds
     '2022-05-06 11:22:33' -- changed_time
     );
 INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
@@ -87,7 +87,7 @@ VALUES (2, -- site_reading_type_id
     37, -- kind
     64, -- phase
     0, -- power_of_ten_multiplier
-    NULL, -- default_interval_seconds
+    0, -- default_interval_seconds
     '2022-05-06 12:22:33' -- changed_time
     );
 INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
@@ -115,7 +115,7 @@ VALUES (4, -- site_reading_type_id
     12, -- kind
     0, -- phase
     -1, -- power_of_ten_multiplier
-    NULL, -- default_interval_seconds
+    0, -- default_interval_seconds
     '2022-05-06 14:22:33' -- changed_time
     );
 

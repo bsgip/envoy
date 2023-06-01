@@ -152,14 +152,15 @@ async def test_upsert_site_reading_type_for_aggregator_insert(pg_base_config):
         )
 
 
+@pytest.mark.parametrize("srt_id_to_update, aggregator_id", [(3, 1), (1, 1)])
 @pytest.mark.anyio
-async def test_upsert_site_reading_type_for_aggregator_non_indexed(pg_base_config):
+async def test_upsert_site_reading_type_for_aggregator_non_indexed(
+    pg_base_config, srt_id_to_update: int, aggregator_id: int
+):
     """Tests that the upsert can do updates to fields that aren't unique constrained"""
 
     # We want the site object we upsert to be a "fresh" Site instance that hasn't been anywhere near
     # a SQL Alchemy session but shares the appropriate indexed values
-    srt_id_to_update = 3
-    aggregator_id = 1
     srt_to_upsert: SiteReadingType = generate_class_instance(SiteReadingType)
     async with generate_async_session(pg_base_config) as session:
         existing_srt = await fetch_site_reading_type(session, aggregator_id, srt_id_to_update)
@@ -188,10 +189,6 @@ async def test_upsert_site_reading_type_for_aggregator_non_indexed(pg_base_confi
         # check it exists
         actual_srt = await fetch_site_reading_type(session, aggregator_id, srt_id_to_update)
         assert_class_instance_equality(SiteReadingType, srt_to_upsert, actual_srt, set(["site_reading_type_id"]))
-
-        # Sanity check another site reading type in the same aggregator
-        srt_1 = await fetch_site_reading_type(session, aggregator_id, 1)
-        assert_datetime_equal(srt_1.changed_time, datetime(2022, 5, 6, 11, 22, 33, tzinfo=timezone.utc))
 
         # Sanity check the count
         assert len(await fetch_site_reading_types(session, aggregator_id)) == 3

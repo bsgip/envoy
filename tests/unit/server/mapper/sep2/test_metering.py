@@ -79,6 +79,10 @@ def test_MirrorUsagePointMapper_map_from_request():
     assert result_all_set.power_of_ten_multiplier == mup_all_set.mirrorMeterReadings[0].readingType.powerOfTenMultiplier
     assert result_all_set.kind == mup_all_set.mirrorMeterReadings[0].readingType.kind
     assert result_all_set.phase == mup_all_set.mirrorMeterReadings[0].readingType.phase
+    assert result_all_set.data_qualifier == mup_all_set.mirrorMeterReadings[0].readingType.dataQualifier
+    assert result_all_set.accumulation_behaviour == mup_all_set.mirrorMeterReadings[0].readingType.accumulationBehaviour
+    assert result_all_set.flow_direction == mup_all_set.mirrorMeterReadings[0].readingType.flowDirection
+    assert result_all_set.default_interval_seconds == mup_all_set.mirrorMeterReadings[0].readingType.intervalLength
 
     result_optional = MirrorUsagePointMapper.map_from_request(mup_optional, aggregator_id, site_id, changed_time)
     assert result_optional is not None
@@ -90,6 +94,10 @@ def test_MirrorUsagePointMapper_map_from_request():
     assert result_optional.power_of_ten_multiplier == 0, "Not set in mup_optional"
     assert result_optional.kind == KindType.NOT_APPLICABLE, "Not set in mup_optional"
     assert result_optional.phase == PhaseCode.NOT_APPLICABLE, "Not set in mup_optional"
+    assert result_optional.data_qualifier == DataQualifierType.NOT_APPLICABLE, "Not set in mup_optional"
+    assert result_optional.accumulation_behaviour == AccumulationBehaviourType.NOT_APPLICABLE, "Not set in mup_optional"
+    assert result_optional.flow_direction == FlowDirectionType.NOT_APPLICABLE, "Not set in mup_optional"
+    assert result_optional.default_interval_seconds == 0, "Not set in mup_optional"
 
 
 def test_MirrorUsagePointMapper_map_to_response():

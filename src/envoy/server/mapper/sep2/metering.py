@@ -8,7 +8,16 @@ from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.schema.sep2.metering import Reading
 from envoy.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint, MirrorUsagePointListResponse
-from envoy.server.schema.sep2.types import KindType, PhaseCode, QualityFlagsType, RoleFlagsType, ServiceKind
+from envoy.server.schema.sep2.types import (
+    AccumulationBehaviourType,
+    DataQualifierType,
+    FlowDirectionType,
+    KindType,
+    PhaseCode,
+    QualityFlagsType,
+    RoleFlagsType,
+    ServiceKind,
+)
 
 MIRROR_USAGE_POINT_MRID_PREFIX: int = int("f051", 16)
 MIRROR_METER_READING_MRID_PREFIX: int = int("4ead", 16)
@@ -40,18 +49,34 @@ class MirrorUsagePointMapper:
             power_of_ten_multiplier = 0
         else:
             power_of_ten_multiplier = rt.powerOfTenMultiplier
+        if rt.dataQualifier is None:
+            data_qualifier = DataQualifierType.NOT_APPLICABLE
+        else:
+            data_qualifier = rt.dataQualifier
+        if rt.accumulationBehaviour is None:
+            accumulation_behaviour = AccumulationBehaviourType.NOT_APPLICABLE
+        else:
+            accumulation_behaviour = rt.accumulationBehaviour
+        if rt.flowDirection is None:
+            flow_direction = FlowDirectionType.NOT_APPLICABLE
+        else:
+            flow_direction = rt.flowDirection
+        if rt.intervalLength is None:
+            default_interval_seconds = 0
+        else:
+            default_interval_seconds = rt.intervalLength
 
         return SiteReadingType(
             aggregator_id=aggregator_id,
             site_id=site_id,
             uom=rt.uom,
-            data_qualifier=rt.dataQualifier,
-            flow_direction=rt.flowDirection,
-            accumulation_behaviour=rt.accumulationBehaviour,
+            data_qualifier=data_qualifier,
+            flow_direction=flow_direction,
+            accumulation_behaviour=accumulation_behaviour,
             kind=kind,
             phase=phase,
             power_of_ten_multiplier=power_of_ten_multiplier,
-            default_interval_seconds=rt.intervalLength,
+            default_interval_seconds=default_interval_seconds,
             changed_time=changed_time,
         )
 

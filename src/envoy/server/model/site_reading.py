@@ -37,8 +37,8 @@ class SiteReadingType(Base):
     kind: Mapped[KindType] = mapped_column(INTEGER)
     phase: Mapped[PhaseCode] = mapped_column(INTEGER)
     power_of_ten_multiplier: Mapped[int] = mapped_column(INTEGER)
-    default_interval_seconds: Mapped[Optional[int]] = mapped_column(
-        INTEGER, nullable=True
+    default_interval_seconds: Mapped[int] = mapped_column(
+        INTEGER
     )  # If a batch of readings is received without an interval - this length will be used to describe the batch length
 
     # These are the properties that can change via upsert

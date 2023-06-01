@@ -1,0 +1,16 @@
+<!-- IEEE Std 2030.5-2018 Table C.15 Step 8 Example Client request for POST /mup/0 -->
+<MirrorMeterReading
+	xmlns="urn:ieee:std:2030.5:ns">
+	<mRID>0800006CC8</mRID>
+	<MirrorReadingSet>
+		<mRID>0900006CC8</mRID>
+		<timePeriod>
+			<duration>86400</duration>
+			<start>1341579365</start>
+		</timePeriod>
+		<Reading>
+			<value>10</value>
+			<localID>17</localID>
+		</Reading>
+	</MirrorReadingSet>
+</MirrorMeterReading>
