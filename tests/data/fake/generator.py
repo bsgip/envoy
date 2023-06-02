@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Any, Callable, Optional, Union, get_args, get_origin, get_type_hints
 
 from pydantic_xml import BaseXmlModel
+from pydantic import BaseModel
 from sqlalchemy.orm import Mapped
 
 from envoy.server.model.base import Base
@@ -372,12 +373,14 @@ PRIMITIVE_VALUE_GENERATORS: dict[type, Callable[[int], Any]] = {
 CLASS_INSTANCE_GENERATORS: dict[type, Callable[[type, dict[str, Any]], Any]] = {
     Base: lambda target, kwargs: target(**kwargs),
     BaseXmlModel: lambda target, kwargs: target.construct(**kwargs),
+    BaseModel: lambda target, kwargs: target.construct(**kwargs),
 }
 
 # the set of functions for accessing all members of a class (keyed by the base class for accessing those members)
 CLASS_MEMBER_FETCHERS: dict[type, Callable[[type], list[str]]] = {
     Base: lambda target: [name for (name, _) in inspect.getmembers(target)],
     BaseXmlModel: lambda target: list(target.schema()["properties"].keys()),
+    BaseModel: lambda target: list(target.schema()["properties"].keys()),
 }
 
 # the set all base class public members keyed by the base class that generated them

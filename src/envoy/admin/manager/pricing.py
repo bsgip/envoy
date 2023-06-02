@@ -5,8 +5,18 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import NoResultFound
 
-from envoy.admin.crud.pricing import insert_single_tariff, update_single_tariff, insert_single_tariff_genrate
-from envoy.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
+from envoy.admin.crud.pricing import (
+    insert_single_tariff,
+    update_single_tariff,
+    insert_single_tariff_genrate,
+    select_single_tariff_generate,
+)
+from envoy.admin.schema.pricing import (
+    TariffRequest,
+    TariffResponse,
+    TariffGeneratedRateRequest,
+    TariffGeneratedRateResponse,
+)
 from envoy.server.crud.pricing import select_single_tariff, select_all_tariffs
 from envoy.admin.mapper.pricing import TariffMapper, TariffGeneratedRateMapper
 
@@ -59,3 +69,13 @@ class TariffGeneratedRateManager:
         await insert_single_tariff_genrate(session, tariff_genrate_model)
         await session.commit()
         return tariff_genrate_model.tariff_generated_rate_id
+
+    @staticmethod
+    async def fetch_tariff_genrate(
+        session: AsyncSession, tariff_id: int, tariff_genrate_id: int
+    ) -> TariffGeneratedRateResponse:
+        """Retrieve TariffGeneratedRate using tariff_generated_id and tariff_id,
+        map to TariffGeneratedRateResponse and return.
+        """
+        mdl = await select_single_tariff_generate(session, tariff_id, tariff_genrate_id)
+        return TariffGeneratedRateMapper.map_to_response(mdl)

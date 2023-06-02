@@ -3,11 +3,16 @@ from http import HTTPStatus
 from typing import Union, List
 
 from fastapi import APIRouter, HTTPException, Response, Query
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import NoResultFound, IntegrityError
 from fastapi_async_sqlalchemy import db
 
 from envoy.admin.manager.pricing import TariffManager, TariffListManager, TariffGeneratedRateManager
-from envoy.admin.schema.pricing import TariffRequest, TariffResponse, TariffGeneratedRateRequest
+from envoy.admin.schema.pricing import (
+    TariffRequest,
+    TariffResponse,
+    TariffGeneratedRateRequest,
+    TariffGeneratedRateResponse,
+)
 from envoy.admin.schema.uri import (
     TariffCreateUri,
     TariffUpdateUri,
@@ -54,7 +59,8 @@ async def get_tariff(tariff_id: int):
 
 @router.post(TariffCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
 async def create_tariff(tariff: TariffRequest, response: Response) -> Union[None, Response]:
-    """Creates a singular tariff. The location (/tariff/{tariff_id}) of the created resource is provided in the 'Location' header of the response.
+    """Creates a singular tariff. The location (/tariff/{tariff_id}) of the created resource is provided in the
+    'Location' header of the response.
 
     Body:
         TariffRequest object.
@@ -90,7 +96,9 @@ async def update_tariff(tariff_id: int, tariff: TariffRequest) -> Union[None, Re
 async def create_tariff_genrate(
     tariff_id: int, tariff_generate: TariffGeneratedRateRequest, response: Response
 ) -> Union[None, Response]:
-    """Creates a Tariff Generated Rate associated with a pacticular Tariff and Site. The location (/tariff/{tariff_id}/{tariff_generated_rate_id}) of the created resource is provided in the 'Location' header of the response.
+    """Creates a Tariff Generated Rate associated with a particular Tariff and Site.
+    The location (/tariff/{tariff_id}/tariff_generated_rate/{tariff_generated_rate_id}) of the created resource is
+    provided in the 'Location' header of the response.
 
     Path Params:
         tariff_id: integer ID of the desired tariff resource.
@@ -109,6 +117,26 @@ async def create_tariff_genrate(
         response.headers["Location"] = TariffGeneratedRateUpdateUri.format(
             tariff_id=tariff_id, tariff_generated_rate_id=tariff_genrate_id
         )
+    except IntegrityError as exc:
+        logger.debug(exc)
+        raise HTTPException(detail="tariff_id or site_id not valid.", status_code=HTTPStatus.BAD_REQUEST)
+
+
+@router.get(TariffGeneratedRateUpdateUri, status_code=HTTPStatus.OK, response_model=None)
+async def fetch_tariff_genrate(tariff_id: int, tariff_generated_rate_id: int) -> TariffGeneratedRateResponse:
+    """Creates a Tariff Generated Rate associated with a particular Tariff.
+    Path Params:
+        tariff_id: integer ID of the desired tariff resource.
+        tariff_generated_rate_id: integer ID of the desired tariff generated rate resource.
+
+
+    Returns:
+        TariffGeneratedRateResponse object.
+    """
+
+    try:
+        return await TariffGeneratedRateManager.fetch_tariff_genrate(db.session, tariff_id, tariff_generated_rate_id)
+
     except NoResultFound as exc:
         logger.debug(exc)
-        raise HTTPException(detail="tariff_id or site_id not found.", status_code=HTTPStatus.BAD_REQUEST)
+        raise HTTPException(detail="Not found", status_code=HTTPStatus.NOT_FOUND)

@@ -1,7 +1,7 @@
 import logging
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI
 from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 
 from envoy.admin.api.depends import AdminAuthDepends

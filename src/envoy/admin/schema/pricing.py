@@ -34,3 +34,18 @@ class TariffGeneratedRateRequest(BaseModel):
     export_active_price: float
     import_reactive_price: float
     export_reactive_price: float
+
+
+class TariffGeneratedRateResponse(BaseModel):
+    """TODO"""
+
+    tariff_generated_rate_id: int
+    changed_time: datetime
+    tariff_id: int
+    site_id: int
+    start_time: datetime
+    duration_seconds: int
+    import_active_price: float
+    export_active_price: float
+    import_reactive_price: float
+    export_reactive_price: float
