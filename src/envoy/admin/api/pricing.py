@@ -1,6 +1,6 @@
 import logging
 from http import HTTPStatus
-from typing import Union, List
+from typing import List
 
 from fastapi import APIRouter, HTTPException, Response, Query
 from sqlalchemy.exc import NoResultFound, IntegrityError
@@ -58,7 +58,7 @@ async def get_tariff(tariff_id: int):
 
 
 @router.post(TariffCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
-async def create_tariff(tariff: TariffRequest, response: Response) -> Union[None, Response]:
+async def create_tariff(tariff: TariffRequest, response: Response) -> None:
     """Creates a singular tariff. The location (/tariff/{tariff_id}) of the created resource is provided in the
     'Location' header of the response.
 
@@ -73,7 +73,7 @@ async def create_tariff(tariff: TariffRequest, response: Response) -> Union[None
 
 
 @router.put(TariffUpdateUri, status_code=HTTPStatus.OK, response_model=None)
-async def update_tariff(tariff_id: int, tariff: TariffRequest) -> Union[None, Response]:
+async def update_tariff(tariff_id: int, tariff: TariffRequest) -> None:
     """Updates a tariff object.
 
     Path Params:
@@ -95,7 +95,7 @@ async def update_tariff(tariff_id: int, tariff: TariffRequest) -> Union[None, Re
 @router.post(TariffGeneratedRateCreateUri, status_code=HTTPStatus.OK, response_model=None)
 async def create_tariff_genrate(
     tariff_id: int, tariff_generate: TariffGeneratedRateRequest, response: Response
-) -> Union[None, Response]:
+) -> None:
     """Creates a Tariff Generated Rate associated with a particular Tariff and Site.
     The location (/tariff/{tariff_id}/tariff_generated_rate/{tariff_generated_rate_id}) of the created resource is
     provided in the 'Location' header of the response.
