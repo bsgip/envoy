@@ -5,7 +5,6 @@ import pytest
 
 from envoy.server.crud import link
 from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
-from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceResponse
 from tests.postgres_testing import generate_async_session
 
 
@@ -13,7 +12,14 @@ from tests.postgres_testing import generate_async_session
 @pytest.mark.parametrize(
     "model, expected_links, uri_parameters",
     [
-        (DeviceCapabilityResponse, {"EndDeviceListLink": {"href": "/edev", "all_": "3"}}, {}),
+        (
+            DeviceCapabilityResponse,
+            {
+                "EndDeviceListLink": {"href": "/edev", "all_": "3"},
+                "MirrorUsagePointListLink": {"href": "/mup", "all_": "3"},
+            },
+            {},
+        ),
         # (
         #     EndDeviceListResponse,
         #     {"EndDeviceListLink": {"href": "/edev", "all_": "3"},},

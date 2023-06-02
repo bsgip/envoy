@@ -6,7 +6,7 @@ from typing import Iterable, Optional
 import pydantic_xml
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.crud import end_device
+from envoy.server.crud import end_device, site_reading
 from envoy.server.schema import uri
 from envoy.server.schema.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
 
@@ -125,7 +125,9 @@ SEP2_LINK_MAP = {
     "MessagingProgramListLink": LinkParameters(uri=uri.MessagingProgramListUri, function_set=FunctionSet.Messaging),
     "MeterReadingListLink": LinkParameters(uri=uri.MeterReadingListUri, function_set=FunctionSet.Metering),
     "MeterReadingLink": LinkParameters(uri=uri.MeterReadingUri, function_set=FunctionSet.Metering),
-    "MirrorUsagePointListLink": LinkParameters(uri=uri.MirrorUsagePointListUri, function_set=FunctionSet.Metering),
+    "MirrorUsagePointListLink": LinkParameters(
+        uri=uri.MirrorUsagePointListUri, function_set=FunctionSet.MeteringMirror
+    ),
     "NeighborListLink": LinkParameters(uri=uri.NeighborListUri, function_set=FunctionSet.NetworkStatus),
     "NotificationListLink": LinkParameters(
         uri=uri.NotificationListUri, function_set=FunctionSet.SubscriptionAndNotification
@@ -258,10 +260,13 @@ async def get_resource_count(session: AsyncSession, list_link_name: str, aggrega
         NotImplementedError: Raised when a ListLink doesn't have a resource count lookup method.
     """
     if list_link_name == "EndDeviceListLink":
-        count = await end_device.select_aggregator_site_count(
+        return await end_device.select_aggregator_site_count(
             session=session, aggregator_id=aggregator_id, after=datetime.min
         )
-        return count
+    elif list_link_name == "MirrorUsagePointListLink":
+        return await site_reading.count_site_reading_types_for_aggregator(
+            session=session, aggregator_id=aggregator_id, changed_after=datetime.min
+        )
     else:
         raise NotImplementedError(f"No resource count implemented for '{list_link_name}'")
 
