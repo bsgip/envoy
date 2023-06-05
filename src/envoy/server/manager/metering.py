@@ -1,7 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from tzlocal import get_localzone
 
 from envoy.server.crud.end_device import select_single_site_with_lfdi
 from envoy.server.crud.site_reading import (
@@ -29,7 +28,7 @@ class MirrorMeteringManager:
         if site is None:
             raise InvalidIdError("deviceLFDI doesn't match a known site for this aggregator")
 
-        changed_time = datetime.now(tz=get_localzone())
+        changed_time = datetime.now(tz=timezone.utc)
         srt = MirrorUsagePointMapper.map_from_request(
             mup, aggregator_id=aggregator_id, site_id=site.site_id, changed_time=changed_time
         )
@@ -73,7 +72,7 @@ class MirrorMeteringManager:
         if srt is None:
             raise NotFoundError(f"MirrorUsagePoint with id {site_reading_type_id} doesn't exist or is inaccessible")
 
-        changed_time = datetime.now(tz=get_localzone())
+        changed_time = datetime.now(tz=timezone.utc)
         site_readings = MirrorMeterReadingMapper.map_from_request(
             mmr, aggregator_id=aggregator_id, site_reading_type_id=site_reading_type_id, changed_time=changed_time
         )

@@ -1,8 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from tzlocal import get_localzone
 
 from envoy.server.crud.end_device import (
     select_aggregator_site_count,
@@ -30,7 +29,7 @@ class EndDeviceManager:
     async def add_or_update_enddevice_for_aggregator(
         session: AsyncSession, aggregator_id: int, end_device: EndDeviceRequest
     ) -> int:
-        site = EndDeviceMapper.map_from_request(end_device, aggregator_id, datetime.now(tz=get_localzone()))
+        site = EndDeviceMapper.map_from_request(end_device, aggregator_id, datetime.now(tz=timezone.utc))
         result = await upsert_site_for_aggregator(session, aggregator_id, site)
         await session.commit()
         return result
@@ -55,7 +54,7 @@ class EndDeviceManager:
             return False
 
         site.nmi = nmi
-        site.changed_time = datetime.now(tz=get_localzone())
+        site.changed_time = datetime.now(tz=timezone.utc)
         await session.commit()
         return True
 
