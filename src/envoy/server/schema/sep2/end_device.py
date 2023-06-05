@@ -22,8 +22,10 @@ class EndDeviceResponse(EndDeviceRequest, tag="EndDevice"):
     changedTime: TimeType = element()
     enabled: Optional[int] = element(default=1)
 
-    # Links
-    ConnectionPointLink: Optional[ConnectionPointLinkType] = element()
+    # csip extension
+    ConnectionPointLink: Optional[ConnectionPointLinkType] = element(ns="csipaus")
+
+    # sep2 Links
     ConfigurationLink: Optional[str] = element()
     DeviceInformationLink: Optional[Link] = element()
     DeviceStatusLink: Optional[Link] = element()
