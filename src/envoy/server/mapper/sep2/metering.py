@@ -113,6 +113,8 @@ class MirrorUsagePointMapper:
             }
         )
 
+
+class MirrorUsagePointListMapper:
     @staticmethod
     def map_to_list_response(srts: Sequence[SiteReadingType], srt_count: int) -> MirrorUsagePointListResponse:
         """Maps a set of SiteReadingType (requires the associated site relationship being populated for each

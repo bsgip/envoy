@@ -211,9 +211,9 @@ async def test_add_or_update_readings_no_srt(mock_fetch_site_reading_type_for_ag
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.metering.fetch_site_reading_types_page_for_aggregator")
 @mock.patch("envoy.server.manager.metering.count_site_reading_types_for_aggregator")
-@mock.patch("envoy.server.manager.metering.MirrorUsagePointMapper")
+@mock.patch("envoy.server.manager.metering.MirrorUsagePointListMapper")
 async def test_list_mirror_usage_points(
-    mock_MirrorUsagePointMapper: mock.MagicMock,
+    mock_MirrorUsagePointListMapper: mock.MagicMock,
     mock_count_site_reading_types_for_aggregator: mock.MagicMock,
     mock_fetch_site_reading_types_page_for_aggregator: mock.MagicMock,
 ):
@@ -231,7 +231,7 @@ async def test_list_mirror_usage_points(
 
     mock_count_site_reading_types_for_aggregator.return_value = count
     mock_fetch_site_reading_types_page_for_aggregator.return_value = existing_srts
-    mock_MirrorUsagePointMapper.map_to_list_response = mock.Mock(return_value=mup_response)
+    mock_MirrorUsagePointListMapper.map_to_list_response = mock.Mock(return_value=mup_response)
 
     # Act
     result = await MirrorMeteringManager.list_mirror_usage_points(
@@ -248,4 +248,4 @@ async def test_list_mirror_usage_points(
         session=mock_session, aggregator_id=aggregator_id, changed_after=changed_after
     )
 
-    mock_MirrorUsagePointMapper.map_to_list_response.assert_called_once_with(existing_srts, count)
+    mock_MirrorUsagePointListMapper.map_to_list_response.assert_called_once_with(existing_srts, count)

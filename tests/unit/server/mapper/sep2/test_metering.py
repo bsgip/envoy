@@ -1,10 +1,11 @@
+import unittest.mock as mock
 from datetime import datetime
 
 import pytest
 
 import envoy.server.schema.uri as uris
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.sep2.metering import MirrorUsagePointMapper
+from envoy.server.mapper.sep2.metering import MirrorUsagePointListMapper, MirrorUsagePointMapper
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReadingType
 from envoy.server.schema.sep2.metering import ReadingType
@@ -150,24 +151,25 @@ def test_MirrorUsagePointMapper_map_to_response():
     ), "mrid should be unique"
 
 
-def test_MirrorUsagePointMapper_map_to_list_response():
+@mock.patch("envoy.server.mapper.sep2.metering.MirrorUsagePointMapper")
+def test_MirrorUsagePointMapper_map_to_list_response(mock_MirrorUsagePointMapper: mock.MagicMock):
     """Builds on the assumption that test_MirrorUsagePointMapper_map_to_response will cover the individual entity
     mapping. This just ensures the top level list properties are set correctly"""
     site: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
     srt_count = 252
     srt_all_set: SiteReadingType = generate_class_instance(SiteReadingType, seed=202, optional_is_none=False)
     srt_all_set.site = site
-    srt_all_set.uom = UomType.AMPERES_SQUARED
-    srt_all_set.accumulation_behaviour = AccumulationBehaviourType.INSTANTANEOUS
-    srt_all_set.kind = KindType.POWER
-    srt_all_set.phase = PhaseCode.PHASE_AB
-    srt_all_set.data_qualifier = DataQualifierType.AVERAGE
-    srt_all_set.flow_direction = FlowDirectionType.REVERSE
+    mapped_mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=303)
 
-    result_all_set = MirrorUsagePointMapper.map_to_list_response([srt_all_set], srt_count)
+    mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
+
+    result_all_set = MirrorUsagePointListMapper.map_to_list_response([srt_all_set], srt_count)
     assert result_all_set is not None
     assert isinstance(result_all_set, MirrorUsagePointListResponse)
     assert result_all_set.all_ == srt_count
     assert result_all_set.results == 1
     assert len(result_all_set.mirrorUsagePoints) == 1
-    assert result_all_set.mirrorUsagePoints[0].deviceLFDI == site.lfdi
+    assert result_all_set.mirrorUsagePoints[0] == mapped_mup
+
+    # Ensure we depend on the underlying individual entity map_to_response
+    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(srt_all_set, site)

@@ -11,7 +11,11 @@ from envoy.server.crud.site_reading import (
     upsert_site_readings,
 )
 from envoy.server.exception import InvalidIdError, NotFoundError
-from envoy.server.mapper.sep2.metering import MirrorMeterReadingMapper, MirrorUsagePointMapper
+from envoy.server.mapper.sep2.metering import (
+    MirrorMeterReadingMapper,
+    MirrorUsagePointListMapper,
+    MirrorUsagePointMapper,
+)
 from envoy.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint, MirrorUsagePointListResponse
 
 
@@ -94,4 +98,4 @@ class MirrorMeteringManager:
             session=session, aggregator_id=aggregator_id, changed_after=changed_after
         )
 
-        return MirrorUsagePointMapper.map_to_list_response(srts, count)
+        return MirrorUsagePointListMapper.map_to_list_response(srts, count)
