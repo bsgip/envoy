@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get(DoeUpdateUri, status_code=HTTPStatus.OK)
+async def get_doe(doe: DynamicOperatingEnvelopeAdmin, response: Response) -> Union[None, Response]:
+    pass
+
+
 @router.post(DoeCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
 async def create_doe(doe: DynamicOperatingEnvelopeAdmin, response: Response) -> Union[None, Response]:
     """
