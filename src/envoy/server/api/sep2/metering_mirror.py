@@ -88,7 +88,7 @@ async def post_mirror_usage_point_list(
 
     """
     try:
-        mup_id = await MirrorMeteringManager.create_or_fetch_mirror_usage_point(
+        mup_id = await MirrorMeteringManager.create_or_update_mirror_usage_point(
             db.session, aggregator_id=extract_aggregator_id(request), mup=payload
         )
     except BadRequestError as ex:
@@ -115,7 +115,7 @@ async def put_mirror_usage_point(
 
     """
     try:
-        mup_id = await MirrorMeteringManager.create_or_fetch_mirror_usage_point(
+        mup_id = await MirrorMeteringManager.create_or_update_mirror_usage_point(
             db.session, aggregator_id=extract_aggregator_id(request), mup=payload
         )
     except BadRequestError as ex:

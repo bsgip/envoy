@@ -38,7 +38,7 @@ async def test_create_or_fetch_mirror_usage_point(
     mock_upsert_site_reading_type_for_aggregator.return_value = srt_id
 
     # Act
-    result = await MirrorMeteringManager.create_or_fetch_mirror_usage_point(mock_session, aggregator_id, mup)
+    result = await MirrorMeteringManager.create_or_update_mirror_usage_point(mock_session, aggregator_id, mup)
 
     # Assert
     assert result == srt_id
@@ -71,7 +71,7 @@ async def test_create_or_fetch_mirror_usage_point_no_site(mock_select_single_sit
 
     # Act
     with pytest.raises(InvalidIdError):
-        await MirrorMeteringManager.create_or_fetch_mirror_usage_point(mock_session, aggregator_id, mup)
+        await MirrorMeteringManager.create_or_update_mirror_usage_point(mock_session, aggregator_id, mup)
 
     # Assert
     assert_mock_session(mock_session, committed=False)

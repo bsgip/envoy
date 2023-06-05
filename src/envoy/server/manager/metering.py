@@ -17,7 +17,7 @@ from envoy.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorU
 
 class MirrorMeteringManager:
     @staticmethod
-    async def create_or_fetch_mirror_usage_point(
+    async def create_or_update_mirror_usage_point(
         session: AsyncSession, aggregator_id: int, mup: MirrorUsagePoint
     ) -> int:
         """Creates a new mup (or fetches an existing one of the same value). Returns the Id associated with the created
