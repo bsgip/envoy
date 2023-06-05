@@ -172,6 +172,16 @@ async def post_mirror_usage_point(
         XmlRequest(MirrorMeterReadingRequest, MirrorMeterReadingListRequest)
     ),
 ) -> Response:
+    """Allows the submission of readings for a particular MirrorUsagePoint with a specified mup_id. Returns HTTP 201 on
+    success or a HTTP 404 if the client doesn't have access to this MirrorUsagePoint
+
+    Args:
+        mup_id: The MirrorUsagePoint id to submit readings for
+
+    Returns:
+        fastapi.Response object.
+    """
+
     # we dont support sending a list mmr for now
     if isinstance(payload, MirrorMeterReadingListRequest):
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Request body must be a MirrorMeterReading")
@@ -186,3 +196,12 @@ async def post_mirror_usage_point(
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
 
     return Response(status_code=HTTPStatus.CREATED)
+
+
+# DELETE /mup/{mup_id}
+@router.delete(uri.MirrorUsagePointUri, status_code=HTTPStatus.OK)
+async def delete_mirror_usage_point(request: Request, mup_id: int) -> Response:
+    """This isn't fully supported as MirrorUsagePoints are tied to the underlying readings. This will always return
+    HTTP 200"""
+
+    return Response(status_code=HTTPStatus.OK)
