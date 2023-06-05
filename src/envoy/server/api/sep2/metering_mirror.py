@@ -101,33 +101,6 @@ async def post_mirror_usage_point_list(
     )
 
 
-# PUT /mup
-@router.put(uri.MirrorUsagePointListUri, status_code=HTTPStatus.OK)
-async def put_mirror_usage_point(
-    request: Request,
-    payload: MirrorUsagePointRequest = Depends(XmlRequest(MirrorUsagePointRequest)),
-) -> Response:
-    """Creates/Updates a mirror usage point for the current client. If the mup aligns with an existing mup for the
-    specified site / aggregator then that will be returned instead
-
-    Returns:
-        fastapi.Response object.
-
-    """
-    try:
-        mup_id = await MirrorMeteringManager.create_or_update_mirror_usage_point(
-            db.session, aggregator_id=extract_aggregator_id(request), mup=payload
-        )
-    except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NotFoundError as ex:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
-
-    return Response(
-        status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: uri.MirrorUsagePointUri.format(mup_id=mup_id)}
-    )
-
-
 # GET /mup/{mup_id}
 @router.head(uri.MirrorUsagePointUri)
 @router.get(
