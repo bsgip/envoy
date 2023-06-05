@@ -4,7 +4,16 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 
-class DynamicOperatingEnvelopeAdmin(BaseModel):
+class DynamicOperatingEnvelopeAdminRequest(BaseModel):
+    """TODO"""
+
+    site_id: int
+    duration_seconds: int
+    import_limit_active_watts: Decimal
+    export_limit_watts: Decimal
+
+
+class DynamicOperatingEnvelopeAdminResponse(BaseModel):
     """Stores information to populate admin db related
     to DOEs TODO"""
 

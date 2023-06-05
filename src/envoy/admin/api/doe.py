@@ -4,10 +4,10 @@ from typing import Union
 
 from fastapi import APIRouter, HTTPException, Response
 from fastapi_async_sqlalchemy import db
-from sqlalchemy.exc import IntegrityError, NoResultFound
+from sqlalchemy.exc import NoResultFound
 
 from envoy.admin.manager.doe import DoeManager
-from envoy.admin.schema.doe import DynamicOperatingEnvelopeAdmin
+from envoy.admin.schema.doe import DynamicOperatingEnvelopeAdminRequest, DynamicOperatingEnvelopeAdminResponse
 from envoy.admin.schema.uri import DoeCreateUri, DoeUpdateUri
 
 logger = logging.getLogger(__name__)
@@ -15,43 +15,28 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get(DoeUpdateUri, status_code=HTTPStatus.OK)
-async def get_doe(doe: DynamicOperatingEnvelopeAdmin, response: Response) -> Union[None, Response]:
-    pass
+@router.get(DoeUpdateUri, status_code=HTTPStatus.OK, response_model=DynamicOperatingEnvelopeAdminResponse)
+async def get_doe(doe_id: int) -> Union[None, Response]:
+    """Returns exactly one DOE from the db."""
+    return await DoeManager.fetch_doe(db.session, doe_id)
 
 
 @router.post(DoeCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
-async def create_doe(doe: DynamicOperatingEnvelopeAdmin, response: Response) -> Union[None, Response]:
-    """
+async def create_doe(doe: DynamicOperatingEnvelopeAdminRequest, response: Response) -> Union[None, Response]:
+    """Creates exactly one DOE and adds it the db. Updates the response headers with the
+    location of the created resource. Returns None."""
 
-    Responses will be static
-
-    Returns:
-        fastapi.Response object.
-    """
-    location = DoeUpdateUri.format(doe_id=doe.dynamic_operating_envelope_id)
-    try:
-        await DoeManager.add_new_doe(db.session, doe)
-        response.headers["Location"] = location
-    except IntegrityError as exc:
-        logger.debug(exc)
-        raise HTTPException(detail=f"DOE already exists at {location}", status_code=HTTPStatus.BAD_REQUEST)
+    doe_id = await DoeManager.add_new_doe(db.session, doe)
+    response.headers["Location"] = DoeUpdateUri.format(doe_id=doe_id)
 
 
 @router.put(DoeUpdateUri, status_code=HTTPStatus.OK, response_model=None)
-async def create_or_update_tariff(doe_id: int, doe: DynamicOperatingEnvelopeAdmin) -> Union[None, Response]:
-    """
-
-    Responses will be static
-
-    Returns:
-        fastapi.Response object.
-    """
-    if doe.dynamic_operating_envelope_id != doe_id:
-        raise HTTPException(detail="dynamic_operating_envelope_id mismatch.", status_code=HTTPStatus.BAD_REQUEST)
+async def update_doe(doe_id: int, doe: DynamicOperatingEnvelopeAdminRequest) -> None:
+    """Updates exactly one pre-existing DOE in the db. Returns None, or raises
+    HTTP.NOT_FOUND if the DOE was not found in the db."""
 
     try:
-        await DoeManager.update_existing_doe(db.session, doe)
+        await DoeManager.update_existing_doe(db.session, doe_id, doe)
     except NoResultFound as exc:
         logger.debug(exc)
         raise HTTPException(detail="Not found", status_code=HTTPStatus.NOT_FOUND)
