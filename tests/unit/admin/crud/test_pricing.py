@@ -1,14 +1,12 @@
-from zoneinfo import ZoneInfo
-from datetime import datetime
+from datetime import timedelta
 import pytest
 
 from sqlalchemy import select
 
 from envoy.admin.crud.pricing import (
-    insert_single_tariff_genrate,
     insert_single_tariff,
     update_single_tariff,
-    select_single_tariff_generate,
+    upsert_many_tariff_genrate,
 )
 from envoy.server.crud.pricing import select_single_tariff
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
@@ -53,7 +51,7 @@ async def test_update_single_tariff(pg_base_config):
 
 
 @pytest.mark.anyio
-async def test_insert_single_tariff_genrate(pg_base_config):
+async def test_upsert_many_tariff_genrate(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         tariff_genrate_in = generate_class_instance(TariffGeneratedRate)
         tariff_genrate_in.tariff_id = 1
@@ -61,21 +59,17 @@ async def test_insert_single_tariff_genrate(pg_base_config):
         del tariff_genrate_in.site
         del tariff_genrate_in.tariff
         tariff_genrate_in.tariff_generated_rate_id = None
-        await insert_single_tariff_genrate(session, tariff_genrate_in)
-
-        await session.flush()
+        await upsert_many_tariff_genrate(session, [tariff_genrate_in])
 
         tariff_genrate = await _select_latest_tariff_generated_rate(session)
 
-        assert_class_instance_equality(TariffGeneratedRate, tariff_genrate, tariff_genrate_in)
-
-
-@pytest.mark.anyio
-async def test_select_single_tariff_genrate(pg_base_config):
-    async with generate_async_session(pg_base_config) as session:
-        tariff_genrate_0 = await _select_latest_tariff_generated_rate(session)
-        tariff_genrate_1 = await select_single_tariff_generate(
-            session, tariff_genrate_0.tariff_id, tariff_genrate_0.tariff_generated_rate_id
+        assert_class_instance_equality(
+            TariffGeneratedRate, tariff_genrate, tariff_genrate_in, ignored_properties={"tariff_generated_rate_id"}
         )
 
-        assert_class_instance_equality(TariffGeneratedRate, tariff_genrate_0, tariff_genrate_1)
+        tariff_genrate_in_1 = generate_class_instance(TariffGeneratedRate)
+        tariff_genrate_in_1.tariff_id = 1
+        tariff_genrate_in_1.site_id = 1
+        tariff_genrate_in_1.start_time = tariff_genrate_in_1.start_time + timedelta(seconds=1)
+
+        await upsert_many_tariff_genrate(session, [tariff_genrate_in, tariff_genrate_in_1])

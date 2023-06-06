@@ -4,20 +4,19 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException, Response, Query
 from sqlalchemy.exc import NoResultFound, IntegrityError
+from asyncpg.exceptions import CardinalityViolationError
 from fastapi_async_sqlalchemy import db
 
-from envoy.admin.manager.pricing import TariffManager, TariffListManager, TariffGeneratedRateManager
+from envoy.admin.manager.pricing import TariffManager, TariffListManager, TariffGeneratedRateListManager
 from envoy.admin.schema.pricing import (
     TariffRequest,
     TariffResponse,
     TariffGeneratedRateRequest,
-    TariffGeneratedRateResponse,
 )
 from envoy.admin.schema.uri import (
     TariffCreateUri,
     TariffUpdateUri,
     TariffGeneratedRateCreateUri,
-    TariffGeneratedRateUpdateUri,
 )
 
 
@@ -92,51 +91,26 @@ async def update_tariff(tariff_id: int, tariff: TariffRequest) -> None:
         raise HTTPException(detail="Not found", status_code=HTTPStatus.NOT_FOUND)
 
 
-@router.post(TariffGeneratedRateCreateUri, status_code=HTTPStatus.OK, response_model=None)
-async def create_tariff_genrate(
-    tariff_id: int, tariff_generate: TariffGeneratedRateRequest, response: Response
-) -> None:
-    """Creates a Tariff Generated Rate associated with a particular Tariff and Site.
-    The location (/tariff/{tariff_id}/tariff_generated_rate/{tariff_generated_rate_id}) of the created resource is
-    provided in the 'Location' header of the response.
+@router.post(TariffGeneratedRateCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
+async def create_tariff_genrate(tariff_generates: List[TariffGeneratedRateRequest]) -> None:
+    """Bulk creation of 'Tariff Generated Rates' associated with a particular Tariff and Site.
 
     Path Params:
         tariff_id: integer ID of the desired tariff resource.
 
     Body:
-        TariffGeneratedRateRequest object.
+        List of TariffGeneratedRateRequest objects.
 
     Returns:
         None
     """
-    if tariff_generate.tariff_id != tariff_id:
-        raise HTTPException(detail="tariff_id Mistmatch.", status_code=HTTPStatus.BAD_REQUEST)
-
     try:
-        tariff_genrate_id = await TariffGeneratedRateManager.add_tariff_genrate(db.session, tariff_generate)
-        response.headers["Location"] = TariffGeneratedRateUpdateUri.format(
-            tariff_id=tariff_id, tariff_generated_rate_id=tariff_genrate_id
-        )
+        await TariffGeneratedRateListManager.add_many_tariff_genrate(db.session, tariff_generates)
+
+    except CardinalityViolationError as exc:
+        logger.debug(exc)
+        raise HTTPException(detail="The request contains duplicate instances", status_code=HTTPStatus.BAD_REQUEST)
+
     except IntegrityError as exc:
         logger.debug(exc)
-        raise HTTPException(detail="tariff_id or site_id not valid.", status_code=HTTPStatus.BAD_REQUEST)
-
-
-@router.get(TariffGeneratedRateUpdateUri, status_code=HTTPStatus.OK, response_model=None)
-async def fetch_tariff_genrate(tariff_id: int, tariff_generated_rate_id: int) -> TariffGeneratedRateResponse:
-    """Creates a Tariff Generated Rate associated with a particular Tariff.
-    Path Params:
-        tariff_id: integer ID of the desired tariff resource.
-        tariff_generated_rate_id: integer ID of the desired tariff generated rate resource.
-
-
-    Returns:
-        TariffGeneratedRateResponse object.
-    """
-
-    try:
-        return await TariffGeneratedRateManager.fetch_tariff_genrate(db.session, tariff_id, tariff_generated_rate_id)
-
-    except NoResultFound as exc:
-        logger.debug(exc)
-        raise HTTPException(detail="Not found", status_code=HTTPStatus.NOT_FOUND)
+        raise HTTPException(detail="tariff_id or site_id not found", status_code=HTTPStatus.BAD_REQUEST)

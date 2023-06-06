@@ -1,11 +1,11 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from typing import List
 
 from envoy.admin.schema.pricing import (
     TariffRequest,
     TariffResponse,
     TariffGeneratedRateRequest,
-    TariffGeneratedRateResponse,
 )
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
@@ -31,32 +31,20 @@ class TariffMapper:
         )
 
 
-class TariffGeneratedRateMapper:
+class TariffGeneratedRateListMapper:
     @staticmethod
-    def map_from_request(tariff_genrate: TariffGeneratedRateRequest) -> TariffGeneratedRate:
-        return TariffGeneratedRate(
-            tariff_id=tariff_genrate.tariff_id,
-            site_id=tariff_genrate.site_id,
-            changed_time=datetime.now(tz=ZoneInfo("UTC")),
-            start_time=tariff_genrate.start_time,
-            duration_seconds=tariff_genrate.duration_seconds,
-            import_active_price=tariff_genrate.import_active_price,
-            export_active_price=tariff_genrate.export_active_price,
-            import_reactive_price=tariff_genrate.import_reactive_price,
-            export_reactive_price=tariff_genrate.export_reactive_price,
-        )
-
-    @staticmethod
-    def map_to_response(tariff_genrate: TariffGeneratedRate) -> TariffGeneratedRateResponse:
-        return TariffGeneratedRateResponse(
-            tariff_generated_rate_id=tariff_genrate.tariff_generated_rate_id,
-            tariff_id=tariff_genrate.tariff_id,
-            site_id=tariff_genrate.site_id,
-            changed_time=tariff_genrate.changed_time,
-            start_time=tariff_genrate.start_time,
-            duration_seconds=tariff_genrate.duration_seconds,
-            import_active_price=float(tariff_genrate.import_active_price),
-            export_active_price=float(tariff_genrate.export_active_price),
-            import_reactive_price=float(tariff_genrate.import_reactive_price),
-            export_reactive_price=float(tariff_genrate.export_active_price),
-        )
+    def map_from_request(tariff_genrate_list: List[TariffGeneratedRateRequest]) -> List[TariffGeneratedRate]:
+        return [
+            TariffGeneratedRate(
+                tariff_id=tariff_genrate.tariff_id,
+                site_id=tariff_genrate.site_id,
+                changed_time=datetime.now(tz=ZoneInfo("UTC")),
+                start_time=tariff_genrate.start_time,
+                duration_seconds=tariff_genrate.duration_seconds,
+                import_active_price=tariff_genrate.import_active_price,
+                export_active_price=tariff_genrate.export_active_price,
+                import_reactive_price=tariff_genrate.import_reactive_price,
+                export_reactive_price=tariff_genrate.export_reactive_price,
+            )
+            for tariff_genrate in tariff_genrate_list
+        ]

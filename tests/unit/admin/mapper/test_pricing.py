@@ -3,12 +3,11 @@
 import pytest
 from random import randint
 
-from envoy.admin.mapper.pricing import TariffMapper, TariffGeneratedRateMapper
+from envoy.admin.mapper.pricing import TariffMapper, TariffGeneratedRateListMapper
 from envoy.admin.schema.pricing import (
     TariffRequest,
     TariffResponse,
     TariffGeneratedRateRequest,
-    TariffGeneratedRateResponse,
 )
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
@@ -39,22 +38,10 @@ def test_tariff_mapper_to_response():
 def test_tariff_genrate_mapper_from_request():
     req = generate_class_instance(TariffGeneratedRateRequest, seed=randint(1, 100))
 
-    mdl = TariffGeneratedRateMapper.map_from_request(req)
+    mdl = TariffGeneratedRateListMapper.map_from_request([req]).pop()
 
     assert isinstance(mdl, TariffGeneratedRate)
     assert mdl.changed_time
     assert mdl.tariff_generated_rate_id == None  # noqa
-    assert mdl.tariff_id
-    assert mdl.site_id
-
-
-def test_tariff_genrate_mapper_to_response():
-    mdl = generate_class_instance(TariffGeneratedRate, seed=randint(1, 100))
-
-    resp = TariffGeneratedRateMapper.map_to_response(mdl)
-
-    assert isinstance(resp, TariffGeneratedRateResponse)
-    assert mdl.changed_time
-    assert mdl.tariff_generated_rate_id
     assert mdl.tariff_id
     assert mdl.site_id

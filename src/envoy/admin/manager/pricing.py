@@ -1,24 +1,19 @@
 """ Managers for pricing/tariff endpoints
 """
 from datetime import datetime
+from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import NoResultFound
 
-from envoy.admin.crud.pricing import (
-    insert_single_tariff,
-    update_single_tariff,
-    insert_single_tariff_genrate,
-    select_single_tariff_generate,
-)
+from envoy.admin.crud.pricing import insert_single_tariff, update_single_tariff, upsert_many_tariff_genrate
 from envoy.admin.schema.pricing import (
     TariffRequest,
     TariffResponse,
     TariffGeneratedRateRequest,
-    TariffGeneratedRateResponse,
 )
 from envoy.server.crud.pricing import select_single_tariff, select_all_tariffs
-from envoy.admin.mapper.pricing import TariffMapper, TariffGeneratedRateMapper
+from envoy.admin.mapper.pricing import TariffMapper, TariffGeneratedRateListMapper
 
 
 class TariffManager:
@@ -60,22 +55,11 @@ class TariffListManager:
         return [TariffMapper.map_to_response(t) for t in tariff_list]
 
 
-class TariffGeneratedRateManager:
+class TariffGeneratedRateListManager:
     @staticmethod
-    async def add_tariff_genrate(session: AsyncSession, tariff_genrate: TariffGeneratedRateRequest) -> int:
+    async def add_many_tariff_genrate(session: AsyncSession, tariff_genrates: List[TariffGeneratedRateRequest]) -> None:
         """Map a TariffGeneratedRateRequest object to a TariffGeneratedRate model and insert into DB.
         Return the tariff_generated_rate_id only."""
-        tariff_genrate_model = TariffGeneratedRateMapper.map_from_request(tariff_genrate)
-        await insert_single_tariff_genrate(session, tariff_genrate_model)
+        tariff_genrate_models = TariffGeneratedRateListMapper.map_from_request(tariff_genrates)
+        await upsert_many_tariff_genrate(session, tariff_genrate_models)
         await session.commit()
-        return tariff_genrate_model.tariff_generated_rate_id
-
-    @staticmethod
-    async def fetch_tariff_genrate(
-        session: AsyncSession, tariff_id: int, tariff_genrate_id: int
-    ) -> TariffGeneratedRateResponse:
-        """Retrieve TariffGeneratedRate using tariff_generated_id and tariff_id,
-        map to TariffGeneratedRateResponse and return.
-        """
-        mdl = await select_single_tariff_generate(session, tariff_id, tariff_genrate_id)
-        return TariffGeneratedRateMapper.map_to_response(mdl)

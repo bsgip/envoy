@@ -1,5 +1,8 @@
+from typing import List
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as psql_insert
 
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
@@ -20,19 +23,17 @@ async def update_single_tariff(session: AsyncSession, updated_tariff: Tariff) ->
     tariff.currency_code = updated_tariff.currency_code
 
 
-async def insert_single_tariff_genrate(session: AsyncSession, tariff_genrate: TariffGeneratedRate) -> None:
-    """Inserts a single tariff generated rate entry into the DB. Returns None"""
-    session.add(tariff_genrate)
+async def upsert_many_tariff_genrate(session: AsyncSession, tariff_generates: List[TariffGeneratedRate]) -> None:
+    """Inserts multiple tariff generated rate entries into the DB. Returns None"""
 
-
-async def select_single_tariff_generate(
-    session: AsyncSession, tariff_id: int, tariff_genrate_id: int
-) -> TariffGeneratedRate:
-    """Selects a single tariff generated rate entry using both tariff_id and tariff_generated_rate_id."""
-    stmt = select(TariffGeneratedRate).where(
-        (TariffGeneratedRate.tariff_id == tariff_id)
-        & (TariffGeneratedRate.tariff_generated_rate_id == tariff_genrate_id)
+    table = TariffGeneratedRate.__table__
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns)]  # type: ignore [attr-defined]
+    stmt = psql_insert(TariffGeneratedRate).values(
+        [{k: getattr(tr, k) for k in update_cols} for tr in tariff_generates]
+    )
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[TariffGeneratedRate.site_id, TariffGeneratedRate.tariff_id, TariffGeneratedRate.start_time],
+        set_={k: getattr(stmt.excluded, k) for k in update_cols},
     )
 
-    resp = await session.execute(stmt)
-    return resp.scalar_one()
+    await session.execute(stmt)

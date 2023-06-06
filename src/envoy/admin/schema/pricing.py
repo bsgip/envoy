@@ -6,7 +6,7 @@ from envoy.server.schema.sep2.types import CurrencyCode
 
 
 class TariffRequest(BaseModel):
-    """TODO"""
+    """Basic attributes for the creation of a new tariff structure."""
 
     name: str
     dnsp_code: str
@@ -14,7 +14,7 @@ class TariffRequest(BaseModel):
 
 
 class TariffResponse(BaseModel):
-    """TODO"""
+    """Response model for Tariff including id and modification time."""
 
     tariff_id: int
     name: str
@@ -24,23 +24,8 @@ class TariffResponse(BaseModel):
 
 
 class TariffGeneratedRateRequest(BaseModel):
-    """TODO"""
+    """Time of use tariff pricing"""
 
-    tariff_id: int
-    site_id: int
-    start_time: datetime
-    duration_seconds: int
-    import_active_price: float
-    export_active_price: float
-    import_reactive_price: float
-    export_reactive_price: float
-
-
-class TariffGeneratedRateResponse(BaseModel):
-    """TODO"""
-
-    tariff_generated_rate_id: int
-    changed_time: datetime
     tariff_id: int
     site_id: int
     start_time: datetime

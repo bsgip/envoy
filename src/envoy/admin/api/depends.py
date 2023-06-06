@@ -12,7 +12,7 @@ security = HTTPBasic()
 class AdminAuthDepends:
     """
     Dependency class that raises a 401 unauthorized exception if the provided admin_username
-    and admin_username are not correct.
+    and admin_userpassword are not correct.
     """
 
     def __init__(self, username: str, password: str) -> None:
