@@ -4,7 +4,7 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException, Response, Query
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from asyncpg.exceptions import CardinalityViolationError
+from asyncpg.exceptions import CardinalityViolationError  # type: ignore
 from fastapi_async_sqlalchemy import db
 
 from envoy.admin.manager.pricing import TariffManager, TariffListManager, TariffGeneratedRateListManager
