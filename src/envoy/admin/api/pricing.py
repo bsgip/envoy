@@ -44,7 +44,7 @@ async def get_all_tariffs(
     return await TariffListManager.fetch_many_tariffs(db.session, start[0], limit[0])
 
 
-@router.get(TariffUpdateUri, status_code=HTTPStatus.OK, response_model=List[TariffResponse])
+@router.get(TariffUpdateUri, status_code=HTTPStatus.OK, response_model=TariffResponse)
 async def get_tariff(tariff_id: int):
     """Fetch a singular TariffResponse Object.
 
