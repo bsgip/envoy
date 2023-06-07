@@ -9,6 +9,7 @@ class DoeMapper:
     @staticmethod
     def map_from_request(doe: DynamicOperatingEnvelopeAdminRequest) -> DynamicOperatingEnvelope:
         return DynamicOperatingEnvelope(
+            # Should this have the site?
             site_id=doe.site_id,
             changed_time=datetime.now(tz=ZoneInfo("UTC")),
             duration_seconds=doe.duration_seconds,
@@ -21,6 +22,7 @@ class DoeMapper:
         return DynamicOperatingEnvelopeAdminResponse(
             dynamic_operating_envelope_id=doe.dynamic_operating_envelope_id,
             site_id=doe.site_id,
+            site=doe.site,
             changed_time=doe.changed_time,
             duration_seconds=doe.duration_seconds,
             import_limit_active_watts=doe.import_limit_active_watts,

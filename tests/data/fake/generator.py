@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Callable, Optional, Union, get_args, get_origin, get_type_hints
 
+from pydantic import BaseModel
 from pydantic_xml import BaseXmlModel
 from pydantic import BaseModel
 from sqlalchemy.orm import Mapped

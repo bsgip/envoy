@@ -1,5 +1,7 @@
 import glob
 import os
+import random
+import sys
 
 import alembic.config
 import pytest
@@ -13,7 +15,12 @@ from tests.postgres_testing import generate_async_conn_str_from_connection
 test_with_docker = os.getenv("TEST_WITH_DOCKER", "False").lower() in ("true", "1", "t", "True", "TRUE", "T")
 if test_with_docker:
     # The password needs to match the password set in docker-compose.testing.yaml
-    postgresql_in_docker = factories.postgresql_noproc(port=5433, password="adminpass")
+    # If the dbname table exists, it will raise a DuplicateDatabase error in psycopg
+    # from the pytest-postgresql plugin. This happens if we stop a debug session
+    # mid-way and thus prevent auto teardown. Fix is to rebuild container for now or drop tables.
+    postgresql_in_docker = factories.postgresql_noproc(
+        port=5433, dbname=f"envoytestdb_{random.randint(0, sys.maxsize)}", password="adminpass"
+    )
     postgresql = factories.postgresql("postgresql_in_docker")
 
 
