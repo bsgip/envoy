@@ -1,5 +1,6 @@
-import os
 import urllib.parse
+from collections import defaultdict
+
 
 import pytest
 from httpx import AsyncClient
@@ -41,3 +42,23 @@ async def admin_client_auth(pg_base_config: Connection):
     app = admin_gen_app(settings)
     async with AsyncClient(app=app, base_url="http://test", auth=basic_auth) as c:
         yield c
+
+
+@pytest.fixture(scope="function")
+async def admin_client_unauth(pg_base_config: Connection):
+    """Creates an AsyncClient for a test that is configured to talk to the main server app"""
+
+    # We want a new app instance for every test - otherwise connection pools get shared and we hit problems
+    # when trying to run multiple tests sequentially
+    app = admin_gen_app(admin_gen_settings())
+    async with AsyncClient(app=app, base_url="http://test") as c:
+        yield c
+
+
+@pytest.fixture(scope="session")
+def admin_path_methods():
+    app = admin_gen_app(admin_gen_settings())
+    path_methods = defaultdict(list)
+    for route in app.routes:
+        path_methods[route.path] = path_methods[route.path] + list(route.methods)
+    return path_methods
