@@ -32,11 +32,12 @@ def valid_headers():
 @pytest.fixture(scope="function")
 async def admin_client_auth(pg_base_config: Connection):
     """Creates an AsyncClient for a test that is configured to talk to the main server app"""
-    basic_auth = (os.environ["admin_username"], os.environ["admin_password"])
-    
+
+    settings = admin_gen_settings()
+    basic_auth = (settings.admin_username, settings.admin_password)
+
     # We want a new app instance for every test - otherwise connection pools get shared and we hit problems
     # when trying to run multiple tests sequentially
-    app = admin_gen_app(admin_gen_settings())
+    app = admin_gen_app(settings)
     async with AsyncClient(app=app, base_url="http://test", auth=basic_auth) as c:
         yield c
-

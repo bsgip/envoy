@@ -1,9 +1,9 @@
 name: Linting and Testing
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]  
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
           project_path: .
           ignore_failure: false
           config_file: pyproject.toml
-          
+
       - name: Security check report artifacts
         uses: actions/upload-artifact@v1
         if: failure()
@@ -36,17 +36,17 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4.2.0
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Setup flake8 annotations
         uses: rbialon/flake8-annotations@v1
-        
+
       - name: Lint with flake8
         if: always()
         run: |
           pip install flake8
           flake8 . --count --statistics
-  
+
   black_formatting:
     runs-on: ubuntu-latest
     steps:
@@ -62,7 +62,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4.2.0
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Dependencies
         run: |
@@ -82,24 +82,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3.1.0
-        
+
       - name: Setup Python
         uses: actions/setup-python@v4.2.0
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
           pip install .
-      
+
       - name: Run Pytest
         run: |
           sudo apt install -y postgresql
           pip install -r requirements/requirements.testing.txt
           pytest --junit-xml=.test_report.xml
         env:
-         DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"
+          DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"
+          ADMIN_USERNAME: "testadmin"
+          ADMIN_PASSWORD: "testpassword"
       - name: Upload Results
         uses: test-summary/action@v1
         with:
@@ -111,27 +113,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3.1.0
-        
+
       - name: Setup Python
         uses: actions/setup-python@v4.2.0
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
           pip install .
-      
+
       - name: Run Pytest
         run: |
           sudo apt install -y postgresql
           pip install -r requirements/requirements.testing.txt
           pytest --junit-xml=.test_report.xml
         env:
-         DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"
+          DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"
       - name: Upload Results
         uses: test-summary/action@v1
         with:
           paths: .test_report.xml
         if: always()
-

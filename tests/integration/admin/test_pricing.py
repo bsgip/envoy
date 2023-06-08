@@ -10,10 +10,8 @@ from envoy.admin.schema.uri import TariffCreateUri, TariffUpdateUri, TariffGener
 from tests.data.fake.generator import generate_class_instance, assert_class_instance_equality
 
 
-
 @pytest.mark.anyio
 async def test_get_all_tariffs(admin_client_auth: AsyncClient):
-    
     resp = await admin_client_auth.get(TariffCreateUri, params={"limit": 3})
     tariff_resp_list = [TariffResponse(**d) for d in json.loads(resp.content)]
 
@@ -23,9 +21,8 @@ async def test_get_all_tariffs(admin_client_auth: AsyncClient):
 
 @pytest.mark.anyio
 async def test_get_single_tariff(admin_client_auth: AsyncClient):
-    
     resp = await admin_client_auth.get(TariffUpdateUri.format(tariff_id=1))
-    tariff_resp= TariffResponse(**json.loads(resp.content))
+    tariff_resp = TariffResponse(**json.loads(resp.content))
 
     assert resp.status_code == HTTPStatus.OK
     assert tariff_resp.tariff_id == 1
@@ -59,7 +56,8 @@ async def test_create_tariff_genrates(admin_client_auth: AsyncClient):
     tariff_genrate_1.tariff_id = 2
     tariff_genrate_1.site_id = 2
 
-    resp = await admin_client_auth.post(TariffGeneratedRateCreateUri, content=f"[{tariff_genrate.json()}, {tariff_genrate_1.json()}]")
+    resp = await admin_client_auth.post(
+        TariffGeneratedRateCreateUri, content=f"[{tariff_genrate.json()}, {tariff_genrate_1.json()}]"
+    )
 
     assert resp.status_code == HTTPStatus.CREATED
-
