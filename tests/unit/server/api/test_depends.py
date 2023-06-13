@@ -7,12 +7,16 @@ from starlette.datastructures import Headers
 
 from envoy.server.api.depends import LFDIAuthDepends
 from envoy.server.main import settings
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as TEST_CERTIFICATE_FINGERPRINT_1
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as TEST_CERTIFICATE_LFDI_1
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as TEST_CERTIFICATE_PEM_1
+from tests.data.certificates.certificate2 import TEST_CERTIFICATE_FINGERPRINT as TEST_CERTIFICATE_FINGERPRINT_2
 from tests.data.certificates.certificate2 import TEST_CERTIFICATE_LFDI as TEST_CERTIFICATE_LFDI_2
 from tests.data.certificates.certificate2 import TEST_CERTIFICATE_PEM as TEST_CERTIFICATE_PEM_2
+from tests.data.certificates.certificate3 import TEST_CERTIFICATE_FINGERPRINT as TEST_CERTIFICATE_FINGERPRINT_3
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_LFDI as TEST_CERTIFICATE_LFDI_3
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_PEM as TEST_CERTIFICATE_PEM_3
+from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as TEST_CERTIFICATE_FINGERPRINT_4
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_LFDI as TEST_CERTIFICATE_LFDI_4
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as TEST_CERTIFICATE_PEM_4
 from tests.integration.integration_server import cert_pem_header
@@ -21,18 +25,18 @@ from tests.integration.integration_server import cert_pem_header
 def test_generate_lfdi_from_fingerprint():
     """sep2 defines LFDI as the first 20 octets of the sha256 certificate hash. This test
     is pulled direct from an example in the standard"""
-    lfdi = LFDIAuthDepends._cert_fingerprint_to_lfdi("3e4f45ab31edfe5b67e343e5e4562e31984e23e5349e2ad745672ed145ee213a")
-
-    assert lfdi == "3e4f45ab31edfe5b67e343e5e4562e31984e23e5"
+    assert TEST_CERTIFICATE_LFDI_1 == LFDIAuthDepends.generate_lfdi_from_fingerprint(TEST_CERTIFICATE_FINGERPRINT_1)
+    assert TEST_CERTIFICATE_LFDI_2 == LFDIAuthDepends.generate_lfdi_from_fingerprint(TEST_CERTIFICATE_FINGERPRINT_2)
+    assert TEST_CERTIFICATE_LFDI_3 == LFDIAuthDepends.generate_lfdi_from_fingerprint(TEST_CERTIFICATE_FINGERPRINT_3)
+    assert TEST_CERTIFICATE_LFDI_4 == LFDIAuthDepends.generate_lfdi_from_fingerprint(TEST_CERTIFICATE_FINGERPRINT_4)
 
 
 def test_generate_lfdi_from_pem():
     """Tests our known certificate PEM's convert to the expected LFDI"""
-    lfdi_dep = LFDIAuthDepends(settings.cert_pem_header)
-    assert TEST_CERTIFICATE_LFDI_1 == lfdi_dep.generate_lfdi_from_pem(quote_from_bytes(TEST_CERTIFICATE_PEM_1))
-    assert TEST_CERTIFICATE_LFDI_2 == lfdi_dep.generate_lfdi_from_pem(quote_from_bytes(TEST_CERTIFICATE_PEM_2))
-    assert TEST_CERTIFICATE_LFDI_3 == lfdi_dep.generate_lfdi_from_pem(quote_from_bytes(TEST_CERTIFICATE_PEM_3))
-    assert TEST_CERTIFICATE_LFDI_4 == lfdi_dep.generate_lfdi_from_pem(quote_from_bytes(TEST_CERTIFICATE_PEM_4))
+    assert TEST_CERTIFICATE_LFDI_1 == LFDIAuthDepends.generate_lfdi_from_pem(quote_from_bytes(TEST_CERTIFICATE_PEM_1))
+    assert TEST_CERTIFICATE_LFDI_2 == LFDIAuthDepends.generate_lfdi_from_pem(quote_from_bytes(TEST_CERTIFICATE_PEM_2))
+    assert TEST_CERTIFICATE_LFDI_3 == LFDIAuthDepends.generate_lfdi_from_pem(quote_from_bytes(TEST_CERTIFICATE_PEM_3))
+    assert TEST_CERTIFICATE_LFDI_4 == LFDIAuthDepends.generate_lfdi_from_pem(quote_from_bytes(TEST_CERTIFICATE_PEM_4))
 
 
 @pytest.mark.anyio

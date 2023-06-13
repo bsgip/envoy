@@ -1,30 +1,27 @@
-import pytest
 import json
-
 from http import HTTPStatus
+
+import pytest
 from httpx import AsyncClient
 
-from envoy.admin.schema.pricing import TariffRequest, TariffResponse, TariffGeneratedRateRequest
-from envoy.admin.schema.uri import TariffCreateUri, TariffUpdateUri, TariffGeneratedRateCreateUri
-
-from tests.data.fake.generator import generate_class_instance, assert_class_instance_equality
+from envoy.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
+from envoy.admin.schema.uri import TariffCreateUri, TariffGeneratedRateCreateUri, TariffUpdateUri
+from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 
 
 @pytest.mark.anyio
 async def test_get_all_tariffs(admin_client_auth: AsyncClient):
     resp = await admin_client_auth.get(TariffCreateUri, params={"limit": 3})
-    tariff_resp_list = [TariffResponse(**d) for d in json.loads(resp.content)]
-
     assert resp.status_code == HTTPStatus.OK
+    tariff_resp_list = [TariffResponse(**d) for d in json.loads(resp.content)]
     assert len(tariff_resp_list) == 3
 
 
 @pytest.mark.anyio
 async def test_get_single_tariff(admin_client_auth: AsyncClient):
     resp = await admin_client_auth.get(TariffUpdateUri.format(tariff_id=1))
-    tariff_resp = TariffResponse(**json.loads(resp.content))
-
     assert resp.status_code == HTTPStatus.OK
+    tariff_resp = TariffResponse(**json.loads(resp.content))
     assert tariff_resp.tariff_id == 1
 
 

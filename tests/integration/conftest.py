@@ -1,16 +1,15 @@
 import urllib.parse
 from collections import defaultdict
 
-
 import pytest
 from httpx import AsyncClient
 from psycopg import Connection
 
-from envoy.server.main import generate_app
 from envoy.admin.main import generate_app as admin_gen_app
-from envoy.server.settings import generate_settings
 from envoy.admin.settings import generate_settings as admin_gen_settings
-from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as VALID_PEM
+from envoy.server.main import generate_app
+from envoy.server.settings import generate_settings
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as VALID_CERT
 from tests.integration.integration_server import cert_pem_header
 
 
@@ -27,13 +26,12 @@ async def client(pg_base_config: Connection):
 
 @pytest.fixture
 def valid_headers():
-    return {cert_pem_header: urllib.parse.quote(VALID_PEM)}
+    return {cert_pem_header: urllib.parse.quote(VALID_CERT)}
 
 
 @pytest.fixture(scope="function")
 async def admin_client_auth(pg_base_config: Connection):
     """Creates an AsyncClient for a test that is configured to talk to the main server app"""
-
     settings = admin_gen_settings()
     basic_auth = (settings.admin_username, settings.admin_password)
 

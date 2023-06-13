@@ -20,7 +20,7 @@ from envoy.server.schema.sep2.pricing import (
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
-from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.integration.integration_server import cert_pem_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
@@ -28,7 +28,7 @@ from tests.integration.response import assert_error_response, assert_response_he
 
 @pytest.fixture
 def agg_1_headers():
-    return {cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)}
+    return {cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)}
 
 
 @pytest.mark.anyio

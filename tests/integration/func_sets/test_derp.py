@@ -16,8 +16,8 @@ from envoy.server.schema.sep2.der import (
     DERProgramResponse,
 )
 from tests.assert_time import assert_datetime_equal
-from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
-from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as AGG_2_VALID_PEM
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
+from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.integration.integration_server import cert_pem_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
@@ -29,7 +29,7 @@ def generate_headers(cert: Any):
 
 @pytest.fixture
 def agg_1_headers():
-    return generate_headers(AGG_1_VALID_PEM)
+    return generate_headers(AGG_1_VALID_CERT)
 
 
 @pytest.fixture
@@ -154,7 +154,7 @@ async def get_derprogram_doe(
             None,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
@@ -167,7 +167,7 @@ async def get_derprogram_doe(
             None,
             2,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
@@ -179,7 +179,7 @@ async def get_derprogram_doe(
             1,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             [
                 (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
@@ -191,7 +191,7 @@ async def get_derprogram_doe(
             2,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             [
                 (datetime(2022, 5, 8, 1, 2, tzinfo=BRISBANE_TZ), 411, -422),
@@ -203,7 +203,7 @@ async def get_derprogram_doe(
             None,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             1,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 311, -322),
@@ -214,7 +214,7 @@ async def get_derprogram_doe(
             None,
             99,
             datetime(2022, 5, 6, 11, 22, 32, tzinfo=timezone.utc),
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
@@ -227,7 +227,7 @@ async def get_derprogram_doe(
             None,
             99,
             datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc),
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             2,
             [
                 (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
@@ -239,18 +239,18 @@ async def get_derprogram_doe(
             None,
             99,
             datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             1,
             [
                 (datetime(2022, 5, 8, 1, 2, tzinfo=BRISBANE_TZ), 411, -422),
             ],
         ),
         # Test empty cases
-        (4, None, 99, None, AGG_1_VALID_PEM, 0, []),  # Wrong Site
-        (1, 3, 99, None, AGG_1_VALID_PEM, 3, []),  # Big Skip
-        (1, None, 0, None, AGG_1_VALID_PEM, 3, []),  # Zero limit
-        (1, None, 99, datetime(2022, 5, 6, 14, 22, 34, tzinfo=timezone.utc), AGG_1_VALID_PEM, 0, []),  # changed_after
-        (1, None, 99, None, AGG_2_VALID_PEM, 0, []),  # Wrong Aggregator
+        (4, None, 99, None, AGG_1_VALID_CERT, 0, []),  # Wrong Site
+        (1, 3, 99, None, AGG_1_VALID_CERT, 3, []),  # Big Skip
+        (1, None, 0, None, AGG_1_VALID_CERT, 3, []),  # Zero limit
+        (1, None, 99, datetime(2022, 5, 6, 14, 22, 34, tzinfo=timezone.utc), AGG_1_VALID_CERT, 0, []),  # changed_after
+        (1, None, 99, None, AGG_2_VALID_CERT, 0, []),  # Wrong Aggregator
     ],
 )
 async def test_get_dercontrol_list(
@@ -300,7 +300,7 @@ async def test_get_dercontrol_list(
             None,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             2,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
@@ -313,7 +313,7 @@ async def test_get_dercontrol_list(
             None,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             1,
             [
                 (datetime(2022, 5, 8, 1, 2, tzinfo=BRISBANE_TZ), 411, -422),
@@ -325,7 +325,7 @@ async def test_get_dercontrol_list(
             None,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             1,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 311, -322),
@@ -337,7 +337,7 @@ async def test_get_dercontrol_list(
             None,
             99,
             datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc),
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             1,
             [
                 (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
@@ -350,7 +350,7 @@ async def test_get_dercontrol_list(
             1,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             2,
             [
                 (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
@@ -362,19 +362,19 @@ async def test_get_dercontrol_list(
             None,
             1,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             2,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
             ],
         ),
         # Test empty cases
-        (4, date(2022, 5, 7), None, 99, None, AGG_1_VALID_PEM, 0, []),  # Wrong Site
-        (1, date(2022, 5, 6), None, 99, None, AGG_1_VALID_PEM, 0, []),  # Wrong date
-        (1, date(2022, 5, 7), 3, 99, None, AGG_1_VALID_PEM, 2, []),  # Big Skip
-        (1, date(2022, 5, 7), None, 0, None, AGG_1_VALID_PEM, 2, []),  # Zero limit
-        (1, date(2022, 5, 7), None, 0, datetime(2024, 1, 2), AGG_1_VALID_PEM, 0, []),  # changed_after matches nothing
-        (1, date(2022, 5, 7), None, 99, None, AGG_2_VALID_PEM, 0, []),  # Wrong Aggregator
+        (4, date(2022, 5, 7), None, 99, None, AGG_1_VALID_CERT, 0, []),  # Wrong Site
+        (1, date(2022, 5, 6), None, 99, None, AGG_1_VALID_CERT, 0, []),  # Wrong date
+        (1, date(2022, 5, 7), 3, 99, None, AGG_1_VALID_CERT, 2, []),  # Big Skip
+        (1, date(2022, 5, 7), None, 0, None, AGG_1_VALID_CERT, 2, []),  # Zero limit
+        (1, date(2022, 5, 7), None, 0, datetime(2024, 1, 2), AGG_1_VALID_CERT, 0, []),  # changed_after matches nothing
+        (1, date(2022, 5, 7), None, 99, None, AGG_2_VALID_CERT, 0, []),  # Wrong Aggregator
     ],
 )
 async def test_get_dercontrol_list_day(

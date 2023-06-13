@@ -7,9 +7,9 @@ from httpx import AsyncClient
 from psycopg import Connection
 
 from envoy.server.schema.csip_aus.connection_point import ConnectionPointRequest, ConnectionPointResponse
-from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
-from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as AGG_2_VALID_PEM
-from tests.data.certificates.certificate5 import TEST_CERTIFICATE_PEM as AGG_3_VALID_PEM
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
+from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
+from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
 from tests.integration.integration_server import cert_pem_header
 from tests.integration.response import (
     assert_error_response,
@@ -27,13 +27,13 @@ def connection_point_uri_format():
 @pytest.mark.parametrize(
     "site_id,expected_nmi,cert,expected_status_response",
     [
-        (1, "1111111111", AGG_1_VALID_PEM, HTTPStatus.OK),
-        (2, "2222222222", AGG_1_VALID_PEM, HTTPStatus.OK),
-        (3, "3333333333", AGG_2_VALID_PEM, HTTPStatus.OK),
-        (4, "4444444444", AGG_1_VALID_PEM, HTTPStatus.OK),
-        (1, None, AGG_2_VALID_PEM, HTTPStatus.NOT_FOUND),  # Agg 2 can't access site 1
-        (3, None, AGG_3_VALID_PEM, HTTPStatus.NOT_FOUND),  # Agg 3 can't access site 3
-        (99, None, AGG_1_VALID_PEM, HTTPStatus.NOT_FOUND),  # Site 99 does not exist
+        (1, "1111111111", AGG_1_VALID_CERT, HTTPStatus.OK),
+        (2, "2222222222", AGG_1_VALID_CERT, HTTPStatus.OK),
+        (3, "3333333333", AGG_2_VALID_CERT, HTTPStatus.OK),
+        (4, "4444444444", AGG_1_VALID_CERT, HTTPStatus.OK),
+        (1, None, AGG_2_VALID_CERT, HTTPStatus.NOT_FOUND),  # Agg 2 can't access site 1
+        (3, None, AGG_3_VALID_CERT, HTTPStatus.NOT_FOUND),  # Agg 3 can't access site 3
+        (99, None, AGG_1_VALID_CERT, HTTPStatus.NOT_FOUND),  # Site 99 does not exist
     ],
 )
 @pytest.mark.anyio
@@ -71,7 +71,7 @@ async def test_get_connectionpoint_none_nmi(
         pg_base_config.commit()
 
     response = await client.get(
-        connection_point_uri_format.format(site_id=1), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)}
+        connection_point_uri_format.format(site_id=1), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)}
     )
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
@@ -88,7 +88,7 @@ async def test_connectionpoint_update_and_fetch(client: AsyncClient, connection_
     href = connection_point_uri_format.format(site_id=1)
     new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id="1212121212")
     response = await client.post(
-        url=href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)}, content=new_cp_specified.to_xml()
+        url=href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
     body = read_response_body_string(response)
@@ -96,7 +96,7 @@ async def test_connectionpoint_update_and_fetch(client: AsyncClient, connection_
     assert len(body) == 0
 
     # check it updated
-    response = await client.get(href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)})
+    response = await client.get(href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0

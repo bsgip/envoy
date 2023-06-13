@@ -29,7 +29,7 @@ class LFDIAuthDepends:
         cert_fingerprint = request.headers[self.cert_pem_header]
 
         # generate lfdi
-        lfdi = self.generate_lfdi_from_pem(cert_fingerprint)
+        lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_fingerprint)
 
         async with db():
             client_ids = await select_client_ids_using_lfdi(lfdi, db.session)
@@ -40,7 +40,8 @@ class LFDIAuthDepends:
         request.state.certificate_id = client_ids.certificate_id
         request.state.aggregator_id = client_ids.aggregator_id
 
-    def generate_lfdi_from_pem(self, cert_pem: str) -> str:
+    @staticmethod
+    def generate_lfdi_from_pem(cert_pem: str) -> str:
         """This function generates the sep2 / 2030.5-2018 lFDI (Long-form device identifier) from the device's
         TLS certificate in pem (Privacy Enhanced Mail) format, i.e. Base64 encoded DER
         (Distinguished Encoding Rules) certificate, as described in Section 6.3.4
@@ -58,11 +59,22 @@ class LFDIAuthDepends:
             The lFDI as a hex string.
         """
         # generate lfdi
-        return self._cert_fingerprint_to_lfdi(self._cert_pem_to_cert_fingerprint(cert_pem))
+        return LFDIAuthDepends.generate_lfdi_from_fingerprint(LFDIAuthDepends._cert_pem_to_cert_fingerprint(cert_pem))
 
     @staticmethod
-    def _cert_fingerprint_to_lfdi(cert_fingerprint: str) -> str:
-        """The LFDI SHALL be the certificate fingerprint left-truncated to 160 bits (20 octets)."""
+    def generate_lfdi_from_fingerprint(cert_fingerprint: str) -> str:
+        """This function generates the sep2 / 2030.5-2018 lFDI (Long-form device identifier) from the device's
+        TLS certificate fingerprint (40 hex chars), as described in Section 6.3.4
+        of IEEE Std 2030.5-2018 which states The LFDI SHALL be the certificate fingerprint left-truncated to
+        160 bits (20 octets).
+
+        Args:
+            cert_pem: TLS certificate in PEM format.
+
+        Return:
+            The lFDI as a hex string.
+        """
+        # generate lfdi
         return cert_fingerprint[:40]
 
     @staticmethod

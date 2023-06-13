@@ -25,8 +25,8 @@ from envoy.server.schema.sep2.types import (
     UomType,
 )
 from tests.assert_time import assert_nowish
-from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
-from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as AGG_2_VALID_PEM
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
+from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.fake.generator import assert_class_instance_equality
 from tests.integration.integration_server import cert_pem_header
 from tests.integration.request import build_paging_params
@@ -38,27 +38,27 @@ from tests.postgres_testing import generate_async_session
     "start, changed_after, limit, cert, expected_count, expected_mup_hrefs",
     [
         # Testing start / limit
-        (0, None, 99, AGG_1_VALID_PEM, 3, ["/mup/4", "/mup/3", "/mup/1"]),
-        (1, None, 99, AGG_1_VALID_PEM, 3, ["/mup/3", "/mup/1"]),
-        (2, None, 99, AGG_1_VALID_PEM, 3, ["/mup/1"]),
-        (3, None, 99, AGG_1_VALID_PEM, 3, []),
-        (0, None, 2, AGG_1_VALID_PEM, 3, ["/mup/4", "/mup/3"]),
-        (1, None, 1, AGG_1_VALID_PEM, 3, ["/mup/3"]),
+        (0, None, 99, AGG_1_VALID_CERT, 3, ["/mup/4", "/mup/3", "/mup/1"]),
+        (1, None, 99, AGG_1_VALID_CERT, 3, ["/mup/3", "/mup/1"]),
+        (2, None, 99, AGG_1_VALID_CERT, 3, ["/mup/1"]),
+        (3, None, 99, AGG_1_VALID_CERT, 3, []),
+        (0, None, 2, AGG_1_VALID_CERT, 3, ["/mup/4", "/mup/3"]),
+        (1, None, 1, AGG_1_VALID_CERT, 3, ["/mup/3"]),
         # Changed time
         (
             0,
             datetime(2022, 5, 6, 11, 22, 30, tzinfo=timezone.utc),
             99,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             ["/mup/4", "/mup/3", "/mup/1"],
         ),
-        (0, datetime(2022, 5, 6, 11, 22, 35, tzinfo=timezone.utc), 99, AGG_1_VALID_PEM, 2, ["/mup/4", "/mup/3"]),
-        (0, datetime(2022, 5, 6, 13, 22, 35, tzinfo=timezone.utc), 99, AGG_1_VALID_PEM, 1, ["/mup/4"]),
-        (0, datetime(2022, 5, 6, 14, 22, 35, tzinfo=timezone.utc), 99, AGG_1_VALID_PEM, 0, []),
-        (1, datetime(2022, 5, 6, 11, 22, 36, tzinfo=timezone.utc), 2, AGG_1_VALID_PEM, 2, ["/mup/3"]),
+        (0, datetime(2022, 5, 6, 11, 22, 35, tzinfo=timezone.utc), 99, AGG_1_VALID_CERT, 2, ["/mup/4", "/mup/3"]),
+        (0, datetime(2022, 5, 6, 13, 22, 35, tzinfo=timezone.utc), 99, AGG_1_VALID_CERT, 1, ["/mup/4"]),
+        (0, datetime(2022, 5, 6, 14, 22, 35, tzinfo=timezone.utc), 99, AGG_1_VALID_CERT, 0, []),
+        (1, datetime(2022, 5, 6, 11, 22, 36, tzinfo=timezone.utc), 2, AGG_1_VALID_CERT, 2, ["/mup/3"]),
         # Changed cert
-        (0, None, 99, AGG_2_VALID_PEM, 0, []),
+        (0, None, 99, AGG_2_VALID_CERT, 0, []),
     ],
 )
 @pytest.mark.anyio
@@ -159,13 +159,13 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
     response = await client.post(
         uris.MirrorUsagePointListUri,
         content=MirrorUsagePointRequest.to_xml(mup, skip_empty=True),
-        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)},
+        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
     assert read_location_header(response) == expected_href
 
     # see if we can fetch the mup directly
-    response = await client.get(expected_href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)})
+    response = await client.get(expected_href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
@@ -176,7 +176,7 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
     # see if the list endpoint can fetch it via the updated time
     response = await client.get(
         uris.MirrorUsagePointListUri + build_paging_params(limit=99, changed_after=now),
-        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)},
+        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
@@ -213,7 +213,7 @@ async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config):
     response = await client.post(
         uris.MirrorUsagePointUri.format(mup_id=mup_id),
         content=MirrorMeterReading.to_xml(mmr, skip_empty=True),
-        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)},
+        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
 
