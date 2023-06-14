@@ -9,9 +9,12 @@ from tests.data.fake.generator import assert_class_instance_equality, generate_c
 from tests.postgres_testing import generate_async_session
 
 
-
 async def _select_latest_dynamic_operating_envelope(session):
-    stmt = select(DynamicOperatingEnvelope).order_by(DynamicOperatingEnvelope.dynamic_operating_envelope_id.desc()).limit(1)
+    stmt = (
+        select(DynamicOperatingEnvelope)
+        .order_by(DynamicOperatingEnvelope.dynamic_operating_envelope_id.desc())
+        .limit(1)
+    )
     resp = await session.execute(stmt)
     return resp.scalar_one()
 
@@ -34,11 +37,12 @@ async def test_upsert_many_doe(pg_base_config):
 
         doe_out = await _select_latest_dynamic_operating_envelope(session)
 
-        assert_class_instance_equality(DynamicOperatingEnvelope, doe_out, doe_in, ignored_properties={"dynamic_operating_envelope_id"})
+        assert_class_instance_equality(
+            DynamicOperatingEnvelope, doe_out, doe_in, ignored_properties={"dynamic_operating_envelope_id"}
+        )
 
         doe_in_1 = generate_class_instance(DynamicOperatingEnvelope)
         doe_in_1.site_id = 1
         doe_in_1.start_time = doe_in.start_time + timedelta(seconds=1)
 
         await upsert_many_doe(session, [doe_in, doe_in_1])
-
