@@ -6,8 +6,7 @@ from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 
 from envoy.admin.api import routers
 from envoy.admin.api.depends import AdminAuthDepends
-from envoy.admin.api import routers
-from envoy.admin.settings import AppSettings, settings  # TODO
+from envoy.admin.settings import AppSettings, settings
 
 
 def generate_app(new_settings: AppSettings):

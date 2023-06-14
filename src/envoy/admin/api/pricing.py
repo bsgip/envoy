@@ -93,10 +93,7 @@ async def update_tariff(tariff_id: int, tariff: TariffRequest) -> None:
 
 @router.post(TariffGeneratedRateCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
 async def create_tariff_genrate(tariff_generates: List[TariffGeneratedRateRequest]) -> None:
-    """Bulk creation of 'Tariff Generated Rates' associated with a particular Tariff and Site.
-
-    Path Params:
-        tariff_id: integer ID of the desired tariff resource.
+    """Bulk creation of 'Tariff Generated Rates' associated with respective Tariffs (tariff_id) and Sites (site_id).
 
     Body:
         List of TariffGeneratedRateRequest objects.
