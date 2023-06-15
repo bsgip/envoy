@@ -15,7 +15,7 @@ from tests.data.fake.generator import generate_class_instance, assert_class_inst
 
 
 def test_tariff_mapper_from_request():
-    req = generate_class_instance(TariffRequest, seed=randint(1, 100))
+    req = generate_class_instance(TariffRequest)
 
     mdl = TariffMapper.map_from_request(req)
 
@@ -25,7 +25,7 @@ def test_tariff_mapper_from_request():
 
 
 def test_tariff_mapper_to_response():
-    mdl = generate_class_instance(Tariff, seed=randint(1, 100))
+    mdl = generate_class_instance(Tariff)
     mdl.currency_code = 36
 
     resp = TariffMapper.map_to_response(mdl)
@@ -36,7 +36,7 @@ def test_tariff_mapper_to_response():
 
 
 def test_tariff_genrate_mapper_from_request():
-    req = generate_class_instance(TariffGeneratedRateRequest, seed=randint(1, 100))
+    req = generate_class_instance(TariffGeneratedRateRequest)
 
     mdl = TariffGeneratedRateListMapper.map_from_request([req]).pop()
 

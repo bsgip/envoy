@@ -7,9 +7,7 @@ from tests.data.fake.generator import generate_class_instance
 
 
 def test_doe_mapper_from_request():
-    req: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=randint(1, 100)
-    )
+    req: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest)
 
     mdl = DoeListMapper.map_from_request([req])[0]
 
