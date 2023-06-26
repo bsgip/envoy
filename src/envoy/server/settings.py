@@ -12,7 +12,7 @@ class AppSettings(BaseSettings):
     title: str = "envoy"
     version: str = "0.0.0"
 
-    cert_pem_header: str = "x-forwarded-client-cert"
+    cert_header: str = "x-forwarded-client-cert"
     default_timezone: str = "Australia/Brisbane"
 
     database_url: PostgresDsn

@@ -19,7 +19,7 @@ from tests.data.certificates.certificate3 import TEST_CERTIFICATE_PEM as TEST_CE
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as TEST_CERTIFICATE_FINGERPRINT_4
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_LFDI as TEST_CERTIFICATE_LFDI_4
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as TEST_CERTIFICATE_PEM_4
-from tests.integration.integration_server import cert_pem_header
+from tests.integration.integration_server import cert_header
 
 
 def test_generate_lfdi_from_fingerprint():
@@ -43,7 +43,7 @@ def test_generate_lfdi_from_pem():
 async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response():
     req = Request({"type": "http", "headers": {}})
 
-    lfdi_dep = LFDIAuthDepends(settings.cert_pem_header)
+    lfdi_dep = LFDIAuthDepends(settings.cert_header)
 
     with pytest.raises(HTTPException) as exc:
         await lfdi_dep(req)
@@ -62,11 +62,11 @@ async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_respons
     req = Request(
         {
             "type": "http",
-            "headers": Headers({cert_pem_header: TEST_CERTIFICATE_PEM_1.decode("utf-8")}).raw,
+            "headers": Headers({cert_header: TEST_CERTIFICATE_PEM_1.decode("utf-8")}).raw,
         }
     )
 
-    lfdi_dep = LFDIAuthDepends(settings.cert_pem_header)
+    lfdi_dep = LFDIAuthDepends(settings.cert_header)
 
     # Act
 

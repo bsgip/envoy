@@ -12,7 +12,7 @@ from envoy.server.settings import AppSettings, settings
 
 def generate_app(new_settings: AppSettings):
     """Generates a new app instance utilising the specific settings instance"""
-    lfdi_auth = LFDIAuthDepends(new_settings.cert_pem_header)
+    lfdi_auth = LFDIAuthDepends(new_settings.cert_header)
     new_app = FastAPI(**new_settings.fastapi_kwargs, dependencies=[Depends(lfdi_auth)])
     new_app.add_middleware(SQLAlchemyMiddleware, **new_settings.db_middleware_kwargs)
     for router in routers:

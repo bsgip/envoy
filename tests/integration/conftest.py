@@ -10,7 +10,7 @@ from envoy.admin.settings import generate_settings as admin_gen_settings
 from envoy.server.main import generate_app
 from envoy.server.settings import generate_settings
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as VALID_CERT
-from tests.integration.integration_server import cert_pem_header
+from tests.integration.integration_server import cert_header
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ async def client(pg_base_config: Connection):
 
 @pytest.fixture
 def valid_headers():
-    return {cert_pem_header: urllib.parse.quote(VALID_CERT)}
+    return {cert_header: urllib.parse.quote(VALID_CERT)}
 
 
 @pytest.fixture(scope="function")

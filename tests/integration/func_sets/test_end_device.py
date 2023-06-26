@@ -12,7 +12,7 @@ from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
 from tests.data.fake.generator import generate_class_instance
-from tests.integration.integration_server import cert_pem_header
+from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import (
     assert_error_response,
@@ -43,7 +43,7 @@ async def test_get_end_device_list_by_aggregator(
     """Simple test of a valid get for different aggregator certs - validates that the response looks like XML
     and that it contains the expected end device SFDI's associated with each aggregator"""
     response = await client.get(
-        edev_base_uri + build_paging_params(limit=100), headers={cert_pem_header: urllib.parse.quote(cert)}
+        edev_base_uri + build_paging_params(limit=100), headers={cert_header: urllib.parse.quote(cert)}
     )
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
@@ -92,7 +92,7 @@ async def test_get_end_device_list_pagination(
     client: AsyncClient, edev_base_uri: str, query_string: str, site_sfdis: list[str], expected_total: int, cert: str
 ):
     """Tests that pagination variables on the list endpoint are respected"""
-    response = await client.get(edev_base_uri + query_string, headers={cert_pem_header: urllib.parse.quote(cert)})
+    response = await client.get(edev_base_uri + query_string, headers={cert_header: urllib.parse.quote(cert)})
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
@@ -112,7 +112,7 @@ async def test_get_enddevice(client: AsyncClient, edev_fetch_uri_format: str):
 
     # check fetching within aggregator
     uri = edev_fetch_uri_format.format(site_id=2)
-    response = await client.get(uri, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    response = await client.get(uri, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
@@ -126,13 +126,13 @@ async def test_get_enddevice(client: AsyncClient, edev_fetch_uri_format: str):
 
     # check fetching outside aggregator
     uri = edev_fetch_uri_format.format(site_id=3)  # This belongs to agg2
-    response = await client.get(uri, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    response = await client.get(uri, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.NOT_FOUND)
     assert_error_response(response)
 
     # check fetching an ID that does not exist
     uri = edev_fetch_uri_format.format(site_id=9999)  # This does not exist
-    response = await client.get(uri, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    response = await client.get(uri, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.NOT_FOUND)
     assert_error_response(response)
 
@@ -145,7 +145,7 @@ async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
     insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
     response = await client.post(
         edev_base_uri,
-        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
         content=EndDeviceRequest.to_xml(insert_request),
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
@@ -153,7 +153,7 @@ async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
     inserted_href = read_location_header(response)
 
     # now lets grab the end device we just created
-    response = await client.get(inserted_href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.OK)
     response_body = read_response_body_string(response)
     assert len(response_body) > 0
@@ -166,13 +166,13 @@ async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
     assert parsed_response.deviceCategory == insert_request.deviceCategory
 
     # check that other aggregators can't fetch it
-    response = await client.get(inserted_href, headers={cert_pem_header: urllib.parse.quote(AGG_2_VALID_CERT)})
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_2_VALID_CERT)})
     assert_response_header(response, HTTPStatus.NOT_FOUND)
     assert_error_response(response)
 
     # check the new end_device count for aggregator 1
     response = await client.get(
-        edev_base_uri + build_paging_params(limit=100), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)}
+        edev_base_uri + build_paging_params(limit=100), headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}
     )
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
@@ -193,7 +193,7 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     update_request.deviceCategory = updated_device_category  # update device category
     response = await client.post(
         edev_base_uri,
-        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
         content=EndDeviceRequest.to_xml(update_request),
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
@@ -202,7 +202,7 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     assert inserted_href.endswith("/1"), "Updating site 1"
 
     # now lets grab the end device we just updated
-    response = await client.get(inserted_href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.OK)
     response_body = read_response_body_string(response)
     assert len(response_body) > 0
@@ -220,14 +220,14 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     )  # update device category
     response = await client.post(
         edev_base_uri,
-        headers={cert_pem_header: urllib.parse.quote(AGG_2_VALID_CERT)},
+        headers={cert_header: urllib.parse.quote(AGG_2_VALID_CERT)},
         content=EndDeviceRequest.to_xml(update_request),
     )
     assert_response_header(response, HTTPStatus.CONFLICT)  # conflict because the LFDI isn't unique to this agg
     assert_error_response(response)
 
     # double check the deviceCategory is left alone
-    response = await client.get(inserted_href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.OK)
     response_body = read_response_body_string(response)
     assert len(response_body) > 0
@@ -241,7 +241,7 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
 
     # check the new end_device count for aggregator 1
     response = await client.get(
-        edev_base_uri + build_paging_params(limit=100), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)}
+        edev_base_uri + build_paging_params(limit=100), headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}
     )
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
@@ -263,7 +263,7 @@ async def test_update_end_device_bad_device_category(
     update_request.deviceCategory = "efffffff"  # bad value
     response = await client.post(
         edev_base_uri,
-        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
         content=EndDeviceRequest.to_xml(update_request),
     )
     assert_response_header(response, HTTPStatus.BAD_REQUEST, expected_content_type=None)
@@ -271,7 +271,7 @@ async def test_update_end_device_bad_device_category(
 
     # double check the deviceCategory is left alone
     response = await client.get(
-        edev_fetch_uri_format.format(site_id=1), headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)}
+        edev_fetch_uri_format.format(site_id=1), headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}
     )
     assert_response_header(response, HTTPStatus.OK)
     response_body = read_response_body_string(response)
