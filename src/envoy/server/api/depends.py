@@ -17,16 +17,16 @@ class LFDIAuthDepends:
     Definition of LFDI can be found in the IEEE Std 2030.5-2018 on page 40.
     """
 
-    def __init__(self, cert_pem_header: str):
-        self.cert_pem_header = cert_pem_header
+    def __init__(self, cert_header: str):
+        self.cert_header = cert_header.lower()  # fastapi will always return headers in lowercase form
 
     async def __call__(self, request: Request):
-        if self.cert_pem_header not in request.headers.keys():
+        if self.cert_header not in request.headers.keys():
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail="Missing certificate PEM header from gateway."
             )
 
-        cert_fingerprint = request.headers[self.cert_pem_header]
+        cert_fingerprint = request.headers[self.cert_header]
 
         # generate lfdi
         lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_fingerprint)

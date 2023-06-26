@@ -28,7 +28,7 @@ from tests.assert_time import assert_nowish
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.fake.generator import assert_class_instance_equality
-from tests.integration.integration_server import cert_pem_header
+from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import assert_response_header, read_location_header, read_response_body_string
 from tests.postgres_testing import generate_async_session
@@ -74,7 +74,7 @@ async def test_get_mirror_usage_point_list_pagination(
     """Simple test of pagination of MUPs for a given aggregator"""
     response = await client.get(
         uris.MirrorUsagePointListUri + build_paging_params(limit=limit, start=start, changed_after=changed_after),
-        headers={cert_pem_header: urllib.parse.quote(cert)},
+        headers={cert_header: urllib.parse.quote(cert)},
     )
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
@@ -159,13 +159,13 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
     response = await client.post(
         uris.MirrorUsagePointListUri,
         content=MirrorUsagePointRequest.to_xml(mup, skip_empty=True),
-        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
     assert read_location_header(response) == expected_href
 
     # see if we can fetch the mup directly
-    response = await client.get(expected_href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    response = await client.get(expected_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
     assert len(body) > 0
@@ -176,7 +176,7 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
     # see if the list endpoint can fetch it via the updated time
     response = await client.get(
         uris.MirrorUsagePointListUri + build_paging_params(limit=99, changed_after=now),
-        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.OK)
     body = read_response_body_string(response)
@@ -213,7 +213,7 @@ async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config):
     response = await client.post(
         uris.MirrorUsagePointUri.format(mup_id=mup_id),
         content=MirrorMeterReading.to_xml(mmr, skip_empty=True),
-        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
 

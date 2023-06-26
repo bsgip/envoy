@@ -8,7 +8,7 @@ from envoy.server.schema.sep2.error import ErrorResponse
 from envoy.server.schema.sep2.types import ReasonCodeType
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_PEM as EXPIRED_PEM
 from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_PEM as UNKNOWN_PEM
-from tests.integration.integration_server import cert_pem_header
+from tests.integration.integration_server import cert_header
 
 
 def assert_response_header(
@@ -67,17 +67,17 @@ async def run_basic_unauthorised_tests(
     secured with our LFDI auth dependency"""
 
     # check expired certs don't work
-    response = await client.request(method=method, url=uri, content=body, headers={cert_pem_header: EXPIRED_PEM})
+    response = await client.request(method=method, url=uri, content=body, headers={cert_header: EXPIRED_PEM})
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
 
     # check unregistered certs don't work
-    response = await client.request(method=method, url=uri, content=body, headers={cert_pem_header: UNKNOWN_PEM})
+    response = await client.request(method=method, url=uri, content=body, headers={cert_header: UNKNOWN_PEM})
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
 
     # missing cert (register as 500 as the gateway should be handling this)
-    response = await client.request(method=method, url=uri, content=body, headers={cert_pem_header: ""})
+    response = await client.request(method=method, url=uri, content=body, headers={cert_header: ""})
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
     response = await client.request(method=method, url=uri, content=body)
@@ -85,6 +85,6 @@ async def run_basic_unauthorised_tests(
     assert_error_response(response)
 
     # malformed cert
-    response = await client.request(method=method, url=uri, content=body, headers={cert_pem_header: "abc-123"})
+    response = await client.request(method=method, url=uri, content=body, headers={cert_header: "abc-123"})
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)

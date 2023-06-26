@@ -25,11 +25,15 @@ if test_with_docker:
 
 
 @pytest.fixture
-def pg_empty_config(postgresql) -> Connection:
+def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Connection:
     """Sets up the testing DB, applies alembic migrations but does NOT add any entities"""
 
     # Install the DATABASE_URL before running alembic
     os.environ["DATABASE_URL"] = generate_async_conn_str_from_connection(postgresql)
+
+    pem_marker = request.node.get_closest_marker("cert_header")
+    if pem_marker is not None:
+        os.environ["CERT_HEADER"] = str(pem_marker.args[0])
 
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()

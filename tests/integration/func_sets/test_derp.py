@@ -18,13 +18,13 @@ from envoy.server.schema.sep2.der import (
 from tests.assert_time import assert_datetime_equal
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
-from tests.integration.integration_server import cert_pem_header
+from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
 
 
 def generate_headers(cert: Any):
-    return {cert_pem_header: urllib.parse.quote(cert)}
+    return {cert_header: urllib.parse.quote(cert)}
 
 
 @pytest.fixture
