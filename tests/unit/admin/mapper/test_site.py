@@ -4,12 +4,12 @@ from envoy.server.model.site import Site
 from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 
 
-def test_site_mapper():
+def test_site_single_entity_mapper():
     all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
     with_none: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
 
-    all_set_mapped = SiteMapper.map_to_response(all_set)
-    with_none_mapped = SiteMapper.map_to_response(with_none)
+    all_set_mapped = SiteMapper.map_to_site_response(all_set)
+    with_none_mapped = SiteMapper.map_to_site_response(with_none)
 
     assert isinstance(all_set_mapped, SiteResponse)
     assert isinstance(with_none_mapped, SiteResponse)
@@ -30,7 +30,7 @@ def test_site_page_mapper():
     limit = 456
     start = 789
 
-    mapped = SiteMapper.map_to_list_response(count, limit, start, sites)
+    mapped = SiteMapper.map_to_response(count, limit, start, sites)
     assert isinstance(mapped, SitePageResponse)
 
     assert mapped.total_count == count

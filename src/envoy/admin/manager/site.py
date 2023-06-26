@@ -11,4 +11,4 @@ class SiteManager:
         """Admin specific (paginated) fetch of sites that covers all aggregators"""
         site_count = await count_all_sites(session)
         sites = await select_all_sites(session, start=start, limit=limit)
-        return SiteMapper.map_to_list_response(total_count=site_count, limit=limit, start=start, sites=sites)
+        return SiteMapper.map_to_response(total_count=site_count, limit=limit, start=start, sites=sites)

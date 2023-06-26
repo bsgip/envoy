@@ -6,7 +6,7 @@ from envoy.server.model.site import Site
 
 class SiteMapper:
     @staticmethod
-    def map_to_response(site: Site) -> SiteResponse:
+    def map_to_site_response(site: Site) -> SiteResponse:
         """Maps our internal Site model to an equivalent SiteResponse"""
         return SiteResponse(
             site_id=site.site_id,
@@ -19,7 +19,8 @@ class SiteMapper:
         )
 
     @staticmethod
-    def map_to_list_response(total_count: int, limit: int, start: int, sites: Iterable[Site]) -> SitePageResponse:
+    def map_to_response(total_count: int, limit: int, start: int, sites: Iterable[Site]) -> SitePageResponse:
+        """Maps a set of sites to a single SitePageResponse"""
         return SitePageResponse(
-            total_count=total_count, limit=limit, start=start, sites=[SiteMapper.map_to_response(s) for s in sites]
+            total_count=total_count, limit=limit, start=start, sites=[SiteMapper.map_to_site_response(s) for s in sites]
         )
