@@ -2,9 +2,10 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
+from envoy.server.model.aggregator import Aggregator
 from envoy.server.schema.sep2.types import DeviceCategory
 
 
@@ -20,6 +21,8 @@ class Site(Base):
     lfdi: Mapped[str] = mapped_column(VARCHAR(length=42), nullable=False, unique=True)
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
+
+    aggregator: Mapped["Aggregator"] = relationship(lazy="raise")  # The aggregator that currently "owns" this site
 
     __table_args__ = (
         UniqueConstraint("sfdi", "aggregator_id", name="sfdi_aggregator_id_uc"),

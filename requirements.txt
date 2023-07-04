@@ -1,5 +1,9 @@
 fastapi
 sqlalchemy>=2.0.0
+# SQLAlchemy 2.0 support is still unreleased so we're pinned to main branch until further notice
+git+ssh://git@github.com/graphql-python/graphene-sqlalchemy.git@d0668cc82dfd349aa418dd6fc16d54e80162960a
+graphene>=3.0
+aiodataloader
 alembic
 tzlocal
 pydantic_xml[lxml]
