@@ -83,6 +83,8 @@ class SiteReading(Base):
         INTEGER
     )  # actual reading value - type/power of ten are defined in the parent reading set
 
+    site_reading_type: Mapped["SiteReadingType"] = relationship(lazy="raise")
+
     __table_args__ = (
         UniqueConstraint("site_reading_type_id", "time_period_start", name="site_reading_type_id_time_period_start_uc"),
     )
