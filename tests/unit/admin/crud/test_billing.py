@@ -16,20 +16,6 @@ from tests.data.fake.generator import assert_class_instance_equality, generate_c
 from tests.postgres_testing import generate_async_session
 
 
-@pytest.fixture
-def pg_billing_data(pg_base_config) -> Connection:
-    """Mutates pg_base_config to set all site timezones to Los Angeles time"""
-
-    with open("tests/data/sql/billing_data.sql") as f:
-        billing_data_sql = f.read()
-
-    with pg_base_config.cursor() as cursor:
-        cursor.execute(billing_data_sql)
-        pg_base_config.commit()
-
-    yield pg_base_config
-
-
 def assert_billing_data_types(bd: BillingData):
     assert isinstance(bd, BillingData)
     assert isinstance(bd.active_does, list)

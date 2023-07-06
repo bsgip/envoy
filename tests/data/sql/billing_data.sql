@@ -44,7 +44,7 @@ VALUES (1006, -- site_reading_type_id
     3, -- accumulation_behaviour
     37, -- kind
     64, -- phase
-    3, -- power_of_ten_multiplier
+    1, -- power_of_ten_multiplier
     0, -- default_interval_seconds
     '2022-05-06 11:22:33' -- changed_time
     );
@@ -60,7 +60,7 @@ VALUES (1007, -- site_reading_type_id
     3, -- accumulation_behaviour
     37, -- kind
     64, -- phase
-    4, -- power_of_ten_multiplier
+    1, -- power_of_ten_multiplier
     0, -- default_interval_seconds
     '2022-05-06 11:22:33' -- changed_time
     );
@@ -76,7 +76,7 @@ VALUES (1008, -- site_reading_type_id
     3, -- accumulation_behaviour
     37, -- kind
     64, -- phase
-    4, -- power_of_ten_multiplier
+    1, -- power_of_ten_multiplier
     0, -- default_interval_seconds
     '2022-05-06 11:22:33' -- changed_time
     );
@@ -92,7 +92,7 @@ VALUES (1009, -- site_reading_type_id
     3, -- accumulation_behaviour
     37, -- kind
     64, -- phase
-    4, -- power_of_ten_multiplier
+    1, -- power_of_ten_multiplier
     0, -- default_interval_seconds
     '2022-05-06 11:22:33' -- changed_time
     );

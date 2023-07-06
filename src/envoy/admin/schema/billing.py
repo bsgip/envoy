@@ -11,7 +11,7 @@ class BillingReading(BaseModel):
     value: Decimal  # Positive indicates import, negative indicates export
 
 
-class BillingTariff(BaseModel):
+class BillingTariffRate(BaseModel):
     site_id: int
     period_start: datetime
     duration_seconds: int
@@ -34,10 +34,11 @@ class BillingResponse(BaseModel):
 
     aggregator_id: int
     aggregator_name: str
-    period_from: datetime
-    period_to: datetime
+    period_start: datetime
+    period_end: datetime
+    tariff_id: int
 
-    kvarh_readings: list[BillingReading]
-    kwh_readings: list[BillingReading]
-    active_tariffs: list[BillingTariff]
+    varh_readings: list[BillingReading]
+    wh_readings: list[BillingReading]
+    active_tariffs: list[BillingTariffRate]
     active_does: list[BillingDoe]

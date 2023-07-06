@@ -93,6 +93,20 @@ def pg_la_timezone(pg_base_config) -> Connection:
 
 
 @pytest.fixture
+def pg_billing_data(pg_base_config) -> Connection:
+    """Mutates pg_base_config to include additional billing specific data"""
+
+    with open("tests/data/sql/billing_data.sql") as f:
+        billing_data_sql = f.read()
+
+    with pg_base_config.cursor() as cursor:
+        cursor.execute(billing_data_sql)
+        pg_base_config.commit()
+
+    yield pg_base_config
+
+
+@pytest.fixture
 def anyio_backend():
     """async backends to test against
     see: https://anyio.readthedocs.io/en/stable/testing.html"""
