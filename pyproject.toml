@@ -5,6 +5,10 @@ line-length = 120
 pythonpath = ["src/"]
 testpaths = "tests"
 filterwarnings = ["error::DeprecationWarning"]
+addopts = "--strict-markers"
+markers = [
+    "cert_header: marks tests to use a custom value for cert_header instead of the default"
+]
 
 [tool.bandit]
 exclude_dirs = ["tests"]
