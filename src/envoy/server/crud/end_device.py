@@ -78,10 +78,10 @@ async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, 
     table = Site.__table__
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns)]  # type: ignore [attr-defined]
     stmt = psql_insert(Site).values(**{k: getattr(site, k) for k in update_cols})
-    stmt = stmt.on_conflict_do_update(
-        index_elements=[Site.aggregator_id, Site.sfdi],
-        set_={k: getattr(stmt.excluded, k) for k in update_cols},
-    ).returning(Site.site_id)
-
-    resp = await session.execute(stmt)
+    resp = await session.execute(
+        stmt.on_conflict_do_update(
+            index_elements=[Site.aggregator_id, Site.sfdi],
+            set_={k: getattr(stmt.excluded, k) for k in update_cols},
+        ).returning(Site.site_id)
+    )
     return resp.scalar_one()

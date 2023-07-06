@@ -114,23 +114,24 @@ async def upsert_site_reading_type_for_aggregator(
     table = SiteReadingType.__table__
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns)]  # type: ignore [attr-defined]
     stmt = psql_insert(SiteReadingType).values(**{k: getattr(site_reading_type, k) for k in update_cols})
-    stmt = stmt.on_conflict_do_update(
-        index_elements=[
-            SiteReadingType.aggregator_id,
-            SiteReadingType.site_id,
-            SiteReadingType.uom,
-            SiteReadingType.data_qualifier,
-            SiteReadingType.flow_direction,
-            SiteReadingType.accumulation_behaviour,
-            SiteReadingType.kind,
-            SiteReadingType.phase,
-            SiteReadingType.power_of_ten_multiplier,
-            SiteReadingType.default_interval_seconds,
-        ],
-        set_={k: getattr(stmt.excluded, k) for k in update_cols},
-    ).returning(SiteReadingType.site_reading_type_id)
 
-    resp = await session.execute(stmt)
+    resp = await session.execute(
+        stmt.on_conflict_do_update(
+            index_elements=[
+                SiteReadingType.aggregator_id,
+                SiteReadingType.site_id,
+                SiteReadingType.uom,
+                SiteReadingType.data_qualifier,
+                SiteReadingType.flow_direction,
+                SiteReadingType.accumulation_behaviour,
+                SiteReadingType.kind,
+                SiteReadingType.phase,
+                SiteReadingType.power_of_ten_multiplier,
+                SiteReadingType.default_interval_seconds,
+            ],
+            set_={k: getattr(stmt.excluded, k) for k in update_cols},
+        ).returning(SiteReadingType.site_reading_type_id)
+    )
     return resp.scalar_one()
 
 
