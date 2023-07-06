@@ -27,7 +27,7 @@ async def fetch_billing_data(
 ) -> BillingData:
     """Aggregates a bunch of billing related data for a specific time period/aggregator based on entity start times
     (period_start is inclusive, period_end is exclusive). SiteReading will have the SiteReadingType relationship
-    populated"""
+    populated. All results will be ordered by site_id (ASC) then time (ASC)"""
 
     tariffs_result = await session.execute(
         select(TariffGeneratedRate)
