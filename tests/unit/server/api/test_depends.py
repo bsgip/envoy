@@ -69,11 +69,9 @@ async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_respons
     lfdi_dep = LFDIAuthDepends(settings.cert_header)
 
     # Act
-
     with pytest.raises(HTTPException) as exc:
         await lfdi_dep(req)
 
     # Assert
-
     assert exc.value.status_code == 403
     mock_select_client_ids_using_lfdi.assert_called_once()

@@ -83,6 +83,18 @@ async def test_resource_with_invalid_methods(
         assert_response_header(response, HTTPStatus.METHOD_NOT_ALLOWED, expected_content_type=None)
 
 
+@pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
+@pytest.mark.anyio
+async def test_fingerprint_auth(
+    valid_methods: list[HTTPMethod], uri: str, client: AsyncClient, valid_headers_fingerprint: dict
+):
+    """Simple test to validate that using our fingerprint auth will work - just testing on GET methods
+    for simplicity. Other tests will validate that the PEM encoded certs work"""
+    if HTTPMethod.GET in valid_methods:
+        response = await client.request(method=HTTPMethod.GET.name, url=uri, headers=valid_headers_fingerprint)
+        assert_response_header(response, HTTPStatus.OK, expected_content_type=None)
+
+
 @pytest.mark.anyio
 async def test_crawl_hrefs(client: AsyncClient, valid_headers: dict):
     """Crawls through ALL_ENDPOINTS_WITH_SUPPORTED_METHODS - makes every get request

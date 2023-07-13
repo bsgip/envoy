@@ -6,7 +6,9 @@ import httpx
 from envoy.server.api.response import LOCATION_HEADER_NAME, SEP_XML_MIME
 from envoy.server.schema.sep2.error import ErrorResponse
 from envoy.server.schema.sep2.types import ReasonCodeType
+from tests.data.certificates.certificate3 import TEST_CERTIFICATE_FINGERPRINT as EXPIRED_FINGERPRINT
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_PEM as EXPIRED_PEM
+from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_FINGERPRINT as UNKNOWN_FINGERPRINT
 from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_PEM as UNKNOWN_PEM
 from tests.integration.integration_server import cert_header
 
@@ -70,15 +72,21 @@ async def run_basic_unauthorised_tests(
     response = await client.request(method=method, url=uri, content=body, headers={cert_header: EXPIRED_PEM})
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
+    response = await client.request(method=method, url=uri, content=body, headers={cert_header: EXPIRED_FINGERPRINT})
+    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_error_response(response)
 
     # check unregistered certs don't work
     response = await client.request(method=method, url=uri, content=body, headers={cert_header: UNKNOWN_PEM})
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
+    response = await client.request(method=method, url=uri, content=body, headers={cert_header: UNKNOWN_FINGERPRINT})
+    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_error_response(response)
 
     # missing cert (register as 500 as the gateway should be handling this)
     response = await client.request(method=method, url=uri, content=body, headers={cert_header: ""})
-    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_response_header(response, HTTPStatus.INTERNAL_SERVER_ERROR)
     assert_error_response(response)
     response = await client.request(method=method, url=uri, content=body)
     assert_response_header(response, HTTPStatus.INTERNAL_SERVER_ERROR)

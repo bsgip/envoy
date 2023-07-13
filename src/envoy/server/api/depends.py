@@ -15,21 +15,29 @@ class LFDIAuthDepends:
     included in the request header by the TLS termination proxy.
 
     Definition of LFDI can be found in the IEEE Std 2030.5-2018 on page 40.
+
+    This auth can be configured to receive EITHER a full client cert PEM or just the sha256 fingerprint
     """
 
+    cert_header: str
+
     def __init__(self, cert_header: str):
-        self.cert_header = cert_header.lower()  # fastapi will always return headers in lowercase form
+        # fastapi will always return headers in lowercase form
+        self.cert_header = cert_header.lower()
 
     async def __call__(self, request: Request):
-        if self.cert_header not in request.headers.keys():
+        # Try extracting the lfdi from either the PEM if we receive it directly or the fingerprint if we get that
+        cert_header_val = request.headers.get(self.cert_header, None)
+        if not cert_header_val:
             raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail="Missing certificate PEM header from gateway."
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail="Missing certificate PEM header/fingerprint from gateway.",
             )
 
-        cert_fingerprint = request.headers[self.cert_header]
-
-        # generate lfdi
-        lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_fingerprint)
+        if cert_header_val.startswith("-----BEGIN CERTIFICATE-----"):
+            lfdi = LFDIAuthDepends.generate_lfdi_from_pem(cert_header_val)
+        else:
+            lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_header_val)
 
         async with db():
             client_ids = await select_client_ids_using_lfdi(lfdi, db.session)
