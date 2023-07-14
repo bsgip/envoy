@@ -4,10 +4,9 @@ FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11-slim
 COPY ./src /app/src
 COPY ./pyproject.toml /app/pyproject.toml
 COPY ./setup.cfg /app/setup.cfg
-COPY ./requirements.txt /app/requirements.txt
 
 # Install app / dependencies
-RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt\
+RUN pip install --no-cache-dir --upgrade\
     && pip install --no-cache-dir -e /app
 
 # Setup execution environment

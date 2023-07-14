@@ -66,9 +66,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install -r requirements.txt
-          pip install -r requirements/requirements.dev.txt
-          pip install .
+          pip install .[dev]
 
       - name: Add mypy annotator
         uses: pr-annotators/mypy-pr-annotator@v1.0.0
@@ -90,13 +88,11 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install -r requirements.txt
-          pip install .
+          sudo apt install -y postgresql
+          pip install .[test]
 
       - name: Run Pytest
         run: |
-          sudo apt install -y postgresql
-          pip install -r requirements/requirements.testing.txt
           pytest --junit-xml=.test_report.xml
         env:
           DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"
@@ -121,13 +117,11 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install -r requirements.txt
-          pip install .
+          sudo apt install -y postgresql
+          pip install .[test]
 
       - name: Run Pytest
         run: |
-          sudo apt install -y postgresql
-          pip install -r requirements/requirements.testing.txt
           pytest --junit-xml=.test_report.xml
         env:
           DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"

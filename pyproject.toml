@@ -19,3 +19,40 @@ exclude = ["src/envoy/server/alembic", "tests"]
 [build-system]
 requires = ["setuptools >= 40.9.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "envoy"
+version = "0.0.1"
+dependencies = [
+    "fastapi",
+    "sqlalchemy>=2.0.0",
+    "alembic",
+    "tzlocal",
+    "pydantic_xml[lxml]",
+    "python-dateutil",
+    "asyncpg",
+    "fastapi-async-sqlalchemy",
+    "alembic",
+    "python-dotenv",
+    "uvicorn",
+]
+
+[project.optional-dependencies]
+dev = [
+    "bandit",
+    "flake8",
+    "mypy",
+    "sqlalchemy[mypy]",
+    "types-python-dateutil",
+    "types-tzlocal",
+]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "anyio",
+    "pytest-mock",
+    "pytest-postgresql",
+    "psycopg",
+    "httpx",
+    "defusedxml",
+]

@@ -43,12 +43,11 @@ To run Envoy locally as a development environment you'll need to setup a local p
 
 1. Install dependencies for main server + tests
 
-`pip install -r requirements.txt`
-`pip install -r requirements/requirements.testing.txt`
+`pip install .[test]`
 
 2. (optional) Install development requirements
 
-`pip install -r requirements/requirements.dev.txt`
+`pip install .[dev]`
 
 3. Double check tests are running
 
@@ -75,7 +74,7 @@ We recommend adding these to a `.env` file in the root directory so that they ar
 
 6. Install local copy
 
-`pip install -e ./`
+`pip install -e .`
 
 7. Apply alembic migrations to the database schema
 
