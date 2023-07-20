@@ -58,3 +58,6 @@ test = [
     "httpx",
     "defusedxml",
 ]
+
+[tool.setuptools.package-data]
+"envoy" = ["py.typed"]
