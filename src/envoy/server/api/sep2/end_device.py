@@ -1,6 +1,7 @@
 import logging
 from http import HTTPStatus
 
+from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError
@@ -14,7 +15,6 @@ from envoy.server.api.request import (
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.exception import BadRequestError
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
-from envoy.server.schema.sep2.end_device import EndDeviceRequest
 
 logger = logging.getLogger(__name__)
 

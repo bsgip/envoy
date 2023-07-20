@@ -1,17 +1,13 @@
 """ Basic tests that valid no exceptions are being raised
 """
-import pytest
 from random import randint
 
-from envoy.admin.mapper.pricing import TariffMapper, TariffGeneratedRateListMapper
-from envoy.admin.schema.pricing import (
-    TariffRequest,
-    TariffResponse,
-    TariffGeneratedRateRequest,
-)
-from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+import pytest
+from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
 
-from tests.data.fake.generator import generate_class_instance, assert_class_instance_equality
+from envoy.admin.mapper.pricing import TariffGeneratedRateListMapper, TariffMapper
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 
 
 def test_tariff_mapper_from_request():

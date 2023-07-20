@@ -2,10 +2,10 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytest
+from envoy_schema.admin.schema.billing import BillingDoe, BillingReading, BillingResponse, BillingTariffRate
 
 from envoy.admin.crud.billing import BillingData
 from envoy.admin.mapper.billing import BillingMapper
-from envoy.admin.schema.billing import BillingDoe, BillingReading, BillingResponse, BillingTariffRate
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site_reading import SiteReading

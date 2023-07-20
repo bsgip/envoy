@@ -1,8 +1,8 @@
+from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.doe import upsert_many_doe
 from envoy.admin.mapper.doe import DoeListMapper
-from envoy.admin.schema.doe import DynamicOperatingEnvelopeRequest
 
 
 class DoeListManager:

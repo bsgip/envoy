@@ -4,17 +4,17 @@ from http import HTTPStatus
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
+import envoy_schema.server.schema.uri as uri
 import pytest
-from httpx import AsyncClient
-
-import envoy.server.schema.uri as uri
-from envoy.server.model.doe import DOE_DECIMAL_PLACES
-from envoy.server.schema.sep2.der import (
+from envoy_schema.server.schema.sep2.der import (
     DERControlListResponse,
     DERControlResponse,
     DERProgramListResponse,
     DERProgramResponse,
 )
+from httpx import AsyncClient
+
+from envoy.server.model.doe import DOE_DECIMAL_PLACES
 from tests.assert_time import assert_datetime_equal
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT

@@ -1,16 +1,15 @@
 import unittest.mock as mock
 from datetime import datetime
 
+import envoy_schema.server.schema.uri as uris
 import pytest
-
-import envoy.server.schema.uri as uris
-from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.sep2.metering import MirrorUsagePointListMapper, MirrorUsagePointMapper
-from envoy.server.model.site import Site
-from envoy.server.model.site_reading import SiteReadingType
-from envoy.server.schema.sep2.metering import ReadingType
-from envoy.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint, MirrorUsagePointListResponse
-from envoy.server.schema.sep2.types import (
+from envoy_schema.server.schema.sep2.metering import ReadingType
+from envoy_schema.server.schema.sep2.metering_mirror import (
+    MirrorMeterReading,
+    MirrorUsagePoint,
+    MirrorUsagePointListResponse,
+)
+from envoy_schema.server.schema.sep2.types import (
     AccumulationBehaviourType,
     DataQualifierType,
     FlowDirectionType,
@@ -18,6 +17,11 @@ from envoy.server.schema.sep2.types import (
     PhaseCode,
     UomType,
 )
+
+from envoy.server.exception import InvalidMappingError
+from envoy.server.mapper.sep2.metering import MirrorUsagePointListMapper, MirrorUsagePointMapper
+from envoy.server.model.site import Site
+from envoy.server.model.site_reading import SiteReadingType
 from tests.data.fake.generator import generate_class_instance
 
 

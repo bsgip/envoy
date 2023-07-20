@@ -1,9 +1,9 @@
 import unittest.mock as mock
 
 import pytest
+from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 from envoy.server.manager.device_capability import DeviceCapabilityManager
-from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 
 @pytest.mark.anyio

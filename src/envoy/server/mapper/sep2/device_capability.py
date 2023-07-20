@@ -1,5 +1,5 @@
-from envoy.server.schema import uri
-from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 
 class DeviceCapabilityMapper:

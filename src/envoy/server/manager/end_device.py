@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from typing import Optional
 
+from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
+from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.end_device import (
@@ -11,8 +13,6 @@ from envoy.server.crud.end_device import (
 )
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
-from envoy.server.schema.csip_aus.connection_point import ConnectionPointResponse
-from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 
 
 class EndDeviceManager:

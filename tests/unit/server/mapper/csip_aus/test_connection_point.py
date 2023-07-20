@@ -1,6 +1,7 @@
+from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
+
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
 from envoy.server.model.site import Site
-from envoy.server.schema.csip_aus.connection_point import ConnectionPointResponse
 from tests.data.fake.generator import generate_class_instance
 
 

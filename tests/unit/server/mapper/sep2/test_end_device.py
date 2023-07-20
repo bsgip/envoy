@@ -2,14 +2,14 @@ import unittest.mock as mock
 from datetime import datetime
 
 import pytest
+from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
+from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy_schema.server.schema.sep2.primitive_types import HexBinary32
+from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
 from envoy.server.model.site import Site
-from envoy.server.schema.csip_aus.connection_point import ConnectionPointLink
-from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
-from envoy.server.schema.sep2.primitive_types import HexBinary32
-from envoy.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 from tests.data.fake.generator import generate_class_instance, generate_value
 
 

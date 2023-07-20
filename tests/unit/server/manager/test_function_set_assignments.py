@@ -1,15 +1,15 @@
 from unittest import mock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
 
 # from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
-from envoy.server.schema.sep2.function_set_assignments import (
+from envoy_schema.server.schema.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,
     FunctionSetAssignmentsResponse,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
 from tests.data.fake import generator
 
 

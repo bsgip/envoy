@@ -1,6 +1,7 @@
 from typing import Iterable
 
-from envoy.admin.schema.site import SitePageResponse, SiteResponse
+from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
+
 from envoy.server.model.site import Site
 
 

@@ -4,14 +4,10 @@ from enum import IntEnum, auto
 from itertools import islice, product
 from typing import Iterator, Sequence
 
-from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
-from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import generate_mrid
-from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
-from envoy.server.schema import uri
-from envoy.server.schema.sep2.identification import Link, ListLink
-from envoy.server.schema.sep2.metering import ReadingType
-from envoy.server.schema.sep2.pricing import (
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.identification import Link, ListLink
+from envoy_schema.server.schema.sep2.metering import ReadingType
+from envoy_schema.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
     RateComponentListResponse,
@@ -21,7 +17,7 @@ from envoy.server.schema.sep2.pricing import (
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
-from envoy.server.schema.sep2.types import (
+from envoy_schema.server.schema.sep2.types import (
     CommodityType,
     ConsumptionBlockType,
     FlowDirectionType,
@@ -31,6 +27,11 @@ from envoy.server.schema.sep2.types import (
     TOUType,
     UomType,
 )
+
+from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
+from envoy.server.exception import InvalidMappingError
+from envoy.server.mapper.common import generate_mrid
+from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
 
 TARIFF_PROFILE_MRID_PREFIX: int = int("B111", 16)
 RATE_MRID_PREFIX: int = int("D01A", 16)

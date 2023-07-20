@@ -1,13 +1,13 @@
 from datetime import datetime
 
+from envoy_schema.server.schema.sep2.function_set_assignments import (
+    FunctionSetAssignmentsListResponse,
+    FunctionSetAssignmentsResponse,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud import pricing
 from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
-from envoy.server.schema.sep2.function_set_assignments import (
-    FunctionSetAssignmentsListResponse,
-    FunctionSetAssignmentsResponse,
-)
 
 
 class FunctionSetAssignmentsManager:

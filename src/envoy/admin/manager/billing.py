@@ -1,10 +1,10 @@
 from datetime import datetime
 
+from envoy_schema.admin.schema.billing import BillingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.billing import fetch_aggregator, fetch_billing_data
 from envoy.admin.mapper.billing import BillingMapper
-from envoy.admin.schema.billing import BillingResponse
 from envoy.server.exception import NotFoundError
 
 

@@ -1,9 +1,10 @@
+from envoy_schema.server.schema.sep2 import identification
+
 from envoy.server.mapper.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,
     FunctionSetAssignmentsMapper,
     FunctionSetAssignmentsResponse,
 )
-from envoy.server.schema.sep2 import identification
 from tests.data.fake import generator
 
 

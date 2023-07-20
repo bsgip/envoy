@@ -3,10 +3,10 @@ from http import HTTPStatus
 from typing import Optional
 
 import pytest
+from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointRequest, ConnectionPointResponse
 from httpx import AsyncClient
 from psycopg import Connection
 
-from envoy.server.schema.csip_aus.connection_point import ConnectionPointRequest, ConnectionPointResponse
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT

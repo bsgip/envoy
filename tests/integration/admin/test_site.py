@@ -3,10 +3,10 @@ from http import HTTPStatus
 from typing import Optional
 
 import pytest
+from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
+from envoy_schema.admin.schema.uri import SiteUri
 from httpx import AsyncClient
 
-from envoy.admin.schema.site import SitePageResponse, SiteResponse
-from envoy.admin.schema.uri import SiteUri
 from tests.integration.response import read_response_body_string
 
 

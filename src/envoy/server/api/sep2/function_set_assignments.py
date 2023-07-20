@@ -1,6 +1,7 @@
 import logging
 from http import HTTPStatus
 
+from envoy_schema.server.schema import uri
 from fastapi import APIRouter, HTTPException, Request
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import NoResultFound
@@ -9,7 +10,6 @@ from envoy.server.api import query
 from envoy.server.api.request import extract_aggregator_id
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
-from envoy.server.schema import uri
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 import pytest
+from envoy_schema.server.schema.sep2.types import DeviceCategory
 
 from envoy.server.crud.end_device import (
     select_aggregator_site_count,
@@ -10,7 +11,6 @@ from envoy.server.crud.end_device import (
     upsert_site_for_aggregator,
 )
 from envoy.server.model.site import Site
-from envoy.server.schema.sep2.types import DeviceCategory
 from tests.assert_time import assert_datetime_equal
 from tests.assert_type import assert_list_type
 from tests.data.fake.generator import clone_class_instance, generate_class_instance

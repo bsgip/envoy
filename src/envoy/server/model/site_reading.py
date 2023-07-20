@@ -1,11 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import INTEGER, DateTime, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from envoy.server.model import Base, Site
-from envoy.server.schema.sep2.types import (
+from envoy_schema.server.schema.sep2.types import (
     AccumulationBehaviourType,
     DataQualifierType,
     FlowDirectionType,
@@ -14,6 +10,10 @@ from envoy.server.schema.sep2.types import (
     QualityFlagsType,
     UomType,
 )
+from sqlalchemy import INTEGER, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from envoy.server.model import Base, Site
 
 
 class SiteReadingType(Base):

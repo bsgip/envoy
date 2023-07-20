@@ -1,5 +1,6 @@
+from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
+
 from envoy.server.model.site import Site
-from envoy.server.schema.csip_aus.connection_point import ConnectionPointResponse
 
 
 class ConnectionPointMapper:

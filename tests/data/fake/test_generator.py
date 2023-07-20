@@ -3,12 +3,12 @@ from enum import IntFlag, auto
 from typing import Optional, Union
 
 import pytest
+from envoy_schema.server.schema.sep2.base import BaseXmlModelWithNS
 from pydantic_xml import BaseXmlModel, element
 from sqlalchemy import BOOLEAN, FLOAT, INTEGER, VARCHAR, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model.base import Base
-from envoy.server.schema.sep2.base import BaseXmlModelWithNS
 from tests.data.fake.generator import (
     assert_class_instance_equality,
     check_class_instance_equality,

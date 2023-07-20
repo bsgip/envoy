@@ -4,13 +4,9 @@ from http import HTTPStatus
 from typing import Optional
 
 import pytest
-from httpx import AsyncClient
-
-from envoy.server.mapper.sep2.pricing import PricingReadingType
-from envoy.server.model.tariff import PRICE_DECIMAL_PLACES
-from envoy.server.schema import uri
-from envoy.server.schema.sep2.metering import ReadingType
-from envoy.server.schema.sep2.pricing import (
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.metering import ReadingType
+from envoy_schema.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
     RateComponentListResponse,
@@ -20,6 +16,10 @@ from envoy.server.schema.sep2.pricing import (
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
+from httpx import AsyncClient
+
+from envoy.server.mapper.sep2.pricing import PricingReadingType
+from envoy.server.model.tariff import PRICE_DECIMAL_PLACES
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params

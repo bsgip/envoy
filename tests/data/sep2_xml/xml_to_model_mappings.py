@@ -9,11 +9,11 @@ and return True if the comparison conditions implied by that Callable are passed
 from typing import List, Tuple
 from xml.etree import ElementTree as ET
 
-from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
-from envoy.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceResponse
-from envoy.server.schema.sep2.metering import ReadingType
-from envoy.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint
-from envoy.server.schema.sep2.pricing import (
+from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
+from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceResponse
+from envoy_schema.server.schema.sep2.metering import ReadingType
+from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint
+from envoy_schema.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     RateComponentListResponse,
     TariffProfileResponse,

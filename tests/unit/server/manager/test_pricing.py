@@ -4,6 +4,16 @@ from decimal import Decimal
 from typing import Union
 
 import pytest
+from envoy_schema.server.schema.sep2.pricing import (
+    ConsumptionTariffIntervalListResponse,
+    ConsumptionTariffIntervalResponse,
+    RateComponentListResponse,
+    RateComponentResponse,
+    TariffProfileListResponse,
+    TariffProfileResponse,
+    TimeTariffIntervalListResponse,
+    TimeTariffIntervalResponse,
+)
 
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidIdError
@@ -16,16 +26,6 @@ from envoy.server.manager.pricing import (
 from envoy.server.mapper.sep2.pricing import TOTAL_PRICING_READING_TYPES, PricingReadingType
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
-from envoy.server.schema.sep2.pricing import (
-    ConsumptionTariffIntervalListResponse,
-    ConsumptionTariffIntervalResponse,
-    RateComponentListResponse,
-    RateComponentResponse,
-    TariffProfileListResponse,
-    TariffProfileResponse,
-    TimeTariffIntervalListResponse,
-    TimeTariffIntervalResponse,
-)
 from tests.data.fake.generator import generate_class_instance
 from tests.postgres_testing import generate_async_session
 from tests.unit.mocks import assert_mock_session, create_mock_session

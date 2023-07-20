@@ -3,6 +3,7 @@ from typing import Optional, Sequence
 from zoneinfo import ZoneInfo
 
 import pytest
+from envoy_schema.server.schema.sep2.types import QualityFlagsType
 from sqlalchemy import select
 
 from envoy.server.crud.site_reading import (
@@ -11,7 +12,6 @@ from envoy.server.crud.site_reading import (
     upsert_site_readings,
 )
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.schema.sep2.types import QualityFlagsType
 from tests.assert_time import assert_datetime_equal
 from tests.data.fake.generator import assert_class_instance_equality, clone_class_instance, generate_class_instance
 from tests.postgres_testing import generate_async_session

@@ -35,6 +35,7 @@ dependencies = [
     "alembic",
     "python-dotenv",
     "uvicorn",
+    "envoy_schema @ git+ssh://git@github.com/bsgip/envoy-schema.git",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +46,7 @@ dev = [
     "sqlalchemy[mypy]",
     "types-python-dateutil",
     "types-tzlocal",
+    "black",
 ]
 test = [
     "pytest",

@@ -5,10 +5,10 @@ from http import HTTPStatus
 from zoneinfo import ZoneInfo
 
 import pytest
+from envoy_schema.admin.schema.billing import BillingResponse
+from envoy_schema.admin.schema.uri import BillingUri
 from httpx import AsyncClient
 
-from envoy.admin.schema.billing import BillingResponse
-from envoy.admin.schema.uri import BillingUri
 from tests.assert_time import assert_datetime_equal
 from tests.integration.response import assert_response_header, read_response_body_string
 
