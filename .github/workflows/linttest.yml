@@ -89,6 +89,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: false
+          ssh: default
           file: Dockerfile.server
 
   pytest_py310:
