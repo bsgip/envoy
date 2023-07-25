@@ -80,7 +80,10 @@ jobs:
   docker_build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Dependencies
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Install SSH Key
         run: |
           eval `ssh-agent -s`
           ssh-add - <<< '${{ secrets.ENVOY_SCHEMA_PRIVATE_KEY }}'
