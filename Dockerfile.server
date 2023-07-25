@@ -1,5 +1,9 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11-slim
 
+# System dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git
+
 # Copy app + dependencies
 COPY ./src /app/src
 COPY ./pyproject.toml /app/pyproject.toml

@@ -80,6 +80,11 @@ jobs:
   docker_build:
     runs-on: ubuntu-latest
     steps:
+      - name: Install Dependencies
+        run: |
+          eval `ssh-agent -s`
+          ssh-add - <<< '${{ secrets.ENVOY_SCHEMA_PRIVATE_KEY }}'
+
       - name: Docker Build
         uses: docker/build-push-action@v4
         with:
