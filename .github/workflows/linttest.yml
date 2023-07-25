@@ -76,6 +76,7 @@ jobs:
           mypy src/
 
   docker_build:
+    runs-on: ubuntu-latest
     steps:
       - name: Docker Build
         uses: docker/build-push-action@v4
