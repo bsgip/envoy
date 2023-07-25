@@ -1,8 +1,8 @@
+from envoy_schema.admin.schema.site import SitePageResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.site import count_all_sites, select_all_sites
 from envoy.admin.mapper.site import SiteMapper
-from envoy.admin.schema.site import SitePageResponse
 
 
 class SiteManager:

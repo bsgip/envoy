@@ -1,6 +1,8 @@
 import logging
 from http import HTTPStatus
 
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.pricing import RateComponentListResponse
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi_async_sqlalchemy import db
 
@@ -19,8 +21,6 @@ from envoy.server.manager.pricing import (
     TimeTariffIntervalManager,
 )
 from envoy.server.mapper.sep2.pricing import PricingReadingType, PricingReadingTypeMapper
-from envoy.server.schema import uri
-from envoy.server.schema.sep2.pricing import RateComponentListResponse
 
 logger = logging.getLogger(__name__)
 

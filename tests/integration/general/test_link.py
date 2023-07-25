@@ -2,9 +2,9 @@ from typing import Any
 
 import pydantic_xml
 import pytest
+from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 from envoy.server.crud import link
-from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
 from tests.postgres_testing import generate_async_session
 
 

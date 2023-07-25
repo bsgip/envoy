@@ -2,10 +2,10 @@ from http import HTTPStatus
 from typing import Any, Optional
 
 import httpx
+from envoy_schema.server.schema.sep2.error import ErrorResponse
+from envoy_schema.server.schema.sep2.types import ReasonCodeType
 
 from envoy.server.api.response import LOCATION_HEADER_NAME, SEP_XML_MIME
-from envoy.server.schema.sep2.error import ErrorResponse
-from envoy.server.schema.sep2.types import ReasonCodeType
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_FINGERPRINT as EXPIRED_FINGERPRINT
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_PEM as EXPIRED_PEM
 from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_FINGERPRINT as UNKNOWN_FINGERPRINT

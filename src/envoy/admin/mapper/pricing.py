@@ -1,12 +1,9 @@
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from typing import List
+from zoneinfo import ZoneInfo
 
-from envoy.admin.schema.pricing import (
-    TariffRequest,
-    TariffResponse,
-    TariffGeneratedRateRequest,
-)
+from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
+
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 

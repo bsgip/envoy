@@ -1,5 +1,6 @@
+from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
+
 from envoy.admin.mapper.site import SiteMapper
-from envoy.admin.schema.site import SitePageResponse, SiteResponse
 from envoy.server.model.site import Site
 from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 

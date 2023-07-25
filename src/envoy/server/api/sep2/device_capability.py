@@ -1,13 +1,13 @@
 from http import HTTPStatus
 
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 from fastapi import APIRouter, Request
 from fastapi_async_sqlalchemy import db
 
 from envoy.server.api.request import extract_aggregator_id
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.device_capability import DeviceCapabilityManager
-from envoy.server.schema import uri
-from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 router = APIRouter(tags=["device capability"])
 

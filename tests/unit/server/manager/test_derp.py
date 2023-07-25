@@ -2,12 +2,12 @@ import unittest.mock as mock
 from datetime import date, datetime
 
 import pytest
+from envoy_schema.server.schema.sep2.der import DERControlListResponse, DERProgramListResponse, DERProgramResponse
 
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
-from envoy.server.schema.sep2.der import DERControlListResponse, DERProgramListResponse, DERProgramResponse
 from tests.data.fake.generator import generate_class_instance
 from tests.unit.mocks import assert_mock_session, create_mock_session
 

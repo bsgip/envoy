@@ -1,5 +1,10 @@
 from datetime import datetime, timezone
 
+from envoy_schema.server.schema.sep2.metering_mirror import (
+    MirrorMeterReading,
+    MirrorUsagePoint,
+    MirrorUsagePointListResponse,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.end_device import select_single_site_with_lfdi
@@ -16,7 +21,6 @@ from envoy.server.mapper.sep2.metering import (
     MirrorUsagePointListMapper,
     MirrorUsagePointMapper,
 )
-from envoy.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint, MirrorUsagePointListResponse
 
 
 class MirrorMeteringManager:

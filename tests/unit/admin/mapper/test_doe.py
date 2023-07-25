@@ -1,7 +1,8 @@
 from random import randint
 
+from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
+
 from envoy.admin.mapper.doe import DoeListMapper
-from envoy.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from tests.data.fake.generator import generate_class_instance
 

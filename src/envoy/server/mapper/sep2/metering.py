@@ -1,14 +1,14 @@
 from datetime import datetime, timezone
 from typing import Optional, Sequence
 
-import envoy.server.schema.uri as uris
-from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import generate_mrid
-from envoy.server.model.site import Site
-from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.schema.sep2.metering import Reading
-from envoy.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint, MirrorUsagePointListResponse
-from envoy.server.schema.sep2.types import (
+import envoy_schema.server.schema.uri as uris
+from envoy_schema.server.schema.sep2.metering import Reading
+from envoy_schema.server.schema.sep2.metering_mirror import (
+    MirrorMeterReading,
+    MirrorUsagePoint,
+    MirrorUsagePointListResponse,
+)
+from envoy_schema.server.schema.sep2.types import (
     AccumulationBehaviourType,
     DataQualifierType,
     FlowDirectionType,
@@ -18,6 +18,11 @@ from envoy.server.schema.sep2.types import (
     RoleFlagsType,
     ServiceKind,
 )
+
+from envoy.server.exception import InvalidMappingError
+from envoy.server.mapper.common import generate_mrid
+from envoy.server.model.site import Site
+from envoy.server.model.site_reading import SiteReading, SiteReadingType
 
 MIRROR_USAGE_POINT_MRID_PREFIX: int = int("f051", 16)
 MIRROR_METER_READING_MRID_PREFIX: int = int("4ead", 16)

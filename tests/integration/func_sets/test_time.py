@@ -2,9 +2,9 @@ from datetime import datetime
 from http import HTTPStatus
 
 import pytest
+from envoy_schema.server.schema.sep2.time import TimeResponse
 from httpx import AsyncClient
 
-from envoy.server.schema.sep2.time import TimeResponse
 from tests.integration.response import assert_response_header, read_response_body_string
 
 

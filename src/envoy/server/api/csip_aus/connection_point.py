@@ -1,14 +1,14 @@
 import logging
 from http import HTTPStatus
 
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointRequest
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi_async_sqlalchemy import db
 
 from envoy.server.api.request import extract_aggregator_id
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.manager.end_device import EndDeviceManager
-from envoy.server.schema import uri
-from envoy.server.schema.csip_aus.connection_point import ConnectionPointRequest
 
 logger = logging.getLogger(__name__)
 

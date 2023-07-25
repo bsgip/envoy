@@ -66,6 +66,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          eval `ssh-agent -s`
+          ssh-add - <<< '${{ secrets.ENVOY_SCHEMA_PRIVATE_KEY }}'
           pip install .[dev]
 
       - name: Add mypy annotator
@@ -97,6 +99,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          eval `ssh-agent -s`
+          ssh-add - <<< '${{ secrets.ENVOY_SCHEMA_PRIVATE_KEY }}'
           sudo apt install -y postgresql
           pip install .[test]
 
@@ -126,6 +130,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          eval `ssh-agent -s`
+          ssh-add - <<< '${{ secrets.ENVOY_SCHEMA_PRIVATE_KEY }}'
           sudo apt install -y postgresql
           pip install .[test]
 

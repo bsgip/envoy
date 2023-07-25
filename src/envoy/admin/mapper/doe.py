@@ -1,7 +1,8 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from envoy.admin.schema.doe import DynamicOperatingEnvelopeRequest
+from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
+
 from envoy.server.model.doe import DynamicOperatingEnvelope
 
 

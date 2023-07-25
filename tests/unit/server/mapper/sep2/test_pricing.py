@@ -3,6 +3,8 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 import pytest
+from envoy_schema.server.schema.sep2.pricing import TariffProfileResponse, TimeTariffIntervalResponse
+from envoy_schema.server.schema.sep2.types import CurrencyCode
 
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
@@ -16,8 +18,6 @@ from envoy.server.mapper.sep2.pricing import (
     TimeTariffIntervalMapper,
 )
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, Tariff, TariffGeneratedRate
-from envoy.server.schema.sep2.pricing import TariffProfileResponse, TimeTariffIntervalResponse
-from envoy.server.schema.sep2.types import CurrencyCode
 from tests.data.fake.generator import generate_class_instance
 
 

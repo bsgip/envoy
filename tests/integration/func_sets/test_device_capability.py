@@ -1,10 +1,10 @@
 from http import HTTPStatus
 
 import pytest
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 from httpx import AsyncClient
 
-from envoy.server.schema import uri
-from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
 from tests.integration.response import assert_response_header, read_response_body_string
 
 

@@ -2,13 +2,13 @@ import unittest.mock as mock
 from datetime import datetime
 
 import pytest
+from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.exception import InvalidIdError, NotFoundError
 from envoy.server.manager.metering import MirrorMeteringManager
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint
 from tests.assert_time import assert_nowish
 from tests.data.fake.generator import generate_class_instance
 from tests.unit.mocks import assert_mock_session, create_mock_session

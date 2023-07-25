@@ -1,11 +1,11 @@
 from datetime import datetime
 from typing import Optional
 
+from envoy_schema.server.schema.sep2.types import DeviceCategory
 from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from envoy.server.model import Base
-from envoy.server.schema.sep2.types import DeviceCategory
 
 
 class Site(Base):

@@ -1,8 +1,8 @@
+from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud import link
 from envoy.server.mapper.sep2.device_capability import DeviceCapabilityMapper
-from envoy.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 
 class DeviceCapabilityManager:

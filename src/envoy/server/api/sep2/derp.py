@@ -1,6 +1,7 @@
 import logging
 from http import HTTPStatus
 
+from envoy_schema.server.schema import uri
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi_async_sqlalchemy import db
 
@@ -15,7 +16,6 @@ from envoy.server.api.response import XmlResponse
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
-from envoy.server.schema import uri
 
 logger = logging.getLogger(__name__)
 
