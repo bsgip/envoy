@@ -75,6 +75,14 @@ jobs:
         run: |
           mypy src/
 
+  docker_build:
+    steps:
+      - name: Docker Build
+        uses: docker/build-push-action@v4
+        with:
+          push: false
+          file: Dockerfile.server
+
   pytest_py310:
     runs-on: ubuntu-latest
     steps:
