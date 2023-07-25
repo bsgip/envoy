@@ -92,8 +92,9 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: false
-          ssh: default
           file: Dockerfile.server
+          ssh: |
+            default=${{ env.SSH_AUTH_SOCK }}
 
   pytest_py310:
     runs-on: ubuntu-latest
