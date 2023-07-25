@@ -80,19 +80,17 @@ jobs:
   docker_build:
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Install SSH Key
+      - name: Setup SSH Agent 
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
         run: |
-          eval `ssh-agent -s`
+          eval "$(ssh-agent -a $SSH_AUTH_SOCK > /dev/null)"
           ssh-add - <<< '${{ secrets.ENVOY_SCHEMA_PRIVATE_KEY }}'
-          export DOCKER_BUILDKIT=1
-          ssh-agent -s
-          echo "DOCKER_BUILDKIT=$DOCKER_BUILDKIT"
 
       - name: Docker Build
         uses: docker/build-push-action@v4
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
         with:
           push: false
           file: Dockerfile.server
