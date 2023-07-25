@@ -85,6 +85,7 @@ jobs:
           eval `ssh-agent -s`
           ssh-add - <<< '${{ secrets.ENVOY_SCHEMA_PRIVATE_KEY }}'
           export DOCKER_BUILDKIT=1
+          printenv
 
       - name: Docker Build
         uses: docker/build-push-action@v4
