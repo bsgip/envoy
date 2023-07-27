@@ -8,6 +8,25 @@ class BadRequestError(Exception):
         self.message = message
 
 
+class InternalError(Exception):
+    """Raised whenever a client request cannot be served due to an unspecified internal error. This error
+    indicates that the client is not at fault."""
+
+    message: str
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+
+class UnauthorizedError(Exception):
+    """Raised whenever the incoming client request has missing / invalid authorisation credentials"""
+
+    message: str
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+
 class NotFoundError(Exception):
     """Raised whenever the incoming request cannot find the specified resource/entity and is an
     indication that a HTTP NotFound should be returned"""

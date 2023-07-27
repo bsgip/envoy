@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from pydantic import BaseSettings, PostgresDsn
 
@@ -14,6 +14,10 @@ class AppSettings(BaseSettings):
 
     cert_header: str = "x-forwarded-client-cert"  # either client certificate in PEM format or the sha256 fingerprint
     default_timezone: str = "Australia/Brisbane"
+
+    azure_ad_tenant_id: Optional[str] = None  # if set - enables Azure AD
+    azure_ad_client_id: Optional[str] = None
+    azure_ad_valid_issuer: Optional[str] = None
 
     database_url: PostgresDsn
     commit_on_exit: bool = False

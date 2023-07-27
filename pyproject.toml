@@ -7,7 +7,7 @@ testpaths = "tests"
 filterwarnings = ["error::DeprecationWarning"]
 addopts = "--strict-markers"
 markers = [
-    "cert_header: marks tests to use a custom value for cert_header instead of the default"
+    "cert_header: marks tests to use a custom value for cert_header instead of the default",
 ]
 
 [tool.bandit]
@@ -35,6 +35,9 @@ dependencies = [
     "alembic",
     "python-dotenv",
     "uvicorn",
+    "pyjwt",
+    "cryptography",
+    "httpx",
     "envoy_schema @ git+ssh://git@github.com/bsgip/envoy-schema.git",
 ]
 
