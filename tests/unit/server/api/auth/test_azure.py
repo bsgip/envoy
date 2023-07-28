@@ -2,11 +2,18 @@ import json
 import unittest.mock as mock
 from http import HTTPStatus
 
+import jwt
 import pytest
 from httpx import Response
 
-from envoy.server.api.auth.azure import AzureADManagedIdentityConfig, parse_from_jwks_json, validate_azure_ad_token
+from envoy.server.api.auth.azure import (
+    AzureADManagedIdentityConfig,
+    UnableToContactAzureServicesError,
+    parse_from_jwks_json,
+    validate_azure_ad_token,
+)
 from envoy.server.api.auth.jwks import JWK
+from envoy.server.exception import UnauthorizedError
 from tests.unit.jwt import (
     DEFAULT_CLIENT_ID,
     DEFAULT_ISSUER,
@@ -67,24 +74,135 @@ def generate_test_jwks_response(keys: list) -> str:
     return json.dumps({"keys": [generate_jwk_defn(key) for key in keys]})
 
 
+async def async_dummy():
+    pass
+
+
+class MockedAsyncClient:
+    """Looks similar to httpx AsyncClient() but returns a mocked response"""
+
+    response: Response
+    get_calls: int
+
+    def __init__(self, response: Response) -> None:
+        self.response = response
+        self.get_calls = 0
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        return False
+
+    async def get(self, uri):
+        self.get_calls = self.get_calls + 1
+        return self.response
+
+
 @pytest.mark.anyio
 @mock.patch("envoy.server.api.auth.azure.AsyncClient")
 async def test_validate_azure_ad_token_full_token(mock_AsyncClient: mock.MagicMock):
-    """Tests that a correctly signed Azure AD token validates"""
-
-    # Mocking out the async client
-    mock_client = mock.Mock()
-    mock_client.get = mock.Mock()
-    mock_AsyncClient.side_effect = mock_client
+    """Tests that a correctly signed Azure AD token validates and the jwk cache is operating"""
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
-    token = generate_rs256_jwt(key_file=TEST_KEY_1_PATH)
+    token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH)
+    token2 = generate_rs256_jwt(key_file=TEST_KEY_2_PATH)
     pk1 = load_pk(TEST_KEY_1_PATH)
     pk2 = load_pk(TEST_KEY_2_PATH)
-
     raw_json_response = generate_test_jwks_response([pk2, pk1])
-    mock_client.get.return_value = Response(status_code=HTTPStatus.OK, content=raw_json_response)
 
-    await validate_azure_ad_token(cfg, token)
+    # Mocking out the async client
+    mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_json_response))
+    mock_AsyncClient.return_value = mocked_client
 
-    mock_client.get.assert_called_once()
+    await validate_azure_ad_token(cfg, token1)
+    await validate_azure_ad_token(cfg, token2)
+    await validate_azure_ad_token(cfg, token1)
+    await validate_azure_ad_token(cfg, token2)
+
+    assert mocked_client.get_calls == 1, "Cache should prevent further outgoing calls"
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.auth.azure.AsyncClient")
+async def test_validate_azure_ad_token_expired(mock_AsyncClient: mock.MagicMock):
+    """Tests that expired/nbf are being validated"""
+
+    cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
+    token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH, expired=True)
+    token2 = generate_rs256_jwt(key_file=TEST_KEY_2_PATH, premature=True)
+    pk1 = load_pk(TEST_KEY_1_PATH)
+    pk2 = load_pk(TEST_KEY_2_PATH)
+    raw_json_response = generate_test_jwks_response([pk1, pk2])
+
+    # Mocking out the async client
+    mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_json_response))
+    mock_AsyncClient.return_value = mocked_client
+
+    with pytest.raises(jwt.ExpiredSignatureError):
+        await validate_azure_ad_token(cfg, token1)
+    with pytest.raises(jwt.ImmatureSignatureError):
+        await validate_azure_ad_token(cfg, token2)
+
+    assert mocked_client.get_calls == 1, "Cache should prevent further outgoing calls"
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.auth.azure.AsyncClient")
+async def test_validate_azure_ad_auth_server_inaccessible(mock_AsyncClient: mock.MagicMock):
+    """Tests that the remote public key service being inaccessible kills validation"""
+
+    cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
+    token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH)
+    pk1 = load_pk(TEST_KEY_1_PATH)
+    pk2 = load_pk(TEST_KEY_2_PATH)
+    raw_json_response = generate_test_jwks_response([pk1, pk2])
+
+    # Mocking out the async client
+    mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.NOT_FOUND))
+    mock_AsyncClient.return_value = mocked_client
+
+    # Server is dead for the first/second call
+    with pytest.raises(UnableToContactAzureServicesError):
+        await validate_azure_ad_token(cfg, token1)
+    with pytest.raises(UnableToContactAzureServicesError):
+        await validate_azure_ad_token(cfg, token1)
+
+    assert mocked_client.get_calls == 2, "Cache hasn't been populated yet"
+
+    # But recovers fine for the third/fourth request
+    mocked_client.response = Response(status_code=HTTPStatus.OK, content=raw_json_response)
+    await validate_azure_ad_token(cfg, token1)
+    await validate_azure_ad_token(cfg, token1)
+
+    assert mocked_client.get_calls == 3, "Cache is now populated"
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.auth.azure.AsyncClient")
+async def test_validate_azure_ad_token_unrecognised_kid(mock_AsyncClient: mock.MagicMock):
+    """Tests that an unrecognised key id will fail to validate"""
+
+    cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
+    token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH)  # Unrecognised kid
+    token2 = generate_rs256_jwt(key_file=TEST_KEY_2_PATH)
+    pk1 = load_pk(TEST_KEY_1_PATH)
+    pk2 = load_pk(TEST_KEY_2_PATH)
+    raw_json_response = generate_test_jwks_response([pk2])
+
+    # Mocking out the async client
+    mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_json_response))
+    mock_AsyncClient.return_value = mocked_client
+
+    # First token is unrecognised - second is fine
+    with pytest.raises(UnauthorizedError):
+        await validate_azure_ad_token(cfg, token1)
+    await validate_azure_ad_token(cfg, token2)
+
+    assert mocked_client.get_calls == 1, "Cache should prevent further outgoing calls"
+
+    # Now update the response to include token1
+    raw_json_response = generate_test_jwks_response([pk1, pk2])
+    mocked_client.response = Response(status_code=HTTPStatus.OK, content=raw_json_response)
+    await validate_azure_ad_token(cfg, token1)
+    assert mocked_client.get_calls == 2, "The unrecognised token lookup triggers a cache update"

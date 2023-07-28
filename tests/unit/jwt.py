@@ -4,30 +4,37 @@ from typing import Optional, Union
 
 import jwt
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
 DEFAULT_TENANT_ID = "my-tenant-id-1"
 DEFAULT_CLIENT_ID = "my-client-id-2"
 DEFAULT_ISSUER = "https://my.test.issuer:8756/path/"
 DEFAULT_SUBJECT_ID = "my-subject-id-123"
 
-TEST_KEY_1_PATH = "tests/data/keys/test_key1"
-TEST_KEY_2_PATH = "tests/data/keys/test_key2"
+TEST_KEY_1_PATH = "tests/data/keys/test_key1.pem"
+TEST_KEY_2_PATH = "tests/data/keys/test_key2.pem"
 
 
 def load_pk(key_path: str):
     with open(key_path) as f:
-        return serialization.load_ssh_private_key(f.read().encode(), password=b"")
+        return serialization.load_pem_private_key(f.read().encode(), password=None)
 
 
-def generate_jwk_defn(pk: serialization.SSHPrivateKeyTypes) -> dict[str, str]:
+def generate_kid(pk: RSAPrivateKey) -> str:
+    """Generates a key id using a simple method that's suitable for tests"""
+    nums = pk.public_key().public_numbers()
+    return "custom-" + str(nums.n)[:24] + "|" + str(nums.e)[:24]
+
+
+def generate_jwk_defn(pk: RSAPrivateKey) -> dict[str, str]:
     pub = pk.public_key()
     numbers = pub.public_numbers()
 
-    e = base64.b64encode(int(numbers.e).to_bytes(byteorder="big")).decode("utf-8")
-    n = base64.b64encode(int(numbers.n).to_bytes(byteorder="big")).decode("utf-8")
+    e = base64.b64encode(int(numbers.e).to_bytes(length=4, byteorder="big")).decode("utf-8")
+    n = base64.b64encode(int(numbers.n).to_bytes(length=256, byteorder="big")).decode("utf-8")
 
     # Doesn't matter how this is generated - just needs to be semi unique
-    kid = e[:8] + n[:8]
+    kid = generate_kid(pk)
 
     return {
         "kty": "RSA",
@@ -49,6 +56,7 @@ def generate_rs256_jwt(
 ) -> str:
     """Generates an RS256 signed JWT with the specified set of claims"""
     payload_data: dict[str, Union[int, str]] = {}
+    payload_header: dict[str, str] = {}
 
     if tenant_id is not None:
         payload_data["tid"] = tenant_id
@@ -75,12 +83,10 @@ def generate_rs256_jwt(
     pk = load_pk(key_file)
     pk_pem = pk.private_bytes(
         encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.OpenSSH,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
         encryption_algorithm=serialization.NoEncryption(),
     ).decode("utf-8")
 
-    with open(key_file) as f:
-        bacon = f.read()
+    payload_header["kid"] = generate_kid(pk)
 
-    bacon2 = "\n".join([l.lstrip() for l in bacon.split("\n")])
-    return jwt.encode(payload=payload_data, key=bacon2, algorithm="RS256")
+    return jwt.encode(payload=payload_data, headers=payload_header, key=pk_pem, algorithm="RS256")
