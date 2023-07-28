@@ -52,6 +52,7 @@ def generate_rs256_jwt(
     issuer: Optional[str] = DEFAULT_ISSUER,
     expired: bool = False,
     premature: bool = False,
+    kid_override: Optional[str] = None,
     key_file: str = TEST_KEY_1_PATH,
 ) -> str:
     """Generates an RS256 signed JWT with the specified set of claims"""
@@ -87,6 +88,9 @@ def generate_rs256_jwt(
         encryption_algorithm=serialization.NoEncryption(),
     ).decode("utf-8")
 
-    payload_header["kid"] = generate_kid(pk)
+    if kid_override is None:
+        payload_header["kid"] = generate_kid(pk)
+    else:
+        payload_header["kid"] = kid_override
 
     return jwt.encode(payload=payload_data, headers=payload_header, key=pk_pem, algorithm="RS256")
