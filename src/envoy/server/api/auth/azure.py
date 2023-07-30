@@ -40,6 +40,14 @@ def _get_jwk_from_cache(key_id: str) -> Optional[JWK]:
     return _JWKS_CACHE.get(key_id, None)
 
 
+async def clear_jwks_cache():
+    """Resets the internal jwks cache to empty - will be async safe but not thread safe"""
+    global _JWKS_CACHE
+
+    async with _JWKS_CACHE_UPDATE_LOCK:
+        _JWKS_CACHE = {}
+
+
 def parse_from_jwks_json(keys: Iterable[dict[str, str]]) -> dict[str, JWK]:
     """Given a list of keys in the below form - parse out a dict of JWK instances
     {

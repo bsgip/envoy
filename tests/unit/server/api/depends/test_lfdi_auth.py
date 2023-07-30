@@ -53,7 +53,7 @@ async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.api.depends.lfdi_auth.select_client_ids_using_lfdi")
-@mock.patch("envoy.server.api.depends.db")
+@mock.patch("envoy.server.api.depends.lfdi_auth.db")
 async def test_lfdiauthdepends_request_with_unregistered_cert_expect_403_response(
     mock_db: mock.MagicMock, mock_select_client_ids_using_lfdi: mock.MagicMock
 ):

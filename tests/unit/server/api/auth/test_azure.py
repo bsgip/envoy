@@ -9,6 +9,7 @@ from httpx import Response
 from envoy.server.api.auth.azure import (
     AzureADManagedIdentityConfig,
     UnableToContactAzureServicesError,
+    clear_jwks_cache,
     parse_from_jwks_json,
     validate_azure_ad_token,
 )
@@ -25,6 +26,12 @@ from tests.unit.jwt import (
     generate_rs256_jwt,
     load_pk,
 )
+
+
+@pytest.fixture
+async def cache_reset() -> bool:
+    """Fixture for resetting the cache between tests"""
+    await clear_jwks_cache()
 
 
 def test_parse_from_jwks_json():
@@ -98,7 +105,7 @@ class MockedAsyncClient:
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.api.auth.azure.AsyncClient")
-async def test_validate_azure_ad_token_full_token(mock_AsyncClient: mock.MagicMock):
+async def test_validate_azure_ad_token_full_token(mock_AsyncClient: mock.MagicMock, cache_reset):
     """Tests that a correctly signed Azure AD token validates and the jwk cache is operating"""
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
@@ -122,9 +129,8 @@ async def test_validate_azure_ad_token_full_token(mock_AsyncClient: mock.MagicMo
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.api.auth.azure.AsyncClient")
-async def test_validate_azure_ad_token_expired(mock_AsyncClient: mock.MagicMock):
+async def test_validate_azure_ad_token_expired(mock_AsyncClient: mock.MagicMock, cache_reset):
     """Tests that expired/nbf are being validated"""
-
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH, expired=True)
     token2 = generate_rs256_jwt(key_file=TEST_KEY_2_PATH, premature=True)
@@ -146,7 +152,7 @@ async def test_validate_azure_ad_token_expired(mock_AsyncClient: mock.MagicMock)
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.api.auth.azure.AsyncClient")
-async def test_validate_azure_ad_auth_server_inaccessible(mock_AsyncClient: mock.MagicMock):
+async def test_validate_azure_ad_auth_server_inaccessible(mock_AsyncClient: mock.MagicMock, cache_reset):
     """Tests that the remote public key service being inaccessible kills validation"""
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
@@ -177,7 +183,7 @@ async def test_validate_azure_ad_auth_server_inaccessible(mock_AsyncClient: mock
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.api.auth.azure.AsyncClient")
-async def test_validate_azure_ad_token_unrecognised_kid(mock_AsyncClient: mock.MagicMock):
+async def test_validate_azure_ad_token_unrecognised_kid(mock_AsyncClient: mock.MagicMock, cache_reset):
     """Tests that an unrecognised key id will fail to validate"""
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
@@ -207,7 +213,7 @@ async def test_validate_azure_ad_token_unrecognised_kid(mock_AsyncClient: mock.M
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.api.auth.azure.AsyncClient")
-async def test_validate_azure_ad_token_invalid_audience(mock_AsyncClient: mock.MagicMock):
+async def test_validate_azure_ad_token_invalid_audience(mock_AsyncClient: mock.MagicMock, cache_reset):
     """Tests that a mismatching audience raises an error"""
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
@@ -227,7 +233,7 @@ async def test_validate_azure_ad_token_invalid_audience(mock_AsyncClient: mock.M
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.api.auth.azure.AsyncClient")
-async def test_validate_azure_ad_token_invalid_issuer(mock_AsyncClient: mock.MagicMock):
+async def test_validate_azure_ad_token_invalid_issuer(mock_AsyncClient: mock.MagicMock, cache_reset):
     """Tests that a mismatching issuer raises an error"""
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
@@ -247,7 +253,7 @@ async def test_validate_azure_ad_token_invalid_issuer(mock_AsyncClient: mock.Mag
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.api.auth.azure.AsyncClient")
-async def test_validate_azure_ad_token_invalid_signature(mock_AsyncClient: mock.MagicMock):
+async def test_validate_azure_ad_token_invalid_signature(mock_AsyncClient: mock.MagicMock, cache_reset):
     """Tests that a forged key id but invalid signature raises an error"""
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
