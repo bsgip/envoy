@@ -9,6 +9,7 @@ from psycopg import Connection
 from pytest_postgresql import factories
 
 from tests.postgres_testing import generate_async_conn_str_from_connection
+from tests.unit.jwt import DEFAULT_CLIENT_ID, DEFAULT_ISSUER, DEFAULT_TENANT_ID
 
 # Redefine postgresql fixture if the environment variable, TEST_WITH_DOCKER is True
 # The postgresql fixture comes from the pytest-postgresql plugin. See https://pypi.org/project/pytest-postgresql/)
@@ -34,6 +35,16 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Connection:
     pem_marker = request.node.get_closest_marker("cert_header")
     if pem_marker is not None:
         os.environ["CERT_HEADER"] = str(pem_marker.args[0])
+
+    azure_ad_auth_marker = request.node.get_closest_marker("azure_ad_auth")
+    if azure_ad_auth_marker is not None:
+        os.environ["AZURE_AD_TENANT_ID"] = DEFAULT_TENANT_ID
+        os.environ["AZURE_AD_CLIENT_ID"] = DEFAULT_CLIENT_ID
+        os.environ["AZURE_AD_VALID_ISSUER"] = DEFAULT_ISSUER
+    else:
+        os.environ["AZURE_AD_TENANT_ID"] = ""
+        os.environ["AZURE_AD_CLIENT_ID"] = ""
+        os.environ["AZURE_AD_VALID_ISSUER"] = ""
 
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()

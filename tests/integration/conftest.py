@@ -12,6 +12,7 @@ from envoy.server.settings import generate_settings
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as VALID_CERT_FINGERPRINT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as VALID_CERT_PEM
 from tests.integration.integration_server import cert_header
+from tests.unit.jwt import generate_rs256_jwt
 
 
 @pytest.fixture
@@ -33,6 +34,11 @@ def valid_headers():
 @pytest.fixture
 def valid_headers_fingerprint():
     return {cert_header: VALID_CERT_FINGERPRINT}
+
+
+@pytest.fixture
+def valid_headers_with_azure_ad():
+    return {cert_header: VALID_CERT_FINGERPRINT, "Authorization": f"Bearer {generate_rs256_jwt()}"}
 
 
 @pytest.fixture(scope="function")

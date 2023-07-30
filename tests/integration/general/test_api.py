@@ -1,12 +1,21 @@
 import re
+import unittest.mock as mock
 from http import HTTPStatus
 from typing import Optional
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 
+from envoy.server.api.auth.azure import clear_jwks_cache
 from tests.integration.http import HTTPMethod
-from tests.integration.response import assert_response_header, read_response_body_string, run_basic_unauthorised_tests
+from tests.integration.response import (
+    assert_response_header,
+    read_response_body_string,
+    run_azure_ad_unauthorised_tests,
+    run_basic_unauthorised_tests,
+)
+from tests.unit.jwt import TEST_KEY_1_PATH, generate_rs256_jwt, load_pk
+from tests.unit.server.api.auth.test_azure import MockedAsyncClient, generate_test_jwks_response
 
 EMPTY_XML_DOC = '<?xml version="1.0" encoding="UTF-8"?>\n<tag/>'
 
@@ -66,6 +75,76 @@ async def test_get_resource_unauthorised(valid_methods: list[HTTPMethod], uri: s
             body = EMPTY_XML_DOC
 
         await run_basic_unauthorised_tests(client, uri, method=method.name, body=body)
+
+
+@pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
+@pytest.mark.azure_ad_auth
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.auth.azure.AsyncClient")
+async def test_get_resource_unauthorised_with_azure_ad(
+    mock_AsyncClient: mock.MagicMock, valid_methods: list[HTTPMethod], uri: str, client: AsyncClient
+):
+    """Runs through the basic unauthorised tests for all parametrized requests when Azure AD auth is enabled"""
+
+    # Mocking out the JWK async client - it will just return a basic public key that will match TEST_KEY_1
+    await clear_jwks_cache()
+    pk1 = load_pk(TEST_KEY_1_PATH)
+    raw_json_response = generate_test_jwks_response([pk1])
+    mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_json_response))
+    mock_AsyncClient.return_value = mocked_client
+
+    for method in valid_methods:
+        body: Optional[str] = None
+        if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
+            body = EMPTY_XML_DOC
+
+        # Run the default tests (but with a valid AD token) to ensure they still operate as expected
+        valid_ad_token = generate_rs256_jwt()
+        await run_basic_unauthorised_tests(
+            client, uri, method=method.name, body=body, base_headers={"Authorization": f"Bearer {valid_ad_token}"}
+        )
+
+        # Now do the reverse - valid cert but invalid AD tokens
+        await run_azure_ad_unauthorised_tests(client, uri, method=method.name, body=body)
+
+
+@pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
+@pytest.mark.azure_ad_auth
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.auth.azure.AsyncClient")
+async def test_get_resource_valid_auth_with_valid_azure_ad(
+    mock_AsyncClient: mock.MagicMock,
+    valid_methods: list[HTTPMethod],
+    uri: str,
+    client: AsyncClient,
+    valid_headers_with_azure_ad,
+):
+    """Runs through the basic GET tests for all parametrized requests when Azure AD auth is enabled"""
+
+    # Mocking out the JWK async client - it will just return a basic public key that will match TEST_KEY_1
+    await clear_jwks_cache()
+    pk1 = load_pk(TEST_KEY_1_PATH)
+    raw_json_response = generate_test_jwks_response([pk1])
+    mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_json_response))
+    mock_AsyncClient.return_value = mocked_client
+
+    for method in valid_methods:
+        body: Optional[str] = None
+        if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
+            # We don't have a consistent way of testing POST/PUT methods -
+            # We will operate under the assumption that if the GET methods are functioning with auth
+            # then the other method types must also be valid as the auth dependency should be the same
+            break
+
+        # Run the default tests (but with a valid AD token) to ensure they still operate as expected
+
+        response = await client.request(
+            method=method.name,
+            url=uri,
+            content=body,
+            headers=valid_headers_with_azure_ad,
+        )
+        assert_response_header(response, HTTPStatus.OK)
 
 
 @pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)

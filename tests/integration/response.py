@@ -6,11 +6,13 @@ from envoy_schema.server.schema.sep2.error import ErrorResponse
 from envoy_schema.server.schema.sep2.types import ReasonCodeType
 
 from envoy.server.api.response import LOCATION_HEADER_NAME, SEP_XML_MIME
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as VALID_FINGERPRINT
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_FINGERPRINT as EXPIRED_FINGERPRINT
 from tests.data.certificates.certificate3 import TEST_CERTIFICATE_PEM as EXPIRED_PEM
 from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_FINGERPRINT as UNKNOWN_FINGERPRINT
 from tests.data.certificates.certificate_noreg import TEST_CERTIFICATE_PEM as UNKNOWN_PEM
 from tests.integration.integration_server import cert_header
+from tests.unit.jwt import generate_rs256_jwt
 
 
 def assert_response_header(
@@ -62,37 +64,124 @@ def read_response_body_string(response: httpx.Response) -> str:
     return response.read().decode("utf-8")
 
 
+def _apply_headers(base_headers: Optional[dict[str, str]], add_headers: dict[str, str]) -> dict[str, str]:
+    if base_headers:
+        return dict(base_headers) | add_headers
+    else:
+        return add_headers
+
+
 async def run_basic_unauthorised_tests(
-    client: httpx.AsyncClient, uri: str, method: str = "GET", body: Optional[Any] = None
+    client: httpx.AsyncClient,
+    uri: str,
+    method: str = "GET",
+    body: Optional[Any] = None,
+    base_headers: Optional[dict[str, str]] = None,
 ):
     """Runs common "unauthorised" GET requests on a particular endpoint and ensures that the endpoint is properly
     secured with our LFDI auth dependency"""
 
     # check expired certs don't work
-    response = await client.request(method=method, url=uri, content=body, headers={cert_header: EXPIRED_PEM})
+    response = await client.request(
+        method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: EXPIRED_PEM})
+    )
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
-    response = await client.request(method=method, url=uri, content=body, headers={cert_header: EXPIRED_FINGERPRINT})
+    response = await client.request(
+        method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: EXPIRED_FINGERPRINT})
+    )
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
 
     # check unregistered certs don't work
-    response = await client.request(method=method, url=uri, content=body, headers={cert_header: UNKNOWN_PEM})
+    response = await client.request(
+        method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: UNKNOWN_PEM})
+    )
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
-    response = await client.request(method=method, url=uri, content=body, headers={cert_header: UNKNOWN_FINGERPRINT})
+    response = await client.request(
+        method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: UNKNOWN_FINGERPRINT})
+    )
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
 
     # missing cert (register as 500 as the gateway should be handling this)
-    response = await client.request(method=method, url=uri, content=body, headers={cert_header: ""})
+    response = await client.request(
+        method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: ""})
+    )
     assert_response_header(response, HTTPStatus.INTERNAL_SERVER_ERROR)
     assert_error_response(response)
-    response = await client.request(method=method, url=uri, content=body)
+    response = await client.request(method=method, url=uri, content=body, headers=base_headers)
     assert_response_header(response, HTTPStatus.INTERNAL_SERVER_ERROR)
     assert_error_response(response)
 
     # malformed cert
-    response = await client.request(method=method, url=uri, content=body, headers={cert_header: "abc-123"})
+    response = await client.request(
+        method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: "abc-123"})
+    )
     assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_error_response(response)
+
+
+async def run_azure_ad_unauthorised_tests(
+    client: httpx.AsyncClient, uri: str, method: str = "GET", body: Optional[Any] = None
+):
+    """Runs Unauthorised tests with respect to Azure Active Directory bearer tokens, These will only
+    pass if the Azure AD auth dependency is enabled.
+
+    This wont exhaustively enumerate all the ways the token can be invalid - unit test coverage will handle that"""
+
+    # No azure AD bearer token
+    response = await client.request(method=method, url=uri, content=body, headers={cert_header: VALID_FINGERPRINT})
+    assert_response_header(response, HTTPStatus.UNAUTHORIZED)
+    assert_error_response(response)
+
+    # Missing token value
+    response = await client.request(
+        method=method, url=uri, content=body, headers={cert_header: VALID_FINGERPRINT, "Authorization": "Bearer "}
+    )
+    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_error_response(response)
+
+    # Malformed token
+    response = await client.request(
+        method=method,
+        url=uri,
+        content=body,
+        headers={cert_header: VALID_FINGERPRINT, "Authorization": "Bearer eyNotAToken"},
+    )
+    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_error_response(response)
+
+    # Expired token
+    token = generate_rs256_jwt(expired=True)
+    response = await client.request(
+        method=method,
+        url=uri,
+        content=body,
+        headers={cert_header: VALID_FINGERPRINT, "Authorization": f"Bearer {token}"},
+    )
+    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_error_response(response)
+
+    # Invalid audience
+    token = generate_rs256_jwt(aud="invalid-audience")
+    response = await client.request(
+        method=method,
+        url=uri,
+        content=body,
+        headers={cert_header: VALID_FINGERPRINT, "Authorization": f"Bearer {token}"},
+    )
+    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_error_response(response)
+
+    # Invalid kid
+    token = generate_rs256_jwt(kid_override="invalid-kid")
+    response = await client.request(
+        method=method,
+        url=uri,
+        content=body,
+        headers={cert_header: VALID_FINGERPRINT, "Authorization": f"Bearer {token}"},
+    )
+    assert_response_header(response, HTTPStatus.UNAUTHORIZED)
     assert_error_response(response)
