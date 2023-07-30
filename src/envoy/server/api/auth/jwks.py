@@ -1,5 +1,5 @@
 import base64
-from typing import Iterable, Union
+from typing import Union
 
 from attr import dataclass
 from cryptography.hazmat.backends import default_backend
@@ -14,7 +14,7 @@ class JWK:
     key_type: str  # Key type - eg "RSA"
     rsa_exponent: int  # Decoded RSA exponent (referred to as e)
     rsa_modulus: int  # Decoded RSA modulus (referred to as n)
-    pem_public_bytes: bytes  # RSA PEM public bytes for this JWK
+    pem_public: str  # RSA PEM public key for this JWK
 
 
 def ensure_bytes(key: Union[str, bytes]) -> bytes:

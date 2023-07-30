@@ -46,9 +46,7 @@ def test_parse_from_jwks_json():
     assert len(set([v.rsa_modulus for v in result_dict.values()])) == len(
         result_dict
     ), "All modulus values should be distinct"
-    assert len(set([v.pem_public_bytes for v in result_dict.values()])) == len(
-        result_dict
-    ), "All PEM bytes should be distinct"
+    assert len(set([v.pem_public for v in result_dict.values()])) == len(result_dict), "All PEM keys should be distinct"
 
     jwk = result_dict["DqUu8gf-nAgcyjP3-SuplNAXAnc"]
     assert jwk.key_type == "RSA"
@@ -57,7 +55,7 @@ def test_parse_from_jwks_json():
     assert jwk.rsa_exponent != 0
     assert isinstance(jwk.rsa_modulus, int)
     assert jwk.rsa_modulus != 0
-    assert len(jwk.pem_public_bytes) != 0
+    assert len(jwk.pem_public) != 0
 
 
 def test_parse_from_filtered_jwks_json():
@@ -75,7 +73,7 @@ def test_parse_from_filtered_jwks_json():
     assert jwk.rsa_exponent != 0
     assert isinstance(jwk.rsa_modulus, int)
     assert jwk.rsa_modulus != 0
-    assert len(jwk.pem_public_bytes) != 0
+    assert len(jwk.pem_public) != 0
 
 
 def generate_test_jwks_response(keys: list) -> str:

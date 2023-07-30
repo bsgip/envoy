@@ -76,7 +76,7 @@ def parse_from_jwks_json(keys: Iterable[dict[str, str]]) -> dict[str, JWK]:
             key_type=key_type,
             rsa_exponent=e,
             rsa_modulus=n,
-            pem_public_bytes=rsa_pem_from_jwk(n, e),
+            pem_public=rsa_pem_from_jwk(n, e).decode("utf-8"),
         )
 
     return jwks
@@ -158,7 +158,7 @@ async def validate_azure_ad_token(cfg: AzureADManagedIdentityConfig, token: str)
     # Decode / Validate the token
     decoded = jwt.decode(
         token,
-        jwk.pem_public_bytes,
+        jwk.pem_public,
         verify=True,
         algorithms=["RS256"],
         audience=[cfg.client_id],
