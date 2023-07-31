@@ -14,7 +14,7 @@ from tests.integration.response import (
     run_azure_ad_unauthorised_tests,
     run_basic_unauthorised_tests,
 )
-from tests.unit.jwt import TEST_KEY_1_PATH, generate_rs256_jwt, load_pk
+from tests.unit.jwt import TEST_KEY_1_PATH, generate_rs256_jwt, load_rsa_pk
 from tests.unit.server.api.auth.test_azure import MockedAsyncClient, generate_test_jwks_response
 
 EMPTY_XML_DOC = '<?xml version="1.0" encoding="UTF-8"?>\n<tag/>'
@@ -88,7 +88,7 @@ async def test_get_resource_unauthorised_with_azure_ad(
 
     # Mocking out the JWK async client - it will just return a basic public key that will match TEST_KEY_1
     await clear_jwks_cache()
-    pk1 = load_pk(TEST_KEY_1_PATH)
+    pk1 = load_rsa_pk(TEST_KEY_1_PATH)
     raw_json_response = generate_test_jwks_response([pk1])
     mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_json_response))
     mock_AsyncClient.return_value = mocked_client
@@ -123,7 +123,7 @@ async def test_get_resource_valid_auth_with_valid_azure_ad(
 
     # Mocking out the JWK async client - it will just return a basic public key that will match TEST_KEY_1
     await clear_jwks_cache()
-    pk1 = load_pk(TEST_KEY_1_PATH)
+    pk1 = load_rsa_pk(TEST_KEY_1_PATH)
     raw_json_response = generate_test_jwks_response([pk1])
     mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_json_response))
     mock_AsyncClient.return_value = mocked_client

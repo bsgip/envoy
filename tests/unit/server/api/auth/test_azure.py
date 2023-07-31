@@ -21,10 +21,10 @@ from tests.unit.jwt import (
     DEFAULT_TENANT_ID,
     TEST_KEY_1_PATH,
     TEST_KEY_2_PATH,
-    generate_jwk_defn,
+    generate_azure_jwk_definition,
     generate_kid,
     generate_rs256_jwt,
-    load_pk,
+    load_rsa_pk,
 )
 
 
@@ -77,7 +77,7 @@ def test_parse_from_filtered_jwks_json():
 
 
 def generate_test_jwks_response(keys: list) -> str:
-    return json.dumps({"keys": [generate_jwk_defn(key) for key in keys]})
+    return json.dumps({"keys": [generate_azure_jwk_definition(key) for key in keys]})
 
 
 class MockedAsyncClient:
@@ -109,8 +109,8 @@ async def test_validate_azure_ad_token_full_token(mock_AsyncClient: mock.MagicMo
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH)
     token2 = generate_rs256_jwt(key_file=TEST_KEY_2_PATH)
-    pk1 = load_pk(TEST_KEY_1_PATH)
-    pk2 = load_pk(TEST_KEY_2_PATH)
+    pk1 = load_rsa_pk(TEST_KEY_1_PATH)
+    pk2 = load_rsa_pk(TEST_KEY_2_PATH)
     raw_json_response = generate_test_jwks_response([pk2, pk1])
 
     # Mocking out the async client
@@ -132,8 +132,8 @@ async def test_validate_azure_ad_token_expired(mock_AsyncClient: mock.MagicMock,
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH, expired=True)
     token2 = generate_rs256_jwt(key_file=TEST_KEY_2_PATH, premature=True)
-    pk1 = load_pk(TEST_KEY_1_PATH)
-    pk2 = load_pk(TEST_KEY_2_PATH)
+    pk1 = load_rsa_pk(TEST_KEY_1_PATH)
+    pk2 = load_rsa_pk(TEST_KEY_2_PATH)
     raw_json_response = generate_test_jwks_response([pk1, pk2])
 
     # Mocking out the async client
@@ -155,8 +155,8 @@ async def test_validate_azure_ad_auth_server_inaccessible(mock_AsyncClient: mock
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH)
-    pk1 = load_pk(TEST_KEY_1_PATH)
-    pk2 = load_pk(TEST_KEY_2_PATH)
+    pk1 = load_rsa_pk(TEST_KEY_1_PATH)
+    pk2 = load_rsa_pk(TEST_KEY_2_PATH)
     raw_json_response = generate_test_jwks_response([pk1, pk2])
 
     # Mocking out the async client
@@ -187,8 +187,8 @@ async def test_validate_azure_ad_token_unrecognised_kid(mock_AsyncClient: mock.M
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH)  # Unrecognised kid
     token2 = generate_rs256_jwt(key_file=TEST_KEY_2_PATH)
-    pk1 = load_pk(TEST_KEY_1_PATH)
-    pk2 = load_pk(TEST_KEY_2_PATH)
+    pk1 = load_rsa_pk(TEST_KEY_1_PATH)
+    pk2 = load_rsa_pk(TEST_KEY_2_PATH)
     raw_json_response = generate_test_jwks_response([pk2])
 
     # Mocking out the async client
@@ -216,7 +216,7 @@ async def test_validate_azure_ad_token_invalid_audience(mock_AsyncClient: mock.M
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH, aud="new audience")
-    pk1 = load_pk(TEST_KEY_1_PATH)
+    pk1 = load_rsa_pk(TEST_KEY_1_PATH)
     raw_json_response = generate_test_jwks_response([pk1])
 
     # Mocking out the async client
@@ -236,7 +236,7 @@ async def test_validate_azure_ad_token_invalid_issuer(mock_AsyncClient: mock.Mag
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     token1 = generate_rs256_jwt(key_file=TEST_KEY_1_PATH, issuer="http://new.issuer/")
-    pk1 = load_pk(TEST_KEY_1_PATH)
+    pk1 = load_rsa_pk(TEST_KEY_1_PATH)
     raw_json_response = generate_test_jwks_response([pk1])
 
     # Mocking out the async client
@@ -256,7 +256,7 @@ async def test_validate_azure_ad_token_invalid_signature(mock_AsyncClient: mock.
 
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     token_valid = generate_rs256_jwt(key_file=TEST_KEY_1_PATH)
-    pk1 = load_pk(TEST_KEY_1_PATH)
+    pk1 = load_rsa_pk(TEST_KEY_1_PATH)
     token_forged = generate_rs256_jwt(key_file=TEST_KEY_2_PATH, kid_override=generate_kid(pk1))
     raw_json_response = generate_test_jwks_response([pk1])
 

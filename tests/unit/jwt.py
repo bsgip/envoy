@@ -15,18 +15,25 @@ TEST_KEY_1_PATH = "tests/data/keys/test_key1.pem"
 TEST_KEY_2_PATH = "tests/data/keys/test_key2.pem"
 
 
-def load_pk(key_path: str):
+def load_rsa_pk(key_path: str) -> RSAPrivateKey:
+    """Given a file path to a PEM encoded private key - load that file into a RSAPrivateKey"""
     with open(key_path) as f:
-        return serialization.load_pem_private_key(f.read().encode(), password=None)
+        pk = serialization.load_pem_private_key(f.read().encode(), password=None)
+        if not isinstance(pk, RSAPrivateKey):
+            raise Exception(f"Expected RSAPrivateKey but got {type(pk)}")
+        return pk
 
 
 def generate_kid(pk: RSAPrivateKey) -> str:
-    """Generates a key id using a simple method that's suitable for tests"""
+    """Generates a key id using a simple method that's suitable for tests - dont use this in anything
+    resembling a production system"""
     nums = pk.public_key().public_numbers()
     return "custom-" + str(nums.n)[:24] + "|" + str(nums.e)[:24]
 
 
-def generate_jwk_defn(pk: RSAPrivateKey) -> dict[str, str]:
+def generate_azure_jwk_definition(pk: RSAPrivateKey) -> dict[str, str]:
+    """Given a private key - generate a dictionary that models the Azure JWK definition returned from their
+    public key endpoint"""
     pub = pk.public_key()
     numbers = pub.public_numbers()
 
@@ -81,7 +88,7 @@ def generate_rs256_jwt(
     else:
         payload_data["nbf"] = int((datetime.now() + timedelta(minutes=-1)).timestamp())
 
-    pk = load_pk(key_file)
+    pk = load_rsa_pk(key_file)
     pk_pem = pk.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.TraditionalOpenSSL,
