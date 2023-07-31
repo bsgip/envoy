@@ -43,6 +43,17 @@ class AppSettings(BaseSettings):
     def db_middleware_kwargs(self) -> Dict[str, Any]:
         return {"db_url": self.database_url, "commit_on_exit": self.commit_on_exit}
 
+    @property
+    def azure_ad_kwargs(self) -> Optional[dict[str, Any]]:
+        """Returns the Azure Active Directory configuration (if fully specified) or none otherwise"""
+        client_id = self.azure_ad_client_id
+        tenant_id = self.azure_ad_tenant_id
+        issuer = self.azure_ad_valid_issuer
+        if client_id and tenant_id and issuer:
+            return {"client_id": client_id, "tenant_id": tenant_id, "issuer": issuer}
+        else:
+            return None
+
 
 def generate_settings() -> AppSettings:
     """Generates and configures a new instance of the AppSettings"""

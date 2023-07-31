@@ -21,15 +21,13 @@ def generate_app(new_settings: AppSettings):
     global_dependencies = [Depends(lfdi_auth)]
 
     # Azure AD Auth is an optional extension enabled via configuration settings
-    client_id = new_settings.azure_ad_client_id
-    tenant_id = new_settings.azure_ad_tenant_id
-    issuer = new_settings.azure_ad_valid_issuer
-    if client_id and tenant_id and issuer:
-        logger.info(f"Enabling AzureADAuth: Client: {client_id} Tenant: {tenant_id} Issuer: {issuer}")
+    azure_ad_settings = new_settings.azure_ad_kwargs
+    if azure_ad_settings:
+        logger.info(f"Enabling AzureADAuth: {azure_ad_settings}")
         azure_ad_auth = AzureADAuthDepends(
-            tenant_id=tenant_id,
-            client_id=client_id,
-            valid_issuer=issuer,
+            tenant_id=azure_ad_settings["tenant_id"],
+            client_id=azure_ad_settings["client_id"],
+            valid_issuer=azure_ad_settings["issuer"],
         )
         global_dependencies.insert(0, Depends(azure_ad_auth))
 
