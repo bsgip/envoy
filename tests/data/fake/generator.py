@@ -5,7 +5,6 @@ from typing import Any, Callable, Optional, Union, get_args, get_origin, get_typ
 
 from pydantic import BaseModel
 from pydantic_xml import BaseXmlModel
-from pydantic import BaseModel
 from sqlalchemy.orm import Mapped
 
 from envoy.server.model.base import Base

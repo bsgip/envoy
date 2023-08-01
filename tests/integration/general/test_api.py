@@ -6,7 +6,6 @@ from typing import Optional
 import pytest
 from httpx import AsyncClient, Response
 
-from envoy.server.api.auth.azure import clear_jwks_cache
 from tests.integration.http import HTTPMethod
 from tests.integration.response import (
     assert_response_header,
@@ -87,7 +86,6 @@ async def test_get_resource_unauthorised_with_azure_ad(
     """Runs through the basic unauthorised tests for all parametrized requests when Azure AD auth is enabled"""
 
     # Mocking out the JWK async client - it will just return a basic public key that will match TEST_KEY_1
-    await clear_jwks_cache()
     pk1 = load_rsa_pk(TEST_KEY_1_PATH)
     raw_json_response = generate_test_jwks_response([pk1])
     mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_json_response))
@@ -122,7 +120,6 @@ async def test_get_resource_valid_auth_with_valid_azure_ad(
     """Runs through the basic GET tests for all parametrized requests when Azure AD auth is enabled"""
 
     # Mocking out the JWK async client - it will just return a basic public key that will match TEST_KEY_1
-    await clear_jwks_cache()
     pk1 = load_rsa_pk(TEST_KEY_1_PATH)
     raw_json_response = generate_test_jwks_response([pk1])
     mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_json_response))

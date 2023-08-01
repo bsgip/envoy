@@ -1,13 +1,16 @@
 import logging
 from asyncio import Lock
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 from typing import Iterable, Optional
+from urllib.parse import quote
 
 import jwt
 from httpx import AsyncClient
 
 from envoy.server.api.auth.jwks import JWK, decode_b64_bytes_to_int, rsa_pem_from_jwk
+from envoy.server.cache import AsyncCache, ExpiringValue
 from envoy.server.exception import InternalError, UnauthorizedError
 
 logger = logging.getLogger(__name__)
@@ -29,26 +32,26 @@ class AzureADManagedIdentityConfig:
     valid_issuer: str  # The issuer of the incoming tokens
 
 
+@dataclass
+class AzureADResourceTokenConfig(AzureADManagedIdentityConfig):
+    """Extension to AzureADManagedIdentityConfig that scopes it to a specific Azure resource"""
+
+    resource_id: str  # The resource ID that tokens will be created for
+
+
+@dataclass
+class AzureADToken:
+    token: str  # The actual bearer token to be included in requests to the specified resource
+    resource_id: str  # The resource_id that the token is for
+    expiry: datetime  # The exact datetime when the token expires
+
+
+_TOKEN_URI_FORMAT = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource={resource}&client_id={client_id}"  # noqa e501
 _PUBLIC_KEY_URI_FORMAT = "https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
-_JWKS_CACHE: dict[str, JWK] = {}  # JWK instances keyed by their key_id
-_JWKS_CACHE_UPDATE_LOCK = Lock()
+TOKEN_EXPIRY_BUFFER_SECONDS = 120  # Tokens will have their expiry reduced by this many seconds (to act as a buffer)
 
 
-def _get_jwk_from_cache(key_id: str) -> Optional[JWK]:
-    """Attempts to fetch the specific JWK by key_id from the internal cache. Returns None if it DNE in the cache
-    No attempts to update cache will be made"""
-    return _JWKS_CACHE.get(key_id, None)
-
-
-async def clear_jwks_cache():
-    """Resets the internal jwks cache to empty - will be async safe but not thread safe"""
-    global _JWKS_CACHE
-
-    async with _JWKS_CACHE_UPDATE_LOCK:
-        _JWKS_CACHE = {}
-
-
-def parse_from_jwks_json(keys: Iterable[dict[str, str]]) -> dict[str, JWK]:
+def parse_from_jwks_json(keys: Iterable[dict[str, str]]) -> dict[str, ExpiringValue[JWK]]:
     """Given a list of keys in the below form - parse out a dict of JWK instances
     {
         "kty": "RSA",
@@ -58,7 +61,7 @@ def parse_from_jwks_json(keys: Iterable[dict[str, str]]) -> dict[str, JWK]:
         "e": "b64 encoded value",
     }"""
 
-    jwks: dict[str, JWK] = {}
+    jwks: dict[str, ExpiringValue[JWK]] = {}
     for key in keys:
         key_type = key["kty"]
         use = key["use"]
@@ -70,70 +73,48 @@ def parse_from_jwks_json(keys: Iterable[dict[str, str]]) -> dict[str, JWK]:
         n = decode_b64_bytes_to_int(key["n"])
         e = decode_b64_bytes_to_int(key["e"])
 
-        jwks[key_id] = JWK(
-            key_id=key_id,
-            use=use,
-            key_type=key_type,
-            rsa_exponent=e,
-            rsa_modulus=n,
-            pem_public=rsa_pem_from_jwk(n, e).decode("utf-8"),
+        jwks[key_id] = ExpiringValue(
+            expiry=None,
+            value=JWK(
+                key_id=key_id,
+                use=use,
+                key_type=key_type,
+                rsa_exponent=e,
+                rsa_modulus=n,
+                pem_public=rsa_pem_from_jwk(n, e).decode("utf-8"),
+            ),
         )
 
     return jwks
 
 
-async def _update_jwk_cache(cfg: AzureADManagedIdentityConfig):
-    """Internal method - It is assumed that _JWKS_CACHE_UPDATE_LOCK has been acquired
+async def update_jwk_cache(cfg: AzureADManagedIdentityConfig) -> dict[str, ExpiringValue[JWK]]:
+    """Performs an update for a JWK cache that's compatible with an AsyncCache update_fn
 
-    This will update _JWKS_CACHE with the latest values from the Azure AD IDP for the current tenant
+    This will return the latest values from the Azure AD IDP for the current tenant
 
     raises UnableToContactAzureServicesError on error"""
-    global _JWKS_CACHE
 
-    uri = _PUBLIC_KEY_URI_FORMAT.format(tenant_id=cfg.tenant_id)
+    uri = _PUBLIC_KEY_URI_FORMAT.format(tenant_id=quote(cfg.tenant_id))
     logger.info(f"Updating jwk cache via uri {uri}")
     async with AsyncClient() as client:
-        response = await client.get(uri)
+        try:
+            response = await client.get(uri)
+        except Exception as ex:
+            logger.error(f"Exception {ex} trying to access Azure keys from {uri}")
+            raise UnableToContactAzureServicesError(f"Exception trying to access Azure keys")
+
         if response.status_code != HTTPStatus.OK:
             logger.error(f"Received HTTP {response.status_code} trying to access Azure keys from {uri}")
             raise UnableToContactAzureServicesError(f"Received HTTP {response.status_code} trying to access Azure keys")
 
         body = response.json()
-        _JWKS_CACHE = parse_from_jwks_json(body["keys"])
-        logger.debug(f"Updated jwk cache with {len(_JWKS_CACHE)} items")
+        updated_cache = parse_from_jwks_json(body["keys"])
+        logger.debug(f"Updated jwk cache with {len(updated_cache)} items")
+        return updated_cache
 
 
-async def get_jwk(cfg: AzureADManagedIdentityConfig, key_id: str) -> JWK:
-    """Attempts to fetch the specified JWK by key_id. The internal cache will be utilised first and updated
-    if the key_id is not found. Will raise a UnauthorizedError if the JWK cannot be found"""
-
-    # use cache first from outside the lock - the hope is that 99% of requests go this route
-    jwk = _get_jwk_from_cache(key_id)
-    if jwk:
-        return jwk
-
-    # Otherwise acquire the async lock (it won't work with threads - only coroutines)
-    # to ensure only one coroutine is doing an update at a time
-    async with _JWKS_CACHE_UPDATE_LOCK:
-        # Double check that the cache hasn't updated while we were waiting
-        jwk = _get_jwk_from_cache(key_id)
-        if jwk:
-            return jwk
-
-        # Perform the update
-        await _update_jwk_cache(cfg)
-
-        # Now it's the final attempt - either get it or raise an error
-        # we do this test from within the lock so we're sure that no other updates
-        # can occur - basically - if the ID DNE - it's 100% not in the set of valid public keys
-        jwk = _get_jwk_from_cache(key_id)
-        if jwk:
-            return jwk
-        else:
-            raise UnauthorizedError(f"jwk key_id '{key_id}' not found")
-
-
-async def validate_azure_ad_token(cfg: AzureADManagedIdentityConfig, token: str):
+async def validate_azure_ad_token(cfg: AzureADManagedIdentityConfig, cache: AsyncCache[str, JWK], token: str):
     """
     Given a raw JSON Web Token from Azure AD - decompose and validate that it's authorised for accessing this
     server instance (defined by cfg). This function will utilise an internal cache to minimise outgoing validation
@@ -153,7 +134,9 @@ async def validate_azure_ad_token(cfg: AzureADManagedIdentityConfig, token: str)
         raise UnauthorizedError("missing kid header from token")
 
     # Pull the jwk associated with the key_id from our token
-    jwk = await get_jwk(cfg, key_id)
+    jwk = await cache.get_value(cfg, key_id)
+    if not jwk:
+        raise UnauthorizedError(f"jwk key_id '{key_id}' not found")
 
     # Decode / Validate the token
     decoded = jwt.decode(
@@ -166,3 +149,31 @@ async def validate_azure_ad_token(cfg: AzureADManagedIdentityConfig, token: str)
     )
 
     logger.debug(f"Validated token {decoded}")
+
+
+async def request_azure_ad_token(cfg: AzureADManagedIdentityConfig, resource_id: str) -> AzureADToken:
+    """Requests an Azure AD token for the specified resource_id on behalf of the
+    specified AzureADManagedIdentityConfig
+
+    raises UnableToContactAzureServicesError on error"""
+
+    uri = _TOKEN_URI_FORMAT.format(resource=quote(resource_id), client_id=quote(cfg.client_id))
+    async with AsyncClient() as client:
+        response = await client.get(uri)
+        if response.status_code != HTTPStatus.OK:
+            logger.error(f"Received HTTP {response.status_code} trying to access Azure token from {uri}")
+            raise UnableToContactAzureServicesError(f"Received HTTP {response.status_code} fetching Azure AD token")
+
+        body = response.json()
+        access_token = body["access_token"]
+        expiry = datetime.fromtimestamp(int(body["access_token"]), tz=timezone.utc)
+        return AzureADToken(token=access_token, resource_id=resource_id, expiry=expiry)
+
+
+async def update_azure_ad_token_cache(cfg: AzureADResourceTokenConfig) -> dict[str, ExpiringValue[str]]:
+    """maps request_azure_ad_token into a form that is compatible with an AsyncCache update function
+
+    Returns a dictionary with a single entry keyed by the resource ID, containing the access token value"""
+    azure_ad_token = await request_azure_ad_token(cfg, cfg.resource_id)
+    expiry = azure_ad_token.expiry + timedelta(seconds=-TOKEN_EXPIRY_BUFFER_SECONDS)  # Expire the tokens early
+    return {cfg.resource_id: ExpiringValue(expiry=expiry, value=azure_ad_token.token)}

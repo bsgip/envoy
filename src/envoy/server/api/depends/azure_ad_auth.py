@@ -6,8 +6,11 @@ from fastapi import HTTPException, Request
 from envoy.server.api.auth.azure import (
     AzureADManagedIdentityConfig,
     UnableToContactAzureServicesError,
+    update_jwk_cache,
     validate_azure_ad_token,
 )
+from envoy.server.api.auth.jwks import JWK
+from envoy.server.cache import AsyncCache
 from envoy.server.exception import UnauthorizedError
 
 
@@ -18,12 +21,14 @@ class AzureADAuthDepends:
     """
 
     ad_config: AzureADManagedIdentityConfig
+    cache: AsyncCache[str, JWK]
 
     def __init__(self, tenant_id: str, client_id: str, valid_issuer: str):
         # fastapi will always return headers in lowercase form
         self.ad_config = AzureADManagedIdentityConfig(
             tenant_id=tenant_id, client_id=client_id, valid_issuer=valid_issuer
         )
+        self.cache = AsyncCache(update_fn=update_jwk_cache)
 
     async def __call__(self, request: Request):
         # Extract bearer token
@@ -44,7 +49,7 @@ class AzureADAuthDepends:
         token = token_parts[1]
 
         try:
-            await validate_azure_ad_token(self.ad_config, token)
+            await validate_azure_ad_token(self.ad_config, self.cache, token)
         except UnableToContactAzureServicesError:
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail="Unable to access auth services.")
         except UnauthorizedError:
