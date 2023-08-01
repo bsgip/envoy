@@ -7,6 +7,7 @@ from typing import Optional
 import pytest
 
 from envoy.server.cache import AsyncCache, ExpiringValue
+from tests.unit.mocks import create_async_result
 
 
 @dataclass
@@ -25,12 +26,6 @@ def make_delta_now(delta: Optional[timedelta]) -> Optional[datetime]:
         return None
     else:
         return datetime.now(tz=timezone.utc) + delta
-
-
-def async_result(result):
-    f = Future()
-    f.set_result(result)
-    return f
 
 
 @pytest.mark.parametrize(
@@ -70,7 +65,7 @@ async def test_update_result_cached():
         "key3": ExpiringValue(make_delta_now(timedelta(hours=-1)), "val3"),  # Expired
     }
     update_arg = MyCustomArgument("abc123", 456)
-    mock_update_fn = mock.Mock(return_value=async_result(updated_cache))
+    mock_update_fn = mock.Mock(return_value=create_async_result(updated_cache))
     c = AsyncCache(mock_update_fn)
 
     # Fetching key1/key2 works fine and only updates the cache once
@@ -107,7 +102,7 @@ async def test_update_raise_error():
         "key2": ExpiringValue(make_delta_now(None), "val2"),
     }
     update_arg = MyCustomArgument("abc123", 456)
-    mock_update_fn = mock.Mock(return_value=async_result(updated_cache))
+    mock_update_fn = mock.Mock(return_value=create_async_result(updated_cache))
     c = AsyncCache(mock_update_fn)
 
     # Fetching key1/key2 works fine and only updates the cache once

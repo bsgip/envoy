@@ -17,7 +17,6 @@ from envoy.server.api.auth.azure import (
 from envoy.server.api.auth.jwks import JWK
 from envoy.server.cache import AsyncCache, ExpiringValue
 from envoy.server.exception import UnauthorizedError
-from tests.data.fake.generator import generate_class_instance
 from tests.unit.jwt import (
     DEFAULT_CLIENT_ID,
     DEFAULT_ISSUER,
@@ -29,6 +28,7 @@ from tests.unit.jwt import (
     generate_rs256_jwt,
     load_rsa_pk,
 )
+from tests.unit.mocks import create_async_result
 
 
 def test_parse_from_jwks_json():
@@ -42,10 +42,12 @@ def test_parse_from_jwks_json():
     assert all([isinstance(v.value, JWK) for v in result_dict.values()])
     assert all([v.expiry is None for v in result_dict.values()]), "Public keys dont explicitly expire"
     assert all([isinstance(k, str) for k in result_dict.keys()])
-    assert len(set([v.rsa_modulus for v in result_dict.values()])) == len(
+    assert len(set([v.value.rsa_modulus for v in result_dict.values()])) == len(
         result_dict
     ), "All modulus values should be distinct"
-    assert len(set([v.pem_public for v in result_dict.values()])) == len(result_dict), "All PEM keys should be distinct"
+    assert len(set([v.value.pem_public for v in result_dict.values()])) == len(
+        result_dict
+    ), "All PEM keys should be distinct"
 
     expiring_val = result_dict["DqUu8gf-nAgcyjP3-SuplNAXAnc"]
     assert expiring_val.expiry is None, "Public keys dont explicitly expire"
@@ -84,7 +86,7 @@ def generate_test_jwks_response(keys: list) -> str:
 
 
 class MockedAsyncClient:
-    """Looks similar to httpx AsyncClient() but returns a mocked response"""
+    """Looks similar to httpx AsyncClient() but returns a mocked response or raises an error"""
 
     response: Optional[Response]
     get_calls: int
@@ -123,7 +125,7 @@ async def test_update_jwk_cache(mock_parse_from_jwks_json: mock.MagicMock, mock_
     pk1 = load_rsa_pk(TEST_KEY_1_PATH)
     pk2 = load_rsa_pk(TEST_KEY_2_PATH)
     mocked_response_content = generate_test_jwks_response([pk2, pk1])
-    mocked_parsed_response = {"abc": ExpiringValue(None, generate_class_instance(JWK))}
+    mocked_parsed_response = {"abc": jwk_value_for_key(TEST_KEY_1_PATH)}
 
     mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=mocked_response_content))
     mock_AsyncClient.return_value = mocked_client
@@ -179,11 +181,21 @@ async def test_update_jwk_cache_exception(mock_parse_from_jwks_json: mock.MagicM
     mocked_client.get_calls == 1
 
 
-def expiring_value_for_key(key_file: str) -> ExpiringValue[JWK]:
+def jwk_value_for_key(key_file: str) -> JWK:
     pk = load_rsa_pk(key_file)
     jwk_defn = generate_azure_jwk_definition(pk)
     jwk_dict = parse_from_jwks_json([jwk_defn])
-    return jwk_dict[generate_kid(pk)]
+    return jwk_dict[generate_kid(pk)].value
+
+
+class TokenContainer:
+    """Silly workaround for pytest - having long tokens in params causes test discovery to go haywire
+    Hiding it in an object where str(TokenContainer) is not 1KB of text works fine"""
+
+    token: str
+
+    def __init__(self, token: str) -> None:
+        self.token = token
 
 
 @pytest.mark.parametrize(
@@ -191,50 +203,52 @@ def expiring_value_for_key(key_file: str) -> ExpiringValue[JWK]:
     [
         # Everything is working OK
         (
-            generate_rs256_jwt(key_file=TEST_KEY_1_PATH),
-            expiring_value_for_key(TEST_KEY_1_PATH),
+            TokenContainer(generate_rs256_jwt(key_file=TEST_KEY_1_PATH)),
+            jwk_value_for_key(TEST_KEY_1_PATH),
             None,
             generate_kid(load_rsa_pk(TEST_KEY_1_PATH)),
         ),
         # Expired token
         (
-            generate_rs256_jwt(key_file=TEST_KEY_1_PATH, expired=True),
-            expiring_value_for_key(TEST_KEY_1_PATH),
+            TokenContainer(generate_rs256_jwt(key_file=TEST_KEY_1_PATH, expired=True)),
+            jwk_value_for_key(TEST_KEY_1_PATH),
             jwt.ExpiredSignatureError,
             generate_kid(load_rsa_pk(TEST_KEY_1_PATH)),
         ),
         # Premature token
         (
-            generate_rs256_jwt(key_file=TEST_KEY_1_PATH, premature=True),
-            expiring_value_for_key(TEST_KEY_1_PATH),
+            TokenContainer(generate_rs256_jwt(key_file=TEST_KEY_1_PATH, premature=True)),
+            jwk_value_for_key(TEST_KEY_1_PATH),
             jwt.ImmatureSignatureError,
             generate_kid(load_rsa_pk(TEST_KEY_1_PATH)),
         ),
         # Unrecognised token
         (
-            generate_rs256_jwt(key_file=TEST_KEY_1_PATH),
+            TokenContainer(generate_rs256_jwt(key_file=TEST_KEY_1_PATH)),
             None,
             UnauthorizedError,
             generate_kid(load_rsa_pk(TEST_KEY_1_PATH)),
         ),
         # Invalid Audience
         (
-            generate_rs256_jwt(key_file=TEST_KEY_1_PATH, aud="invalid-audience"),
-            expiring_value_for_key(TEST_KEY_1_PATH),
+            TokenContainer(generate_rs256_jwt(key_file=TEST_KEY_1_PATH, aud="invalid-audience")),
+            jwk_value_for_key(TEST_KEY_1_PATH),
             jwt.InvalidAudienceError,
             generate_kid(load_rsa_pk(TEST_KEY_1_PATH)),
         ),
         # Invalid Issuer
         (
-            generate_rs256_jwt(key_file=TEST_KEY_1_PATH, issuer="invalid-issuer"),
-            expiring_value_for_key(TEST_KEY_1_PATH),
+            TokenContainer(generate_rs256_jwt(key_file=TEST_KEY_1_PATH, issuer="invalid-issuer")),
+            jwk_value_for_key(TEST_KEY_1_PATH),
             jwt.InvalidIssuerError,
             generate_kid(load_rsa_pk(TEST_KEY_1_PATH)),
         ),
         # Invalid Signature
         (
-            generate_rs256_jwt(key_file=TEST_KEY_1_PATH, kid_override=generate_kid(load_rsa_pk(TEST_KEY_2_PATH))),
-            expiring_value_for_key(TEST_KEY_2_PATH),
+            TokenContainer(
+                generate_rs256_jwt(key_file=TEST_KEY_1_PATH, kid_override=generate_kid(load_rsa_pk(TEST_KEY_2_PATH)))
+            ),
+            jwk_value_for_key(TEST_KEY_2_PATH),
             jwt.InvalidSignatureError,
             generate_kid(load_rsa_pk(TEST_KEY_2_PATH)),
         ),
@@ -242,7 +256,7 @@ def expiring_value_for_key(key_file: str) -> ExpiringValue[JWK]:
 )
 @pytest.mark.anyio
 async def test_validate_azure_ad_token(
-    token: str,
+    token: TokenContainer,
     cache_result: Optional[ExpiringValue[JWK]],
     expected_error: Optional[type],
     expected_kid: str,
@@ -253,14 +267,14 @@ async def test_validate_azure_ad_token(
     # Arrange
     cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     mock_cache = mock.Mock()
-    mock_cache.get_value = mock.Mock(return_value=cache_result)
+    mock_cache.get_value = mock.Mock(return_value=create_async_result(cache_result))
 
     # Act
     if expected_error:
         with pytest.raises(expected_error):
-            await validate_azure_ad_token(cfg, mock_cache, token)
+            await validate_azure_ad_token(cfg, mock_cache, token.token)
     else:
-        await validate_azure_ad_token(cfg, mock_cache, token)
+        await validate_azure_ad_token(cfg, mock_cache, token.token)
 
     # Assert
     mock_cache.get_value.assert_called_once_with(cfg, expected_kid)
