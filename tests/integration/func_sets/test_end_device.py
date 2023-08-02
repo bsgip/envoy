@@ -137,9 +137,6 @@ async def test_get_enddevice(client: AsyncClient, edev_fetch_uri_format: str):
     assert_error_response(response)
 
 
-
-
-
 @pytest.mark.anyio
 async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
     """When creating an end_device check to see if it persists and is correctly assigned to the aggregator"""

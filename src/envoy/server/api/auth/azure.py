@@ -45,7 +45,7 @@ class AzureADToken:
     expiry: datetime  # The exact datetime when the token expires
 
 
-_TOKEN_URI_FORMAT = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource={resource}&client_id={client_id}"  # noqa e501
+_TOKEN_URI_FORMAT = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource={resource}&client_id={client_id}"  # noqa e501 # nosec
 _PUBLIC_KEY_URI_FORMAT = "https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
 TOKEN_EXPIRY_BUFFER_SECONDS = 120  # Tokens will have their expiry reduced by this many seconds (to act as a buffer)
 
