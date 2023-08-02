@@ -31,7 +31,7 @@ async def test_valid_auth(mock_validate_azure_ad_token: mock.MagicMock):
 
     await depends(req)
 
-    mock_validate_azure_ad_token.assert_called_once_with(expected_cfg, raw_token)
+    mock_validate_azure_ad_token.assert_called_once_with(expected_cfg, depends.cache, raw_token)
 
 
 @pytest.mark.anyio
@@ -126,7 +126,7 @@ async def test_validate_token_auth_error(mock_validate_azure_ad_token: mock.Magi
         await depends(req)
     assert ex.value.status_code == HTTPStatus.UNAUTHORIZED
 
-    mock_validate_azure_ad_token.assert_called_once_with(expected_cfg, raw_token)
+    mock_validate_azure_ad_token.assert_called_once_with(expected_cfg, depends.cache, raw_token)
 
 
 @pytest.mark.anyio
@@ -153,7 +153,7 @@ async def test_validate_token_unable_to_contact_error(mock_validate_azure_ad_tok
         await depends(req)
     assert ex.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
 
-    mock_validate_azure_ad_token.assert_called_once_with(expected_cfg, raw_token)
+    mock_validate_azure_ad_token.assert_called_once_with(expected_cfg, depends.cache, raw_token)
 
 
 @pytest.mark.anyio
@@ -180,4 +180,4 @@ async def test_validate_token_jwt_error(mock_validate_azure_ad_token: mock.Magic
         await depends(req)
     assert ex.value.status_code == HTTPStatus.FORBIDDEN
 
-    mock_validate_azure_ad_token.assert_called_once_with(expected_cfg, raw_token)
+    mock_validate_azure_ad_token.assert_called_once_with(expected_cfg, depends.cache, raw_token)

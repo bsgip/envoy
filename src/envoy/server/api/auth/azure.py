@@ -1,9 +1,8 @@
 import logging
-from asyncio import Lock
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
-from typing import Iterable, Optional
+from typing import Iterable
 from urllib.parse import quote
 
 import jwt
@@ -102,7 +101,7 @@ async def update_jwk_cache(cfg: AzureADManagedIdentityConfig) -> dict[str, Expir
             response = await client.get(uri)
         except Exception as ex:
             logger.error(f"Exception {ex} trying to access Azure keys from {uri}")
-            raise UnableToContactAzureServicesError(f"Exception trying to access Azure keys")
+            raise UnableToContactAzureServicesError("Exception trying to access Azure keys")
 
         if response.status_code != HTTPStatus.OK:
             logger.error(f"Received HTTP {response.status_code} trying to access Azure keys from {uri}")
@@ -159,14 +158,19 @@ async def request_azure_ad_token(cfg: AzureADManagedIdentityConfig, resource_id:
 
     uri = _TOKEN_URI_FORMAT.format(resource=quote(resource_id), client_id=quote(cfg.client_id))
     async with AsyncClient() as client:
-        response = await client.get(uri)
+        try:
+            response = await client.get(uri)
+        except Exception as ex:
+            logger.error(f"Exception {ex} trying to access token from {uri}")
+            raise UnableToContactAzureServicesError("Exception trying to access Azure token service")
+
         if response.status_code != HTTPStatus.OK:
             logger.error(f"Received HTTP {response.status_code} trying to access Azure token from {uri}")
             raise UnableToContactAzureServicesError(f"Received HTTP {response.status_code} fetching Azure AD token")
 
         body = response.json()
         access_token = body["access_token"]
-        expiry = datetime.fromtimestamp(int(body["access_token"]), tz=timezone.utc)
+        expiry = datetime.fromtimestamp(int(body["expires_on"]), tz=timezone.utc)
         return AzureADToken(token=access_token, resource_id=resource_id, expiry=expiry)
 
 

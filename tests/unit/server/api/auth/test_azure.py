@@ -1,5 +1,6 @@
 import json
 import unittest.mock as mock
+from datetime import datetime, timedelta
 from http import HTTPStatus
 from typing import Optional, Union
 
@@ -8,14 +9,19 @@ import pytest
 from httpx import Response
 
 from envoy.server.api.auth.azure import (
+    TOKEN_EXPIRY_BUFFER_SECONDS,
     AzureADManagedIdentityConfig,
+    AzureADResourceTokenConfig,
+    AzureADToken,
     UnableToContactAzureServicesError,
     parse_from_jwks_json,
+    request_azure_ad_token,
+    update_azure_ad_token_cache,
     update_jwk_cache,
     validate_azure_ad_token,
 )
 from envoy.server.api.auth.jwks import JWK
-from envoy.server.cache import AsyncCache, ExpiringValue
+from envoy.server.cache import ExpiringValue
 from envoy.server.exception import UnauthorizedError
 from tests.unit.jwt import (
     DEFAULT_CLIENT_ID,
@@ -278,3 +284,94 @@ async def test_validate_azure_ad_token(
 
     # Assert
     mock_cache.get_value.assert_called_once_with(cfg, expected_kid)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.auth.azure.AsyncClient")
+async def test_request_azure_ad_token(mock_AsyncClient: mock.MagicMock):
+    """Tests that the token response is parsed correctly"""
+
+    # Arrange
+    with open("tests/data/azure/token-response.json") as f:
+        raw_token_response = f.read()
+    cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
+    resource_id = "resource id/&"  # with some chars that need escaping
+
+    mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_token_response))
+    mock_AsyncClient.return_value = mocked_client
+
+    # Act
+    output_token = await request_azure_ad_token(cfg, resource_id)
+
+    # Assert
+    assert isinstance(output_token, AzureADToken)
+    output_token.resource_id == resource_id
+    output_token.token == "eyJ0eXAiOiJKV1Q...", "The value direct from the token-response.json"
+    output_token.expiry == datetime.fromtimestamp(1690938812)
+    mocked_client.get_calls == 1
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.auth.azure.AsyncClient")
+async def test_request_azure_ad_token_http_error(mock_AsyncClient: mock.MagicMock):
+    """Tests that a HTTP error is reinterpreted as UnableToContactAzureServicesError"""
+
+    # Arrange
+    cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
+    resource_id = "resource id"
+
+    mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.INTERNAL_SERVER_ERROR))
+    mock_AsyncClient.return_value = mocked_client
+
+    # Act
+    with pytest.raises(UnableToContactAzureServicesError):
+        await request_azure_ad_token(cfg, resource_id)
+
+    # Assert
+    mocked_client.get_calls == 1
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.auth.azure.AsyncClient")
+async def test_request_azure_ad_token_exception(mock_AsyncClient: mock.MagicMock):
+    """Tests that an exception is reinterpreted as UnableToContactAzureServicesError"""
+
+    # Arrange
+    cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
+    resource_id = "resource id"
+
+    mocked_client = MockedAsyncClient(Exception("My mocked error"))
+    mock_AsyncClient.return_value = mocked_client
+
+    # Act
+    with pytest.raises(UnableToContactAzureServicesError):
+        await request_azure_ad_token(cfg, resource_id)
+
+    # Assert
+    mocked_client.get_calls == 1
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.auth.azure.request_azure_ad_token")
+async def test_update_azure_ad_token_cache(mock_request_azure_ad_token: mock.MagicMock):
+    """Tests that the results of request_azure_ad_token are correctly packaged up into a dict"""
+
+    # Arrange
+    expected_token = AzureADToken("abc-123", "resource-456", datetime.now() + timedelta(hours=5))
+    mock_request_azure_ad_token.return_value = expected_token
+    cfg = AzureADResourceTokenConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER, "my-resource-id")
+
+    # Act
+    token_cache = await update_azure_ad_token_cache(cfg)
+
+    # Assert
+    mock_request_azure_ad_token.assert_called_once_with(cfg, cfg.resource_id)
+    assert isinstance(token_cache, dict)
+    assert len(token_cache) == 1
+
+    expiring_val = token_cache["my-resource-id"]
+    assert isinstance(expiring_val, ExpiringValue)
+    assert expiring_val.value == expected_token.token
+    assert expiring_val.expiry == (
+        expected_token.expiry + timedelta(seconds=-TOKEN_EXPIRY_BUFFER_SECONDS)
+    ), "Expiry buffer should be applied"
