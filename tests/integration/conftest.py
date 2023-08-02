@@ -1,4 +1,3 @@
-import urllib.parse
 from collections import defaultdict
 
 import pytest

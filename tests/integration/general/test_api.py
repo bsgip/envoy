@@ -14,7 +14,8 @@ from tests.integration.response import (
     run_basic_unauthorised_tests,
 )
 from tests.unit.jwt import TEST_KEY_1_PATH, generate_rs256_jwt, load_rsa_pk
-from tests.unit.server.api.auth.test_azure import MockedAsyncClient, generate_test_jwks_response
+from tests.unit.mocks import MockedAsyncClient
+from tests.unit.server.api.auth.test_azure import generate_test_jwks_response
 
 EMPTY_XML_DOC = '<?xml version="1.0" encoding="UTF-8"?>\n<tag/>'
 

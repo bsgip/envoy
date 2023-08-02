@@ -8,6 +8,7 @@ from envoy.server.api import routers
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
 from envoy.server.api.error_handler import general_exception_handler, http_exception_handler
+from envoy.server.database import enable_dynamic_azure_ad_database_credentials
 from envoy.server.settings import AppSettings, settings
 
 # Setup logs
@@ -30,6 +31,17 @@ def generate_app(new_settings: AppSettings):
             valid_issuer=azure_ad_settings["issuer"],
         )
         global_dependencies.insert(0, Depends(azure_ad_auth))
+
+        # Optionally enable the dynamic database credentials
+        resource_id = new_settings.azure_ad_db_resource_id
+        if resource_id:
+            logger.info(f"Enabling AzureADAuth Dynamic DB Credentials: resource_id: '{resource_id}'")
+            enable_dynamic_azure_ad_database_credentials(
+                tenant_id=azure_ad_settings["tenant_id"],
+                client_id=azure_ad_settings["client_id"],
+                valid_issuer=azure_ad_settings["issuer"],
+                resource_id=resource_id,
+            )
 
     new_app = FastAPI(**new_settings.fastapi_kwargs, dependencies=global_dependencies)
     new_app.add_middleware(SQLAlchemyMiddleware, **new_settings.db_middleware_kwargs)

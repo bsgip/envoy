@@ -10,6 +10,7 @@ DEFAULT_TENANT_ID = "my-tenant-id-1"
 DEFAULT_CLIENT_ID = "my-client-id-2"
 DEFAULT_ISSUER = "https://my.test.issuer:8756/path/"
 DEFAULT_SUBJECT_ID = "my-subject-id-123"
+DEFAULT_DATABASE_RESOURCE_ID = "my-db-resource-id-456"
 
 TEST_KEY_1_PATH = "tests/data/keys/test_key1.pem"
 TEST_KEY_2_PATH = "tests/data/keys/test_key2.pem"

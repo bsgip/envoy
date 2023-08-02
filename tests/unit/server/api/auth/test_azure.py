@@ -34,7 +34,7 @@ from tests.unit.jwt import (
     generate_rs256_jwt,
     load_rsa_pk,
 )
-from tests.unit.mocks import create_async_result
+from tests.unit.mocks import MockedAsyncClient, create_async_result
 
 
 def test_parse_from_jwks_json():
@@ -89,37 +89,6 @@ def test_parse_from_filtered_jwks_json():
 
 def generate_test_jwks_response(keys: list) -> str:
     return json.dumps({"keys": [generate_azure_jwk_definition(key) for key in keys]})
-
-
-class MockedAsyncClient:
-    """Looks similar to httpx AsyncClient() but returns a mocked response or raises an error"""
-
-    response: Optional[Response]
-    get_calls: int
-    error_to_raise: Optional[Exception]
-
-    def __init__(self, result: Union[Response, Exception]) -> None:
-        if isinstance(result, Response):
-            self.response = result
-            self.error_to_raise = None
-        else:
-            self.response = None
-            self.error_to_raise = result
-
-        self.get_calls = 0
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        return False
-
-    async def get(self, uri):
-        self.get_calls = self.get_calls + 1
-        if self.error_to_raise:
-            raise self.error_to_raise
-
-        return self.response
 
 
 @pytest.mark.anyio
