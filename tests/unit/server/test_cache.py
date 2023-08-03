@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from asyncio import Future
+from asyncio import sleep
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -123,3 +123,68 @@ async def test_update_raise_error():
     assert (await c.get_value(update_arg, "key1")) == "val1"
     assert (await c.get_value(update_arg, "key2")) == "val2"
     assert mock_update_fn.call_count == 2, "Call count shouldn't have changed from before"
+
+
+@pytest.mark.anyio
+async def test_force_update():
+    """Tests that force_update persists in the face of errors being raised and waits the suitable amount of time"""
+    updated_cache = {
+        "key1": ExpiringValue(make_delta_now(timedelta(hours=5)), "val1"),
+        "key2": ExpiringValue(make_delta_now(None), "val2"),
+    }
+    update_arg = MyCustomArgument("def123", 457)
+    delay_secs = 1.0
+    mock_update_fn = mock.Mock(
+        side_effect=[
+            MyCustomError("My custom error"),
+            MyCustomError("My other error"),
+            Exception("My normal ex"),
+            create_async_result(updated_cache),
+        ]
+    )
+    c = AsyncCache(mock_update_fn, force_update_delay_seconds=delay_secs)
+
+    # Act
+    start = datetime.now()
+    await c.force_update(update_arg)
+    end = datetime.now()
+
+    # Assert
+    total_seconds = (end - start).seconds
+    assert (
+        total_seconds >= 3 and total_seconds <= 4
+    ), f"{total_seconds} should roughly match the number of errors (3) * delay_secs ({delay_secs})"
+    assert mock_update_fn.call_count == 4, "3 errors and 1 valid update"
+    assert all([len(a.args) == 1 for a in mock_update_fn.call_args_list]), "Only a single arg passed to update_fn"
+    assert [a.args[0] for a in mock_update_fn.call_args_list] == [
+        update_arg,
+        update_arg,
+        update_arg,
+        update_arg,
+    ], "Should always pass update_arg to update_fn"
+
+    # Cache should now be populated
+    assert (await c.get_value(update_arg, "key1")) == "val1", "Cache should be populated"
+    assert (await c.get_value(update_arg, "key2")) == "val2", "Cache should be populated"
+    assert mock_update_fn.call_count == 4, "This must be unchanged after the get_value calls (i.e - the cache is used)"
+
+
+@pytest.mark.anyio
+async def test_get_value_sync():
+    """Validates that running the sync method triggers a background task to execute"""
+    updated_cache = {
+        "key1": ExpiringValue(make_delta_now(timedelta(hours=5)), "val1"),
+        "key2": ExpiringValue(make_delta_now(None), "val2"),
+    }
+    update_arg = MyCustomArgument("def123", 457)
+    mock_update_fn = mock.Mock(return_value=create_async_result(updated_cache))
+    c = AsyncCache(mock_update_fn)
+
+    # Trigger the update in the background
+    assert c.get_value_sync(update_arg, "key1") is None, "This will return none due to cache miss"
+    await sleep(1)  # We need an async wait so that the background task has a chance to run
+
+    # It should now be populated
+    assert c.get_value_sync(update_arg, "key1") == "val1", "This should've been updated in the background"
+    assert c.get_value_sync(update_arg, "key2") == "val2", "This should've been updated in the background"
+    assert mock_update_fn.call_count == 1

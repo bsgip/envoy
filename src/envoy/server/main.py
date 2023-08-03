@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 def generate_app(new_settings: AppSettings):
     """Generates a new app instance utilising the specific settings instance"""
+
     lfdi_auth = LFDIAuthDepends(new_settings.cert_header)
     global_dependencies = [Depends(lfdi_auth)]
 

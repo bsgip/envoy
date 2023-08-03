@@ -1,7 +1,10 @@
-from asyncio import Lock
+import logging
+from asyncio import Lock, get_running_loop, run, sleep
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Generic, Optional, TypeVar
+
+logger = logging.getLogger(__name__)
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -31,8 +34,11 @@ class AsyncCache(Generic[K, V]):
     _cache: dict[K, ExpiringValue[V]]
     _lock: Lock
     _update_fn: Callable[[Any], Awaitable[dict[K, ExpiringValue[V]]]]  # Called when the cache is missed
+    _force_update_delay_seconds: float  # How long force_update should wait between attempts (in seconds)
 
-    def __init__(self, update_fn: Callable[[Any], Awaitable[dict[K, ExpiringValue[V]]]]) -> None:
+    def __init__(
+        self, update_fn: Callable[[Any], Awaitable[dict[K, ExpiringValue[V]]]], force_update_delay_seconds: float = 1.0
+    ) -> None:
         """update_fn will be called whenever a cache miss happens during get_value. The return value of this
         function will form the new cache. Exceptions raised will abort the cache update and propagate up
         through the call to get_value"""
@@ -40,6 +46,7 @@ class AsyncCache(Generic[K, V]):
         self._cache = {}
         self._lock = Lock()
         self._update_fn = update_fn
+        self._force_update_delay_seconds = force_update_delay_seconds
 
     async def clear(self):
         """Clears the internal cache - resetting it back to incomplete"""
@@ -86,3 +93,53 @@ class AsyncCache(Generic[K, V]):
             # we do this test from within the lock so we're sure that no other updates
             # can occur - basically - if the ID DNE - it's 100% not in the set of valid public keys
             return self._fetch_from_cache(key)
+
+    async def force_update(self, update_arg: Any) -> None:
+        """Forces an update to occur - will hold the internal cache lock and repeatedly attempt
+        to update the cache until successful. Exceptions will be caught and logged but will not be raised.
+
+        This is a highly aggressive update method - it's designed to run until successful"""
+        async with self._lock:
+            while True:
+                try:
+                    self._cache = await self._update_fn(update_arg)
+                    return  # Try until successful
+                except Exception as ex:
+                    logger.error(f"force_update error. Retry : {ex}")
+                    await sleep(self._force_update_delay_seconds)
+
+    def get_value_sync(self, update_arg: Any, key: K) -> Optional[V]:
+        """Similar to get_value but without the async. This will ONLY utilise the internal cache, in the event
+        of a cache miss/expired value None will be returned but force_update will be triggered in a background
+        async task on the current asyncio event loop
+
+        update_arg: Will be passed to the internal update function if a cache update is required
+        key: The key to lookup a value
+
+        Exceptions raised by force_update will not propagate upwards"""
+
+        value = self._fetch_from_cache(key)
+        if value:
+            return value
+
+        # At this point we need a cache update - we can't wait for the update so we fire and forget a call
+        # to force_update which "should" guarantee an eventual update
+
+        # Adapted from
+        # https://stackoverflow.com/questions/55409641/asyncio-run-cannot-be-called-from-a-running-event-loop-when-using-jupyter-no  # noqa e501
+        try:
+            loop = get_running_loop()
+        except RuntimeError:  # 'RuntimeError: There is no current event loop...'
+            loop = None
+
+        if loop and loop.is_running():
+            logger.info("Async event loop already running. Adding force_update coroutine to the event loop.")
+            tsk = loop.create_task(self.force_update(update_arg))
+            # ^-- https://docs.python.org/3/library/asyncio-task.html#task-object
+            # Optionally, a callback function can be executed when the coroutine completes
+            tsk.add_done_callback(lambda t: print(f"Task done with result={t.result()}  << return val of main()"))
+        else:
+            logger.info("Starting new event loop to execute force_update")
+            run(self.force_update(update_arg))
+
+        return None
