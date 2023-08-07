@@ -35,6 +35,8 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Connection:
     pem_marker = request.node.get_closest_marker("cert_header")
     if pem_marker is not None:
         os.environ["CERT_HEADER"] = str(pem_marker.args[0])
+    else:
+        os.unsetenv("CERT_HEADER")
 
     azure_ad_auth_marker = request.node.get_closest_marker("azure_ad_auth")
     if azure_ad_auth_marker is not None:
@@ -42,15 +44,15 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Connection:
         os.environ["AZURE_AD_CLIENT_ID"] = DEFAULT_CLIENT_ID
         os.environ["AZURE_AD_VALID_ISSUER"] = DEFAULT_ISSUER
     else:
-        os.unsetenv("AZURE_AD_TENANT_ID")
-        os.unsetenv("AZURE_AD_CLIENT_ID")
-        os.unsetenv("AZURE_AD_VALID_ISSUER")
+        os.environ["AZURE_AD_TENANT_ID"] = ""
+        os.environ["AZURE_AD_CLIENT_ID"] = ""
+        os.environ["AZURE_AD_VALID_ISSUER"] = ""
 
     azure_ad_db_marker = request.node.get_closest_marker("azure_ad_db")
     if azure_ad_db_marker is not None:
         os.environ["AZURE_AD_DB_RESOURCE_ID"] = DEFAULT_DATABASE_RESOURCE_ID
     else:
-        os.unsetenv("AZURE_AD_DB_RESOURCE_ID")
+        os.environ["AZURE_AD_DB_RESOURCE_ID"] = ""
 
     azure_ad_db_refresh_secs_marker = request.node.get_closest_marker("azure_ad_db_refresh_secs")
     if azure_ad_db_refresh_secs_marker is not None:
