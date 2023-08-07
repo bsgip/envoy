@@ -19,6 +19,9 @@ class AppSettings(BaseSettings):
     azure_ad_client_id: Optional[str] = None  # Client ID of the app in the Azure AD (if none - disables Azure AD Auth)
     azure_ad_valid_issuer: Optional[str] = None  # Valid Issuer of tokens in the Azure AD (if none - no Azure AD Auth)
     azure_ad_db_resource_id: Optional[str] = None  # Will be used to mint AD tokens as a database password alternative
+    azure_ad_db_refresh_secs: int = (
+        14400  # How frequently (in seconds) will the Azure AD DB token be manually refreshed. Default 4 hours.
+    )
 
     database_url: PostgresDsn
     commit_on_exit: bool = False

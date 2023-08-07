@@ -134,10 +134,7 @@ class AsyncCache(Generic[K, V]):
 
         if loop and loop.is_running():
             logger.info("Async event loop already running. Adding force_update coroutine to the event loop.")
-            tsk = loop.create_task(self.force_update(update_arg))
-            # ^-- https://docs.python.org/3/library/asyncio-task.html#task-object
-            # Optionally, a callback function can be executed when the coroutine completes
-            tsk.add_done_callback(lambda t: print(f"Task done with result={t.result()}  << return val of main()"))
+            loop.create_task(self.force_update(update_arg))
         else:
             logger.info("Starting new event loop to execute force_update")
             run(self.force_update(update_arg))

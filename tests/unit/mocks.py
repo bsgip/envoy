@@ -27,13 +27,20 @@ def create_async_result(result):
 
 
 class MockedAsyncClient:
-    """Looks similar to httpx AsyncClient() but returns a mocked response or raises an error"""
+    """Looks similar to httpx AsyncClient() but returns a mocked response or raises an error
+
+    Can be fed either a static result in the form of a Response/Exception or a dictionary keyed by URI that
+    will return dynamic results depending on incoming URI
+
+    If fed a list - subsequent calls will work through the list
+    """
 
     get_calls: int
-    result: Optional[Union[Response, Exception]]
-    results_by_uri: dict[str, Union[Response, Exception]]
+    get_calls_by_uri: dict[str, int]
+    result: Optional[Union[Response, Exception, list[Union[Response, Exception]]]]
+    results_by_uri: dict[str, Union[Response, Exception, list[Union[Response, Exception]]]]
 
-    def __init__(self, result: Union[Response, Exception, dict]) -> None:
+    def __init__(self, result: Union[Response, Exception, dict, list[Union[Response, Exception]]]) -> None:
         if isinstance(result, dict):
             self.results_by_uri = result
             self.result = None
@@ -42,6 +49,7 @@ class MockedAsyncClient:
             self.result = result
 
         self.get_calls = 0
+        self.get_calls_by_uri = {}
 
     async def __aenter__(self):
         return self
@@ -49,8 +57,14 @@ class MockedAsyncClient:
     async def __aexit__(self, exc_type, exc_value, traceback):
         return False
 
-    def _raise_or_return(self, result: Union[Response, Exception]) -> Response:
-        if isinstance(result, Exception):
+    def _raise_or_return(self, result: Union[Response, Exception, list[Union[Response, Exception]]]) -> Response:
+        if isinstance(result, list):
+            if len(result) > 0:
+                next_result = result.pop(0)
+                return self._raise_or_return(next_result)
+            else:
+                raise Exception("Mocking error - no more responses/errors in list.")
+        elif isinstance(result, Exception):
             raise result
         elif isinstance(result, Response):
             return result
@@ -59,6 +73,10 @@ class MockedAsyncClient:
 
     async def get(self, uri):
         self.get_calls = self.get_calls + 1
+        if uri in self.get_calls_by_uri:
+            self.get_calls_by_uri[uri] = self.get_calls_by_uri[uri] + 1
+        else:
+            self.get_calls_by_uri[uri] = 1
 
         uri_specific_result = self.results_by_uri.get(uri, None)
         if uri_specific_result is not None:

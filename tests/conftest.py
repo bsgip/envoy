@@ -42,15 +42,21 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Connection:
         os.environ["AZURE_AD_CLIENT_ID"] = DEFAULT_CLIENT_ID
         os.environ["AZURE_AD_VALID_ISSUER"] = DEFAULT_ISSUER
     else:
-        os.environ["AZURE_AD_TENANT_ID"] = ""
-        os.environ["AZURE_AD_CLIENT_ID"] = ""
-        os.environ["AZURE_AD_VALID_ISSUER"] = ""
+        os.unsetenv("AZURE_AD_TENANT_ID")
+        os.unsetenv("AZURE_AD_CLIENT_ID")
+        os.unsetenv("AZURE_AD_VALID_ISSUER")
 
     azure_ad_db_marker = request.node.get_closest_marker("azure_ad_db")
     if azure_ad_db_marker is not None:
         os.environ["AZURE_AD_DB_RESOURCE_ID"] = DEFAULT_DATABASE_RESOURCE_ID
     else:
-        os.environ["AZURE_AD_DB_RESOURCE_ID"] = ""
+        os.unsetenv("AZURE_AD_DB_RESOURCE_ID")
+
+    azure_ad_db_refresh_secs_marker = request.node.get_closest_marker("azure_ad_db_refresh_secs")
+    if azure_ad_db_refresh_secs_marker is not None:
+        os.environ["AZURE_AD_DB_REFRESH_SECS"] = str(azure_ad_db_refresh_secs_marker.args[0])
+    else:
+        os.unsetenv("AZURE_AD_DB_REFRESH_SECS")
 
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()

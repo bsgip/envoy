@@ -10,6 +10,7 @@ markers = [
     "cert_header: marks tests to use a custom value for cert_header instead of the default",
     "azure_ad_auth: marks tests to enable the azure active directory auth dependency",
     "azure_ad_db: marks tests to enable the azure active directory dynamic db creds dependency (requires azure_ad_auth)",
+    "azure_ad_db_refresh_secs: marks tests to set the config value azure_ad_db_refresh_secs (requires azure_ad_db)",
 ]
 
 [tool.bandit]
@@ -62,6 +63,7 @@ test = [
     "psycopg",
     "httpx",
     "defusedxml",
+    "asgi_lifespan",
 ]
 
 [tool.setuptools.package-data]
