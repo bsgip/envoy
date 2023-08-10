@@ -27,7 +27,7 @@ build-backend = "setuptools.build_meta"
 name = "envoy"
 version = "0.0.1"
 dependencies = [
-    "fastapi",
+    "fastapi>=0.94.1",
     "sqlalchemy>=2.0.0",
     "alembic",
     "tzlocal",
