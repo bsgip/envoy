@@ -47,12 +47,16 @@ def enable_dynamic_azure_ad_database_credentials(
     async def context_manager(app: FastAPI):
         """This context manager will perform all setup before yield and teardown after yield"""
 
+        logging.info(f"context_manager execution start.")
+
         # SQLAlchemy events do NOT support async so we need to perform some shenanigans to keep this running
         # We will use the cache.get_value_sync to fetch tokens and update_cache_Task to ensure they always remain
         # current.
         def dynamic_db_do_connect_listener(dialect, conn_rec, cargs, cparams):
             """Designed to listen for the Engine do_connect event and update cargs with the latest cached"""
+            logging.info(f"dynamic_db_do_connect_listener execution start.")
             resource_pwd = cache.get_value_sync(cfg, cfg.resource_id)
+            logging.info(f"dynamic_db_do_connect_listener token {resource_pwd}")
             cparams["password"] = resource_pwd
 
         event.listen(Engine, "do_connect", dynamic_db_do_connect_listener)
