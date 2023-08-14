@@ -1,8 +1,10 @@
 import unittest.mock as mock
 from asyncio import Future
+from dataclasses import dataclass
 from typing import Optional, Union
 
 from httpx import Response
+from httpx._types import HeaderTypes
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -26,6 +28,15 @@ def create_async_result(result):
     return f
 
 
+@dataclass
+class LoggedRequest:
+    """For MockedAsyncClient - keeps a simplified log of outgoing requests"""
+
+    method: str
+    uri: str
+    headers: Optional[HeaderTypes]
+
+
 class MockedAsyncClient:
     """Looks similar to httpx AsyncClient() but returns a mocked response or raises an error
 
@@ -35,6 +46,7 @@ class MockedAsyncClient:
     If fed a list - subsequent calls will work through the list
     """
 
+    logged_requests: list[LoggedRequest]
     get_calls: int
     get_calls_by_uri: dict[str, int]
     result: Optional[Union[Response, Exception, list[Union[Response, Exception]]]]
@@ -48,6 +60,7 @@ class MockedAsyncClient:
             self.results_by_uri = {}
             self.result = result
 
+        self.logged_requests = []
         self.get_calls = 0
         self.get_calls_by_uri = {}
 
@@ -71,12 +84,13 @@ class MockedAsyncClient:
         else:
             raise Exception(f"Mocking error - unknown type: {type(result)} {result}")
 
-    async def get(self, uri):
+    async def get(self, uri: str, headers: Optional[HeaderTypes] = None):
         self.get_calls = self.get_calls + 1
         if uri in self.get_calls_by_uri:
             self.get_calls_by_uri[uri] = self.get_calls_by_uri[uri] + 1
         else:
             self.get_calls_by_uri[uri] = 1
+        self.logged_requests.append(LoggedRequest(method="GET", uri=uri, headers=headers))
 
         uri_specific_result = self.results_by_uri.get(uri, None)
         if uri_specific_result is not None:
