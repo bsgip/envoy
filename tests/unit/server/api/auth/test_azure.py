@@ -2,7 +2,8 @@ import json
 import unittest.mock as mock
 from datetime import datetime, timedelta
 from http import HTTPStatus
-from typing import Optional, Union
+from typing import Optional
+from urllib.parse import quote
 
 import jwt
 import pytest
@@ -278,6 +279,10 @@ async def test_request_azure_ad_token(mock_AsyncClient: mock.MagicMock):
     output_token.token == "eyJ0eXAiOiJKV1Q...", "The value direct from the token-response.json"
     output_token.expiry == datetime.fromtimestamp(1690938812)
     mocked_client.get_calls == 1
+
+    assert mocked_client.logged_requests[0].headers == {"Metadata": "true"}
+    assert quote(resource_id) in mocked_client.logged_requests[0].uri, "Resource ID should be included in request"
+    assert quote(cfg.client_id) in mocked_client.logged_requests[0].uri, "Client ID should be included in request"
 
 
 @pytest.mark.anyio

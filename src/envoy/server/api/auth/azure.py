@@ -159,7 +159,7 @@ async def request_azure_ad_token(cfg: AzureADManagedIdentityConfig, resource_id:
     uri = _TOKEN_URI_FORMAT.format(resource=quote(resource_id), client_id=quote(cfg.client_id))
     async with AsyncClient() as client:
         try:
-            response = await client.get(uri)
+            response = await client.get(uri, headers={"Metadata": "true"})
         except Exception as ex:
             logger.error(f"Exception {ex} trying to access token from {uri}")
             raise UnableToContactAzureServicesError("Exception trying to access Azure token service")
