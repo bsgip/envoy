@@ -45,7 +45,14 @@ class AppSettings(BaseSettings):
 
     @property
     def db_middleware_kwargs(self) -> Dict[str, Any]:
-        return {"db_url": self.database_url, "commit_on_exit": self.commit_on_exit}
+        settings = {"db_url": self.database_url, "commit_on_exit": self.commit_on_exit}
+
+        # this setting causes the pool to recycle connections after the given number of seconds has passed
+        # It will ensure that connections won't stay live in the pool after the tokens are refreshed
+        if self.azure_ad_db_resource_id and self.azure_ad_db_refresh_secs:
+            settings["engine_args"] = {"pool_recycle": self.azure_ad_db_refresh_secs}
+
+        return settings
 
     @property
     def azure_ad_kwargs(self) -> Optional[dict[str, Any]]:
