@@ -69,7 +69,7 @@ def enable_dynamic_azure_ad_database_credentials(
 
             The aim is to keep well ahead of the token expiry so that the cache.get_value_sync never has to trigger an
             update and only exists as a fallback mechanism"""
-            logging.info("update_cache_task for database token. next in {manual_update_frequency_seconds} seconds")
+            logging.info(f"update_cache_task for database token. next in {manual_update_frequency_seconds} seconds")
             await cache.force_update(cfg)
 
         # force our cache our background tasks to start triggering
