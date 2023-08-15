@@ -1,6 +1,8 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from pydantic import BaseSettings, PostgresDsn
+
+from envoy.server.settings import generate_middleware_kwargs
 
 
 class AppSettings(BaseSettings):
@@ -19,6 +21,13 @@ class AppSettings(BaseSettings):
 
     admin_username: str
     admin_password: str
+
+    azure_ad_tenant_id: Optional[str] = None  # Tenant ID of the Azure AD deployment (if none - disables Azure AD Auth)
+    azure_ad_client_id: Optional[str] = None  # Client ID of the app in the Azure AD (if none - disables Azure AD Auth)
+    azure_ad_db_resource_id: Optional[str] = None  # Will be used to mint AD tokens as a database password alternative
+    azure_ad_db_refresh_secs: int = (
+        14400  # How frequently (in seconds) will the Azure AD DB token be manually refreshed. Default 4 hours.
+    )
 
     class Config:
         validate_assignment = True
@@ -39,7 +48,12 @@ class AppSettings(BaseSettings):
 
     @property
     def db_middleware_kwargs(self) -> Dict[str, Any]:
-        return {"db_url": self.database_url, "commit_on_exit": self.commit_on_exit}
+        return generate_middleware_kwargs(
+            database_url=self.database_url,
+            commit_on_exit=self.commit_on_exit,
+            azure_ad_db_resource_id=self.azure_ad_db_resource_id,
+            azure_ad_db_refresh_secs=self.azure_ad_db_refresh_secs,
+        )
 
 
 def generate_settings() -> AppSettings:

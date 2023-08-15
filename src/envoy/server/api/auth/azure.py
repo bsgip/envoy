@@ -32,10 +32,13 @@ class AzureADManagedIdentityConfig:
 
 
 @dataclass
-class AzureADResourceTokenConfig(AzureADManagedIdentityConfig):
-    """Extension to AzureADManagedIdentityConfig that scopes it to a specific Azure resource"""
+class AzureADResourceTokenConfig:
+    """Configuration setup for an Azure Active Directory auth scenario where managed identity is used to identify
+    all VMs in the deployment. This config will be utilised for generating tokens for a specific resource"""
 
-    resource_id: str  # The resource ID that tokens will be created for
+    tenant_id: str  # The tenant ID that will be used to generate Azure AD tokens
+    client_id: str  # The client id of the VM managed identity that will be generating/validating Azure AD tokens
+    resource_id: str  # The resource ID that tokens will be requested for
 
 
 @dataclass
@@ -150,13 +153,13 @@ async def validate_azure_ad_token(cfg: AzureADManagedIdentityConfig, cache: Asyn
     logger.debug(f"Validated token {decoded}")
 
 
-async def request_azure_ad_token(cfg: AzureADManagedIdentityConfig, resource_id: str) -> AzureADToken:
+async def request_azure_ad_token(cfg: AzureADResourceTokenConfig) -> AzureADToken:
     """Requests an Azure AD token for the specified resource_id on behalf of the
     specified AzureADManagedIdentityConfig
 
     raises UnableToContactAzureServicesError on error"""
 
-    uri = _TOKEN_URI_FORMAT.format(resource=quote(resource_id), client_id=quote(cfg.client_id))
+    uri = _TOKEN_URI_FORMAT.format(resource=quote(cfg.resource_id), client_id=quote(cfg.client_id))
     async with AsyncClient() as client:
         try:
             response = await client.get(uri, headers={"Metadata": "true"})
@@ -171,13 +174,13 @@ async def request_azure_ad_token(cfg: AzureADManagedIdentityConfig, resource_id:
         body = response.json()
         access_token = body["access_token"]
         expiry = datetime.fromtimestamp(int(body["expires_on"]), tz=timezone.utc)
-        return AzureADToken(token=access_token, resource_id=resource_id, expiry=expiry)
+        return AzureADToken(token=access_token, resource_id=cfg.resource_id, expiry=expiry)
 
 
 async def update_azure_ad_token_cache(cfg: AzureADResourceTokenConfig) -> dict[str, ExpiringValue[str]]:
     """maps request_azure_ad_token into a form that is compatible with an AsyncCache update function
 
     Returns a dictionary with a single entry keyed by the resource ID, containing the access token value"""
-    azure_ad_token = await request_azure_ad_token(cfg, cfg.resource_id)
+    azure_ad_token = await request_azure_ad_token(cfg)
     expiry = azure_ad_token.expiry + timedelta(seconds=-TOKEN_EXPIRY_BUFFER_SECONDS)  # Expire the tokens early
     return {cfg.resource_id: ExpiringValue(expiry=expiry, value=azure_ad_token.token)}

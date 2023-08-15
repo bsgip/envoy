@@ -3,6 +3,22 @@ from typing import Any, Dict, Optional
 from pydantic import BaseSettings, PostgresDsn
 
 
+def generate_middleware_kwargs(
+    database_url: str,
+    commit_on_exit: bool,
+    azure_ad_db_resource_id: Optional[str],
+    azure_ad_db_refresh_secs: Optional[int],
+) -> dict[str, Any]:
+    """Generates kwargs for SQLAlchemyMiddleware for a given set of settings values"""
+    settings = {"db_url": database_url, "commit_on_exit": commit_on_exit}
+
+    # this setting causes the pool to recycle connections after the given number of seconds has passed
+    # It will ensure that connections won't stay live in the pool after the tokens are refreshed
+    if azure_ad_db_resource_id and azure_ad_db_refresh_secs:
+        settings["engine_args"] = {"pool_recycle": azure_ad_db_refresh_secs}
+    return settings
+
+
 class AppSettings(BaseSettings):
     debug: bool = False
     docs_url: str = "/docs"
@@ -45,14 +61,12 @@ class AppSettings(BaseSettings):
 
     @property
     def db_middleware_kwargs(self) -> Dict[str, Any]:
-        settings = {"db_url": self.database_url, "commit_on_exit": self.commit_on_exit}
-
-        # this setting causes the pool to recycle connections after the given number of seconds has passed
-        # It will ensure that connections won't stay live in the pool after the tokens are refreshed
-        if self.azure_ad_db_resource_id and self.azure_ad_db_refresh_secs:
-            settings["engine_args"] = {"pool_recycle": self.azure_ad_db_refresh_secs}
-
-        return settings
+        return generate_middleware_kwargs(
+            database_url=self.database_url,
+            commit_on_exit=self.commit_on_exit,
+            azure_ad_db_resource_id=self.azure_ad_db_resource_id,
+            azure_ad_db_refresh_secs=self.azure_ad_db_refresh_secs,
+        )
 
     @property
     def azure_ad_kwargs(self) -> Optional[dict[str, Any]]:

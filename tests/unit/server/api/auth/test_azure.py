@@ -37,6 +37,8 @@ from tests.unit.jwt import (
 )
 from tests.unit.mocks import MockedAsyncClient, create_async_result
 
+# cSpell: disable - No spell checking in this file due to a large number of b64 strings
+
 
 def test_parse_from_jwks_json():
     """Tests parsing a real world response"""
@@ -264,14 +266,14 @@ async def test_request_azure_ad_token(mock_AsyncClient: mock.MagicMock):
     # Arrange
     with open("tests/data/azure/token-response.json") as f:
         raw_token_response = f.read()
-    cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     resource_id = "resource id/&"  # with some chars that need escaping
+    cfg = AzureADResourceTokenConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, resource_id)
 
     mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content=raw_token_response))
     mock_AsyncClient.return_value = mocked_client
 
     # Act
-    output_token = await request_azure_ad_token(cfg, resource_id)
+    output_token = await request_azure_ad_token(cfg)
 
     # Assert
     assert isinstance(output_token, AzureADToken)
@@ -291,15 +293,15 @@ async def test_request_azure_ad_token_http_error(mock_AsyncClient: mock.MagicMoc
     """Tests that a HTTP error is reinterpreted as UnableToContactAzureServicesError"""
 
     # Arrange
-    cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     resource_id = "resource id"
+    cfg = AzureADResourceTokenConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, resource_id)
 
     mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.INTERNAL_SERVER_ERROR))
     mock_AsyncClient.return_value = mocked_client
 
     # Act
     with pytest.raises(UnableToContactAzureServicesError):
-        await request_azure_ad_token(cfg, resource_id)
+        await request_azure_ad_token(cfg)
 
     # Assert
     mocked_client.get_calls == 1
@@ -311,15 +313,15 @@ async def test_request_azure_ad_token_exception(mock_AsyncClient: mock.MagicMock
     """Tests that an exception is reinterpreted as UnableToContactAzureServicesError"""
 
     # Arrange
-    cfg = AzureADManagedIdentityConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER)
     resource_id = "resource id"
+    cfg = AzureADResourceTokenConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, resource_id)
 
     mocked_client = MockedAsyncClient(Exception("My mocked error"))
     mock_AsyncClient.return_value = mocked_client
 
     # Act
     with pytest.raises(UnableToContactAzureServicesError):
-        await request_azure_ad_token(cfg, resource_id)
+        await request_azure_ad_token(cfg)
 
     # Assert
     mocked_client.get_calls == 1
@@ -333,13 +335,13 @@ async def test_update_azure_ad_token_cache(mock_request_azure_ad_token: mock.Mag
     # Arrange
     expected_token = AzureADToken("abc-123", "resource-456", datetime.now() + timedelta(hours=5))
     mock_request_azure_ad_token.return_value = expected_token
-    cfg = AzureADResourceTokenConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, DEFAULT_ISSUER, "my-resource-id")
+    cfg = AzureADResourceTokenConfig(DEFAULT_TENANT_ID, DEFAULT_CLIENT_ID, "my-resource-id")
 
     # Act
     token_cache = await update_azure_ad_token_cache(cfg)
 
     # Assert
-    mock_request_azure_ad_token.assert_called_once_with(cfg, cfg.resource_id)
+    mock_request_azure_ad_token.assert_called_once_with(cfg)
     assert isinstance(token_cache, dict)
     assert len(token_cache) == 1
 

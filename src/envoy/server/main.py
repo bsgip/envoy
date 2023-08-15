@@ -44,7 +44,6 @@ def generate_app(new_settings: AppSettings):
             lifespan_manager = enable_dynamic_azure_ad_database_credentials(
                 tenant_id=azure_ad_settings["tenant_id"],
                 client_id=azure_ad_settings["client_id"],
-                valid_issuer=azure_ad_settings["issuer"],
                 resource_id=resource_id,
                 manual_update_frequency_seconds=update_frequency_seconds,
             )

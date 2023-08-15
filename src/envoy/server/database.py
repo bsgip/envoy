@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 def enable_dynamic_azure_ad_database_credentials(
     tenant_id: str,
     client_id: str,
-    valid_issuer: str,
     resource_id: str,
     manual_update_frequency_seconds: int,
 ) -> Callable[[FastAPI], _AsyncGeneratorContextManager]:
@@ -39,9 +38,7 @@ def enable_dynamic_azure_ad_database_credentials(
 
     logging.info(f"Enabling dynamic database creds for {resource_id} at frequency {manual_update_frequency_seconds}")
     cache: AsyncCache[str, str] = AsyncCache(update_fn=update_azure_ad_token_cache)
-    cfg = AzureADResourceTokenConfig(
-        tenant_id=tenant_id, client_id=client_id, valid_issuer=valid_issuer, resource_id=resource_id
-    )
+    cfg = AzureADResourceTokenConfig(tenant_id=tenant_id, client_id=client_id, resource_id=resource_id)
 
     @asynccontextmanager
     async def context_manager(app: FastAPI):
