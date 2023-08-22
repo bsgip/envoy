@@ -7,9 +7,9 @@ from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError
 
 from envoy.server.api.request import (
-    extract_aggregator_id,
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
+    extract_request_params,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
@@ -39,7 +39,7 @@ async def get_enddevice(site_id: int, request: Request) -> XmlResponse:
 
     """
     end_device = await EndDeviceManager.fetch_enddevice_with_site_id(
-        db.session, site_id, extract_aggregator_id(request)
+        db.session, site_id, extract_request_params(request)
     )
     if end_device is None:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
@@ -73,7 +73,7 @@ async def get_enddevice_list(
     return XmlResponse(
         await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
             db.session,
-            extract_aggregator_id(request),
+            extract_request_params(request),
             start=extract_start_from_paging_param(start),
             after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -100,7 +100,7 @@ async def create_end_device(
     """
     try:
         site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
-            db.session, extract_aggregator_id(request), payload
+            db.session, extract_request_params(request), payload
         )
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: f"/edev/{site_id}"})
     except BadRequestError as exc:

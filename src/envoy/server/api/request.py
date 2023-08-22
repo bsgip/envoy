@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from http import HTTPStatus
 from typing import Optional
@@ -10,17 +11,36 @@ DEFAULT_START = 0
 DEFAULT_DATETIME = datetime.min
 
 
-def extract_aggregator_id(request: Request) -> int:
-    """Fetches the aggregator id assigned to an incoming request (by the auth dependencies).
+@dataclass
+class RequestStateParameters:
+    """Set of parameters inherent to an incoming request - likely specified by fastapi depends"""
 
-    raises a HTTPException if the id does not exist"""
-    id = None if request.state is None else request.state.aggregator_id
+    aggregator_id: int  # The aggregator id that a request is scoped to (sourced from auth dependencies)
+    href_prefix: Optional[str]  # If set - all outgoing href's should be prefixed with this value
+
+
+def extract_request_params(request: Request) -> RequestStateParameters:
+    """Fetches the RequestStateParameters for the specified request..
+
+    raises a HTTPException if the request is missing mandatory values"""
+    if request.state is None:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail="Envoy middleware is not decorating incoming requests correctly.",
+        )
+
+    id = request.state.aggregator_id
     if id is None:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail="aggregator_id has not been been extracted correctly by Envoy middleware.",
         )
-    return id
+
+    href_prefix: Optional[str] = getattr(request.state, "href_prefix", None)
+    if not href_prefix:
+        href_prefix = None
+
+    return RequestStateParameters(aggregator_id=id, href_prefix=href_prefix)
 
 
 def extract_limit_from_paging_param(limit: Optional[list[int]] = None) -> int:

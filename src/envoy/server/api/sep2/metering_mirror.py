@@ -14,13 +14,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 
 from envoy.server.api.request import (
-    extract_aggregator_id,
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
+    extract_request_params,
     extract_start_from_paging_param,
 )
-
-# from envoy.server.api.request import extract_aggregator_id
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.metering import MirrorMeteringManager
@@ -58,7 +56,7 @@ async def get_mirror_usage_point_list(
     try:
         mup_list = await MirrorMeteringManager.list_mirror_usage_points(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -89,7 +87,7 @@ async def post_mirror_usage_point_list(
     """
     try:
         mup_id = await MirrorMeteringManager.create_or_update_mirror_usage_point(
-            db.session, aggregator_id=extract_aggregator_id(request), mup=payload
+            db.session, request_params=extract_request_params(request), mup=payload
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -125,7 +123,7 @@ async def get_mirror_usage_point(
     try:
         mup_list = await MirrorMeteringManager.fetch_mirror_usage_point(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_reading_type_id=mup_id,
         )
     except BadRequestError as ex:
@@ -161,7 +159,7 @@ async def post_mirror_usage_point(
 
     try:
         mup_id = await MirrorMeteringManager.add_or_update_readings(
-            db.session, aggregator_id=extract_aggregator_id(request), site_reading_type_id=mup_id, mmr=payload
+            db.session, request_params=extract_request_params(request), site_reading_type_id=mup_id, mmr=payload
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

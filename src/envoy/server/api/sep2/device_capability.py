@@ -5,7 +5,7 @@ from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityRe
 from fastapi import APIRouter, Request
 from fastapi_async_sqlalchemy import db
 
-from envoy.server.api.request import extract_aggregator_id
+from envoy.server.api.request import extract_request_params
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.device_capability import DeviceCapabilityManager
 
@@ -28,6 +28,6 @@ async def device_capability(request: Request) -> XmlResponse:
         fastapi.Response object.
     """
     device_capability = await DeviceCapabilityManager.fetch_device_capability(
-        session=db.session, aggregator_id=extract_aggregator_id(request)
+        session=db.session, request_params=extract_request_params(request)
     )
     return XmlResponse(device_capability)

@@ -6,10 +6,10 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi_async_sqlalchemy import db
 
 from envoy.server.api.request import (
-    extract_aggregator_id,
     extract_date_from_iso_string,
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
+    extract_request_params,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import XmlResponse
@@ -45,7 +45,7 @@ async def get_derprogram_list(
     try:
         derp_list = await DERProgramManager.fetch_list_for_site(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_id=site_id,
         )
     except BadRequestError as ex:
@@ -73,7 +73,7 @@ async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str
     try:
         derp = await DERProgramManager.fetch_doe_program_for_site(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_id=site_id,
         )
     except BadRequestError as ex:
@@ -113,7 +113,7 @@ async def get_dercontrol_list(
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_site(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_id=site_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
@@ -162,7 +162,7 @@ async def get_dercontrol_list_for_date(
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_site_day(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_id=site_id,
             day=day,
             start=extract_start_from_paging_param(start),

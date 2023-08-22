@@ -7,7 +7,7 @@ from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import NoResultFound
 
 from envoy.server.api import query
-from envoy.server.api.request import extract_aggregator_id
+from envoy.server.api.request import extract_request_params
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
 
@@ -35,7 +35,7 @@ async def get_function_set_assignments(site_id: int, fsa_id: int, request: Reque
     try:
         function_set_assignments = (
             await FunctionSetAssignmentsManager.fetch_function_set_assignments_for_aggregator_and_site(
-                session=db.session, aggregator_id=extract_aggregator_id(request), site_id=site_id, fsa_id=fsa_id
+                session=db.session, request_params=extract_request_params(request), site_id=site_id, fsa_id=fsa_id
             )
         )
     except NoResultFound as exc:
@@ -77,7 +77,7 @@ async def get_function_set_assignments_list(
         await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_aggregator_and_site(
             session=db.session,
             site_id=site_id,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
         )
     )
     return XmlResponse(function_set_assignments_list)

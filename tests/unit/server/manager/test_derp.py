@@ -4,6 +4,7 @@ from datetime import date, datetime
 import pytest
 from envoy_schema.server.schema.sep2.der import DERControlListResponse, DERProgramListResponse, DERProgramResponse
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.model.doe import DynamicOperatingEnvelope
@@ -35,7 +36,7 @@ async def test_program_fetch_list(
     mock_DERProgramMapper.doe_program_list_response = mock.Mock(return_value=mapped_list)
 
     # Act
-    result = await DERProgramManager.fetch_list_for_site(mock_session, agg_id, site_id)
+    result = await DERProgramManager.fetch_list_for_site(mock_session, RequestStateParameters(agg_id, "651"), site_id)
 
     # Assert
     assert result is mapped_list
@@ -64,7 +65,7 @@ async def test_program_fetch_list_site_dne(
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERProgramManager.fetch_list_for_site(mock_session, agg_id, site_id)
+        await DERProgramManager.fetch_list_for_site(mock_session, RequestStateParameters(agg_id, None), site_id)
 
     # Assert
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, site_id, agg_id)
@@ -96,7 +97,9 @@ async def test_program_fetch(
     mock_DERProgramMapper.doe_program_response = mock.Mock(return_value=mapped_program)
 
     # Act
-    result = await DERProgramManager.fetch_doe_program_for_site(mock_session, agg_id, site_id)
+    result = await DERProgramManager.fetch_doe_program_for_site(
+        mock_session, RequestStateParameters(agg_id, None), site_id
+    )
 
     # Assert
     assert result is mapped_program
@@ -125,7 +128,7 @@ async def test_program_fetch_site_dne(
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERProgramManager.fetch_doe_program_for_site(mock_session, agg_id, site_id)
+        await DERProgramManager.fetch_doe_program_for_site(mock_session, RequestStateParameters(agg_id, None), site_id)
 
     # Assert
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, site_id, agg_id)
@@ -162,7 +165,7 @@ async def test_fetch_doe_controls_for_site(
 
     # Act
     result = await DERControlManager.fetch_doe_controls_for_site(
-        mock_session, agg_id, site_id, start, changed_after, limit
+        mock_session, RequestStateParameters(agg_id, None), site_id, start, changed_after, limit
     )
 
     # Assert
@@ -205,7 +208,7 @@ async def test_fetch_doe_controls_for_site_for_day(
 
     # Act
     result = await DERControlManager.fetch_doe_controls_for_site_day(
-        mock_session, agg_id, site_id, day, start, changed_after, limit
+        mock_session, RequestStateParameters(agg_id, None), site_id, day, start, changed_after, limit
     )
 
     # Assert

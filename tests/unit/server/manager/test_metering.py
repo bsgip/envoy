@@ -5,6 +5,7 @@ import pytest
 from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import InvalidIdError, NotFoundError
 from envoy.server.manager.metering import MirrorMeteringManager
 from envoy.server.model.site import Site
@@ -26,7 +27,7 @@ async def test_create_or_fetch_mirror_usage_point(
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     aggregator_id = 2
     mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
     existing_site: Site = generate_class_instance(Site)
@@ -38,7 +39,9 @@ async def test_create_or_fetch_mirror_usage_point(
     mock_upsert_site_reading_type_for_aggregator.return_value = srt_id
 
     # Act
-    result = await MirrorMeteringManager.create_or_update_mirror_usage_point(mock_session, aggregator_id, mup)
+    result = await MirrorMeteringManager.create_or_update_mirror_usage_point(
+        mock_session, RequestStateParameters(aggregator_id, None), mup
+    )
 
     # Assert
     assert result == srt_id
@@ -63,7 +66,7 @@ async def test_create_or_fetch_mirror_usage_point_no_site(mock_select_single_sit
     """Check that the manager will handle the case when the referenced site DNE"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     aggregator_id = 2
     mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
 
@@ -71,7 +74,9 @@ async def test_create_or_fetch_mirror_usage_point_no_site(mock_select_single_sit
 
     # Act
     with pytest.raises(InvalidIdError):
-        await MirrorMeteringManager.create_or_update_mirror_usage_point(mock_session, aggregator_id, mup)
+        await MirrorMeteringManager.create_or_update_mirror_usage_point(
+            mock_session, RequestStateParameters(aggregator_id, None), mup
+        )
 
     # Assert
     assert_mock_session(mock_session, committed=False)
@@ -92,7 +97,7 @@ async def test_fetch_mirror_usage_point(
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     aggregator_id = 2
     srt_id = 3
     mapped_mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
@@ -103,7 +108,9 @@ async def test_fetch_mirror_usage_point(
     mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
 
     # Act
-    result = await MirrorMeteringManager.fetch_mirror_usage_point(mock_session, aggregator_id, srt_id)
+    result = await MirrorMeteringManager.fetch_mirror_usage_point(
+        mock_session, RequestStateParameters(aggregator_id, None), srt_id
+    )
 
     # Assert
     assert result is mapped_mup
@@ -122,7 +129,7 @@ async def test_fetch_mirror_usage_point_no_srt(
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     aggregator_id = 2
     srt_id = 3
 
@@ -130,7 +137,9 @@ async def test_fetch_mirror_usage_point_no_srt(
 
     # Act
     with pytest.raises(NotFoundError):
-        await MirrorMeteringManager.fetch_mirror_usage_point(mock_session, aggregator_id, srt_id)
+        await MirrorMeteringManager.fetch_mirror_usage_point(
+            mock_session, RequestStateParameters(aggregator_id, None), srt_id
+        )
 
     # Assert
     assert_mock_session(mock_session, committed=False)
@@ -151,7 +160,7 @@ async def test_add_or_update_readings(
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     aggregator_id = 2
     site_reading_type_id = 3
     mmr: MirrorMeterReading = generate_class_instance(MirrorMeterReading, seed=101)
@@ -162,7 +171,9 @@ async def test_add_or_update_readings(
     mock_MirrorMeterReadingMapper.map_from_request = mock.Mock(return_value=mapped_readings)
 
     # Act
-    await MirrorMeteringManager.add_or_update_readings(mock_session, aggregator_id, site_reading_type_id, mmr)
+    await MirrorMeteringManager.add_or_update_readings(
+        mock_session, RequestStateParameters(aggregator_id, None), site_reading_type_id, mmr
+    )
 
     # Assert
     assert_mock_session(mock_session, committed=True)
@@ -187,7 +198,7 @@ async def test_add_or_update_readings_no_srt(mock_fetch_site_reading_type_for_ag
     """Check that the manager will handle the case where the site reading type DNE"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     aggregator_id = 2
     site_reading_type_id = 3
     mmr: MirrorMeterReading = generate_class_instance(MirrorMeterReading, seed=101)
@@ -196,7 +207,9 @@ async def test_add_or_update_readings_no_srt(mock_fetch_site_reading_type_for_ag
 
     # Act
     with pytest.raises(NotFoundError):
-        await MirrorMeteringManager.add_or_update_readings(mock_session, aggregator_id, site_reading_type_id, mmr)
+        await MirrorMeteringManager.add_or_update_readings(
+            mock_session, RequestStateParameters(aggregator_id, None), site_reading_type_id, mmr
+        )
 
     # Assert
     assert_mock_session(mock_session, committed=False)
@@ -220,7 +233,7 @@ async def test_list_mirror_usage_points(
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     aggregator_id = 2
     count = 456
     start = 4
@@ -235,7 +248,7 @@ async def test_list_mirror_usage_points(
 
     # Act
     result = await MirrorMeteringManager.list_mirror_usage_points(
-        mock_session, aggregator_id, start, limit, changed_after
+        mock_session, RequestStateParameters(aggregator_id, None), start, limit, changed_after
     )
     assert result is mup_response
 

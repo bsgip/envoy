@@ -7,9 +7,9 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi_async_sqlalchemy import db
 
 from envoy.server.api.request import (
-    extract_aggregator_id,
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
+    extract_request_params,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import XmlResponse
@@ -103,7 +103,7 @@ async def get_tariffprofilelist(
     try:
         tp_list = await TariffProfileManager.fetch_tariff_profile_list(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_id=site_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
@@ -187,7 +187,7 @@ async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request
     """
     try:
         tp = await TariffProfileManager.fetch_tariff_profile(
-            db.session, extract_aggregator_id(request), tariff_id, site_id
+            db.session, extract_request_params(request), tariff_id, site_id
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -225,7 +225,7 @@ async def get_ratecomponentlist(
     try:
         rc_list = await RateComponentManager.fetch_rate_component_list(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             start=extract_start_from_paging_param(start),
@@ -260,7 +260,7 @@ async def get_singleratecomponent(
     try:
         rc = await RateComponentManager.fetch_rate_component(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
@@ -306,7 +306,7 @@ async def get_timetariffintervallist(
     try:
         tti_list = await TimeTariffIntervalManager.fetch_time_tariff_interval_list(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
@@ -349,7 +349,7 @@ async def get_singletimetariffinterval(
     try:
         tti = await TimeTariffIntervalManager.fetch_time_tariff_interval(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
@@ -403,7 +403,7 @@ async def get_consumptiontariffintervallist(
     try:
         cti_list = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
@@ -452,7 +452,7 @@ async def get_singleconsumptiontariffinterval(
     try:
         cti = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,

@@ -6,6 +6,7 @@ from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPoint
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
 from envoy.server.model.site import Site
 from tests.data.fake.generator import generate_class_instance
@@ -21,7 +22,7 @@ async def test_end_device_manager_fetch_existing_device(
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     site_id = 1
     aggregator_id = 2
     raw_site: Site = generate_class_instance(Site)
@@ -32,7 +33,9 @@ async def test_end_device_manager_fetch_existing_device(
     mock_EndDeviceMapper.map_to_response = mock.Mock(return_value=mapped_ed)
 
     # Act
-    result = await EndDeviceManager.fetch_enddevice_with_site_id(mock_session, site_id, aggregator_id)
+    result = await EndDeviceManager.fetch_enddevice_with_site_id(
+        mock_session, site_id, RequestStateParameters(aggregator_id, None)
+    )
 
     # Assert
     assert result is mapped_ed
@@ -53,7 +56,7 @@ async def test_end_device_manager_fetch_missing_device(
     does not exist"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     site_id = 1
     aggregator_id = 2
 
@@ -61,7 +64,9 @@ async def test_end_device_manager_fetch_missing_device(
     mock_EndDeviceMapper.map_to_response = mock.Mock()
 
     # Act
-    result = await EndDeviceManager.fetch_enddevice_with_site_id(mock_session, site_id, aggregator_id)
+    result = await EndDeviceManager.fetch_enddevice_with_site_id(
+        mock_session, site_id, RequestStateParameters(aggregator_id, None)
+    )
 
     # Assert
     assert result is None
@@ -81,7 +86,7 @@ async def test_add_or_update_enddevice_for_aggregator(
 ):
     """Checks that the enddevice update just passes through to the relevant CRUD"""
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     aggregator_id = 3
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     mapped_site: Site = generate_class_instance(Site)
@@ -93,7 +98,7 @@ async def test_add_or_update_enddevice_for_aggregator(
 
     # Act
     returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
-        mock_session, aggregator_id, end_device
+        mock_session, RequestStateParameters(aggregator_id, None), end_device
     )
     assert returned_site_id == mock_upsert_site_for_aggregator.return_value
 
@@ -115,7 +120,7 @@ async def test_fetch_enddevicelist_with_aggregator_id(
 ):
     """Checks that fetching the enddevice list just passes through to the relevant CRUD"""
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     aggregator_id = 3
     start = 4
     after = datetime.now()
@@ -133,7 +138,7 @@ async def test_fetch_enddevicelist_with_aggregator_id(
 
     # Act
     result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
-        mock_session, aggregator_id, start, after, limit
+        mock_session, RequestStateParameters(aggregator_id, None), start, after, limit
     )
 
     # Assert
@@ -157,7 +162,7 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(
     """Checks that fetching the enddevice list just passes through to the relevant CRUD
     even when empty list is returned"""
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     aggregator_id = 3
     start = 4
     after = datetime.now()
@@ -172,7 +177,7 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(
 
     # Act
     result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
-        mock_session, aggregator_id, start, after, limit
+        mock_session, RequestStateParameters(aggregator_id, None), start, after, limit
     )
 
     # Assert
@@ -193,7 +198,7 @@ async def test_end_device_manager_fetch_existing_connection_point(
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     site_id = 1
     aggregator_id = 2
     raw_site: Site = generate_class_instance(Site)
@@ -204,7 +209,9 @@ async def test_end_device_manager_fetch_existing_connection_point(
     mock_ConnectionPointMapper.map_to_response = mock.Mock(return_value=mapped_cp)
 
     # Act
-    result = await EndDeviceManager.fetch_connection_point_for_site(mock_session, site_id, aggregator_id)
+    result = await EndDeviceManager.fetch_connection_point_for_site(
+        mock_session, site_id, RequestStateParameters(aggregator_id, None)
+    )
 
     # Assert
     assert result is mapped_cp
@@ -225,7 +232,7 @@ async def test_end_device_manager_fetch_missing_connection_point(
     requested site does not exist"""
 
     # Arrange
-    mock_session: AsyncSession = create_mock_session()
+    mock_session = create_mock_session()
     site_id = 1
     aggregator_id = 2
 
@@ -233,7 +240,9 @@ async def test_end_device_manager_fetch_missing_connection_point(
     mock_ConnectionPointMapper.map_to_response = mock.Mock()
 
     # Act
-    result = await EndDeviceManager.fetch_connection_point_for_site(mock_session, site_id, aggregator_id)
+    result = await EndDeviceManager.fetch_connection_point_for_site(
+        mock_session, site_id, RequestStateParameters(aggregator_id, None)
+    )
 
     # Assert
     assert result is None

@@ -6,6 +6,7 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud import pricing
 from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
 
@@ -14,7 +15,7 @@ class FunctionSetAssignmentsManager:
     @staticmethod
     async def fetch_function_set_assignments_for_aggregator_and_site(
         session: AsyncSession,
-        aggregator_id: int,
+        request_params: RequestStateParameters,
         site_id: int,
         fsa_id: int,
     ) -> FunctionSetAssignmentsResponse:
@@ -27,7 +28,7 @@ class FunctionSetAssignmentsManager:
     @staticmethod
     async def fetch_function_set_assignments_list_for_aggregator_and_site(
         session: AsyncSession,
-        aggregator_id: int,
+        request_params: RequestStateParameters,
         site_id: int,
     ) -> FunctionSetAssignmentsListResponse:
         # At present a function sets assignments list response will only return 1 function set assignments response
@@ -36,7 +37,7 @@ class FunctionSetAssignmentsManager:
 
         function_set_assignments = (
             await FunctionSetAssignmentsManager.fetch_function_set_assignments_for_aggregator_and_site(
-                session=session, aggregator_id=aggregator_id, site_id=site_id, fsa_id=DEFAULT_FSA_ID
+                session=session, request_params=request_params, site_id=site_id, fsa_id=DEFAULT_FSA_ID
             )
         )
 
