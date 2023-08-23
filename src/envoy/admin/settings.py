@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional
 
-from pydantic import BaseSettings, PostgresDsn
+from pydantic import PostgresDsn
+from pydantic_settings import BaseSettings
 
 from envoy.server.settings import generate_middleware_kwargs
 

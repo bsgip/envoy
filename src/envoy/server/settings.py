@@ -1,16 +1,17 @@
 from typing import Any, Dict, Optional
 
-from pydantic import BaseSettings, PostgresDsn
+from pydantic import PostgresDsn
+from pydantic_settings import BaseSettings
 
 
 def generate_middleware_kwargs(
-    database_url: str,
+    database_url: PostgresDsn,
     commit_on_exit: bool,
     azure_ad_db_resource_id: Optional[str],
     azure_ad_db_refresh_secs: Optional[int],
 ) -> dict[str, Any]:
     """Generates kwargs for SQLAlchemyMiddleware for a given set of settings values"""
-    settings = {"db_url": database_url, "commit_on_exit": commit_on_exit}
+    settings = {"db_url": str(database_url), "commit_on_exit": commit_on_exit}
 
     # this setting causes the pool to recycle connections after the given number of seconds has passed
     # It will ensure that connections won't stay live in the pool after the tokens are refreshed

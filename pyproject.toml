@@ -32,6 +32,7 @@ dependencies = [
     "alembic",
     "tzlocal",
     "pydantic_xml[lxml]",
+    "pydantic-settings",
     "python-dateutil",
     "asyncpg",
     "fastapi-async-sqlalchemy",
