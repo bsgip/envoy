@@ -39,6 +39,8 @@ class AppSettings(BaseSettings):
         14400  # How frequently (in seconds) will the Azure AD DB token be manually refreshed. Default 4 hours.
     )
 
+    href_prefix: Optional[str] = None  # Will ensure all outgoing href's are prefixed with this value (None = disabled)
+
     database_url: PostgresDsn
     commit_on_exit: bool = False
 

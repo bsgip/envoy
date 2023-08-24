@@ -7,6 +7,7 @@ from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 from envoy.server.api import routers
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
+from envoy.server.api.depends.path_prefix import PathPrefixDepends
 from envoy.server.api.error_handler import general_exception_handler, http_exception_handler
 from envoy.server.database import enable_dynamic_azure_ad_database_credentials
 from envoy.server.settings import AppSettings, settings
@@ -22,6 +23,10 @@ def generate_app(new_settings: AppSettings):
     lfdi_auth = LFDIAuthDepends(new_settings.cert_header)
     global_dependencies = [Depends(lfdi_auth)]
     lifespan_manager = None
+
+    # if href_prefix is specified - include the PathPrefixDepends
+    if new_settings.href_prefix:
+        global_dependencies.append(Depends(PathPrefixDepends(new_settings.href_prefix)))
 
     # Azure AD Auth is an optional extension enabled via configuration settings
     azure_ad_settings = new_settings.azure_ad_kwargs
