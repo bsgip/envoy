@@ -33,15 +33,14 @@ async def test_create_or_fetch_mirror_usage_point(
     existing_site: Site = generate_class_instance(Site)
     mapped_srt: SiteReadingType = generate_class_instance(SiteReadingType)
     srt_id = 3
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_select_single_site_with_lfdi.return_value = existing_site
     mock_MirrorUsagePointMapper.map_from_request = mock.Mock(return_value=mapped_srt)
     mock_upsert_site_reading_type_for_aggregator.return_value = srt_id
 
     # Act
-    result = await MirrorMeteringManager.create_or_update_mirror_usage_point(
-        mock_session, RequestStateParameters(aggregator_id, None), mup
-    )
+    result = await MirrorMeteringManager.create_or_update_mirror_usage_point(mock_session, rsp_params, mup)
 
     # Assert
     assert result == srt_id
@@ -55,6 +54,7 @@ async def test_create_or_fetch_mirror_usage_point(
 
     mock_MirrorUsagePointMapper.map_from_request.assert_called_once()
     mapper_call_args = mock_MirrorUsagePointMapper.map_from_request.call_args_list[0]
+    assert mapper_call_args.kwargs["rsp_params"] == rsp_params
     assert mapper_call_args.kwargs["aggregator_id"] == aggregator_id
     assert mapper_call_args.kwargs["site_id"] == existing_site.site_id
     assert_nowish(mapper_call_args.kwargs["changed_time"])
@@ -69,14 +69,13 @@ async def test_create_or_fetch_mirror_usage_point_no_site(mock_select_single_sit
     mock_session = create_mock_session()
     aggregator_id = 2
     mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_select_single_site_with_lfdi.return_value = None
 
     # Act
     with pytest.raises(InvalidIdError):
-        await MirrorMeteringManager.create_or_update_mirror_usage_point(
-            mock_session, RequestStateParameters(aggregator_id, None), mup
-        )
+        await MirrorMeteringManager.create_or_update_mirror_usage_point(mock_session, rsp_params, mup)
 
     # Assert
     assert_mock_session(mock_session, committed=False)
@@ -103,14 +102,13 @@ async def test_fetch_mirror_usage_point(
     mapped_mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
     existing_srt: SiteReadingType = generate_class_instance(SiteReadingType)
     existing_srt.site = generate_class_instance(Site)
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_fetch_site_reading_type_for_aggregator.return_value = existing_srt
     mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
 
     # Act
-    result = await MirrorMeteringManager.fetch_mirror_usage_point(
-        mock_session, RequestStateParameters(aggregator_id, None), srt_id
-    )
+    result = await MirrorMeteringManager.fetch_mirror_usage_point(mock_session, rsp_params, srt_id)
 
     # Assert
     assert result is mapped_mup
@@ -118,7 +116,7 @@ async def test_fetch_mirror_usage_point(
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
         session=mock_session, aggregator_id=aggregator_id, site_reading_type_id=srt_id, include_site_relation=True
     )
-    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(existing_srt, existing_srt.site)
+    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(rsp_params, existing_srt, existing_srt.site)
 
 
 @pytest.mark.anyio
@@ -132,14 +130,13 @@ async def test_fetch_mirror_usage_point_no_srt(
     mock_session = create_mock_session()
     aggregator_id = 2
     srt_id = 3
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_fetch_site_reading_type_for_aggregator.return_value = None
 
     # Act
     with pytest.raises(NotFoundError):
-        await MirrorMeteringManager.fetch_mirror_usage_point(
-            mock_session, RequestStateParameters(aggregator_id, None), srt_id
-        )
+        await MirrorMeteringManager.fetch_mirror_usage_point(mock_session, rsp_params, srt_id)
 
     # Assert
     assert_mock_session(mock_session, committed=False)
@@ -166,14 +163,13 @@ async def test_add_or_update_readings(
     mmr: MirrorMeterReading = generate_class_instance(MirrorMeterReading, seed=101)
     existing_sr: SiteReadingType = generate_class_instance(SiteReadingType, seed=202)
     mapped_readings: list[SiteReading] = [generate_class_instance(SiteReading, seed=303)]
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_fetch_site_reading_type_for_aggregator.return_value = existing_sr
     mock_MirrorMeterReadingMapper.map_from_request = mock.Mock(return_value=mapped_readings)
 
     # Act
-    await MirrorMeteringManager.add_or_update_readings(
-        mock_session, RequestStateParameters(aggregator_id, None), site_reading_type_id, mmr
-    )
+    await MirrorMeteringManager.add_or_update_readings(mock_session, rsp_params, site_reading_type_id, mmr)
 
     # Assert
     assert_mock_session(mock_session, committed=True)
@@ -187,6 +183,7 @@ async def test_add_or_update_readings(
 
     mock_MirrorMeterReadingMapper.map_from_request.assert_called_once()
     mapper_call_args = mock_MirrorMeterReadingMapper.map_from_request.call_args_list[0]
+    assert mapper_call_args.kwargs["rsp_params"] == rsp_params
     assert mapper_call_args.kwargs["aggregator_id"] == aggregator_id
     assert mapper_call_args.kwargs["site_reading_type_id"] == site_reading_type_id
     assert_nowish(mapper_call_args.kwargs["changed_time"])
@@ -202,14 +199,13 @@ async def test_add_or_update_readings_no_srt(mock_fetch_site_reading_type_for_ag
     aggregator_id = 2
     site_reading_type_id = 3
     mmr: MirrorMeterReading = generate_class_instance(MirrorMeterReading, seed=101)
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_fetch_site_reading_type_for_aggregator.return_value = None
 
     # Act
     with pytest.raises(NotFoundError):
-        await MirrorMeteringManager.add_or_update_readings(
-            mock_session, RequestStateParameters(aggregator_id, None), site_reading_type_id, mmr
-        )
+        await MirrorMeteringManager.add_or_update_readings(mock_session, rsp_params, site_reading_type_id, mmr)
 
     # Assert
     assert_mock_session(mock_session, committed=False)
@@ -241,15 +237,14 @@ async def test_list_mirror_usage_points(
     changed_after = datetime.now()
     existing_srts: list[SiteReadingType] = [generate_class_instance(SiteReadingType, seed=101)]
     mup_response: list[SiteReading] = [generate_class_instance(SiteReading, seed=202)]
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_count_site_reading_types_for_aggregator.return_value = count
     mock_fetch_site_reading_types_page_for_aggregator.return_value = existing_srts
     mock_MirrorUsagePointListMapper.map_to_list_response = mock.Mock(return_value=mup_response)
 
     # Act
-    result = await MirrorMeteringManager.list_mirror_usage_points(
-        mock_session, RequestStateParameters(aggregator_id, None), start, limit, changed_after
-    )
+    result = await MirrorMeteringManager.list_mirror_usage_points(mock_session, rsp_params, start, limit, changed_after)
     assert result is mup_response
 
     # Assert
@@ -261,4 +256,4 @@ async def test_list_mirror_usage_points(
         session=mock_session, aggregator_id=aggregator_id, changed_after=changed_after
     )
 
-    mock_MirrorUsagePointListMapper.map_to_list_response.assert_called_once_with(existing_srts, count)
+    mock_MirrorUsagePointListMapper.map_to_list_response.assert_called_once_with(rsp_params, existing_srts, count)

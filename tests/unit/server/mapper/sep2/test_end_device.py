@@ -7,6 +7,7 @@ from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, En
 from envoy_schema.server.schema.sep2.primitive_types import HexBinary32
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
 from envoy.server.model.site import Site
@@ -19,8 +20,9 @@ def test_device_category_round_trip():
     for dc in [DEVICE_CATEGORY_ALL_SET] + [x for x in DeviceCategory]:
         site: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
         site.device_category = dc
+        rs_params = RequestStateParameters(1, None)
 
-        end_device = EndDeviceMapper.map_to_response(site)
+        end_device = EndDeviceMapper.map_to_response(rs_params, site)
 
         roundtrip_site = EndDeviceMapper.map_from_request(end_device, 1, datetime.now())
         assert roundtrip_site.device_category == site.device_category
@@ -30,8 +32,9 @@ def test_map_to_response():
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
     site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
     site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
+    rs_params = RequestStateParameters(1, None)
 
-    result_all_set = EndDeviceMapper.map_to_response(site_all_set)
+    result_all_set = EndDeviceMapper.map_to_response(rs_params, site_all_set)
     assert result_all_set is not None
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
@@ -46,7 +49,7 @@ def test_map_to_response():
         result_all_set.href
     ), "Expected connection point href to extend base href"
 
-    result_optional = EndDeviceMapper.map_to_response(site_optional)
+    result_optional = EndDeviceMapper.map_to_response(rs_params, site_optional)
     assert result_optional is not None
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
@@ -69,10 +72,11 @@ def test_list_map_to_response():
     site3: Site = generate_class_instance(Site, seed=505, optional_is_none=True, generate_relationships=False)
     site4: Site = generate_class_instance(Site, seed=606, optional_is_none=True, generate_relationships=True)
     site_count = 199
+    rs_params = RequestStateParameters(1, None)
 
     all_sites = [site1, site2, site3, site4]
 
-    result = EndDeviceListMapper.map_to_response(all_sites, site_count)
+    result = EndDeviceListMapper.map_to_response(rs_params, all_sites, site_count)
     assert result is not None
     assert isinstance(result, EndDeviceListResponse)
     assert result.all_ == site_count
@@ -84,14 +88,14 @@ def test_list_map_to_response():
         all_sites
     ), f"Expected {len(all_sites)} unique LFDI's in the children"
 
-    empty_result = EndDeviceListMapper.map_to_response([], site_count)
+    empty_result = EndDeviceListMapper.map_to_response(rs_params, [], site_count)
     assert empty_result is not None
     assert isinstance(empty_result, EndDeviceListResponse)
     assert empty_result.all_ == site_count
     assert isinstance(empty_result.EndDevice, list)
     assert len(empty_result.EndDevice) == 0
 
-    no_result = EndDeviceListMapper.map_to_response([], 0)
+    no_result = EndDeviceListMapper.map_to_response(rs_params, [], 0)
     assert no_result is not None
     assert isinstance(no_result, EndDeviceListResponse)
     assert no_result.all_ == 0

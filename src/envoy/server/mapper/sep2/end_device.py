@@ -1,19 +1,22 @@
 from datetime import datetime
 from typing import Sequence
 
+import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import InvalidMappingError
+from envoy.server.mapper.common import generate_href
 from envoy.server.model.site import Site
 from envoy.server.settings import settings
 
 
 class EndDeviceMapper:
     @staticmethod
-    def map_to_response(site: Site) -> EndDeviceResponse:
-        edev_href = f"/edev/{site.site_id}"
+    def map_to_response(rs_params: RequestStateParameters, site: Site) -> EndDeviceResponse:
+        edev_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site.site_id)
         return EndDeviceResponse.validate(
             {
                 "href": edev_href,
@@ -52,12 +55,14 @@ class EndDeviceMapper:
 
 class EndDeviceListMapper:
     @staticmethod
-    def map_to_response(site_list: Sequence[Site], site_count: int) -> EndDeviceListResponse:
+    def map_to_response(
+        rs_params: RequestStateParameters, site_list: Sequence[Site], site_count: int
+    ) -> EndDeviceListResponse:
         return EndDeviceListResponse.validate(
             {
-                "href": "/edev",
+                "href": uri.EndDeviceListUri,
                 "all_": site_count,
                 "results": len(site_list),
-                "EndDevice": [EndDeviceMapper.map_to_response(site) for site in site_list],
+                "EndDevice": [EndDeviceMapper.map_to_response(rs_params, site) for site in site_list],
             }
         )

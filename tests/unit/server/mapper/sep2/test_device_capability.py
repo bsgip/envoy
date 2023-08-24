@@ -1,6 +1,7 @@
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.sep2.device_capability import DeviceCapabilityMapper
 
 
@@ -11,7 +12,7 @@ def test_map_to_response():
         "EndDeviceListLink": {"all_": "1", "href": "/edev"},
     }
 
-    device_capability = DeviceCapabilityMapper.map_to_response(links=links)
+    device_capability = DeviceCapabilityMapper.map_to_response(rs_params=RequestStateParameters(1, None), links=links)
     assert device_capability is not None
     assert isinstance(device_capability, DeviceCapabilityResponse)
     # assert isinstance(device_capability.DemandResponseProgramListLink, ListLink)

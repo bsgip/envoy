@@ -27,15 +27,14 @@ async def test_end_device_manager_fetch_existing_device(
     aggregator_id = 2
     raw_site: Site = generate_class_instance(Site)
     mapped_ed: EndDeviceResponse = generate_class_instance(EndDeviceResponse)
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     # Just do a simple passthrough
     mock_select_single_site_with_site_id.return_value = raw_site
     mock_EndDeviceMapper.map_to_response = mock.Mock(return_value=mapped_ed)
 
     # Act
-    result = await EndDeviceManager.fetch_enddevice_with_site_id(
-        mock_session, site_id, RequestStateParameters(aggregator_id, None)
-    )
+    result = await EndDeviceManager.fetch_enddevice_with_site_id(mock_session, site_id, rsp_params)
 
     # Assert
     assert result is mapped_ed
@@ -43,7 +42,7 @@ async def test_end_device_manager_fetch_existing_device(
     mock_select_single_site_with_site_id.assert_called_once_with(
         session=mock_session, site_id=site_id, aggregator_id=aggregator_id
     )
-    mock_EndDeviceMapper.map_to_response.assert_called_once_with(raw_site)
+    mock_EndDeviceMapper.map_to_response.assert_called_once_with(rsp_params, raw_site)
 
 
 @pytest.mark.anyio
@@ -59,14 +58,13 @@ async def test_end_device_manager_fetch_missing_device(
     mock_session = create_mock_session()
     site_id = 1
     aggregator_id = 2
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_select_single_site_with_site_id.return_value = None  # database entity is missing / bad ID lookup
     mock_EndDeviceMapper.map_to_response = mock.Mock()
 
     # Act
-    result = await EndDeviceManager.fetch_enddevice_with_site_id(
-        mock_session, site_id, RequestStateParameters(aggregator_id, None)
-    )
+    result = await EndDeviceManager.fetch_enddevice_with_site_id(mock_session, site_id, rsp_params)
 
     # Assert
     assert result is None
@@ -91,6 +89,7 @@ async def test_add_or_update_enddevice_for_aggregator(
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_upsert_site_for_aggregator.return_value = 4321
@@ -98,13 +97,13 @@ async def test_add_or_update_enddevice_for_aggregator(
 
     # Act
     returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
-        mock_session, RequestStateParameters(aggregator_id, None), end_device
+        mock_session, rsp_params, end_device
     )
     assert returned_site_id == mock_upsert_site_for_aggregator.return_value
 
     # Assert
     assert_mock_session(mock_session, committed=True)
-    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
+    mock_EndDeviceMapper.map_from_request.assert_called_once_with(rsp_params, end_device, aggregator_id, now)
     mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
     mock_datetime.now.assert_called_once()
 
@@ -131,6 +130,7 @@ async def test_fetch_enddevicelist_with_aggregator_id(
         generate_class_instance(Site, seed=101, optional_is_none=False),
         generate_class_instance(Site, seed=202, optional_is_none=True),
     ]
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
     mock_select_all_sites_with_aggregator_id.return_value = returned_sites
@@ -138,14 +138,14 @@ async def test_fetch_enddevicelist_with_aggregator_id(
 
     # Act
     result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
-        mock_session, RequestStateParameters(aggregator_id, None), start, after, limit
+        mock_session, rsp_params, start, after, limit
     )
 
     # Assert
     assert result is mapped_ed_list
     assert_mock_session(mock_session, committed=False)
 
-    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(returned_sites, returned_site_count)
+    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(rsp_params, returned_sites, returned_site_count)
     mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session, aggregator_id, start, after, limit)
     mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, after)
 
@@ -170,6 +170,7 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(
     mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
     returned_site_count = 123
     returned_sites: list[Site] = []
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
     mock_select_all_sites_with_aggregator_id.return_value = returned_sites
@@ -177,14 +178,14 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(
 
     # Act
     result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
-        mock_session, RequestStateParameters(aggregator_id, None), start, after, limit
+        mock_session, rsp_params, start, after, limit
     )
 
     # Assert
     assert result is mapped_ed_list
     assert_mock_session(mock_session, committed=False)
 
-    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(returned_sites, returned_site_count)
+    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(rsp_params, returned_sites, returned_site_count)
     mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session, aggregator_id, start, after, limit)
     mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, after)
 
@@ -203,15 +204,14 @@ async def test_end_device_manager_fetch_existing_connection_point(
     aggregator_id = 2
     raw_site: Site = generate_class_instance(Site)
     mapped_cp: ConnectionPointResponse = generate_class_instance(ConnectionPointResponse)
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     # Just do a simple passthrough
     mock_select_single_site_with_site_id.return_value = raw_site
     mock_ConnectionPointMapper.map_to_response = mock.Mock(return_value=mapped_cp)
 
     # Act
-    result = await EndDeviceManager.fetch_connection_point_for_site(
-        mock_session, site_id, RequestStateParameters(aggregator_id, None)
-    )
+    result = await EndDeviceManager.fetch_connection_point_for_site(mock_session, site_id, rsp_params)
 
     # Assert
     assert result is mapped_cp
@@ -219,7 +219,7 @@ async def test_end_device_manager_fetch_existing_connection_point(
     mock_select_single_site_with_site_id.assert_called_once_with(
         session=mock_session, site_id=site_id, aggregator_id=aggregator_id
     )
-    mock_ConnectionPointMapper.map_to_response.assert_called_once_with(raw_site)
+    mock_ConnectionPointMapper.map_to_response.assert_called_once_with(rsp_params, raw_site)
 
 
 @pytest.mark.anyio
@@ -235,14 +235,13 @@ async def test_end_device_manager_fetch_missing_connection_point(
     mock_session = create_mock_session()
     site_id = 1
     aggregator_id = 2
+    rsp_params = RequestStateParameters(aggregator_id, None)
 
     mock_select_single_site_with_site_id.return_value = None  # database entity is missing / bad ID lookup
     mock_ConnectionPointMapper.map_to_response = mock.Mock()
 
     # Act
-    result = await EndDeviceManager.fetch_connection_point_for_site(
-        mock_session, site_id, RequestStateParameters(aggregator_id, None)
-    )
+    result = await EndDeviceManager.fetch_connection_point_for_site(mock_session, site_id, rsp_params)
 
     # Assert
     assert result is None

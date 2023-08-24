@@ -5,7 +5,8 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 )
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
-from envoy.server.mapper.common import generate_mrid
+from envoy.server.api.request import RequestStateParameters
+from envoy.server.mapper.common import generate_href, generate_mrid
 
 # Function set assignments are virtual i.e. there are no corresponding tables in the database
 # We use the generate_mrid function to create a fake mRID and use FUNCTION_SET_ASSIGNMENTS_MRID_PREFIX
@@ -15,30 +16,36 @@ FUNCTION_SET_ASSIGNMENTS_MRID_PREFIX = int("F5A", 16)
 
 class FunctionSetAssignmentsMapper:
     @staticmethod
-    def map_to_response(fsa_id: int, site_id: int, doe_count: int, tariff_count: int) -> FunctionSetAssignmentsResponse:
+    def map_to_response(
+        rs_params: RequestStateParameters, fsa_id: int, site_id: int, doe_count: int, tariff_count: int
+    ) -> FunctionSetAssignmentsResponse:
         return FunctionSetAssignmentsResponse.validate(
             {
-                "href": uri.FunctionSetAssignmentsUri.format(
+                "href": generate_href(
+                    uri.FunctionSetAssignmentsUri,
+                    rs_params,
                     fsa_id=fsa_id,
                     site_id=site_id,
                 ),
                 "mRID": generate_mrid(FUNCTION_SET_ASSIGNMENTS_MRID_PREFIX, fsa_id, site_id),
                 "description": "",
-                "TimeLink": Link(href=uri.TimeUri),
+                "TimeLink": Link(href=generate_href(uri.TimeUri, rs_params)),
                 "TariffProfileListLink": ListLink(
-                    href=uri.TariffProfileListUri.format(site_id=site_id), all_=tariff_count
+                    href=generate_href(uri.TariffProfileListUri, rs_params, site_id=site_id), all_=tariff_count
                 ),
-                "DERProgramListLink": ListLink(href=uri.DERProgramListUri.format(site_id=site_id), all_=doe_count),
+                "DERProgramListLink": ListLink(
+                    href=generate_href(uri.DERProgramListUri, rs_params, site_id=site_id), all_=doe_count
+                ),
             }
         )
 
     @staticmethod
     def map_to_list_response(
-        function_set_assignments: list[FunctionSetAssignmentsResponse], site_id: int
+        rs_params: RequestStateParameters, function_set_assignments: list[FunctionSetAssignmentsResponse], site_id: int
     ) -> FunctionSetAssignmentsListResponse:
         return FunctionSetAssignmentsListResponse.validate(
             {
-                "href": uri.FunctionSetAssignmentsListUri.format(site_id=site_id),
+                "href": generate_href(uri.FunctionSetAssignmentsListUri, rs_params, site_id=site_id),
                 "all_": 1,
                 "results": 1,
                 "FunctionSetAssignments": function_set_assignments,

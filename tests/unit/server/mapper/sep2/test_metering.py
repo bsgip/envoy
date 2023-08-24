@@ -18,6 +18,7 @@ from envoy_schema.server.schema.sep2.types import (
     UomType,
 )
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.metering import MirrorUsagePointListMapper, MirrorUsagePointMapper
 from envoy.server.model.site import Site
@@ -122,8 +123,9 @@ def test_MirrorUsagePointMapper_map_to_response():
     srt_optional.phase = PhaseCode.NOT_APPLICABLE
     srt_optional.data_qualifier = DataQualifierType.AVERAGE
     srt_optional.flow_direction = FlowDirectionType.NOT_APPLICABLE
+    rs_params = RequestStateParameters(1, None)
 
-    result_all_set = MirrorUsagePointMapper.map_to_response(srt_all_set, site)
+    result_all_set = MirrorUsagePointMapper.map_to_response(rs_params, srt_all_set, site)
     assert result_all_set is not None
     assert isinstance(result_all_set, MirrorUsagePoint)
     assert result_all_set.href == uris.MirrorUsagePointUri.format(mup_id=srt_all_set.site_reading_type_id)
@@ -135,7 +137,7 @@ def test_MirrorUsagePointMapper_map_to_response():
     assert result_all_set.mirrorMeterReadings[0].readingType.uom == srt_all_set.uom
     assert result_all_set.mirrorMeterReadings[0].readingType.powerOfTenMultiplier == srt_all_set.power_of_ten_multiplier
 
-    result_optional = MirrorUsagePointMapper.map_to_response(srt_optional, site)
+    result_optional = MirrorUsagePointMapper.map_to_response(rs_params, srt_optional, site)
     assert result_optional is not None
     assert isinstance(result_optional, MirrorUsagePoint)
     assert result_optional.href == uris.MirrorUsagePointUri.format(mup_id=srt_optional.site_reading_type_id)
@@ -164,10 +166,11 @@ def test_MirrorUsagePointMapper_map_to_list_response(mock_MirrorUsagePointMapper
     srt_all_set: SiteReadingType = generate_class_instance(SiteReadingType, seed=202, optional_is_none=False)
     srt_all_set.site = site
     mapped_mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=303)
+    rs_params = RequestStateParameters(1, None)
 
     mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
 
-    result_all_set = MirrorUsagePointListMapper.map_to_list_response([srt_all_set], srt_count)
+    result_all_set = MirrorUsagePointListMapper.map_to_list_response(rs_params, [srt_all_set], srt_count)
     assert result_all_set is not None
     assert isinstance(result_all_set, MirrorUsagePointListResponse)
     assert result_all_set.all_ == srt_count
@@ -176,4 +179,4 @@ def test_MirrorUsagePointMapper_map_to_list_response(mock_MirrorUsagePointMapper
     assert result_all_set.mirrorUsagePoints[0] == mapped_mup
 
     # Ensure we depend on the underlying individual entity map_to_response
-    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(srt_all_set, site)
+    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(rs_params, srt_all_set, site)

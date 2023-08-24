@@ -24,7 +24,7 @@ class DERProgramManager:
             raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
         total_does = await count_does(session, request_params.aggregator_id, site_id, datetime.min)
-        return DERProgramMapper.doe_program_list_response(site_id, total_does)
+        return DERProgramMapper.doe_program_list_response(request_params, site_id, total_does)
 
     @staticmethod
     async def fetch_doe_program_for_site(
@@ -38,7 +38,7 @@ class DERProgramManager:
             raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
         total_does = await count_does(session, request_params.aggregator_id, site_id, datetime.min)
-        return DERProgramMapper.doe_program_response(site_id, total_does)
+        return DERProgramMapper.doe_program_response(request_params, site_id, total_does)
 
 
 class DERControlManager:
@@ -56,7 +56,7 @@ class DERControlManager:
 
         does = await select_does(session, request_params.aggregator_id, site_id, start, changed_after, limit)
         total_count = await count_does(session, request_params.aggregator_id, site_id, changed_after)
-        return DERControlMapper.map_to_list_response(does, total_count, site_id)
+        return DERControlMapper.map_to_list_response(request_params, does, total_count, site_id)
 
     @staticmethod
     async def fetch_doe_controls_for_site_day(
@@ -74,4 +74,4 @@ class DERControlManager:
             session, request_params.aggregator_id, site_id, day, start, changed_after, limit
         )
         total_count = await count_does_for_day(session, request_params.aggregator_id, site_id, day, changed_after)
-        return DERControlMapper.map_to_list_response(does, total_count, site_id)
+        return DERControlMapper.map_to_list_response(request_params, does, total_count, site_id)

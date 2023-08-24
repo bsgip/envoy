@@ -19,8 +19,9 @@ from envoy_schema.server.schema.sep2.types import (
     ServiceKind,
 )
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import generate_mrid
+from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 
@@ -86,12 +87,12 @@ class MirrorUsagePointMapper:
         )
 
     @staticmethod
-    def map_to_response(srt: SiteReadingType, site: Site) -> MirrorUsagePoint:
+    def map_to_response(rs_params: RequestStateParameters, srt: SiteReadingType, site: Site) -> MirrorUsagePoint:
         """Maps a SiteReadingType and associated Site into a MirrorUsagePoint"""
 
         return MirrorUsagePoint.validate(
             {
-                "href": uris.MirrorUsagePointUri.format(mup_id=srt.site_reading_type_id),
+                "href": generate_href(uris.MirrorUsagePointUri, rs_params, mup_id=srt.site_reading_type_id),
                 "deviceLFDI": site.lfdi,
                 "postRate": None,
                 "roleFlags": RoleFlagsType.NONE,
@@ -121,15 +122,17 @@ class MirrorUsagePointMapper:
 
 class MirrorUsagePointListMapper:
     @staticmethod
-    def map_to_list_response(srts: Sequence[SiteReadingType], srt_count: int) -> MirrorUsagePointListResponse:
+    def map_to_list_response(
+        rs_params: RequestStateParameters, srts: Sequence[SiteReadingType], srt_count: int
+    ) -> MirrorUsagePointListResponse:
         """Maps a set of SiteReadingType (requires the associated site relationship being populated for each
         SiteReadingType)"""
         return MirrorUsagePointListResponse.validate(
             {
-                "href": uris.MirrorUsagePointListUri,
+                "href": generate_href(uris.MirrorUsagePointListUri, rs_params),
                 "all_": srt_count,
                 "results": len(srts),
-                "mirrorUsagePoints": [MirrorUsagePointMapper.map_to_response(srt, srt.site) for srt in srts],
+                "mirrorUsagePoints": [MirrorUsagePointMapper.map_to_response(rs_params, srt, srt.site) for srt in srts],
             }
         )
 

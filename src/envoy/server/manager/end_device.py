@@ -26,7 +26,7 @@ class EndDeviceManager:
         )
         if site is None:
             return None
-        return EndDeviceMapper.map_to_response(site)
+        return EndDeviceMapper.map_to_response(request_params, site)
 
     @staticmethod
     async def add_or_update_enddevice_for_aggregator(
@@ -81,4 +81,4 @@ class EndDeviceListManager:
             session, request_params.aggregator_id, start, after, limit
         )
         site_count = await select_aggregator_site_count(session, request_params.aggregator_id, after)
-        return EndDeviceListMapper.map_to_response(site_list, site_count)
+        return EndDeviceListMapper.map_to_response(request_params, site_list, site_count)

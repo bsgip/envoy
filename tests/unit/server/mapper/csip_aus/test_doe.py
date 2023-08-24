@@ -6,6 +6,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERProgramResponse,
 )
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.csip_aus.doe import DERControlMapper, DERProgramMapper
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from tests.data.fake.generator import generate_class_instance
@@ -61,8 +62,9 @@ def test_map_derc_to_list_response():
 
     all_does = [doe1, doe2, doe3, doe4]
     site_id = 54121
+    rs_params = RequestStateParameters(1, None)
 
-    result = DERControlMapper.map_to_list_response(all_does, site_count, site_id)
+    result = DERControlMapper.map_to_list_response(rs_params, all_does, site_count, site_id)
     assert result is not None
     assert isinstance(result, DERControlListResponse)
     assert result.all_ == site_count
@@ -75,7 +77,7 @@ def test_map_derc_to_list_response():
     ), f"Expected {len(all_does)} unique mrid's in the children"
     assert str(site_id) in result.href
 
-    empty_result = DERControlMapper.map_to_list_response([], site_count, site_id)
+    empty_result = DERControlMapper.map_to_list_response(rs_params, [], site_count, site_id)
     assert empty_result is not None
     assert isinstance(empty_result, DERControlListResponse)
     assert empty_result.all_ == site_count
@@ -87,8 +89,9 @@ def test_map_derp_doe_program_response():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
     site_id = 123
     total_does = 456
+    rs_params = RequestStateParameters(1, None)
 
-    result = DERProgramMapper.doe_program_response(site_id, total_does)
+    result = DERProgramMapper.doe_program_response(rs_params, site_id, total_does)
     assert result is not None
     assert isinstance(result, DERProgramResponse)
     assert result.href
@@ -102,8 +105,9 @@ def test_map_derp_doe_program_list_response():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
     site_id = 123
     total_does = 456
+    rs_params = RequestStateParameters(1, None)
 
-    result = DERProgramMapper.doe_program_list_response(site_id, total_does)
+    result = DERProgramMapper.doe_program_list_response(rs_params, site_id, total_does)
     assert result is not None
     assert isinstance(result, DERProgramListResponse)
     assert result.href
@@ -117,10 +121,11 @@ def test_map_derp_doe_program_list_response():
 def test_mrid_uniqueness():
     """Test our mrids for controls differ from programs even when the ID's are the same"""
     site_id = 1
+    rs_params = RequestStateParameters(1, None)
     doe: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope)
     doe.site_id = site_id
     doe.dynamic_operating_envelope_id = site_id  # intentionally the same as site_id
 
-    program = DERProgramMapper.doe_program_response(site_id, 999)
+    program = DERProgramMapper.doe_program_response(rs_params, site_id, 999)
     control = DERControlMapper.map_to_response(doe)
     assert program.mRID != control.mRID

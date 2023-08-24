@@ -29,7 +29,7 @@ router = APIRouter()
 
 @router.head(uri.PricingReadingTypeUri)
 @router.get(uri.PricingReadingTypeUri, status_code=HTTPStatus.OK)
-async def get_pricingreadingtype(reading_type: PricingReadingType) -> XmlResponse:
+async def get_pricingreadingtype(request: Request, reading_type: PricingReadingType) -> XmlResponse:
     """Responds with ReadingType describing the priced type of reading. This is to handle the ReadingType link
     referenced href callback from RateComponent.ReadingTypeLink.
 
@@ -39,7 +39,7 @@ async def get_pricingreadingtype(reading_type: PricingReadingType) -> XmlRespons
         fastapi.Response object.
     """
     try:
-        return XmlResponse(PricingReadingTypeMapper.create_reading_type(reading_type))
+        return XmlResponse(PricingReadingTypeMapper.create_reading_type(extract_request_params(request), reading_type))
     except BadRequestError:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Unsupported reading_type {reading_type}")
 
@@ -68,6 +68,7 @@ async def get_tariffprofilelist_nositescope(
     try:
         tp_list = await TariffProfileManager.fetch_tariff_profile_list_no_site(
             db.session,
+            request_params=extract_request_params(request),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -131,7 +132,9 @@ async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) 
 
     """
     try:
-        tp = await TariffProfileManager.fetch_tariff_profile_no_site(db.session, tariff_id)
+        tp = await TariffProfileManager.fetch_tariff_profile_no_site(
+            db.session, extract_request_params(request), tariff_id
+        )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 

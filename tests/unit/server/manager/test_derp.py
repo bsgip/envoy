@@ -34,15 +34,16 @@ async def test_program_fetch_list(
     mock_select_single_site_with_site_id.return_value = existing_site
     mock_count_does.return_value = doe_count
     mock_DERProgramMapper.doe_program_list_response = mock.Mock(return_value=mapped_list)
+    rsp_params = RequestStateParameters(agg_id, "651")
 
     # Act
-    result = await DERProgramManager.fetch_list_for_site(mock_session, RequestStateParameters(agg_id, "651"), site_id)
+    result = await DERProgramManager.fetch_list_for_site(mock_session, rsp_params, site_id)
 
     # Assert
     assert result is mapped_list
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, site_id, agg_id)
     mock_count_does.assert_called_once_with(mock_session, agg_id, site_id, datetime.min)
-    mock_DERProgramMapper.doe_program_list_response.assert_called_once_with(site_id, doe_count)
+    mock_DERProgramMapper.doe_program_list_response.assert_called_once_with(rsp_params, site_id, doe_count)
     assert_mock_session(mock_session)
 
 
@@ -62,10 +63,11 @@ async def test_program_fetch_list_site_dne(
 
     mock_session = create_mock_session()
     mock_select_single_site_with_site_id.return_value = None
+    rsp_params = RequestStateParameters(agg_id, None)
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERProgramManager.fetch_list_for_site(mock_session, RequestStateParameters(agg_id, None), site_id)
+        await DERProgramManager.fetch_list_for_site(mock_session, rsp_params, site_id)
 
     # Assert
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, site_id, agg_id)
@@ -95,17 +97,16 @@ async def test_program_fetch(
     mock_select_single_site_with_site_id.return_value = existing_site
     mock_count_does.return_value = doe_count
     mock_DERProgramMapper.doe_program_response = mock.Mock(return_value=mapped_program)
+    rsp_params = RequestStateParameters(agg_id, None)
 
     # Act
-    result = await DERProgramManager.fetch_doe_program_for_site(
-        mock_session, RequestStateParameters(agg_id, None), site_id
-    )
+    result = await DERProgramManager.fetch_doe_program_for_site(mock_session, rsp_params, site_id)
 
     # Assert
     assert result is mapped_program
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, site_id, agg_id)
     mock_count_does.assert_called_once_with(mock_session, agg_id, site_id, datetime.min)
-    mock_DERProgramMapper.doe_program_response.assert_called_once_with(site_id, doe_count)
+    mock_DERProgramMapper.doe_program_response.assert_called_once_with(rsp_params, site_id, doe_count)
     assert_mock_session(mock_session)
 
 
@@ -162,10 +163,11 @@ async def test_fetch_doe_controls_for_site(
     mock_count_does.return_value = doe_count
     mock_select_does.return_value = does_page
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
+    rsp_params = RequestStateParameters(agg_id, None)
 
     # Act
     result = await DERControlManager.fetch_doe_controls_for_site(
-        mock_session, RequestStateParameters(agg_id, None), site_id, start, changed_after, limit
+        mock_session, rsp_params, site_id, start, changed_after, limit
     )
 
     # Assert
@@ -173,7 +175,7 @@ async def test_fetch_doe_controls_for_site(
 
     mock_count_does.assert_called_once_with(mock_session, agg_id, site_id, changed_after)
     mock_select_does.assert_called_once_with(mock_session, agg_id, site_id, start, changed_after, limit)
-    mock_DERControlMapper.map_to_list_response.assert_called_once_with(does_page, doe_count, site_id)
+    mock_DERControlMapper.map_to_list_response.assert_called_once_with(rsp_params, does_page, doe_count, site_id)
     assert_mock_session(mock_session)
 
 
@@ -200,6 +202,7 @@ async def test_fetch_doe_controls_for_site_for_day(
         generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True),
     ]
     mapped_list = generate_class_instance(DERControlListResponse)
+    rsp_params = RequestStateParameters(agg_id, None)
 
     mock_session = create_mock_session()
     mock_count_does_for_day.return_value = doe_count
@@ -208,7 +211,7 @@ async def test_fetch_doe_controls_for_site_for_day(
 
     # Act
     result = await DERControlManager.fetch_doe_controls_for_site_day(
-        mock_session, RequestStateParameters(agg_id, None), site_id, day, start, changed_after, limit
+        mock_session, rsp_params, site_id, day, start, changed_after, limit
     )
 
     # Assert
@@ -216,5 +219,5 @@ async def test_fetch_doe_controls_for_site_for_day(
 
     mock_count_does_for_day.assert_called_once_with(mock_session, agg_id, site_id, day, changed_after)
     mock_select_does_for_day.assert_called_once_with(mock_session, agg_id, site_id, day, start, changed_after, limit)
-    mock_DERControlMapper.map_to_list_response.assert_called_once_with(does_page, doe_count, site_id)
+    mock_DERControlMapper.map_to_list_response.assert_called_once_with(rsp_params, does_page, doe_count, site_id)
     assert_mock_session(mock_session)

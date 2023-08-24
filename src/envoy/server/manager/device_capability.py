@@ -16,4 +16,4 @@ class DeviceCapabilityManager:
             session=session, model=DeviceCapabilityResponse, aggregator_id=request_params.aggregator_id
         )
 
-        return DeviceCapabilityMapper.map_to_response(links=links)
+        return DeviceCapabilityMapper.map_to_response(rs_params=request_params, links=links)

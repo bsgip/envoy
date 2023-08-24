@@ -22,7 +22,7 @@ class FunctionSetAssignmentsManager:
         tariff_count = await pricing.select_tariff_count(session, datetime.min)
         doe_count = 1
         return FunctionSetAssignmentsMapper.map_to_response(
-            fsa_id=fsa_id, site_id=site_id, doe_count=doe_count, tariff_count=tariff_count
+            rs_params=request_params, fsa_id=fsa_id, site_id=site_id, doe_count=doe_count, tariff_count=tariff_count
         )
 
     @staticmethod
@@ -42,5 +42,5 @@ class FunctionSetAssignmentsManager:
         )
 
         return FunctionSetAssignmentsMapper.map_to_list_response(
-            function_set_assignments=[function_set_assignments], site_id=site_id
+            rs_params=request_params, function_set_assignments=[function_set_assignments], site_id=site_id
         )

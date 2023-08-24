@@ -1,5 +1,6 @@
 from envoy_schema.server.schema.sep2 import identification
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,
     FunctionSetAssignmentsMapper,
@@ -14,8 +15,9 @@ def test_map_to_response():
     site_id = 9
     doe_count = 1  # End devices can only have 1 DOE associated with them
     tariff_count = 6
+    rs_params = RequestStateParameters(1, None)
     result = FunctionSetAssignmentsMapper.map_to_response(
-        fsa_id=fsa_id, site_id=site_id, doe_count=doe_count, tariff_count=tariff_count
+        rs_params=rs_params, fsa_id=fsa_id, site_id=site_id, doe_count=doe_count, tariff_count=tariff_count
     )
     assert result is not None
     assert isinstance(result, FunctionSetAssignmentsResponse)
@@ -27,8 +29,10 @@ def test_map_to_response():
 def test_map_to_list_response():
     site_id = 10
     function_set_assignments = [generator.generate_class_instance(FunctionSetAssignmentsResponse)]
+    rs_params = RequestStateParameters(1, None)
+
     result = FunctionSetAssignmentsMapper.map_to_list_response(
-        function_set_assignments=function_set_assignments, site_id=site_id
+        rs_params=rs_params, function_set_assignments=function_set_assignments, site_id=site_id
     )
     assert result is not None
     assert isinstance(result, FunctionSetAssignmentsListResponse)

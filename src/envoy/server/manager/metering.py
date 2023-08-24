@@ -65,7 +65,7 @@ class MirrorMeteringManager:
         if srt is None:
             raise NotFoundError(f"MirrorUsagePoint with id {site_reading_type_id} doesn't exist or is inaccessible")
 
-        return MirrorUsagePointMapper.map_to_response(srt, srt.site)
+        return MirrorUsagePointMapper.map_to_response(request_params, srt, srt.site)
 
     @staticmethod
     async def add_or_update_readings(
@@ -115,4 +115,4 @@ class MirrorMeteringManager:
             session=session, aggregator_id=request_params.aggregator_id, changed_after=changed_after
         )
 
-        return MirrorUsagePointListMapper.map_to_list_response(srts, count)
+        return MirrorUsagePointListMapper.map_to_list_response(request_params, srts, count)
