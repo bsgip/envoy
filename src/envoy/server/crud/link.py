@@ -8,7 +8,9 @@ from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud import end_device, site_reading
+from envoy.server.mapper.common import generate_href
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +178,7 @@ SEP2_LINK_MAP = {
 async def get_supported_links(
     session: AsyncSession,
     model: type[pydantic_xml.BaseXmlModel],
-    aggregator_id: int,
+    rs_params: RequestStateParameters,
     uri_parameters: Optional[dict] = None,
 ) -> dict[str, dict[str, str]]:
     """
@@ -209,9 +211,11 @@ async def get_supported_links(
     """
     link_names = get_link_field_names(schema=model.schema())
     supported_links_names = filter(check_link_supported, link_names)
-    supported_links = get_formatted_links(link_names=supported_links_names, uri_parameters=uri_parameters)
+    supported_links = get_formatted_links(
+        rs_params=rs_params, link_names=supported_links_names, uri_parameters=uri_parameters
+    )
     resource_counts = await get_resource_counts(
-        session=session, link_names=supported_links.keys(), aggregator_id=aggregator_id
+        session=session, link_names=supported_links.keys(), aggregator_id=rs_params.aggregator_id
     )
     updated_supported_links = add_resource_counts_to_links(links=supported_links, resource_counts=resource_counts)
 
@@ -341,6 +345,7 @@ def check_function_set_supported(function_set: FunctionSet, function_set_status:
 
 def get_formatted_links(
     link_names: Iterable[str],
+    rs_params: RequestStateParameters,
     uri_parameters: Optional[dict] = None,
     link_map: dict[str, LinkParameters] = SEP2_LINK_MAP,
 ) -> dict[str, dict[str, str]]:
@@ -353,6 +358,7 @@ def get_formatted_links(
 
     Args:
         link_names: A list of link-names.
+        rs_params: Request state parameters that might influence the links being generated
         uri_parameters: The parameters to be inserted into the link URI
         link_map: Maps link-names to URIs. Defaults to using SEP2_LINK_MAP.
 
@@ -362,11 +368,6 @@ def get_formatted_links(
     Raises:
         MissingUriParameterError: when URI parameters are required by the URI but are not supplied.
     """
-
-    class FailMissingParam(dict):
-        def __missing__(self, key):
-            raise MissingUriParameterError(f"{key} not found.")
-
     if uri_parameters is None:
         uri_parameters = {}
 
@@ -374,7 +375,10 @@ def get_formatted_links(
     for link_name in link_names:
         if link_name in link_map:
             uri = link_map[link_name].uri
-            formatted_uri = uri.format_map(FailMissingParam(uri_parameters))
+            try:
+                formatted_uri = generate_href(uri, rs_params, **uri_parameters)
+            except KeyError as ex:
+                raise MissingUriParameterError(f"KeyError for params {uri_parameters} error {ex}.")
             links[link_name] = {"href": formatted_uri}
     return links
 

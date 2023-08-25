@@ -33,6 +33,8 @@ from tests.integration.request import build_paging_params
 from tests.integration.response import assert_response_header, read_location_header, read_response_body_string
 from tests.postgres_testing import generate_async_session
 
+HREF_PREFIX = "/prefix"
+
 
 @pytest.mark.parametrize(
     "start, changed_after, limit, cert, expected_count, expected_mup_hrefs",
@@ -184,6 +186,78 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
     parsed_list_response: MirrorUsagePointListResponse = MirrorUsagePointListResponse.from_xml(body)
     assert parsed_list_response.results == 1, f"received body:\n{body}"
     assert [mup.href for mup in parsed_list_response.mirrorUsagePoints] == [expected_href]
+
+
+@pytest.mark.parametrize(
+    "mup, expected_href",
+    [
+        # Create a new mup
+        (
+            MirrorUsagePointRequest.validate(
+                {
+                    "mRID": "123",
+                    "deviceLFDI": "site1-lfdi",
+                    "serviceCategoryKind": ServiceKind.ELECTRICITY,
+                    "roleFlags": 0,
+                    "status": 0,
+                    "mirrorMeterReadings": [
+                        {
+                            "mRID": "123abc",
+                            "readingType": {
+                                "powerOfTenMultiplier": 5,
+                                "kind": KindType.POWER,
+                                "uom": UomType.DISPLACEMENT_POWER_FACTOR_COSTHETA,
+                                "phase": PhaseCode.PHASE_CA,
+                                "flowDirection": FlowDirectionType.REVERSE,
+                            },
+                        }
+                    ],
+                }
+            ),
+            HREF_PREFIX + "/mup/6",
+        ),
+        # Update an existing mup
+        (
+            MirrorUsagePointRequest.validate(
+                {
+                    "mRID": "456",
+                    "deviceLFDI": "site1-lfdi",
+                    "serviceCategoryKind": ServiceKind.ELECTRICITY,
+                    "roleFlags": 0,
+                    "status": 0,
+                    "mirrorMeterReadings": [
+                        {
+                            "mRID": "456abc",
+                            "readingType": {
+                                "powerOfTenMultiplier": 3,
+                                "kind": KindType.POWER,
+                                "uom": UomType.REAL_POWER_WATT,
+                                "phase": PhaseCode.PHASE_B,
+                                "flowDirection": FlowDirectionType.FORWARD,
+                                "dataQualifier": DataQualifierType.AVERAGE,
+                                "accumulationBehaviour": AccumulationBehaviourType.CUMULATIVE,
+                                "intervalLength": None,
+                            },
+                        }
+                    ],
+                }
+            ),
+            HREF_PREFIX + "/mup/1",
+        ),
+    ],
+)
+@pytest.mark.anyio
+@pytest.mark.href_prefix(HREF_PREFIX)
+async def test_create_update_mup_href_prefix(client: AsyncClient, mup: MirrorUsagePointRequest, expected_href: str):
+    """Tests creating/updating a mup and seeing if the updates stick and can be fetched via list/direct requests"""
+    # create/update the mup
+    response = await client.post(
+        uris.MirrorUsagePointListUri,
+        content=MirrorUsagePointRequest.to_xml(mup, skip_empty=True),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    assert read_location_header(response) == expected_href
 
 
 @pytest.mark.anyio

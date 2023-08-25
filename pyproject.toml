@@ -8,6 +8,7 @@ filterwarnings = ["error::DeprecationWarning"]
 addopts = "--strict-markers"
 markers = [
     "cert_header: marks tests to use a custom value for cert_header instead of the default",
+    "href_prefix: marks tests to use a custom value for href_prefix instead of the default of None",
     "azure_ad_auth: marks tests to enable the azure active directory auth dependency",
     "azure_ad_db: marks tests to enable the azure active directory dynamic db creds dependency (requires azure_ad_auth)",
     "azure_ad_db_refresh_secs: marks tests to set the config value azure_ad_db_refresh_secs (requires azure_ad_db)",

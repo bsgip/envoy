@@ -102,3 +102,28 @@ async def test_connectionpoint_update_and_fetch(client: AsyncClient, connection_
     assert len(body) > 0
     parsed_response: ConnectionPointResponse = ConnectionPointResponse.from_xml(body)
     assert parsed_response.id == new_cp_specified.id
+
+
+@pytest.mark.anyio
+@pytest.mark.href_prefix("my/custom/prefix")
+async def test_connectionpoint_update_and_fetch_href_prefix(client: AsyncClient, connection_point_uri_format: str):
+    """Tests that connection points can be updated / fetched"""
+
+    # fire off our first update
+    href = connection_point_uri_format.format(site_id=1)
+    new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id="1212121212")
+    response = await client.post(
+        url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    body = read_response_body_string(response)
+    assert read_location_header(response) == "/my/custom/prefix" + href
+    assert len(body) == 0
+
+    # check it updated
+    response = await client.get(href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+    parsed_response: ConnectionPointResponse = ConnectionPointResponse.from_xml(body)
+    assert parsed_response.id == new_cp_specified.id

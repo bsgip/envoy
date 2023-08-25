@@ -21,6 +21,8 @@ from tests.integration.response import (
     read_response_body_string,
 )
 
+HREF_PREFIX = "/href/prefix/"
+
 
 @pytest.fixture
 def edev_base_uri():
@@ -183,6 +185,25 @@ async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
 
 
 @pytest.mark.anyio
+@pytest.mark.href_prefix(HREF_PREFIX)
+async def test_create_end_device_href_prefix(client: AsyncClient, edev_base_uri: str):
+    """Checks that the Location header encodes the HREF_PREFIX"""
+
+    insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    insert_request.postRate = 123
+    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=EndDeviceRequest.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    assert len(read_response_body_string(response)) == 0
+    inserted_href = read_location_header(response)
+    assert inserted_href.startswith(HREF_PREFIX)
+
+
+@pytest.mark.anyio
 async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     """Test that an aggregator can update its own end_device but another aggregator cannot"""
 
@@ -249,6 +270,29 @@ async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
     assert len(body) > 0
     parsed_response: EndDeviceListResponse = EndDeviceListResponse.from_xml(body)
     assert parsed_response.all_ == 3, f"received body:\n{body}"
+
+
+@pytest.mark.anyio
+@pytest.mark.href_prefix(HREF_PREFIX)
+async def test_update_end_device_href_prefix(client: AsyncClient, edev_base_uri: str):
+    """Test that an aggregator end_device and the Location header includes HREF_PREFIX"""
+
+    # Fire off an update that will succeed
+    updated_device_category = "{0:x}".format(int(DeviceCategory.INTERIOR_LIGHTING))
+    update_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    update_request.lFDI = "site1-lfdi"
+    update_request.sFDI = 1111
+    update_request.deviceCategory = updated_device_category  # update device category
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=EndDeviceRequest.to_xml(update_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    assert len(read_response_body_string(response)) == 0
+    inserted_href = read_location_header(response)
+    assert inserted_href.endswith("/1"), "Updating site 1"
+    assert inserted_href.startswith(HREF_PREFIX)
 
 
 @pytest.mark.anyio

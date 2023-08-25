@@ -22,6 +22,7 @@ from envoy.server.api.request import (
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.metering import MirrorMeteringManager
+from envoy.server.mapper.common import generate_href
 
 router = APIRouter(tags=["metering mirror"])
 logger = logging.getLogger(__name__)
@@ -85,9 +86,10 @@ async def post_mirror_usage_point_list(
         fastapi.Response object.
 
     """
+    rs_params = extract_request_params(request)
     try:
         mup_id = await MirrorMeteringManager.create_or_update_mirror_usage_point(
-            db.session, request_params=extract_request_params(request), mup=payload
+            db.session, request_params=rs_params, mup=payload
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -95,7 +97,8 @@ async def post_mirror_usage_point_list(
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
 
     return Response(
-        status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: uri.MirrorUsagePointUri.format(mup_id=mup_id)}
+        status_code=HTTPStatus.CREATED,
+        headers={LOCATION_HEADER_NAME: generate_href(uri.MirrorUsagePointUri, rs_params, mup_id=mup_id)},
     )
 
 

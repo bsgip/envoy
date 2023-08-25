@@ -20,6 +20,7 @@ from envoy.server.manager.pricing import (
     TariffProfileManager,
     TimeTariffIntervalManager,
 )
+from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.pricing import PricingReadingType, PricingReadingTypeMapper
 
 logger = logging.getLogger(__name__)
@@ -171,7 +172,8 @@ async def get_ratecomponentlist_nositescope(
     # return an empty list - clients will only discover this endpoint by querying for tariff profiles
     # directly. Tariff profiles need to be discovered via function set assignments and from there
     # they will directed to the appropriate endpoint describing site scoped rates
-    return XmlResponse(RateComponentListResponse.validate({"all_": 0, "results": 0, "href": request.url.path}))
+    href = generate_href(request.url.path, extract_request_params(request))
+    return XmlResponse(RateComponentListResponse.validate({"all_": 0, "results": 0, "href": href}))
 
 
 @router.head(uri.TariffProfileUri)

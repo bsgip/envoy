@@ -6,8 +6,10 @@ from envoy_schema.server.schema.sep2.types import TimeQualityType
 from fastapi import APIRouter, Request
 from tzlocal import get_localzone
 
+from envoy.server.api.request import extract_request_params
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.time import get_dst_info
+from envoy.server.mapper.common import generate_href
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +53,9 @@ async def get_time_resource(request: Request):
         now_utcoffset = datetime.timedelta()
     tz_offset = now_utcoffset.total_seconds() - dst_info.dst_offset
 
+    href = generate_href(request.url.path, extract_request_params(request))
     time_dict = {
-        "href": request.url.path,
+        "href": href,
         "currentTime": int(now_time.timestamp()),
         "dstEndTime": dst_info.dst_end,
         "dstOffset": dst_info.dst_offset,

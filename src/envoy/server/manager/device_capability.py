@@ -13,7 +13,9 @@ class DeviceCapabilityManager:
     ) -> DeviceCapabilityResponse:
         # Get all the 'Link's and 'ListLink's for a device capability response
         links = await link.get_supported_links(
-            session=session, model=DeviceCapabilityResponse, aggregator_id=request_params.aggregator_id
+            session=session,
+            rs_params=request_params,
+            model=DeviceCapabilityResponse,
         )
 
         return DeviceCapabilityMapper.map_to_response(rs_params=request_params, links=links)

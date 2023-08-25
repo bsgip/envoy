@@ -9,6 +9,7 @@ from fastapi_async_sqlalchemy import db
 from envoy.server.api.request import extract_request_params
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.manager.end_device import EndDeviceManager
+from envoy.server.mapper.common import generate_href
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +55,10 @@ async def update_connectionpoint(
         fastapi.Response object.
 
     """
-    updated = await EndDeviceManager.update_nmi_for_site(
-        db.session, extract_request_params(request), site_id, payload.id
-    )
+    rs_params = extract_request_params(request)
+    updated = await EndDeviceManager.update_nmi_for_site(db.session, rs_params, site_id, payload.id)
     if not updated:
         return Response(status_code=HTTPStatus.NOT_FOUND)
 
-    return Response(
-        status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: uri.ConnectionPointUri.format(site_id=site_id)}
-    )
+    location_href = generate_href(uri.ConnectionPointUri, rs_params, site_id=site_id)
+    return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})

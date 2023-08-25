@@ -204,3 +204,49 @@ async def test_crawl_hrefs(client: AsyncClient, valid_headers: dict):
             if new_uri not in visited_uris:
                 uris_to_visit.append((new_uri, uri))
     assert len(visited_uris) > len(ALL_ENDPOINTS_WITH_SUPPORTED_METHODS), "Sanity check to ensure we are finding uris"
+
+
+TEST_HREF_PREFIX_VALUE = "/my/prefix"
+
+
+@pytest.mark.anyio
+@pytest.mark.href_prefix(TEST_HREF_PREFIX_VALUE)
+async def test_crawl_hrefs_with_prefix(client: AsyncClient, valid_headers: dict):
+    """Crawls through ALL_ENDPOINTS_WITH_SUPPORTED_METHODS - makes every get request
+    and trawls the responses looking for more hrefs. Similar to test_crawl_hrefs the idea is to ensure that every
+    sequence of hrefs point to valid endpoints within envoy but what makes this test unique is that HREF_PREFIX is
+    set and is expected to be applied to all outgoing URIs"""
+    uris_to_visit = [
+        (uri, "initial") for (methods, uri) in ALL_ENDPOINTS_WITH_SUPPORTED_METHODS if HTTPMethod.GET in methods
+    ]
+    visited_uris: set[str] = set()
+    href_extractor = re.compile('href[\\r\\n ]*=[\\r\\n ]*"([^"]*)"', re.MULTILINE | re.IGNORECASE)
+
+    while len(uris_to_visit) > 0:
+        # get the next URI to visit
+        (uri, src_uri) = uris_to_visit.pop()
+        if uri in visited_uris:
+            continue
+        visited_uris.add(uri)
+
+        # make the request
+        response = await client.get(uri, headers=valid_headers)
+        if response.status_code == HTTPStatus.NOT_FOUND:
+            assert False, f"URI {uri} is not found. It was sourced from {src_uri}"
+        assert_response_header(response, HTTPStatus.OK)
+        body = read_response_body_string(response)
+        assert len(body) > 0, f"Empty body for {uri}"
+
+        # search for more hrefs to request from our response
+        # Ensure they all start with TEST_HREF_PREFIX_VALUE
+        for match in re.finditer(href_extractor, body):
+            prefixed_new_uri = match.group(1)
+            assert prefixed_new_uri.startswith(
+                TEST_HREF_PREFIX_VALUE
+            ), f"GET uri {uri} returned a href {prefixed_new_uri} that was NOT prefixed with {TEST_HREF_PREFIX_VALUE}\n{body}"
+
+            # The actual URI that our server will respond to is sans the prefix value
+            new_uri = prefixed_new_uri[len(TEST_HREF_PREFIX_VALUE) :]
+            if new_uri not in visited_uris:
+                uris_to_visit.append((new_uri, uri))
+    assert len(visited_uris) > len(ALL_ENDPOINTS_WITH_SUPPORTED_METHODS), "Sanity check to ensure we are finding uris"

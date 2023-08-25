@@ -60,6 +60,12 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Connection:
     else:
         os.unsetenv("AZURE_AD_DB_REFRESH_SECS")
 
+    href_prefix_marker = request.node.get_closest_marker("href_prefix")
+    if href_prefix_marker is not None:
+        os.environ["HREF_PREFIX"] = str(href_prefix_marker.args[0])
+    else:
+        os.environ["HREF_PREFIX"] = ""
+
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()
     try:

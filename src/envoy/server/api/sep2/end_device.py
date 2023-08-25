@@ -1,6 +1,7 @@
 import logging
 from http import HTTPStatus
 
+import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi_async_sqlalchemy import db
@@ -15,6 +16,7 @@ from envoy.server.api.request import (
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.exception import BadRequestError
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
+from envoy.server.mapper.common import generate_href
 
 logger = logging.getLogger(__name__)
 
@@ -98,11 +100,11 @@ async def create_end_device(
         fastapi.Response object.
 
     """
+    rs_params = extract_request_params(request)
     try:
-        site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
-            db.session, extract_request_params(request), payload
-        )
-        return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: f"/edev/{site_id}"})
+        site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(db.session, rs_params, payload)
+        location_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site_id)
+        return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
     except BadRequestError as exc:
         logger.debug(exc)
         raise HTTPException(detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)

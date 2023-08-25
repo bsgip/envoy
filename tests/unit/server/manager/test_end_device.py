@@ -103,7 +103,7 @@ async def test_add_or_update_enddevice_for_aggregator(
 
     # Assert
     assert_mock_session(mock_session, committed=True)
-    mock_EndDeviceMapper.map_from_request.assert_called_once_with(rsp_params, end_device, aggregator_id, now)
+    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
     mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
     mock_datetime.now.assert_called_once()
 
@@ -219,7 +219,7 @@ async def test_end_device_manager_fetch_existing_connection_point(
     mock_select_single_site_with_site_id.assert_called_once_with(
         session=mock_session, site_id=site_id, aggregator_id=aggregator_id
     )
-    mock_ConnectionPointMapper.map_to_response.assert_called_once_with(rsp_params, raw_site)
+    mock_ConnectionPointMapper.map_to_response.assert_called_once_with(raw_site)
 
 
 @pytest.mark.anyio

@@ -12,27 +12,23 @@ from envoy.server.manager.device_capability import DeviceCapabilityManager
 async def test_device_capability_manager_calls_get_supported_links(mock_map_to_response: mock.Mock):
     aggregator_id = 123
     session = mock.Mock()
+    rs_params = RequestStateParameters(aggregator_id, None)
 
     with mock.patch("envoy.server.crud.link.get_supported_links") as get_supported_links:
-        _ = await DeviceCapabilityManager.fetch_device_capability(
-            session=session, request_params=RequestStateParameters(aggregator_id, None)
-        )
+        _ = await DeviceCapabilityManager.fetch_device_capability(session=session, request_params=rs_params)
 
-    get_supported_links.assert_awaited_once_with(
-        session=session, model=DeviceCapabilityResponse, aggregator_id=aggregator_id
-    )
+    get_supported_links.assert_awaited_once_with(session=session, rs_params=rs_params, model=DeviceCapabilityResponse)
 
 
 @pytest.mark.anyio
 async def test_device_capability_manager_calls_map_to_response():
     aggregator_id = 123
     links = mock.Mock()
+    rs_params = RequestStateParameters(aggregator_id, None)
 
     with mock.patch("envoy.server.crud.link.get_supported_links", return_value=links), mock.patch(
         "envoy.server.manager.device_capability.DeviceCapabilityMapper.map_to_response"
     ) as map_to_response:
-        _ = await DeviceCapabilityManager.fetch_device_capability(
-            session=mock.Mock(), request_params=RequestStateParameters(aggregator_id, None)
-        )
+        _ = await DeviceCapabilityManager.fetch_device_capability(session=mock.Mock(), request_params=rs_params)
 
-    map_to_response.assert_called_once_with(links=links)
+    map_to_response.assert_called_once_with(rs_params=rs_params, links=links)

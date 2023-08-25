@@ -82,14 +82,14 @@ class DERControlMapper:
 
 class DERProgramMapper:
     @staticmethod
-    def doe_href(request_state_params: RequestStateParameters, site_id: int) -> str:
+    def doe_href(rs_params: RequestStateParameters, site_id: int) -> str:
         """Returns a href for a particular site's DER Program for Dynamic Operating Envelopes"""
-        return generate_href(uri.DERProgramUri, request_state_params, site_id=site_id, der_program_id=DOE_PROGRAM_ID)
+        return generate_href(uri.DERProgramUri, rs_params, site_id=site_id, der_program_id=DOE_PROGRAM_ID)
 
     @staticmethod
-    def doe_list_href(request_state_params: RequestStateParameters, site_id: int) -> str:
+    def doe_list_href(rs_params: RequestStateParameters, site_id: int) -> str:
         """Returns a href for a particular site's DER Program list"""
-        return generate_href(uri.DERProgramListUri, request_state_params, site_id=site_id)
+        return generate_href(uri.DERProgramListUri, rs_params, site_id=site_id)
 
     @staticmethod
     def doe_program_response(rs_params: RequestStateParameters, site_id: int, total_does: int) -> DERProgramResponse:
@@ -111,13 +111,13 @@ class DERProgramMapper:
 
     @staticmethod
     def doe_program_list_response(
-        site_id: int, rs_params: RequestStateParameters, total_does: int
+        rs_params: RequestStateParameters, site_id: int, total_does: int
     ) -> DERProgramListResponse:
         """Returns a fixed list of just the DOE Program"""
         return DERProgramListResponse.validate(
             {
-                "href": DERProgramMapper.doe_list_href(site_id, rs_params),
-                "DERProgram": [DERProgramMapper.doe_program_response(site_id, rs_params, total_does)],
+                "href": DERProgramMapper.doe_list_href(rs_params, site_id),
+                "DERProgram": [DERProgramMapper.doe_program_response(rs_params, site_id, total_does)],
                 "all_": 1,
                 "results": 1,
             }

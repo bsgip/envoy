@@ -60,7 +60,7 @@ class EndDeviceListMapper:
     ) -> EndDeviceListResponse:
         return EndDeviceListResponse.validate(
             {
-                "href": uri.EndDeviceListUri,
+                "href": generate_href(uri.EndDeviceListUri, rs_params),
                 "all_": site_count,
                 "results": len(site_list),
                 "EndDevice": [EndDeviceMapper.map_to_response(rs_params, site) for site in site_list],
