@@ -144,10 +144,7 @@ async def test_get_resource_counts(link_names: list[str], expected_resource_coun
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("link_name, resource_count", [("EndDeviceListLink", 5)])
-@mock.patch(  # Tricky patch to mock the db.session parameter passed to select_aggregator_site_count
-    "fastapi_async_sqlalchemy.middleware.DBSessionMeta.session"
-)
-async def test_get_resource_count(_: mock.Mock, link_name: str, resource_count: int):
+async def test_get_resource_count(link_name: str, resource_count: int):
     with mock.patch("envoy.server.crud.end_device.select_aggregator_site_count", return_value=resource_count):
         assert (
             await link.get_resource_count(session=mock.Mock(), list_link_name=link_name, aggregator_id=1)
