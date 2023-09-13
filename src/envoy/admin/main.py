@@ -14,7 +14,7 @@ logging.basicConfig(style="{", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def generate_app(new_settings: AppSettings):
+def generate_app(new_settings: AppSettings) -> FastAPI:
     """Generates a new app instance utilising the specific settings instance"""
     # Optionally enable the dynamic database credentials
     resource_id = new_settings.azure_ad_db_resource_id

@@ -135,7 +135,7 @@ async def upsert_site_reading_type_for_aggregator(
     return resp.scalar_one()
 
 
-async def upsert_site_readings(session: AsyncSession, site_readings: Iterable[SiteReading]):
+async def upsert_site_readings(session: AsyncSession, site_readings: Iterable[SiteReading]) -> None:
     """Creates or updates the specified site readings. It's assumed that each SiteReading will have
     been assigned a valid site_reading_type_id before calling this function. No validation will be made for ownership
 

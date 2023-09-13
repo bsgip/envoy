@@ -25,7 +25,7 @@ class LFDIAuthDepends:
         # fastapi will always return headers in lowercase form
         self.cert_header = cert_header.lower()
 
-    async def __call__(self, request: Request):
+    async def __call__(self, request: Request) -> None:
         # Try extracting the lfdi from either the PEM if we receive it directly or the fingerprint if we get that
         cert_header_val = request.headers.get(self.cert_header, None)
         if not cert_header_val:

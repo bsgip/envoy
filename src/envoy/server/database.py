@@ -1,10 +1,11 @@
 import logging
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
-from typing import Callable
+from typing import Any, AsyncIterator, Callable
 
 from fastapi import FastAPI
-from sqlalchemy import event
+from sqlalchemy import Dialect, event
 from sqlalchemy.engine import Engine
+from sqlalchemy.pool import ConnectionPoolEntry
 
 from envoy.server.api.auth.azure import AzureADResourceTokenConfig, update_azure_ad_token_cache
 from envoy.server.cache import AsyncCache
@@ -41,13 +42,15 @@ def enable_dynamic_azure_ad_database_credentials(
     cfg = AzureADResourceTokenConfig(tenant_id=tenant_id, client_id=client_id, resource_id=resource_id)
 
     @asynccontextmanager
-    async def context_manager(app: FastAPI):
+    async def context_manager(app: FastAPI) -> AsyncIterator:
         """This context manager will perform all setup before yield and teardown after yield"""
 
         # SQLAlchemy events do NOT support async so we need to perform some shenanigans to keep this running
         # We will use the cache.get_value_sync to fetch tokens and update_cache_Task to ensure they always remain
         # current.
-        def dynamic_db_do_connect_listener(dialect, conn_rec, cargs, cparams):
+        def dynamic_db_do_connect_listener(
+            dialect: Dialect, conn_rec: ConnectionPoolEntry, cargs: tuple[Any, ...], cparams: dict
+        ) -> None:
             """Designed to listen for the Engine do_connect event and update cargs with the latest cached"""
             resource_pwd = cache.get_value_sync(cfg, cfg.resource_id)
             cparams["password"] = resource_pwd

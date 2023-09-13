@@ -30,7 +30,7 @@ class AzureADAuthDepends:
         )
         self.cache = AsyncCache(update_fn=update_jwk_cache)
 
-    async def __call__(self, request: Request):
+    async def __call__(self, request: Request) -> None:
         # Extract bearer token
         cert_header_val = request.headers.get("authorization", None)
         if not cert_header_val:

@@ -48,7 +48,7 @@ class AsyncCache(Generic[K, V]):
         self._update_fn = update_fn
         self._force_update_delay_seconds = force_update_delay_seconds
 
-    async def clear(self):
+    async def clear(self) -> None:
         """Clears the internal cache - resetting it back to incomplete"""
         async with self._lock:
             self._cache = {}

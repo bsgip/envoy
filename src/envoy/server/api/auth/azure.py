@@ -116,7 +116,7 @@ async def update_jwk_cache(cfg: AzureADManagedIdentityConfig) -> dict[str, Expir
         return updated_cache
 
 
-async def validate_azure_ad_token(cfg: AzureADManagedIdentityConfig, cache: AsyncCache[str, JWK], token: str):
+async def validate_azure_ad_token(cfg: AzureADManagedIdentityConfig, cache: AsyncCache[str, JWK], token: str) -> None:
     """
     Given a raw JSON Web Token from Azure AD - decompose and validate that it's authorised for accessing this
     server instance (defined by cfg). This function will utilise an internal cache to minimise outgoing validation

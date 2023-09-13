@@ -19,6 +19,13 @@ exclude_dirs = ["tests"]
 
 [tool.mypy]
 exclude = ["src/envoy/server/alembic", "tests"]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+namespace_packages = true
+warn_redundant_casts = true
+warn_unused_ignores = true
 
 [build-system]
 requires = ["setuptools >= 40.9.0", "wheel"]

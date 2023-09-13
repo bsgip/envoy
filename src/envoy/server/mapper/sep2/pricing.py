@@ -270,7 +270,7 @@ class ConsumptionTariffIntervalMapper:
         day: date,
         time_of_day: time,
         price: Decimal,
-    ):
+    ) -> str:
         """Returns the href for a single instance of a ConsumptionTariffIntervalResponse at a set price"""
         base = ConsumptionTariffIntervalMapper.list_href(
             rs_params, tariff_id, site_id, pricing_reading, day, time_of_day, price
@@ -286,7 +286,7 @@ class ConsumptionTariffIntervalMapper:
         day: date,
         time_of_day: time,
         price: Decimal,
-    ):
+    ) -> str:
         """Returns the href for a list that will hold a single instance of a ConsumptionTariffIntervalResponse at a
         set price"""
         rate_component_id = day.isoformat()
@@ -359,7 +359,7 @@ class TimeTariffIntervalMapper:
         day: date,
         pricing_reading: PricingReadingType,
         time_of_day: time,
-    ):
+    ) -> str:
         """Creates a href that identifies a single TimeTariffIntervalResponse with the specified values"""
         rate_component_id = day.isoformat()
         tti_id = time_of_day.isoformat("minutes")

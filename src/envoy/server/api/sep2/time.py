@@ -3,7 +3,7 @@ import logging
 
 from envoy_schema.server.schema.sep2.time import TimeResponse
 from envoy_schema.server.schema.sep2.types import TimeQualityType
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 from tzlocal import get_localzone
 
 from envoy.server.api.request import extract_request_params
@@ -24,7 +24,7 @@ router = APIRouter(tags=["time"])
     response_model=TimeResponse,
     status_code=200,
 )
-async def get_time_resource(request: Request):
+async def get_time_resource(request: Request) -> Response:
     """Returns the sep2 time resource response.
 
     Pages 77-78 Discusses how timezones should be implemented. Report in the hosts timezone. Devices

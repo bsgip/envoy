@@ -36,7 +36,7 @@ async def get_all_tariffs(
 
 
 @router.get(TariffUpdateUri, status_code=HTTPStatus.OK, response_model=TariffResponse)
-async def get_tariff(tariff_id: int):
+async def get_tariff(tariff_id: int) -> TariffResponse:
     """Fetch a singular TariffResponse Object.
 
     Path Param:

@@ -161,7 +161,7 @@ async def post_mirror_usage_point(
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Request body must be a MirrorMeterReading")
 
     try:
-        mup_id = await MirrorMeteringManager.add_or_update_readings(
+        await MirrorMeteringManager.add_or_update_readings(
             db.session, request_params=extract_request_params(request), site_reading_type_id=mup_id, mmr=payload
         )
     except BadRequestError as ex:

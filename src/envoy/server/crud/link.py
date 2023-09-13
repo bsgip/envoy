@@ -275,7 +275,9 @@ async def get_resource_count(session: AsyncSession, list_link_name: str, aggrega
         raise NotImplementedError(f"No resource count implemented for '{list_link_name}'")
 
 
-def add_resource_counts_to_links(links: dict[str, dict[str, str]], resource_counts: dict[str, int]):
+def add_resource_counts_to_links(
+    links: dict[str, dict[str, str]], resource_counts: dict[str, int]
+) -> dict[str, dict[str, str]]:
     """Adds the resource counts to the links under the "all_" key.
 
     Example:

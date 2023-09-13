@@ -19,7 +19,7 @@ router = APIRouter()
 
 @router.head(uri.ConnectionPointUri)
 @router.get(uri.ConnectionPointUri, status_code=HTTPStatus.OK)
-async def get_connectionpoint(site_id: int, request: Request):
+async def get_connectionpoint(site_id: int, request: Request) -> Response:
     """Responds with a single ConnectionPointResponse resource linked to the EndDevice (as per CSIP-Aus).
 
     Args:
@@ -44,7 +44,7 @@ async def update_connectionpoint(
     site_id: int,
     request: Request,
     payload: ConnectionPointRequest = Depends(XmlRequest(ConnectionPointRequest)),
-):
+) -> Response:
     """Updates the connection point details associated with an EndDevice resource.
 
     Args:

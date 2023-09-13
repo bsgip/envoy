@@ -73,7 +73,7 @@ class MirrorMeteringManager:
         request_params: RequestStateParameters,
         site_reading_type_id: int,
         mmr: MirrorMeterReading,
-    ):
+    ) -> None:
         """Adds or updates a set of readings (updates based on start time) for a given site_reading_type (mup id)
 
         raises NotFoundError if the underlying site_reading_type_id DNE/doesn't belong to aggregator_id"""

@@ -2,7 +2,7 @@ import logging
 from http import HTTPStatus
 
 from envoy_schema.server.schema import uri
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 
 from envoy.server.api.request import (
@@ -30,7 +30,7 @@ async def get_derprogram_list(
     start: list[int] = Query([0], alias="s"),
     after: list[int] = Query([0], alias="a"),
     limit: list[int] = Query([1], alias="l"),
-):
+) -> Response:
     """Responds with a single DERProgramListResponse containing DER programs for the specified site
 
     Args:
@@ -58,7 +58,7 @@ async def get_derprogram_list(
 
 @router.head(uri.DERProgramUri)
 @router.get(uri.DERProgramUri, status_code=HTTPStatus.OK)
-async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str):
+async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str) -> Response:
     """Responds with a single DERProgramResponse for the DER Program specific to dynamic operating envelopes
 
     Args:
@@ -93,7 +93,7 @@ async def get_dercontrol_list(
     start: list[int] = Query([0], alias="s"),
     after: list[int] = Query([0], alias="a"),
     limit: list[int] = Query([1], alias="l"),
-):
+) -> Response:
     """Responds with a single DERControlListResponse containing DER Controls for the specified site under the
     dynamic operating envelope program.
 
@@ -137,7 +137,7 @@ async def get_dercontrol_list_for_date(
     start: list[int] = Query([0], alias="s"),
     after: list[int] = Query([0], alias="a"),
     limit: list[int] = Query([1], alias="l"),
-):
+) -> Response:
     """Responds with a single DERControlListResponse containing DER Controls for the specified site under the
     dynamic operating envelope program. Results will be filtered to the specified date
 

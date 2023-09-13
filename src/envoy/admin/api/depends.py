@@ -19,7 +19,7 @@ class AdminAuthDepends:
         self.username = username
         self.password = password
 
-    async def __call__(self, credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
+    async def __call__(self, credentials: Annotated[HTTPBasicCredentials, Depends(security)]) -> None:
         is_correct_user = secrets.compare_digest(bytes(self.username, "utf-8"), bytes(credentials.username, "utf-8"))
         is_correct_pass = secrets.compare_digest(bytes(self.password, "utf-8"), bytes(credentials.password, "utf-8"))
 
