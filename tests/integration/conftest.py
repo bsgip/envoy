@@ -16,8 +16,9 @@ from tests.unit.jwt import generate_rs256_jwt
 
 
 @pytest.fixture
-async def client(pg_base_config: Connection):
-    """Creates an AsyncClient for a test that is configured to talk to the main server app"""
+async def client_empty_db(pg_empty_config: Connection):
+    """Creates an AsyncClient for a test that is configured to talk to the main server app (but the database
+    will have no data in it)"""
 
     # We want a new app instance for every test - otherwise connection pools get shared and we hit problems
     # when trying to run multiple tests sequentially
@@ -25,6 +26,12 @@ async def client(pg_base_config: Connection):
     async with LifespanManager(app):  # This ensures that startup events are fired when the app starts
         async with AsyncClient(app=app, base_url="http://test") as c:
             yield c
+
+
+@pytest.fixture
+async def client(pg_base_config: Connection, client_empty_db):
+    """Creates an AsyncClient for a test that is configured to talk to the main server app"""
+    yield client_empty_db
 
 
 @pytest.fixture
