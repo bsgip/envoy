@@ -1,4 +1,5 @@
 import inspect
+from dataclasses import dataclass, fields, is_dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Callable, Optional, Union, get_args, get_origin, get_type_hints
@@ -8,6 +9,11 @@ from pydantic_xml import BaseXmlModel
 from sqlalchemy.orm import Mapped
 
 from envoy.server.model.base import Base
+
+
+@dataclass
+class _PlaceholderDataclassBase:
+    """Dataclass has no base class - instead we fall back to using this as a placeholder"""
 
 
 def generate_value(t: type, seed: int = 1, optional_is_none: bool = False) -> Any:
@@ -98,6 +104,11 @@ def get_generatable_class_base(t: type) -> Optional[type]:
     for base_class in inspect.getmro(target_type):
         if base_class in CLASS_INSTANCE_GENERATORS:
             return base_class
+
+    # check for dataclass
+    for base_class in inspect.getmro(target_type):
+        if is_dataclass(base_class):
+            return _PlaceholderDataclassBase
 
     return None
 
@@ -378,6 +389,7 @@ CLASS_INSTANCE_GENERATORS: dict[type, Callable[[type, dict[str, Any]], Any]] = {
     Base: lambda target, kwargs: target(**kwargs),
     BaseXmlModel: lambda target, kwargs: target.construct(**kwargs),
     BaseModel: lambda target, kwargs: target.construct(**kwargs),
+    _PlaceholderDataclassBase: lambda target, kwargs: target(**kwargs),
 }
 
 # the set of functions for accessing all members of a class (keyed by the base class for accessing those members)
@@ -385,6 +397,7 @@ CLASS_MEMBER_FETCHERS: dict[type, Callable[[type], list[str]]] = {
     Base: lambda target: [name for (name, _) in inspect.getmembers(target)],
     BaseXmlModel: lambda target: list(target.schema()["properties"].keys()),
     BaseModel: lambda target: list(target.schema()["properties"].keys()),
+    _PlaceholderDataclassBase: lambda target: [f.name for f in fields(target)],
 }
 
 # the set all base class public members keyed by the base class that generated them
