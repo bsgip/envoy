@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Optional
 
 from envoy_schema.server.schema.sep2.der import DERControlListResponse, DERProgramListResponse, DERProgramResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,12 +9,16 @@ from envoy.server.crud.doe import count_does, count_does_for_day, select_does, s
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
 from envoy.server.mapper.csip_aus.doe import DERControlMapper, DERProgramMapper
+from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 
 
 class DERProgramManager:
     @staticmethod
     async def fetch_list_for_site(
-        session: AsyncSession, request_params: RequestStateParameters, site_id: int
+        session: AsyncSession,
+        request_params: RequestStateParameters,
+        site_id: int,
+        default_doe: Optional[DefaultDoeConfiguration],
     ) -> DERProgramListResponse:
         """Program lists are static - this will just return a single fixed Dynamic Operating Envelope Program
 
@@ -24,11 +29,14 @@ class DERProgramManager:
             raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
         total_does = await count_does(session, request_params.aggregator_id, site_id, datetime.min)
-        return DERProgramMapper.doe_program_list_response(request_params, site_id, total_does)
+        return DERProgramMapper.doe_program_list_response(request_params, site_id, total_does, default_doe)
 
     @staticmethod
     async def fetch_doe_program_for_site(
-        session: AsyncSession, request_params: RequestStateParameters, site_id: int
+        session: AsyncSession,
+        request_params: RequestStateParameters,
+        site_id: int,
+        default_doe: Optional[DefaultDoeConfiguration],
     ) -> DERProgramResponse:
         """DOE Programs are static - this will just return a fixed Dynamic Operating Envelope Program
 
@@ -38,7 +46,7 @@ class DERProgramManager:
             raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
         total_does = await count_does(session, request_params.aggregator_id, site_id, datetime.min)
-        return DERProgramMapper.doe_program_response(request_params, site_id, total_does)
+        return DERProgramMapper.doe_program_response(request_params, site_id, total_does, default_doe)
 
 
 class DERControlManager:

@@ -8,6 +8,7 @@ from fastapi_async_sqlalchemy import db
 from envoy.server.api.request import (
     extract_date_from_iso_string,
     extract_datetime_from_paging_param,
+    extract_default_doe,
     extract_limit_from_paging_param,
     extract_request_params,
     extract_start_from_paging_param,
@@ -47,6 +48,7 @@ async def get_derprogram_list(
             db.session,
             request_params=extract_request_params(request),
             site_id=site_id,
+            default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -75,6 +77,7 @@ async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str
             db.session,
             request_params=extract_request_params(request),
             site_id=site_id,
+            default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from enum import IntFlag, auto
 from typing import Optional, Union
@@ -96,6 +97,16 @@ class XmlClass(BaseXmlModelWithNS):
 
 class FurtherXmlClass(XmlClass):
     myOtherInt: IntExtension = element()
+
+
+@dataclass
+class ParentDataclass:
+    myOptInt: Optional[int]
+    myInt: int
+    myOtherInt: int
+    myDate: datetime
+    myStr: str
+    myList: list[int]
 
 
 def test_generate_value():
@@ -574,3 +585,37 @@ def test_check_class_instance_equality():
 
     # check ignoring works ok
     assert len(check_class_instance_equality(ParentClass, expected, actual, ignored_properties=set(["name"]))) == 0
+
+
+def test_generate_dataclass_basic_values():
+    p1: ParentDataclass = generate_class_instance(ParentDataclass)
+
+    assert p1.myInt is not None
+    assert p1.myOptInt is not None
+    assert p1.myOtherInt is not None
+    assert p1.myStr is not None
+    assert p1.myDate is not None
+    assert p1.myList is not None
+    assert p1.myInt != p1.myOtherInt, "Checking that fields of the same type get unique values"
+
+    # create a new instance with a different seed
+    p2: ParentDataclass = generate_class_instance(ParentDataclass, seed=123)
+
+    assert p2.myInt is not None
+    assert p2.myOptInt is not None
+    assert p2.myOtherInt is not None
+    assert p2.myStr is not None
+    assert p2.myDate is not None
+    assert p2.myList is not None
+    assert p2.myInt != p2.myOtherInt, "Checking that fields of the same type get unique values"
+
+    assert p1.myInt != p2.myInt, "Checking that different seed numbers yields different results"
+    assert p1.myOtherInt != p2.myOtherInt, "Checking that different seed numbers yields different results"
+    assert p1.myStr != p2.myStr, "Checking that different seed numbers yields different results"
+    assert p1.myList != p2.myList, "Checking that different seed numbers yields different results"
+
+    p3: ParentDataclass = generate_class_instance(ParentDataclass, seed=456, optional_is_none=True)
+    assert p3.myOptInt is None, "This field is optional and optional_is_none=True"
+    assert p3.myOtherInt is not None
+    assert p3.myStr is not None
+    assert p3.myList is not None

@@ -5,6 +5,8 @@ from typing import Optional
 
 from fastapi import HTTPException, Request
 
+from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+
 MAX_LIMIT = 500
 DEFAULT_LIMIT = 1
 DEFAULT_START = 0
@@ -41,6 +43,15 @@ def extract_request_params(request: Request) -> RequestStateParameters:
         href_prefix = None
 
     return RequestStateParameters(aggregator_id=id, href_prefix=href_prefix)
+
+
+def extract_default_doe(request: Request) -> Optional[DefaultDoeConfiguration]:
+    """If the DefaultDoeDepends is enabled a DefaultDoeConfiguration will be returned for this request or None
+    otherwise. This is a placeholder for static default DOE values"""
+    if request.state is not None:
+        return getattr(request.state, "default_doe", None)
+
+    return None
 
 
 def extract_limit_from_paging_param(limit: Optional[list[int]] = None) -> int:
