@@ -13,7 +13,7 @@ class DefaultDoeDepends:
 
     def __init__(self, import_limit_active_watts: Decimal, export_limit_active_watts: Decimal):
         self.import_limit_active_watts = import_limit_active_watts
-        self.import_limit_active_watts = export_limit_active_watts
+        self.export_limit_active_watts = export_limit_active_watts
 
     async def __call__(self, request: Request) -> None:
         request.state.default_doe = DefaultDoeConfiguration(

@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
@@ -30,14 +31,12 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
         global_dependencies.append(Depends(PathPrefixDepends(new_settings.href_prefix)))
 
     # if default DOE is specified - include the DefaultDoeDepends
-    if (
-        new_settings.default_doe_import_active_watts is not None
-        and new_settings.default_doe_export_active_watts is not None
-    ):
+    if new_settings.default_doe_import_active_watts and new_settings.default_doe_export_active_watts:
         global_dependencies.append(
             Depends(
                 DefaultDoeDepends(
-                    new_settings.default_doe_import_active_watts, new_settings.default_doe_export_active_watts
+                    Decimal(new_settings.default_doe_import_active_watts),
+                    Decimal(new_settings.default_doe_export_active_watts),
                 )
             )
         )

@@ -55,6 +55,8 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     # derp/derc function set
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/actderc"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/dderc"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc/2022-05-07"),
 
