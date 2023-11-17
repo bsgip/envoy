@@ -130,6 +130,89 @@ async def get_dercontrol_list(
     return XmlResponse(derc_list)
 
 
+@router.head(uri.ActiveDERControlListUri)
+@router.get(uri.ActiveDERControlListUri, status_code=HTTPStatus.OK)
+async def get_active_dercontrol_list(
+    request: Request,
+    site_id: int,
+    der_program_id: str,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> Response:
+    """Responds with a single DERControlListResponse containing DER Controls for the specified site under the
+    dynamic operating envelope program. Only currently active (according to server time) controls will be returned.
+
+    Args:
+        site_id: Path parameter, the target EndDevice's internal registration number.
+        der_program_id: DERProgramID - only 'doe' is supported
+        start: list query parameter for the start index value. Default 0.
+        after: list query parameter for lists with a datetime primary index. Default 0.
+        limit: list query parameter for the maximum number of objects to return. Default 1.
+
+    Returns:
+        fastapi.Response object.
+    """
+
+    if der_program_id != DOE_PROGRAM_ID:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    try:
+        derc_list = await DERControlManager.fetch_active_doe_controls_for_site(
+            db.session,
+            request_params=extract_request_params(request),
+            site_id=site_id,
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit),
+        )
+    except BadRequestError as ex:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NotFoundError:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(derc_list)
+
+
+@router.head(uri.DefaultDERControlUri)
+@router.get(uri.DefaultDERControlUri, status_code=HTTPStatus.OK)
+async def get_default_dercontrol(
+    request: Request,
+    site_id: int,
+    der_program_id: str,
+) -> Response:
+    """Responds with a single DefaultDERControl containing the default DER Controls for the specified site under the
+    dynamic operating envelope program. Returns 404 if no default has been configured
+
+    Args:
+        site_id: Path parameter, the target EndDevice's internal registration number.
+        der_program_id: DERProgramID - only 'doe' is supported
+        start: list query parameter for the start index value. Default 0.
+        after: list query parameter for lists with a datetime primary index. Default 0.
+        limit: list query parameter for the maximum number of objects to return. Default 1.
+
+    Returns:
+        fastapi.Response object.
+    """
+
+    if der_program_id != DOE_PROGRAM_ID:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    try:
+        derc_list = await DERControlManager.fetch_default_doe_controls_for_site(
+            db.session,
+            request_params=extract_request_params(request),
+            site_id=site_id,
+            default_doe=extract_default_doe(request),
+        )
+    except BadRequestError as ex:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NotFoundError:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(derc_list)
+
+
 @router.head(uri.DERControlListByDateUri)
 @router.get(uri.DERControlListByDateUri, status_code=HTTPStatus.OK)
 async def get_dercontrol_list_for_date(

@@ -124,6 +124,20 @@ def pg_la_timezone(pg_base_config) -> Connection:
 
 
 @pytest.fixture
+def pg_additional_does(pg_base_config) -> Connection:
+    """Mutates pg_base_config to include additional DOEs"""
+
+    with open("tests/data/sql/additional_does.sql") as f:
+        base_config_sql = f.read()
+
+    with pg_base_config.cursor() as cursor:
+        cursor.execute(base_config_sql)
+        pg_base_config.commit()
+
+    yield pg_base_config
+
+
+@pytest.fixture
 def pg_billing_data(pg_base_config) -> Connection:
     """Mutates pg_base_config to include additional billing specific data"""
 

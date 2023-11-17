@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
 
 @dataclass
@@ -9,5 +10,5 @@ class DefaultDoeConfiguration:
     in the database
     """
 
-    import_limit_active_watts: int
-    export_limit_active_watts: int
+    import_limit_active_watts: Decimal
+    export_limit_active_watts: Decimal

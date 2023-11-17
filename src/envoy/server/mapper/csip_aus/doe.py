@@ -4,6 +4,7 @@ from typing import Optional, Sequence
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.der import (
     ActivePower,
+    DefaultDERControl,
     DERControlBase,
     DERControlListResponse,
     DERControlResponse,
@@ -21,6 +22,7 @@ from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, Dynami
 
 DOE_PROGRAM_MRID_PREFIX: int = int("D0E", 16)
 DOE_PROGRAM_ID: str = "doe"
+DOE_DEFAULT_CONTROL_ID: int = int("DEF", 16)
 
 
 class DERControlMapper:
@@ -53,6 +55,21 @@ class DERControlMapper:
                     {
                         "opModImpLimW": DERControlMapper.map_to_active_power(doe.import_limit_active_watts),
                         "opModExpLimW": DERControlMapper.map_to_active_power(doe.export_limit_watts),
+                    }
+                ),
+            }
+        )
+
+    @staticmethod
+    def map_to_default_response(default_doe: DefaultDoeConfiguration) -> DefaultDERControl:
+        """Creates a csip aus compliant DefaultDERControl from the specified defaults"""
+        return DefaultDERControl.validate(
+            {
+                "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, DOE_DEFAULT_CONTROL_ID),
+                "DERControlBase_": DERControlBase.validate(
+                    {
+                        "opModImpLimW": DERControlMapper.map_to_active_power(default_doe.import_limit_active_watts),
+                        "opModExpLimW": DERControlMapper.map_to_active_power(default_doe.export_limit_active_watts),
                     }
                 ),
             }

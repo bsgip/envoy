@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any, Dict, Optional
 
 from pydantic import BaseSettings, PostgresDsn
@@ -39,8 +40,8 @@ class AppSettings(BaseSettings):
         14400  # How frequently (in seconds) will the Azure AD DB token be manually refreshed. Default 4 hours.
     )
 
-    default_doe_import_active_watts: Optional[int] = None  # Constant default DERControl import (if none - no default)
-    default_doe_export_active_watts: Optional[int] = None  # Constant default DERControl export (if none - no default)
+    default_doe_import_active_watts: Optional[Decimal] = None  # Constant default DERControl import (none = no default)
+    default_doe_export_active_watts: Optional[Decimal] = None  # Constant default DERControl export (none = no default)
 
     href_prefix: Optional[str] = None  # Will ensure all outgoing href's are prefixed with this value (None = disabled)
 

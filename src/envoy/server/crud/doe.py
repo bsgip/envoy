@@ -21,6 +21,55 @@ def _localize_start_time(rate_and_tz: Optional[Row[tuple[DOE, str]]]) -> DOE:
     return rate
 
 
+async def _does_at_timestamp(
+    is_counting: bool,
+    session: AsyncSession,
+    aggregator_id: int,
+    site_id: int,
+    timestamp: datetime,
+    start: int,
+    changed_after: datetime,
+    limit: Optional[int],
+) -> Union[Sequence[DOE], int]:
+    """Internal utility for fetching doe's that are active for the specific timestamp
+
+    Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
+
+    # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
+    # groups of sites but this could be subject to change as the DNSP's requirements become more clear
+    select_clause: Union[Select[tuple[int]], Select[tuple[DOE, str]]]
+    if is_counting:
+        select_clause = select(func.count()).select_from(DOE)
+    else:
+        select_clause = select(DOE, Site.timezone_id)
+
+    one_second = timedelta(seconds=1)
+
+    # fmt: off
+    stmt = (
+        select_clause
+        .join(DOE.site)
+        .where(
+            (DOE.start_time <= timestamp) &
+            (DOE.start_time + (DOE.duration_seconds * one_second) > timestamp) &
+            (DOE.changed_time >= changed_after) &
+            (DOE.site_id == site_id) &
+            (Site.aggregator_id == aggregator_id))
+        .offset(start)
+        .limit(limit)
+    )
+    # fmt: on
+
+    if not is_counting:
+        stmt = stmt.order_by(DOE.start_time.asc(), DOE.changed_time.desc(), DOE.dynamic_operating_envelope_id.desc())
+
+    resp = await session.execute(stmt)
+    if is_counting:
+        return resp.scalar_one()
+    else:
+        return [_localize_start_time(doe_and_tz) for doe_and_tz in resp.all()]
+
+
 async def _does_for_day(
     is_counting: bool,
     session: AsyncSession,
@@ -88,7 +137,7 @@ async def select_does(
     """Selects DynamicOperatingEnvelope entities (with pagination). Date will be assessed in the local
     timezone for the site
 
-    site_id: The specific site rates are being requested for
+    site_id: The specific site does are being requested for
     start: The number of matching entities to skip
     limit: The maximum number of entities to return
     changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)
@@ -119,7 +168,7 @@ async def select_does_for_day(
     """Selects DynamicOperatingEnvelope entities (with pagination) for a single date. Date will be assessed in the
     local timezone for the site
 
-    site_id: The specific site rates are being requested for
+    site_id: The specific site does are being requested for
     day: The specific day of the year to restrict the lookup of values to
     start: The number of matching entities to skip
     limit: The maximum number of entities to return
@@ -129,4 +178,42 @@ async def select_does_for_day(
 
     return await _does_for_day(
         False, session, aggregator_id, site_id, day, start, changed_after, limit
+    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+
+
+async def count_does_at_timestamp(
+    session: AsyncSession, aggregator_id: int, site_id: int, timestamp: datetime, changed_after: datetime
+) -> int:
+    """Fetches the number of DynamicOperatingEnvelope's stored that contain timestamp.
+
+    timestamp: The actual timestamp that a DOE range must contain in order to be considered
+    changed_after: Only doe's with a changed_time greater than this value will be counted (0 will count everything)"""
+
+    return await _does_at_timestamp(
+        True, session, aggregator_id, site_id, timestamp, 0, changed_after, None
+    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+
+
+async def select_does_at_timestamp(
+    session: AsyncSession,
+    aggregator_id: int,
+    site_id: int,
+    timestamp: datetime,
+    start: int,
+    changed_after: datetime,
+    limit: int,
+) -> Sequence[DOE]:
+    """Selects DynamicOperatingEnvelope entities (with pagination) that contain timestamp. Date will be assessed in the
+    local timezone for the site
+
+    site_id: The specific site does are being requested for
+    timestamp: The actual timestamp that a DOE range must contain in order to be considered
+    start: The number of matching entities to skip
+    limit: The maximum number of entities to return
+    changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)
+
+    Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
+
+    return await _does_at_timestamp(
+        False, session, aggregator_id, site_id, timestamp, start, changed_after, limit
     )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list

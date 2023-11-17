@@ -6,6 +6,7 @@ from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 
 from envoy.server.api import routers, unsecured_routers
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
+from envoy.server.api.depends.default_doe import DefaultDoeDepends
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
 from envoy.server.api.depends.path_prefix import PathPrefixDepends
 from envoy.server.api.error_handler import general_exception_handler, http_exception_handler
@@ -27,6 +28,19 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     # if href_prefix is specified - include the PathPrefixDepends
     if new_settings.href_prefix:
         global_dependencies.append(Depends(PathPrefixDepends(new_settings.href_prefix)))
+
+    # if default DOE is specified - include the DefaultDoeDepends
+    if (
+        new_settings.default_doe_import_active_watts is not None
+        and new_settings.default_doe_export_active_watts is not None
+    ):
+        global_dependencies.append(
+            Depends(
+                DefaultDoeDepends(
+                    new_settings.default_doe_import_active_watts, new_settings.default_doe_export_active_watts
+                )
+            )
+        )
 
     # Azure AD Auth is an optional extension enabled via configuration settings
     azure_ad_settings = new_settings.azure_ad_kwargs
