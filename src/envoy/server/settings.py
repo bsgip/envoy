@@ -1,4 +1,3 @@
-from decimal import Decimal
 from typing import Any, Dict, Optional
 
 from pydantic import BaseSettings, PostgresDsn
