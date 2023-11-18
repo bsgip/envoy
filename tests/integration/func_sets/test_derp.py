@@ -292,6 +292,7 @@ async def test_get_dercontrol_list(
     parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
     if not parsed_response.DERControl:
         parsed_response.DERControl = []  # Makes it easier to compare
+    assert path.startswith(parsed_response.href), "The derc href should be included in the response"
     assert parsed_response.results == len(expected_does)
     assert parsed_response.all_ == expected_total
     assert len(parsed_response.DERControl) == len(expected_does)
@@ -417,6 +418,7 @@ async def test_get_dercontrol_list_day(
     parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
     if not parsed_response.DERControl:
         parsed_response.DERControl = []  # Makes it easier to compare
+    assert path.startswith(parsed_response.href), "The derc href should be included in the response"
     assert parsed_response.results == len(expected_does)
     assert parsed_response.all_ == expected_total
     assert len(parsed_response.DERControl) == len(expected_does)
@@ -492,6 +494,7 @@ async def test_get_active_doe_nothing_active(client: AsyncClient, uri_derc_activ
     assert len(body) > 0
 
     parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
+    assert parsed_response.href == path, "The active doe href should be included in the response"
     assert parsed_response.all_ == 0
     assert parsed_response.DERControl is None or len(parsed_response.DERControl) == 0
 
@@ -518,6 +521,7 @@ async def test_get_active_doe(client: AsyncClient, pg_base_config, uri_derc_acti
     assert len(body) > 0
 
     parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
+    assert parsed_response.href == path, "The active doe href should be included in the response"
     assert parsed_response.all_ == 1
     assert len(parsed_response.DERControl) == 1
 
@@ -535,5 +539,6 @@ async def test_get_active_doe(client: AsyncClient, pg_base_config, uri_derc_acti
     assert len(body) > 0
 
     parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
+    assert parsed_response.href == path, "The active doe href should be included in the response"
     assert parsed_response.all_ == 0
     assert parsed_response.DERControl is None or len(parsed_response.DERControl) == 0

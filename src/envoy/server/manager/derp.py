@@ -20,7 +20,7 @@ from envoy.server.crud.doe import (
 )
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
-from envoy.server.mapper.csip_aus.doe import DERControlMapper, DERProgramMapper
+from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 
 
@@ -76,7 +76,9 @@ class DERControlManager:
 
         does = await select_does(session, request_params.aggregator_id, site_id, start, changed_after, limit)
         total_count = await count_does(session, request_params.aggregator_id, site_id, changed_after)
-        return DERControlMapper.map_to_list_response(request_params, does, total_count, site_id)
+        return DERControlMapper.map_to_list_response(
+            request_params, does, total_count, site_id, DERControlListSource.DER_CONTROL_LIST
+        )
 
     @staticmethod
     async def fetch_active_doe_controls_for_site(
@@ -95,7 +97,9 @@ class DERControlManager:
             session, request_params.aggregator_id, site_id, now, start, changed_after, limit
         )
         total_count = await count_does_at_timestamp(session, request_params.aggregator_id, site_id, now, changed_after)
-        return DERControlMapper.map_to_list_response(request_params, does, total_count, site_id)
+        return DERControlMapper.map_to_list_response(
+            request_params, does, total_count, site_id, DERControlListSource.ACTIVE_DER_CONTROL_LIST
+        )
 
     @staticmethod
     async def fetch_default_doe_controls_for_site(
@@ -131,4 +135,6 @@ class DERControlManager:
             session, request_params.aggregator_id, site_id, day, start, changed_after, limit
         )
         total_count = await count_does_for_day(session, request_params.aggregator_id, site_id, day, changed_after)
-        return DERControlMapper.map_to_list_response(request_params, does, total_count, site_id)
+        return DERControlMapper.map_to_list_response(
+            request_params, does, total_count, site_id, DERControlListSource.DER_CONTROL_LIST
+        )

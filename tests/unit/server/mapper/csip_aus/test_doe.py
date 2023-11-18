@@ -9,7 +9,7 @@ from envoy_schema.server.schema.sep2.der import (
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
 from envoy.server.api.request import RequestStateParameters
-from envoy.server.mapper.csip_aus.doe import DERControlMapper, DERProgramMapper
+from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from tests.data.fake.generator import generate_class_instance
@@ -87,7 +87,9 @@ def test_map_derc_to_list_response():
     site_id = 54121
     rs_params = RequestStateParameters(1, None)
 
-    result = DERControlMapper.map_to_list_response(rs_params, all_does, site_count, site_id)
+    result = DERControlMapper.map_to_list_response(
+        rs_params, all_does, site_count, site_id, DERControlListSource.DER_CONTROL_LIST
+    )
     assert result is not None
     assert isinstance(result, DERControlListResponse)
     assert result.all_ == site_count
@@ -100,12 +102,16 @@ def test_map_derc_to_list_response():
     ), f"Expected {len(all_does)} unique mrid's in the children"
     assert str(site_id) in result.href
 
-    empty_result = DERControlMapper.map_to_list_response(rs_params, [], site_count, site_id)
+    empty_result = DERControlMapper.map_to_list_response(
+        rs_params, [], site_count, site_id, DERControlListSource.ACTIVE_DER_CONTROL_LIST
+    )
     assert empty_result is not None
     assert isinstance(empty_result, DERControlListResponse)
     assert empty_result.all_ == site_count
     assert isinstance(empty_result.DERControl, list)
     assert len(empty_result.DERControl) == 0
+
+    assert result.href != empty_result.href, "The derc list source is different so the hrefs should vary"
 
 
 def test_map_derp_doe_program_response_with_default_doe():
