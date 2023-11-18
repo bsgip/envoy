@@ -12,6 +12,7 @@ from envoy_schema.server.schema.sep2.der import (
 from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
+from envoy.server.mapper.csip_aus.doe import DERControlListSource
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
@@ -188,7 +189,9 @@ async def test_fetch_doe_controls_for_site(
 
     mock_count_does.assert_called_once_with(mock_session, agg_id, site_id, changed_after)
     mock_select_does.assert_called_once_with(mock_session, agg_id, site_id, start, changed_after, limit)
-    mock_DERControlMapper.map_to_list_response.assert_called_once_with(rsp_params, does_page, doe_count, site_id)
+    mock_DERControlMapper.map_to_list_response.assert_called_once_with(
+        rsp_params, does_page, doe_count, site_id, DERControlListSource.DER_CONTROL_LIST
+    )
     assert_mock_session(mock_session)
 
 
@@ -232,7 +235,9 @@ async def test_fetch_doe_controls_for_site_for_day(
 
     mock_count_does_for_day.assert_called_once_with(mock_session, agg_id, site_id, day, changed_after)
     mock_select_does_for_day.assert_called_once_with(mock_session, agg_id, site_id, day, start, changed_after, limit)
-    mock_DERControlMapper.map_to_list_response.assert_called_once_with(rsp_params, does_page, doe_count, site_id)
+    mock_DERControlMapper.map_to_list_response.assert_called_once_with(
+        rsp_params, does_page, doe_count, site_id, DERControlListSource.DER_CONTROL_LIST
+    )
     assert_mock_session(mock_session)
 
 
@@ -274,7 +279,7 @@ async def test_fetch_active_doe_controls_for_site(
     mock_select_does_at_timestamp.assert_called_once()
     mock_count_does_at_timestamp.assert_called_once()
     mock_DERControlMapper.map_to_list_response.assert_called_once_with(
-        rsp_params, returned_does, returned_count, site_id
+        rsp_params, returned_does, returned_count, site_id, DERControlListSource.ACTIVE_DER_CONTROL_LIST
     )
 
     # The timestamp should be (roughly) utc now and should match for both calls
