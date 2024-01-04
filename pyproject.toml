@@ -40,7 +40,8 @@ dependencies = [
     "alembic",
     "tzlocal",
     "pydantic_xml[lxml]",
-    "pydantic<2.0.0",                                                 # pydantic 2.0.0 has some significant migration considerations
+    "pydantic",
+    "pydantic-settings",
     "python-dateutil",
     "asyncpg",
     "fastapi-async-sqlalchemy",

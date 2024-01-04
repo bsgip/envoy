@@ -403,4 +403,5 @@ CLASS_MEMBER_FETCHERS: dict[type, Callable[[type], list[str]]] = {
 # the set all base class public members keyed by the base class that generated them
 BASE_CLASS_PUBLIC_MEMBERS: dict[type, set[str]] = {}
 for base_class in CLASS_INSTANCE_GENERATORS.keys():
-    BASE_CLASS_PUBLIC_MEMBERS[base_class] = set([m for (m, _) in inspect.getmembers(base_class) if is_member_public(m)])
+    members = CLASS_MEMBER_FETCHERS[base_class](base_class)
+    BASE_CLASS_PUBLIC_MEMBERS[base_class] = set([m for m in members if is_member_public(m)])

@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional
 
-from pydantic import BaseSettings, PostgresDsn
+from pydantic import PostgresDsn
+from pydantic_settings import BaseSettings
 
 
 def generate_middleware_kwargs(
@@ -20,6 +21,8 @@ def generate_middleware_kwargs(
 
 
 class AppSettings(BaseSettings):
+    model_config = {"validate_assignment": True, "env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+
     debug: bool = False
     docs_url: str = "/docs"
     openapi_prefix: str = ""
@@ -46,11 +49,6 @@ class AppSettings(BaseSettings):
 
     database_url: PostgresDsn
     commit_on_exit: bool = False
-
-    class Config:
-        validate_assignment = True
-        env_file: str = ".env"
-        env_file_encoding: str = "utf-8"
 
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:
