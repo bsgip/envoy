@@ -21,7 +21,7 @@ from envoy.server.crud.link import LinkParameters
     add_resource_counts_to_links=mock.DEFAULT,
 )
 async def test_get_supported_links_calls_get_link_field_names_with_model_schema(**kwargs: mock.Mock) -> None:
-    model = mock.Mock(spec=pydantic_xml.BaseXmlModel)
+    model = pydantic_xml.BaseXmlModel
 
     with mock.patch("envoy.server.crud.link.get_link_field_names") as get_link_field_names:
         await link.get_supported_links(session=mock.Mock(), model=model, rs_params=RequestStateParameters(1, None))

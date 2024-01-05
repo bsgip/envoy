@@ -34,12 +34,18 @@ def generate_error_response(
     )
 
 
-def http_exception_handler(request: Request, exc: HTTPException) -> Response:
+def http_exception_handler(request: Request, exc: Union[HTTPException, Exception]) -> Response:
     """Handles specific HTTP exceptions"""
+    if isinstance(exc, HTTPException):
+        status_code = exc.status_code
+        detail = exc.detail
+    else:
+        status_code = 0
+        detail = "Unknown"
 
-    logger.exception(f"{request.path_params} generated status code {exc.status_code} and exception {exc}")
+    logger.exception(f"{request.path_params} generated status code {status_code} and exception {exc}")
 
-    return generate_error_response(exc.status_code, message=exc.detail)
+    return generate_error_response(status_code, message=detail)
 
 
 def general_exception_handler(request: Request, exc: Exception) -> Response:
