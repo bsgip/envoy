@@ -17,7 +17,7 @@ class EndDeviceMapper:
     @staticmethod
     def map_to_response(rs_params: RequestStateParameters, site: Site) -> EndDeviceResponse:
         edev_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site.site_id)
-        return EndDeviceResponse.validate(
+        return EndDeviceResponse.model_validate(
             {
                 "href": edev_href,
                 "lFDI": site.lfdi,
@@ -58,7 +58,7 @@ class EndDeviceListMapper:
     def map_to_response(
         rs_params: RequestStateParameters, site_list: Sequence[Site], site_count: int
     ) -> EndDeviceListResponse:
-        return EndDeviceListResponse.validate(
+        return EndDeviceListResponse.model_validate(
             {
                 "href": generate_href(uri.EndDeviceListUri, rs_params),
                 "all_": site_count,

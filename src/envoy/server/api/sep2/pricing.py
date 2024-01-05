@@ -173,7 +173,7 @@ async def get_ratecomponentlist_nositescope(
     # directly. Tariff profiles need to be discovered via function set assignments and from there
     # they will directed to the appropriate endpoint describing site scoped rates
     href = generate_href(request.url.path, extract_request_params(request))
-    return XmlResponse(RateComponentListResponse.validate({"all_": 0, "results": 0, "href": href}))
+    return XmlResponse(RateComponentListResponse.model_validate({"all_": 0, "results": 0, "href": href}))
 
 
 @router.head(uri.TariffProfileUri)

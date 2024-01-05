@@ -16,8 +16,8 @@ from tests.integration.response import assert_response_header, read_response_bod
 @pytest.mark.parametrize(
     "period_start_str, period_end_str",
     [
-        ("2023-09-10 00:00+10", "2023-09-11 00:00+10"),  # AEST timezone (short form)
-        ("2023-09-10T00:00:00.0000+10", "2023-09-11T00:00:00.0000+10"),  # AEST timezone (long form)
+        ("2023-09-10 00:00+10:00", "2023-09-11 00:00+10:00"),  # AEST timezone (short form)
+        ("2023-09-10T00:00:00.0000+10:00", "2023-09-11T00:00:00.0000+10:00"),  # AEST timezone (long form)
         ("2023-09-09T14:00Z", "2023-09-10T14:00Z"),  # UTC timezone
     ],
 )
@@ -29,7 +29,7 @@ async def test_fetch_billing_data_timezone(
     response = await admin_client_auth.get(uri)
     assert_response_header(response, expected_status_code=HTTPStatus.OK, expected_content_type="application/json")
     json_body = json.loads(read_response_body_string(response))
-    body = BillingResponse.validate(json_body)
+    body = BillingResponse.model_validate(json_body)
 
     assert_datetime_equal(body.period_start, datetime(2023, 9, 10, 0, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")))
     assert_datetime_equal(body.period_end, datetime(2023, 9, 11, 0, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")))

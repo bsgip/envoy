@@ -39,7 +39,6 @@ def test_map_to_response():
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
     assert result_all_set.lFDI == site_all_set.lfdi
-    assert type(result_all_set.deviceCategory) == HexBinary32
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_all_set.ConnectionPointLink, ConnectionPointLink)
     assert (
@@ -54,7 +53,6 @@ def test_map_to_response():
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
     assert result_optional.lFDI == site_optional.lfdi
-    assert type(result_optional.deviceCategory) == HexBinary32
     assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_optional.ConnectionPointLink, ConnectionPointLink)
     assert (

@@ -6,7 +6,7 @@ model parsed from the given file name, and the output XML model (ElementTree.Ele
 and return True if the comparison conditions implied by that Callable are passed.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, TypeVar
 from xml.etree import ElementTree as ET
 
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
@@ -18,10 +18,13 @@ from envoy_schema.server.schema.sep2.pricing import (
     RateComponentListResponse,
     TariffProfileResponse,
 )
+from pydantic_xml import BaseXmlModel
+
+TXmlSchemaType = TypeVar("TXmlSchemaType", bound=BaseXmlModel)
 
 
 def compare_ET_Element_to_reference_ET_Element(
-    ref: ET.Element, model: ET.Element, xml_type: str, allowed_missing: list[str], strict: bool
+    ref: ET.Element, model: ET.Element, xml_type: TXmlSchemaType, allowed_missing: list[str], strict: bool
 ) -> Tuple[bool, List[str]]:
     """Compare an ElementTree.Element object against some reference object of the
     same type. We expect each element in ref to exist in model. The model is considered
@@ -66,7 +69,7 @@ def compare_ET_Element_to_reference_ET_Element(
     # check if each element in the reference is present in the input model
     for c in ref:
         matches = [m for m in model if m.tag == c.tag]
-        required = xml_type.schema().get("required", [])
+        required = xml_type.model_json_schema().get("required", [])
 
         # Two conditions to consider, if there are no matches:
         # 1. Strict and tag is required and we haven't allowed it to be missing: error

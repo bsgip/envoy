@@ -6,6 +6,7 @@ from typing import Iterable, Optional
 import pydantic_xml
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
+from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.api.request import RequestStateParameters
@@ -209,7 +210,7 @@ async def get_supported_links(
         Mapping from Link Name to the formatted URI and if Link is a ListLink the resource counts.
 
     """
-    link_names = get_link_field_names(schema=model.schema())
+    link_names = get_link_field_names(model)
     supported_links_names = filter(check_link_supported, link_names)
     supported_links = get_formatted_links(
         rs_params=rs_params, link_names=supported_links_names, uri_parameters=uri_parameters
@@ -385,9 +386,13 @@ def get_formatted_links(
     return links
 
 
-def get_link_field_names(schema: dict) -> list[str]:
+# The set of all types that can be considered "link fields"
+_LINK_FIELD_TYPES = set([Link, ListLink, Optional[Link], Optional[ListLink]])
+
+
+def get_link_field_names(model: type[pydantic_xml.BaseXmlModel]) -> list[str]:
     """
-    Inspect the pydantic schema and return all the field names for fields derived from 'Link' or 'ListLink'.
+    Inspect the pydantic schema for a type and return all the field names for fields derived from 'Link' or 'ListLink'.
 
     For an example model,
 
@@ -397,7 +402,7 @@ def get_link_field_names(schema: dict) -> list[str]:
             MyOptionalLink: Optional[Link] = element()
             MyListLink: ListLink = element()
 
-    Calling `get_link_field_names(MyModel.schema())`
+    Calling `get_link_field_names(MyModel)`
     will return ["MyLink", "MyOptionalLink", "MyListLink"]
 
     Args:
@@ -406,13 +411,14 @@ def get_link_field_names(schema: dict) -> list[str]:
     Returns:
         List of 'LinkLink' and 'Link' field names as strings.
     """
+
     try:
-        properties = schema["properties"]
+        properties = model.model_fields
     except KeyError:
         raise ValueError("'schema' not a valid pydantic schema")
 
     result = []
     for k, v in properties.items():
-        if "$ref" in v and v["$ref"] in ["#/definitions/Link", "#/definitions/ListLink"]:
+        if v.annotation in _LINK_FIELD_TYPES:
             result.append(k)
     return result

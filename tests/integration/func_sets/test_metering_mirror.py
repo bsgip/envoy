@@ -99,7 +99,7 @@ async def test_get_mirror_usage_point_list_pagination(
     [
         # Create a new mup
         (
-            MirrorUsagePointRequest.validate(
+            MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "123",
                     "deviceLFDI": "site1-lfdi",
@@ -124,7 +124,7 @@ async def test_get_mirror_usage_point_list_pagination(
         ),
         # Update an existing mup
         (
-            MirrorUsagePointRequest.validate(
+            MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "456",
                     "deviceLFDI": "site1-lfdi",
@@ -193,7 +193,7 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
     [
         # Create a new mup
         (
-            MirrorUsagePointRequest.validate(
+            MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "123",
                     "deviceLFDI": "site1-lfdi",
@@ -218,7 +218,7 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
         ),
         # Update an existing mup
         (
-            MirrorUsagePointRequest.validate(
+            MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "456",
                     "deviceLFDI": "site1-lfdi",
@@ -263,7 +263,7 @@ async def test_create_update_mup_href_prefix(client: AsyncClient, mup: MirrorUsa
 @pytest.mark.anyio
 async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config):
     """Submits a batch of readings to a mup and checks the DB to see if they are created"""
-    mmr: MirrorMeterReading = MirrorMeterReading.validate(
+    mmr: MirrorMeterReading = MirrorMeterReading.model_validate(
         {
             "mRID": "1234",
             "mirrorReadingSets": [

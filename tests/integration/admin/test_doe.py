@@ -16,6 +16,6 @@ async def test_create_tariff_genrates(admin_client_auth: AsyncClient):
     doe_1 = generate_class_instance(DynamicOperatingEnvelopeRequest)
     doe_1.site_id = 2
 
-    resp = await admin_client_auth.post(DoeCreateUri, content=f"[{doe.json()}, {doe_1.json()}]")
+    resp = await admin_client_auth.post(DoeCreateUri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
 
     assert resp.status_code == HTTPStatus.CREATED

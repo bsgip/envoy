@@ -36,7 +36,7 @@ class DERControlMapper:
     @staticmethod
     def map_to_active_power(p: Decimal) -> ActivePower:
         """Creates an ActivePower instance from our own internal power decimal reading"""
-        return ActivePower.validate(
+        return ActivePower.model_validate(
             {
                 "value": int(p * DOE_DECIMAL_POWER),
                 "multiplier": DOE_DECIMAL_PLACES,
@@ -46,19 +46,19 @@ class DERControlMapper:
     @staticmethod
     def map_to_response(doe: DynamicOperatingEnvelope) -> DERControlResponse:
         """Creates a csip aus compliant DERControlResponse from the specific doe"""
-        return DERControlResponse.validate(
+        return DERControlResponse.model_validate(
             {
                 "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, doe.site_id, doe.dynamic_operating_envelope_id),
                 "version": 1,
                 "description": doe.start_time.isoformat(),
-                "interval": DateTimeIntervalType.validate(
+                "interval": DateTimeIntervalType.model_validate(
                     {
                         "duration": doe.duration_seconds,
                         "start": int(doe.start_time.timestamp()),
                     }
                 ),
                 "creationTime": doe.changed_time.timestamp(),
-                "DERControlBase_": DERControlBase.validate(
+                "DERControlBase_": DERControlBase.model_validate(
                     {
                         "opModImpLimW": DERControlMapper.map_to_active_power(doe.import_limit_active_watts),
                         "opModExpLimW": DERControlMapper.map_to_active_power(doe.export_limit_watts),
@@ -70,10 +70,10 @@ class DERControlMapper:
     @staticmethod
     def map_to_default_response(default_doe: DefaultDoeConfiguration) -> DefaultDERControl:
         """Creates a csip aus compliant DefaultDERControl from the specified defaults"""
-        return DefaultDERControl.validate(
+        return DefaultDERControl.model_validate(
             {
                 "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, DOE_DEFAULT_CONTROL_ID),
-                "DERControlBase_": DERControlBase.validate(
+                "DERControlBase_": DERControlBase.model_validate(
                     {
                         "opModImpLimW": DERControlMapper.map_to_active_power(default_doe.import_limit_active_watts),
                         "opModExpLimW": DERControlMapper.map_to_active_power(default_doe.export_limit_active_watts),
@@ -124,7 +124,7 @@ class DERControlMapper:
         else:
             raise InvalidMappingError(f"Unsupported source {source} for calculating href")
 
-        return DERControlListResponse.validate(
+        return DERControlListResponse.model_validate(
             {
                 "href": href,
                 "all_": total_does,
@@ -154,26 +154,26 @@ class DERProgramMapper:
         # The default DOE link will only be included if we have a default DOE configured for this site
         default_der_link: Optional[Link] = None
         if default_doe is not None:
-            default_der_link = Link.validate(
+            default_der_link = Link.model_validate(
                 {
                     "href": DERControlMapper.default_doe_href(rs_params, site_id),
                 }
             )
 
-        return DERProgramResponse.validate(
+        return DERProgramResponse.model_validate(
             {
                 "href": DERProgramMapper.doe_href(rs_params, site_id),
                 "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, site_id),
                 "primacy": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
                 "description": "Dynamic Operating Envelope",
                 "DefaultDERControlLink": default_der_link,
-                "ActiveDERControlListLink": ListLink.validate(
+                "ActiveDERControlListLink": ListLink.model_validate(
                     {
                         "href": DERControlMapper.active_doe_list_href(rs_params, site_id),
                         "all_": 1 if total_does > 0 else 0,
                     }
                 ),
-                "DERControlListLink": ListLink.validate(
+                "DERControlListLink": ListLink.model_validate(
                     {
                         "href": DERControlMapper.doe_list_href(rs_params, site_id),
                         "all_": total_does,
@@ -187,7 +187,7 @@ class DERProgramMapper:
         rs_params: RequestStateParameters, site_id: int, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
     ) -> DERProgramListResponse:
         """Returns a fixed list of just the DOE Program"""
-        return DERProgramListResponse.validate(
+        return DERProgramListResponse.model_validate(
             {
                 "href": DERProgramMapper.doe_list_href(rs_params, site_id),
                 "DERProgram": [DERProgramMapper.doe_program_response(rs_params, site_id, total_does, default_doe)],

@@ -65,7 +65,7 @@ class AppSettings(BaseSettings):
     @property
     def db_middleware_kwargs(self) -> Dict[str, Any]:
         return generate_middleware_kwargs(
-            database_url=self.database_url,
+            database_url=str(self.database_url),
             commit_on_exit=self.commit_on_exit,
             azure_ad_db_resource_id=self.azure_ad_db_resource_id,
             azure_ad_db_refresh_secs=self.azure_ad_db_refresh_secs,

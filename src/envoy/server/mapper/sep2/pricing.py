@@ -41,7 +41,7 @@ RATE_MRID_PREFIX: int = int("D01A", 16)
 class TariffProfileMapper:
     @staticmethod
     def _map_to_response(tariff: Tariff, tp_href: str, total_rates: int) -> TariffProfileResponse:
-        return TariffProfileResponse.validate(
+        return TariffProfileResponse.model_validate(
             {
                 "href": tp_href,
                 "mRID": generate_mrid(TARIFF_PROFILE_MRID_PREFIX, tariff.tariff_id),
@@ -76,7 +76,7 @@ class TariffProfileMapper:
     ) -> TariffProfileListResponse:
         """Returns a list containing multiple sep2 entities. The href to RateComponentListLink will be to an endpoint
         for returning rate components for an unspecified site id"""
-        return TariffProfileListResponse.validate(
+        return TariffProfileListResponse.model_validate(
             {
                 "all_": total_tariffs,
                 "results": len(tariffs),
@@ -99,7 +99,7 @@ class TariffProfileMapper:
             tariff_profiles.append(TariffProfileMapper.map_to_response(rs_params, tariff, site_id, rc_count))
             tariffs_count = tariffs_count + 1
 
-        return TariffProfileListResponse.validate(
+        return TariffProfileListResponse.model_validate(
             {
                 "all_": total_tariffs,
                 "results": tariffs_count,
@@ -144,7 +144,7 @@ class PricingReadingTypeMapper:
         with a particular type of pricing"""
         href = PricingReadingTypeMapper.pricing_reading_type_href(rs_params, rt)
         if rt == PricingReadingType.IMPORT_ACTIVE_POWER_KWH:
-            return ReadingType.validate(
+            return ReadingType.model_validate(
                 {
                     "href": href,
                     "commodity": CommodityType.ELECTRICITY_PRIMARY_METERED_VALUE,
@@ -154,7 +154,7 @@ class PricingReadingTypeMapper:
                 }
             )
         elif rt == PricingReadingType.EXPORT_ACTIVE_POWER_KWH:
-            return ReadingType.validate(
+            return ReadingType.model_validate(
                 {
                     "href": href,
                     "commodity": CommodityType.ELECTRICITY_PRIMARY_METERED_VALUE,
@@ -164,7 +164,7 @@ class PricingReadingTypeMapper:
                 }
             )
         elif rt == PricingReadingType.IMPORT_REACTIVE_POWER_KVARH:
-            return ReadingType.validate(
+            return ReadingType.model_validate(
                 {
                     "href": href,
                     "commodity": CommodityType.ELECTRICITY_SECONDARY_METERED_VALUE,
@@ -174,7 +174,7 @@ class PricingReadingTypeMapper:
                 }
             )
         elif rt == PricingReadingType.EXPORT_REACTIVE_POWER_KVARH:
-            return ReadingType.validate(
+            return ReadingType.model_validate(
                 {
                     "href": href,
                     "commodity": CommodityType.ELECTRICITY_SECONDARY_METERED_VALUE,
@@ -208,7 +208,7 @@ class RateComponentMapper:
             rate_component_id=rate_component_id,
             pricing_reading=pricing_reading,
         )
-        return RateComponentResponse.validate(
+        return RateComponentResponse.model_validate(
             {
                 "href": rc_href,
                 "mRID": generate_mrid(TARIFF_PROFILE_MRID_PREFIX, tariff_id, site_id, start_timestamp, pricing_reading),
@@ -243,7 +243,7 @@ class RateComponentMapper:
                 RateComponentMapper.map_to_response(rs_params, rate_count, tariff_id, site_id, pricing_type, day)
             )
 
-        return RateComponentListResponse.validate(
+        return RateComponentListResponse.model_validate(
             {
                 "all_": daily_rate_stats.total_distinct_dates * TOTAL_PRICING_READING_TYPES,
                 "results": len(rc_list),
@@ -318,7 +318,7 @@ class ConsumptionTariffIntervalMapper:
         href = ConsumptionTariffIntervalMapper.instance_href(
             rs_params, tariff_id, site_id, pricing_rt, day, time_of_day, price
         )
-        return ConsumptionTariffIntervalResponse.validate(
+        return ConsumptionTariffIntervalResponse.model_validate(
             {
                 "href": href,
                 "consumptionBlock": ConsumptionBlockType.NOT_APPLICABLE,
@@ -345,7 +345,7 @@ class ConsumptionTariffIntervalMapper:
         cti = ConsumptionTariffIntervalMapper.map_to_response(
             rs_params, tariff_id, site_id, pricing_rt, day, time_of_day, price
         )
-        return ConsumptionTariffIntervalListResponse.validate(
+        return ConsumptionTariffIntervalListResponse.model_validate(
             {"href": href, "all_": 1, "results": 1, "ConsumptionTariffInterval": [cti]}
         )
 
@@ -388,7 +388,7 @@ class TimeTariffIntervalMapper:
             rs_params, rate.tariff_id, rate.site_id, pricing_reading, start_d, start_t, price
         )
 
-        return TimeTariffIntervalResponse.validate(
+        return TimeTariffIntervalResponse.model_validate(
             {
                 "href": href,
                 "mRID": generate_mrid(
@@ -416,7 +416,7 @@ class TimeTariffIntervalMapper:
         total: int,
     ) -> TimeTariffIntervalListResponse:
         """Creates a TimeTariffIntervalListResponse for a single set of rates."""
-        return TimeTariffIntervalListResponse.validate(
+        return TimeTariffIntervalListResponse.model_validate(
             {
                 "all_": total,
                 "results": len(rates),

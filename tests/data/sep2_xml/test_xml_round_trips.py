@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 import pytest
 from defusedxml import ElementTree
 
-from tests.data.sep2_xml.xml_to_model_mappings import MAPPINGS
+from tests.data.sep2_xml.xml_to_model_mappings import MAPPINGS, TXmlSchemaType
 
 # assumes files for testing are in same dir as test
 INPUT_DIR = os.path.dirname(__file__)
@@ -59,7 +59,7 @@ def comparison_func(
 @pytest.mark.parametrize("file_name, xml_type, assertions_list, allowed_missing, strict", MAPPINGS)
 def test_xml_round_trip(
     file_name: str,
-    xml_type: str,
+    xml_type: type,
     assertions_list: list[Callable],
     allowed_missing: list[str],
     strict: bool,
@@ -77,7 +77,7 @@ def test_xml_round_trip(
     ref_as_XML = ElementTree.fromstring(buff)
 
     # create an instance of xml_type, then convert to an ElementTree.Element
-    schema_instance = xml_type.from_xml(buff)
+    schema_instance: TXmlSchemaType = xml_type.from_xml(buff)
     instance_as_bytes = schema_instance.to_xml(skip_empty=True)
     model_as_XML = ElementTree.fromstring(instance_as_bytes)
 

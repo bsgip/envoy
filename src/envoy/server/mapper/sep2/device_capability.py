@@ -8,4 +8,6 @@ from envoy.server.mapper.common import generate_href
 class DeviceCapabilityMapper:
     @staticmethod
     def map_to_response(rs_params: RequestStateParameters, links: dict) -> DeviceCapabilityResponse:
-        return DeviceCapabilityResponse.validate({"href": generate_href(uri.DeviceCapabilityUri, rs_params), **links})
+        return DeviceCapabilityResponse.model_validate(
+            {"href": generate_href(uri.DeviceCapabilityUri, rs_params), **links}
+        )

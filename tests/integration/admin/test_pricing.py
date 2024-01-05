@@ -29,7 +29,7 @@ async def test_get_single_tariff(admin_client_auth: AsyncClient):
 async def test_create_tariff(admin_client_auth: AsyncClient):
     tariff = generate_class_instance(TariffRequest)
     tariff.currency_code = 36
-    resp = await admin_client_auth.post(TariffCreateUri, json=tariff.dict())
+    resp = await admin_client_auth.post(TariffCreateUri, json=tariff.model_dump())
 
     assert resp.status_code == HTTPStatus.CREATED
 
@@ -38,7 +38,7 @@ async def test_create_tariff(admin_client_auth: AsyncClient):
 async def test_update_tariff(admin_client_auth: AsyncClient):
     tariff = generate_class_instance(TariffRequest)
     tariff.currency_code = 36
-    resp = await admin_client_auth.put(TariffUpdateUri.format(tariff_id=1), json=tariff.dict())
+    resp = await admin_client_auth.put(TariffUpdateUri.format(tariff_id=1), json=tariff.model_dump())
 
     assert resp.status_code == HTTPStatus.OK
 
@@ -54,7 +54,8 @@ async def test_create_tariff_genrates(admin_client_auth: AsyncClient):
     tariff_genrate_1.site_id = 2
 
     resp = await admin_client_auth.post(
-        TariffGeneratedRateCreateUri, content=f"[{tariff_genrate.json()}, {tariff_genrate_1.json()}]"
+        TariffGeneratedRateCreateUri,
+        content=f"[{tariff_genrate.model_dump_json()}, {tariff_genrate_1.model_dump_json()}]",
     )
 
     assert resp.status_code == HTTPStatus.CREATED

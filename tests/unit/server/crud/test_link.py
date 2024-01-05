@@ -1,8 +1,11 @@
 import unittest.mock as mock
+from typing import Optional
 
 import pydantic_xml
 import pytest
 from envoy_schema.server.schema.function_set import FunctionSet, FunctionSetStatus
+from envoy_schema.server.schema.sep2.base import BaseXmlModelWithNS
+from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
 from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud import link
@@ -23,7 +26,7 @@ async def test_get_supported_links_calls_get_link_field_names_with_model_schema(
     with mock.patch("envoy.server.crud.link.get_link_field_names") as get_link_field_names:
         await link.get_supported_links(session=mock.Mock(), model=model, rs_params=RequestStateParameters(1, None))
 
-    get_link_field_names.assert_called_once_with(schema=model.schema.return_value)
+    get_link_field_names.assert_called_once_with(model)
 
 
 @pytest.mark.anyio
@@ -362,68 +365,47 @@ def test_get_formatted_links_raises_exception(link_names, uri_parameters):
         link.get_formatted_links(link_names, RequestStateParameters(1, None), uri_parameters)
 
 
+class NoProps(BaseXmlModelWithNS):
+    pass
+
+
+class NoListLinkOrLinkPrimitives(BaseXmlModelWithNS):
+    title: str = pydantic_xml.element()
+    count: int = pydantic_xml.element()
+
+
+class NoListLinkOrLinkComplex(BaseXmlModelWithNS):
+    names: list[str] = pydantic_xml.element()
+    title: Optional[list[str]] = pydantic_xml.element()
+    obj: NoListLinkOrLinkPrimitives = pydantic_xml.element()
+
+
+class WithLinks(BaseXmlModelWithNS):
+    names: list[str] = pydantic_xml.element()
+    title: Optional[list[str]] = pydantic_xml.element()
+    obj: NoListLinkOrLinkPrimitives = pydantic_xml.element()
+    mandatory_list: ListLink = pydantic_xml.element()
+    optional_list: Optional[ListLink] = pydantic_xml.element()
+    mandatory_link: Link = pydantic_xml.element()
+    optional_link: Optional[Link] = pydantic_xml.element()
+
+
 @pytest.mark.parametrize(
-    "schema, expected",
+    "model, expected",
     [
-        ({"properties": {}}, []),  # No properties
+        (NoProps, []),
+        (NoListLinkOrLinkPrimitives, []),
+        (NoListLinkOrLinkComplex, []),
         (
-            {"properties": {"href": {"title": "Href", "enum": ["/fakeuri"], "type": "string"}}},
-            [],
-        ),  # No ListLink or Link fields
-        ({"properties": {"MyList": {"$ref": "#/definitions/List"}}}, []),  # field with $ref not a ListLink or Link
-        (
-            {
-                "properties": {
-                    "href": {"title": "Href", "enum": ["/fakeuri"], "type": "string"},
-                    "pollRate": {"title": "Pollrate", "type": "integer"},
-                    "SelfDeviceLink": {"$ref": "#/definitions/Link"},
-                    "EndDeviceListLink": {"$ref": "#/definitions/ListLink"},
-                    "MirrorUsagePointListLink": {"$ref": "#/definitions/ListLink"},
-                }
-            },
+            WithLinks,
             [
-                "SelfDeviceLink",
-                "EndDeviceListLink",
-                "MirrorUsagePointListLink",
-            ],
-        ),
-        (
-            {
-                "properties": {
-                    "href": {"title": "Href", "default": "/fakeuri", "type": "string"},
-                    "TimeLink": {"$ref": "#/definitions/Link"},
-                    "CustomerAccountListLink": {"$ref": "#/definitions/ListLink"},
-                    "DemandResponseProgramListLink": {"$ref": "#/definitions/ListLink"},
-                    "DERProgramListLink": {"$ref": "#/definitions/ListLink"},
-                    "FileListLink": {"$ref": "#/definitions/ListLink"},
-                    "MessagingProgramListLink": {"$ref": "#/definitions/ListLink"},
-                    "PrepaymentListLink": {"$ref": "#/definitions/ListLink"},
-                    "ResponseSetListLink": {"$ref": "#/definitions/ListLink"},
-                    "TariffProfileListLink": {"$ref": "#/definitions/ListLink"},
-                    "UsagePointListLink": {"$ref": "#/definitions/ListLink"},
-                    "pollRate": {"title": "Pollrate", "type": "integer"},
-                    "SelfDeviceLink": {"$ref": "#/definitions/Link"},
-                    "EndDeviceListLink": {"$ref": "#/definitions/ListLink"},
-                    "MirrorUsagePointListLink": {"$ref": "#/definitions/ListLink"},
-                }
-            },
-            [
-                "TimeLink",
-                "CustomerAccountListLink",
-                "DemandResponseProgramListLink",
-                "DERProgramListLink",
-                "FileListLink",
-                "MessagingProgramListLink",
-                "PrepaymentListLink",
-                "ResponseSetListLink",
-                "TariffProfileListLink",
-                "UsagePointListLink",
-                "SelfDeviceLink",
-                "EndDeviceListLink",
-                "MirrorUsagePointListLink",
+                "mandatory_list",
+                "optional_list",
+                "mandatory_link",
+                "optional_link",
             ],
         ),
     ],
 )
-def test_get_link_field_names(schema: dict, expected: list[str]):
-    assert link.get_link_field_names(schema) == expected
+def test_get_link_field_names(model: type, expected: list[str]):
+    assert link.get_link_field_names(model) == expected

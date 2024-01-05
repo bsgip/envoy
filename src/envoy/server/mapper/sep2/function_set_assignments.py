@@ -19,7 +19,7 @@ class FunctionSetAssignmentsMapper:
     def map_to_response(
         rs_params: RequestStateParameters, fsa_id: int, site_id: int, doe_count: int, tariff_count: int
     ) -> FunctionSetAssignmentsResponse:
-        return FunctionSetAssignmentsResponse.validate(
+        return FunctionSetAssignmentsResponse.model_validate(
             {
                 "href": generate_href(
                     uri.FunctionSetAssignmentsUri,
@@ -43,7 +43,7 @@ class FunctionSetAssignmentsMapper:
     def map_to_list_response(
         rs_params: RequestStateParameters, function_set_assignments: list[FunctionSetAssignmentsResponse], site_id: int
     ) -> FunctionSetAssignmentsListResponse:
-        return FunctionSetAssignmentsListResponse.validate(
+        return FunctionSetAssignmentsListResponse.model_validate(
             {
                 "href": generate_href(uri.FunctionSetAssignmentsListUri, rs_params, site_id=site_id),
                 "all_": 1,

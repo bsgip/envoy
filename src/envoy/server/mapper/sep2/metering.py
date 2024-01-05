@@ -90,7 +90,7 @@ class MirrorUsagePointMapper:
     def map_to_response(rs_params: RequestStateParameters, srt: SiteReadingType, site: Site) -> MirrorUsagePoint:
         """Maps a SiteReadingType and associated Site into a MirrorUsagePoint"""
 
-        return MirrorUsagePoint.validate(
+        return MirrorUsagePoint.model_validate(
             {
                 "href": generate_href(uris.MirrorUsagePointUri, rs_params, mup_id=srt.site_reading_type_id),
                 "deviceLFDI": site.lfdi,
@@ -127,7 +127,7 @@ class MirrorUsagePointListMapper:
     ) -> MirrorUsagePointListResponse:
         """Maps a set of SiteReadingType (requires the associated site relationship being populated for each
         SiteReadingType)"""
-        return MirrorUsagePointListResponse.validate(
+        return MirrorUsagePointListResponse.model_validate(
             {
                 "href": generate_href(uris.MirrorUsagePointListUri, rs_params),
                 "all_": srt_count,
