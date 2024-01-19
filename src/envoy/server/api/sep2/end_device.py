@@ -3,10 +3,11 @@ from http import HTTPStatus
 
 import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError
 
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
@@ -44,7 +45,7 @@ async def get_enddevice(site_id: int, request: Request) -> XmlResponse:
         db.session, site_id, extract_request_params(request)
     )
     if end_device is None:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
     return XmlResponse(end_device)
 
 
@@ -106,8 +107,6 @@ async def create_end_device(
         location_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site_id)
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
     except BadRequestError as exc:
-        logger.debug(exc)
-        raise HTTPException(detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)
+        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)
     except IntegrityError as exc:
-        logger.debug(exc)
-        raise HTTPException(detail="lFDI conflict.", status_code=HTTPStatus.CONFLICT)
+        raise LoggedHttpException(logger, exc, detail="lFDI conflict.", status_code=HTTPStatus.CONFLICT)

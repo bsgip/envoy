@@ -4,10 +4,11 @@ from http import HTTPStatus
 
 from envoy_schema.admin.schema.billing import BillingResponse
 from envoy_schema.admin.schema.uri import BillingUri
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, Path
 from fastapi_async_sqlalchemy import db
 
 from envoy.admin.manager.billing import BillingManager
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.exception import NotFoundError
 
 logger = logging.getLogger(__name__)
@@ -44,5 +45,4 @@ async def get_billing_data(
             period_end=period_end,
         )
     except NotFoundError as exc:
-        logger.debug(exc)
-        raise HTTPException(detail="The requested aggregator id doesn't exist", status_code=HTTPStatus.NOT_FOUND)
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "The requested aggregator id doesn't exist")

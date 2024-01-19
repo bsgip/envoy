@@ -56,3 +56,21 @@ def general_exception_handler(request: Request, exc: Exception) -> Response:
 
     # don't leak any internal information about a 500
     return generate_error_response(HTTPStatus.INTERNAL_SERVER_ERROR, message=None)
+
+
+class LoggedHttpException(HTTPException):
+    """This is for all intents and purposes a HTTPException - it will just also utilise the specified
+    logger to log the exception too.
+
+    It's a simple way of making the various HTTP Exception handlers more consistent with their logging practices"""
+
+    def __init__(
+        self, logger_instance: logging.Logger, exc: Optional[Exception], status_code: HTTPStatus, detail: str
+    ) -> None:
+        super().__init__(status_code, detail)
+
+        log_message = f"LoggedHttpException ({int(status_code)}) {status_code}: {detail}"
+        if exc is None:
+            logger_instance.info(log_message)
+        else:
+            logger_instance.error(log_message, exc_info=exc)
