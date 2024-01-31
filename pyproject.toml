@@ -51,6 +51,8 @@ dependencies = [
     "pyjwt",
     "cryptography",
     "httpx",
+    "taskiq",
+    "taskiq-aio-pika",
     "envoy_schema @ git+ssh://git@github.com/bsgip/envoy-schema.git",
 ]
 
