@@ -13,6 +13,7 @@ from envoy_schema.server.schema.sep2.metering_mirror import (
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
@@ -63,9 +64,9 @@ async def get_mirror_usage_point_list(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError as ex:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
 
     return XmlResponse(mup_list)
 
@@ -92,9 +93,9 @@ async def post_mirror_usage_point_list(
             db.session, request_params=rs_params, mup=payload
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError as ex:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
 
     return Response(
         status_code=HTTPStatus.CREATED,
@@ -130,9 +131,9 @@ async def get_mirror_usage_point(
             site_reading_type_id=mup_id,
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError as ex:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
 
     return XmlResponse(mup_list)
 
@@ -165,9 +166,9 @@ async def post_mirror_usage_point(
             db.session, request_params=extract_request_params(request), site_reading_type_id=mup_id, mmr=payload
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError as ex:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
 
     return Response(status_code=HTTPStatus.CREATED)
 

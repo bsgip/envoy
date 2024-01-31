@@ -140,6 +140,26 @@ async def test_get_enddevice(client: AsyncClient, edev_fetch_uri_format: str):
 
 
 @pytest.mark.anyio
+async def test_create_end_device_shinehub(client: AsyncClient, edev_base_uri: str):
+    """Represents an error found by Shinehub during their testing - it was found that a blank sfdi
+    was NOT triggering a validation error - it was instead returning a Unknown error"""
+    content = """<EndDevice xmlns="urn:ieee:std:2030.5:ns">
+    <sFDI></sFDI>
+    <lFDI></lFDI>
+    <deviceCategory>14</deviceCategory>
+    </EndDevice>"""
+
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=content,
+    )
+
+    assert_response_header(response, HTTPStatus.BAD_REQUEST, expected_content_type=None)
+    assert_error_response(response)
+
+
+@pytest.mark.anyio
 async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
     """When creating an end_device check to see if it persists and is correctly assigned to the aggregator"""
 

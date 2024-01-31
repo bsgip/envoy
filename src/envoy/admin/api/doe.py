@@ -4,11 +4,12 @@ from http import HTTPStatus
 from asyncpg.exceptions import CardinalityViolationError  # type: ignore
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.uri import DoeCreateUri
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError
 
 from envoy.admin.manager.doe import DoeListManager
+from envoy.server.api.error_handler import LoggedHttpException
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,7 @@ async def create_doe(doe_list: list[DynamicOperatingEnvelopeRequest]) -> None:
         await DoeListManager.add_many_doe(db.session, doe_list)
 
     except CardinalityViolationError as exc:
-        logger.debug(exc)
-        raise HTTPException(detail="The request contains duplicate instances", status_code=HTTPStatus.BAD_REQUEST)
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances")
 
     except IntegrityError as exc:
-        logger.debug(exc)
-        raise HTTPException(detail="site_id not found", status_code=HTTPStatus.BAD_REQUEST)
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_id not found")

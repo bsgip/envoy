@@ -2,9 +2,10 @@ import logging
 from http import HTTPStatus
 
 from envoy_schema.server.schema import uri
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
     extract_date_from_iso_string,
     extract_datetime_from_paging_param,
@@ -51,9 +52,9 @@ async def get_derprogram_list(
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derp_list)
 
@@ -70,7 +71,7 @@ async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str
         fastapi.Response object.
     """
     if der_program_id != DOE_PROGRAM_ID:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
         derp = await DERProgramManager.fetch_doe_program_for_site(
@@ -80,9 +81,9 @@ async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derp)
 
@@ -111,7 +112,7 @@ async def get_dercontrol_list(
         fastapi.Response object.
     """
     if der_program_id != DOE_PROGRAM_ID:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_site(
@@ -123,9 +124,9 @@ async def get_dercontrol_list(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derc_list)
 
@@ -155,7 +156,7 @@ async def get_active_dercontrol_list(
     """
 
     if der_program_id != DOE_PROGRAM_ID:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
         derc_list = await DERControlManager.fetch_active_doe_controls_for_site(
@@ -167,9 +168,9 @@ async def get_active_dercontrol_list(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derc_list)
 
@@ -196,7 +197,7 @@ async def get_default_dercontrol(
     """
 
     if der_program_id != DOE_PROGRAM_ID:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
         derc_list = await DERControlManager.fetch_default_doe_controls_for_site(
@@ -206,9 +207,9 @@ async def get_default_dercontrol(
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derc_list)
 
@@ -239,11 +240,11 @@ async def get_dercontrol_list_for_date(
         fastapi.Response object.
     """
     if der_program_id != DOE_PROGRAM_ID:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     day = extract_date_from_iso_string(date)
     if day is None:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Expected YYYY-MM-DD date")
+        raise LoggedHttpException(logger, None, HTTPStatus.BAD_REQUEST, f"Expected YYYY-MM-DD date but got: {date}")
 
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_site_day(
@@ -256,8 +257,8 @@ async def get_dercontrol_list_for_date(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derc_list)

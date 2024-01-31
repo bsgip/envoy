@@ -2,11 +2,12 @@ import logging
 from http import HTTPStatus
 
 from envoy_schema.server.schema import uri
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import NoResultFound
 
 from envoy.server.api import query
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import extract_request_params
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
@@ -39,11 +40,10 @@ async def get_function_set_assignments(site_id: int, fsa_id: int, request: Reque
             )
         )
     except NoResultFound as exc:
-        logger.debug(exc)
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
 
     if function_set_assignments is None:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
     return XmlResponse(function_set_assignments)
 
 
