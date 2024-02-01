@@ -160,26 +160,6 @@ async def test_create_end_device_shinehub(client: AsyncClient, edev_base_uri: st
 
 
 @pytest.mark.anyio
-async def test_create_end_device_shinehub(client: AsyncClient, edev_base_uri: str):
-    """Represents an error found by Shinehub during their testing - it was found that a blank sfdi
-    was NOT triggering a validation error - it was instead returning a Unknown error"""
-    content = """<EndDevice xmlns="urn:ieee:std:2030.5:ns">
-    <sFDI></sFDI>
-    <lFDI></lFDI>
-    <deviceCategory>14</deviceCategory>
-    </EndDevice>"""
-
-    response = await client.post(
-        edev_base_uri,
-        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
-        content=content,
-    )
-
-    assert_response_header(response, HTTPStatus.BAD_REQUEST, expected_content_type=None)
-    assert_error_response(response)
-
-
-@pytest.mark.anyio
 async def test_create_end_device_specified_sfdi(client: AsyncClient, edev_base_uri: str):
     """When creating an end_device check to see if it persists and is correctly assigned to the aggregator"""
 
@@ -225,6 +205,38 @@ async def test_create_end_device_specified_sfdi(client: AsyncClient, edev_base_u
 
 
 @pytest.mark.anyio
+async def test_create_end_device_no_sfdi(client: AsyncClient, edev_base_uri: str):
+    """When creating an end_device check to see if it persists and is correctly assigned to the aggregator
+    (with sfdi be generated on the server side)"""
+    insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    insert_request.sFDI = 0
+    insert_request.lFDI = ""
+    insert_request.postRate = 123
+    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.ENERGY_MANAGEMENT_SYSTEM))
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=EndDeviceRequest.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    assert len(read_response_body_string(response)) == 0
+    inserted_href = read_location_header(response)
+
+    # now lets grab the end device we just created
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.OK)
+    response_body = read_response_body_string(response)
+    assert len(response_body) > 0
+    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
+    assert_nowish(parsed_response.changedTime)
+    assert parsed_response.href == inserted_href
+    assert parsed_response.enabled == 1
+    assert parsed_response.lFDI.strip() != ""
+    assert parsed_response.sFDI != 0
+    assert parsed_response.deviceCategory == insert_request.deviceCategory
+
+
+@pytest.mark.anyio
 @pytest.mark.href_prefix(HREF_PREFIX)
 async def test_create_end_device_href_prefix(client: AsyncClient, edev_base_uri: str):
     """Checks that the Location header encodes the HREF_PREFIX"""
@@ -241,38 +253,6 @@ async def test_create_end_device_href_prefix(client: AsyncClient, edev_base_uri:
     assert len(read_response_body_string(response)) == 0
     inserted_href = read_location_header(response)
     assert inserted_href.startswith(HREF_PREFIX)
-
-
-@pytest.mark.anyio
-async def test_create_end_device_no_sfdi(client: AsyncClient, edev_base_uri: str):
-    """When creating an end_device check to see if it persists and is correctly assigned to the aggregator
-    (with sfdi be generated on the server side)"""
-    insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
-    insert_request.sFDI = 0
-    insert_request.lFDI = ""
-    insert_request.postRate = 123
-    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.ENERGY_MANAGEMENT_SYSTEM))
-    response = await client.post(
-        edev_base_uri,
-        headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)},
-        content=EndDeviceRequest.to_xml(insert_request),
-    )
-    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
-    assert len(read_response_body_string(response)) == 0
-    inserted_href = read_location_header(response)
-
-    # now lets grab the end device we just created
-    response = await client.get(inserted_href, headers={cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)})
-    assert_response_header(response, HTTPStatus.OK)
-    response_body = read_response_body_string(response)
-    assert len(response_body) > 0
-    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
-    assert_nowish(parsed_response.changedTime)
-    assert parsed_response.href == inserted_href
-    assert parsed_response.enabled == 1
-    assert parsed_response.lFDI.strip() != ""
-    assert parsed_response.sFDI != 0
-    assert parsed_response.deviceCategory == insert_request.deviceCategory
 
 
 @pytest.mark.anyio

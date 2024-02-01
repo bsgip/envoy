@@ -56,6 +56,13 @@ async def select_single_site_with_site_id(session: AsyncSession, site_id: int, a
     return resp.scalar_one_or_none()
 
 
+async def select_single_site_with_sfdi(session: AsyncSession, sfdi: int, aggregator_id: int) -> Optional[Site]:
+    """Selects the unique Site with the specified sfdi and aggregator_id. Returns None if a match isn't found"""
+    stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.sfdi == sfdi))
+    resp = await session.execute(stmt)
+    return resp.scalar_one_or_none()
+
+
 async def select_single_site_with_lfdi(session: AsyncSession, lfdi: str, aggregator_id: int) -> Optional[Site]:
     """Site and aggregator id need to be used to make sure the aggregator owns this site."""
     stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.lfdi == lfdi))

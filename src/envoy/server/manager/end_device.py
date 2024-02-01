@@ -58,32 +58,6 @@ class EndDeviceManager:
         raise UnableToGenerateIdError(f"Unable to generate a unique sfdi within {MAX_ATTEMPTS} attempts. Failing.")
 
     @staticmethod
-    async def generate_unique_device_id(session: AsyncSession, aggregator_id: int) -> tuple[int, str]:
-        """Generates a unique sfdi/lfdi combination for the particular aggregator.
-
-        Raises UnableToGenerateIdError if a sufficiently unique sfdi cannot be generated"""
-
-        # ideally this would hook some form of TLS certificate generation process but given that we don't have a usecase
-        # for envoy signing certificates (yet) we'll instead just rely on a good source of entropy and double check
-        # the db (the double check on the DB might become relevant due to birthday paradox but I suspect this might
-        # be a little overkill)
-
-        # something has gone seriously wrong if we cant generate a new random value after this many attempts
-        MAX_ATTEMPTS = 20
-        for _ in range(MAX_ATTEMPTS):
-            # We want 63 bits of randomness to avoid overflows when writing to db BIGINTEGER
-            random_bytes = token_bytes(nbytes=8)
-            random_bytes = bytes([random_bytes[0] & 0x7F]) + random_bytes[1:]
-            candidate_sfdi = int.from_bytes(random_bytes, byteorder="big")
-            existing_site = await select_single_site_with_sfdi(
-                session, sfdi=candidate_sfdi, aggregator_id=aggregator_id
-            )
-            if existing_site is None:
-                return (candidate_sfdi, f"{candidate_sfdi:x}")
-
-        raise UnableToGenerateIdError(f"Unable to generate a unique sfdi within {MAX_ATTEMPTS} attempts. Failing.")
-
-    @staticmethod
     async def add_or_update_enddevice_for_aggregator(
         session: AsyncSession, request_params: RequestStateParameters, end_device: EndDeviceRequest
     ) -> int:
