@@ -1,11 +1,15 @@
 import unittest.mock as mock
+from typing import Optional
 
 import pydantic_xml
 import pytest
+from envoy_schema.server.schema.function_set import FunctionSet, FunctionSetStatus
+from envoy_schema.server.schema.sep2.base import BaseXmlModelWithNS
+from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud import link
 from envoy.server.crud.link import LinkParameters
-from envoy.server.schema.function_set import FunctionSet, FunctionSetStatus
 
 
 @pytest.mark.anyio
@@ -17,12 +21,12 @@ from envoy.server.schema.function_set import FunctionSet, FunctionSetStatus
     add_resource_counts_to_links=mock.DEFAULT,
 )
 async def test_get_supported_links_calls_get_link_field_names_with_model_schema(**kwargs: mock.Mock) -> None:
-    model = mock.Mock(spec=pydantic_xml.BaseXmlModel)
+    model = pydantic_xml.BaseXmlModel
 
     with mock.patch("envoy.server.crud.link.get_link_field_names") as get_link_field_names:
-        await link.get_supported_links(session=mock.Mock(), model=model, aggregator_id=1)
+        await link.get_supported_links(session=mock.Mock(), model=model, rs_params=RequestStateParameters(1, None))
 
-    get_link_field_names.assert_called_once_with(schema=model.schema.return_value)
+    get_link_field_names.assert_called_once_with(model)
 
 
 @pytest.mark.anyio
@@ -39,7 +43,9 @@ async def test_get_supported_links_calls_filter_with_check_link_supported_and_li
     with mock.patch("envoy.server.crud.link.get_link_field_names", return_value=link_names), mock.patch(
         "envoy.server.crud.link.check_link_supported", return_value=True
     ) as check_link_supported, mock.patch("envoy.server.crud.link.filter") as patched_filter:
-        await link.get_supported_links(session=mock.Mock(), model=mock.Mock(), aggregator_id=123)
+        await link.get_supported_links(
+            session=mock.Mock(), model=mock.Mock(), rs_params=RequestStateParameters(123, None)
+        )
 
     patched_filter.assert_called_with(check_link_supported, link_names)
 
@@ -57,15 +63,21 @@ async def test_get_supported_links_calls_get_formatted_links_with_supported_link
 ) -> None:
     supported_links_names = mock.Mock()
     uri_parameters = mock.Mock()
+    rs_params = RequestStateParameters(123, None)
 
     with mock.patch("envoy.server.crud.link.filter", return_value=supported_links_names), mock.patch(
         "envoy.server.crud.link.get_formatted_links"
     ) as get_formatted_links:
         await link.get_supported_links(
-            session=mock.Mock(), model=mock.Mock(), aggregator_id=123, uri_parameters=uri_parameters
+            session=mock.Mock(),
+            model=mock.Mock(),
+            rs_params=rs_params,
+            uri_parameters=uri_parameters,
         )
 
-    get_formatted_links.assert_called_once_with(link_names=supported_links_names, uri_parameters=uri_parameters)
+    get_formatted_links.assert_called_once_with(
+        rs_params=rs_params, link_names=supported_links_names, uri_parameters=uri_parameters
+    )
 
 
 @pytest.mark.anyio
@@ -86,7 +98,7 @@ async def test_get_supported_links_awaits_get_resource_counts_with_supported_lin
     with mock.patch("envoy.server.crud.link.get_formatted_links", return_value=supported_links), mock.patch(
         "envoy.server.crud.link.get_resource_counts"
     ) as get_resource_counts:
-        await link.get_supported_links(session=session, model=mock.Mock(), aggregator_id=123)
+        await link.get_supported_links(session=session, model=mock.Mock(), rs_params=RequestStateParameters(123, None))
 
     get_resource_counts.assert_awaited_once_with(session=session, link_names=supported_links.keys(), aggregator_id=123)
 
@@ -106,7 +118,9 @@ async def test_get_supported_links_calls_add_resource_counts_to_links_with_suppo
     with mock.patch("envoy.server.crud.link.get_formatted_links", return_value=supported_links), mock.patch(
         "envoy.server.crud.link.get_resource_counts", return_value=resource_counts
     ), mock.patch("envoy.server.crud.link.add_resource_counts_to_links") as add_resource_counts_to_links:
-        await link.get_supported_links(session=mock.Mock(), model=mock.Mock(), aggregator_id=123)
+        await link.get_supported_links(
+            session=mock.Mock(), model=mock.Mock(), rs_params=RequestStateParameters(123, None)
+        )
 
     add_resource_counts_to_links.assert_called_once_with(links=supported_links, resource_counts=resource_counts)
 
@@ -133,10 +147,7 @@ async def test_get_resource_counts(link_names: list[str], expected_resource_coun
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("link_name, resource_count", [("EndDeviceListLink", 5)])
-@mock.patch(  # Tricky patch to mock the db.session parameter passed to select_aggregator_site_count
-    "fastapi_async_sqlalchemy.middleware.DBSessionMeta.session"
-)
-async def test_get_resource_count(_: mock.Mock, link_name: str, resource_count: int):
+async def test_get_resource_count(link_name: str, resource_count: int):
     with mock.patch("envoy.server.crud.end_device.select_aggregator_site_count", return_value=resource_count):
         assert (
             await link.get_resource_count(session=mock.Mock(), list_link_name=link_name, aggregator_id=1)
@@ -333,7 +344,7 @@ def test_check_function_set_supported_raise_exception(function_set_status_mappin
     ],
 )
 def test_get_formatted_links(link_names, uri_parameters, expected):
-    assert link.get_formatted_links(link_names, uri_parameters) == expected
+    assert link.get_formatted_links(link_names, RequestStateParameters(1, None), uri_parameters) == expected
 
 
 @pytest.mark.parametrize(
@@ -351,71 +362,50 @@ def test_get_formatted_links(link_names, uri_parameters, expected):
 )
 def test_get_formatted_links_raises_exception(link_names, uri_parameters):
     with pytest.raises(link.MissingUriParameterError):
-        link.get_formatted_links(link_names, uri_parameters)
+        link.get_formatted_links(link_names, RequestStateParameters(1, None), uri_parameters)
+
+
+class NoProps(BaseXmlModelWithNS):
+    pass
+
+
+class NoListLinkOrLinkPrimitives(BaseXmlModelWithNS):
+    title: str = pydantic_xml.element()
+    count: int = pydantic_xml.element()
+
+
+class NoListLinkOrLinkComplex(BaseXmlModelWithNS):
+    names: list[str] = pydantic_xml.element()
+    title: Optional[list[str]] = pydantic_xml.element()
+    obj: NoListLinkOrLinkPrimitives = pydantic_xml.element()
+
+
+class WithLinks(BaseXmlModelWithNS):
+    names: list[str] = pydantic_xml.element()
+    title: Optional[list[str]] = pydantic_xml.element()
+    obj: NoListLinkOrLinkPrimitives = pydantic_xml.element()
+    mandatory_list: ListLink = pydantic_xml.element()
+    optional_list: Optional[ListLink] = pydantic_xml.element()
+    mandatory_link: Link = pydantic_xml.element()
+    optional_link: Optional[Link] = pydantic_xml.element()
 
 
 @pytest.mark.parametrize(
-    "schema, expected",
+    "model, expected",
     [
-        ({"properties": {}}, []),  # No properties
+        (NoProps, []),
+        (NoListLinkOrLinkPrimitives, []),
+        (NoListLinkOrLinkComplex, []),
         (
-            {"properties": {"href": {"title": "Href", "enum": ["/fakeuri"], "type": "string"}}},
-            [],
-        ),  # No ListLink or Link fields
-        ({"properties": {"MyList": {"$ref": "#/definitions/List"}}}, []),  # field with $ref not a ListLink or Link
-        (
-            {
-                "properties": {
-                    "href": {"title": "Href", "enum": ["/fakeuri"], "type": "string"},
-                    "pollRate": {"title": "Pollrate", "type": "integer"},
-                    "SelfDeviceLink": {"$ref": "#/definitions/Link"},
-                    "EndDeviceListLink": {"$ref": "#/definitions/ListLink"},
-                    "MirrorUsagePointListLink": {"$ref": "#/definitions/ListLink"},
-                }
-            },
+            WithLinks,
             [
-                "SelfDeviceLink",
-                "EndDeviceListLink",
-                "MirrorUsagePointListLink",
-            ],
-        ),
-        (
-            {
-                "properties": {
-                    "href": {"title": "Href", "default": "/fakeuri", "type": "string"},
-                    "TimeLink": {"$ref": "#/definitions/Link"},
-                    "CustomerAccountListLink": {"$ref": "#/definitions/ListLink"},
-                    "DemandResponseProgramListLink": {"$ref": "#/definitions/ListLink"},
-                    "DERProgramListLink": {"$ref": "#/definitions/ListLink"},
-                    "FileListLink": {"$ref": "#/definitions/ListLink"},
-                    "MessagingProgramListLink": {"$ref": "#/definitions/ListLink"},
-                    "PrepaymentListLink": {"$ref": "#/definitions/ListLink"},
-                    "ResponseSetListLink": {"$ref": "#/definitions/ListLink"},
-                    "TariffProfileListLink": {"$ref": "#/definitions/ListLink"},
-                    "UsagePointListLink": {"$ref": "#/definitions/ListLink"},
-                    "pollRate": {"title": "Pollrate", "type": "integer"},
-                    "SelfDeviceLink": {"$ref": "#/definitions/Link"},
-                    "EndDeviceListLink": {"$ref": "#/definitions/ListLink"},
-                    "MirrorUsagePointListLink": {"$ref": "#/definitions/ListLink"},
-                }
-            },
-            [
-                "TimeLink",
-                "CustomerAccountListLink",
-                "DemandResponseProgramListLink",
-                "DERProgramListLink",
-                "FileListLink",
-                "MessagingProgramListLink",
-                "PrepaymentListLink",
-                "ResponseSetListLink",
-                "TariffProfileListLink",
-                "UsagePointListLink",
-                "SelfDeviceLink",
-                "EndDeviceListLink",
-                "MirrorUsagePointListLink",
+                "mandatory_list",
+                "optional_list",
+                "mandatory_link",
+                "optional_link",
             ],
         ),
     ],
 )
-def test_get_link_field_names(schema: dict, expected: list[str]):
-    assert link.get_link_field_names(schema) == expected
+def test_get_link_field_names(model: type, expected: list[str]):
+    assert link.get_link_field_names(model) == expected

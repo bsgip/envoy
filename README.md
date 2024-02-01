@@ -13,13 +13,41 @@ Top level directories define fastapi apps that use a common auth model
 
 docstrings on `__init__.py` should describe the structure in greater detail
 
+## Settings
+
+Envoy has a number of configuration settings that turn on/off optional functionality. It should run fine out of the box but the below table will detail the additional options.
+
+Typically settings are set by setting an environment variable with the same name (case insensitive).
+
+
+| **Setting** | **Type** | **Purpose** |
+| ----------- | -------- | ----------- |
+| `cert_header` | `string` | The name of the HTTP header that API endpoints will look for to validate a client. This should be set by the TLS termination point and can contain either a full client certificate in PEM format or the sha256 fingerprint of that certificate. defaults to "x-forwarded-client-cert" |
+| `default_timezone` | `string` | The timezone name that will be used as the default for new sites registered in band (defaults to "Australia/Brisbane") |
+| `azure_ad_tenant_id` | `string` | The Azure AD tenant id that envoy is deployed under (see Azure Active Directory Support below) |
+| `azure_ad_client_id` | `string` | The Azure AD client id that identifies the VM envoy is deployed under (see Azure Active Directory Support below) |
+| `azure_ad_valid_issuer` | `string` | The Azure AD issuer that will be generating tokens for the current tenant (see Azure Active Directory Support below) |
+| `azure_ad_db_resource_id` | `string` | If set (with the other Azure AD options) - replaces the db connection password dynamically with a token minted from the tenant token service for this resource id. The token ID should match the resource ID of a managed database service. This token will be rotated as it expires. |
+| `azure_ad_db_refresh_secs` | `int` | If `azure_ad_db_resource_id` is set - the value of this variable will be the rate at which tokens are manually refreshed (in seconds) |
+| `href_prefix` | `string` | Used for when the server is exposed externally under a path prefix. The value of this variable will be prefixed to all returned `href` elements |
+| `default_doe_import_active_watts` | `float` | If set - the DefaultDERControl endpoint will be activated with the DOE extensions for import being set to this value (requires `default_doe_export_active_watts`)|
+| `default_doe_export_active_watts` | `float` | If set - the DefaultDERControl endpoint will be activated with the DOE extensions for export being set to this value (requires `default_doe_import_active_watts`)|
+
+### Azure Active Directory Support + Managed Identity
+
+Envoy can be run in a Azure tenant on a VM with a managed identity where this identity can be used to validate incoming/outgoing connections in addition to the normal 2030.5 cert auth.
+
+Enabling this auth will ensure that all incoming requests must include an `Authorization: bearer <AzureADToken>` header in addition to the "normal" auth headers. This token will be validated against the configured Azure AD tenant/client/issuer.
+
+To enable - set the config for `azure_ad_tenant_id`/`azure_ad_client_id`/`azure_ad_valid_issuer`
+
 ## Dependencies/Requirements
 
-`requirements.txt` contains all the dependencies required to run Envoy. 
+`pip install .` will install the basic dependencies to run Envoy
 
-The `requirements/` directory contains seperate `requirements.XXX.txt` files for specific purposes beyond the runtime dependencies.
+`pip install .[dev]` will install the optional development dependencies (eg code linters)
 
-The latest stable/frozen set of requirements can be found in `requirements/requirements.prod.txt`. This file can be regenerated (from a clean virtual environment) using `pip freeze > requirements/requirements.prod.txt`
+`pip install .[test]` will install the optional testing dependencies (eg pytest)
 
 ## Contributing
 
@@ -43,12 +71,11 @@ To run Envoy locally as a development environment you'll need to setup a local p
 
 1. Install dependencies for main server + tests
 
-`pip install -r requirements.txt`
-`pip install -r requirements/requirements.testing.txt`
+`pip install .[test]`
 
 2. (optional) Install development requirements
 
-`pip install -r requirements/requirements.dev.txt`
+`pip install .[dev]`
 
 3. Double check tests are running
 
@@ -75,7 +102,7 @@ We recommend adding these to a `.env` file in the root directory so that they ar
 
 6. Install local copy
 
-`pip install -e ./`
+`pip install -e .`
 
 7. Apply alembic migrations to the database schema
 

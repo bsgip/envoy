@@ -1,0 +1,10 @@
+{
+    "access_token": "eyJ0eXAiOiJKV1Q...",
+    "client_id": "147fc0db-0399-4b9f-b60a-7697ff0e3e4a",
+    "expires_in": "86400",
+    "expires_on": "1690938812",
+    "ext_expires_in": "86399",
+    "not_before": "1690852112",
+    "resource": "https://ossrdbms-aad.database.windows.net",
+    "token_type": "Bearer"
+}

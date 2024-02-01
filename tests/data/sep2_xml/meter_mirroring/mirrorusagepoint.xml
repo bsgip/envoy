@@ -1,0 +1,24 @@
+<!-- IEEE Std 2030.5-2018 Table C.15 Step 8 Example Client request for POST /mup -->
+<MirrorUsagePoint
+	xmlns="urn:ieee:std:2030.5:ns">
+	<mRID>0600006CC8</mRID>
+	<description>Gas Mirroring</description>
+	<roleFlags>13</roleFlags>
+	<serviceCategoryKind>1</serviceCategoryKind>
+	<status>1</status>
+	<deviceLFDI>00</deviceLFDI>
+	<MirrorMeterReading>
+		<mRID>0700006CC8</mRID>
+		<Reading>
+			<value>125</value>
+		</Reading>
+		<ReadingType>
+			<accumulationBehaviour>9</accumulationBehaviour>
+			<commodity>7</commodity>
+			<dataQualifier>0</dataQualifier>
+			<flowDirection>1</flowDirection>
+			<powerOfTenMultiplier>3</powerOfTenMultiplier>
+			<uom>119</uom>
+		</ReadingType>
+	</MirrorMeterReading>
+</MirrorUsagePoint>

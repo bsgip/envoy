@@ -1,25 +1,57 @@
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from http import HTTPStatus
 from typing import Optional
 
 from fastapi import HTTPException, Request
 
+from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+
+MAX_LIMIT = 500
 DEFAULT_LIMIT = 1
 DEFAULT_START = 0
 DEFAULT_DATETIME = datetime.min
 
 
-def extract_aggregator_id(request: Request) -> int:
-    """Fetches the aggregator id assigned to an incoming request (by the auth dependencies).
+@dataclass
+class RequestStateParameters:
+    """Set of parameters inherent to an incoming request - likely specified by fastapi depends"""
 
-    raises a HTTPException if the id does not exist"""
-    id = None if request.state is None else request.state.aggregator_id
+    aggregator_id: int  # The aggregator id that a request is scoped to (sourced from auth dependencies)
+    href_prefix: Optional[str]  # If set - all outgoing href's should be prefixed with this value
+
+
+def extract_request_params(request: Request) -> RequestStateParameters:
+    """Fetches the RequestStateParameters for the specified request..
+
+    raises a HTTPException if the request is missing mandatory values"""
+    if request.state is None:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail="Envoy middleware is not decorating incoming requests correctly.",
+        )
+
+    id = request.state.aggregator_id
     if id is None:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail="aggregator_id has not been been extracted correctly by Envoy middleware.",
         )
-    return id
+
+    href_prefix: Optional[str] = getattr(request.state, "href_prefix", None)
+    if not href_prefix:
+        href_prefix = None
+
+    return RequestStateParameters(aggregator_id=id, href_prefix=href_prefix)
+
+
+def extract_default_doe(request: Request) -> Optional[DefaultDoeConfiguration]:
+    """If the DefaultDoeDepends is enabled a DefaultDoeConfiguration will be returned for this request or None
+    otherwise. This is a placeholder for static default DOE values"""
+    if request.state is not None:
+        return getattr(request.state, "default_doe", None)
+
+    return None
 
 
 def extract_limit_from_paging_param(limit: Optional[list[int]] = None) -> int:
@@ -28,7 +60,11 @@ def extract_limit_from_paging_param(limit: Optional[list[int]] = None) -> int:
     if limit is None or len(limit) == 0:
         return DEFAULT_LIMIT
 
-    return limit[0]
+    limit_val = limit[0]
+    if limit_val > MAX_LIMIT:
+        return MAX_LIMIT
+
+    return limit_val
 
 
 def extract_start_from_paging_param(start: Optional[list[int]] = None) -> int:

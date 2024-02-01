@@ -2,9 +2,19 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Optional
 
+from envoy_schema.server.schema.sep2.pricing import (
+    ConsumptionTariffIntervalListResponse,
+    ConsumptionTariffIntervalResponse,
+    RateComponentListResponse,
+    RateComponentResponse,
+    TariffProfileListResponse,
+    TariffProfileResponse,
+    TimeTariffIntervalListResponse,
+    TimeTariffIntervalResponse,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.api.request import extract_date_from_iso_string
+from envoy.server.api.request import RequestStateParameters, extract_date_from_iso_string
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.crud.pricing import (
     TariffGeneratedRateDailyStats,
@@ -27,22 +37,12 @@ from envoy.server.mapper.sep2.pricing import (
     TimeTariffIntervalMapper,
 )
 from envoy.server.model.tariff import PRICE_DECIMAL_POWER
-from envoy.server.schema.sep2.pricing import (
-    ConsumptionTariffIntervalListResponse,
-    ConsumptionTariffIntervalResponse,
-    RateComponentListResponse,
-    RateComponentResponse,
-    TariffProfileListResponse,
-    TariffProfileResponse,
-    TimeTariffIntervalListResponse,
-    TimeTariffIntervalResponse,
-)
 
 
 class TariffProfileManager:
     @staticmethod
     async def fetch_tariff_profile(
-        session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int
+        session: AsyncSession, request_params: RequestStateParameters, tariff_id: int, site_id: int
     ) -> Optional[TariffProfileResponse]:
         """Fetches a single tariff in the form of a sep2 TariffProfile thats specific to a single site."""
 
@@ -50,12 +50,21 @@ class TariffProfileManager:
         if tariff is None:
             return None
 
-        unique_rate_days = await count_unique_rate_days(session, aggregator_id, tariff_id, site_id, datetime.min)
-        return TariffProfileMapper.map_to_response(tariff, site_id, unique_rate_days * TOTAL_PRICING_READING_TYPES)
+        unique_rate_days = await count_unique_rate_days(
+            session, request_params.aggregator_id, tariff_id, site_id, datetime.min
+        )
+        return TariffProfileMapper.map_to_response(
+            request_params, tariff, site_id, unique_rate_days * TOTAL_PRICING_READING_TYPES
+        )
 
     @staticmethod
     async def fetch_tariff_profile_list(
-        session: AsyncSession, aggregator_id: int, site_id: int, start: int, changed_after: datetime, limit: int
+        session: AsyncSession,
+        request_params: RequestStateParameters,
+        site_id: int,
+        start: int,
+        changed_after: datetime,
+        limit: int,
     ) -> Optional[TariffProfileListResponse]:
         """Fetches all tariffs accessible to a specific site."""
 
@@ -65,13 +74,19 @@ class TariffProfileManager:
         # we need the rate counts associated with each Tariff+Site. Those are derived from dates with a Rate
         tariff_rate_counts: list[int] = []
         for tariff in tariffs:
-            rate_days = await count_unique_rate_days(session, aggregator_id, tariff.tariff_id, site_id, changed_after)
+            rate_days = await count_unique_rate_days(
+                session, request_params.aggregator_id, tariff.tariff_id, site_id, changed_after
+            )
             tariff_rate_counts.append(rate_days * TOTAL_PRICING_READING_TYPES)
 
-        return TariffProfileMapper.map_to_list_response(zip(tariffs, tariff_rate_counts), tariff_count, site_id)
+        return TariffProfileMapper.map_to_list_response(
+            request_params, zip(tariffs, tariff_rate_counts), tariff_count, site_id
+        )
 
     @staticmethod
-    async def fetch_tariff_profile_no_site(session: AsyncSession, tariff_id: int) -> Optional[TariffProfileResponse]:
+    async def fetch_tariff_profile_no_site(
+        session: AsyncSession, request_params: RequestStateParameters, tariff_id: int
+    ) -> Optional[TariffProfileResponse]:
         """Fetches a single tariff in the form of a sep2 TariffProfile. This tariff will NOT contain
         any useful RateComponent links due to a lack of a site ID scope
 
@@ -80,11 +95,11 @@ class TariffProfileManager:
         if tariff is None:
             return None
 
-        return TariffProfileMapper.map_to_nosite_response(tariff)
+        return TariffProfileMapper.map_to_nosite_response(request_params, tariff)
 
     @staticmethod
     async def fetch_tariff_profile_list_no_site(
-        session: AsyncSession, start: int, changed_after: datetime, limit: int
+        session: AsyncSession, request_params: RequestStateParameters, start: int, changed_after: datetime, limit: int
     ) -> Optional[TariffProfileListResponse]:
         """Fetches a tariff list in the form of a sep2 TariffProfileList. These tariffs will NOT contain
         any useful RateComponent links due to a lack of a site ID scope.
@@ -93,7 +108,7 @@ class TariffProfileManager:
         tariffs = await select_all_tariffs(session, start, changed_after, limit)
         tariff_count = await select_tariff_count(session, changed_after)
 
-        return TariffProfileMapper.map_to_list_nosite_response(tariffs, tariff_count)
+        return TariffProfileMapper.map_to_list_nosite_response(request_params, tariffs, tariff_count)
 
 
 class RateComponentManager:
@@ -110,7 +125,7 @@ class RateComponentManager:
     @staticmethod
     async def fetch_rate_component(
         session: AsyncSession,
-        aggregator_id: int,
+        request_params: RequestStateParameters,
         tariff_id: int,
         site_id: int,
         rate_component_id: str,
@@ -122,13 +137,15 @@ class RateComponentManager:
         This function will construct the RateComponent directly"""
 
         day = RateComponentManager.parse_rate_component_id(rate_component_id)
-        count = await count_tariff_rates_for_day(session, aggregator_id, tariff_id, site_id, day, datetime.min)
-        return RateComponentMapper.map_to_response(count, tariff_id, site_id, pricing_type, day)
+        count = await count_tariff_rates_for_day(
+            session, request_params.aggregator_id, tariff_id, site_id, day, datetime.min
+        )
+        return RateComponentMapper.map_to_response(request_params, count, tariff_id, site_id, pricing_type, day)
 
     @staticmethod
     async def fetch_rate_component_list(
         session: AsyncSession,
-        aggregator_id: int,
+        request_params: RequestStateParameters,
         tariff_id: int,
         site_id: int,
         start: int,
@@ -154,7 +171,13 @@ class RateComponentManager:
 
         # query for the raw underlying stats broken down by date
         rate_stats: TariffGeneratedRateDailyStats = await select_rate_daily_stats(
-            session, aggregator_id, tariff_id, site_id, db_adjusted_start, changed_after, db_adjusted_limit
+            session,
+            request_params.aggregator_id,
+            tariff_id,
+            site_id,
+            db_adjusted_start,
+            changed_after,
+            db_adjusted_limit,
         )
 
         # If we are starting from a value that doesn't align with a multiple of TOTAL_PRICING_READING_TYPES we will
@@ -170,7 +193,7 @@ class RateComponentManager:
             ) % TOTAL_PRICING_READING_TYPES  # noqa e501
 
         return RateComponentMapper.map_to_list_response(
-            rate_stats, leading_items_to_remove, trailing_items_to_remove, tariff_id, site_id
+            request_params, rate_stats, leading_items_to_remove, trailing_items_to_remove, tariff_id, site_id
         )
 
 
@@ -192,7 +215,7 @@ class TimeTariffIntervalManager:
     @staticmethod
     async def fetch_time_tariff_interval_list(
         session: AsyncSession,
-        aggregator_id: int,
+        request_params: RequestStateParameters,
         tariff_id: int,
         site_id: int,
         rate_component_id: str,
@@ -204,15 +227,19 @@ class TimeTariffIntervalManager:
         """Fetches a page of TimeTariffInterval entities and returns them in a list response"""
         day = RateComponentManager.parse_rate_component_id(rate_component_id)
 
-        rates = await select_tariff_rates_for_day(session, aggregator_id, tariff_id, site_id, day, start, after, limit)
-        total_rates = await count_tariff_rates_for_day(session, aggregator_id, tariff_id, site_id, day, after)
+        rates = await select_tariff_rates_for_day(
+            session, request_params.aggregator_id, tariff_id, site_id, day, start, after, limit
+        )
+        total_rates = await count_tariff_rates_for_day(
+            session, request_params.aggregator_id, tariff_id, site_id, day, after
+        )
 
-        return TimeTariffIntervalMapper.map_to_list_response(rates, pricing_type, total_rates)
+        return TimeTariffIntervalMapper.map_to_list_response(request_params, rates, pricing_type, total_rates)
 
     @staticmethod
     async def fetch_time_tariff_interval(
         session: AsyncSession,
-        aggregator_id: int,
+        request_params: RequestStateParameters,
         tariff_id: int,
         site_id: int,
         rate_component_id: str,
@@ -230,19 +257,19 @@ class TimeTariffIntervalManager:
         time_of_day = TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
 
         generated_rate = await select_tariff_rate_for_day_time(
-            session, aggregator_id, tariff_id, site_id, day, time_of_day
+            session, request_params.aggregator_id, tariff_id, site_id, day, time_of_day
         )
         if generated_rate is None:
             return None
 
-        return TimeTariffIntervalMapper.map_to_response(generated_rate, pricing_type)
+        return TimeTariffIntervalMapper.map_to_response(request_params, generated_rate, pricing_type)
 
 
 class ConsumptionTariffIntervalManager:
     @staticmethod
     async def fetch_consumption_tariff_interval_list(
         session: AsyncSession,
-        aggregator_id: int,
+        request_params: RequestStateParameters,
         tariff_id: int,
         site_id: int,
         rate_component_id: str,
@@ -264,18 +291,20 @@ class ConsumptionTariffIntervalManager:
         time_of_day = TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
 
         # Validate access to site_id by aggregator_id
-        if (await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=aggregator_id)) is None:
+        if (
+            await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=request_params.aggregator_id)
+        ) is None:
             raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
         price = Decimal(sep2_price) / Decimal(PRICE_DECIMAL_POWER)
         return ConsumptionTariffIntervalMapper.map_to_list_response(
-            tariff_id, site_id, pricing_type, day, time_of_day, price
+            request_params, tariff_id, site_id, pricing_type, day, time_of_day, price
         )
 
     @staticmethod
     async def fetch_consumption_tariff_interval(
         session: AsyncSession,
-        aggregator_id: int,
+        request_params: RequestStateParameters,
         tariff_id: int,
         site_id: int,
         rate_component_id: str,
@@ -297,10 +326,12 @@ class ConsumptionTariffIntervalManager:
         time_of_day = TimeTariffIntervalManager.parse_time_tariff_interval_id(time_tariff_interval)
 
         # Validate access to site_id by aggregator_id
-        if (await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=aggregator_id)) is None:
+        if (
+            await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=request_params.aggregator_id)
+        ) is None:
             raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
         price = Decimal(sep2_price) / Decimal(PRICE_DECIMAL_POWER)
         return ConsumptionTariffIntervalMapper.map_to_response(
-            tariff_id, site_id, pricing_type, day, time_of_day, price
+            request_params, tariff_id, site_id, pricing_type, day, time_of_day, price
         )

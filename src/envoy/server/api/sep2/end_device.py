@@ -1,20 +1,23 @@
 import logging
 from http import HTTPStatus
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+import envoy_schema.server.schema.uri as uri
+from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError
 
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
-    extract_aggregator_id,
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
+    extract_request_params,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.exception import BadRequestError
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
-from envoy.server.schema.sep2.end_device import EndDeviceRequest
+from envoy.server.mapper.common import generate_href
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +42,10 @@ async def get_enddevice(site_id: int, request: Request) -> XmlResponse:
 
     """
     end_device = await EndDeviceManager.fetch_enddevice_with_site_id(
-        db.session, site_id, extract_aggregator_id(request)
+        db.session, site_id, extract_request_params(request)
     )
     if end_device is None:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
     return XmlResponse(end_device)
 
 
@@ -73,7 +76,7 @@ async def get_enddevice_list(
     return XmlResponse(
         await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
             db.session,
-            extract_aggregator_id(request),
+            extract_request_params(request),
             start=extract_start_from_paging_param(start),
             after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -98,14 +101,12 @@ async def create_end_device(
         fastapi.Response object.
 
     """
+    rs_params = extract_request_params(request)
     try:
-        site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
-            db.session, extract_aggregator_id(request), payload
-        )
-        return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: f"/edev/{site_id}"})
+        site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(db.session, rs_params, payload)
+        location_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site_id)
+        return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
     except BadRequestError as exc:
-        logger.debug(exc)
-        raise HTTPException(detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)
+        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)
     except IntegrityError as exc:
-        logger.debug(exc)
-        raise HTTPException(detail="lFDI conflict.", status_code=HTTPStatus.CONFLICT)
+        raise LoggedHttpException(logger, exc, detail="lFDI conflict.", status_code=HTTPStatus.CONFLICT)

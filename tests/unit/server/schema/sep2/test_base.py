@@ -1,7 +1,8 @@
-from envoy.server.schema.sep2.der import DERControlBase, DERControlResponse
-from envoy.server.schema.sep2.end_device import AbstractDevice
-from envoy.server.schema.sep2.identification import IdentifiedObject
-from envoy.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
+from envoy_schema.server.schema.sep2.der import DERControlBase, DERControlResponse
+from envoy_schema.server.schema.sep2.end_device import AbstractDevice
+from envoy_schema.server.schema.sep2.identification import IdentifiedObject
+from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
+
 from tests.data.fake.generator import generate_class_instance
 
 
@@ -29,8 +30,8 @@ def test_roundtrip_csip_aus_der_control():
     """Validates the DERControlREsponse roundtrip in response to some discovered errors"""
     initial: DERControlResponse = generate_class_instance(DERControlResponse)
     initial.subscribable = SubscribableType.resource_does_not_support_subscriptions
-    initial.interval = DateTimeIntervalType.validate({"duration": 111, "start": 222})
-    initial.DERControlBase_ = DERControlBase.validate(
+    initial.interval = DateTimeIntervalType.model_validate({"duration": 111, "start": 222})
+    initial.DERControlBase_ = DERControlBase.model_validate(
         {
             "opModImpLimW": {"value": 9988, "multiplier": 1},
             "opModExpLimW": {"value": 7766, "multiplier": 10},

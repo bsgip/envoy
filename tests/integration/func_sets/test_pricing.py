@@ -4,13 +4,9 @@ from http import HTTPStatus
 from typing import Optional
 
 import pytest
-from httpx import AsyncClient
-
-from envoy.server.mapper.sep2.pricing import PricingReadingType
-from envoy.server.model.tariff import PRICE_DECIMAL_PLACES
-from envoy.server.schema import uri
-from envoy.server.schema.sep2.metering import ReadingType
-from envoy.server.schema.sep2.pricing import (
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.metering import ReadingType
+from envoy_schema.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
     RateComponentListResponse,
@@ -20,15 +16,19 @@ from envoy.server.schema.sep2.pricing import (
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
-from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
-from tests.integration.integration_server import cert_pem_header
+from httpx import AsyncClient
+
+from envoy.server.mapper.sep2.pricing import PricingReadingType
+from envoy.server.model.tariff import PRICE_DECIMAL_PLACES
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
+from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
 
 
 @pytest.fixture
 def agg_1_headers():
-    return {cert_pem_header: urllib.parse.quote(AGG_1_VALID_PEM)}
+    return {cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}
 
 
 @pytest.mark.anyio

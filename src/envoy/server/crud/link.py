@@ -4,11 +4,14 @@ from datetime import datetime
 from typing import Iterable, Optional
 
 import pydantic_xml
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
+from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.crud import end_device
-from envoy.server.schema import uri
-from envoy.server.schema.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
+from envoy.server.api.request import RequestStateParameters
+from envoy.server.crud import end_device, site_reading
+from envoy.server.mapper.common import generate_href
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +128,9 @@ SEP2_LINK_MAP = {
     "MessagingProgramListLink": LinkParameters(uri=uri.MessagingProgramListUri, function_set=FunctionSet.Messaging),
     "MeterReadingListLink": LinkParameters(uri=uri.MeterReadingListUri, function_set=FunctionSet.Metering),
     "MeterReadingLink": LinkParameters(uri=uri.MeterReadingUri, function_set=FunctionSet.Metering),
-    "MirrorUsagePointListLink": LinkParameters(uri=uri.MirrorUsagePointListUri, function_set=FunctionSet.Metering),
+    "MirrorUsagePointListLink": LinkParameters(
+        uri=uri.MirrorUsagePointListUri, function_set=FunctionSet.MeteringMirror
+    ),
     "NeighborListLink": LinkParameters(uri=uri.NeighborListUri, function_set=FunctionSet.NetworkStatus),
     "NotificationListLink": LinkParameters(
         uri=uri.NotificationListUri, function_set=FunctionSet.SubscriptionAndNotification
@@ -174,7 +179,7 @@ SEP2_LINK_MAP = {
 async def get_supported_links(
     session: AsyncSession,
     model: type[pydantic_xml.BaseXmlModel],
-    aggregator_id: int,
+    rs_params: RequestStateParameters,
     uri_parameters: Optional[dict] = None,
 ) -> dict[str, dict[str, str]]:
     """
@@ -205,11 +210,13 @@ async def get_supported_links(
         Mapping from Link Name to the formatted URI and if Link is a ListLink the resource counts.
 
     """
-    link_names = get_link_field_names(schema=model.schema())
+    link_names = get_link_field_names(model)
     supported_links_names = filter(check_link_supported, link_names)
-    supported_links = get_formatted_links(link_names=supported_links_names, uri_parameters=uri_parameters)
+    supported_links = get_formatted_links(
+        rs_params=rs_params, link_names=supported_links_names, uri_parameters=uri_parameters
+    )
     resource_counts = await get_resource_counts(
-        session=session, link_names=supported_links.keys(), aggregator_id=aggregator_id
+        session=session, link_names=supported_links.keys(), aggregator_id=rs_params.aggregator_id
     )
     updated_supported_links = add_resource_counts_to_links(links=supported_links, resource_counts=resource_counts)
 
@@ -258,15 +265,20 @@ async def get_resource_count(session: AsyncSession, list_link_name: str, aggrega
         NotImplementedError: Raised when a ListLink doesn't have a resource count lookup method.
     """
     if list_link_name == "EndDeviceListLink":
-        count = await end_device.select_aggregator_site_count(
+        return await end_device.select_aggregator_site_count(
             session=session, aggregator_id=aggregator_id, after=datetime.min
         )
-        return count
+    elif list_link_name == "MirrorUsagePointListLink":
+        return await site_reading.count_site_reading_types_for_aggregator(
+            session=session, aggregator_id=aggregator_id, changed_after=datetime.min
+        )
     else:
         raise NotImplementedError(f"No resource count implemented for '{list_link_name}'")
 
 
-def add_resource_counts_to_links(links: dict[str, dict[str, str]], resource_counts: dict[str, int]):
+def add_resource_counts_to_links(
+    links: dict[str, dict[str, str]], resource_counts: dict[str, int]
+) -> dict[str, dict[str, str]]:
     """Adds the resource counts to the links under the "all_" key.
 
     Example:
@@ -336,6 +348,7 @@ def check_function_set_supported(function_set: FunctionSet, function_set_status:
 
 def get_formatted_links(
     link_names: Iterable[str],
+    rs_params: RequestStateParameters,
     uri_parameters: Optional[dict] = None,
     link_map: dict[str, LinkParameters] = SEP2_LINK_MAP,
 ) -> dict[str, dict[str, str]]:
@@ -348,6 +361,7 @@ def get_formatted_links(
 
     Args:
         link_names: A list of link-names.
+        rs_params: Request state parameters that might influence the links being generated
         uri_parameters: The parameters to be inserted into the link URI
         link_map: Maps link-names to URIs. Defaults to using SEP2_LINK_MAP.
 
@@ -357,11 +371,6 @@ def get_formatted_links(
     Raises:
         MissingUriParameterError: when URI parameters are required by the URI but are not supplied.
     """
-
-    class FailMissingParam(dict):
-        def __missing__(self, key):
-            raise MissingUriParameterError(f"{key} not found.")
-
     if uri_parameters is None:
         uri_parameters = {}
 
@@ -369,14 +378,21 @@ def get_formatted_links(
     for link_name in link_names:
         if link_name in link_map:
             uri = link_map[link_name].uri
-            formatted_uri = uri.format_map(FailMissingParam(uri_parameters))
+            try:
+                formatted_uri = generate_href(uri, rs_params, **uri_parameters)
+            except KeyError as ex:
+                raise MissingUriParameterError(f"KeyError for params {uri_parameters} error {ex}.")
             links[link_name] = {"href": formatted_uri}
     return links
 
 
-def get_link_field_names(schema: dict) -> list[str]:
+# The set of all types that can be considered "link fields"
+_LINK_FIELD_TYPES = set([Link, ListLink, Optional[Link], Optional[ListLink]])
+
+
+def get_link_field_names(model: type[pydantic_xml.BaseXmlModel]) -> list[str]:
     """
-    Inspect the pydantic schema and return all the field names for fields derived from 'Link' or 'ListLink'.
+    Inspect the pydantic schema for a type and return all the field names for fields derived from 'Link' or 'ListLink'.
 
     For an example model,
 
@@ -386,7 +402,7 @@ def get_link_field_names(schema: dict) -> list[str]:
             MyOptionalLink: Optional[Link] = element()
             MyListLink: ListLink = element()
 
-    Calling `get_link_field_names(MyModel.schema())`
+    Calling `get_link_field_names(MyModel)`
     will return ["MyLink", "MyOptionalLink", "MyListLink"]
 
     Args:
@@ -395,13 +411,14 @@ def get_link_field_names(schema: dict) -> list[str]:
     Returns:
         List of 'LinkLink' and 'Link' field names as strings.
     """
+
     try:
-        properties = schema["properties"]
+        properties = model.model_fields
     except KeyError:
         raise ValueError("'schema' not a valid pydantic schema")
 
     result = []
     for k, v in properties.items():
-        if "$ref" in v and v["$ref"] in ["#/definitions/Link", "#/definitions/ListLink"]:
+        if v.annotation in _LINK_FIELD_TYPES:
             result.append(k)
     return result

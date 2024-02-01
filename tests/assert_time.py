@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Union
 
 
@@ -21,7 +21,13 @@ def assert_fuzzy_datetime_match(
 
 def assert_nowish(expected_time: Union[int, float, datetime], fuzziness_seconds: int = 20):
     """Asserts that datetime is within fuzziness_seconds of now"""
-    assert_fuzzy_datetime_match(expected_time, datetime.now(), fuzziness_seconds=fuzziness_seconds)
+
+    if not isinstance(expected_time, datetime) or expected_time.tzinfo is None:
+        now = datetime.now()
+    else:
+        now = datetime.now(timezone.utc)
+
+    assert_fuzzy_datetime_match(expected_time, now, fuzziness_seconds=fuzziness_seconds)
 
 
 def assert_datetime_equal(a: Optional[Union[datetime, int, float]], b: Optional[Union[datetime, int, float]]):

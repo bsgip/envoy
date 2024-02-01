@@ -5,13 +5,76 @@ line-length = 120
 pythonpath = ["src/"]
 testpaths = "tests"
 filterwarnings = ["error::DeprecationWarning"]
+addopts = "--strict-markers"
+markers = [
+    "cert_header: marks tests to use a custom value for cert_header instead of the default",
+    "href_prefix: marks tests to use a custom value for href_prefix instead of the default of None",
+    "no_default_doe: marks tests to disable the default DOE config values (disables default DERControl endpoint)",
+    "azure_ad_auth: marks tests to enable the azure active directory auth dependency",
+    "azure_ad_db: marks tests to enable the azure active directory dynamic db creds dependency (requires azure_ad_auth)",
+    "azure_ad_db_refresh_secs: marks tests to set the config value azure_ad_db_refresh_secs (requires azure_ad_db)",
+]
 
 [tool.bandit]
 exclude_dirs = ["tests"]
 
 [tool.mypy]
 exclude = ["src/envoy/server/alembic", "tests"]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+namespace_packages = true
+warn_redundant_casts = true
 
 [build-system]
 requires = ["setuptools >= 40.9.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "envoy"
+version = "0.0.1"
+dependencies = [
+    "fastapi>=0.94.1",
+    "sqlalchemy>=2.0.0",
+    "alembic",
+    "tzlocal",
+    "pydantic_xml[lxml]",
+    "pydantic",
+    "pydantic-settings",
+    "python-dateutil",
+    "asyncpg",
+    "fastapi-async-sqlalchemy",
+    "alembic",
+    "python-dotenv",
+    "uvicorn",
+    "pyjwt",
+    "cryptography",
+    "httpx",
+    "envoy_schema @ git+ssh://git@github.com/bsgip/envoy-schema.git",
+]
+
+[project.optional-dependencies]
+dev = [
+    "bandit",
+    "flake8",
+    "mypy",
+    "sqlalchemy[mypy]",
+    "types-python-dateutil",
+    "types-tzlocal",
+    "black",
+]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "anyio",
+    "pytest-mock",
+    "pytest-postgresql",
+    "psycopg",
+    "httpx",
+    "defusedxml",
+    "asgi_lifespan",
+]
+
+[tool.setuptools.package-data]
+"envoy" = ["py.typed"]

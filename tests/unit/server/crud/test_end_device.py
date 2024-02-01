@@ -2,16 +2,16 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import pytest
+from envoy_schema.server.schema.sep2.types import DeviceCategory
 
 from envoy.server.crud.end_device import (
     select_aggregator_site_count,
     select_all_sites_with_aggregator_id,
-    select_single_site_with_sfdi,
+    select_single_site_with_lfdi,
     select_single_site_with_site_id,
     upsert_site_for_aggregator,
 )
 from envoy.server.model.site import Site
-from envoy.server.schema.sep2.types import DeviceCategory
 from tests.assert_time import assert_datetime_equal
 from tests.assert_type import assert_list_type
 from tests.data.fake.generator import clone_class_instance, generate_class_instance
@@ -208,6 +208,80 @@ async def test_select_single_site_with_sfdi(
             assert site.sfdi == sfdi
             assert site.device_category == dc
             assert_datetime_equal(site.changed_time, changed_time)
+
+
+@pytest.mark.anyio
+async def test_select_single_site_with_lfdi(pg_base_config):
+    """Tests that the returned objects match the DB contents (and handle lookup misses)"""
+    async with generate_async_session(pg_base_config) as session:
+        # Site 3 for Agg 2
+        site_3 = await select_single_site_with_lfdi(session, "site3-lfdi", 2)
+        assert type(site_3) == Site
+        assert site_3.site_id == 3
+        assert site_3.nmi == "3333333333"
+        assert site_3.aggregator_id == 2
+        assert_datetime_equal(site_3.changed_time, datetime(2022, 2, 3, 8, 9, 10, tzinfo=timezone.utc))
+        assert site_3.lfdi == "site3-lfdi"
+        assert site_3.sfdi == 3333
+        assert site_3.device_category == DeviceCategory(2)
+
+        # Site 1 for Agg 1
+        site_1 = await select_single_site_with_lfdi(session, "site1-lfdi", 1)
+        assert type(site_1) == Site
+        assert site_1.site_id == 1
+        assert site_1.nmi == "1111111111"
+        assert site_1.aggregator_id == 1
+        assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc))
+        assert site_1.lfdi == "site1-lfdi"
+        assert site_1.sfdi == 1111
+        assert site_1.device_category == DeviceCategory(0)
+
+        # test mismatched ids
+        assert await select_single_site_with_lfdi(session, "site1-lfdi", 2) is None
+        assert await select_single_site_with_lfdi(session, "site3-lfdi", 1) is None
+        assert await select_single_site_with_lfdi(session, "site3-lfdi", 3) is None
+
+        # test bad ids
+        assert await select_single_site_with_lfdi(session, "site1-lfdi", 99) is None
+        assert await select_single_site_with_lfdi(session, "site99-lfdi", 1) is None
+        assert await select_single_site_with_lfdi(session, "", -1) is None
+
+
+@pytest.mark.anyio
+async def test_select_single_site_with_lfdi(pg_base_config):
+    """Tests that the returned objects match the DB contents (and handle lookup misses)"""
+    async with generate_async_session(pg_base_config) as session:
+        # Site 3 for Agg 2
+        site_3 = await select_single_site_with_lfdi(session, "site3-lfdi", 2)
+        assert type(site_3) == Site
+        assert site_3.site_id == 3
+        assert site_3.nmi == "3333333333"
+        assert site_3.aggregator_id == 2
+        assert_datetime_equal(site_3.changed_time, datetime(2022, 2, 3, 8, 9, 10, tzinfo=timezone.utc))
+        assert site_3.lfdi == "site3-lfdi"
+        assert site_3.sfdi == 3333
+        assert site_3.device_category == DeviceCategory(2)
+
+        # Site 1 for Agg 1
+        site_1 = await select_single_site_with_lfdi(session, "site1-lfdi", 1)
+        assert type(site_1) == Site
+        assert site_1.site_id == 1
+        assert site_1.nmi == "1111111111"
+        assert site_1.aggregator_id == 1
+        assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc))
+        assert site_1.lfdi == "site1-lfdi"
+        assert site_1.sfdi == 1111
+        assert site_1.device_category == DeviceCategory(0)
+
+        # test mismatched ids
+        assert await select_single_site_with_lfdi(session, "site1-lfdi", 2) is None
+        assert await select_single_site_with_lfdi(session, "site3-lfdi", 1) is None
+        assert await select_single_site_with_lfdi(session, "site3-lfdi", 3) is None
+
+        # test bad ids
+        assert await select_single_site_with_lfdi(session, "site1-lfdi", 99) is None
+        assert await select_single_site_with_lfdi(session, "site99-lfdi", 1) is None
+        assert await select_single_site_with_lfdi(session, "", -1) is None
 
 
 @pytest.mark.anyio

@@ -1,35 +1,41 @@
+import asyncio
 import urllib.parse
 from datetime import date, datetime, timezone
 from http import HTTPStatus
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
+import envoy_schema.server.schema.uri as uri
 import pytest
-from httpx import AsyncClient
-
-import envoy.server.schema.uri as uri
-from envoy.server.model.doe import DOE_DECIMAL_PLACES
-from envoy.server.schema.sep2.der import (
+from envoy_schema.server.schema.sep2.der import (
+    DefaultDERControl,
     DERControlListResponse,
     DERControlResponse,
     DERProgramListResponse,
     DERProgramResponse,
 )
+from httpx import AsyncClient
+from sqlalchemy import Sequence, select
+
+from envoy.server.mapper.csip_aus.doe import DERControlMapper
+from envoy.server.model.doe import DOE_DECIMAL_PLACES, DynamicOperatingEnvelope
 from tests.assert_time import assert_datetime_equal
-from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as AGG_1_VALID_PEM
-from tests.data.certificates.certificate4 import TEST_CERTIFICATE_PEM as AGG_2_VALID_PEM
-from tests.integration.integration_server import cert_pem_header
+from tests.conftest import DEFAULT_DOE_EXPORT_ACTIVE_WATTS, DEFAULT_DOE_IMPORT_ACTIVE_WATTS
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
+from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
+from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
+from tests.postgres_testing import generate_async_session
 
 
 def generate_headers(cert: Any):
-    return {cert_pem_header: urllib.parse.quote(cert)}
+    return {cert_header: urllib.parse.quote(cert)}
 
 
 @pytest.fixture
 def agg_1_headers():
-    return generate_headers(AGG_1_VALID_PEM)
+    return generate_headers(AGG_1_VALID_CERT)
 
 
 @pytest.fixture
@@ -40,6 +46,16 @@ def uri_derp_list_format():
 @pytest.fixture
 def uri_derp_doe_format():
     return uri.DERProgramUri
+
+
+@pytest.fixture
+def uri_derc_default_control_format():
+    return uri.DefaultDERControlUri
+
+
+@pytest.fixture
+def uri_derc_active_control_list_format():
+    return uri.ActiveDERControlListUri
 
 
 @pytest.fixture
@@ -154,7 +170,7 @@ async def get_derprogram_doe(
             None,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
@@ -167,7 +183,7 @@ async def get_derprogram_doe(
             None,
             2,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
@@ -179,7 +195,7 @@ async def get_derprogram_doe(
             1,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             [
                 (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
@@ -191,7 +207,7 @@ async def get_derprogram_doe(
             2,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             [
                 (datetime(2022, 5, 8, 1, 2, tzinfo=BRISBANE_TZ), 411, -422),
@@ -203,7 +219,7 @@ async def get_derprogram_doe(
             None,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             1,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 311, -322),
@@ -214,7 +230,7 @@ async def get_derprogram_doe(
             None,
             99,
             datetime(2022, 5, 6, 11, 22, 32, tzinfo=timezone.utc),
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             3,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
@@ -227,7 +243,7 @@ async def get_derprogram_doe(
             None,
             99,
             datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc),
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             2,
             [
                 (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
@@ -239,18 +255,18 @@ async def get_derprogram_doe(
             None,
             99,
             datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             1,
             [
                 (datetime(2022, 5, 8, 1, 2, tzinfo=BRISBANE_TZ), 411, -422),
             ],
         ),
         # Test empty cases
-        (4, None, 99, None, AGG_1_VALID_PEM, 0, []),  # Wrong Site
-        (1, 3, 99, None, AGG_1_VALID_PEM, 3, []),  # Big Skip
-        (1, None, 0, None, AGG_1_VALID_PEM, 3, []),  # Zero limit
-        (1, None, 99, datetime(2022, 5, 6, 14, 22, 34, tzinfo=timezone.utc), AGG_1_VALID_PEM, 0, []),  # changed_after
-        (1, None, 99, None, AGG_2_VALID_PEM, 0, []),  # Wrong Aggregator
+        (4, None, 99, None, AGG_1_VALID_CERT, 0, []),  # Wrong Site
+        (1, 3, 99, None, AGG_1_VALID_CERT, 3, []),  # Big Skip
+        (1, None, 0, None, AGG_1_VALID_CERT, 3, []),  # Zero limit
+        (1, None, 99, datetime(2022, 5, 6, 14, 22, 34, tzinfo=timezone.utc), AGG_1_VALID_CERT, 0, []),  # changed_after
+        (1, None, 99, None, AGG_2_VALID_CERT, 0, []),  # Wrong Aggregator
     ],
 )
 async def test_get_dercontrol_list(
@@ -276,6 +292,7 @@ async def test_get_dercontrol_list(
     parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
     if not parsed_response.DERControl:
         parsed_response.DERControl = []  # Makes it easier to compare
+    assert path.startswith(parsed_response.href), "The derc href should be included in the response"
     assert parsed_response.results == len(expected_does)
     assert parsed_response.all_ == expected_total
     assert len(parsed_response.DERControl) == len(expected_does)
@@ -300,7 +317,7 @@ async def test_get_dercontrol_list(
             None,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             2,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
@@ -313,7 +330,7 @@ async def test_get_dercontrol_list(
             None,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             1,
             [
                 (datetime(2022, 5, 8, 1, 2, tzinfo=BRISBANE_TZ), 411, -422),
@@ -325,7 +342,7 @@ async def test_get_dercontrol_list(
             None,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             1,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 311, -322),
@@ -337,7 +354,7 @@ async def test_get_dercontrol_list(
             None,
             99,
             datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc),
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             1,
             [
                 (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
@@ -350,7 +367,7 @@ async def test_get_dercontrol_list(
             1,
             99,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             2,
             [
                 (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
@@ -362,19 +379,19 @@ async def test_get_dercontrol_list(
             None,
             1,
             None,
-            AGG_1_VALID_PEM,
+            AGG_1_VALID_CERT,
             2,
             [
                 (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
             ],
         ),
         # Test empty cases
-        (4, date(2022, 5, 7), None, 99, None, AGG_1_VALID_PEM, 0, []),  # Wrong Site
-        (1, date(2022, 5, 6), None, 99, None, AGG_1_VALID_PEM, 0, []),  # Wrong date
-        (1, date(2022, 5, 7), 3, 99, None, AGG_1_VALID_PEM, 2, []),  # Big Skip
-        (1, date(2022, 5, 7), None, 0, None, AGG_1_VALID_PEM, 2, []),  # Zero limit
-        (1, date(2022, 5, 7), None, 0, datetime(2024, 1, 2), AGG_1_VALID_PEM, 0, []),  # changed_after matches nothing
-        (1, date(2022, 5, 7), None, 99, None, AGG_2_VALID_PEM, 0, []),  # Wrong Aggregator
+        (4, date(2022, 5, 7), None, 99, None, AGG_1_VALID_CERT, 0, []),  # Wrong Site
+        (1, date(2022, 5, 6), None, 99, None, AGG_1_VALID_CERT, 0, []),  # Wrong date
+        (1, date(2022, 5, 7), 3, 99, None, AGG_1_VALID_CERT, 2, []),  # Big Skip
+        (1, date(2022, 5, 7), None, 0, None, AGG_1_VALID_CERT, 2, []),  # Zero limit
+        (1, date(2022, 5, 7), None, 0, datetime(2024, 1, 2), AGG_1_VALID_CERT, 0, []),  # changed_after matches nothing
+        (1, date(2022, 5, 7), None, 99, None, AGG_2_VALID_CERT, 0, []),  # Wrong Aggregator
     ],
 )
 async def test_get_dercontrol_list_day(
@@ -401,6 +418,7 @@ async def test_get_dercontrol_list_day(
     parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
     if not parsed_response.DERControl:
         parsed_response.DERControl = []  # Makes it easier to compare
+    assert path.startswith(parsed_response.href), "The derc href should be included in the response"
     assert parsed_response.results == len(expected_does)
     assert parsed_response.all_ == expected_total
     assert len(parsed_response.DERControl) == len(expected_does)
@@ -412,3 +430,115 @@ async def test_get_dercontrol_list_day(
         assert control.DERControlBase_.opModExpLimW.value == expected_output
         assert control.DERControlBase_.opModExpLimW.multiplier == DOE_DECIMAL_PLACES
         assert_datetime_equal(expected_start, control.interval.start)
+
+
+@pytest.mark.anyio
+@pytest.mark.no_default_doe
+async def test_get_default_doe_not_configured(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
+    """Tests getting the default DOE with no default configured returns 404"""
+
+    # test a known site
+    path = uri_derc_default_control_format.format(site_id=1, der_program_id="doe")
+    response = await client.get(path, headers=agg_1_headers)
+
+    assert_response_header(response, HTTPStatus.NOT_FOUND)
+    assert_error_response(response)
+
+
+@pytest.mark.anyio
+async def test_get_default_invalid_site_id(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
+    """Tests getting the default DOE with no default configured returns 404"""
+
+    # test trying to fetch a site unavailable to this aggregator
+    path = uri_derc_default_control_format.format(site_id=3, der_program_id="doe")
+    response = await client.get(path, headers=agg_1_headers)
+
+    assert_response_header(response, HTTPStatus.NOT_FOUND)
+    assert_error_response(response)
+
+
+@pytest.mark.anyio
+async def test_get_default_doe(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
+    """Tests getting the default DOE"""
+
+    # test a known site
+    path = uri_derc_default_control_format.format(site_id=1, der_program_id="doe")
+    response = await client.get(path, headers=agg_1_headers)
+
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    parsed_response: DefaultDERControl = DefaultDERControl.from_xml(body)
+
+    assert (
+        parsed_response.DERControlBase_.opModImpLimW.value
+        == DERControlMapper.map_to_active_power(DEFAULT_DOE_IMPORT_ACTIVE_WATTS).value
+    )
+    assert (
+        parsed_response.DERControlBase_.opModExpLimW.value
+        == DERControlMapper.map_to_active_power(DEFAULT_DOE_EXPORT_ACTIVE_WATTS).value
+    )
+
+
+@pytest.mark.anyio
+async def test_get_active_doe_nothing_active(client: AsyncClient, uri_derc_active_control_list_format, agg_1_headers):
+    """Tests getting the active DOEs when nothing is active returns nothing"""
+
+    # test a known site
+    path = uri_derc_active_control_list_format.format(site_id=1, der_program_id="doe")
+    response = await client.get(path, headers=agg_1_headers)
+
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
+    assert parsed_response.href == path, "The active doe href should be included in the response"
+    assert parsed_response.all_ == 0
+    assert parsed_response.DERControl is None or len(parsed_response.DERControl) == 0
+
+
+@pytest.mark.anyio
+async def test_get_active_doe(client: AsyncClient, pg_base_config, uri_derc_active_control_list_format, agg_1_headers):
+    """Tests getting the active DOEs after the DOEs have been tweaked to align with datetime.now()"""
+
+    # update the DB to move start time to overlap with now
+    # Make it overlap for 3 seconds
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(DynamicOperatingEnvelope).where(DynamicOperatingEnvelope.dynamic_operating_envelope_id == 2)
+        resp = await session.execute(stmt)
+        doe_to_edit: DynamicOperatingEnvelope = resp.scalars().one()
+        doe_to_edit.duration_seconds = 3
+        doe_to_edit.start_time = datetime.now(tz=timezone.utc)
+        await session.commit()
+
+    path = uri_derc_active_control_list_format.format(site_id=1, der_program_id="doe")
+    response = await client.get(path, headers=agg_1_headers)
+
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
+    assert parsed_response.href == path, "The active doe href should be included in the response"
+    assert parsed_response.all_ == 1
+    assert len(parsed_response.DERControl) == 1
+
+    parsed_response.DERControl[0].DERControlBase_.opModImpLimW.value == 211
+    parsed_response.DERControl[0].DERControlBase_.opModExpLimW.value == 212
+
+    # Now let the DOE expire
+    await asyncio.sleep(3)
+
+    # Now fire the query again - the doe should no longer be active
+    response = await client.get(path, headers=agg_1_headers)
+
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
+    assert parsed_response.href == path, "The active doe href should be included in the response"
+    assert parsed_response.all_ == 0
+    assert parsed_response.DERControl is None or len(parsed_response.DERControl) == 0

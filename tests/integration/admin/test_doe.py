@@ -1,0 +1,21 @@
+from http import HTTPStatus
+
+import pytest
+from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
+from envoy_schema.admin.schema.uri import DoeCreateUri
+from httpx import AsyncClient
+
+from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
+
+
+@pytest.mark.anyio
+async def test_create_tariff_genrates(admin_client_auth: AsyncClient):
+    doe = generate_class_instance(DynamicOperatingEnvelopeRequest)
+    doe.site_id = 1
+
+    doe_1 = generate_class_instance(DynamicOperatingEnvelopeRequest)
+    doe_1.site_id = 2
+
+    resp = await admin_client_auth.post(DoeCreateUri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
+
+    assert resp.status_code == HTTPStatus.CREATED

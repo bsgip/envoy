@@ -1,13 +1,13 @@
 from http import HTTPStatus
 
 import pytest
-from httpx import AsyncClient
-
-from envoy.server.schema import uri
-from envoy.server.schema.sep2.function_set_assignments import (
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,
     FunctionSetAssignmentsResponse,
 )
+from httpx import AsyncClient
+
 from tests.integration.response import assert_response_header, read_response_body_string
 
 

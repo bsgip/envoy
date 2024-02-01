@@ -4,14 +4,10 @@ from enum import IntEnum, auto
 from itertools import islice, product
 from typing import Iterator, Sequence
 
-from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
-from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import generate_mrid
-from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
-from envoy.server.schema import uri
-from envoy.server.schema.sep2.identification import Link, ListLink
-from envoy.server.schema.sep2.metering import ReadingType
-from envoy.server.schema.sep2.pricing import (
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.identification import Link, ListLink
+from envoy_schema.server.schema.sep2.metering import ReadingType
+from envoy_schema.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
     RateComponentListResponse,
@@ -21,7 +17,7 @@ from envoy.server.schema.sep2.pricing import (
     TimeTariffIntervalListResponse,
     TimeTariffIntervalResponse,
 )
-from envoy.server.schema.sep2.types import (
+from envoy_schema.server.schema.sep2.types import (
     CommodityType,
     ConsumptionBlockType,
     FlowDirectionType,
@@ -32,6 +28,12 @@ from envoy.server.schema.sep2.types import (
     UomType,
 )
 
+from envoy.server.api.request import RequestStateParameters
+from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
+from envoy.server.exception import InvalidMappingError
+from envoy.server.mapper.common import generate_href, generate_mrid
+from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
+
 TARIFF_PROFILE_MRID_PREFIX: int = int("B111", 16)
 RATE_MRID_PREFIX: int = int("D01A", 16)
 
@@ -39,7 +41,7 @@ RATE_MRID_PREFIX: int = int("D01A", 16)
 class TariffProfileMapper:
     @staticmethod
     def _map_to_response(tariff: Tariff, tp_href: str, total_rates: int) -> TariffProfileResponse:
-        return TariffProfileResponse.validate(
+        return TariffProfileResponse.model_validate(
             {
                 "href": tp_href,
                 "mRID": generate_mrid(TARIFF_PROFILE_MRID_PREFIX, tariff.tariff_id),
@@ -54,33 +56,37 @@ class TariffProfileMapper:
         )
 
     @staticmethod
-    def map_to_response(tariff: Tariff, site_id: int, total_rates: int) -> TariffProfileResponse:
+    def map_to_response(
+        rs_params: RequestStateParameters, tariff: Tariff, site_id: int, total_rates: int
+    ) -> TariffProfileResponse:
         """Returns a mapped sep2 entity."""
-        tp_href = uri.TariffProfileUri.format(tariff_id=tariff.tariff_id, site_id=site_id)
+        tp_href = generate_href(uri.TariffProfileUri, rs_params, tariff_id=tariff.tariff_id, site_id=site_id)
         return TariffProfileMapper._map_to_response(tariff, tp_href, total_rates)
 
     @staticmethod
-    def map_to_nosite_response(tariff: Tariff) -> TariffProfileResponse:
+    def map_to_nosite_response(rs_params: RequestStateParameters, tariff: Tariff) -> TariffProfileResponse:
         """Returns a mapped sep2 entity. The href to RateComponentListLink will be to an endpoint
         for returning rate components for an unspecified site id"""
-        tp_href = uri.TariffProfileUnscopedUri.format(tariff_id=tariff.tariff_id)
+        tp_href = generate_href(uri.TariffProfileUnscopedUri, rs_params, tariff_id=tariff.tariff_id)
         return TariffProfileMapper._map_to_response(tariff, tp_href, 0)
 
     @staticmethod
-    def map_to_list_nosite_response(tariffs: Sequence[Tariff], total_tariffs: int) -> TariffProfileListResponse:
+    def map_to_list_nosite_response(
+        rs_params: RequestStateParameters, tariffs: Sequence[Tariff], total_tariffs: int
+    ) -> TariffProfileListResponse:
         """Returns a list containing multiple sep2 entities. The href to RateComponentListLink will be to an endpoint
         for returning rate components for an unspecified site id"""
-        return TariffProfileListResponse.validate(
+        return TariffProfileListResponse.model_validate(
             {
                 "all_": total_tariffs,
                 "results": len(tariffs),
-                "TariffProfile": [TariffProfileMapper.map_to_nosite_response(t) for t in tariffs],
+                "TariffProfile": [TariffProfileMapper.map_to_nosite_response(rs_params, t) for t in tariffs],
             }
         )
 
     @staticmethod
     def map_to_list_response(
-        tariffs: Iterator[tuple[Tariff, int]], total_tariffs: int, site_id: int
+        rs_params: RequestStateParameters, tariffs: Iterator[tuple[Tariff, int]], total_tariffs: int, site_id: int
     ) -> TariffProfileListResponse:
         """Returns a list containing multiple sep2 entities. The href's will be to the site specific
         TimeTariffProfile and RateComponentListLink
@@ -90,10 +96,10 @@ class TariffProfileMapper:
         tariff_profiles: list[TariffProfileResponse] = []
         tariffs_count: int = 0
         for tariff, rc_count in tariffs:
-            tariff_profiles.append(TariffProfileMapper.map_to_response(tariff, site_id, rc_count))
+            tariff_profiles.append(TariffProfileMapper.map_to_response(rs_params, tariff, site_id, rc_count))
             tariffs_count = tariffs_count + 1
 
-        return TariffProfileListResponse.validate(
+        return TariffProfileListResponse.model_validate(
             {
                 "all_": total_tariffs,
                 "results": tariffs_count,
@@ -116,8 +122,8 @@ TOTAL_PRICING_READING_TYPES = len(PricingReadingType)  # The total number of Pri
 
 class PricingReadingTypeMapper:
     @staticmethod
-    def pricing_reading_type_href(rt: PricingReadingType) -> str:
-        return uri.PricingReadingTypeUri.format(reading_type=rt)
+    def pricing_reading_type_href(rs_params: RequestStateParameters, rt: PricingReadingType) -> str:
+        return generate_href(uri.PricingReadingTypeUri, rs_params, reading_type=rt)
 
     @staticmethod
     def extract_price(rt: PricingReadingType, rate: TariffGeneratedRate) -> Decimal:
@@ -133,12 +139,12 @@ class PricingReadingTypeMapper:
             raise InvalidMappingError(f"Unknown reading type {rt}")
 
     @staticmethod
-    def create_reading_type(rt: PricingReadingType) -> ReadingType:
+    def create_reading_type(rs_params: RequestStateParameters, rt: PricingReadingType) -> ReadingType:
         """Creates a named reading type based on a fixed enum describing the readings associated
         with a particular type of pricing"""
-        href = PricingReadingTypeMapper.pricing_reading_type_href(rt)
+        href = PricingReadingTypeMapper.pricing_reading_type_href(rs_params, rt)
         if rt == PricingReadingType.IMPORT_ACTIVE_POWER_KWH:
-            return ReadingType.validate(
+            return ReadingType.model_validate(
                 {
                     "href": href,
                     "commodity": CommodityType.ELECTRICITY_PRIMARY_METERED_VALUE,
@@ -148,7 +154,7 @@ class PricingReadingTypeMapper:
                 }
             )
         elif rt == PricingReadingType.EXPORT_ACTIVE_POWER_KWH:
-            return ReadingType.validate(
+            return ReadingType.model_validate(
                 {
                     "href": href,
                     "commodity": CommodityType.ELECTRICITY_PRIMARY_METERED_VALUE,
@@ -158,7 +164,7 @@ class PricingReadingTypeMapper:
                 }
             )
         elif rt == PricingReadingType.IMPORT_REACTIVE_POWER_KVARH:
-            return ReadingType.validate(
+            return ReadingType.model_validate(
                 {
                     "href": href,
                     "commodity": CommodityType.ELECTRICITY_SECONDARY_METERED_VALUE,
@@ -168,7 +174,7 @@ class PricingReadingTypeMapper:
                 }
             )
         elif rt == PricingReadingType.EXPORT_REACTIVE_POWER_KVARH:
-            return ReadingType.validate(
+            return ReadingType.model_validate(
                 {
                     "href": href,
                     "commodity": CommodityType.ELECTRICITY_SECONDARY_METERED_VALUE,
@@ -184,28 +190,45 @@ class PricingReadingTypeMapper:
 class RateComponentMapper:
     @staticmethod
     def map_to_response(
-        total_rates: int, tariff_id: int, site_id: int, pricing_reading: PricingReadingType, day: date
+        rs_params: RequestStateParameters,
+        total_rates: int,
+        tariff_id: int,
+        site_id: int,
+        pricing_reading: PricingReadingType,
+        day: date,
     ) -> RateComponentResponse:
         """Maps/Creates a single rate component response describing a single type of reading"""
         rate_component_id = day.isoformat()
         start_timestamp = int(datetime.combine(day, time()).timestamp())
-        rc_href = uri.RateComponentUri.format(
-            tariff_id=tariff_id, site_id=site_id, rate_component_id=rate_component_id, pricing_reading=pricing_reading
+        rc_href = generate_href(
+            uri.RateComponentUri,
+            rs_params,
+            tariff_id=tariff_id,
+            site_id=site_id,
+            rate_component_id=rate_component_id,
+            pricing_reading=pricing_reading,
         )
-        return RateComponentResponse.validate(
+        return RateComponentResponse.model_validate(
             {
                 "href": rc_href,
                 "mRID": generate_mrid(TARIFF_PROFILE_MRID_PREFIX, tariff_id, site_id, start_timestamp, pricing_reading),
                 "description": pricing_reading.name,
                 "roleFlags": RoleFlagsType.NONE,
-                "ReadingTypeLink": Link(href=PricingReadingTypeMapper.pricing_reading_type_href(pricing_reading)),
+                "ReadingTypeLink": Link(
+                    href=PricingReadingTypeMapper.pricing_reading_type_href(rs_params, pricing_reading)
+                ),
                 "TimeTariffIntervalListLink": ListLink(href=rc_href + "/tti", all_=total_rates),
             }
         )
 
     @staticmethod
     def map_to_list_response(
-        daily_rate_stats: TariffGeneratedRateDailyStats, skip_start: int, skip_end: int, tariff_id: int, site_id: int
+        rs_params: RequestStateParameters,
+        daily_rate_stats: TariffGeneratedRateDailyStats,
+        skip_start: int,
+        skip_end: int,
+        tariff_id: int,
+        site_id: int,
     ) -> RateComponentListResponse:
         """Maps/creates a set of rate components under a RateComponentListResponse for a set of rate totals
         organised by date"""
@@ -216,9 +239,11 @@ class RateComponentMapper:
             (len(daily_rate_stats.single_date_counts) * TOTAL_PRICING_READING_TYPES) - skip_end,  # End
         )
         for (day, rate_count), pricing_type in iterator:
-            rc_list.append(RateComponentMapper.map_to_response(rate_count, tariff_id, site_id, pricing_type, day))
+            rc_list.append(
+                RateComponentMapper.map_to_response(rs_params, rate_count, tariff_id, site_id, pricing_type, day)
+            )
 
-        return RateComponentListResponse.validate(
+        return RateComponentListResponse.model_validate(
             {
                 "all_": daily_rate_stats.total_distinct_dates * TOTAL_PRICING_READING_TYPES,
                 "results": len(rc_list),
@@ -238,22 +263,38 @@ class ConsumptionTariffIntervalMapper:
 
     @staticmethod
     def instance_href(
-        tariff_id: int, site_id: int, pricing_reading: PricingReadingType, day: date, time_of_day: time, price: Decimal
-    ):
+        rs_params: RequestStateParameters,
+        tariff_id: int,
+        site_id: int,
+        pricing_reading: PricingReadingType,
+        day: date,
+        time_of_day: time,
+        price: Decimal,
+    ) -> str:
         """Returns the href for a single instance of a ConsumptionTariffIntervalResponse at a set price"""
-        base = ConsumptionTariffIntervalMapper.list_href(tariff_id, site_id, pricing_reading, day, time_of_day, price)
+        base = ConsumptionTariffIntervalMapper.list_href(
+            rs_params, tariff_id, site_id, pricing_reading, day, time_of_day, price
+        )
         return f"{base}/1"
 
     @staticmethod
     def list_href(
-        tariff_id: int, site_id: int, pricing_reading: PricingReadingType, day: date, time_of_day: time, price: Decimal
-    ):
+        rs_params: RequestStateParameters,
+        tariff_id: int,
+        site_id: int,
+        pricing_reading: PricingReadingType,
+        day: date,
+        time_of_day: time,
+        price: Decimal,
+    ) -> str:
         """Returns the href for a list that will hold a single instance of a ConsumptionTariffIntervalResponse at a
         set price"""
         rate_component_id = day.isoformat()
         tti_id = time_of_day.isoformat("minutes")
         sep2_price = ConsumptionTariffIntervalMapper.database_price_to_sep2(price)
-        return uri.ConsumptionTariffIntervalListUri.format(
+        return generate_href(
+            uri.ConsumptionTariffIntervalListUri,
+            rs_params,
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
@@ -264,12 +305,20 @@ class ConsumptionTariffIntervalMapper:
 
     @staticmethod
     def map_to_response(
-        tariff_id: int, site_id: int, pricing_rt: PricingReadingType, day: date, time_of_day: time, price: Decimal
+        rs_params: RequestStateParameters,
+        tariff_id: int,
+        site_id: int,
+        pricing_rt: PricingReadingType,
+        day: date,
+        time_of_day: time,
+        price: Decimal,
     ) -> ConsumptionTariffIntervalResponse:
         """Returns a ConsumptionTariffIntervalResponse with price being set to an integer by adjusting to
         PRICE_DECIMAL_PLACES"""
-        href = ConsumptionTariffIntervalMapper.instance_href(tariff_id, site_id, pricing_rt, day, time_of_day, price)
-        return ConsumptionTariffIntervalResponse.validate(
+        href = ConsumptionTariffIntervalMapper.instance_href(
+            rs_params, tariff_id, site_id, pricing_rt, day, time_of_day, price
+        )
+        return ConsumptionTariffIntervalResponse.model_validate(
             {
                 "href": href,
                 "consumptionBlock": ConsumptionBlockType.NOT_APPLICABLE,
@@ -280,24 +329,43 @@ class ConsumptionTariffIntervalMapper:
 
     @staticmethod
     def map_to_list_response(
-        tariff_id: int, site_id: int, pricing_rt: PricingReadingType, day: date, time_of_day: time, price: Decimal
+        rs_params: RequestStateParameters,
+        tariff_id: int,
+        site_id: int,
+        pricing_rt: PricingReadingType,
+        day: date,
+        time_of_day: time,
+        price: Decimal,
     ) -> ConsumptionTariffIntervalListResponse:
         """Returns a ConsumptionTariffIntervalListResponse with price being set to an integer by adjusting to
         PRICE_DECIMAL_PLACES"""
-        href = ConsumptionTariffIntervalMapper.list_href(tariff_id, site_id, pricing_rt, day, time_of_day, price)
-        cti = ConsumptionTariffIntervalMapper.map_to_response(tariff_id, site_id, pricing_rt, day, time_of_day, price)
-        return ConsumptionTariffIntervalListResponse.validate(
+        href = ConsumptionTariffIntervalMapper.list_href(
+            rs_params, tariff_id, site_id, pricing_rt, day, time_of_day, price
+        )
+        cti = ConsumptionTariffIntervalMapper.map_to_response(
+            rs_params, tariff_id, site_id, pricing_rt, day, time_of_day, price
+        )
+        return ConsumptionTariffIntervalListResponse.model_validate(
             {"href": href, "all_": 1, "results": 1, "ConsumptionTariffInterval": [cti]}
         )
 
 
 class TimeTariffIntervalMapper:
     @staticmethod
-    def instance_href(tariff_id: int, site_id: int, day: date, pricing_reading: PricingReadingType, time_of_day: time):
+    def instance_href(
+        rs_params: RequestStateParameters,
+        tariff_id: int,
+        site_id: int,
+        day: date,
+        pricing_reading: PricingReadingType,
+        time_of_day: time,
+    ) -> str:
         """Creates a href that identifies a single TimeTariffIntervalResponse with the specified values"""
         rate_component_id = day.isoformat()
         tti_id = time_of_day.isoformat("minutes")
-        return uri.TimeTariffIntervalUri.format(
+        return generate_href(
+            uri.TimeTariffIntervalUri,
+            rs_params,
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
@@ -306,17 +374,21 @@ class TimeTariffIntervalMapper:
         )
 
     @staticmethod
-    def map_to_response(rate: TariffGeneratedRate, pricing_reading: PricingReadingType) -> TimeTariffIntervalResponse:
+    def map_to_response(
+        rs_params: RequestStateParameters, rate: TariffGeneratedRate, pricing_reading: PricingReadingType
+    ) -> TimeTariffIntervalResponse:
         """Creates a new TimeTariffIntervalResponse for the given rate and specific price reading"""
         start_d = rate.start_time.date()
         start_t = rate.start_time.time()
         price = PricingReadingTypeMapper.extract_price(pricing_reading, rate)
-        href = TimeTariffIntervalMapper.instance_href(rate.tariff_id, rate.site_id, start_d, pricing_reading, start_t)
+        href = TimeTariffIntervalMapper.instance_href(
+            rs_params, rate.tariff_id, rate.site_id, start_d, pricing_reading, start_t
+        )
         list_href = ConsumptionTariffIntervalMapper.list_href(
-            rate.tariff_id, rate.site_id, pricing_reading, start_d, start_t, price
+            rs_params, rate.tariff_id, rate.site_id, pricing_reading, start_d, start_t, price
         )
 
-        return TimeTariffIntervalResponse.validate(
+        return TimeTariffIntervalResponse.model_validate(
             {
                 "href": href,
                 "mRID": generate_mrid(
@@ -338,15 +410,18 @@ class TimeTariffIntervalMapper:
 
     @staticmethod
     def map_to_list_response(
-        rates: Sequence[TariffGeneratedRate], pricing_reading: PricingReadingType, total: int
+        rs_params: RequestStateParameters,
+        rates: Sequence[TariffGeneratedRate],
+        pricing_reading: PricingReadingType,
+        total: int,
     ) -> TimeTariffIntervalListResponse:
         """Creates a TimeTariffIntervalListResponse for a single set of rates."""
-        return TimeTariffIntervalListResponse.validate(
+        return TimeTariffIntervalListResponse.model_validate(
             {
                 "all_": total,
                 "results": len(rates),
                 "TimeTariffInterval": [
-                    TimeTariffIntervalMapper.map_to_response(rate, pricing_reading) for rate in rates
+                    TimeTariffIntervalMapper.map_to_response(rs_params, rate, pricing_reading) for rate in rates
                 ],
             }
         )

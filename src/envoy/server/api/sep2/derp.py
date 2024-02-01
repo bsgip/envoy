@@ -1,21 +1,23 @@
 import logging
 from http import HTTPStatus
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from envoy_schema.server.schema import uri
+from fastapi import APIRouter, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
-    extract_aggregator_id,
     extract_date_from_iso_string,
     extract_datetime_from_paging_param,
+    extract_default_doe,
     extract_limit_from_paging_param,
+    extract_request_params,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import XmlResponse
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
-from envoy.server.schema import uri
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ async def get_derprogram_list(
     start: list[int] = Query([0], alias="s"),
     after: list[int] = Query([0], alias="a"),
     limit: list[int] = Query([1], alias="l"),
-):
+) -> Response:
     """Responds with a single DERProgramListResponse containing DER programs for the specified site
 
     Args:
@@ -45,20 +47,21 @@ async def get_derprogram_list(
     try:
         derp_list = await DERProgramManager.fetch_list_for_site(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_id=site_id,
+            default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derp_list)
 
 
 @router.head(uri.DERProgramUri)
 @router.get(uri.DERProgramUri, status_code=HTTPStatus.OK)
-async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str):
+async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str) -> Response:
     """Responds with a single DERProgramResponse for the DER Program specific to dynamic operating envelopes
 
     Args:
@@ -68,18 +71,19 @@ async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str
         fastapi.Response object.
     """
     if der_program_id != DOE_PROGRAM_ID:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
         derp = await DERProgramManager.fetch_doe_program_for_site(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_id=site_id,
+            default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derp)
 
@@ -93,7 +97,7 @@ async def get_dercontrol_list(
     start: list[int] = Query([0], alias="s"),
     after: list[int] = Query([0], alias="a"),
     limit: list[int] = Query([1], alias="l"),
-):
+) -> Response:
     """Responds with a single DERControlListResponse containing DER Controls for the specified site under the
     dynamic operating envelope program.
 
@@ -108,21 +112,104 @@ async def get_dercontrol_list(
         fastapi.Response object.
     """
     if der_program_id != DOE_PROGRAM_ID:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_site(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_id=site_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(derc_list)
+
+
+@router.head(uri.ActiveDERControlListUri)
+@router.get(uri.ActiveDERControlListUri, status_code=HTTPStatus.OK)
+async def get_active_dercontrol_list(
+    request: Request,
+    site_id: int,
+    der_program_id: str,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> Response:
+    """Responds with a single DERControlListResponse containing DER Controls for the specified site under the
+    dynamic operating envelope program. Only currently active (according to server time) controls will be returned.
+
+    Args:
+        site_id: Path parameter, the target EndDevice's internal registration number.
+        der_program_id: DERProgramID - only 'doe' is supported
+        start: list query parameter for the start index value. Default 0.
+        after: list query parameter for lists with a datetime primary index. Default 0.
+        limit: list query parameter for the maximum number of objects to return. Default 1.
+
+    Returns:
+        fastapi.Response object.
+    """
+
+    if der_program_id != DOE_PROGRAM_ID:
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
+
+    try:
+        derc_list = await DERControlManager.fetch_active_doe_controls_for_site(
+            db.session,
+            request_params=extract_request_params(request),
+            site_id=site_id,
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit),
+        )
+    except BadRequestError as ex:
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NotFoundError:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(derc_list)
+
+
+@router.head(uri.DefaultDERControlUri)
+@router.get(uri.DefaultDERControlUri, status_code=HTTPStatus.OK)
+async def get_default_dercontrol(
+    request: Request,
+    site_id: int,
+    der_program_id: str,
+) -> Response:
+    """Responds with a single DefaultDERControl containing the default DER Controls for the specified site under the
+    dynamic operating envelope program. Returns 404 if no default has been configured
+
+    Args:
+        site_id: Path parameter, the target EndDevice's internal registration number.
+        der_program_id: DERProgramID - only 'doe' is supported
+        start: list query parameter for the start index value. Default 0.
+        after: list query parameter for lists with a datetime primary index. Default 0.
+        limit: list query parameter for the maximum number of objects to return. Default 1.
+
+    Returns:
+        fastapi.Response object.
+    """
+
+    if der_program_id != DOE_PROGRAM_ID:
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
+
+    try:
+        derc_list = await DERControlManager.fetch_default_doe_controls_for_site(
+            db.session,
+            request_params=extract_request_params(request),
+            site_id=site_id,
+            default_doe=extract_default_doe(request),
+        )
+    except BadRequestError as ex:
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NotFoundError:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derc_list)
 
@@ -137,7 +224,7 @@ async def get_dercontrol_list_for_date(
     start: list[int] = Query([0], alias="s"),
     after: list[int] = Query([0], alias="a"),
     limit: list[int] = Query([1], alias="l"),
-):
+) -> Response:
     """Responds with a single DERControlListResponse containing DER Controls for the specified site under the
     dynamic operating envelope program. Results will be filtered to the specified date
 
@@ -153,16 +240,16 @@ async def get_dercontrol_list_for_date(
         fastapi.Response object.
     """
     if der_program_id != DOE_PROGRAM_ID:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     day = extract_date_from_iso_string(date)
     if day is None:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Expected YYYY-MM-DD date")
+        raise LoggedHttpException(logger, None, HTTPStatus.BAD_REQUEST, f"Expected YYYY-MM-DD date but got: {date}")
 
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_site_day(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_id=site_id,
             day=day,
             start=extract_start_from_paging_param(start),
@@ -170,8 +257,8 @@ async def get_dercontrol_list_for_date(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derc_list)

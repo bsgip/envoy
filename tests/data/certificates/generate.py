@@ -60,6 +60,6 @@ if __name__ == "__main__":
     sfdi = raw_sfdi * 10 + sfdi_checksum
 
     print(f'TEST_CERTIFICATE_PEM = b"""{raw_pem}"""\n')
-    print(f'TEST_CERTIFICATE_FINGERPRINT = (\n"    {fingerprint}"\n)\n')
+    print(f'TEST_CERTIFICATE_FINGERPRINT = (\n"    {fingerprint.replace(":", "")}"\n)\n')
     print(f'TEST_CERTIFICATE_LFDI = "{lfdi}"\n')
     print(f'TEST_CERTIFICATE_SFDI = "{sfdi}"\n')

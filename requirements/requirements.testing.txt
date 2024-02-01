@@ -1,8 +1,0 @@
-pytest
-pytest-asyncio
-anyio
-pytest-mock
-pytest-postgresql
-psycopg
-httpx
-defusedxml

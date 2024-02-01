@@ -61,3 +61,106 @@ INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "
 VALUES (4, 1, '2022-05-06 14:22:33', '2022-05-08 01:02+10', 44, 4.11, -4.22);
 
 SELECT pg_catalog.setval('public.dynamic_operating_envelope_dynamic_operating_envelope_id_seq', 5, true);
+
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+VALUES (1, -- site_reading_type_id
+    1, -- aggregator_id
+    1, -- site_id
+    38, -- uom
+    2, -- data_qualifier
+    1, -- flow_direction
+    3, -- accumulation_behaviour
+    37, -- kind
+    64, -- phase
+    3, -- power_of_ten_multiplier
+    0, -- default_interval_seconds
+    '2022-05-06 11:22:33' -- changed_time
+    );
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+VALUES (2, -- site_reading_type_id
+    3, -- aggregator_id
+    1, -- site_id
+    61, -- uom
+    2, -- data_qualifier
+    1, -- flow_direction
+    3, -- accumulation_behaviour
+    37, -- kind
+    64, -- phase
+    0, -- power_of_ten_multiplier
+    0, -- default_interval_seconds
+    '2022-05-06 12:22:33' -- changed_time
+    );
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+VALUES (3, -- site_reading_type_id
+    1, -- aggregator_id
+    1, -- site_id
+    38, -- uom
+    8, -- data_qualifier
+    1, -- flow_direction
+    3, -- accumulation_behaviour
+    37, -- kind
+    64, -- phase
+    0, -- power_of_ten_multiplier
+    3600, -- default_interval_seconds
+    '2022-05-06 13:22:33' -- changed_time
+    );
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+VALUES (4, -- site_reading_type_id
+    1, -- aggregator_id
+    2, -- site_id
+    38, -- uom
+    9, -- data_qualifier
+    19, -- flow_direction
+    12, -- accumulation_behaviour
+    12, -- kind
+    0, -- phase
+    -1, -- power_of_ten_multiplier
+    0, -- default_interval_seconds
+    '2022-05-06 14:22:33' -- changed_time
+    );
+
+SELECT pg_catalog.setval('public.site_reading_type_site_reading_type_id_seq', 5, true);
+
+
+INSERT INTO public.site_reading("site_reading_id", "site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (1, -- site_reading_id
+    1, -- site_reading_type_id
+    '2022-06-07 11:22:33', -- changed_time
+    11111, -- local_id
+    1, -- quality_flags
+    '2022-06-07 01:00:00+10', -- time_period_start
+    300, -- time_period_seconds
+    11 -- value
+    );
+INSERT INTO public.site_reading("site_reading_id", "site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (2, -- site_reading_id
+    1, -- site_reading_type_id
+    '2022-06-07 12:22:33', -- changed_time
+    22222, -- local_id
+    2, -- quality_flags
+    '2022-06-07 02:00:00+10', -- time_period_start
+    300, -- time_period_seconds
+    12 -- value
+    );
+INSERT INTO public.site_reading("site_reading_id", "site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (3, -- site_reading_id
+    2, -- site_reading_type_id
+    '2022-06-07 13:22:33', -- changed_time
+    33333, -- local_id
+    3, -- quality_flags
+    '2022-06-07 01:00:00+10', -- time_period_start
+    300, -- time_period_seconds
+    13 -- value
+    );
+INSERT INTO public.site_reading("site_reading_id", "site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (4, -- site_reading_id
+    4, -- site_reading_type_id
+    '2022-06-07 14:22:33', -- changed_time
+    44444, -- local_id
+    4, -- quality_flags
+    '2022-06-07 01:00:00+10', -- time_period_start
+    300, -- time_period_seconds
+    14 -- value
+    );
+
+SELECT pg_catalog.setval('public.site_reading_site_reading_id_seq', 5, true);

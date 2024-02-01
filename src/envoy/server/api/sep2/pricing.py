@@ -1,13 +1,16 @@
 import logging
 from http import HTTPStatus
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.pricing import RateComponentListResponse
+from fastapi import APIRouter, Query, Request
 from fastapi_async_sqlalchemy import db
 
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
-    extract_aggregator_id,
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
+    extract_request_params,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import XmlResponse
@@ -18,9 +21,8 @@ from envoy.server.manager.pricing import (
     TariffProfileManager,
     TimeTariffIntervalManager,
 )
+from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.pricing import PricingReadingType, PricingReadingTypeMapper
-from envoy.server.schema import uri
-from envoy.server.schema.sep2.pricing import RateComponentListResponse
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +31,7 @@ router = APIRouter()
 
 @router.head(uri.PricingReadingTypeUri)
 @router.get(uri.PricingReadingTypeUri, status_code=HTTPStatus.OK)
-async def get_pricingreadingtype(reading_type: PricingReadingType) -> XmlResponse:
+async def get_pricingreadingtype(request: Request, reading_type: PricingReadingType) -> XmlResponse:
     """Responds with ReadingType describing the priced type of reading. This is to handle the ReadingType link
     referenced href callback from RateComponent.ReadingTypeLink.
 
@@ -39,9 +41,11 @@ async def get_pricingreadingtype(reading_type: PricingReadingType) -> XmlRespons
         fastapi.Response object.
     """
     try:
-        return XmlResponse(PricingReadingTypeMapper.create_reading_type(reading_type))
+        return XmlResponse(PricingReadingTypeMapper.create_reading_type(extract_request_params(request), reading_type))
     except BadRequestError:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Unsupported reading_type {reading_type}")
+        raise LoggedHttpException(
+            logger, None, status_code=HTTPStatus.BAD_REQUEST, detail=f"Unsupported reading_type {reading_type}"
+        )
 
 
 @router.head(uri.TariffProfileListUnscopedUri)
@@ -68,12 +72,13 @@ async def get_tariffprofilelist_nositescope(
     try:
         tp_list = await TariffProfileManager.fetch_tariff_profile_list_no_site(
             db.session,
+            request_params=extract_request_params(request),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     return XmlResponse(tp_list)
 
@@ -103,14 +108,14 @@ async def get_tariffprofilelist(
     try:
         tp_list = await TariffProfileManager.fetch_tariff_profile_list(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             site_id=site_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     return XmlResponse(tp_list)
 
@@ -131,12 +136,14 @@ async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) 
 
     """
     try:
-        tp = await TariffProfileManager.fetch_tariff_profile_no_site(db.session, tariff_id)
+        tp = await TariffProfileManager.fetch_tariff_profile_no_site(
+            db.session, extract_request_params(request), tariff_id
+        )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     if tp is None:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(tp)
 
@@ -168,7 +175,8 @@ async def get_ratecomponentlist_nositescope(
     # return an empty list - clients will only discover this endpoint by querying for tariff profiles
     # directly. Tariff profiles need to be discovered via function set assignments and from there
     # they will directed to the appropriate endpoint describing site scoped rates
-    return XmlResponse(RateComponentListResponse.validate({"all_": 0, "results": 0, "href": request.url.path}))
+    href = generate_href(request.url.path, extract_request_params(request))
+    return XmlResponse(RateComponentListResponse.model_validate({"all_": 0, "results": 0, "href": href}))
 
 
 @router.head(uri.TariffProfileUri)
@@ -187,13 +195,13 @@ async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request
     """
     try:
         tp = await TariffProfileManager.fetch_tariff_profile(
-            db.session, extract_aggregator_id(request), tariff_id, site_id
+            db.session, extract_request_params(request), tariff_id, site_id
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     if tp is None:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(tp)
 
@@ -225,7 +233,7 @@ async def get_ratecomponentlist(
     try:
         rc_list = await RateComponentManager.fetch_rate_component_list(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             start=extract_start_from_paging_param(start),
@@ -233,7 +241,7 @@ async def get_ratecomponentlist(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     return XmlResponse(rc_list)
 
@@ -260,17 +268,17 @@ async def get_singleratecomponent(
     try:
         rc = await RateComponentManager.fetch_rate_component(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     if rc is None:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(rc)
 
@@ -306,7 +314,7 @@ async def get_timetariffintervallist(
     try:
         tti_list = await TimeTariffIntervalManager.fetch_time_tariff_interval_list(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
@@ -316,7 +324,7 @@ async def get_timetariffintervallist(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     return XmlResponse(tti_list)
 
@@ -349,7 +357,7 @@ async def get_singletimetariffinterval(
     try:
         tti = await TimeTariffIntervalManager.fetch_time_tariff_interval(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
@@ -357,10 +365,10 @@ async def get_singletimetariffinterval(
             pricing_type=pricing_reading,
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
 
     if tti is None:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(tti)
 
@@ -403,7 +411,7 @@ async def get_consumptiontariffintervallist(
     try:
         cti_list = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
@@ -412,9 +420,9 @@ async def get_consumptiontariffintervallist(
             sep2_price=sep2_price,
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(cti_list)
 
@@ -452,7 +460,7 @@ async def get_singleconsumptiontariffinterval(
     try:
         cti = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval(
             db.session,
-            aggregator_id=extract_aggregator_id(request),
+            request_params=extract_request_params(request),
             tariff_id=tariff_id,
             site_id=site_id,
             rate_component_id=rate_component_id,
@@ -461,10 +469,10 @@ async def get_singleconsumptiontariffinterval(
             sep2_price=sep2_price,
         )
     except BadRequestError as ex:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except NotFoundError:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not found.")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found.")
 
     if cti is None:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
     return XmlResponse(cti)
