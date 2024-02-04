@@ -1,12 +1,9 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-from pydantic import PostgresDsn
-from pydantic_settings import BaseSettings
-
-from envoy.server.settings import generate_middleware_kwargs
+from envoy.settings import CommonSettings
 
 
-class AppSettings(BaseSettings):
+class AppSettings(CommonSettings):
     model_config = {"validate_assignment": True, "env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     debug: bool = False
@@ -19,20 +16,8 @@ class AppSettings(BaseSettings):
 
     default_timezone: str = "Australia/Brisbane"
 
-    database_url: PostgresDsn
-    commit_on_exit: bool = False
-
     admin_username: str
     admin_password: str
-
-    rabbit_mq_broker_url: Optional[str] = None  # RabbitMQ URL pointing to a running server (if none - disables pub/sub)
-
-    azure_ad_tenant_id: Optional[str] = None  # Tenant ID of the Azure AD deployment (if none - disables Azure AD Auth)
-    azure_ad_client_id: Optional[str] = None  # Client ID of the app in the Azure AD (if none - disables Azure AD Auth)
-    azure_ad_db_resource_id: Optional[str] = None  # Will be used to mint AD tokens as a database password alternative
-    azure_ad_db_refresh_secs: int = (
-        14400  # How frequently (in seconds) will the Azure AD DB token be manually refreshed. Default 4 hours.
-    )
 
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:
@@ -45,15 +30,6 @@ class AppSettings(BaseSettings):
             "title": self.title,
             "version": self.version,
         }
-
-    @property
-    def db_middleware_kwargs(self) -> Dict[str, Any]:
-        return generate_middleware_kwargs(
-            database_url=str(self.database_url),
-            commit_on_exit=self.commit_on_exit,
-            azure_ad_db_resource_id=self.azure_ad_db_resource_id,
-            azure_ad_db_refresh_secs=self.azure_ad_db_refresh_secs,
-        )
 
 
 def generate_settings() -> AppSettings:

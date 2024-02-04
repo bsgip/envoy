@@ -47,11 +47,11 @@ def generate_broker(rabbit_mq_broker_url: Optional[str]) -> AsyncBroker:
             return ENABLED_IN_MEMORY_BROKER
 
 
-def enable_notification_workers(
+def enable_notification_client(
     rabbit_mq_broker_url: Optional[str],
 ) -> Callable[[FastAPI], _AsyncGeneratorContextManager]:
     """If executed - will generate a context manager (compatible with FastAPI lifetime managers) that when installed
-    will (on app startup) enable the async notification workers
+    will (on app startup) enable the async notification client
 
     rabbit_mq_broker_url - If set - use RabbitMQ to broker notifications, otherwise InMemoryBroker will be used
 
