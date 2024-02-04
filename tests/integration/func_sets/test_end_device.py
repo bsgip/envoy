@@ -160,7 +160,7 @@ async def test_create_end_device_shinehub(client: AsyncClient, edev_base_uri: st
 
 
 @pytest.mark.anyio
-async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
+async def test_create_end_device_specified_sfdi(client: AsyncClient, edev_base_uri: str):
     """When creating an end_device check to see if it persists and is correctly assigned to the aggregator"""
 
     insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
@@ -202,6 +202,38 @@ async def test_create_end_device(client: AsyncClient, edev_base_uri: str):
     assert len(body) > 0
     parsed_response: EndDeviceListResponse = EndDeviceListResponse.from_xml(body)
     assert parsed_response.all_ == 4, f"received body:\n{body}"
+
+
+@pytest.mark.anyio
+async def test_create_end_device_no_sfdi(client: AsyncClient, edev_base_uri: str):
+    """When creating an end_device check to see if it persists and is correctly assigned to the aggregator
+    (with sfdi be generated on the server side)"""
+    insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    insert_request.sFDI = 0
+    insert_request.lFDI = ""
+    insert_request.postRate = 123
+    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.ENERGY_MANAGEMENT_SYSTEM))
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=EndDeviceRequest.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    assert len(read_response_body_string(response)) == 0
+    inserted_href = read_location_header(response)
+
+    # now lets grab the end device we just created
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.OK)
+    response_body = read_response_body_string(response)
+    assert len(response_body) > 0
+    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
+    assert_nowish(parsed_response.changedTime)
+    assert parsed_response.href == inserted_href
+    assert parsed_response.enabled == 1
+    assert parsed_response.lFDI.strip() != ""
+    assert parsed_response.sFDI != 0
+    assert parsed_response.deviceCategory == insert_request.deviceCategory
 
 
 @pytest.mark.anyio

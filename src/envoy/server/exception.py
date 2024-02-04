@@ -47,3 +47,10 @@ class InvalidIdError(BadRequestError):
     """Raised when the supplied ID information cannot be parsed into a valid value"""
 
     pass
+
+
+class UnableToGenerateIdError(Exception):
+    """Raised when either the underlying db or application middleware is unable to generate a sufficiently unique id.
+    These errors should typically be treated a 5XX response"""
+
+    pass

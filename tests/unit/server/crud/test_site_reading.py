@@ -67,7 +67,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 phase=64,
                 power_of_ten_multiplier=3,
                 default_interval_seconds=0,
-                changed_time=datetime(2022, 5, 6, 11, 22, 33, tzinfo=timezone.utc),
+                changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
             ),
         ),
         (
@@ -85,7 +85,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 phase=64,
                 power_of_ten_multiplier=0,
                 default_interval_seconds=0,
-                changed_time=datetime(2022, 5, 6, 12, 22, 33, tzinfo=timezone.utc),
+                changed_time=datetime(2022, 5, 6, 12, 22, 33, 500000, tzinfo=timezone.utc),
             ),
         ),
         (2, 1, None),  # Wrong aggregator
@@ -217,7 +217,7 @@ async def test_upsert_site_reading_type_for_aggregator_cant_change_agg_id(pg_bas
         # db should be unmodified
         db_srt = await fetch_site_reading_type(session, aggregator_id, site_id_to_update)
         assert db_srt
-        assert_datetime_equal(db_srt.changed_time, datetime(2022, 5, 6, 11, 22, 33, tzinfo=timezone.utc))
+        assert_datetime_equal(db_srt.changed_time, datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc))
 
 
 @pytest.mark.anyio
@@ -228,7 +228,7 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         # Insert
         SiteReading(
             site_reading_type_id=1,
-            changed_time=datetime(2022, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+            changed_time=datetime(2022, 1, 2, 3, 4, 5, 500000, tzinfo=timezone.utc),
             local_id=1234,
             quality_flags=QualityFlagsType.VALID,
             time_period_start=datetime(2022, 8, 9, 4, 5, 6, tzinfo=timezone.utc),
@@ -238,7 +238,7 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         # Update everything non index
         SiteReading(
             site_reading_type_id=1,  # Index col to match existing
-            changed_time=datetime(2022, 6, 7, 8, 9, 10, tzinfo=timezone.utc),
+            changed_time=datetime(2022, 6, 7, 8, 9, 10, 500000, tzinfo=timezone.utc),
             local_id=4567,
             quality_flags=QualityFlagsType.VALID,
             time_period_start=datetime(2022, 6, 7, 2, 0, 0, tzinfo=aest),  # Index col to match existing
@@ -248,7 +248,7 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         # Insert (partial match on unique constraint)
         SiteReading(
             site_reading_type_id=3,  # Won't match existing reading
-            changed_time=datetime(2022, 10, 11, 12, 13, 14, tzinfo=timezone.utc),
+            changed_time=datetime(2022, 10, 11, 12, 13, 14, 500000, tzinfo=timezone.utc),
             local_id=111,
             quality_flags=QualityFlagsType.FORECAST,
             time_period_start=datetime(2022, 6, 7, 2, 0, 0, tzinfo=aest),  # Will match existing reading
@@ -285,7 +285,7 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
             SiteReading(
                 site_reading_id=1,
                 site_reading_type_id=1,
-                changed_time=datetime(2022, 6, 7, 11, 22, 33, tzinfo=timezone.utc),
+                changed_time=datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=timezone.utc),
                 local_id=11111,
                 quality_flags=QualityFlagsType.VALID,
                 time_period_start=datetime(2022, 6, 7, 1, 0, 0, tzinfo=aest),  # Will match existing reading

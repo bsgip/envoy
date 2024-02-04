@@ -57,7 +57,7 @@ class DERControlMapper:
                         "start": int(doe.start_time.timestamp()),
                     }
                 ),
-                "creationTime": doe.changed_time.timestamp(),
+                "creationTime": int(doe.changed_time.timestamp()),
                 "DERControlBase_": DERControlBase.model_validate(
                     {
                         "opModImpLimW": DERControlMapper.map_to_active_power(doe.import_limit_active_watts),
