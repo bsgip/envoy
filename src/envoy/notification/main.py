@@ -1,8 +1,8 @@
 import logging
-from typing import AsyncGenerator, Optional
+from typing import Annotated, AsyncGenerator, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from taskiq import TaskiqEvents, TaskiqState
+from taskiq import Context, TaskiqDepends, TaskiqEvents, TaskiqState
 
 from envoy.notification.handler import generate_broker
 from envoy.notification.settings import generate_settings
@@ -13,20 +13,18 @@ logger = logging.getLogger(__name__)
 
 
 logger.info("Initialising Notification TaskIQ Worker")
+
 settings = generate_settings()
-
-
-async def session_dependency() -> AsyncGenerator[AsyncSession, None]:
-    print("Startup")
-    await asyncio.sleep(0.1)
-
-    yield "value"
-
-    await asyncio.sleep(0.1)
-    print("Shutdown")
-
-
 broker = generate_broker(settings.rabbit_mq_broker_url)
+
+
+async def session_dependency(context: Annotated[Context, TaskiqDepends()]) -> AsyncGenerator[AsyncSession, None]:
+    """Yields a session from TaskIq context session maker (maker created during WORKER_STARTUP event) and
+    then closes it after shutdown"""
+    session: AsyncSession = context.state.db_session_maker()
+    yield session
+    await session.close()
+
 
 # Now setup the lifecycle events for the worker
 azure_ad_handler_details: Optional[HandlerDetails] = None
