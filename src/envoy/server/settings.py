@@ -34,6 +34,8 @@ class AppSettings(BaseSettings):
     cert_header: str = "x-forwarded-client-cert"  # either client certificate in PEM format or the sha256 fingerprint
     default_timezone: str = "Australia/Brisbane"
 
+    rabbit_mq_broker_url: Optional[str] = None  # RabbitMQ URL pointing to a running server (if none - disables pub/sub)
+
     azure_ad_tenant_id: Optional[str] = None  # Tenant ID of the Azure AD deployment (if none - disables Azure AD Auth)
     azure_ad_client_id: Optional[str] = None  # Client ID of the app in the Azure AD (if none - disables Azure AD Auth)
     azure_ad_valid_issuer: Optional[str] = None  # Valid Issuer of tokens in the Azure AD (if none - no Azure AD Auth)

@@ -25,6 +25,8 @@ class AppSettings(BaseSettings):
     admin_username: str
     admin_password: str
 
+    rabbit_mq_broker_url: Optional[str] = None  # RabbitMQ URL pointing to a running server (if none - disables pub/sub)
+
     azure_ad_tenant_id: Optional[str] = None  # Tenant ID of the Azure AD deployment (if none - disables Azure AD Auth)
     azure_ad_client_id: Optional[str] = None  # Client ID of the app in the Azure AD (if none - disables Azure AD Auth)
     azure_ad_db_resource_id: Optional[str] = None  # Will be used to mint AD tokens as a database password alternative

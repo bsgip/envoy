@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 from pydantic_core import ValidationError
 
+from envoy.notification.handler import enable_notification_workers
 from envoy.server.api import routers, unsecured_routers
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
 from envoy.server.api.depends.default_doe import DefaultDoeDepends
@@ -46,6 +47,11 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
                 )
             )
         )
+
+    # Setup notification broker connection for sep2 pub/sub support
+    enabled_notifications = enable_notification_workers(new_settings.rabbit_mq_broker_url)
+    lifespan_managers.append(enabled_notifications.fastapi_lifetime_manager)
+    global_dependencies.append(Depends(NotificationDepends(enabled_notifications.broker)))
 
     # Azure AD Auth is an optional extension enabled via configuration settings
     azure_ad_settings = new_settings.azure_ad_kwargs

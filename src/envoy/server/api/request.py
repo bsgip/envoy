@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastapi import HTTPException, Request
 
+from envoy.notification.depends.notification import NotificationDetails
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 
 MAX_LIMIT = 500

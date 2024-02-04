@@ -9,6 +9,7 @@ Top level directories define fastapi apps that use a common auth model
 * `src/envoy/`: root package directory
 * `src/envoy/admin/`: Used for internal API endpoints for administering the server/injecting calculated entities
 * `src/envoy/server/`: primary implementation of the public API's - eg 2030.5 etc 
+* `src/envoy/notification` : Used for handling all notification server tasks/workers for supporting 2030.5 pub/sub
 * `tests/`: root tests directory
 
 docstrings on `__init__.py` should describe the structure in greater detail
@@ -24,6 +25,7 @@ Typically settings are set by setting an environment variable with the same name
 | ----------- | -------- | ----------- |
 | `cert_header` | `string` | The name of the HTTP header that API endpoints will look for to validate a client. This should be set by the TLS termination point and can contain either a full client certificate in PEM format or the sha256 fingerprint of that certificate. defaults to "x-forwarded-client-cert" |
 | `default_timezone` | `string` | The timezone name that will be used as the default for new sites registered in band (defaults to "Australia/Brisbane") |
+| `rabbit_mq_broker_url` | `string` | URL to a rabbit MQ instance that will handle notifications. Eg `amqp://user:password@localhost:5672` |
 | `azure_ad_tenant_id` | `string` | The Azure AD tenant id that envoy is deployed under (see Azure Active Directory Support below) |
 | `azure_ad_client_id` | `string` | The Azure AD client id that identifies the VM envoy is deployed under (see Azure Active Directory Support below) |
 | `azure_ad_valid_issuer` | `string` | The Azure AD issuer that will be generating tokens for the current tenant (see Azure Active Directory Support below) |
@@ -119,7 +121,14 @@ If there are no migrations in `server/alembic/versions` - first run `alembic rev
 The Postman collection in postman/envoy.postman_collection.json uses certificate 1 (`tests/data/certificates/certificate1.py`)
  to make it requests and will require the database to be populated with this base config.
 
-9. Start server
+9. Start notification server worker
+
+The notification server will require workers to handle executing the async tasks. This is handled by taskiq and a worker
+can be initialised with: 
+
+`taskiq worker envoy.notification.main:broker envoy.notification.task`
+
+10. Start server
 
 `python server/main.py`
 

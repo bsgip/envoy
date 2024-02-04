@@ -3,11 +3,48 @@ from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
 from typing import AsyncIterator, Callable, Optional
 
 from fastapi import FastAPI
-from taskiq import InMemoryBroker
+from taskiq import AsyncBroker, InMemoryBroker
 from taskiq.result_backends.dummy import DummyResultBackend
 from taskiq_aio_pika import AioPikaBroker
 
 logger = logging.getLogger(__name__)
+
+# This is a bit of a cludge for testing. Normally this won't be set in a production environment
+#
+# Reference to the shared InMemoryBroker. Will be lazily instantiated
+ENABLED_IN_MEMORY_BROKER: Optional[InMemoryBroker] = None
+
+
+# The currently enabled broker (if any). Will point to the last broker instantiated by enable_notification_workers
+# This will normally NOT be available at import time for the purposes of decorating task functions
+#
+# So task functions should annotated using:
+# @async_shared_broker.task()
+# async def my_task(p1: int) -> None:
+#   await sleep(p1)
+#   print("Hello World")
+#
+# And then kicked using:
+#   await my_task.kicker().with_broker(enabled_broker).kiq(1)
+enabled_broker: Optional[AsyncBroker] = None
+
+
+def generate_broker(rabbit_mq_broker_url: Optional[str]) -> AsyncBroker:
+    """Creates a AsyncBroker for the specified config (startup/shutdown will not initialised)"""
+
+    use_rabbit_mq = bool(rabbit_mq_broker_url)
+    logging.info(f"Generating Broker - Using Rabbit MQ: {use_rabbit_mq}")
+
+    if use_rabbit_mq:
+        return AioPikaBroker(url=rabbit_mq_broker_url, result_backend=DummyResultBackend())
+    else:
+        # If we are using InMemory - lets keep the same reference going for all instances
+        global ENABLED_IN_MEMORY_BROKER
+        if ENABLED_IN_MEMORY_BROKER is not None:
+            return ENABLED_IN_MEMORY_BROKER
+        else:
+            ENABLED_IN_MEMORY_BROKER = InMemoryBroker()
+            return ENABLED_IN_MEMORY_BROKER
 
 
 def enable_notification_workers(
@@ -19,17 +56,10 @@ def enable_notification_workers(
     rabbit_mq_broker_url - If set - use RabbitMQ to broker notifications, otherwise InMemoryBroker will be used
 
     Return return value can be passed right into a FastAPI context manager with:
-    lifespan_manager = enable_dynamic_azure_ad_database_credentials(...)
+    lifespan_manager = enable_notification_workers(...)
     app = FastAPI(lifespan=lifespan_manager)
     """
-
-    use_rabbit_mq = bool(rabbit_mq_broker_url)
-    logging.info(f"Enabling notification workers - Using Rabbit MQ: {use_rabbit_mq}")
-
-    if use_rabbit_mq:
-        broker = AioPikaBroker(url=rabbit_mq_broker_url, result_backend=DummyResultBackend())
-    else:
-        broker = InMemoryBroker()
+    broker = generate_broker(rabbit_mq_broker_url)
 
     @asynccontextmanager
     async def context_manager(app: FastAPI) -> AsyncIterator:
@@ -41,4 +71,6 @@ def enable_notification_workers(
 
         await broker.shutdown()
 
+    global enabled_broker
+    enabled_broker = broker
     return context_manager
