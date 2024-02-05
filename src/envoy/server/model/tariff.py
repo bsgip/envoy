@@ -35,7 +35,9 @@ class TariffGeneratedRate(Base):
     tariff_id: Mapped[int] = mapped_column(ForeignKey("tariff.tariff_id"))  # The tariff
     site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id"))  # The site that this rate applies to
 
-    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the rate was created/changed
+    changed_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), index=True
+    )  # When the rate was created/changed
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the tariff comes into effect
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this rate applies for
     import_active_price: Mapped[Decimal] = mapped_column(

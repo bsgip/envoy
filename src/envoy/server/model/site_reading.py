@@ -73,7 +73,9 @@ class SiteReading(Base):
 
     site_reading_id: Mapped[int] = mapped_column(primary_key=True)
     site_reading_type_id: Mapped[int] = mapped_column(ForeignKey("site_reading_type.site_reading_type_id"))
-    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading was last altered
+    changed_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), index=True
+    )  # When the reading was last altered
 
     local_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # Internal id assigned by aggregator
     quality_flags: Mapped[QualityFlagsType] = mapped_column(INTEGER)

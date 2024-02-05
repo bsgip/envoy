@@ -4,18 +4,15 @@ from typing import Annotated, Literal, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq import TaskiqDepends, async_shared_broker
 
+from envoy.notification.crud.batch import fetch_sites_by_changed_at
 from envoy.notification.main import session_dependency
-
-# Taskiq serializes messages to JSON so these substitute for a string enum
-ResourceType = Union[
-    Literal["SITE"], Literal["DYNAMIC_OPERATING_ENVELOPE"], Literal["TARIFF_GENERATED_RATE"], Literal["READING"]
-]
+from envoy.server.model.subscription import SubscriptionResource
 
 
 @async_shared_broker.task()
 async def handle_db_upsert(
     session: Annotated[AsyncSession, TaskiqDepends(session_dependency)],
-    resource_name: ResourceType,
+    resource: SubscriptionResource,
     timestamp_epoch: float,
 ) -> None:
     """Call this to notify that a particular timestamp within a particular named resource
@@ -26,3 +23,11 @@ async def handle_db_upsert(
     timestamp: The datetime.timestamp() that will be used for finding resources (must be exact match)"""
 
     timestamp = datetime.fromtimestamp(timestamp_epoch, tz=timezone.utc)
+
+    if resource == SubscriptionResource.SITE:
+        batched_entities = await fetch_sites_by_changed_at(session, timestamp)
+    else:
+        raise Exception(f"Unsupported resource type: {resource}")
+    
+    for (agg_id, entities) in batched_entities.models_by_aggregator_id.items():
+        # Generate notifications

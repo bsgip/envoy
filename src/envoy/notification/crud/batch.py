@@ -3,10 +3,12 @@ from typing import Generic, Optional, Sequence, TypeVar, Union
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
+from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
 
 TResourceModel = TypeVar(
@@ -39,6 +41,23 @@ class AggregatorBatchedEntities(Generic[TResourceModel]):
                 self.models_by_aggregator_id[agg_id] = [m]
             else:
                 grouped_models.append(m)
+
+
+async def select_subscriptions_for_resource(
+    session: AsyncSession, aggregator_id: int, resource: SubscriptionResource
+) -> Sequence[Subscription]:
+    """Fetches all subscriptions that 'might' match a change in a particular resource. Actual checks will not be made.
+
+    Will populate the Subscription.conditions relationship"""
+
+    stmt = (
+        select(Subscription)
+        .where((Subscription.aggregator_id == aggregator_id) & (Subscription.resource_type == resource))
+        .options(selectinload(Subscription.conditions))
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
 
 
 async def fetch_sites_by_changed_at(session: AsyncSession, timestamp: datetime) -> AggregatorBatchedEntities[Site]:

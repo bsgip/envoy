@@ -22,7 +22,12 @@ async def session_dependency(context: Annotated[Context, TaskiqDepends()]) -> As
     """Yields a session from TaskIq context session maker (maker created during WORKER_STARTUP event) and
     then closes it after shutdown"""
     session: AsyncSession = context.state.db_session_maker()
-    yield session
+
+    try:
+        yield session
+    except Exception as exc:
+        logger.error("Uncaught exception. Attempting to roll back session gracefully", exc_info=exc)
+        await session.rollback()
     await session.close()
 
 
