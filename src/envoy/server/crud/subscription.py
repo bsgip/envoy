@@ -10,23 +10,6 @@ from envoy.server.model.site import Site
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 
 
-async def select_subscriptions_for_resource(
-    session: AsyncSession, aggregator_id: int, resource: SubscriptionResource
-) -> Sequence[Subscription]:
-    """Fetches all subscriptions that 'might' match a change in a particular resource. Actual checks will not be made.
-
-    Will populate the Subscription.conditions relationship"""
-
-    stmt = (
-        select(Subscription)
-        .where((Subscription.aggregator_id == aggregator_id) & (Subscription.resource_type == resource))
-        .options(selectinload(Subscription.conditions))
-    )
-
-    resp = await session.execute(stmt)
-    return resp.scalars().all()
-
-
 async def select_aggregator_site_count(session: AsyncSession, aggregator_id: int, after: datetime) -> int:
     """Fetches the number of sites 'owned' by the specified aggregator (with an additional filter on the site
     changed_time)
