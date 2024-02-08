@@ -1,24 +1,12 @@
 from datetime import date, datetime, timedelta
 from typing import Optional, Sequence, Union
-from zoneinfo import ZoneInfo
 
-from sqlalchemy import TIMESTAMP, Row, Select, cast, func, select
+from sqlalchemy import TIMESTAMP, Select, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.crud.common import localize_start_time
 from envoy.server.model.doe import DynamicOperatingEnvelope as DOE
 from envoy.server.model.site import Site
-
-
-def _localize_start_time(rate_and_tz: Optional[Row[tuple[DOE, str]]]) -> DOE:
-    """Localizes a DynamicOperatingEnvelope.start_time to be in the local timezone passed in as the second
-    element in the tuple. Returns the DynamicOperatingEnvelope (it will be modified in place)"""
-    if rate_and_tz is None:
-        raise ValueError("row is None")
-
-    (rate, tz_name) = rate_and_tz
-    tz = ZoneInfo(tz_name)
-    rate.start_time = rate.start_time.astimezone(tz)
-    return rate
 
 
 async def _does_at_timestamp(
@@ -67,7 +55,7 @@ async def _does_at_timestamp(
     if is_counting:
         return resp.scalar_one()
     else:
-        return [_localize_start_time(doe_and_tz) for doe_and_tz in resp.all()]
+        return [localize_start_time(doe_and_tz) for doe_and_tz in resp.all()]
 
 
 async def _does_for_day(
@@ -118,7 +106,7 @@ async def _does_for_day(
     if is_counting:
         return resp.scalar_one()
     else:
-        return [_localize_start_time(doe_and_tz) for doe_and_tz in resp.all()]
+        return [localize_start_time(doe_and_tz) for doe_and_tz in resp.all()]
 
 
 async def count_does(session: AsyncSession, aggregator_id: int, site_id: int, changed_after: datetime) -> int:

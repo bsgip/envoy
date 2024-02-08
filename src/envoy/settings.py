@@ -37,6 +37,8 @@ class CommonSettings(BaseSettings):
 
     database_url: PostgresDsn
 
+    href_prefix: Optional[str] = None  # Will ensure all outgoing href's are prefixed with this value (None = disabled)
+
     @property
     def db_middleware_kwargs(self) -> Dict[str, Any]:
         return generate_middleware_kwargs(

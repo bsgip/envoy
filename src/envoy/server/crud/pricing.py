@@ -6,20 +6,9 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import TIMESTAMP, Date, Row, Select, cast, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.crud.common import localize_start_time
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
-
-
-def _localize_start_time(rate_and_tz: Optional[Row[tuple[TariffGeneratedRate, str]]]) -> TariffGeneratedRate:
-    """Localizes a TariffGeneratedRate.start_time to be in the local timezone passed in as the second
-    element in the tuple. Returns the TariffGeneratedRate (it will be modified in place)"""
-    if rate_and_tz is None:
-        raise ValueError("row is None")
-
-    (rate, tz_name) = rate_and_tz
-    tz = ZoneInfo(tz_name)
-    rate.start_time = rate.start_time.astimezone(tz)
-    return rate
 
 
 async def select_tariff_count(session: AsyncSession, after: datetime) -> int:
@@ -125,7 +114,7 @@ async def _tariff_rates_for_day(
     if only_count:
         return resp.scalar_one()
     else:
-        return [_localize_start_time(rate_and_tz) for rate_and_tz in resp.all()]
+        return [localize_start_time(rate_and_tz) for rate_and_tz in resp.all()]
 
 
 async def count_tariff_rates_for_day(
@@ -201,7 +190,7 @@ async def select_tariff_rate_for_day_time(
     row = resp.one_or_none()
     if row is None:
         return None
-    return _localize_start_time(row)
+    return localize_start_time(row)
 
 
 @dataclass

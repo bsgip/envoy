@@ -1,28 +1,32 @@
 import logging
-from dataclasses import dataclass
-from http import HTTPStatus
-from typing import Generic, Sequence
+from datetime import timedelta
+from typing import Optional
+from uuid import UUID
 
 from httpx import AsyncClient
 from taskiq import async_shared_broker
 
-from envoy.notification.crud.batch import TResourceModel
-from envoy.server.model.subscription import Subscription
-
 HEADER_SUBSCRIPTION_ID = "x-envoy-subscription-href"
+HEADER_NOTIFICATION_ID = "x-envoy-notification-id"
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class Notification(Generic[TResourceModel]):
-    """A notification represents a set of entities to communicate to remote URI via a subscription"""
-
-    entities: Sequence[TResourceModel]  # The entities to send
-    subscription: Subscription  # The subscription being serviced
+RETRY_DELAYS = [timedelta(seconds=10), timedelta(seconds=100), timedelta(seconds=300), timedelta(minutes=30)]
 
 
-async def schedule_retry_transmission(remote_uri: str, content: str, subscription_href: str, attempt: int) -> None:
+def attempt_to_retry_delay(attempt: int) -> Optional[timedelta]:
+    """Given the number of attempt just tried - return a delay that should be applied before attempting again (or none
+    if no more attempts should be made)"""
+    if attempt >= len(RETRY_DELAYS):
+        return None
+
+    return RETRY_DELAYS[attempt]
+
+
+async def schedule_retry_transmission(
+    remote_uri: str, content: str, subscription_href: str, notification_id: UUID, attempt: int
+) -> None:
     try:
         raise NotImplementedError()
     except Exception as ex:
@@ -35,7 +39,9 @@ async def schedule_retry_transmission(remote_uri: str, content: str, subscriptio
         )
 
 
-async def _do_transmit_notification(remote_uri: str, content: str, subscription_href: str, attempt: int) -> None:
+async def _do_transmit_notification(
+    remote_uri: str, content: str, subscription_href: str, notification_id: UUID, attempt: int
+) -> None:
     """Internal method for transmitting the notification - doesn't handle exceptions"""
 
     # Big scary gotcha - There is no way (within the app layer) for a recipient of a notification
@@ -43,19 +49,22 @@ async def _do_transmit_notification(remote_uri: str, content: str, subscription_
     # is the fact that CSIP recommends the use of mutual TLS which basically requires us to share our server
     # cert with the listener. This is all handled out of band and will be noted in the client docs
     # but I've put this message here for devs who read this code and get terrified. Good job on your keen security eye!
-    async with AsyncClient(headers={HEADER_SUBSCRIPTION_ID: subscription_href}) as client:
+    async with AsyncClient(
+        headers={HEADER_SUBSCRIPTION_ID: subscription_href, HEADER_NOTIFICATION_ID: str(notification_id)}
+    ) as client:
         logger.debug("Attempting to send notification of size %d to %s (attempt %d)", len(content), remote_uri, attempt)
         response = await client.post(
             url=remote_uri,
             content=content,
         )
 
+        # Future work: Log these events in an audit log
         if response.status_code >= 200 and response.status_code < 299:
             # Success
             return
 
         if response.status_code >= 300 and response.status_code < 499:
-            # On a 3XX or 4XX error - don't retry
+            # On a 3XX or 4XX error - don't retry - we're either being redirected OR rejected for whatever reason
             logger.error(
                 "Received HTTP %d sending notification of size %d to %s (attempt %d). No future retries",
                 response.status_code,
@@ -65,11 +74,21 @@ async def _do_transmit_notification(remote_uri: str, content: str, subscription_
             )
             return
 
+        logger.error(
+            "Received HTTP %d sending notification of size %d to %s (attempt %d). No future retries",
+            response.status_code,
+            len(content),
+            remote_uri,
+            attempt,
+        )
+
         raise NotImplementedError()
 
 
 @async_shared_broker.task()
-async def handle_transmit_notification(remote_uri: str, content: str, subscription_href: str, attempt: int) -> None:
+async def transmit_notification(
+    remote_uri: str, content: str, subscription_href: str, notification_id: UUID, attempt: int
+) -> None:
     """Call this to trigger an outgoing notification to be sent. If the notification fails it will be retried
     a few times (at a staggered cadence) before giving up.
 
@@ -79,7 +98,7 @@ async def handle_transmit_notification(remote_uri: str, content: str, subscripti
     attempt: The attempt number - if this gets too high the notification will be dropped"""
 
     try:
-        await _do_transmit_notification(remote_uri, content, subscription_href, attempt)
+        await _do_transmit_notification(remote_uri, content, subscription_href, notification_id, attempt)
     except Exception as ex:
         logger.error(
             "Exception sending notification of size %d to %s (attempt %d)",
@@ -88,4 +107,4 @@ async def handle_transmit_notification(remote_uri: str, content: str, subscripti
             attempt,
             exc_info=ex,
         )
-        await schedule_retry_transmission(remote_uri, content, subscription_href, attempt)
+        await schedule_retry_transmission(remote_uri, content, subscription_href, notification_id, attempt)

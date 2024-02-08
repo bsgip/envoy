@@ -2,7 +2,7 @@ import logging
 from typing import Annotated, AsyncGenerator, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from taskiq import Context, TaskiqDepends, TaskiqEvents, TaskiqState
+from taskiq import AsyncBroker, Context, TaskiqDepends, TaskiqEvents, TaskiqState
 
 from envoy.notification.handler import generate_broker
 from envoy.notification.settings import generate_settings
@@ -16,6 +16,14 @@ logger.info("Initialising Notification TaskIQ Worker")
 
 settings = generate_settings()
 broker = generate_broker(settings.rabbit_mq_broker_url)
+
+
+async def broker_dependency(context: Annotated[Context, TaskiqDepends()]) -> AsyncBroker:
+    return context.broker
+
+
+async def href_prefix_dependency() -> Optional[str]:
+    return settings.href_prefix
 
 
 async def session_dependency(context: Annotated[Context, TaskiqDepends()]) -> AsyncGenerator[AsyncSession, None]:
