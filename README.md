@@ -23,6 +23,7 @@ Typically settings are set by setting an environment variable with the same name
 
 | **Setting** | **Type** | **Purpose** |
 | ----------- | -------- | ----------- |
+| `database_url` | `string` | The core `PostgresDsn` for connecting to the envoy database. eg `postgresql+asyncpg://envoyuser:mypass@localhost:5432/envoydb` |
 | `cert_header` | `string` | The name of the HTTP header that API endpoints will look for to validate a client. This should be set by the TLS termination point and can contain either a full client certificate in PEM format or the sha256 fingerprint of that certificate. defaults to "x-forwarded-client-cert" |
 | `default_timezone` | `string` | The timezone name that will be used as the default for new sites registered in band (defaults to "Australia/Brisbane") |
 | `rabbit_mq_broker_url` | `string` | URL to a rabbit MQ instance that will handle notifications. Eg `amqp://user:password@localhost:5672` |
@@ -55,7 +56,7 @@ To enable - set the config for `azure_ad_tenant_id`/`azure_ad_client_id`/`azure_
 
 The following linters/checkers are run on every PR. It's highly recommended to have these running as part of your development setup. `vscode` has plugins to make this easy or run the below manually
 
-`pip install -r requirements/requirements.dev.txt`
+`pip install .[dev]`
 
 | **Tool** | **Running** | **Purpose** |
 | -------- | ----------- | ----------- |

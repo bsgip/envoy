@@ -98,20 +98,6 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
         raise Exception(f"{resource} is unsupported - unable to identify appropriate site id")
 
 
-def get_aggregator_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
-    """Means of disambiguating the aggregator id for TResourceModel"""
-    if resource == SubscriptionResource.SITE:
-        return cast(Site, entity).aggregator_id
-    elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        return cast(DynamicOperatingEnvelope, entity).site.aggregator_id
-    elif resource == SubscriptionResource.READING:
-        return cast(SiteReading, entity).site_reading_type.aggregator_id
-    elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        return cast(TariffGeneratedRate, entity).site.aggregator_id
-    else:
-        raise Exception(f"{resource} is unsupported - unable to identify appropriate aggregator id")
-
-
 async def select_subscriptions_for_resource(
     session: AsyncSession, aggregator_id: int, resource: SubscriptionResource
 ) -> Sequence[Subscription]:

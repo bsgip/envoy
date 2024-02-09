@@ -1,10 +1,12 @@
 import logging
 from datetime import timedelta
-from typing import Optional
+from typing import Annotated, Optional
 from uuid import UUID
 
 from httpx import AsyncClient
-from taskiq import async_shared_broker
+from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
+
+from envoy.notification.main import broker_dependency
 
 HEADER_SUBSCRIPTION_ID = "x-envoy-subscription-href"
 HEADER_NOTIFICATION_ID = "x-envoy-notification-id"
@@ -25,10 +27,21 @@ def attempt_to_retry_delay(attempt: int) -> Optional[timedelta]:
 
 
 async def schedule_retry_transmission(
-    remote_uri: str, content: str, subscription_href: str, notification_id: UUID, attempt: int
+    broker: AsyncBroker, remote_uri: str, content: str, subscription_href: str, notification_id: UUID, attempt: int
 ) -> None:
+    delay = attempt_to_retry_delay(attempt)
+    if delay is None:
+        logger.error(f"Dropping {notification_id} to {remote_uri} - too many failed attempts")
+        return
+
     try:
-        raise NotImplementedError()
+        await transmit_notification.kicker().with_broker(broker).with_labels(delay=int(delay.seconds)).kiq(
+            remote_uri=remote_uri,
+            content=content,
+            subscription_href=subscription_href,
+            notification_id=notification_id,
+            attempt=attempt + 1,
+        )
     except Exception as ex:
         logger.error(
             "Exception retrying notification of size %d to %s (attempt %d)",
@@ -41,8 +54,9 @@ async def schedule_retry_transmission(
 
 async def _do_transmit_notification(
     remote_uri: str, content: str, subscription_href: str, notification_id: UUID, attempt: int
-) -> None:
-    """Internal method for transmitting the notification - doesn't handle exceptions"""
+) -> bool:
+    """Internal method for transmitting the notification - Raises an exception if the request fails and needs retrying
+    otherwise returns true if the transmit succeeded or false otherwise"""
 
     # Big scary gotcha - There is no way (within the app layer) for a recipient of a notification
     # to validate that it's coming from our utility server. The ONLY thing keeping us safe
@@ -52,7 +66,13 @@ async def _do_transmit_notification(
     async with AsyncClient(
         headers={HEADER_SUBSCRIPTION_ID: subscription_href, HEADER_NOTIFICATION_ID: str(notification_id)}
     ) as client:
-        logger.debug("Attempting to send notification of size %d to %s (attempt %d)", len(content), remote_uri, attempt)
+        logger.debug(
+            "Attempting to send notification %s of size %d to %s (attempt %d)",
+            notification_id,
+            len(content),
+            remote_uri,
+            attempt,
+        )
         response = await client.post(
             url=remote_uri,
             content=content,
@@ -61,33 +81,34 @@ async def _do_transmit_notification(
         # Future work: Log these events in an audit log
         if response.status_code >= 200 and response.status_code < 299:
             # Success
-            return
+            return True
 
         if response.status_code >= 300 and response.status_code < 499:
             # On a 3XX or 4XX error - don't retry - we're either being redirected OR rejected for whatever reason
             logger.error(
-                "Received HTTP %d sending notification of size %d to %s (attempt %d). No future retries",
+                "Received HTTP %d sending notification %s of size %d to %s (attempt %d). No future retries",
                 response.status_code,
+                notification_id,
                 len(content),
                 remote_uri,
                 attempt,
             )
-            return
+            return False
 
-        logger.error(
-            "Received HTTP %d sending notification of size %d to %s (attempt %d). No future retries",
-            response.status_code,
-            len(content),
-            remote_uri,
-            attempt,
-        )
-
-        raise NotImplementedError()
+        # At this point it's likely an intermittent error - raise an exception that can potentially enable a retry
+        msg = f"HTTP {response.status_code} sending notification {notification_id} of size {len(content)} to {remote_uri} (attempt {attempt})"  # noqa e501
+        logger.error(msg)
+        raise Exception(msg)
 
 
 @async_shared_broker.task()
 async def transmit_notification(
-    remote_uri: str, content: str, subscription_href: str, notification_id: UUID, attempt: int
+    broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)],
+    remote_uri: str,
+    content: str,
+    subscription_href: str,
+    notification_id: UUID,
+    attempt: int,
 ) -> None:
     """Call this to trigger an outgoing notification to be sent. If the notification fails it will be retried
     a few times (at a staggered cadence) before giving up.
@@ -107,4 +128,4 @@ async def transmit_notification(
             attempt,
             exc_info=ex,
         )
-        await schedule_retry_transmission(remote_uri, content, subscription_href, notification_id, attempt)
+        await schedule_retry_transmission(broker, remote_uri, content, subscription_href, notification_id, attempt)

@@ -15,7 +15,6 @@ from envoy.notification.crud.batch import (
     fetch_rates_by_changed_at,
     fetch_readings_by_changed_at,
     fetch_sites_by_changed_at,
-    get_aggregator_id,
     get_primary_key,
     get_site_id,
     select_subscriptions_for_resource,
@@ -210,11 +209,13 @@ async def check_db_upsert(
                 entity_limit = MAX_NOTIFICATION_PAGE_SIZE
 
             entities_to_notify = entities_serviced_by_subscription(sub, resource, entities)
-            all_notifications.extend(get_entity_pages(resource, sub, site_id, entity_limit, entities_to_notify))
+            all_notifications.extend(get_entity_pages(resource, sub, batch_key, entity_limit, entities_to_notify))
 
     # Finally time to enqueue the outgoing notifications
     for n in all_notifications:
-        content = entities_to_notification(resource, n.subscription, href_prefix, n.entities).to_xml(skip_empty=True)
+        content = entities_to_notification(
+            resource, n.subscription, n.batch_key, href_prefix, n.entities, n.pricing_reading_type
+        ).to_xml(skip_empty=True)
         if isinstance(content, bytes):
             content = content.decode()
 
