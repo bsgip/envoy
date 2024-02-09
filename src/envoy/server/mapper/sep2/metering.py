@@ -196,6 +196,7 @@ class MirrorMeterReadingMapper:
 
     @staticmethod
     def map_to_response(site_reading: SiteReading) -> Reading:
+        """Takes a single site_reading and converts it to the equivalent sep2 Reading"""
         local_id: Optional[str] = f"{site_reading.local_id:0x}" if site_reading.local_id is not None else None
         return Reading.model_validate(
             {

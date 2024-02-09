@@ -1,7 +1,14 @@
 from datetime import date
 from typing import Sequence
 
-from envoy_schema.server.schema.sep2.pub_sub import Notification, NotificationStatus
+from envoy_schema.server.schema.sep2.pub_sub import (
+    XSI_TYPE_DER_CONTROL_LIST,
+    XSI_TYPE_END_DEVICE_LIST,
+    XSI_TYPE_READING_LIST,
+    XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
+    Notification,
+    NotificationStatus,
+)
 from envoy_schema.server.schema.uri import (
     DERControlListUri,
     EndDeviceListUri,
@@ -15,6 +22,7 @@ from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID, DERControlMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
+from envoy.server.mapper.sep2.metering import MirrorMeterReadingMapper
 from envoy.server.mapper.sep2.pricing import PricingReadingType, TimeTariffIntervalMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
@@ -25,13 +33,15 @@ from envoy.server.model.tariff import TariffGeneratedRate
 
 class NotificationMapper:
     @staticmethod
-    def calculate_subscription_href(sub: Subscription) -> str:
+    def calculate_subscription_href(sub: Subscription, rs_params: RequestStateParameters) -> str:
         """Calculates the href for a subscription - this will vary depending on whether the subscription
         is narrowed to a particular end_device or is unscoped"""
         if sub.scoped_site_id is None:
-            return SubscriptionGlobalUri.format(subscription_id=sub.subscription_id)
+            return generate_href(SubscriptionGlobalUri, rs_params, subscription_id=sub.subscription_id)
         else:
-            return SubscriptionUri.format(site_id=sub.scoped_site_id, subscription_id=sub.subscription_id)
+            return generate_href(
+                SubscriptionUri, rs_params, site_id=sub.scoped_site_id, subscription_id=sub.subscription_id
+            )
 
     @staticmethod
     def map_sites_to_response(
@@ -41,10 +51,10 @@ class NotificationMapper:
         return Notification.model_validate(
             {
                 "subscribedResource": generate_href(EndDeviceListUri, rs_params),
-                "subscriptionURI": NotificationMapper.calculate_subscription_href(sub),
+                "subscriptionURI": NotificationMapper.calculate_subscription_href(sub, rs_params),
                 "status": NotificationStatus.DEFAULT,
                 "resource": {
-                    "type": "EndDeviceList",
+                    "type": XSI_TYPE_END_DEVICE_LIST,
                     "all_": len(sites),
                     "results": len(sites),
                     "EndDevice": [EndDeviceMapper.map_to_response(rs_params, s) for s in sites],
@@ -62,10 +72,10 @@ class NotificationMapper:
         return Notification.model_validate(
             {
                 "subscribedResource": doe_list_href,
-                "subscriptionURI": NotificationMapper.calculate_subscription_href(sub),
+                "subscriptionURI": NotificationMapper.calculate_subscription_href(sub, rs_params),
                 "status": NotificationStatus.DEFAULT,
                 "resource": {
-                    "type": "DERControlList",
+                    "type": XSI_TYPE_DER_CONTROL_LIST,
                     "all_": len(does),
                     "results": len(does),
                     "DERControl": [DERControlMapper.map_to_response(d) for d in does],
@@ -83,13 +93,13 @@ class NotificationMapper:
         return Notification.model_validate(
             {
                 "subscribedResource": mup_href,
-                "subscriptionURI": NotificationMapper.calculate_subscription_href(sub),
+                "subscriptionURI": NotificationMapper.calculate_subscription_href(sub, rs_params),
                 "status": NotificationStatus.DEFAULT,
                 "resource": {
-                    "type": "Reading",
+                    "type": XSI_TYPE_READING_LIST,
                     "all_": len(readings),
                     "results": len(readings),
-                    "DERControl": [DERControlMapper.map_to_response(r) for r in readings],
+                    "Readings": [MirrorMeterReadingMapper.map_to_response(r) for r in readings],
                 },
             }
         )
@@ -116,10 +126,10 @@ class NotificationMapper:
         return Notification.model_validate(
             {
                 "subscribedResource": time_tariff_interval_list_href,
-                "subscriptionURI": NotificationMapper.calculate_subscription_href(sub),
+                "subscriptionURI": NotificationMapper.calculate_subscription_href(sub, rs_params),
                 "status": NotificationStatus.DEFAULT,
                 "resource": {
-                    "type": "TimeTariffIntervalList",
+                    "type": XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
                     "all_": len(rates),
                     "results": len(rates),
                     "TimeTariffInterval": [

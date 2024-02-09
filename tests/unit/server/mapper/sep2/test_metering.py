@@ -30,7 +30,7 @@ from envoy.server.mapper.sep2.metering import (
 )
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from tests.data.fake.generator import generate_class_instance
+from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 
 
 def _no_uom_test_cases():
@@ -306,3 +306,24 @@ def test_MirrorMeterReadingMapper_map_to_response():
     assert reading_optional.timePeriod is not None
     assert reading_optional.timePeriod.duration == site_reading_optional.time_period_seconds
     assert reading_optional.timePeriod.start == int(site_reading_optional.time_period_start.timestamp())
+
+
+def test_MirrorMeterReadingMapper_reading_round_trip():
+    """Round trips a Reading via SiteReading to ensure everything (of importance) is preserved"""
+    reading_orig: Reading = generate_class_instance(Reading)
+    reading_orig.qualityFlags = f"{QualityFlagsType.FORECAST:0x}"
+    reading_orig.localID = f"{3456:0x}"
+    reading_orig.timePeriod = generate_class_instance(DateTimeIntervalType)
+    reading_orig.timePeriod.duration = 123
+    reading_orig.timePeriod.start = int(datetime(2024, 2, 3, 4, 5, 6).timestamp())
+
+    site_reading = MirrorMeterReadingMapper.map_reading_from_request(reading_orig, 1, datetime.now())
+
+    reading_roundtrip = MirrorMeterReadingMapper.map_to_response(site_reading)
+
+    assert_class_instance_equality(
+        Reading,
+        reading_orig,
+        reading_roundtrip,
+        ignored_properties=set(["href", "type", "touTier", "subscribable", "consumptionBlock"]),
+    )

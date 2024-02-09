@@ -219,10 +219,11 @@ async def check_db_upsert(
         if isinstance(content, bytes):
             content = content.decode()
 
+        rs_params = RequestStateParameters(-1, href_prefix)
         await transmit_notification.kicker().with_broker(broker).kiq(
             remote_uri=n.subscription.notification_uri,
             content=content,
             notification_id=n.notification_id,
-            subscription_href=NotificationMapper.calculate_subscription_href(n.subscription),
+            subscription_href=NotificationMapper.calculate_subscription_href(n.subscription, rs_params),
             attempt=0,
         )
