@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Generic, Optional, Sequence, TypeVar, Union, cast
+from typing import Generic, Sequence, TypeVar, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,27 +21,53 @@ class AggregatorBatchedEntities(Generic[TResourceModel]):
     """A set of TResourceModel entities keyed by their aggregator ID and then site id"""
 
     timestamp: datetime
-    models_by_aggregator_then_site_id: dict[int, dict[int, list[TResourceModel]]]
+    models_by_batch_key: dict[tuple, list[TResourceModel]]  # First element of batch key will be aggregator_id
 
     def __init__(self, timestamp: datetime, resource: SubscriptionResource, models: Sequence[TResourceModel]) -> None:
         super().__init__()
 
         self.timestamp = timestamp
 
-        self.models_by_aggregator_then_site_id = {}
+        self.models_by_batch_key = {}
         for m in models:
-            agg_id = get_aggregator_id(resource, m)
-            site_id = get_site_id(resource, m)
+            batch_key = get_batch_key(resource, m)
 
-            site_dict = self.models_by_aggregator_then_site_id.get(agg_id, None)
-            if site_dict is None:
-                self.models_by_aggregator_then_site_id[agg_id] = {site_id: [m]}
+            model_list = self.models_by_batch_key.get(batch_key, None)
+            if model_list is None:
+                self.models_by_batch_key[batch_key] = [m]
             else:
-                model_list = site_dict.get(site_id, None)
-                if model_list is None:
-                    site_dict[site_id] = [m]
-                else:
-                    model_list.append(m)
+                model_list.append(m)
+
+
+def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tuple:
+    """
+    Gets a multipart key in the form of a tuple that describes entity as a single sep2 resource. This is because
+    sep2 Notifications are only sent out underneath a single resource (eg /edev/3/derp/doe/derc/1) which means all
+    notifications we generate MUST be grouped by this batch key
+
+    NOTE - the first element of every tuple will be aggregator_id
+
+    Given the SubscriptionResource - it's safe to rely on the ordering of the batch key tuple entries:
+
+    SubscriptionResource.SITE: (aggregator_id: int, site_id: int)
+    SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
+    SubscriptionResource.READING: (aggregator_id: int, site_reading_type_id: int)
+    SubscriptionResource.TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
+    """
+    if resource == SubscriptionResource.SITE:
+        site = cast(Site, entity)
+        return (site.aggregator_id, site.site_id)
+    elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
+        doe = cast(DynamicOperatingEnvelope, entity)
+        return (doe.site.aggregator_id, doe.site_id)
+    elif resource == SubscriptionResource.READING:
+        reading = cast(SiteReading, entity)
+        return (reading.site_reading_type.aggregator_id, reading.site_reading_type.site_reading_type_id)
+    elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
+        rate = cast(TariffGeneratedRate, entity)
+        return (rate.site.aggregator_id, rate.tariff_id, rate.site_id, rate.start_time.date())
+    else:
+        raise Exception(f"{resource} is unsupported - unable to identify appropriate batch key")
 
 
 def get_primary_key(resource: SubscriptionResource, entity: TResourceModel) -> int:

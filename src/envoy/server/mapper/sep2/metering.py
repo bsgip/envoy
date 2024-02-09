@@ -193,3 +193,21 @@ class MirrorMeterReadingMapper:
         if readings is None:
             return []
         return readings
+
+    @staticmethod
+    def map_to_response(site_reading: SiteReading) -> Reading:
+        srt = site_reading.site_reading_type
+        if srt is None:
+            raise InvalidMappingError("No site_reading_type specified")
+
+        return Reading.model_validate(
+            {
+                "local_id": site_reading.local_id,
+                "qualityFlags": f"{(int(site_reading.quality_flags)):0x}",  # hex encoded
+                "timePeriod": {
+                    "duration": site_reading.time_period_seconds,
+                    "start": int(site_reading.time_period_start.timestamp()),
+                },
+                "value": site_reading.value,
+            }
+        )

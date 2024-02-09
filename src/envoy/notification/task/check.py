@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import islice
-from typing import Annotated, Generator, Generic, Iterable, Literal, Optional, Sequence, TypeVar, Union, cast
+from typing import Annotated, Generator, Generic, Iterable, Optional, Sequence, TypeVar, cast
 from uuid import UUID, uuid4
 
 from envoy_schema.server.schema.sep2.pub_sub import Notification as Sep2Notification
 from sqlalchemy.ext.asyncio import AsyncSession
-from taskiq import AsyncBroker, Context, TaskiqDepends, async_shared_broker
+from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
 
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
@@ -15,12 +15,14 @@ from envoy.notification.crud.batch import (
     fetch_rates_by_changed_at,
     fetch_readings_by_changed_at,
     fetch_sites_by_changed_at,
+    get_aggregator_id,
     get_primary_key,
     get_site_id,
     select_subscriptions_for_resource,
 )
 from envoy.notification.main import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification
+from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
@@ -39,7 +41,7 @@ class NotificationEntities(Generic[TResourceModel]):
     entities: Sequence[TResourceModel]  # The entities to send
     subscription: Subscription  # The subscription being serviced
     notification_id: UUID  # Unique ID for this notification (to detect retries)
-    site_id: int  # The
+    batch_key: tuple  # The batch key representing this particular batch of entities (see get_batch_key())
     pricing_reading_type: Optional[PricingReadingType]
 
 
@@ -60,7 +62,11 @@ def batched(iterable: Iterable[T], chunk_size: int) -> Generator[list[T], None, 
 
 
 def get_entity_pages(
-    resource: SubscriptionResource, sub: Subscription, site_id: int, page_size: int, entities: Iterable[TResourceModel]
+    resource: SubscriptionResource,
+    sub: Subscription,
+    batch_key: tuple,
+    page_size: int,
+    entities: Iterable[TResourceModel],
 ) -> Generator[NotificationEntities, None, None]:
     """Breaks a set of entities into pages that are represented by NotificationEntities."""
     if resource == SubscriptionResource.TARIFF_GENERATED_RATE:
@@ -77,7 +83,7 @@ def get_entity_pages(
                     entities=entity_page,
                     subscription=sub,
                     notification_id=uuid4(),
-                    site_id=site_id,
+                    batch_key=batch_key,
                     pricing_reading_type=price_type,
                 )
     else:
@@ -86,7 +92,7 @@ def get_entity_pages(
                 entities=entity_page,
                 subscription=sub,
                 notification_id=uuid4(),
-                site_id=site_id,
+                batch_key=batch_key,
                 pricing_reading_type=None,
             )
 
@@ -109,20 +115,60 @@ def entities_serviced_by_subscription(
 def entities_to_notification(
     resource: SubscriptionResource,
     sub: Subscription,
-    site_id: int,
+    batch_key: tuple,
     href_prefix: Optional[str],
     entities: Sequence[TResourceModel],
     pricing_reading_type: Optional[PricingReadingType],
 ) -> Sep2Notification:
     """Givens a subscription and associated entities - generate the notification content that will be sent out"""
+    rs_params = RequestStateParameters(sub.aggregator_id, href_prefix)
     if resource == SubscriptionResource.SITE:
-        return NotificationMapper.map_sites_to_response(cast(Sequence[Site], entities), sub, href_prefix)
+        return NotificationMapper.map_sites_to_response(cast(Sequence[Site], entities), sub, rs_params)
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
+        if pricing_reading_type is None:
+            raise Exception("SubscriptionResource.TARIFF_GENERATED_RATE requires pricing_reading_type")
+
+        # TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
+        (_, tariff_id, site_id, day) = batch_key
         return NotificationMapper.map_rates_to_response(
-            pricing_reading_type, cast(Sequence[TariffGeneratedRate], entities), sub, href_prefix
+            site_id=site_id,
+            tariff_id=tariff_id,
+            day=day,
+            pricing_reading_type=pricing_reading_type,
+            rates=cast(Sequence[TariffGeneratedRate], entities),
+            sub=sub,
+            rs_params=rs_params,
+        )
+    elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
+        # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
+        (_, site_id) = batch_key
+        return NotificationMapper.map_does_to_response(
+            site_id, cast(Sequence[DynamicOperatingEnvelope], entities), sub, rs_params
+        )
+    elif resource == SubscriptionResource.READING:
+        # READING: (aggregator_id: int, site_reading_type_id: int)
+        (_, site_reading_type_id) = batch_key
+        return NotificationMapper.map_readings_to_response(
+            site_reading_type_id, cast(Sequence[SiteReading], entities), sub, rs_params
         )
     else:
         raise Exception(f"{resource} is unsupported - unable to identify way to map entities")
+
+
+async def fetch_batched_entities(
+    session: AsyncSession, resource: SubscriptionResource, timestamp: datetime
+) -> AggregatorBatchedEntities:
+    """Fetches the set of AggregatorBatchedEntities for the specified resource at the specified timestamp"""
+    if resource == SubscriptionResource.SITE:
+        return await fetch_sites_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.READING:
+        return await fetch_readings_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
+        return await fetch_does_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
+        return await fetch_rates_by_changed_at(session, timestamp)
+    else:
+        raise Exception(f"Unsupported resource type: {resource}")
 
 
 @async_shared_broker.task()
@@ -141,34 +187,30 @@ async def check_db_upsert(
     timestamp: The datetime.timestamp() that will be used for finding resources (must be exact match)"""
 
     timestamp = datetime.fromtimestamp(timestamp_epoch, tz=timezone.utc)
-
-    batched_entities: AggregatorBatchedEntities
-    if resource == SubscriptionResource.SITE:
-        batched_entities = await fetch_sites_by_changed_at(session, timestamp)
-    elif resource == SubscriptionResource.READING:
-        batched_entities = await fetch_readings_by_changed_at(session, timestamp)
-    elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        batched_entities = await fetch_does_by_changed_at(session, timestamp)
-    elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        batched_entities = await fetch_rates_by_changed_at(session, timestamp)
-    else:
-        raise Exception(f"Unsupported resource type: {resource}")
+    batched_entities = await fetch_batched_entities(session, resource, timestamp)
 
     # Now generate subscription notifications
     all_notifications: list[NotificationEntities] = []
-    for agg_id, site_mapped_entities in batched_entities.models_by_aggregator_then_site_id.items():
-        for site_id, entities in site_mapped_entities.items():
-            # We enumerate by aggregator ID at the top level (as a way of minimising the size of entities)
-            candidate_subscriptions = await select_subscriptions_for_resource(session, agg_id, resource)
-            for sub in candidate_subscriptions:
-                # Break the entities that apply to this subscription down into "pages" according to
-                # the definition of the subscription
-                entity_limit = sub.entity_limit if sub.entity_limit > 0 else 1
-                if entity_limit > MAX_NOTIFICATION_PAGE_SIZE:
-                    entity_limit = MAX_NOTIFICATION_PAGE_SIZE
+    aggregator_subs_cache: dict[int, Sequence[Subscription]] = {}  # keyed by aggregator_id
+    for batch_key, entities in batched_entities.models_by_batch_key.items():
+        agg_id = batch_key[0]  # The aggregator_id is ALWAYS first in the batch key by definition
 
-                entities_to_notify = entities_serviced_by_subscription(sub, resource, entities)
-                all_notifications.extend(get_entity_pages(resource, sub, site_id, entity_limit, entities_to_notify))
+        # We enumerate by aggregator ID at the top level (as a way of minimising the size of entities)
+        # We also cache the per aggregator subscriptions to minimise round trips to the db
+        candidate_subscriptions = aggregator_subs_cache.get(agg_id, None)
+        if candidate_subscriptions is None:
+            candidate_subscriptions = await select_subscriptions_for_resource(session, agg_id, resource)
+            aggregator_subs_cache[agg_id] = candidate_subscriptions
+
+        for sub in candidate_subscriptions:
+            # Break the entities that apply to this subscription down into "pages" according to
+            # the definition of the subscription
+            entity_limit = sub.entity_limit if sub.entity_limit > 0 else 1
+            if entity_limit > MAX_NOTIFICATION_PAGE_SIZE:
+                entity_limit = MAX_NOTIFICATION_PAGE_SIZE
+
+            entities_to_notify = entities_serviced_by_subscription(sub, resource, entities)
+            all_notifications.extend(get_entity_pages(resource, sub, site_id, entity_limit, entities_to_notify))
 
     # Finally time to enqueue the outgoing notifications
     for n in all_notifications:
