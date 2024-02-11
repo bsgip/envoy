@@ -44,7 +44,10 @@ class Subscription(Base):
     aggregator: Mapped[Aggregator] = relationship(lazy="raise")
     scoped_site: Mapped[Optional[Site]] = relationship(lazy="raise")
     conditions: Mapped[list["SubscriptionCondition"]] = relationship(
-        back_populates="subscription", lazy="raise", cascade="all, delete-orphan"
+        back_populates="subscription",
+        lazy="raise",
+        cascade="all, delete",
+        passive_deletes=True,
     )  # The set of conditions that might limit the firing of a notification
 
     __table_args__ = (Index("aggregator_id", "resource_type", unique=False),)
@@ -59,7 +62,7 @@ class SubscriptionCondition(Base):
     __tablename__ = "subscription_condition"
 
     subscription_condition_id: Mapped[int] = mapped_column(primary_key=True)
-    subscription_id: Mapped[int] = mapped_column(ForeignKey("subscription.subscription_id"))
+    subscription_id: Mapped[int] = mapped_column(ForeignKey("subscription.subscription_id", ondelete="CASCADE"))
 
     attribute: Mapped[ConditionAttributeIdentifier] = mapped_column(INTEGER)
     lower_threshold: Mapped[Optional[int]] = mapped_column(

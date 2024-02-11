@@ -1,8 +1,8 @@
 import unittest.mock as mock
 from datetime import date, datetime, timezone
-from typing import Optional
 
 import pytest
+from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
 
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
@@ -16,9 +16,9 @@ from envoy.notification.exception import NotificationError
 from envoy.server.crud.end_device import Site
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.model.subscription import SubscriptionResource
+from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
-from tests.data.fake.generator import generate_class_instance
+from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 from tests.postgres_testing import generate_async_session
 
 
@@ -222,13 +222,69 @@ def test_get_site_id(resource: SubscriptionResource, entity: TResourceModel, exp
     assert get_site_id(resource, entity) == expected
 
 
+@pytest.mark.parametrize(
+    "aggregator_id,resource,expected_sub_ids",
+    [
+        (1, SubscriptionResource.SITE, [1, 4]),
+        (1, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, [2]),
+        (1, SubscriptionResource.READING, [5]),
+        (2, SubscriptionResource.TARIFF_GENERATED_RATE, [3]),
+        (1, SubscriptionResource.TARIFF_GENERATED_RATE, []),
+        (99, SubscriptionResource.SITE, []),
+        (2, SubscriptionResource.READING, []),
+    ],
+)
 @pytest.mark.anyio
-async def test_select_subscriptions_for_resource(
-    pg_base_config, aggregator_id: int, site_reading_type_id: int, expected: Optional[SiteReadingType]
+async def test_select_subscriptions_for_resource_filtering(
+    pg_base_config, aggregator_id: int, resource: SubscriptionResource, expected_sub_ids: list[int]
 ):
-    """Tests the contents of the returned SiteReadingType"""
+    """Tests the filtering on select_subscriptions_for_resource"""
     async with generate_async_session(pg_base_config) as session:
-        actual = await select_subscriptions_for_resource(
-            session, aggregator_id, site_reading_type_id, include_site_relation=False
-        )
-        assert_class_instance_equality(SiteReadingType, expected, actual, ignored_properties=set(["site"]))
+        actual_entities = await select_subscriptions_for_resource(session, aggregator_id, resource)
+        assert all([isinstance(e, Subscription) for e in actual_entities])
+        assert [e.subscription_id for e in actual_entities] == expected_sub_ids
+
+
+@pytest.mark.parametrize(
+    "aggregator_id,resource,expected_conditions",
+    [
+        (
+            1,
+            SubscriptionResource.READING,
+            [
+                SubscriptionCondition(
+                    subscription_condition_id=1,
+                    subscription_id=5,
+                    attribute=ConditionAttributeIdentifier.READING_VALUE,
+                    lower_threshold=1,
+                    upper_threshold=None,
+                ),
+                SubscriptionCondition(
+                    subscription_condition_id=2,
+                    subscription_id=5,
+                    attribute=ConditionAttributeIdentifier.READING_VALUE,
+                    lower_threshold=None,
+                    upper_threshold=2,
+                ),
+            ],
+        ),
+        (1, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, []),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_subscriptions_for_resource_conditions(
+    pg_base_config, aggregator_id: int, resource: SubscriptionResource, expected_conditions: list[SubscriptionCondition]
+):
+    """Tests that conditions are returned with the subscription"""
+    async with generate_async_session(pg_base_config) as session:
+        actual_entities = await select_subscriptions_for_resource(session, aggregator_id, resource)
+        assert len(actual_entities) == 1
+
+        assert all([isinstance(e, Subscription) for e in actual_entities])
+        assert all([isinstance(c, SubscriptionCondition) for e in actual_entities for c in e.conditions])
+        assert len(actual_entities[0].conditions) == len(expected_conditions)
+
+        for i in range(len(expected_conditions)):
+            assert_class_instance_equality(
+                SubscriptionCondition, expected_conditions[i], actual_entities[0].conditions[i]
+            )
