@@ -66,6 +66,21 @@ The following linters/checkers are run on every PR. It's highly recommended to h
 | `pytest` | `pytest` | Runs all tests (more info below) |
 
 
+## Updating database schema
+
+If updating any of the crud models - you will need to update the alembic migrations:
+
+1. Ensure any new models are being imported at `src/envoy/server/model/__init__.py` (this is where the alembic `env.py` imports all models)
+2. Create updated migration:
+
+```
+cd src/envoy/server
+alembic revision --autogenerate -m "MY_SUMMARY_OF_CHANGES"
+```
+
+3. Check the newly created migration file in `src/envoy/server/alembic/versions` (make sure it has what you've changed)
+
+
 ## Running Locally
 
 ### Locally Hosted

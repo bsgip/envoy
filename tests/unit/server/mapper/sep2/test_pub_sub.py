@@ -1,19 +1,22 @@
+from datetime import datetime
+
 from envoy_schema.server.schema.sep2.der import DERControlResponse
 from envoy_schema.server.schema.sep2.end_device import EndDeviceResponse
 from envoy_schema.server.schema.sep2.metering import Reading
-from envoy_schema.server.schema.sep2.pub_sub import Notification
-from envoy_schema.server.schema.uri import (
-    DERControlListUri,
-    EndDeviceListUri,
-    MirrorUsagePointUri,
-    SubscriptionGlobalUri,
-    SubscriptionUri,
-    TimeTariffIntervalListUri,
+from envoy_schema.server.schema.sep2.pricing import TimeTariffIntervalResponse
+from envoy_schema.server.schema.sep2.pub_sub import (
+    XSI_TYPE_DER_CONTROL_LIST,
+    XSI_TYPE_END_DEVICE_LIST,
+    XSI_TYPE_READING_LIST,
+    XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
+    Notification,
 )
+from envoy_schema.server.schema.uri import DERControlListUri, EndDeviceListUri
 
 from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud.subscription import Subscription
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
+from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
@@ -62,7 +65,7 @@ def test_NotificationMapper_map_sites_to_response():
     assert notification.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification.subscriptionURI
 
-    assert notification.resource.type == "EndDeviceList"
+    assert notification.resource.type == XSI_TYPE_END_DEVICE_LIST
     assert len(notification.resource.EndDevice) == 2
     assert all([isinstance(r, EndDeviceResponse) for r in notification.resource.EndDevice])
 
@@ -82,7 +85,7 @@ def test_NotificationMapper_map_does_to_response():
     assert notification.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification.subscriptionURI
 
-    assert notification.resource.type == "DERControlList"
+    assert notification.resource.type == XSI_TYPE_DER_CONTROL_LIST
     assert len(notification.resource.DERControl) == 2
     assert all([isinstance(r, DERControlResponse) for r in notification.resource.DERControl])
 
@@ -93,16 +96,21 @@ def test_NotificationMapper_map_readings_to_response():
 
     sub = generate_class_instance(Subscription, seed=303)
     rs_params = RequestStateParameters(1, "/custom/prefix")
-    site_reading_type_id = 123
+    site_id = 123
+    site_reading_type_id = 456
 
-    notification = NotificationMapper.map_readings_to_response(site_reading_type_id, [sr1, sr2], sub, rs_params)
+    notification = NotificationMapper.map_readings_to_response(
+        site_id, site_reading_type_id, [sr1, sr2], sub, rs_params
+    )
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
-    assert MirrorUsagePointUri.format(mup_id=site_reading_type_id) in notification.subscribedResource
+    assert "/upt/" in notification.subscribedResource, "A UsagePoint URI should be utilised"
+    assert str(site_id) in notification.subscribedResource
+    assert str(site_reading_type_id) in notification.subscribedResource
     assert notification.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification.subscriptionURI
 
-    assert notification.resource.type == "ReadingList"
+    assert notification.resource.type == XSI_TYPE_READING_LIST
     assert len(notification.resource.Readings) == 2
     assert all([isinstance(r, Reading) for r in notification.resource.Readings])
 
@@ -113,18 +121,23 @@ def test_NotificationMapper_map_rates_to_response():
 
     sub = generate_class_instance(Subscription, seed=303)
     rs_params = RequestStateParameters(1, "/custom/prefix")
-    site_id = 123
-    tariff_id = 456
+    site_id = 999
+    tariff_id = 888
+    day = datetime.now().date()
+    pricing_reading_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
 
     notification = NotificationMapper.map_rates_to_response(
         site_id, tariff_id, day, pricing_reading_type, [rate1, rate2], sub, rs_params
     )
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
-    assert DERControlListUri.format(site_id=site_id, der_program_id=DOE_PROGRAM_ID) in notification.subscribedResource
+    assert str(int(pricing_reading_type)) in notification.subscribedResource
+    assert str(site_id) in notification.subscribedResource
+    assert str(tariff_id) in notification.subscribedResource
+    assert "/tti" in notification.subscribedResource, "This should be a time tariff interval list href"
     assert notification.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification.subscriptionURI
 
-    assert notification.resource.type == "DERControlList"
-    assert len(notification.resource.DERControl) == 2
-    assert all([isinstance(r, DERControlResponse) for r in notification.resource.DERControl])
+    assert notification.resource.type == XSI_TYPE_TIME_TARIFF_INTERVAL_LIST
+    assert len(notification.resource.TimeTariffInterval) == 2
+    assert all([isinstance(r, TimeTariffIntervalResponse) for r in notification.resource.TimeTariffInterval])

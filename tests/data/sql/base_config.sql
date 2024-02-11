@@ -164,3 +164,37 @@ VALUES (4, -- site_reading_id
     );
 
 SELECT pg_catalog.setval('public.site_reading_site_reading_id_seq', 5, true);
+
+
+INSERT INTO public.subscription("subscription_id", "aggregator_id", "changed_time", "resource_type", "resource_id", "scoped_site_id", "notification_uri", "entity_limit")
+VALUES (1, -- subscription_id
+    1, -- aggregator_id
+    '2024-01-02 11:22:33.500', -- changed_time
+    1, -- resource_type
+    NULL, -- resource_id
+    NULL, -- scoped_site_id
+    'https://example.com:11/path/', -- notification_uri
+    11 -- entity_limit
+    );
+INSERT INTO public.subscription("subscription_id", "aggregator_id", "changed_time", "resource_type", "resource_id", "scoped_site_id", "notification_uri", "entity_limit")
+VALUES (2, -- subscription_id
+    1, -- aggregator_id
+    '2024-01-02 12:22:33.500', -- changed_time
+    2, -- resource_type
+    2, -- resource_id
+    2, -- scoped_site_id
+    'https://example.com:22/path/', -- notification_uri
+    22 -- entity_limit
+    );
+INSERT INTO public.subscription("subscription_id", "aggregator_id", "changed_time", "resource_type", "resource_id", "scoped_site_id", "notification_uri", "entity_limit")
+VALUES (3, -- subscription_id
+    2, -- aggregator_id
+    '2024-01-02 13:22:33.500', -- changed_time
+    3, -- resource_type
+    3, -- resource_id
+    3, -- scoped_site_id
+    'https://example.com:33/path/', -- notification_uri
+    33 -- entity_limit
+    );
+
+SELECT pg_catalog.setval('public.subscription_subscription_id_seq', 4, true);

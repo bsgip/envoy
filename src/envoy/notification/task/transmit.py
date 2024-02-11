@@ -6,6 +6,7 @@ from uuid import UUID
 from httpx import AsyncClient
 from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
 
+from envoy.notification.exception import NotificationError
 from envoy.notification.main import broker_dependency
 
 HEADER_SUBSCRIPTION_ID = "x-envoy-subscription-href"
@@ -98,7 +99,7 @@ async def _do_transmit_notification(
         # At this point it's likely an intermittent error - raise an exception that can potentially enable a retry
         msg = f"HTTP {response.status_code} sending notification {notification_id} of size {len(content)} to {remote_uri} (attempt {attempt})"  # noqa e501
         logger.error(msg)
-        raise Exception(msg)
+        raise NotificationError(msg)
 
 
 @async_shared_broker.task()

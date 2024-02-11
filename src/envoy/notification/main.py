@@ -4,6 +4,7 @@ from typing import Annotated, AsyncGenerator, Optional
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from taskiq import AsyncBroker, Context, TaskiqDepends, TaskiqEvents, TaskiqState
 
+from envoy.notification.exception import NotificationError
 from envoy.notification.handler import generate_broker
 from envoy.notification.settings import generate_settings
 from envoy.server.api.auth.azure import AzureADResourceTokenConfig
@@ -49,7 +50,7 @@ async def startup(state: TaskiqState) -> None:
 
     # Setup the AzureAD handler (if configured)
     if azure_ad_handler_details is not None:
-        raise Exception("Startup issue - azure_ad_handler_details is already initialised")
+        raise NotificationError("Startup issue - azure_ad_handler_details is already initialised")
     azure_ad_settings = settings.azure_ad_kwargs
     if azure_ad_settings and settings.azure_ad_db_resource_id:
         logger.info(f"Enabling AzureADAuth: {azure_ad_settings}")

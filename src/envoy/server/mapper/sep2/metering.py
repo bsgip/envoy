@@ -28,6 +28,8 @@ from envoy.server.model.site_reading import SiteReading, SiteReadingType
 MIRROR_USAGE_POINT_MRID_PREFIX: int = int("f051", 16)
 MIRROR_METER_READING_MRID_PREFIX: int = int("4ead", 16)
 
+READING_SET_ALL_ID = "all"  # string key identifying a reading set that includes ALL readings for MeterReading
+
 
 class MirrorUsagePointMapper:
     @staticmethod

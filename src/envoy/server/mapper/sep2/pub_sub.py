@@ -12,7 +12,7 @@ from envoy_schema.server.schema.sep2.pub_sub import (
 from envoy_schema.server.schema.uri import (
     DERControlListUri,
     EndDeviceListUri,
-    MirrorUsagePointUri,
+    ReadingListUri,
     SubscriptionGlobalUri,
     SubscriptionUri,
     TimeTariffIntervalListUri,
@@ -22,7 +22,7 @@ from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID, DERControlMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
-from envoy.server.mapper.sep2.metering import MirrorMeterReadingMapper
+from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
 from envoy.server.mapper.sep2.pricing import PricingReadingType, TimeTariffIntervalMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
@@ -85,14 +85,23 @@ class NotificationMapper:
 
     @staticmethod
     def map_readings_to_response(
-        site_reading_type_id: int, readings: Sequence[SiteReading], sub: Subscription, rs_params: RequestStateParameters
+        site_id: int,
+        site_reading_type_id: int,
+        readings: Sequence[SiteReading],
+        sub: Subscription,
+        rs_params: RequestStateParameters,
     ) -> Notification:
         """Turns a list of does into a notification"""
-        # MirrorUsagePointUri = "/mup/{mup_id}"
-        mup_href = generate_href(MirrorUsagePointUri, rs_params, mup_id=site_reading_type_id)
+        reading_list_href = generate_href(
+            ReadingListUri,
+            rs_params,
+            site_id=site_id,
+            site_reading_type_id=site_reading_type_id,
+            reading_set_id=READING_SET_ALL_ID,  # Can't correlate this back to anything else - all will be fine
+        )
         return Notification.model_validate(
             {
-                "subscribedResource": mup_href,
+                "subscribedResource": reading_list_href,
                 "subscriptionURI": NotificationMapper.calculate_subscription_href(sub, rs_params),
                 "status": NotificationStatus.DEFAULT,
                 "resource": {

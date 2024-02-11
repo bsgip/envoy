@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from envoy.notification.exception import NotificationError
 from envoy.server.crud.common import localize_start_time
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
@@ -51,7 +52,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
 
     SubscriptionResource.SITE: (aggregator_id: int, site_id: int)
     SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
-    SubscriptionResource.READING: (aggregator_id: int, site_reading_type_id: int)
+    SubscriptionResource.READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
     SubscriptionResource.TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
     """
     if resource == SubscriptionResource.SITE:
@@ -62,26 +63,36 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
         return (doe.site.aggregator_id, doe.site_id)
     elif resource == SubscriptionResource.READING:
         reading = cast(SiteReading, entity)
-        return (reading.site_reading_type.aggregator_id, reading.site_reading_type.site_reading_type_id)
+        return (
+            reading.site_reading_type.aggregator_id,
+            reading.site_reading_type.site_id,
+            reading.site_reading_type.site_reading_type_id,
+        )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         rate = cast(TariffGeneratedRate, entity)
         return (rate.site.aggregator_id, rate.tariff_id, rate.site_id, rate.start_time.date())
     else:
-        raise Exception(f"{resource} is unsupported - unable to identify appropriate batch key")
+        raise NotificationError(f"{resource} is unsupported - unable to identify appropriate batch key")
 
 
-def get_primary_key(resource: SubscriptionResource, entity: TResourceModel) -> int:
-    """Means of disambiguating the primary key for TResourceModel"""
+def get_subscription_filter_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
+    """Means of disambiguating the "subscription filter" id for TResourceModel. This is the field
+    that Subscription.resource_id will filter on (if specified). This practically allows subscriptions
+    to apply to only a subset of entities"""
     if resource == SubscriptionResource.SITE:
+        # Site lists subscriptions can be scoped to a single site
         return cast(Site, entity).site_id
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
+        # DOE subscriptions can be scoped to a single DOE (doesn't make a lot of sense in practice but it can be done)
         return cast(DynamicOperatingEnvelope, entity).dynamic_operating_envelope_id
     elif resource == SubscriptionResource.READING:
+        # Reading subscriptions can be scoped to the overarching type
         return cast(SiteReading, entity).site_reading_type_id
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        return cast(TariffGeneratedRate, entity).tariff_generated_rate_id
+        # rate subscriptions can be scoped to a single tariff
+        return cast(TariffGeneratedRate, entity).tariff_id
     else:
-        raise Exception(f"{resource} is unsupported - unable to identify appropriate primary key")
+        raise NotificationError(f"{resource} is unsupported - unable to identify appropriate primary key")
 
 
 def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
@@ -95,7 +106,7 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         return cast(TariffGeneratedRate, entity).site_id
     else:
-        raise Exception(f"{resource} is unsupported - unable to identify appropriate site id")
+        raise NotificationError(f"{resource} is unsupported - unable to identify appropriate site id")
 
 
 async def select_subscriptions_for_resource(

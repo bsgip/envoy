@@ -15,10 +15,11 @@ from envoy.notification.crud.batch import (
     fetch_rates_by_changed_at,
     fetch_readings_by_changed_at,
     fetch_sites_by_changed_at,
-    get_primary_key,
     get_site_id,
+    get_subscription_filter_id,
     select_subscriptions_for_resource,
 )
+from envoy.notification.exception import NotificationError
 from envoy.notification.main import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification
 from envoy.server.api.request import RequestStateParameters
@@ -106,7 +107,7 @@ def entities_serviced_by_subscription(
     return [
         e
         for e in entities
-        if (sub.resource_id is None or get_primary_key(resource, e) == sub.resource_id)
+        if (sub.resource_id is None or get_subscription_filter_id(resource, e) == sub.resource_id)
         and (sub.scoped_site_id is None or get_site_id(resource, e) == sub.scoped_site_id)
     ]
 
@@ -125,7 +126,7 @@ def entities_to_notification(
         return NotificationMapper.map_sites_to_response(cast(Sequence[Site], entities), sub, rs_params)
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         if pricing_reading_type is None:
-            raise Exception("SubscriptionResource.TARIFF_GENERATED_RATE requires pricing_reading_type")
+            raise NotificationError("SubscriptionResource.TARIFF_GENERATED_RATE requires pricing_reading_type")
 
         # TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
         (_, tariff_id, site_id, day) = batch_key
@@ -145,13 +146,13 @@ def entities_to_notification(
             site_id, cast(Sequence[DynamicOperatingEnvelope], entities), sub, rs_params
         )
     elif resource == SubscriptionResource.READING:
-        # READING: (aggregator_id: int, site_reading_type_id: int)
-        (_, site_reading_type_id) = batch_key
+        # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
+        (_, site_id, site_reading_type_id) = batch_key
         return NotificationMapper.map_readings_to_response(
-            site_reading_type_id, cast(Sequence[SiteReading], entities), sub, rs_params
+            site_id, site_reading_type_id, cast(Sequence[SiteReading], entities), sub, rs_params
         )
     else:
-        raise Exception(f"{resource} is unsupported - unable to identify way to map entities")
+        raise NotificationError(f"{resource} is unsupported - unable to identify way to map entities")
 
 
 async def fetch_batched_entities(
@@ -167,7 +168,7 @@ async def fetch_batched_entities(
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         return await fetch_rates_by_changed_at(session, timestamp)
     else:
-        raise Exception(f"Unsupported resource type: {resource}")
+        raise NotificationError(f"Unsupported resource type: {resource}")
 
 
 @async_shared_broker.task()
