@@ -4,6 +4,7 @@ from itertools import islice
 from typing import Annotated, Generator, Generic, Iterable, Optional, Sequence, TypeVar, cast
 from uuid import UUID, uuid4
 
+from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
 from envoy_schema.server.schema.sep2.pub_sub import Notification as Sep2Notification
 from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
@@ -99,17 +100,41 @@ def get_entity_pages(
 
 def entities_serviced_by_subscription(
     sub: Subscription, resource: SubscriptionResource, entities: list[TResourceModel]
-) -> list[TResourceModel]:
+) -> Generator[TResourceModel, None, None]:
     """Given a subscription - return the subset of entities that the subscription applies to."""
     if sub.resource_type != resource:
-        return []
+        return
 
-    return [
-        e
-        for e in entities
-        if (sub.resource_id is None or get_subscription_filter_id(resource, e) == sub.resource_id)
-        and (sub.scoped_site_id is None or get_site_id(resource, e) == sub.scoped_site_id)
-    ]
+    for e in entities:
+        if sub.resource_id is not None and get_subscription_filter_id(resource, e) != sub.resource_id:
+            continue
+
+        if sub.scoped_site_id is not None and get_site_id(resource, e) != sub.scoped_site_id:
+            continue
+
+        # Check conditions (which will vary depending on the type of resource)
+        conditions_matched = True
+        if resource == SubscriptionResource.READING:
+            for c in sub.conditions:
+                if not conditions_matched:
+                    break
+
+                if c.attribute == ConditionAttributeIdentifier.READING_VALUE:
+                    # If the reading is within the condition thresholds - don't include it
+                    # (we only want values out of range)
+                    reading_value = cast(SiteReading, e).value
+                    low_range = c.lower_threshold is None or reading_value < c.lower_threshold
+                    high_range = c.upper_threshold is None or reading_value > c.upper_threshold
+
+                    if c.lower_threshold is not None and c.upper_threshold is not None:
+                        conditions_matched = low_range or high_range
+                    else:
+                        conditions_matched = low_range and high_range
+
+        if not conditions_matched:
+            continue
+
+        yield e
 
 
 def entities_to_notification(

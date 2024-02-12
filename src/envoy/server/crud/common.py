@@ -1,26 +1,24 @@
 from datetime import datetime
-from typing import Optional, Protocol, TypeVar
+from typing import Optional, TypeVar, Union
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import Row
 
+from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.tariff import TariffGeneratedRate
 
-class HasStartTime(Protocol):
-    start_time: datetime
-
-
-T = TypeVar("T", bound=HasStartTime)
+EntityWithStartTime = TypeVar("EntityWithStartTime", bound=Union[TariffGeneratedRate, DynamicOperatingEnvelope])
 
 
-def localize_start_time(rate_and_tz: Optional[Row[tuple[T, str]]]) -> T:
-    """Localizes a TariffGeneratedRate.start_time to be in the local timezone passed in as the second
-    element in the tuple. Returns the TariffGeneratedRate (it will be modified in place)"""
+def localize_start_time(rate_and_tz: Optional[Row[tuple[EntityWithStartTime, str]]]) -> EntityWithStartTime:
+    """Localizes a Entity.start_time to be in the local timezone passed in as the second
+    element in the tuple. Returns the Entity (it will be modified in place)"""
     if rate_and_tz is None:
         raise ValueError("row is None")
 
-    rate: T
+    entity: EntityWithStartTime
     tz_name: str
-    (rate, tz_name) = rate_and_tz
+    (entity, tz_name) = rate_and_tz
     tz = ZoneInfo(tz_name)
-    rate.start_time = rate.start_time.astimezone(tz)
-    return rate
+    entity.start_time = entity.start_time.astimezone(tz)
+    return entity

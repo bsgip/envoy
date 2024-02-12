@@ -5,7 +5,7 @@ from typing import AsyncIterator, Callable, Optional
 from fastapi import FastAPI
 from taskiq import AsyncBroker, InMemoryBroker
 from taskiq.result_backends.dummy import DummyResultBackend
-from taskiq_aio_pika import AioPikaBroker
+from taskiq_aio_pika import AioPikaBroker  # type: ignore # https://github.com/taskiq-python/taskiq-aio-pika/pull/28
 
 logger = logging.getLogger(__name__)
 
