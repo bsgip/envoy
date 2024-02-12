@@ -23,6 +23,7 @@ class AggregatorBatchedEntities(Generic[TResourceModel]):
 
     timestamp: datetime
     models_by_batch_key: dict[tuple, list[TResourceModel]]  # First element of batch key will be aggregator_id
+    total_entities: int
 
     def __init__(self, timestamp: datetime, resource: SubscriptionResource, models: Sequence[TResourceModel]) -> None:
         super().__init__()
@@ -30,7 +31,9 @@ class AggregatorBatchedEntities(Generic[TResourceModel]):
         self.timestamp = timestamp
 
         self.models_by_batch_key = {}
+        self.total_entities = 0
         for m in models:
+            self.total_entities = self.total_entities + 1
             batch_key = get_batch_key(resource, m)
 
             model_list = self.models_by_batch_key.get(batch_key, None)
@@ -143,6 +146,7 @@ async def fetch_rates_by_changed_at(
 
     stmt = (
         select(TariffGeneratedRate, Site.timezone_id)
+        .join(TariffGeneratedRate.site)
         .where(TariffGeneratedRate.changed_time == timestamp)
         .options(selectinload(TariffGeneratedRate.site))
     )
@@ -163,6 +167,7 @@ async def fetch_does_by_changed_at(
 
     stmt = (
         select(DynamicOperatingEnvelope, Site.timezone_id)
+        .join(DynamicOperatingEnvelope.site)
         .where(DynamicOperatingEnvelope.changed_time == timestamp)
         .options(selectinload(DynamicOperatingEnvelope.site))
     )
@@ -184,6 +189,7 @@ async def fetch_readings_by_changed_at(
 
     stmt = (
         select(SiteReading)
+        .join(SiteReading.site_reading_type)
         .where(SiteReading.changed_time == timestamp)
         .options(selectinload(SiteReading.site_reading_type))
     )

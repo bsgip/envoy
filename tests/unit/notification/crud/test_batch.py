@@ -1,12 +1,21 @@
 import unittest.mock as mock
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+from typing import Sequence
+from zoneinfo import ZoneInfo
 
 import pytest
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
+from envoy_schema.server.schema.sep2.types import QualityFlagsType
+from sqlalchemy import select
 
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
     TResourceModel,
+    fetch_does_by_changed_at,
+    fetch_rates_by_changed_at,
+    fetch_readings_by_changed_at,
+    fetch_sites_by_changed_at,
     get_batch_key,
     get_site_id,
     get_subscription_filter_id,
@@ -30,6 +39,7 @@ def test_AggregatorBatchedEntities_empty(resource: SubscriptionResource):
 
     assert b.timestamp == ts
     assert len(b.models_by_batch_key) == 0
+    assert b.total_entities == 0
 
 
 @mock.patch("envoy.notification.crud.batch.get_batch_key")
@@ -49,6 +59,7 @@ def test_AggregatorBatchedEntities_single_batch(mock_get_batch_key: mock.MagicMo
     b = AggregatorBatchedEntities(ts, resource, [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4])
 
     assert b.timestamp == ts
+    assert b.total_entities == 4
     assert len(b.models_by_batch_key) == 1, "Expecting a single unique key"
     assert b.models_by_batch_key[(1, 2)] == [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4]
 
@@ -72,6 +83,7 @@ def test_AggregatorBatchedEntities_multi_batch(mock_get_batch_key: mock.MagicMoc
     b = AggregatorBatchedEntities(ts, resource, [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4])
 
     assert b.timestamp == ts
+    assert b.total_entities == 4
     assert len(b.models_by_batch_key) == 3
     assert b.models_by_batch_key[(1, 2)] == [fake_entity_1, fake_entity_3]
     assert b.models_by_batch_key[(1, 3)] == [fake_entity_2]
@@ -288,3 +300,320 @@ async def test_select_subscriptions_for_resource_conditions(
             assert_class_instance_equality(
                 SubscriptionCondition, expected_conditions[i], actual_entities[0].conditions[i]
             )
+
+
+@pytest.mark.parametrize(
+    "timestamp,expected_sites",
+    [
+        (
+            datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc),
+            [
+                Site(
+                    site_id=1,
+                    nmi="1111111111",
+                    aggregator_id=1,
+                    timezone_id="Australia/Brisbane",
+                    changed_time=datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc),
+                    lfdi="site1-lfdi",
+                    sfdi=1111,
+                    device_category=0,
+                ),
+            ],
+        ),
+        (
+            datetime(2022, 2, 3, 4, 5, 7),  # timestamp mismatch
+            [],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_sites_by_timestamp(pg_base_config, timestamp: datetime, expected_sites: list[Site]):
+    """Tests that entities are filtered/returned correctly"""
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_sites_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(expected_sites)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda site: site.site_id)
+
+        assert all([isinstance(e, Site) for e in list_entities])
+        for i in range(len(expected_sites)):
+            assert_class_instance_equality(Site, expected_sites[i], list_entities[i])
+
+
+@pytest.mark.anyio
+async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
+    """Tests that entities are filtered/returned correctly and cover all aggregator ids"""
+
+    timestamp = datetime(2024, 5, 6, 7, 8, 9, tzinfo=timezone.utc)
+
+    # start by setting all entities to a particular timestamp
+    async with generate_async_session(pg_base_config) as session:
+        all_entities_resp = await session.execute(select(Site))
+        all_entities: Sequence[Site] = all_entities_resp.scalars().all()
+        for e in all_entities:
+            e.changed_time = timestamp
+        await session.commit()
+
+    # Now see if the fetch grabs everything
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_sites_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(all_entities)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda site: site.site_id)
+
+        assert len(list_entities) == len(all_entities)
+        assert set([1, 2, 3, 4]) == set([e.site_id for e in list_entities])
+        assert set([1, 2]) == set([e.aggregator_id for e in list_entities]), "All aggregator IDs should be represented"
+
+        # Sanity check that a different timestamp yields nothing
+        empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
+        assert empty_batch.total_entities == 0
+        assert len(empty_batch.models_by_batch_key) == 0
+
+
+@pytest.mark.parametrize(
+    "timestamp,expected_rates",
+    [
+        (
+            datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=timezone.utc),
+            [
+                TariffGeneratedRate(
+                    tariff_generated_rate_id=1,
+                    tariff_id=1,
+                    site_id=1,
+                    changed_time=datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=timezone.utc),
+                    start_time=datetime(2022, 3, 5, 1, 2, 0, 0, tzinfo=timezone(timedelta(hours=10))),
+                    duration_seconds=11,
+                    import_active_price=Decimal("1.1"),
+                    export_active_price=Decimal("-1.22"),
+                    import_reactive_price=Decimal("1.333"),
+                    export_reactive_price=Decimal("-1.4444"),
+                ),
+            ],
+        ),
+        (
+            datetime(2022, 2, 3, 4, 5, 7),  # timestamp mismatch
+            [],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_rates_by_timestamp(pg_base_config, timestamp: datetime, expected_rates: list[TariffGeneratedRate]):
+    """Tests that entities are filtered/returned correctly"""
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_rates_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(expected_rates)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda rate: rate.tariff_generated_rate_id)
+
+        assert all([isinstance(e, TariffGeneratedRate) for e in list_entities])
+        for i in range(len(expected_rates)):
+            assert_class_instance_equality(TariffGeneratedRate, expected_rates[i], list_entities[i])
+
+        assert all([isinstance(e.site, Site) for e in list_entities]), "site relationship populated"
+        assert all([e.site.site_id == e.site_id for e in list_entities]), "site relationship populated"
+        assert all(
+            [e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]
+        ), "start_time should be localized to the zone identified by the linked site"
+
+
+@pytest.mark.anyio
+async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
+    """Tests that entities are filtered/returned correctly and cover all aggregator ids"""
+
+    timestamp = datetime(2024, 4, 6, 7, 8, 9, tzinfo=timezone.utc)
+
+    # start by setting all entities to a particular timestamp
+    async with generate_async_session(pg_base_config) as session:
+        all_entities_resp = await session.execute(select(TariffGeneratedRate))
+        all_entities: Sequence[TariffGeneratedRate] = all_entities_resp.scalars().all()
+        for e in all_entities:
+            e.changed_time = timestamp
+
+        all_entities[-1].site_id = 3  # Move this price to aggregator 2
+        await session.commit()
+
+    # Now see if the fetch grabs everything
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_rates_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(all_entities)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda rate: rate.tariff_generated_rate_id)
+
+        assert len(list_entities) == len(all_entities)
+        assert set([1, 2, 3, 4]) == set([e.tariff_generated_rate_id for e in list_entities])
+        assert set([1, 2]) == set(
+            [e.site.aggregator_id for e in list_entities]
+        ), "All aggregator IDs should be represented"
+
+        # Sanity check that a different timestamp yields nothing
+        empty_batch = await fetch_rates_by_changed_at(session, timestamp - timedelta(milliseconds=50))
+        assert empty_batch.total_entities == 0
+        assert len(empty_batch.models_by_batch_key) == 0
+
+
+@pytest.mark.parametrize(
+    "timestamp,expected_does",
+    [
+        (
+            datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
+            [
+                DynamicOperatingEnvelope(
+                    dynamic_operating_envelope_id=1,
+                    site_id=1,
+                    changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
+                    start_time=datetime(2022, 5, 7, 1, 2, 0, 0, tzinfo=timezone(timedelta(hours=10))),
+                    duration_seconds=11,
+                    import_limit_active_watts=Decimal("1.11"),
+                    export_limit_watts=Decimal("-1.22"),
+                ),
+            ],
+        ),
+        (
+            datetime(2021, 2, 3, 4, 5, 7),  # timestamp mismatch
+            [],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_does_by_timestamp(
+    pg_base_config, timestamp: datetime, expected_does: list[DynamicOperatingEnvelope]
+):
+    """Tests that entities are filtered/returned correctly"""
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_does_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(expected_does)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda doe: doe.dynamic_operating_envelope_id)
+
+        assert all([isinstance(e, DynamicOperatingEnvelope) for e in list_entities])
+        for i in range(len(expected_does)):
+            assert_class_instance_equality(DynamicOperatingEnvelope, expected_does[i], list_entities[i])
+
+        assert all([isinstance(e.site, Site) for e in list_entities]), "site relationship populated"
+        assert all([e.site.site_id == e.site_id for e in list_entities]), "site relationship populated"
+        assert all(
+            [e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]
+        ), "start_time should be localized to the zone identified by the linked site"
+
+
+@pytest.mark.anyio
+async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
+    """Tests that entities are filtered/returned correctly and cover all aggregator ids"""
+
+    timestamp = datetime(2024, 1, 2, 7, 8, 9, tzinfo=timezone.utc)
+
+    # start by setting all entities to a particular timestamp
+    async with generate_async_session(pg_base_config) as session:
+        all_entities_resp = await session.execute(select(DynamicOperatingEnvelope))
+        all_entities: Sequence[DynamicOperatingEnvelope] = all_entities_resp.scalars().all()
+        for e in all_entities:
+            e.changed_time = timestamp
+
+        all_entities[-1].site_id = 3  # Move this doe to aggregator 2
+        await session.commit()
+
+    # Now see if the fetch grabs everything
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_does_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(all_entities)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda rate: rate.dynamic_operating_envelope_id)
+
+        assert len(list_entities) == len(all_entities)
+        assert set([1, 2, 3, 4]) == set([e.dynamic_operating_envelope_id for e in list_entities])
+        assert set([1, 2]) == set(
+            [e.site.aggregator_id for e in list_entities]
+        ), "All aggregator IDs should be represented"
+
+        # Sanity check that a different timestamp yields nothing
+        empty_batch = await fetch_does_by_changed_at(session, timestamp - timedelta(milliseconds=50))
+        assert empty_batch.total_entities == 0
+        assert len(empty_batch.models_by_batch_key) == 0
+
+
+@pytest.mark.parametrize(
+    "timestamp,expected_readings",
+    [
+        (
+            datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=timezone.utc),
+            [
+                SiteReading(
+                    site_reading_id=1,
+                    site_reading_type_id=1,
+                    changed_time=datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=timezone.utc),
+                    local_id=11111,
+                    quality_flags=QualityFlagsType.VALID,
+                    time_period_start=datetime(2022, 6, 7, 1, 0, 0, 0, tzinfo=timezone(timedelta(hours=10))),
+                    time_period_seconds=300,
+                    value=11,
+                ),
+            ],
+        ),
+        (
+            datetime(2021, 2, 3, 4, 5, 7),  # timestamp mismatch
+            [],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_readings_by_timestamp(pg_base_config, timestamp: datetime, expected_readings: list[SiteReading]):
+    """Tests that entities are filtered/returned correctly"""
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_readings_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(expected_readings)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda reading: reading.site_reading_id)
+
+        assert all([isinstance(e, SiteReading) for e in list_entities])
+        for i in range(len(expected_readings)):
+            assert_class_instance_equality(SiteReading, expected_readings[i], list_entities[i])
+
+        assert all(
+            [isinstance(e.site_reading_type, SiteReadingType) for e in list_entities]
+        ), "site_reading_type relationship populated"
+        assert all(
+            [e.site_reading_type.site_reading_type_id == e.site_reading_type_id for e in list_entities]
+        ), "site_reading_type relationship populated"
+
+
+@pytest.mark.anyio
+async def test_fetch_readings_by_timestamp_multiple_aggs(pg_base_config):
+    """Tests that entities are filtered/returned correctly and cover all aggregator ids"""
+
+    timestamp = datetime(2021, 1, 2, 7, 8, 9, tzinfo=timezone.utc)
+
+    # start by setting all entities to a particular timestamp
+    async with generate_async_session(pg_base_config) as session:
+        all_entities_resp = await session.execute(select(SiteReading))
+        all_entities: Sequence[SiteReading] = all_entities_resp.scalars().all()
+        for e in all_entities:
+            e.changed_time = timestamp
+
+        await session.commit()
+
+    # Now see if the fetch grabs everything
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_readings_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(all_entities)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda reading: reading.site_reading_id)
+
+        assert len(list_entities) == len(all_entities)
+        assert set([1, 2, 3, 4]) == set([e.site_reading_id for e in list_entities])
+        assert set([1, 3]) == set(
+            [e.site_reading_type.aggregator_id for e in list_entities]
+        ), "All aggregator IDs should be represented"
+
+        # Sanity check that a different timestamp yields nothing
+        empty_batch = await fetch_readings_by_changed_at(session, timestamp - timedelta(milliseconds=50))
+        assert empty_batch.total_entities == 0
+        assert len(empty_batch.models_by_batch_key) == 0
