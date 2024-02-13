@@ -3,7 +3,7 @@ from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
 from typing import AsyncIterator, Callable, Optional
 
 from fastapi import FastAPI
-from taskiq import AsyncBroker, InMemoryBroker
+from taskiq import AsyncBroker, InMemoryBroker, SimpleRetryMiddleware
 from taskiq.result_backends.dummy import DummyResultBackend
 from taskiq_aio_pika import AioPikaBroker  # type: ignore # https://github.com/taskiq-python/taskiq-aio-pika/pull/28
 
@@ -36,7 +36,9 @@ def generate_broker(rabbit_mq_broker_url: Optional[str]) -> AsyncBroker:
     logging.info(f"Generating Broker - Using Rabbit MQ: {use_rabbit_mq}")
 
     if use_rabbit_mq:
-        return AioPikaBroker(url=rabbit_mq_broker_url, result_backend=DummyResultBackend())
+        return AioPikaBroker(url=rabbit_mq_broker_url, result_backend=DummyResultBackend()).with_middlewares(
+            SimpleRetryMiddleware(default_retry_count=2)  # This will only save us from uncaught exceptions
+        )
     else:
         # If we are using InMemory - lets keep the same reference going for all instances
         global ENABLED_IN_MEMORY_BROKER

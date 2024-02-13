@@ -53,20 +53,18 @@ async def schedule_retry_transmission(
         )
 
 
-async def _do_transmit_notification(
+async def do_transmit_notification(
     remote_uri: str, content: str, subscription_href: str, notification_id: UUID, attempt: int
 ) -> bool:
-    """Internal method for transmitting the notification - Raises an exception if the request fails and needs retrying
-    otherwise returns true if the transmit succeeded or false otherwise"""
+    """Internal method for transmitting the notification - Raises a NotificationError if the request fails and
+    needs retrying otherwise returns true if the transmit succeeded or false otherwise"""
 
     # Big scary gotcha - There is no way (within the app layer) for a recipient of a notification
     # to validate that it's coming from our utility server. The ONLY thing keeping us safe
     # is the fact that CSIP recommends the use of mutual TLS which basically requires us to share our server
     # cert with the listener. This is all handled out of band and will be noted in the client docs
     # but I've put this message here for devs who read this code and get terrified. Good job on your keen security eye!
-    async with AsyncClient(
-        headers={HEADER_SUBSCRIPTION_ID: subscription_href, HEADER_NOTIFICATION_ID: str(notification_id)}
-    ) as client:
+    async with AsyncClient() as client:
         logger.debug(
             "Attempting to send notification %s of size %d to %s (attempt %d)",
             notification_id,
@@ -74,10 +72,17 @@ async def _do_transmit_notification(
             remote_uri,
             attempt,
         )
-        response = await client.post(
-            url=remote_uri,
-            content=content,
-        )
+
+        headers = {HEADER_SUBSCRIPTION_ID: subscription_href, HEADER_NOTIFICATION_ID: str(notification_id)}
+
+        try:
+            response = await client.post(url=remote_uri, content=content, headers=headers)
+        except Exception as ex:
+            logger.error(
+                f"Exception {ex} sending notification {notification_id} of size {len(content)} to {remote_uri} (attempt {attempt})",  # noqa e501
+                exc_info=ex,
+            )
+            raise NotificationError(f"Exception {ex} sending notification {notification_id}")
 
         # Future work: Log these events in an audit log
         if response.status_code >= 200 and response.status_code < 299:
@@ -120,7 +125,7 @@ async def transmit_notification(
     attempt: The attempt number - if this gets too high the notification will be dropped"""
 
     try:
-        await _do_transmit_notification(remote_uri, content, subscription_href, notification_id, attempt)
+        await do_transmit_notification(remote_uri, content, subscription_href, notification_id, attempt)
     except Exception as ex:
         logger.error(
             "Exception sending notification of size %d to %s (attempt %d)",

@@ -1,10 +1,10 @@
 import unittest.mock as mock
 from asyncio import Future
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from httpx import Response
-from httpx._types import HeaderTypes
+from httpx._types import HeaderTypes, RequestContent
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -35,6 +35,7 @@ class LoggedRequest:
     method: str
     uri: str
     headers: Optional[HeaderTypes]
+    content: Optional[Any]
 
 
 class MockedAsyncClient:
@@ -49,6 +50,8 @@ class MockedAsyncClient:
     logged_requests: list[LoggedRequest]
     get_calls: int
     get_calls_by_uri: dict[str, int]
+    post_calls: int
+    post_calls_by_uri: dict[str, int]
     result: Optional[Union[Response, Exception, list[Union[Response, Exception]]]]
     results_by_uri: dict[str, Union[Response, Exception, list[Union[Response, Exception]]]]
 
@@ -63,6 +66,8 @@ class MockedAsyncClient:
         self.logged_requests = []
         self.get_calls = 0
         self.get_calls_by_uri = {}
+        self.post_calls = 0
+        self.post_calls_by_uri = {}
 
     async def __aenter__(self):
         return self
@@ -84,18 +89,42 @@ class MockedAsyncClient:
         else:
             raise Exception(f"Mocking error - unknown type: {type(result)} {result}")
 
-    async def get(self, uri: str, headers: Optional[HeaderTypes] = None):
+    async def get(self, url: str, headers: Optional[HeaderTypes] = None):
         self.get_calls = self.get_calls + 1
-        if uri in self.get_calls_by_uri:
-            self.get_calls_by_uri[uri] = self.get_calls_by_uri[uri] + 1
+        if url in self.get_calls_by_uri:
+            self.get_calls_by_uri[url] = self.get_calls_by_uri[url] + 1
         else:
-            self.get_calls_by_uri[uri] = 1
-        self.logged_requests.append(LoggedRequest(method="GET", uri=uri, headers=headers))
+            self.get_calls_by_uri[url] = 1
+        self.logged_requests.append(LoggedRequest(method="GET", uri=url, headers=headers))
 
-        uri_specific_result = self.results_by_uri.get(uri, None)
+        uri_specific_result = self.results_by_uri.get(url, None)
         if uri_specific_result is not None:
             return self._raise_or_return(uri_specific_result)
 
         if self.result is None:
-            raise Exception(f"Mocking error - no mocked result for {uri}")
+            raise Exception(f"Mocking error - no mocked result for {url}")
+        return self._raise_or_return(self.result)
+
+    async def post(
+        self,
+        url: str,
+        content: Optional[RequestContent] = None,
+        json: Optional[Any] = None,
+        headers: Optional[HeaderTypes] = None,
+    ):
+        self.post_calls = self.post_calls + 1
+        if url in self.post_calls_by_uri:
+            self.post_calls_by_uri[url] = self.post_calls_by_uri[url] + 1
+        else:
+            self.post_calls_by_uri[url] = 1
+        self.logged_requests.append(
+            LoggedRequest(method="POST", uri=url, headers=headers, content=content if content is not None else json)
+        )
+
+        uri_specific_result = self.results_by_uri.get(url, None)
+        if uri_specific_result is not None:
+            return self._raise_or_return(uri_specific_result)
+
+        if self.result is None:
+            raise Exception(f"Mocking error - no mocked result for {url}")
         return self._raise_or_return(self.result)
