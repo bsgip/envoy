@@ -104,12 +104,12 @@ async def _do_transmit_notification(
 
 @async_shared_broker.task()
 async def transmit_notification(
-    broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)],
     remote_uri: str,
     content: str,
     subscription_href: str,
     notification_id: UUID,
     attempt: int,
+    broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)] = TaskiqDepends(),
 ) -> None:
     """Call this to trigger an outgoing notification to be sent. If the notification fails it will be retried
     a few times (at a staggered cadence) before giving up.

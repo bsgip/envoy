@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from typing import Any
+from typing import Any, Optional
 
 from taskiq import AsyncBroker
 
@@ -15,6 +15,7 @@ def configure_mock_task(m: mock.MagicMock):
     m.kicker.return_value = kicker_instance
 
     kicker_instance.with_broker = mock.Mock(return_value=kicker_instance)
+    kicker_instance.with_labels = mock.Mock(return_value=kicker_instance)
     kicker_instance.kiq = mock.AsyncMock(return_value=1)
 
 
@@ -31,10 +32,16 @@ def assert_task_kicked_n_times(m: mock.MagicMock, n: int):
 
 
 def assert_task_kicked_with_broker_and_args(m: mock.MagicMock, broker: AsyncBroker, **kwargs: Any):
+    assert_task_kicked_with_broker_delay_and_args(m, broker, None, **kwargs)
+
+
+def assert_task_kicked_with_broker_delay_and_args(
+    m: mock.MagicMock, broker: AsyncBroker, delay_seconds: Optional[int], **kwargs: Any
+):
     """Asserts that a particular task mock was kicked with a particular broker (and optionally validating the
     passed params were included)"""
 
-    # First we need to find the call that
+    # First we need to find the call that matches our supplied kwargs
     index = -1
     all_call_args = get_mock_task_kicker_call_args(m)
     for call_index, call_args in enumerate(all_call_args):
@@ -52,6 +59,12 @@ def assert_task_kicked_with_broker_and_args(m: mock.MagicMock, broker: AsyncBrok
         index >= 0
     ), f"Couldn't find a call to kiq with kwargs {kwargs}. Options include {[a.kwargs for a in all_call_args]}"
 
+    # Then once we've identified a call - we check the other expectations
     assert (
         m.kicker.return_value.with_broker.call_args_list[index].args[0] is broker
     ), f"Expected with_broker with {broker}"
+
+    if delay_seconds is not None:
+        assert (
+            m.kicker.return_value.with_labels.call_args_list[index].kwargs["delay"] == delay_seconds
+        ), f"Expected with_labels where delay was {delay_seconds}"

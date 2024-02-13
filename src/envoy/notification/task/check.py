@@ -198,11 +198,11 @@ async def fetch_batched_entities(
 
 @async_shared_broker.task()
 async def check_db_upsert(
-    session: Annotated[AsyncSession, TaskiqDepends(session_dependency)],
-    broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)],
-    href_prefix: Annotated[Optional[str], TaskiqDepends(href_prefix_dependency)],
     resource: SubscriptionResource,
     timestamp_epoch: float,
+    href_prefix: Annotated[Optional[str], TaskiqDepends(href_prefix_dependency)] = TaskiqDepends(),
+    session: Annotated[AsyncSession, TaskiqDepends(session_dependency)] = TaskiqDepends(),
+    broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)] = TaskiqDepends(),
 ) -> None:
     """Call this to notify that a particular timestamp within a particular named resource
     has had a batch of inserts/updates such that requesting all records with that changed_at timestamp
@@ -218,7 +218,7 @@ async def check_db_upsert(
     all_notifications: list[NotificationEntities] = []
     aggregator_subs_cache: dict[int, Sequence[Subscription]] = {}  # keyed by aggregator_id
     for batch_key, entities in batched_entities.models_by_batch_key.items():
-        agg_id = batch_key[0]  # The aggregator_id is ALWAYS first in the batch key by definition
+        agg_id: int = batch_key[0]  # The aggregator_id is ALWAYS first in the batch key by definition
 
         # We enumerate by aggregator ID at the top level (as a way of minimising the size of entities)
         # We also cache the per aggregator subscriptions to minimise round trips to the db
@@ -245,7 +245,8 @@ async def check_db_upsert(
         if isinstance(content, bytes):
             content = content.decode()
 
-        rs_params = RequestStateParameters(-1, href_prefix)
+        agg_id = n.batch_key[0]  # Aggregator ID is ALWAYS the first element of the batch_key
+        rs_params = RequestStateParameters(agg_id, href_prefix)
         await transmit_notification.kicker().with_broker(broker).kiq(
             remote_uri=n.subscription.notification_uri,
             content=content,

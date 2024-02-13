@@ -481,10 +481,10 @@ async def test_check_db_upsert(
     # There should be 2 notifications sent out (as one of the subscriptions match no entities)
     assert_task_kicked_n_times(mock_transmit_notification, 2)
     assert_task_kicked_with_broker_and_args(
-        mock_transmit_notification, mock_broker, remote_uri=agg1_sub2.notification_uri
+        mock_transmit_notification, mock_broker, remote_uri=agg1_sub2.notification_uri, attempt=0
     )
     assert_task_kicked_with_broker_and_args(
-        mock_transmit_notification, mock_broker, remote_uri=agg2_sub1.notification_uri
+        mock_transmit_notification, mock_broker, remote_uri=agg2_sub1.notification_uri, attempt=0
     )
 
     mock_fetch_batched_entities.assert_called_once_with(mock_session, resource, timestamp)
