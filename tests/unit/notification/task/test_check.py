@@ -1,13 +1,23 @@
 import unittest.mock as mock
+from datetime import datetime, timezone
 from uuid import UUID
 
 import pytest
-from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
+from envoy_schema.server.schema.sep2.pub_sub import (
+    ConditionAttributeIdentifier,
+    Notification,
+    NotificationResourceCombined,
+)
 
+from envoy.notification.crud.batch import AggregatorBatchedEntities, get_batch_key
+from envoy.notification.exception import NotificationError
 from envoy.notification.task.check import (
     NotificationEntities,
     batched,
+    check_db_upsert,
     entities_serviced_by_subscription,
+    entities_to_notification,
+    fetch_batched_entities,
     get_entity_pages,
 )
 from envoy.server.mapper.sep2.pricing import PricingReadingType
@@ -16,6 +26,15 @@ from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
+from tests.data.fake.generator import generate_class_instance
+from tests.unit.mocks import assert_mock_session, create_mock_session
+from tests.unit.notification.mocks import (
+    assert_task_kicked_n_times,
+    assert_task_kicked_with_broker_and_args,
+    configure_mock_task,
+    create_mock_broker,
+    get_mock_task_kicker_call_args,
+)
 
 
 @pytest.mark.parametrize(
@@ -322,3 +341,184 @@ def test_entities_serviced_by_subscription(
     expected = [entities[i] for i in expected_passing_entity_indexes]
 
     assert actual == expected
+
+
+def test_entities_to_notification_unknown_resource():
+    """We catch bad SubscriptionResource with our own error"""
+    with pytest.raises(NotificationError):
+        entities_to_notification(9999, Subscription(resource_type=9999), (1, 2, 3), None, [], None)
+
+
+@pytest.mark.parametrize(
+    "resource, entity_class",
+    [
+        (SubscriptionResource.SITE, Site),
+        (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, DynamicOperatingEnvelope),
+        (SubscriptionResource.READING, SiteReading),
+        (SubscriptionResource.TARIFF_GENERATED_RATE, TariffGeneratedRate),
+    ],
+)
+def test_entities_to_notification_sites(resource: SubscriptionResource, entity_class: type):
+    """For every resource/type mapping - generate a notification and do some cursory examination of the
+    resulting notification - the majority of the test are captured in the mapper unit tests - this is here
+    to catch parameter errors / other simple issues"""
+    href_prefix = "/my_href/prefix"
+    sub = Subscription(resource_type=resource, notification_uri="http://example.com/foo")
+    pricing_reading_type = (
+        PricingReadingType.EXPORT_ACTIVE_POWER_KWH if resource == SubscriptionResource.TARIFF_GENERATED_RATE else None
+    )
+    batch_key = get_batch_key(resource, generate_class_instance(entity_class, generate_relationships=True))
+
+    # Try for various lengths (empty, singular, many)
+    for entity_length in [0, 1, 3]:
+        entities = []
+        for i in range(entity_length):
+            entities.append(generate_class_instance(entity_class, seed=i, generate_relationships=True))
+
+        notification = entities_to_notification(resource, sub, batch_key, href_prefix, entities, pricing_reading_type)
+        assert isinstance(notification, Notification)
+        assert notification.subscribedResource.startswith(href_prefix)
+        assert notification.subscriptionURI.startswith(href_prefix)
+        assert "{" not in notification.subscribedResource, "Trying to catch format variables not being replaced"
+        assert "{" not in notification.subscriptionURI, "Trying to catch format variables not being replaced"
+
+        assert isinstance(notification.resource, NotificationResourceCombined)
+        assert notification.resource.all_ == len(entities)
+        assert notification.resource.results == len(entities)
+
+        if resource == SubscriptionResource.SITE:
+            assert len(notification.resource.EndDevice) == len(entities)
+        elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
+            assert len(notification.resource.DERControl) == len(entities)
+        elif resource == SubscriptionResource.READING:
+            assert len(notification.resource.Readings) == len(entities)
+        elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
+            assert len(notification.resource.TimeTariffInterval) == len(entities)
+
+
+@pytest.mark.anyio
+async def test_fetch_batched_entities_bad_resource():
+    mock_session = create_mock_session()
+    with pytest.raises(NotificationError):
+        await fetch_batched_entities(mock_session, 9999, datetime.now())
+    assert_mock_session(mock_session, committed=False)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.notification.task.check.transmit_notification")
+@mock.patch("envoy.notification.task.check.entities_serviced_by_subscription")
+@mock.patch("envoy.notification.task.check.select_subscriptions_for_resource")
+@mock.patch("envoy.notification.task.check.fetch_batched_entities")
+async def test_check_db_upsert(
+    mock_fetch_batched_entities: mock.MagicMock,
+    mock_select_subscriptions_for_resource: mock.MagicMock,
+    mock_entities_serviced_by_subscription: mock.MagicMock,
+    mock_transmit_notification: mock.MagicMock,
+):
+    """Runs through the bulk of check_db_upsert to ensure that the expected notifications are raised"""
+
+    #
+    # ARRANGE
+    #
+
+    configure_mock_task(mock_transmit_notification)
+
+    mock_session = create_mock_session()
+    mock_broker = create_mock_broker()
+    href_prefix = "/href/prefix"
+    resource = SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE
+    timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
+
+    # Create some entities that will form 2 batches
+    batch1_entity1: DynamicOperatingEnvelope = generate_class_instance(
+        DynamicOperatingEnvelope, seed=101, generate_relationships=True
+    )
+    batch1_entity2: DynamicOperatingEnvelope = generate_class_instance(
+        DynamicOperatingEnvelope, seed=202, generate_relationships=True
+    )
+    batch2_entity1: DynamicOperatingEnvelope = generate_class_instance(
+        DynamicOperatingEnvelope, seed=303, generate_relationships=True
+    )
+    batch1_entity2.site_id = batch1_entity1.site_id
+    batch1_entity2.site.site_id = batch1_entity1.site.site_id
+    batch1_entity2.site.aggregator_id = batch1_entity1.site.aggregator_id
+    entities = AggregatorBatchedEntities(timestamp, resource, [batch1_entity1, batch1_entity2, batch2_entity1])
+    mock_fetch_batched_entities.return_value = entities
+
+    # Create some subscriptions for the two aggregators we implied above
+    agg1_sub1: Subscription = generate_class_instance(Subscription, seed=11)  # Matches nothing
+    agg1_sub2: Subscription = generate_class_instance(Subscription, seed=22)
+    agg2_sub1: Subscription = generate_class_instance(Subscription, seed=33)
+    mock_select_subscriptions_for_resource.side_effect = lambda session, agg_id, resource: (
+        [agg1_sub1, agg1_sub2] if agg_id == batch1_entity1.site.aggregator_id else [agg2_sub1]
+    )
+
+    # Configure what entities are serviced by what subscription
+    # agg1_sub1 will match nothing but all other subs will match every entity
+    def side_effect_entities_serviced_by_subscription(sub, resource, entities):
+        if sub is agg1_sub1:
+            return []
+        else:
+            return entities
+
+    mock_entities_serviced_by_subscription.side_effect = side_effect_entities_serviced_by_subscription
+
+    #
+    # ACT
+    #
+    await check_db_upsert(
+        session=mock_session,
+        broker=mock_broker,
+        href_prefix=href_prefix,
+        resource=resource,
+        timestamp_epoch=timestamp.timestamp(),
+    )
+
+    #
+    # ASSERT
+    #
+
+    # There should be 2 notifications sent out (as one of the subscriptions match no entities)
+    assert_task_kicked_n_times(mock_transmit_notification, 2)
+    assert_task_kicked_with_broker_and_args(
+        mock_transmit_notification, mock_broker, remote_uri=agg1_sub2.notification_uri
+    )
+    assert_task_kicked_with_broker_and_args(
+        mock_transmit_notification, mock_broker, remote_uri=agg2_sub1.notification_uri
+    )
+
+    mock_fetch_batched_entities.assert_called_once_with(mock_session, resource, timestamp)
+
+    # Subscriptions should only be fetched ONCE for each aggregator
+    assert mock_select_subscriptions_for_resource.call_count == 2
+    assert (mock_session, batch1_entity1.site.aggregator_id, resource) in [
+        ca.args for ca in mock_select_subscriptions_for_resource.call_args_list
+    ]
+    assert (mock_session, batch2_entity1.site.aggregator_id, resource) in [
+        ca.args for ca in mock_select_subscriptions_for_resource.call_args_list
+    ]
+
+    # No need to commit - persistence is handled via kicking off to transmit_notification
+    # All DB interactions should be readonly
+    assert_mock_session(mock_session, committed=False)
+
+    # Do a slightly deeper dive on the content/notifications being transmitted
+    kiq_args = get_mock_task_kicker_call_args(mock_transmit_notification)
+    all_content: list[str] = [a.kwargs["content"] for a in kiq_args]
+    assert all([isinstance(c, str) for c in all_content])
+    assert len(set([c for c in all_content])) == len(all_content), "All content must be unique"
+
+    # See if our entities appear in the output content (use the timestamp as unique fingerprint)
+    batch1_entity1_fingerprint = f"<start>{str(int(batch1_entity1.start_time.timestamp()))}</start>"
+    batch1_entity2_fingerprint = f"<start>{str(int(batch1_entity2.start_time.timestamp()))}</start>"
+    batch2_entity1_fingerprint = f"<start>{str(int(batch2_entity1.start_time.timestamp()))}</start>"
+    assert batch1_entity1_fingerprint in all_content[0]
+    assert batch1_entity2_fingerprint in all_content[0]
+    assert batch2_entity1_fingerprint not in all_content[0]
+    assert batch1_entity1_fingerprint not in all_content[1]
+    assert batch1_entity2_fingerprint not in all_content[1]
+    assert batch2_entity1_fingerprint in all_content[1]
+
+    all_ids: list[UUID] = [a.kwargs["notification_id"] for a in kiq_args]
+    assert all([isinstance(id, UUID) for id in all_ids])
+    assert len(set([c for c in all_ids])) == len(all_ids), "All notification_id should be unique"
