@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import islice
@@ -31,6 +32,8 @@ from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
+
+logger = logging.getLogger(__name__)
 
 MAX_NOTIFICATION_PAGE_SIZE = 100
 
@@ -212,6 +215,8 @@ async def check_db_upsert(
     timestamp: The datetime.timestamp() that will be used for finding resources (must be exact match)"""
 
     timestamp = datetime.fromtimestamp(timestamp_epoch, tz=timezone.utc)
+    logger.debug("check_db_upsert for resource %s at timestamp %s", resource, timestamp)
+
     batched_entities = await fetch_batched_entities(session, resource, timestamp)
 
     # Now generate subscription notifications
@@ -238,6 +243,12 @@ async def check_db_upsert(
             all_notifications.extend(get_entity_pages(resource, sub, batch_key, entity_limit, entities_to_notify))
 
     # Finally time to enqueue the outgoing notifications
+    logger.info(
+        "check_db_upsert for resource %s at timestamp %s generated %d notifications",
+        resource,
+        timestamp,
+        len(all_notifications),
+    )
     for n in all_notifications:
         content = entities_to_notification(
             resource, n.subscription, n.batch_key, href_prefix, n.entities, n.pricing_reading_type

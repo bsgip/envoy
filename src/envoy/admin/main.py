@@ -7,7 +7,9 @@ from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 from envoy.admin.api import routers
 from envoy.admin.api.depends import AdminAuthDepends
 from envoy.admin.settings import AppSettings, settings
+from envoy.notification.handler import enable_notification_client
 from envoy.server.database import enable_dynamic_azure_ad_database_credentials
+from envoy.server.lifespan import generate_combined_lifespan_manager
 
 # Setup logs
 logging.basicConfig(style="{", level=logging.INFO)
@@ -21,20 +23,31 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     update_frequency_seconds = new_settings.azure_ad_db_refresh_secs
     tenant_id = new_settings.azure_ad_tenant_id
     client_id = new_settings.azure_ad_client_id
-    lifespan_manager = None
+
+    lifespan_managers = []
+
+    if new_settings.enable_notifications:
+        lifespan_managers.append(enable_notification_client(new_settings.rabbit_mq_broker_url))
+
     if tenant_id and client_id and resource_id and update_frequency_seconds:
         logger.info(
             f"Enabling AzureAD Dynamic DB Credentials: rsc_id: '{resource_id}' freq_sec: {update_frequency_seconds}"
         )
-        lifespan_manager = enable_dynamic_azure_ad_database_credentials(
-            tenant_id=tenant_id,
-            client_id=client_id,
-            resource_id=resource_id,
-            manual_update_frequency_seconds=update_frequency_seconds,
+        lifespan_managers.append(
+            enable_dynamic_azure_ad_database_credentials(
+                tenant_id=tenant_id,
+                client_id=client_id,
+                resource_id=resource_id,
+                manual_update_frequency_seconds=update_frequency_seconds,
+            )
         )
 
     admin_auth = AdminAuthDepends(settings.admin_username, settings.admin_password)
-    new_app = FastAPI(**new_settings.fastapi_kwargs, dependencies=[Depends(admin_auth)], lifespan=lifespan_manager)
+    new_app = FastAPI(
+        **new_settings.fastapi_kwargs,
+        dependencies=[Depends(admin_auth)],
+        lifespan=generate_combined_lifespan_manager(lifespan_managers),
+    )
     new_app.add_middleware(SQLAlchemyMiddleware, **new_settings.db_middleware_kwargs)
     for router in routers:
         new_app.include_router(router)

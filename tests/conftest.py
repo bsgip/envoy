@@ -36,6 +36,11 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Connection:
     # Install the DATABASE_URL before running alembic
     os.environ["DATABASE_URL"] = generate_async_conn_str_from_connection(postgresql)
 
+    if "notifications_enabled" in request.fixturenames:
+        os.environ["ENABLE_NOTIFICATIONS"] = "True"
+    else:
+        os.environ["ENABLE_NOTIFICATIONS"] = "False"
+
     pem_marker = request.node.get_closest_marker("cert_header")
     if pem_marker is not None:
         os.environ["CERT_HEADER"] = str(pem_marker.args[0])

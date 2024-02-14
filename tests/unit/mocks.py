@@ -56,6 +56,10 @@ class MockedAsyncClient:
     results_by_uri: dict[str, Union[Response, Exception, list[Union[Response, Exception]]]]
 
     def __init__(self, result: Union[Response, Exception, dict, list[Union[Response, Exception]]]) -> None:
+        self.set_results(result)
+
+    def set_results(self, result: Union[Response, Exception, dict, list[Union[Response, Exception]]]):
+        """Re-initialises the behaviour of this mock"""
         if isinstance(result, dict):
             self.results_by_uri = result
             self.result = None

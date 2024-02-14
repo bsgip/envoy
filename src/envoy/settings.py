@@ -25,7 +25,8 @@ class CommonSettings(BaseSettings):
 
     model_config = {"validate_assignment": True, "env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
-    rabbit_mq_broker_url: Optional[str] = None  # RabbitMQ URL pointing to a running server (if none - disables pub/sub)
+    enable_notifications: Optional[bool] = None  # Will pub/sub generate outgoing Notifications to active subs?
+    rabbit_mq_broker_url: Optional[str] = None  # RabbitMQ URL pointing to a running server (for pub/sub)
 
     azure_ad_tenant_id: Optional[str] = None  # Tenant ID of the Azure AD deployment (if none - disables Azure AD Auth)
     azure_ad_client_id: Optional[str] = None  # Client ID of the app in the Azure AD (if none - disables Azure AD Auth)

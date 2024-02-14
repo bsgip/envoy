@@ -49,7 +49,8 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
         )
 
     # Setup notification broker connection for sep2 pub/sub support
-    lifespan_managers.append(enable_notification_client(new_settings.rabbit_mq_broker_url))
+    if new_settings.enable_notifications:
+        lifespan_managers.append(enable_notification_client(new_settings.rabbit_mq_broker_url))
 
     # Azure AD Auth is an optional extension enabled via configuration settings
     azure_ad_settings = new_settings.azure_ad_kwargs

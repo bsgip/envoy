@@ -9,14 +9,18 @@ def create_mock_broker() -> mock.Mock:
     return mock.AsyncMock(spec_set=AsyncBroker)
 
 
-def configure_mock_task(m: mock.MagicMock):
+def configure_mock_task(m: mock.MagicMock, raise_on_kiq: Optional[Exception] = None):
     """Given a mock - configure it as if it were a TaskIQ task"""
     kicker_instance = mock.Mock()
     m.kicker.return_value = kicker_instance
 
     kicker_instance.with_broker = mock.Mock(return_value=kicker_instance)
     kicker_instance.with_labels = mock.Mock(return_value=kicker_instance)
-    kicker_instance.kiq = mock.AsyncMock(return_value=1)
+
+    if raise_on_kiq is None:
+        kicker_instance.kiq = mock.AsyncMock(return_value=1)
+    else:
+        kicker_instance.kiq = mock.AsyncMock(side_effect=raise_on_kiq)
 
 
 def get_mock_task_kicker_call_args(m: mock.MagicMock) -> mock._CallList:

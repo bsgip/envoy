@@ -1,3 +1,4 @@
+import unittest.mock as mock
 from collections import defaultdict
 
 import pytest
@@ -13,6 +14,7 @@ from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as VALID_CERT_PEM
 from tests.integration.integration_server import cert_header
 from tests.unit.jwt import generate_rs256_jwt
+from tests.unit.mocks import MockedAsyncClient
 
 
 @pytest.fixture
@@ -82,3 +84,12 @@ def admin_path_methods():
     for route in app.routes:
         path_methods[route.path] = path_methods[route.path] + list(route.methods)
     return path_methods
+
+
+@pytest.fixture(scope="function")
+def notifications_enabled():
+    """Enables notifications for the server and returns a MockedAsyncClient which
+    will be patched to receive all outgoing notification POST requests."""
+    mock_async_client = MockedAsyncClient(Exception("Mock responses not configured"))
+    mock.patch("envoy.notification.task.transmit.AsyncClient", mock_async_client)
+    return mock_async_client
