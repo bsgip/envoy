@@ -6,7 +6,7 @@ from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, Tariff
 from envoy_schema.admin.schema.uri import TariffCreateUri, TariffGeneratedRateCreateUri, TariffUpdateUri
 from httpx import AsyncClient
 
-from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
+from tests.data.fake.generator import generate_class_instance
 
 
 @pytest.mark.anyio

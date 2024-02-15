@@ -1,6 +1,7 @@
 import unittest.mock as mock
-from asyncio import Future
+from asyncio import Future, Semaphore, wait_for
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Optional, Union
 
 from httpx import Response
@@ -55,6 +56,8 @@ class MockedAsyncClient:
     result: Optional[Union[Response, Exception, list[Union[Response, Exception]]]]
     results_by_uri: dict[str, Union[Response, Exception, list[Union[Response, Exception]]]]
 
+    request_semaphore: Semaphore
+
     def __init__(self, result: Union[Response, Exception, dict, list[Union[Response, Exception]]]) -> None:
         self.set_results(result)
 
@@ -73,6 +76,8 @@ class MockedAsyncClient:
         self.post_calls = 0
         self.post_calls_by_uri = {}
 
+        self.request_semaphore = Semaphore(value=0)
+
     async def __aenter__(self):
         return self
 
@@ -80,6 +85,9 @@ class MockedAsyncClient:
         return False
 
     def _raise_or_return(self, result: Union[Response, Exception, list[Union[Response, Exception]]]) -> Response:
+
+        self.request_semaphore.release()  # Indicate that we have a request
+
         if isinstance(result, list):
             if len(result) > 0:
                 next_result = result.pop(0)
@@ -132,3 +140,39 @@ class MockedAsyncClient:
         if self.result is None:
             raise Exception(f"Mocking error - no mocked result for {url}")
         return self._raise_or_return(self.result)
+
+    async def wait_for_request(self, timeout_seconds: float) -> bool:
+        """Waits for up to timeout_seconds for a GET/POST request to be made to this client. If a request
+        has already been made before this function call - it will return immediately.
+
+        Each call to wait_for_request will "consume" one request such that future calls will require
+        additional requests to be made before returning
+
+        Returns True if a request was "consumed" or False if the timeout was hit"""
+        try:
+
+            await wait_for(self.request_semaphore.acquire(), timeout_seconds)
+        except TimeoutError:
+            return False
+
+        return True
+
+    async def wait_for_n_requests(self, n: int, timeout_seconds: float) -> bool:
+        """Waits for up to timeout_seconds for at least n GET/POST requests to be made to this client. Requests made
+        before the wait occurred will count towards n.
+
+        Each call to wait_for_n_requests will "consume" n requests such that future calls will require
+        additional requests to be made before returning
+
+        Returns True if n requests were "consumed" or False if the timeout was hit"""
+        try:
+            remaining_timeout_seconds = timeout_seconds
+            for _ in range(n):
+                start = datetime.now()
+                await wait_for(self.request_semaphore.acquire(), remaining_timeout_seconds)
+                remaining_timeout_seconds = remaining_timeout_seconds - (datetime.now() - start).seconds
+
+        except TimeoutError:
+            return False
+
+        return True

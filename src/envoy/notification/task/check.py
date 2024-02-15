@@ -76,13 +76,14 @@ def get_entity_pages(
     if resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         # Tariff rates are special because each rate maps to 4 entities (one for each of the various prices)
         # So we need to handle this mapping here as we split everything into NotificationEntities
+        entity_list = list(entities)  # We will be looping this multiple times so we need to stream it out
         for price_type in [
             PricingReadingType.IMPORT_ACTIVE_POWER_KWH,
             PricingReadingType.EXPORT_ACTIVE_POWER_KWH,
             PricingReadingType.IMPORT_REACTIVE_POWER_KVARH,
             PricingReadingType.EXPORT_REACTIVE_POWER_KVARH,
         ]:
-            for entity_page in batched(entities, page_size):
+            for entity_page in batched(entity_list, page_size):
                 yield NotificationEntities(
                     entities=entity_page,
                     subscription=sub,

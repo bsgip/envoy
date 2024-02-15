@@ -1,5 +1,6 @@
 import unittest.mock as mock
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import pytest
 from envoy_schema.server.schema.sep2.pub_sub import (
@@ -24,7 +25,7 @@ from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import PRICE_DECIMAL_POWER, TariffGeneratedRate
 from tests.data.fake.generator import generate_class_instance
 from tests.unit.mocks import assert_mock_session, create_mock_session
 from tests.unit.notification.mocks import (
@@ -456,9 +457,9 @@ async def test_check_db_upsert(
     # agg1_sub1 will match nothing but all other subs will match every entity
     def side_effect_entities_serviced_by_subscription(sub, resource, entities):
         if sub is agg1_sub1:
-            return []
+            return (e for e in [])
         else:
-            return entities
+            return (e for e in entities)
 
     mock_entities_serviced_by_subscription.side_effect = side_effect_entities_serviced_by_subscription
 
@@ -517,6 +518,131 @@ async def test_check_db_upsert(
     assert batch1_entity1_fingerprint not in all_content[1]
     assert batch1_entity2_fingerprint not in all_content[1]
     assert batch2_entity1_fingerprint in all_content[1]
+
+    all_ids: list[str] = [a.kwargs["notification_id"] for a in kiq_args]
+    assert all([isinstance(id, str) for id in all_ids])
+    assert len(set([c for c in all_ids])) == len(all_ids), "All notification_id should be unique"
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.notification.task.check.transmit_notification")
+@mock.patch("envoy.notification.task.check.entities_serviced_by_subscription")
+@mock.patch("envoy.notification.task.check.select_subscriptions_for_resource")
+@mock.patch("envoy.notification.task.check.fetch_batched_entities")
+async def test_check_db_upsert_rates(
+    mock_fetch_batched_entities: mock.MagicMock,
+    mock_select_subscriptions_for_resource: mock.MagicMock,
+    mock_entities_serviced_by_subscription: mock.MagicMock,
+    mock_transmit_notification: mock.MagicMock,
+):
+    """Runs through the bulk of check_db_upsert to ensure that the expected notifications are raised"""
+
+    #
+    # ARRANGE
+    #
+
+    configure_mock_task(mock_transmit_notification)
+
+    mock_session = create_mock_session()
+    mock_broker = create_mock_broker()
+    href_prefix = "/href/prefix"
+    resource = SubscriptionResource.TARIFF_GENERATED_RATE
+    timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
+
+    # Create some entities that will form 2 batches
+    rate1: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=101, generate_relationships=True)
+    rate2: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=202, generate_relationships=True)
+    rate2.site_id = rate1.site_id
+    rate2.tariff_id = rate1.tariff_id
+    rate2.site.site_id = rate1.site.site_id
+    rate2.site.aggregator_id = rate1.site.aggregator_id
+
+    rate1.start_time = datetime(2022, 4, 6, 14, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane"))
+    rate2.start_time = datetime(2022, 4, 6, 14, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane"))
+    entities = AggregatorBatchedEntities(timestamp, resource, [rate1, rate2])
+    mock_fetch_batched_entities.return_value = entities
+
+    # Create a single sub
+    sub1: Subscription = generate_class_instance(Subscription, seed=11)
+    mock_select_subscriptions_for_resource.return_value = [sub1]
+
+    # Configure what entities are serviced by what subscription
+    mock_entities_serviced_by_subscription.return_value = (e for e in [rate1, rate2])
+
+    #
+    # ACT
+    #
+    await check_db_upsert(
+        session=mock_session,
+        broker=mock_broker,
+        href_prefix=href_prefix,
+        resource=resource,
+        timestamp_epoch=timestamp.timestamp(),
+    )
+
+    #
+    # ASSERT
+    #
+
+    # There should be 4 notifications sent out - each containing 2 rates (one for every price type)
+    assert_task_kicked_n_times(mock_transmit_notification, 4)
+    assert_task_kicked_with_broker_and_args(
+        mock_transmit_notification, mock_broker, remote_uri=sub1.notification_uri, attempt=0
+    )
+
+    mock_fetch_batched_entities.assert_called_once_with(mock_session, resource, timestamp)
+
+    # Subscriptions should only be fetched ONCE for each aggregator
+    mock_select_subscriptions_for_resource.assert_called_once_with(mock_session, rate1.site.aggregator_id, resource)
+
+    # No need to commit - persistence is handled via kicking off to transmit_notification
+    # All DB interactions should be readonly
+    assert_mock_session(mock_session, committed=False)
+
+    # Do a slightly deeper dive on the content/notifications being transmitted
+    kiq_args = get_mock_task_kicker_call_args(mock_transmit_notification)
+    all_content: list[str] = [a.kwargs["content"] for a in kiq_args]
+    assert all([isinstance(c, str) for c in all_content])
+    assert len(set([c for c in all_content])) == len(all_content), "All content must be unique"
+
+    # See if our entities appear in the output content (use the timestamp as unique fingerprint)
+    rate1_export_active_fingerprint = f"14:00/cti/{rate1.export_active_price * PRICE_DECIMAL_POWER}"
+    rate1_import_active_fingerprint = f"14:00/cti/{rate1.import_active_price * PRICE_DECIMAL_POWER}"
+    rate1_export_reactive_fingerprint = f"14:00/cti/{rate1.export_reactive_price * PRICE_DECIMAL_POWER}"
+    rate1_import_reactive_fingerprint = f"14:00/cti/{rate1.import_reactive_price * PRICE_DECIMAL_POWER}"
+    rate2_export_active_fingerprint = f"14:05/cti/{rate2.export_active_price * PRICE_DECIMAL_POWER}"
+    rate2_import_active_fingerprint = f"14:05/cti/{rate2.import_active_price * PRICE_DECIMAL_POWER}"
+    rate2_export_reactive_fingerprint = f"14:05/cti/{rate2.export_reactive_price * PRICE_DECIMAL_POWER}"
+    rate2_import_reactive_fingerprint = f"14:05/cti/{rate2.import_reactive_price * PRICE_DECIMAL_POWER}"
+
+    assert (
+        len([c for c in all_content if rate1_export_active_fingerprint in c and rate2_export_active_fingerprint in c])
+        == 1
+    )
+    assert (
+        len([c for c in all_content if rate1_import_active_fingerprint in c and rate2_import_active_fingerprint in c])
+        == 1
+    )
+    assert (
+        len(
+            [
+                c
+                for c in all_content
+                if rate1_export_reactive_fingerprint in c and rate2_export_reactive_fingerprint in c
+            ]
+        )
+        == 1
+    )
+    assert (
+        len(
+            [
+                c
+                for c in all_content
+                if rate1_import_reactive_fingerprint in c and rate2_import_reactive_fingerprint in c
+            ]
+        )
+        == 1
+    )
 
     all_ids: list[str] = [a.kwargs["notification_id"] for a in kiq_args]
     assert all([isinstance(id, str) for id in all_ids])

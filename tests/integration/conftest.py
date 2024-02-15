@@ -108,11 +108,12 @@ async def notifications_enabled(
     broker = TestableBroker(pg_empty_config, href_prefix)
 
     mock_async_client = MockedAsyncClient(Response(status_code=HTTPStatus.NO_CONTENT))
-    mock.patch("envoy.notification.task.transmit.AsyncClient", mock_async_client)
-    with mock.patch("envoy.notification.manager.notification.get_enabled_broker") as mock_get_enabled_broker:
-        await broker.startup()
-        mock_get_enabled_broker.return_value = broker
+    with mock.patch("envoy.notification.task.transmit.AsyncClient") as mock_AsyncClient:
+        mock_AsyncClient.return_value = mock_async_client
+        with mock.patch("envoy.notification.manager.notification.get_enabled_broker") as mock_get_enabled_broker:
+            await broker.startup()
+            mock_get_enabled_broker.return_value = broker
 
-        yield mock_async_client
+            yield mock_async_client
 
-        await broker.shutdown()
+            await broker.shutdown()
