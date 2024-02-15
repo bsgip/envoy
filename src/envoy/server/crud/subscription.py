@@ -4,10 +4,8 @@ from typing import Optional, Sequence
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from envoy.server.model.site import Site
-from envoy.server.model.subscription import Subscription, SubscriptionResource
 
 
 async def select_aggregator_site_count(session: AsyncSession, aggregator_id: int, after: datetime) -> int:

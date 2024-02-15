@@ -1,11 +1,11 @@
 import logging
-from typing import Annotated, AsyncGenerator, Optional
+from typing import Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from taskiq import AsyncBroker, Context, TaskiqDepends, TaskiqEvents, TaskiqState
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from taskiq import TaskiqEvents, TaskiqState
 
 from envoy.notification.exception import NotificationError
-from envoy.notification.handler import generate_broker
+from envoy.notification.handler import STATE_DB_SESSION_MAKER, STATE_HREF_PREFIX, generate_broker
 from envoy.notification.settings import generate_settings
 from envoy.server.api.auth.azure import AzureADResourceTokenConfig
 from envoy.server.database import HandlerDetails, install_handler, remove_handler
@@ -17,27 +17,6 @@ logger.info("Initialising Notification TaskIQ Worker")
 
 settings = generate_settings()
 broker = generate_broker(settings.rabbit_mq_broker_url)
-
-
-async def broker_dependency(context: Annotated[Context, TaskiqDepends()]) -> AsyncBroker:
-    return context.broker
-
-
-async def href_prefix_dependency() -> Optional[str]:
-    return settings.href_prefix
-
-
-async def session_dependency(context: Annotated[Context, TaskiqDepends()]) -> AsyncGenerator[AsyncSession, None]:
-    """Yields a session from TaskIq context session maker (maker created during WORKER_STARTUP event) and
-    then closes it after shutdown"""
-    session: AsyncSession = context.state.db_session_maker()
-
-    try:
-        yield session
-    except Exception as exc:
-        logger.error("Uncaught exception. Attempting to roll back session gracefully", exc_info=exc)
-        await session.rollback()
-    await session.close()
 
 
 # Now setup the lifecycle events for the worker
@@ -64,8 +43,10 @@ async def startup(state: TaskiqState) -> None:
 
     # Setup the database session maker
     db_cfg = settings.db_middleware_kwargs
-    db_engine = create_async_engine(db_cfg["db_url"], **db_cfg["engine_args"])
-    state.db_session_maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    engine_args = db_cfg["engine_args"] if "engine_args" in db_cfg else {}
+    db_engine = create_async_engine(db_cfg["db_url"], **engine_args)
+    setattr(state, STATE_DB_SESSION_MAKER, async_sessionmaker(db_engine, expire_on_commit=False))
+    setattr(state, STATE_HREF_PREFIX, settings.href_prefix)
 
 
 @broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)

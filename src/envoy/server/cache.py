@@ -1,8 +1,10 @@
 import logging
 from asyncio import Lock, get_running_loop, run, sleep
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Awaitable, Callable, Generic, Optional, TypeVar
+
+from envoy.server.manager.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ class ExpiringValue(Generic[V]):
     def is_expired(self) -> bool:
         """Returns True if this value is currently expired based on current datetime"""
         if self.expiry:
-            return datetime.now(tz=timezone.utc) >= self.expiry
+            return utc_now() >= self.expiry
         else:
             return False
 

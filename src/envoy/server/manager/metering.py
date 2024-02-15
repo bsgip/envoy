@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from envoy_schema.server.schema.sep2.metering_mirror import (
     MirrorMeterReading,
@@ -7,6 +7,7 @@ from envoy_schema.server.schema.sep2.metering_mirror import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.notification.manager.notification import NotificationManager
 from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud.end_device import select_single_site_with_lfdi
 from envoy.server.crud.site_reading import (
@@ -17,11 +18,13 @@ from envoy.server.crud.site_reading import (
     upsert_site_readings,
 )
 from envoy.server.exception import InvalidIdError, NotFoundError
+from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.metering import (
     MirrorMeterReadingMapper,
     MirrorUsagePointListMapper,
     MirrorUsagePointMapper,
 )
+from envoy.server.model.subscription import SubscriptionResource
 
 
 class MirrorMeteringManager:
@@ -39,7 +42,7 @@ class MirrorMeteringManager:
         if site is None:
             raise InvalidIdError("deviceLFDI doesn't match a known site for this aggregator")
 
-        changed_time = datetime.now(tz=timezone.utc)
+        changed_time = utc_now()
         srt = MirrorUsagePointMapper.map_from_request(
             mup, aggregator_id=request_params.aggregator_id, site_id=site.site_id, changed_time=changed_time
         )
@@ -86,7 +89,7 @@ class MirrorMeteringManager:
         if srt is None:
             raise NotFoundError(f"MirrorUsagePoint with id {site_reading_type_id} doesn't exist or is inaccessible")
 
-        changed_time = datetime.now(tz=timezone.utc)
+        changed_time = utc_now()
         site_readings = MirrorMeterReadingMapper.map_from_request(
             mmr,
             aggregator_id=request_params.aggregator_id,
@@ -96,6 +99,7 @@ class MirrorMeteringManager:
 
         await upsert_site_readings(session, site_readings)
         await session.commit()
+        await NotificationManager.notify_upserted_entities(SubscriptionResource.READING, changed_time)
         return
 
     @staticmethod

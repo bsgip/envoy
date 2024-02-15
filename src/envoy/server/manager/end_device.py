@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from secrets import token_bytes
 from typing import Optional
 
@@ -6,6 +6,7 @@ from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPoint
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.notification.manager.notification import NotificationManager
 from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud.end_device import (
     select_aggregator_site_count,
@@ -15,8 +16,10 @@ from envoy.server.crud.end_device import (
     upsert_site_for_aggregator,
 )
 from envoy.server.exception import UnableToGenerateIdError
+from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
+from envoy.server.model.subscription import SubscriptionResource
 
 
 class EndDeviceManager:
@@ -70,9 +73,13 @@ class EndDeviceManager:
             end_device.sFDI = sfdi
             end_device.lFDI = lfdi
 
-        site = EndDeviceMapper.map_from_request(end_device, request_params.aggregator_id, datetime.now(tz=timezone.utc))
+        changed_time = utc_now()
+        site = EndDeviceMapper.map_from_request(end_device, request_params.aggregator_id, changed_time)
         result = await upsert_site_for_aggregator(session, request_params.aggregator_id, site)
         await session.commit()
+
+        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE, changed_time)
+
         return result
 
     @staticmethod
@@ -94,6 +101,7 @@ class EndDeviceManager:
         """Attempts to update the NMI for a designated site. Returns True if the update proceeded successfully,
         False if the Site doesn't exist / belongs to another aggregator_id"""
 
+        changed_time = utc_now()
         site = await select_single_site_with_site_id(
             session=session, site_id=site_id, aggregator_id=request_params.aggregator_id
         )
@@ -101,8 +109,11 @@ class EndDeviceManager:
             return False
 
         site.nmi = nmi
-        site.changed_time = datetime.now(tz=timezone.utc)
+        site.changed_time = changed_time
         await session.commit()
+
+        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE, changed_time)
+
         return True
 
 

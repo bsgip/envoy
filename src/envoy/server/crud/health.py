@@ -1,10 +1,10 @@
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -58,7 +58,7 @@ async def check_dynamic_prices(session: AsyncSession, check: DynamicPriceCheck) 
     try:
         # Look for the first entity whose start time exceeds now - look through more recent entries to hopefully get
         # match more quickly
-        now = datetime.now(tz=timezone.utc)
+        now = utc_now()
         future_rate_stmt = (
             select(TariffGeneratedRate)
             .where(TariffGeneratedRate.start_time >= now)
@@ -91,7 +91,7 @@ async def check_dynamic_operating_envelopes(session: AsyncSession, check: Dynami
     try:
         # Look for the first entity whose start time exceeds now - look through more recent entries to hopefully get
         # match more quickly
-        now = datetime.now(tz=timezone.utc)
+        now = utc_now()
         future_doe_stmt = (
             select(DynamicOperatingEnvelope)
             .where(DynamicOperatingEnvelope.start_time >= now)

@@ -22,7 +22,7 @@ from envoy.notification.crud.batch import (
     select_subscriptions_for_resource,
 )
 from envoy.notification.exception import NotificationError
-from envoy.notification.main import broker_dependency, href_prefix_dependency, session_dependency
+from envoy.notification.handler import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification
 from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.sep2.pricing import PricingReadingType
@@ -258,10 +258,14 @@ async def check_db_upsert(
 
         agg_id = n.batch_key[0]  # Aggregator ID is ALWAYS the first element of the batch_key
         rs_params = RequestStateParameters(agg_id, href_prefix)
-        await transmit_notification.kicker().with_broker(broker).kiq(
-            remote_uri=n.subscription.notification_uri,
-            content=content,
-            notification_id=n.notification_id,
-            subscription_href=NotificationMapper.calculate_subscription_href(n.subscription, rs_params),
-            attempt=0,
-        )
+
+        try:
+            await transmit_notification.kicker().with_broker(broker).kiq(
+                remote_uri=n.subscription.notification_uri,
+                content=content,
+                notification_id=str(n.notification_id),
+                subscription_href=NotificationMapper.calculate_subscription_href(n.subscription, rs_params),
+                attempt=0,
+            )
+        except Exception as ex:
+            logger.error("Error adding transmission task", exc_info=ex)

@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import List
-from zoneinfo import ZoneInfo
 
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
 
@@ -9,10 +8,10 @@ from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 class TariffMapper:
     @staticmethod
-    def map_from_request(tariff: TariffRequest) -> Tariff:
+    def map_from_request(changed_time: datetime, tariff: TariffRequest) -> Tariff:
         return Tariff(
             name=tariff.name,
-            changed_time=datetime.now(tz=ZoneInfo("UTC")),
+            changed_time=changed_time,
             currency_code=tariff.currency_code,
             dnsp_code=tariff.dnsp_code,
         )
@@ -30,12 +29,14 @@ class TariffMapper:
 
 class TariffGeneratedRateListMapper:
     @staticmethod
-    def map_from_request(tariff_genrate_list: List[TariffGeneratedRateRequest]) -> List[TariffGeneratedRate]:
+    def map_from_request(
+        changed_time: datetime, tariff_genrate_list: List[TariffGeneratedRateRequest]
+    ) -> List[TariffGeneratedRate]:
         return [
             TariffGeneratedRate(
                 tariff_id=tariff_genrate.tariff_id,
                 site_id=tariff_genrate.site_id,
-                changed_time=datetime.now(tz=ZoneInfo("UTC")),
+                changed_time=changed_time,
                 start_time=tariff_genrate.start_time,
                 duration_seconds=tariff_genrate.duration_seconds,
                 import_active_price=tariff_genrate.import_active_price,

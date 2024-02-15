@@ -1,6 +1,5 @@
 import unittest.mock as mock
 from datetime import datetime, timezone
-from uuid import UUID
 
 import pytest
 from envoy_schema.server.schema.sep2.pub_sub import (
@@ -519,6 +518,6 @@ async def test_check_db_upsert(
     assert batch1_entity2_fingerprint not in all_content[1]
     assert batch2_entity1_fingerprint in all_content[1]
 
-    all_ids: list[UUID] = [a.kwargs["notification_id"] for a in kiq_args]
-    assert all([isinstance(id, UUID) for id in all_ids])
+    all_ids: list[str] = [a.kwargs["notification_id"] for a in kiq_args]
+    assert all([isinstance(id, str) for id in all_ids])
     assert len(set([c for c in all_ids])) == len(all_ids), "All notification_id should be unique"

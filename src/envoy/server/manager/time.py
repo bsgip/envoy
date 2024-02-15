@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -84,3 +84,8 @@ def get_dst_info(now_time: datetime) -> DaylightSavingsTimeInfo:
         dst_end_time = tzif_obj._trans_list_utc[last_transition_idx + 2]  # type: ignore  # see caveat at top of func
 
     return DaylightSavingsTimeInfo(dst_end=dst_end_time, dst_start=dst_start_time, dst_offset=dst_offset_total_seconds)
+
+
+def utc_now() -> datetime:
+    """Returns an unambiguous timezone aware (UTC) datetime representing this moment (according to server time)"""
+    return datetime.now(tz=timezone.utc)

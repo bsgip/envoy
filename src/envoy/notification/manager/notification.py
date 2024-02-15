@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from envoy.notification.handler import enabled_broker
+from envoy.notification.handler import get_enabled_broker
 from envoy.notification.task.check import check_db_upsert
 from envoy.server.model.subscription import SubscriptionResource
 
@@ -14,6 +14,7 @@ class NotificationManager:
         """If notifications are enabled - enqueues a task that will look for changes in the specified entities
 
         The work will NOT occur on this process - it's purely enqueuing it to run elsewhere"""
+        enabled_broker = get_enabled_broker()
         if enabled_broker is None:
             return False
 

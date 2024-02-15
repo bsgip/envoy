@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from tzlocal import get_localzone, get_localzone_name
 
-from envoy.server.manager.time import get_dst_info, get_tz_key
+from envoy.server.manager.time import get_dst_info, get_tz_key, utc_now
 
 
 def test_get_tz_key_via_getlocalzone():
@@ -40,3 +40,8 @@ def test_get_dst_info(dt: datetime, dst_end: int, dst_start: int, dst_offset: in
     assert result.dst_end == dst_end
     assert result.dst_start == dst_start
     assert result.dst_offset == dst_offset
+
+
+def test_utc_now():
+    now = utc_now()
+    assert now.tzinfo is not None

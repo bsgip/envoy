@@ -1,32 +1,41 @@
 import logging
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
-from typing import AsyncIterator, Callable, Optional
+from typing import Annotated, AsyncGenerator, AsyncIterator, Callable, Optional
 
 from fastapi import FastAPI
-from taskiq import AsyncBroker, InMemoryBroker, SimpleRetryMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
+from taskiq import AsyncBroker, Context, InMemoryBroker, SimpleRetryMiddleware, TaskiqDepends
 from taskiq.result_backends.dummy import DummyResultBackend
 from taskiq_aio_pika import AioPikaBroker  # type: ignore # https://github.com/taskiq-python/taskiq-aio-pika/pull/28
 
 logger = logging.getLogger(__name__)
 
-# This is a bit of a cludge for testing. Normally this won't be set in a production environment
-#
+# TaskIQ state key for a function that when executed will return a new AsyncSession
+STATE_DB_SESSION_MAKER = "db_session_maker"
+# TaskIQ state key for an optional string
+STATE_HREF_PREFIX = "href_prefix"
+
+
 # Reference to the shared InMemoryBroker. Will be lazily instantiated
 ENABLED_IN_MEMORY_BROKER: Optional[InMemoryBroker] = None
 
 
-# The currently enabled broker (if any). Will point to the last broker instantiated by enable_notification_workers
-# This will normally NOT be available at import time for the purposes of decorating task functions
-#
-# So task functions should annotated using:
-# @async_shared_broker.task()
-# async def my_task(p1: int) -> None:
-#   await sleep(p1)
-#   print("Hello World")
-#
-# And then kicked using:
-#   await my_task.kicker().with_broker(enabled_broker).kiq(1)
-enabled_broker: Optional[AsyncBroker] = None
+_enabled_broker: Optional[AsyncBroker] = None
+
+
+def get_enabled_broker() -> Optional[AsyncBroker]:
+    """The currently enabled broker (if any). Will point to the last broker instantiated by enable_notification_workers
+    This will normally NOT be available at import time for the purposes of decorating task functions
+
+    So task functions should annotated using:
+    @async_shared_broker.task()
+    async def my_task(p1: int) -> None:
+      await sleep(p1)
+      print("Hello World")
+
+    And then kicked using:
+      await my_task.kicker().with_broker(enabled_broker).kiq(1)"""
+    return _enabled_broker
 
 
 def generate_broker(rabbit_mq_broker_url: Optional[str]) -> AsyncBroker:
@@ -73,6 +82,28 @@ def enable_notification_client(
 
         await broker.shutdown()
 
-    global enabled_broker
-    enabled_broker = broker
+    global _enabled_broker
+    _enabled_broker = broker
     return context_manager
+
+
+async def broker_dependency(context: Annotated[Context, TaskiqDepends()]) -> AsyncBroker:
+    return context.broker
+
+
+async def href_prefix_dependency(context: Annotated[Context, TaskiqDepends()]) -> Optional[str]:
+    return getattr(context.state, STATE_HREF_PREFIX, None)
+
+
+async def session_dependency(context: Annotated[Context, TaskiqDepends()]) -> AsyncGenerator[AsyncSession, None]:
+    """Yields a session from TaskIq context session maker (maker created during WORKER_STARTUP event) and
+    then closes it after shutdown"""
+    session_maker = getattr(context.state, STATE_DB_SESSION_MAKER)
+    session: AsyncSession = session_maker()
+
+    try:
+        yield session
+    except Exception as exc:
+        logger.error("Uncaught exception. Attempting to roll back session gracefully", exc_info=exc)
+        await session.rollback()
+    await session.close()

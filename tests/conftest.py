@@ -3,6 +3,7 @@ import os
 import random
 import sys
 from decimal import Decimal
+from typing import Generator
 
 import alembic.config
 import pytest
@@ -30,7 +31,7 @@ if test_with_docker:
 
 
 @pytest.fixture
-def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Connection:
+def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Generator[Connection, None, None]:
     """Sets up the testing DB, applies alembic migrations but does NOT add any entities"""
 
     # Install the DATABASE_URL before running alembic
@@ -113,7 +114,7 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Connection:
 
 
 @pytest.fixture
-def pg_base_config(pg_empty_config) -> Connection:
+def pg_base_config(pg_empty_config: Connection) -> Generator[Connection, None, None]:
     """Sets up the testing DB, applies alembic migrations and deploys the "base_config" sql file"""
 
     with open("tests/data/sql/base_config.sql") as f:
@@ -127,7 +128,7 @@ def pg_base_config(pg_empty_config) -> Connection:
 
 
 @pytest.fixture
-def pg_la_timezone(pg_base_config) -> Connection:
+def pg_la_timezone(pg_base_config) -> Generator[Connection, None, None]:
     """Mutates pg_base_config to set all site timezones to Los Angeles time"""
 
     with open("tests/data/sql/la_timezone.sql") as f:
@@ -141,7 +142,7 @@ def pg_la_timezone(pg_base_config) -> Connection:
 
 
 @pytest.fixture
-def pg_additional_does(pg_base_config) -> Connection:
+def pg_additional_does(pg_base_config: Connection) -> Generator[Connection, None, None]:
     """Mutates pg_base_config to include additional DOEs"""
 
     with open("tests/data/sql/additional_does.sql") as f:
@@ -155,7 +156,7 @@ def pg_additional_does(pg_base_config) -> Connection:
 
 
 @pytest.fixture
-def pg_billing_data(pg_base_config) -> Connection:
+def pg_billing_data(pg_base_config: Connection) -> Generator[Connection, None, None]:
     """Mutates pg_base_config to include additional billing specific data"""
 
     with open("tests/data/sql/billing_data.sql") as f:

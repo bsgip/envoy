@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Optional
 
 from envoy_schema.server.schema.sep2.der import (
@@ -20,6 +20,7 @@ from envoy.server.crud.doe import (
 )
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
+from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 
@@ -92,7 +93,7 @@ class DERControlManager:
         """DER Controls are how Dynamic Operating Envelopes are communicated. This will provide a pagination API
         for iterating active DOE's (i.e their timerange intersects with now) stored against a particular site"""
 
-        now = datetime.now(tz=timezone.utc)
+        now = utc_now()
         does = await select_does_at_timestamp(
             session, request_params.aggregator_id, site_id, now, start, changed_after, limit
         )

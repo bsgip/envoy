@@ -1,3 +1,4 @@
+from datetime import datetime
 from random import randint
 
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
@@ -10,7 +11,8 @@ from tests.data.fake.generator import generate_class_instance
 def test_doe_mapper_from_request():
     req: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest)
 
-    mdl = DoeListMapper.map_from_request([req])[0]
+    changed_time = datetime(2021, 5, 6, 7, 8, 9)
+    mdl = DoeListMapper.map_from_request(changed_time, [req])[0]
 
     assert isinstance(mdl, DynamicOperatingEnvelope)
 
@@ -19,7 +21,7 @@ def test_doe_mapper_from_request():
     assert mdl.import_limit_active_watts == req.import_limit_active_watts
     assert mdl.export_limit_watts == req.export_limit_watts
     assert mdl.start_time == req.start_time
-    assert mdl.changed_time
+    assert mdl.changed_time == changed_time
 
     assert not mdl.site
     assert not mdl.dynamic_operating_envelope_id

@@ -1,9 +1,11 @@
 import unittest.mock as mock
 from collections import defaultdict
+from http import HTTPStatus
+from typing import AsyncGenerator
 
 import pytest
 from asgi_lifespan import LifespanManager
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from psycopg import Connection
 
 from envoy.admin.main import generate_app as admin_gen_app
@@ -13,6 +15,7 @@ from envoy.server.settings import generate_settings
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as VALID_CERT_FINGERPRINT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as VALID_CERT_PEM
 from tests.integration.integration_server import cert_header
+from tests.integration.notification import TestableBroker
 from tests.unit.jwt import generate_rs256_jwt
 from tests.unit.mocks import MockedAsyncClient
 
@@ -87,9 +90,29 @@ def admin_path_methods():
 
 
 @pytest.fixture(scope="function")
-def notifications_enabled():
+async def notifications_enabled(
+    pg_empty_config, request: pytest.FixtureRequest
+) -> AsyncGenerator[MockedAsyncClient, None]:
     """Enables notifications for the server and returns a MockedAsyncClient which
-    will be patched to receive all outgoing notification POST requests."""
-    mock_async_client = MockedAsyncClient(Exception("Mock responses not configured"))
+    will be patched to receive all outgoing notification POST requests.
+
+    The returned client will default to always returning HTTP NO_CONTENT on get/post"""
+
+    # We need to inject our own extension to the TaskIQ in memory broker that's configured
+    # with the appropriate state
+    href_prefix_marker = request.node.get_closest_marker("href_prefix")
+    if href_prefix_marker is not None:
+        href_prefix = str(href_prefix_marker.args[0])
+    else:
+        href_prefix = None
+    broker = TestableBroker(pg_empty_config, href_prefix)
+
+    mock_async_client = MockedAsyncClient(Response(status_code=HTTPStatus.NO_CONTENT))
     mock.patch("envoy.notification.task.transmit.AsyncClient", mock_async_client)
-    return mock_async_client
+    with mock.patch("envoy.notification.manager.notification.get_enabled_broker") as mock_get_enabled_broker:
+        await broker.startup()
+        mock_get_enabled_broker.return_value = broker
+
+        yield mock_async_client
+
+        await broker.shutdown()

@@ -10,7 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.pricing import insert_single_tariff, update_single_tariff, upsert_many_tariff_genrate
 from envoy.admin.mapper.pricing import TariffGeneratedRateListMapper, TariffMapper
+from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.pricing import select_all_tariffs, select_single_tariff
+from envoy.server.manager.time import utc_now
+from envoy.server.model.subscription import SubscriptionResource
 
 
 class TariffManager:
@@ -18,7 +21,8 @@ class TariffManager:
     async def add_new_tariff(session: AsyncSession, tariff: TariffRequest) -> int:
         """Map a TariffRequest object to a Tariff model and insert into DB. Return the tariff_id only."""
 
-        tariff_model = TariffMapper.map_from_request(tariff)
+        changed_time = utc_now()
+        tariff_model = TariffMapper.map_from_request(changed_time, tariff)
         await insert_single_tariff(session, tariff_model)
         await session.commit()
         return tariff_model.tariff_id
@@ -30,7 +34,9 @@ class TariffManager:
         tariff: TariffRequest,
     ) -> None:
         """Map a TariffRequest object to a Tariff model and update DB entry."""
-        tariff_model = TariffMapper.map_from_request(tariff)
+
+        changed_time = utc_now()
+        tariff_model = TariffMapper.map_from_request(changed_time, tariff)
         tariff_model.tariff_id = tariff_id
         await update_single_tariff(session, tariff_model)
         await session.commit()
@@ -57,6 +63,10 @@ class TariffGeneratedRateListManager:
     async def add_many_tariff_genrate(session: AsyncSession, tariff_genrates: List[TariffGeneratedRateRequest]) -> None:
         """Map a TariffGeneratedRateRequest object to a TariffGeneratedRate model and insert into DB.
         Return the tariff_generated_rate_id only."""
-        tariff_genrate_models = TariffGeneratedRateListMapper.map_from_request(tariff_genrates)
+
+        changed_time = utc_now()
+        tariff_genrate_models = TariffGeneratedRateListMapper.map_from_request(changed_time, tariff_genrates)
         await upsert_many_tariff_genrate(session, tariff_genrate_models)
         await session.commit()
+
+        await NotificationManager.notify_upserted_entities(SubscriptionResource.TARIFF_GENERATED_RATE, changed_time)

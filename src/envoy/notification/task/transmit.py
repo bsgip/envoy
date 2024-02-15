@@ -1,13 +1,12 @@
 import logging
 from datetime import timedelta
 from typing import Annotated, Optional
-from uuid import UUID
 
 from httpx import AsyncClient
 from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
 
 from envoy.notification.exception import NotificationError
-from envoy.notification.main import broker_dependency
+from envoy.notification.handler import broker_dependency
 
 HEADER_SUBSCRIPTION_ID = "x-envoy-subscription-href"
 HEADER_NOTIFICATION_ID = "x-envoy-notification-id"
@@ -28,7 +27,7 @@ def attempt_to_retry_delay(attempt: int) -> Optional[timedelta]:
 
 
 async def schedule_retry_transmission(
-    broker: AsyncBroker, remote_uri: str, content: str, subscription_href: str, notification_id: UUID, attempt: int
+    broker: AsyncBroker, remote_uri: str, content: str, subscription_href: str, notification_id: str, attempt: int
 ) -> None:
     delay = attempt_to_retry_delay(attempt)
     if delay is None:
@@ -54,7 +53,7 @@ async def schedule_retry_transmission(
 
 
 async def do_transmit_notification(
-    remote_uri: str, content: str, subscription_href: str, notification_id: UUID, attempt: int
+    remote_uri: str, content: str, subscription_href: str, notification_id: str, attempt: int
 ) -> bool:
     """Internal method for transmitting the notification - Raises a NotificationError if the request fails and
     needs retrying otherwise returns true if the transmit succeeded or false otherwise"""
@@ -73,7 +72,7 @@ async def do_transmit_notification(
             attempt,
         )
 
-        headers = {HEADER_SUBSCRIPTION_ID: subscription_href, HEADER_NOTIFICATION_ID: str(notification_id)}
+        headers = {HEADER_SUBSCRIPTION_ID: subscription_href, HEADER_NOTIFICATION_ID: notification_id}
 
         try:
             response = await client.post(url=remote_uri, content=content, headers=headers)
@@ -112,7 +111,7 @@ async def transmit_notification(
     remote_uri: str,
     content: str,
     subscription_href: str,
-    notification_id: UUID,
+    notification_id: str,
     attempt: int,
     broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)] = TaskiqDepends(),
 ) -> None:

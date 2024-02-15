@@ -50,7 +50,7 @@ async def test_schedule_retry_transmission_too_many_attempts(
     remote_uri = "http://foo.bar/example?a=b"
     content = "MY POST CONTENT"
     subscription_href = "/my/sub/123"
-    notification_id = uuid4()
+    notification_id = str(uuid4())
     attempt = 1
 
     mock_attempt_to_retry_delay.return_value = None
@@ -73,7 +73,7 @@ async def test_schedule_retry_transmission(
     remote_uri = "http://foo.bar/example?a=b"
     content = "MY POST CONTENT"
     subscription_href = "/my/sub/123"
-    notification_id = uuid4()
+    notification_id = str(uuid4())
     attempt = 1
     delay_seconds = 123
 
@@ -113,7 +113,7 @@ async def test_do_transmit_notification_success(mock_AsyncClient: mock.MagicMock
     remote_uri = "http://foo.bar/example?a=b"
     content = "MY POST CONTENT"
     subscription_href = "/my/sub/123"
-    notification_id = uuid4()
+    notification_id = str(uuid4())
     attempt = 4
 
     mocked_client = MockedAsyncClient(Response(status_code=response_code, content="Mock response content"))
@@ -150,7 +150,7 @@ async def test_do_transmit_notification_immediately_abort(mock_AsyncClient: mock
     remote_uri = "http://foo.bar/example?a=b"
     content = "MY POST CONTENT"
     subscription_href = "/my/sub/123"
-    notification_id = uuid4()
+    notification_id = str(uuid4())
     attempt = 4
 
     mocked_client = MockedAsyncClient(Response(status_code=response_code, content="Mock response content"))
@@ -188,7 +188,7 @@ async def test_do_transmit_notification_potential_retry(
     remote_uri = "http://foo.bar/example?a=b"
     content = "MY POST CONTENT"
     subscription_href = "/my/sub/123"
-    notification_id = uuid4()
+    notification_id = str(uuid4())
     attempt = 4
 
     response = (
@@ -226,7 +226,7 @@ async def test_transmit_notification_no_retry(
     remote_uri = "http://example.foo.bar/path?a=b"
     content = "my content to send"
     subscription_href = "/my/href"
-    notification_id = uuid4()
+    notification_id = str(uuid4())
     attempt = 3
     broker = create_mock_broker()
 
@@ -249,7 +249,7 @@ async def test_transmit_notification_with_retry(
     remote_uri = "http://example.foo.bar/path?a=b"
     content = "my content to send"
     subscription_href = "/my/href"
-    notification_id = uuid4()
+    notification_id = str(uuid4())
     attempt = 3
     broker = create_mock_broker()
 
