@@ -18,7 +18,6 @@ from envoy_schema.server.schema.uri import (
     TimeTariffIntervalListUri,
 )
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID, DERControlMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
@@ -29,6 +28,7 @@ from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription
 from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.request_state import RequestStateParameters
 
 
 class NotificationMapper:

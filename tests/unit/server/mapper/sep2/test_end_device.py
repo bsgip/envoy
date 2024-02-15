@@ -7,10 +7,10 @@ from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, En
 from envoy_schema.server.schema.sep2.primitive_types import HexBinary32
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
 from envoy.server.model.site import Site
+from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import generate_class_instance, generate_value
 
 

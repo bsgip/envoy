@@ -1,7 +1,7 @@
 from itertools import chain
 from typing import Any, Union
 
-from envoy.server.api.request import RequestStateParameters
+from envoy.server.request_state import RequestStateParameters
 
 
 def generate_mrid(*args: Union[int, float]) -> str:

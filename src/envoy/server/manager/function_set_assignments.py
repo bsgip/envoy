@@ -6,9 +6,9 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud import pricing
 from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
+from envoy.server.request_state import RequestStateParameters
 
 
 class FunctionSetAssignmentsManager:

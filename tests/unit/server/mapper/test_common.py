@@ -3,8 +3,8 @@ from typing import Any, Optional, Union
 
 import pytest
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.common import generate_href, generate_mrid
+from envoy.server.request_state import RequestStateParameters
 
 
 @pytest.mark.parametrize(

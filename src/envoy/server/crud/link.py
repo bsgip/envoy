@@ -9,9 +9,9 @@ from envoy_schema.server.schema.function_set import FUNCTION_SET_STATUS, Functio
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud import end_device, site_reading
 from envoy.server.mapper.common import generate_href
+from envoy.server.request_state import RequestStateParameters
 
 logger = logging.getLogger(__name__)
 

@@ -21,7 +21,6 @@ from envoy_schema.server.schema.sep2.types import (
     UomType,
 )
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.metering import (
     MirrorMeterReadingMapper,
@@ -30,6 +29,7 @@ from envoy.server.mapper.sep2.metering import (
 )
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
+from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 
 

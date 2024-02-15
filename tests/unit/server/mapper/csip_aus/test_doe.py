@@ -8,10 +8,10 @@ from envoy_schema.server.schema.sep2.der import (
 )
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
+from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import generate_class_instance
 
 

@@ -6,10 +6,10 @@ from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPoint
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.model.site import Site
+from envoy.server.request_state import RequestStateParameters
 from envoy.server.settings import settings
 
 

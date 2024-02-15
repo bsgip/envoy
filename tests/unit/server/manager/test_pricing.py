@@ -15,7 +15,6 @@ from envoy_schema.server.schema.sep2.pricing import (
     TimeTariffIntervalResponse,
 )
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidIdError
 from envoy.server.manager.pricing import (
@@ -27,6 +26,7 @@ from envoy.server.manager.pricing import (
 from envoy.server.mapper.sep2.pricing import TOTAL_PRICING_READING_TYPES, PricingReadingType
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import generate_class_instance
 from tests.postgres_testing import generate_async_session
 from tests.unit.mocks import assert_mock_session, create_mock_session

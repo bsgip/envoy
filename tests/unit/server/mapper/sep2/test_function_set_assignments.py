@@ -1,11 +1,11 @@
 from envoy_schema.server.schema.sep2 import identification
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,
     FunctionSetAssignmentsMapper,
     FunctionSetAssignmentsResponse,
 )
+from envoy.server.request_state import RequestStateParameters
 from tests.data.fake import generator
 
 

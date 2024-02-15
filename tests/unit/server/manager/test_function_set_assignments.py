@@ -9,8 +9,8 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
+from envoy.server.request_state import RequestStateParameters
 from tests.data.fake import generator
 from tests.unit.mocks import assert_mock_session, create_mock_session
 

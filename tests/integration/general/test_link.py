@@ -4,8 +4,8 @@ import pydantic_xml
 import pytest
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud import link
+from envoy.server.request_state import RequestStateParameters
 from tests.postgres_testing import generate_async_session
 
 

@@ -13,7 +13,6 @@ from envoy_schema.server.schema.sep2.pub_sub import (
 )
 from envoy_schema.server.schema.uri import DERControlListUri, EndDeviceListUri
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper
@@ -22,6 +21,7 @@ from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription
 from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import generate_class_instance
 
 

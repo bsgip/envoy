@@ -16,11 +16,11 @@ from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.pricing import PrimacyType
 from envoy_schema.server.schema.sep2.types import DateTimeIntervalType
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
+from envoy.server.request_state import RequestStateParameters
 
 DOE_PROGRAM_MRID_PREFIX: int = int("D0E", 16)
 DOE_PROGRAM_ID: str = "doe"

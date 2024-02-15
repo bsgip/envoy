@@ -9,13 +9,13 @@ from envoy_schema.server.schema.sep2.der import (
     DERProgramResponse,
 )
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.mapper.csip_aus.doe import DERControlListSource
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
+from envoy.server.request_state import RequestStateParameters
 from tests.assert_time import assert_nowish
 from tests.data.fake.generator import generate_class_instance
 from tests.unit.mocks import assert_mock_session, create_mock_session

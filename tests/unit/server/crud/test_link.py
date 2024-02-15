@@ -7,9 +7,9 @@ from envoy_schema.server.schema.function_set import FunctionSet, FunctionSetStat
 from envoy_schema.server.schema.sep2.base import BaseXmlModelWithNS
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud import link
 from envoy.server.crud.link import LinkParameters
+from envoy.server.request_state import RequestStateParameters
 
 
 @pytest.mark.anyio

@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from http import HTTPStatus
 from typing import Optional
@@ -6,19 +5,12 @@ from typing import Optional
 from fastapi import HTTPException, Request
 
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+from envoy.server.request_state import RequestStateParameters
 
 MAX_LIMIT = 500
 DEFAULT_LIMIT = 1
 DEFAULT_START = 0
 DEFAULT_DATETIME = datetime.min
-
-
-@dataclass
-class RequestStateParameters:
-    """Set of parameters inherent to an incoming request - likely specified by fastapi depends"""
-
-    aggregator_id: int  # The aggregator id that a request is scoped to (sourced from auth dependencies)
-    href_prefix: Optional[str]  # If set - all outgoing href's should be prefixed with this value
 
 
 def extract_request_params(request: Request) -> RequestStateParameters:

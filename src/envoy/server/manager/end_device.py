@@ -7,7 +7,6 @@ from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, En
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.notification.manager.notification import NotificationManager
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud.end_device import (
     select_aggregator_site_count,
     select_all_sites_with_aggregator_id,
@@ -20,6 +19,7 @@ from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
 from envoy.server.model.subscription import SubscriptionResource
+from envoy.server.request_state import RequestStateParameters
 
 
 class EndDeviceManager:

@@ -24,7 +24,6 @@ from envoy.notification.crud.batch import (
 from envoy.notification.exception import NotificationError
 from envoy.notification.handler import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
@@ -32,6 +31,7 @@ from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.request_state import RequestStateParameters
 
 logger = logging.getLogger(__name__)
 

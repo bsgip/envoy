@@ -28,11 +28,11 @@ from envoy_schema.server.schema.sep2.types import (
     UomType,
 )
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
+from envoy.server.request_state import RequestStateParameters
 
 TARIFF_PROFILE_MRID_PREFIX: int = int("B111", 16)
 RATE_MRID_PREFIX: int = int("D01A", 16)

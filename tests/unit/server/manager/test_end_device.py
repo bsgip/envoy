@@ -6,10 +6,10 @@ from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPoint
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.exception import UnableToGenerateIdError
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
 from envoy.server.model.site import Site
+from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import generate_class_instance
 from tests.unit.mocks import assert_mock_session, create_mock_session
 

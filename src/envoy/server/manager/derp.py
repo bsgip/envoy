@@ -9,7 +9,6 @@ from envoy_schema.server.schema.sep2.der import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.api.request import RequestStateParameters
 from envoy.server.crud.doe import (
     count_does,
     count_does_at_timestamp,
@@ -23,6 +22,7 @@ from envoy.server.exception import NotFoundError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+from envoy.server.request_state import RequestStateParameters
 
 
 class DERProgramManager:
