@@ -124,7 +124,7 @@ async def test_create_does_with_active_subscription(
             ]
         )
         == 1
-    )
+    ), "Only one notification (for sub 1) should have the doe1/doe2 batch"
 
     assert (
         len(
@@ -139,7 +139,7 @@ async def test_create_does_with_active_subscription(
             ]
         )
         == 1
-    )
+    ), "Only one notification (for sub1) should have the doe3 batch"
 
     assert (
         len(
@@ -154,7 +154,7 @@ async def test_create_does_with_active_subscription(
             ]
         )
         == 1
-    )
+    ), "Only one notification (for sub2) should have the doe3 batch"
 
 
 @pytest.mark.anyio
@@ -315,7 +315,7 @@ async def test_create_rates_with_active_subscription(
             ]
         )
         == 1
-    )
+    ), "Only one notification should have the export prices"
 
     assert (
         len(
@@ -330,4 +330,4 @@ async def test_create_rates_with_active_subscription(
             ]
         )
         == 1
-    )
+    ), "Only one notification should have the import prices"

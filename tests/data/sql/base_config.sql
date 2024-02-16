@@ -225,14 +225,14 @@ VALUES (1, -- subscription_condition_id
     5, -- subscription_id
     0, -- attribute
     1, -- lower_threshold
-    NULL -- upper_threshold
+    11 -- upper_threshold
     );
 INSERT INTO public.subscription_condition("subscription_condition_id", "subscription_id", "attribute", "lower_threshold", "upper_threshold")
 VALUES (2, -- subscription_condition_id
     5, -- subscription_id
     0, -- attribute
-    NULL, -- lower_threshold
-    2 -- upper_threshold
+    2, -- lower_threshold
+    12 -- upper_threshold
     );
 
 SELECT pg_catalog.setval('public.subscription_condition_subscription_condition_id_seq', 3, true);
