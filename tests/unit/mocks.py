@@ -36,7 +36,7 @@ class LoggedRequest:
     method: str
     uri: str
     headers: Optional[HeaderTypes]
-    content: Optional[Any]
+    content: Optional[Any] = None
 
 
 class MockedAsyncClient:

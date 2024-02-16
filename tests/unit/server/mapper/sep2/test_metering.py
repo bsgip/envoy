@@ -193,6 +193,7 @@ def test_MirrorMeterReadingMapper_map_reading_from_request_no_time_period():
     """If TimePeriod is none - raise error"""
     reading: Reading = generate_class_instance(Reading)
     reading.timePeriod = None
+    reading.qualityFlags = f"{QualityFlagsType.FORECAST:0x}"
     with pytest.raises(InvalidMappingError):
         MirrorMeterReadingMapper.map_reading_from_request(reading, 1, datetime.now())
 

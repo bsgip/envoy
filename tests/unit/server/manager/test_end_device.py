@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.exception import UnableToGenerateIdError
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
 from envoy.server.model.site import Site
+from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import generate_class_instance
-from tests.unit.mocks import assert_mock_session, create_mock_session
+from tests.unit.mocks import assert_mock_session, create_async_result, create_mock_session
 
 
 @pytest.mark.anyio
@@ -128,15 +129,17 @@ async def test_end_device_manager_fetch_missing_device(
 
 
 @pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.NotificationManager")
 @mock.patch("envoy.server.manager.end_device.upsert_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
-@mock.patch("envoy.server.manager.end_device.datetime")
+@mock.patch("envoy.server.manager.end_device.utc_now")
 @mock.patch("envoy.server.manager.end_device.select_single_site_with_sfdi")
 async def test_add_or_update_enddevice_for_aggregator_with_sfdi(
     mock_select_single_site_with_sfdi: mock.MagicMock,
-    mock_datetime: mock.MagicMock,
+    mock_utc_now: mock.MagicMock,
     mock_EndDeviceMapper: mock.MagicMock,
     mock_upsert_site_for_aggregator: mock.MagicMock,
+    mock_NotificationManager: mock.MagicMock,
 ):
     """Checks that the enddevice update just passes through to the relevant CRUD (assuming the sfdi is specified)"""
     # Arrange
@@ -149,7 +152,8 @@ async def test_add_or_update_enddevice_for_aggregator_with_sfdi(
 
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_upsert_site_for_aggregator.return_value = 4321
-    mock_datetime.now = mock.Mock(return_value=now)
+    mock_utc_now.return_value = now
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Act
     returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
@@ -161,20 +165,23 @@ async def test_add_or_update_enddevice_for_aggregator_with_sfdi(
     assert_mock_session(mock_session, committed=True)
     mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
     mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
-    mock_datetime.now.assert_called_once()
+    mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_not_called()
+    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
 
 
 @pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.NotificationManager")
 @mock.patch("envoy.server.manager.end_device.upsert_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
-@mock.patch("envoy.server.manager.end_device.datetime")
+@mock.patch("envoy.server.manager.end_device.utc_now")
 @mock.patch("envoy.server.manager.end_device.select_single_site_with_sfdi")
 async def test_add_or_update_enddevice_for_aggregator_no_sfdi(
     mock_select_single_site_with_sfdi: mock.MagicMock,
-    mock_datetime: mock.MagicMock,
+    mock_utc_now: mock.MagicMock,
     mock_EndDeviceMapper: mock.MagicMock,
     mock_upsert_site_for_aggregator: mock.MagicMock,
+    mock_NotificationManager: mock.MagicMock,
 ):
     """Checks that the enddevice update just passes through to the relevant CRUD (assuming the sfdi is undefined)"""
     # Arrange
@@ -187,10 +194,11 @@ async def test_add_or_update_enddevice_for_aggregator_no_sfdi(
     now: datetime = datetime(2020, 1, 2, 3, 4)
     rsp_params = RequestStateParameters(aggregator_id, None)
 
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
     mock_select_single_site_with_sfdi.return_value = None
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_upsert_site_for_aggregator.return_value = 4321
-    mock_datetime.now = mock.Mock(return_value=now)
+    mock_utc_now.return_value = now
 
     # Act
     returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
@@ -204,8 +212,9 @@ async def test_add_or_update_enddevice_for_aggregator_no_sfdi(
     assert mock_EndDeviceMapper.map_from_request.call_args[0][0].sFDI != 0, "sfdi should be regenerated"
     assert mock_EndDeviceMapper.map_from_request.call_args[0][0].lFDI != "", "lfdi should be regenerated"
     mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
-    mock_datetime.now.assert_called_once()
+    mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_called_once()
+    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
 
 
 @pytest.mark.anyio
