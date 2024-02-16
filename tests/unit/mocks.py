@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from asyncio import Future, Semaphore, wait_for
+from asyncio import Future, Semaphore, TimeoutError, wait_for
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional, Union
