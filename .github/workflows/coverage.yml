@@ -1,0 +1,144 @@
+name: Coverage Comparison
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # This run coverage on the target and source branches before comparing
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.1.0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        run: |
+          pip install .[dev,test]
+
+      - name: Coverage (source branch)
+        run: |
+          coverage run --data-file=.coverage-source -m pytest 
+          {
+            echo 'SOURCE_RAW<<EOF'
+            coverage report --data-file=.coverage-source --omit='tests/**'
+            echo EOF
+          } >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@v3.1.0
+        with:
+          ref: ${{ github.base_ref }}
+
+      - name: Install Dependencies
+        run: |
+          pip install .[dev,test]
+
+      - name: Coverage (target branch)
+        id: target_cov
+        run: |
+          coverage run --data-file=.coverage-target -m pytest
+          {
+            echo 'TARGET_RAW<<EOF'
+            coverage report --data-file=.coverage-target --omit='tests/**'
+            echo EOF
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { SOURCE_RAW, TARGET_RAW, GITHUB_BASE_REF, GITHUB_HEAD_REF } = process.env
+
+            // returns dict keyed by file name with code coverage percent integers
+            function split_coverage(raw) {
+              let result = {};
+              for (let l of raw.split('\n')) {
+                if (l && l.endsWith('%')) {
+                  let line_parts = l.split(' ');
+                  result[line_parts[0]] = parseInt(line_parts.pop());
+                }
+              }
+              return result;
+            }
+            const source = split_coverage(SOURCE_RAW)
+            const target = split_coverage(TARGET_RAW)
+            const source_total_percent = source["TOTAL"]
+            const target_total_percent = target["TOTAL"]
+
+            const file_reductions = []
+            for (let [k, target_pc] of Object.entries(target)) {
+              if (k in source) {
+                source_pc = source[k]
+                if (source_pc < target_pc) {
+                  let diff = target_pc - source_pc
+                  file_reductions.push(`|\`${k}\` | 🔻 ${diff}% (${target_pc}% → ${source_pc}%) |`)
+                }
+              }
+            }
+
+            const file_adds = []
+            for (let [k, source_pc] of Object.entries(source)) {
+              if (!(k in target)) {
+                if (source_pc >= target_total_percent) {
+                  file_adds.push(`|\`${k}\` | ✅ Coverage at ${source_pc}% |`)
+                } else {
+                  file_adds.push(`|\`${k}\` | ⚠️ Coverage at ${source_pc}% |`)
+                }
+              }
+            }
+
+            let body = ''
+            if (source_total_percent >= target_total_percent) {
+              body += `✅ Code coverage on \`${GITHUB_HEAD_REF}\` is at ${source_total_percent}% (compared to \`${GITHUB_BASE_REF}\` being at ${target_total_percent}%)\n`
+            } else {
+              body += `💔 Code coverage on \`${GITHUB_HEAD_REF}\` has **reduced** to ${source_total_percent}% (compared to \`${GITHUB_BASE_REF}\` being at ${target_total_percent}%)\n`
+            }
+
+            if (file_reductions.length > 0) {
+              body += "## File Reductions\n"
+              body += "| File | Details |\n"
+              body += "| ---- | ------- |\n"
+              body += file_reductions.join("\n")
+            } else {
+              body += "\n🎉 No files have reduced coverage 🎉\n"
+            }
+
+            if (file_adds.length > 0) {
+              body += "\n<details>\n"
+              body += "<summary><h2>Coverage for new files</h2></summary>\n\n"
+              body += "| File | Details |\n"
+              body += "| ---- | ------- |\n"
+              body += file_adds.join("\n")
+              body += "\n</details>\n"
+            }
+
+            body += "\n<details>\n"
+            body += "<summary><h2>Full Coverage Report</h2></summary>\n\n"
+            body += "| File | Details |\n"
+            body += "| ---- | ------- |\n"
+            for (let [k, source_pc] of Object.entries(source)) {
+              if (k in target) {
+                target_pc = target[k]
+                if (source_pc < target_pc) {
+                  let diff = target_pc - source_pc
+                  body += `|\`${k}\` | 🔻 ${diff}% (${target_pc}% → ${source_pc}%) |\n`
+                } else {
+                  body += `|\`${k}\` | ✅ ${target_pc}% → ${source_pc}% |\n`
+                }
+              } else {
+                body += `|\`${k}\` | 🆕 ${source_pc}% |\n`
+              }
+            }
+            body += "\n</details>\n"
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            })
