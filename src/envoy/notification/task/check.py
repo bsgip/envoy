@@ -25,7 +25,7 @@ from envoy.notification.exception import NotificationError
 from envoy.notification.handler import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification
 from envoy.server.mapper.sep2.pricing import PricingReadingType
-from envoy.server.mapper.sep2.pub_sub import NotificationMapper
+from envoy.server.mapper.sep2.pub_sub import NotificationMapper, SubscriptionMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading
@@ -265,7 +265,7 @@ async def check_db_upsert(
                 remote_uri=n.subscription.notification_uri,
                 content=content,
                 notification_id=str(n.notification_id),
-                subscription_href=NotificationMapper.calculate_subscription_href(n.subscription, rs_params),
+                subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, rs_params),
                 attempt=0,
             )
         except Exception as ex:

@@ -15,7 +15,7 @@ from envoy_schema.server.schema.uri import DERControlListUri, EndDeviceListUri
 
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.pricing import PricingReadingType
-from envoy.server.mapper.sep2.pub_sub import NotificationMapper
+from envoy.server.mapper.sep2.pub_sub import NotificationMapper, SubscriptionMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading
@@ -25,7 +25,7 @@ from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import generate_class_instance
 
 
-def test_NotificationMapper_calculate_subscription_href():
+def test_SubscriptionMapper_calculate_subscription_href():
     """Validates that the hrefs don't raise errors and vary depending on inputs"""
     # Using the same keys -
     sub_all_set = generate_class_instance(Subscription, seed=101, optional_is_none=False)
@@ -35,20 +35,20 @@ def test_NotificationMapper_calculate_subscription_href():
     rs_params_prefix = RequestStateParameters(aggregator_id=1, href_prefix="/my/prefix")
 
     # Subscriptions scoped to a EndDevice are different to those that are "global"
-    assert NotificationMapper.calculate_subscription_href(
+    assert SubscriptionMapper.calculate_subscription_href(
         sub_all_set, rs_params_base
-    ) != NotificationMapper.calculate_subscription_href(sub_optional, rs_params_base)
-    assert NotificationMapper.calculate_subscription_href(
+    ) != SubscriptionMapper.calculate_subscription_href(sub_optional, rs_params_base)
+    assert SubscriptionMapper.calculate_subscription_href(
         sub_all_set, rs_params_prefix
-    ) != NotificationMapper.calculate_subscription_href(sub_optional, rs_params_prefix)
+    ) != SubscriptionMapper.calculate_subscription_href(sub_optional, rs_params_prefix)
 
     # The href_prefix is included
-    assert NotificationMapper.calculate_subscription_href(
+    assert SubscriptionMapper.calculate_subscription_href(
         sub_all_set, rs_params_base
-    ) != NotificationMapper.calculate_subscription_href(sub_all_set, rs_params_prefix)
-    assert NotificationMapper.calculate_subscription_href(
+    ) != SubscriptionMapper.calculate_subscription_href(sub_all_set, rs_params_prefix)
+    assert SubscriptionMapper.calculate_subscription_href(
         sub_optional, rs_params_base
-    ) != NotificationMapper.calculate_subscription_href(sub_optional, rs_params_prefix)
+    ) != SubscriptionMapper.calculate_subscription_href(sub_optional, rs_params_prefix)
 
 
 def test_NotificationMapper_map_sites_to_response():
