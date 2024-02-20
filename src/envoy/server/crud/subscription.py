@@ -2,93 +2,115 @@ from datetime import datetime
 from typing import Optional, Sequence
 
 from sqlalchemy import func, select
-from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from envoy.server.model.site import Site
+from envoy.server.model.subscription import Subscription
 
 
-async def select_aggregator_site_count(session: AsyncSession, aggregator_id: int, after: datetime) -> int:
-    """Fetches the number of sites 'owned' by the specified aggregator (with an additional filter on the site
-    changed_time)
+async def select_subscription_by_id(
+    session: AsyncSession, aggregator_id: int, subscription_id: int
+) -> Optional[Subscription]:
+    """Selects the subscription with the specified subscription_id. Returns None if the entity doesn't exist for the
+    specified aggregator. Will include Conditions"""
 
-    after: Only sites with a changed_time greater than this value will be counted (set to 0 to count everything)"""
-    # fmt: off
     stmt = (
-        select(func.count())
-        .select_from(Site)
-        .where((Site.aggregator_id == aggregator_id) & (Site.changed_time >= after))
+        select(Subscription)
+        .where((Subscription.subscription_id == subscription_id) & (Subscription.aggregator_id == aggregator_id))
+        .options(selectinload(Subscription.conditions))
     )
-    # fmt: on
+
     resp = await session.execute(stmt)
-    return resp.scalar_one()
+    return resp.scalar_one_or_none()
 
 
-async def select_all_sites_with_aggregator_id(
+async def select_subscriptions_for_aggregator(
     session: AsyncSession,
     aggregator_id: int,
     start: int,
-    after: datetime,
-    limit: int,
-) -> Sequence[Site]:
-    """Selects sites for an aggregator with some basic pagination / filtering based on change time
+    changed_after: datetime,
+    limit: Optional[int],
+) -> Sequence[Subscription]:
+    """Selects subscriptions for an aggregator. Will include Conditions
 
-    Results will be ordered according to sep2 spec which is changedTime then sfdi"""
+    Orders by sep2 requirements on Subscription which is id ASC"""
+
     stmt = (
-        select(Site)
-        .where((Site.aggregator_id == aggregator_id) & (Site.changed_time >= after))
+        select(Subscription)
+        .where((Subscription.aggregator_id == aggregator_id) & (Subscription.changed_time >= changed_after))
+        .options(selectinload(Subscription.conditions))
+        .order_by(Subscription.subscription_id)
         .offset(start)
         .limit(limit)
-        .order_by(
-            Site.changed_time.desc(),
-            Site.sfdi.asc(),
-        )
     )
 
     resp = await session.execute(stmt)
     return resp.scalars().all()
 
 
-async def select_single_site_with_site_id(session: AsyncSession, site_id: int, aggregator_id: int) -> Optional[Site]:
-    """Selects the unique Site with the specified site_id and aggregator_id. Returns None if a match isn't found"""
-    stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.site_id == site_id))
-    resp = await session.execute(stmt)
-    return resp.scalar_one_or_none()
+async def count_subscriptions_for_aggregator(
+    session: AsyncSession,
+    aggregator_id: int,
+    changed_after: datetime,
+) -> int:
+    """Similar to select_subscriptions_for_aggregator but instead returns a count"""
 
-
-async def select_single_site_with_sfdi(session: AsyncSession, sfdi: int, aggregator_id: int) -> Optional[Site]:
-    """Selects the unique Site with the specified sfdi and aggregator_id. Returns None if a match isn't found"""
-    stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.sfdi == sfdi))
-    resp = await session.execute(stmt)
-    return resp.scalar_one_or_none()
-
-
-async def select_single_site_with_lfdi(session: AsyncSession, lfdi: str, aggregator_id: int) -> Optional[Site]:
-    """Site and aggregator id need to be used to make sure the aggregator owns this site."""
-    stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.lfdi == lfdi))
-    resp = await session.execute(stmt)
-    return resp.scalar_one_or_none()
-
-
-async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, site: Site) -> int:
-    """Inserts or updates the specified site. If site's aggregator_id doesn't match aggregator_id then this will
-    raise an error without modifying the DB. Returns the site_id of the inserted/updated site
-
-    Inserts/Updates will be based on matches on the agg_id / sfdi index. Attempts to mutate agg_id/sfdi will result
-    in inserting a new record.
-
-    Relying on postgresql dialect for upsert capability. Unfortunately this breaks the typical ORM insert pattern."""
-
-    if aggregator_id != site.aggregator_id:
-        raise ValueError(f"Specified aggregator_id {aggregator_id} mismatches site.aggregator_id {site.aggregator_id}")
-
-    table = Site.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns)]  # type: ignore [attr-defined]
-    stmt = psql_insert(Site).values(**{k: getattr(site, k) for k in update_cols})
-    resp = await session.execute(
-        stmt.on_conflict_do_update(
-            index_elements=[Site.aggregator_id, Site.sfdi],
-            set_={k: getattr(stmt.excluded, k) for k in update_cols},
-        ).returning(Site.site_id)
+    stmt = (
+        select(func.count())
+        .select_from(Subscription)
+        .where((Subscription.aggregator_id == aggregator_id) & (Subscription.changed_time >= changed_after))
     )
+
+    resp = await session.execute(stmt)
+    return resp.scalar_one()
+
+
+async def select_subscriptions_for_site(
+    session: AsyncSession,
+    aggregator_id: int,
+    site_id: int,
+    start: int,
+    changed_after: datetime,
+    limit: Optional[int],
+) -> Sequence[Subscription]:
+    """Selects subscriptions that are scoped to a single site within an aggregator. Will include Conditions
+
+    Orders by sep2 requirements on Subscription which is id ASC"""
+
+    stmt = (
+        select(Subscription)
+        .where(
+            (Subscription.aggregator_id == aggregator_id)
+            & (Subscription.changed_time >= changed_after)
+            & (Subscription.scoped_site_id == site_id)
+        )
+        .options(selectinload(Subscription.conditions))
+        .order_by(Subscription.subscription_id)
+        .offset(start)
+        .limit(limit)
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
+
+
+async def count_subscriptions_for_site(
+    session: AsyncSession,
+    aggregator_id: int,
+    site_id: int,
+    changed_after: datetime,
+) -> int:
+    """Similar to select_subscriptions_for_site but instead returns a count"""
+
+    stmt = (
+        select(func.count())
+        .select_from(Subscription)
+        .where(
+            (Subscription.aggregator_id == aggregator_id)
+            & (Subscription.changed_time >= changed_after)
+            & (Subscription.scoped_site_id == site_id)
+        )
+    )
+
+    resp = await session.execute(stmt)
     return resp.scalar_one()

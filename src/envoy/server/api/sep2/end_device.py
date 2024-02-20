@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.head("/edev/{site_id}")
+@router.head(uri.EndDeviceUri)
 @router.get(
-    "/edev/{site_id}",
+    uri.EndDeviceUri,
     status_code=HTTPStatus.OK,
 )
 async def get_enddevice(site_id: int, request: Request) -> XmlResponse:
@@ -49,9 +49,9 @@ async def get_enddevice(site_id: int, request: Request) -> XmlResponse:
     return XmlResponse(end_device)
 
 
-@router.head("/edev")
+@router.head(uri.EndDeviceListUri)
 @router.get(
-    "/edev",
+    uri.EndDeviceListUri,
     status_code=HTTPStatus.OK,
 )
 async def get_enddevice_list(
@@ -84,7 +84,7 @@ async def get_enddevice_list(
     )
 
 
-@router.post("/edev", status_code=HTTPStatus.CREATED)
+@router.post(uri.EndDeviceListUri, status_code=HTTPStatus.CREATED)
 async def create_end_device(
     request: Request,
     payload: EndDeviceRequest = Depends(XmlRequest(EndDeviceRequest)),
