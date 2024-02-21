@@ -6,6 +6,7 @@ import pytest
 from envoy.server.crud.subscription import (
     count_subscriptions_for_aggregator,
     count_subscriptions_for_site,
+    insert_subscription,
     select_subscription_by_id,
     select_subscriptions_for_aggregator,
     select_subscriptions_for_site,
@@ -13,6 +14,7 @@ from envoy.server.crud.subscription import (
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from tests.assert_time import assert_datetime_equal
 from tests.assert_type import assert_list_type
+from tests.data.fake.generator import assert_class_instance_equality
 from tests.postgres_testing import generate_async_session
 
 
@@ -260,3 +262,31 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
         assert sub_5.conditions[0].upper_threshold == 11
         assert sub_5.conditions[1].lower_threshold == 2
         assert sub_5.conditions[1].upper_threshold == 12
+
+
+@pytest.mark.anyio
+async def test_insert_subscription(pg_base_config):
+    """Checks that sub inserting works as expected"""
+    async with generate_async_session(pg_base_config) as session:
+
+        sub = Subscription(
+            aggregator_id=1,
+            changed_time=datetime.now(),
+            resource_type=SubscriptionResource.SITE,
+            scoped_site_id=1,
+            resource_id=None,
+            notification_uri="http://test.insert/",
+            entity_limit=555,
+        )
+
+        insert_subscription(session, sub)
+
+        assert not sub.subscription_id
+        await session.commit()
+        assert sub.subscription_id > 0
+
+        sub_id = sub.subscription_id
+
+    async with generate_async_session(pg_base_config) as session:
+        new_sub = await select_subscription_by_id(session, 1, sub_id)
+        assert_class_instance_equality(Subscription, sub, new_sub, ignored_properties=set(["subscription_id"]))

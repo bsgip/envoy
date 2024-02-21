@@ -53,6 +53,7 @@ dependencies = [
     "httpx",
     "taskiq",
     "taskiq-aio-pika",
+    "parse",
     "envoy_schema @ git+ssh://git@github.com/bsgip/envoy-schema.git",
 ]
 

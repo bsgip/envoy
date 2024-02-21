@@ -36,3 +36,23 @@ def generate_href(uri_format: str, request_state_params: RequestStateParameters,
             return joined[1:]
         else:
             return joined
+
+
+def remove_href_prefix(href: str, request_state_params: RequestStateParameters) -> str:
+    """Reverses the href_prefix applied during generate_href (if any).
+    Returns X such that generate_href(X, request_state_params) == uri"""
+    if not request_state_params.href_prefix:
+        return href
+
+    # Safety check
+    if not href.startswith(request_state_params.href_prefix):
+        return href
+
+    # Initial strip
+    href = href[len(request_state_params.href_prefix) :]
+
+    # Cleanup
+    if href.startswith("/"):
+        return href
+    else:
+        return "/" + href

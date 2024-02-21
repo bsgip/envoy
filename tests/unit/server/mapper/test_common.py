@@ -3,7 +3,7 @@ from typing import Any, Optional, Union
 
 import pytest
 
-from envoy.server.mapper.common import generate_href, generate_mrid
+from envoy.server.mapper.common import generate_href, generate_mrid, remove_href_prefix
 from envoy.server.request_state import RequestStateParameters
 
 
@@ -66,6 +66,23 @@ def test_generate_href(uri_format: str, prefix: Optional[str], args: Any, kwargs
         assert generate_href(uri_format, RequestStateParameters(1, prefix), **kwargs) == expected
     else:
         assert generate_href(uri_format, RequestStateParameters(1, prefix)) == expected
+
+
+@pytest.mark.parametrize(
+    "uri, prefix, expected",
+    [
+        ("/", None, "/"),
+        ("/path/part", None, "/path/part"),
+        ("/path/part", "/bad/path/part", "/path/part"),  # Bad prefix
+        ("/path/part", "/path", "/part"),
+        ("/path/part", "/path/", "/part"),
+        ("/path/part/thats/longer/", "/path/part", "/thats/longer/"),
+        ("/path/part/thats/longer/", "/path/part/", "/thats/longer/"),
+    ],
+)
+def test_remove_href_prefix(uri: str, prefix: Optional[str], expected: str):
+    ps = RequestStateParameters(1, prefix)
+    assert remove_href_prefix(uri, ps) == expected
 
 
 def test_generate_href_format_errors():

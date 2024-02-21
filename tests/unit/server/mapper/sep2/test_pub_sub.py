@@ -1,6 +1,6 @@
 from datetime import datetime
 from itertools import product
-from typing import Optional, cast
+from typing import Optional, Union, cast
 
 import pytest
 from envoy_schema.server.schema.sep2.der import DERControlResponse
@@ -230,6 +230,83 @@ def test_SubscriptionMapper_calculate_subscription_href():
     assert SubscriptionMapper.calculate_subscription_href(
         sub_optional, rs_params_base
     ) != SubscriptionMapper.calculate_subscription_href(sub_optional, rs_params_prefix)
+
+
+def test_SubscriptionMapper_map_from_request():
+
+    # Using the same keys -
+    sub_all_set: Sep2Subscription = generate_class_instance(Sep2Subscription, seed=101, optional_is_none=False)
+    sub_all_set.subscribedResource = "/prefix/edev/123"
+    sub_all_set.notificationURI = "https://foo.bar:44/path"
+    sub_optional: Sep2Subscription = generate_class_instance(Sep2Subscription, seed=202, optional_is_none=True)
+    sub_optional.subscribedResource = "/prefix/edev/123"
+    sub_optional.notificationURI = "https://foo.bar:44/path"
+    sub_condition: Sep2Subscription = generate_class_instance(Sep2Subscription, seed=303, optional_is_none=False)
+    sub_condition.subscribedResource = "/prefix/edev/123"
+    sub_condition.notificationURI = "https://foo.bar:44/path"
+    sub_condition.condition = generate_class_instance(Sep2Condition)
+    sub_condition.condition.attributeIdentifier = ConditionAttributeIdentifier.READING_VALUE
+
+    rs_params_prefix = RequestStateParameters(aggregator_id=1, href_prefix="/prefix")
+    valid_domains = set(["foo.bar", "example.com"])
+    changed_time = datetime(2022, 3, 4, 5, 6, 7)
+
+    result_all_set = SubscriptionMapper.map_from_request(sub_all_set, rs_params_prefix, valid_domains, changed_time)
+    assert isinstance(result_all_set, Subscription)
+    assert not result_all_set.subscription_id
+    assert result_all_set.resource_type == SubscriptionResource.SITE
+    assert result_all_set.scoped_site_id == 123
+    assert result_all_set.resource_id is None
+    assert not result_all_set.conditions
+
+    result_optional = SubscriptionMapper.map_from_request(sub_optional, rs_params_prefix, valid_domains, changed_time)
+    assert isinstance(result_optional, Subscription)
+    assert not result_optional.subscription_id
+    assert result_optional.resource_type == SubscriptionResource.SITE
+    assert result_optional.scoped_site_id == 123
+    assert result_optional.resource_id is None
+    assert not result_optional.conditions
+
+    result_condition = SubscriptionMapper.map_from_request(sub_condition, rs_params_prefix, valid_domains, changed_time)
+    assert isinstance(result_condition, Subscription)
+    assert not result_condition.subscription_id
+    assert result_condition.resource_type == SubscriptionResource.SITE
+    assert result_condition.scoped_site_id == 123
+    assert result_condition.resource_id is None
+    assert len(result_condition.conditions) == 1
+
+
+@pytest.mark.parametrize(
+    "href, expected",
+    [
+        ("/edev", (SubscriptionResource.SITE, None, None)),
+        ("/edev/123", (SubscriptionResource.SITE, 123, None)),
+        ("/edev/123-a", InvalidMappingError),
+        ("/edev/", InvalidMappingError),
+        ("/upt/11/mr/22/rs/all/r", (SubscriptionResource.READING, 11, 22)),
+        ("/upt/11/mr/22/rs/all/", InvalidMappingError),
+        ("/upt/11/mr/22/rs/allbutnot/r", InvalidMappingError),
+        ("/upt/11/mr/22-2/rs/all/r", InvalidMappingError),
+        ("/upt/11-2/mr/22/rs/all/r", InvalidMappingError),
+        ("/edev/33/tp/44/rc", (SubscriptionResource.TARIFF_GENERATED_RATE, 33, 44)),
+        ("/edev/33nan/tp/44/rc", InvalidMappingError),
+        ("/edev/33/tp/44-4/rc", InvalidMappingError),
+        ("/edev/55/derp/doe/derc", (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, 55, None)),
+        ("/edev/55/derp/doe_but_not/derc", InvalidMappingError),
+        ("/edev/55-3/derp/doe/derc", InvalidMappingError),
+        ("/edev/55/derp/doe", InvalidMappingError),
+        ("/", InvalidMappingError),
+        ("edev", InvalidMappingError),
+        ("edev/123", InvalidMappingError),
+        ("/edev/123/subbutnotreally/1", InvalidMappingError),
+    ],
+)
+def test_SubscriptionMapper_parse_resource_href(href: str, expected: Union[tuple, Exception]):
+    if isinstance(expected, tuple):
+        assert SubscriptionMapper.parse_resource_href(href) == expected
+    else:
+        with pytest.raises(expected):
+            SubscriptionMapper.parse_resource_href(href)
 
 
 def test_NotificationMapper_map_sites_to_response():

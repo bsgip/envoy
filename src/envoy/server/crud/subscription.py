@@ -114,3 +114,9 @@ async def count_subscriptions_for_site(
 
     resp = await session.execute(stmt)
     return resp.scalar_one()
+
+
+async def insert_subscription(session: AsyncSession, subscription: Subscription) -> None:
+    """Inserts the specified subscription (and any linked conditions) into the database - wont persist until
+    session is committed"""
+    session.add(subscription)
