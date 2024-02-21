@@ -16,13 +16,14 @@ from envoy_schema.server.schema.sep2.pub_sub import (
 from envoy_schema.server.schema.sep2.pub_sub import Condition as Sep2Condition
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier, Notification
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
+from envoy_schema.server.schema.sep2.pub_sub import SubscriptionListResponse
 from envoy_schema.server.schema.uri import DERControlListUri, EndDeviceListUri
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.pricing import PricingReadingType
-from envoy.server.mapper.sep2.pub_sub import NotificationMapper, SubscriptionMapper
+from envoy.server.mapper.sep2.pub_sub import NotificationMapper, SubscriptionListMapper, SubscriptionMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading
@@ -182,6 +183,27 @@ def test_SubscriptionMapper_map_to_response():
     assert sep2_condition.subscribedResource and isinstance(sep2_condition.subscribedResource, str)
     assert sep2_condition.notificationURI == sub_with_condition.notification_uri
     assert sep2_condition.limit == sub_with_condition.entity_limit
+
+
+def test_SubscriptionListMapper_map_to_site_response():
+    sub_list: list[Subscription] = [
+        generate_class_instance(Subscription, seed=101, optional_is_none=False),
+        generate_class_instance(Subscription, seed=202, optional_is_none=True),
+    ]
+    sub_list[0].notification_uri = "http://my.example:11/foo"
+    sub_list[1].notification_uri = "https://my.example:22/bar"
+    sub_count = 43
+    site_id = 876
+    rs_params = RequestStateParameters(1, "/custom/prefix")
+
+    mapped = SubscriptionListMapper.map_to_site_response(rs_params, site_id, sub_list, sub_count)
+
+    assert isinstance(mapped, SubscriptionListResponse)
+    assert str(site_id) in mapped.href
+    assert mapped.results == len(sub_list)
+    assert mapped.all_ == sub_count
+    assert len(mapped.subscriptions) == len(sub_list)
+    assert all([isinstance(s, Sep2Subscription) for s in mapped.subscriptions])
 
 
 def test_SubscriptionMapper_calculate_subscription_href():

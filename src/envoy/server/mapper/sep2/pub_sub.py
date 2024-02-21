@@ -10,7 +10,7 @@ from envoy_schema.server.schema.sep2.pub_sub import (
 from envoy_schema.server.schema.sep2.pub_sub import Condition as Sep2Condition
 from envoy_schema.server.schema.sep2.pub_sub import Notification, NotificationStatus
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
-from envoy_schema.server.schema.sep2.pub_sub import SubscriptionEncoding
+from envoy_schema.server.schema.sep2.pub_sub import SubscriptionEncoding, SubscriptionListResponse
 from envoy_schema.server.schema.uri import (
     DERControlListUri,
     EndDeviceListUri,
@@ -18,6 +18,7 @@ from envoy_schema.server.schema.uri import (
     RateComponentListUri,
     ReadingListUri,
     SubscriptionGlobalUri,
+    SubscriptionListUri,
     SubscriptionUri,
     TimeTariffIntervalListUri,
 )
@@ -148,6 +149,21 @@ class SubscriptionMapper:
                 "notificationURI": sub.notification_uri,
                 "subscribedResource": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
                 "condition": condition,
+            }
+        )
+
+
+class SubscriptionListMapper:
+    @staticmethod
+    def map_to_site_response(
+        rs_params: RequestStateParameters, site_id: int, sub_list: Sequence[Subscription], sub_count: int
+    ) -> SubscriptionListResponse:
+        return SubscriptionListResponse.model_validate(
+            {
+                "href": generate_href(SubscriptionListUri, rs_params, site_id=site_id),
+                "all_": sub_count,
+                "results": len(sub_list),
+                "subscriptions": [SubscriptionMapper.map_to_response(sub, rs_params) for sub in sub_list],
             }
         )
 
