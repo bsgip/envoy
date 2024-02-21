@@ -57,11 +57,16 @@ class SubscriptionMapper:
             if sub.scoped_site_id is None:
                 return generate_href(EndDeviceListUri, rs_params)
             else:
-                return generate_href(EndDeviceUri, rs_params, site_id=sub.resource_id)
+                return generate_href(EndDeviceUri, rs_params, site_id=sub.scoped_site_id)
         elif sub.resource_type == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
             if sub.scoped_site_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DOEs without a scoped_site_id is unsupported on sub {sub.subscription_id}"
+                )
+
+            if sub.resource_id is not None:
+                raise InvalidMappingError(
+                    f"Subscribing to DOEs with resource_id is unsupported on sub {sub.subscription_id}"
                 )
 
             return generate_href(
