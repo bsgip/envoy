@@ -8,12 +8,14 @@ import pytest
 from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
 from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
-from envoy_schema.server.schema.sep2.pub_sub import SubscriptionListResponse
+from envoy_schema.server.schema.sep2.pub_sub import SubscriptionEncoding, SubscriptionListResponse
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from envoy_schema.server.schema.uri import EndDeviceListUri
 from httpx import AsyncClient
+from sqlalchemy import select
 
 from envoy.server.crud.subscription import select_subscription_by_id
+from envoy.server.model.subscription import Subscription
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
@@ -153,7 +155,7 @@ async def test_get_subscription_by_aggregator(
     and that it contains the expected subscription associated with each aggregator/site"""
 
     response = await client.get(
-        sub_uri_format.format(site_id=site_id, subscription_id=sub_id) + build_paging_params(limit=100),
+        sub_uri_format.format(site_id=site_id, subscription_id=sub_id),
         headers={cert_header: urllib.parse.quote(cert)},
     )
 
@@ -166,6 +168,75 @@ async def test_get_subscription_by_aggregator(
         assert len(body) > 0
         parsed_response: Sep2Subscription = Sep2Subscription.from_xml(body)
         assert int(parsed_response.href[-1]) == sub_id
+
+
+@pytest.mark.parametrize(
+    "cert, site_id, sub_id, expected_404",
+    [
+        (AGG_1_VALID_CERT, 4, 4, False),
+        (AGG_2_VALID_CERT, 3, 3, False),
+        (AGG_3_VALID_CERT, 3, 3, True),  # Inaccessible to this aggregator
+        (AGG_1_VALID_CERT, 99, 1, True),  # invalid site id
+        (AGG_1_VALID_CERT, 1, 1, True),  # wrong site id
+    ],
+)
+@pytest.mark.anyio
+async def test_delete_subscription(
+    client: AsyncClient, pg_base_config, sub_id: int, cert: str, site_id: int, expected_404: bool, sub_uri_format
+):
+    async with generate_async_session(pg_base_config) as session:
+        resp = await session.execute(select(Subscription))
+        initial_count = len(resp.scalars().all())
+
+    response = await client.delete(
+        sub_uri_format.format(site_id=site_id, subscription_id=sub_id),
+        headers={cert_header: urllib.parse.quote(cert)},
+    )
+
+    async with generate_async_session(pg_base_config) as session:
+        resp = await session.execute(select(Subscription))
+        after_count = len(resp.scalars().all())
+
+    if expected_404:
+        assert_response_header(response, HTTPStatus.NOT_FOUND, expected_content_type=None)
+        assert initial_count == after_count
+    else:
+        assert_response_header(response, HTTPStatus.NO_CONTENT, expected_content_type=None)
+        assert (initial_count - 1) == after_count
+
+
+@pytest.mark.anyio
+async def test_create_subscription(client: AsyncClient, sub_list_uri_format: str):
+    """When creating a sub check to see if it persists and is correctly assigned to the aggregator"""
+
+    insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
+    insert_request.encoding = SubscriptionEncoding.XML
+    insert_request.notificationURI = "https://example.com/456?foo=bar"
+    insert_request.subscribedResource = "/edev/1/derp/doe/derc"
+    response = await client.post(
+        sub_list_uri_format.format(site_id=1),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=Sep2Subscription.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    assert len(read_response_body_string(response)) == 0
+    inserted_href = read_location_header(response)
+
+    # now lets grab the sub we just created
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.OK)
+    response_body = read_response_body_string(response)
+    assert len(response_body) > 0
+    parsed_response: Sep2Subscription = Sep2Subscription.from_xml(response_body)
+    assert parsed_response.href == inserted_href
+    assert parsed_response.notificationURI == insert_request.notificationURI
+    assert parsed_response.subscribedResource == insert_request.subscribedResource
+    assert parsed_response.limit == insert_request.limit
+
+    # check that other aggregators can't fetch it
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_2_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.NOT_FOUND)
+    assert_error_response(response)
 
 
 @pytest.mark.anyio

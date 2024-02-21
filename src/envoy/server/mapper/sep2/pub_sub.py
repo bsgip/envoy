@@ -149,7 +149,7 @@ class SubscriptionMapper:
                 "level": "+S1",
                 "limit": sub.entity_limit,
                 "notificationURI": sub.notification_uri,
-                "subscribedResource": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
+                "subscribedResource": SubscriptionMapper.calculate_resource_href(sub, rs_params),
                 "condition": condition,
             }
         )

@@ -3,10 +3,12 @@ from typing import Optional
 
 import pytest
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
+from sqlalchemy import select
 
 from envoy.server.crud.subscription import (
     count_subscriptions_for_aggregator,
     count_subscriptions_for_site,
+    delete_subscription_for_site,
     insert_subscription,
     select_subscription_by_id,
     select_subscriptions_for_aggregator,
@@ -326,3 +328,69 @@ async def test_insert_subscription_with_condition(pg_base_config):
             new_sub.conditions[0],
             ignored_properties=set(["subscription_condition_id", "subscription_id"]),
         )
+
+
+@pytest.mark.anyio
+async def test_delete_subscription_for_site(pg_base_config):
+    async with generate_async_session(pg_base_config) as session:
+        assert await delete_subscription_for_site(session, 1, 4, 4)
+        assert not await delete_subscription_for_site(session, 1, 4, 5)  # not scoped to site_id 4
+        assert not await delete_subscription_for_site(session, 2, 2, 2)  # not scoped to agg 2
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        assert (
+            await select_subscription_by_id(
+                session,
+                1,
+                4,
+            )
+            is None
+        ), "Was deleted"
+        assert (
+            await select_subscription_by_id(
+                session,
+                1,
+                5,
+            )
+            is not None
+        )
+        assert (
+            await select_subscription_by_id(
+                session,
+                1,
+                2,
+            )
+            is not None
+        )
+
+
+@pytest.mark.anyio
+async def test_delete_subscription_for_site_with_conditions(pg_base_config):
+    # Start by updating our subscription 5 to appear under site 4 so we can delete it
+    async with generate_async_session(pg_base_config) as session:
+        sub_5 = await select_subscription_by_id(session, 1, 5)
+        sub_5.scoped_site_id = 4
+
+        resp = await session.execute(select(SubscriptionCondition))
+        assert len(resp.scalars().all()) == 2
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        assert await delete_subscription_for_site(session, 1, 4, 5)  # not scoped to site_id 4
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        assert (
+            await select_subscription_by_id(
+                session,
+                1,
+                5,
+            )
+            is None
+        ), "Was deleted"
+
+    # Validate conditions got cascade deleted
+    async with generate_async_session(pg_base_config) as session:
+        resp = await session.execute(select(SubscriptionCondition))
+        assert len(resp.scalars().all()) == 0

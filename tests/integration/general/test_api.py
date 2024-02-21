@@ -65,8 +65,8 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST, HTTPMethod.DELETE], "/mup/1"),
 
     # pub/sub function set
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/4/sub"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/4/sub/4"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/edev/4/sub"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.DELETE], "/edev/4/sub/4"),
 ]
 # fmt: on
 

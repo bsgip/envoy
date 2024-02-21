@@ -49,7 +49,7 @@ def remove_href_prefix(href: str, request_state_params: RequestStateParameters) 
         return href
 
     # Initial strip
-    href = href[len(request_state_params.href_prefix) :]
+    href = href[len(request_state_params.href_prefix) :]  # noqa: E203
 
     # Cleanup
     if href.startswith("/"):

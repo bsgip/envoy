@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional, Sequence
+from typing import Optional, Sequence, cast
 
-from sqlalchemy import func, select
+from sqlalchemy import CursorResult, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -114,6 +114,21 @@ async def count_subscriptions_for_site(
 
     resp = await session.execute(stmt)
     return resp.scalar_one()
+
+
+async def delete_subscription_for_site(
+    session: AsyncSession, aggregator_id: int, site_id: int, subscription_id: int
+) -> bool:
+    """Deletes the specified subscription (and any linked conditions) from the database. Returns true on successful
+    delete"""
+
+    stmt = delete(Subscription).where(
+        (Subscription.subscription_id == subscription_id)
+        & (Subscription.aggregator_id == aggregator_id)
+        & (Subscription.scoped_site_id == site_id)
+    )
+    resp = cast(CursorResult, await session.execute(stmt))
+    return resp.rowcount > 0
 
 
 async def insert_subscription(session: AsyncSession, subscription: Subscription) -> int:

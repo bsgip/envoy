@@ -140,13 +140,16 @@ def test_SubscriptionMapper_map_to_response():
     sub_all_set: Subscription = generate_class_instance(Subscription, seed=101, optional_is_none=False)
     sub_all_set.conditions = []
     sub_all_set.notification_uri = "http://my.example:11/foo"
+    sub_all_set.resource_type = SubscriptionResource.READING
     sub_optional: Subscription = generate_class_instance(Subscription, seed=101, optional_is_none=True)
     sub_optional.conditions = []
     sub_optional.notification_uri = "https://my.example:22/foo"
+    sub_optional.resource_type = SubscriptionResource.SITE
     sub_with_condition: Subscription = generate_class_instance(Subscription, seed=101, optional_is_none=True)
     sub_with_condition.conditions = [cast(SubscriptionCondition, generate_class_instance(SubscriptionCondition))]
     sub_with_condition.conditions[0].attribute = ConditionAttributeIdentifier.READING_VALUE
     sub_with_condition.notification_uri = "http://my.example:33/foo"
+    sub_with_condition.resource_type = SubscriptionResource.SITE
 
     rs_params_base = RequestStateParameters(aggregator_id=1, href_prefix=None)
     rs_params_prefix = RequestStateParameters(aggregator_id=1, href_prefix="/my/prefix")

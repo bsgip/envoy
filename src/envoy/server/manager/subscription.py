@@ -9,10 +9,12 @@ from envoy.server.crud.pricing import select_single_tariff
 from envoy.server.crud.site_reading import fetch_site_reading_type_for_aggregator
 from envoy.server.crud.subscription import (
     count_subscriptions_for_site,
+    delete_subscription_for_site,
+    insert_subscription,
     select_subscription_by_id,
     select_subscriptions_for_site,
 )
-from envoy.server.exception import BadRequestError, InvalidMappingError, NotFoundError
+from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.pub_sub import SubscriptionListMapper, SubscriptionMapper
 from envoy.server.model.subscription import SubscriptionResource
@@ -74,12 +76,16 @@ class SubscriptionManager:
     ) -> bool:
         """This will delete the specified subscription with id (underneath site_id) and return True if successful and
         False otherwise"""
-        raise NotImplementedError()
+        removed = await delete_subscription_for_site(
+            session, aggregator_id=request_params.aggregator_id, site_id=site_id, subscription_id=subscription_id
+        )
+        await session.commit()
+        return removed
 
     @staticmethod
     async def add_subscription_for_site(
         session: AsyncSession, request_params: RequestStateParameters, subscription: Subscription, site_id: int
-    ) -> None:
+    ) -> int:
         """This will add the specified subscription to the database underneath site_id. Returns the inserted
         subscription id"""
 
@@ -121,5 +127,7 @@ class SubscriptionManager:
                 raise BadRequestError("sub.resource_id is improperly set. Check subscribedResource is valid.")
 
         # Insert the subscription
-        session.add(sub)
+        new_sub_id = await insert_subscription(session, sub)
         await session.commit()
+
+        return new_sub_id
