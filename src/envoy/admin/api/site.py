@@ -10,7 +10,6 @@ from fastapi_async_sqlalchemy import db
 
 from envoy.admin.manager.site import SiteManager
 from envoy.server.api.request import extract_limit_from_paging_param, extract_start_from_paging_param
-from envoy.server.exception import NotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +78,10 @@ async def get_group(
         SiteGroupResponse
 
     """
+    if not group_name:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "No group_name specified on path")
 
     grp = await SiteManager.get_all_site_group_by_name(session=db.session, group_name=group_name)
     if grp is None:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Group with name not found")
+        raise HTTPException(HTTPStatus.NOT_FOUND, f"Group with name '{group_name}' not found")
     return grp
