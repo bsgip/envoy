@@ -243,3 +243,21 @@ VALUES (2, -- subscription_condition_id
     );
 
 SELECT pg_catalog.setval('public.subscription_condition_subscription_condition_id_seq', 3, true);
+
+
+INSERT INTO public.site_group("site_group_id", "changed_time", "name") VALUES (1, '2024-02-10 01:55:44.500', 'Group-1');
+INSERT INTO public.site_group("site_group_id", "changed_time", "name") VALUES (2, '2024-02-10 02:55:44.500', 'Group-2');
+INSERT INTO public.site_group("site_group_id", "changed_time", "name") VALUES (3, '2024-02-10 03:55:44.500', 'Group-3');
+
+SELECT pg_catalog.setval('public.site_group_site_group_id_seq', 4, true);
+
+INSERT INTO public.site_group_assignment("site_group_assignment_id", "changed_time", "site_id", "site_group_id") 
+VALUES (1, '2024-02-11 01:55:44.500', 1, 1);
+INSERT INTO public.site_group_assignment("site_group_assignment_id", "changed_time", "site_id", "site_group_id") 
+VALUES (2, '2024-02-11 02:55:44.500', 2, 1);
+INSERT INTO public.site_group_assignment("site_group_assignment_id", "changed_time", "site_id", "site_group_id") 
+VALUES (3, '2024-02-11 03:55:44.500', 3, 1);
+INSERT INTO public.site_group_assignment("site_group_assignment_id", "changed_time", "site_id", "site_group_id") 
+VALUES (4, '2024-02-11 04:55:44.500', 1, 2);
+
+SELECT pg_catalog.setval('public.site_group_assignment_site_group_assignment_id_seq', 5, true);
