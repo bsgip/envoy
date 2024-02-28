@@ -1,0 +1,54 @@
+version: "3.6"
+
+x-envoy-common:
+  environment: &common-env
+    DATABASE_URL: ${DATABASE_URL}
+    CERT_HEADER: ${CERT_HEADER}
+    ENABLE_NOTIFICATIONS: "True"
+    RABBIT_MQ_BROKER_URL: "amqp://guest:guest@rabbit-mq:5672"
+
+services:
+  rabbit-mq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    hostname: rabbit-mq
+    healthcheck:
+      test: rabbitmq-diagnostics -q check_running && rabbitmq-diagnostics -q check_local_alarms
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 20s
+
+  taskiq-worker:
+    image: ${ENVOY_IMAGE_NAME}
+    environment:
+      <<: *common-env
+    command: taskiq worker envoy.notification.main:broker envoy.notification.task
+    restart: unless-stopped
+    depends_on:
+      rabbit-mq:
+        condition: service_healthy
+
+  envoy:
+    image: ${ENVOY_IMAGE_NAME}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      PORT: 8000
+      APP_MODULE: envoy.server.main:app
+
+  envoy-admin:
+    image: ${ENVOY_IMAGE_NAME}
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      PORT: 8001
+      APP_MODULE: envoy.admin.main:app
