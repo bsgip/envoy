@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional, Sequence, cast
+from typing import Optional, Sequence
 
-from sqlalchemy import CursorResult, delete, func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -127,7 +127,7 @@ async def delete_subscription_for_site(
         & (Subscription.aggregator_id == aggregator_id)
         & (Subscription.scoped_site_id == site_id)
     )
-    resp = cast(CursorResult, await session.execute(stmt))
+    resp = await session.execute(stmt)
     return resp.rowcount > 0
 
 

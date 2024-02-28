@@ -23,7 +23,7 @@ from envoy_schema.server.schema.uri import (
     SubscriptionUri,
     TimeTariffIntervalListUri,
 )
-from parse import parse
+from parse import parse  # type: ignore
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, remove_href_prefix

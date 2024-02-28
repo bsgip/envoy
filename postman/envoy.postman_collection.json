@@ -1334,6 +1334,142 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "Pub Sub",
+			"item": [
+				{
+					"name": "/edev/1/sub/1 (Get Subscription)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/sub/{{SUB_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"sub",
+								"{{SUB_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/sub/1 (Delete Subscription)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/sub/{{SUB_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"sub",
+								"{{SUB_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/sub (Get Subscription List)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/sub",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"sub"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/sub (POST Subscription create)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<Subscription xmlns=\"urn:ieee:std:2030.5:ns\">\n    <subscribedResource>/edev/1/derp/doe/derc</subscribedResource>\n\t<encoding>0</encoding>\n    <level>+S1</level>\n    <limit>100</limit>\n    <notificationURI>http://example.com/my/path?q=123</notificationURI>\n</Subscription>\n",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/sub",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"sub"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	],
 	"auth": {
@@ -1411,6 +1547,10 @@
 		},
 		{
 			"key": "FSA_ID",
+			"value": "1"
+		},
+		{
+			"key": "SUB_ID",
 			"value": "1"
 		}
 	]
