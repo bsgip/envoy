@@ -6,7 +6,7 @@ from http import HTTPStatus
 
 import pytest
 from asgi_lifespan import LifespanManager
-from httpx import AsyncClient, Response
+from httpx import ASGITransport, AsyncClient, Response
 from psycopg import Connection
 from sqlalchemy import event
 from sqlalchemy.pool import Pool
@@ -73,7 +73,7 @@ async def client_with_async_mock(pg_base_config: Connection):
 
         app = generate_app(generate_settings())
         async with LifespanManager(app):  # This ensures that startup events are fired when the app starts
-            async with AsyncClient(app=app, base_url="http://test") as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
                 yield (c, mocked_client)
 
 

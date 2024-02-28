@@ -5,7 +5,7 @@ from typing import AsyncGenerator
 
 import pytest
 from asgi_lifespan import LifespanManager
-from httpx import AsyncClient, Response
+from httpx import ASGITransport, AsyncClient, Response
 from psycopg import Connection
 
 from envoy.admin.main import generate_app as admin_gen_app
@@ -29,7 +29,7 @@ async def client_empty_db(pg_empty_config: Connection):
     # when trying to run multiple tests sequentially
     app = generate_app(generate_settings())
     async with LifespanManager(app):  # This ensures that startup events are fired when the app starts
-        async with AsyncClient(app=app, base_url="http://test") as c:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             yield c
 
 
@@ -64,7 +64,7 @@ async def admin_client_auth(pg_base_config: Connection):
     # when trying to run multiple tests sequentially
     app = admin_gen_app(settings)
     async with LifespanManager(app):
-        async with AsyncClient(app=app, base_url="http://test", auth=basic_auth) as c:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", auth=basic_auth) as c:
             yield c
 
 
@@ -76,7 +76,7 @@ async def admin_client_unauth(pg_base_config: Connection):
     # when trying to run multiple tests sequentially
     app = admin_gen_app(admin_gen_settings())
     async with LifespanManager(app):
-        async with AsyncClient(app=app, base_url="http://test") as c:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             yield c
 
 
