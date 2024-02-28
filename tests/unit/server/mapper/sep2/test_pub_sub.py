@@ -194,7 +194,10 @@ def test_SubscriptionListMapper_map_to_site_response():
         generate_class_instance(Subscription, seed=202, optional_is_none=True),
     ]
     sub_list[0].notification_uri = "http://my.example:11/foo"
+    sub_list[0].resource_type = SubscriptionResource.TARIFF_GENERATED_RATE
     sub_list[1].notification_uri = "https://my.example:22/bar"
+    sub_list[1].resource_type = SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE
+    sub_list[1].scoped_site_id = 1
     sub_count = 43
     site_id = 876
     rs_params = RequestStateParameters(1, "/custom/prefix")

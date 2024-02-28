@@ -7,7 +7,7 @@ from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscrip
 from envoy_schema.server.schema.sep2.pub_sub import SubscriptionListResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.exception import BadRequestError
+from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.subscription import SubscriptionManager
 from envoy.server.model.aggregator import Aggregator, AggregatorDomain
 from envoy.server.model.site_reading import SiteReadingType
@@ -15,7 +15,7 @@ from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import Tariff
 from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import generate_class_instance
-from tests.unit.mocks import assert_mock_session, create_async_result, create_mock_session
+from tests.unit.mocks import assert_mock_session, create_mock_session
 
 
 @pytest.mark.anyio
@@ -197,7 +197,7 @@ async def test_add_subscription_for_site_bad_agg_lookup(
     mock_insert_subscription.return_value = 98765
 
     # Act
-    with pytest.raises(BadRequestError):
+    with pytest.raises(NotFoundError):
         await SubscriptionManager.add_subscription_for_site(mock_session, rs_params, sub, site_id)
 
     assert_mock_session(mock_session, committed=False)

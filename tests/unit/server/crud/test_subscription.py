@@ -72,7 +72,7 @@ async def test_select_subscription_by_id_content(pg_base_config):
         assert_datetime_equal(sub_5.changed_time, datetime(2024, 1, 2, 15, 22, 33, 500000, tzinfo=timezone.utc))
         assert sub_5.resource_type == SubscriptionResource.READING
         assert sub_5.scoped_site_id is None
-        assert sub_5.resource_id is None
+        assert sub_5.resource_id == 1
         assert sub_5.entity_limit == 55
         assert sub_5.notification_uri == "https://example.com:55/path/"
         assert len(sub_5.conditions) == 2
@@ -157,7 +157,7 @@ async def test_select_subscriptions_for_aggregator_content_only(pg_base_config):
         assert_datetime_equal(sub_5.changed_time, datetime(2024, 1, 2, 15, 22, 33, 500000, tzinfo=timezone.utc))
         assert sub_5.resource_type == SubscriptionResource.READING
         assert sub_5.scoped_site_id is None
-        assert sub_5.resource_id is None
+        assert sub_5.resource_id == 1
         assert sub_5.entity_limit == 55
         assert sub_5.notification_uri == "https://example.com:55/path/"
         assert len(sub_5.conditions) == 2
@@ -257,7 +257,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
         assert_datetime_equal(sub_5.changed_time, datetime(2024, 1, 2, 15, 22, 33, 500000, tzinfo=timezone.utc))
         assert sub_5.resource_type == SubscriptionResource.READING
         assert sub_5.scoped_site_id == 4
-        assert sub_5.resource_id is None
+        assert sub_5.resource_id == 1
         assert sub_5.entity_limit == 55
         assert sub_5.notification_uri == "https://example.com:55/path/"
         assert len(sub_5.conditions) == 2
