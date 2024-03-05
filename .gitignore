@@ -133,3 +133,6 @@ dmypy.json
 
 # Any personal access tokens
 *.pat
+
+# Specific local dev files specific
+docker-compose.rabbitmq.hostdb.yaml
