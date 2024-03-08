@@ -5,6 +5,9 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.crud.aggregator import select_aggregator
+from envoy.server.manager.time import utc_now
+from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.site import Site
 
 
@@ -47,6 +50,44 @@ async def select_all_sites_with_aggregator_id(
 
     resp = await session.execute(stmt)
     return resp.scalars().all()
+
+
+async def get_virtual_site_for_aggregator(session: AsyncSession, aggregator_id: int) -> Optional[Site]:
+    """Returns a virtual site to represent the aggregator. Return None if the aggregator isn't found"""
+
+    # Check if the aggregator exists
+    aggregator: Aggregator = await select_aggregator(session=session, aggregator_id=aggregator_id)
+    if aggregator is None:
+        return None
+
+    # The virtual site shares various attributes (lfdi, sfdi, timezone etc.) with the first site under the aggregator.
+    first_site_under_aggregator: Site = await select_first_site_under_aggregator(
+        session=session, aggregator_id=aggregator_id
+    )
+    if first_site_under_aggregator is None:
+        return None
+
+    # The aggregator doesn't have a changed time of it own.
+    # Virtual sites will have a changed_time representing when they were requested.
+    changed_time = utc_now()
+
+    # Since the site is virtual we create the Site in-place here and return it
+    return Site(
+        site_id=0,
+        lfdi=first_site_under_aggregator.lfdi,
+        sfdi=first_site_under_aggregator.sfdi,
+        changed_time=changed_time,
+        aggregator_id=aggregator_id,
+        device_category=first_site_under_aggregator.device_category,
+        timezone_id=first_site_under_aggregator.timezone_id,
+    )
+
+
+async def select_first_site_under_aggregator(session: AsyncSession, aggregator_id: int) -> Optional[Site]:
+    """Selects the Site with the lowest site_id and aggregator_id. Returns None if a match isn't found"""
+    stmt = select(Site).where(Site.aggregator_id == aggregator_id).limit(1).order_by(Site.site_id)
+    resp = await session.execute(stmt)
+    return resp.scalar_one_or_none()
 
 
 async def select_single_site_with_site_id(session: AsyncSession, site_id: int, aggregator_id: int) -> Optional[Site]:
