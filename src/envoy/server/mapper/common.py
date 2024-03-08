@@ -1,6 +1,9 @@
 from itertools import chain
 from typing import Any, Union
 
+from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
+
+from envoy.server.exception import InvalidMappingError
 from envoy.server.request_state import RequestStateParameters
 
 
@@ -56,3 +59,16 @@ def remove_href_prefix(href: str, request_state_params: RequestStateParameters) 
         return href
     else:
         return "/" + href
+
+
+def parse_device_category(device_category_str: str):
+    """Parse a hex string representation of a device category into a DeviceCategory"""
+    if not device_category_str:
+        return DeviceCategory(0)
+
+    raw_dc = int(device_category_str, 16)
+    if raw_dc > DEVICE_CATEGORY_ALL_SET or raw_dc < 0:
+        raise InvalidMappingError(
+            f"deviceCategory: {device_category_str} int({raw_dc}) doesn't map to a known DeviceCategory"
+        )
+    return DeviceCategory(raw_dc)

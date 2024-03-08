@@ -2,8 +2,10 @@ from datetime import datetime
 from typing import Any, Optional, Union
 
 import pytest
+from envoy_schema.server.schema.sep2.types import DeviceCategory
 
-from envoy.server.mapper.common import generate_href, generate_mrid, remove_href_prefix
+from envoy.server.exception import InvalidMappingError
+from envoy.server.mapper.common import generate_href, generate_mrid, parse_device_category, remove_href_prefix
 from envoy.server.request_state import RequestStateParameters
 
 
@@ -93,3 +95,32 @@ def test_generate_href_format_errors():
 
     with pytest.raises(KeyError):
         generate_href("{p1}/{p2}", RequestStateParameters(1, "prefix/"), p1="val1")
+
+
+@pytest.mark.parametrize(
+    "device_category_str, expected_value",
+    [("2000000", DeviceCategory.OTHER_STORAGE_SYSTEM), ("1", DeviceCategory.PROGRAMMABLE_COMMUNICATING_THERMOSTAT)],
+)
+def test_parse_device_category(device_category_str, expected_value):
+    """Test parse_device_category string conversion to DeviceCategory"""
+    assert parse_device_category(device_category_str) == expected_value
+
+
+@pytest.mark.parametrize(
+    "device_category_str",
+    ["4000000", "-1"],
+)
+def test_parse_device_category__raises_mappingerror(device_category_str):
+    """Test parse_device_category raises InvalidMappingError for values out of range"""
+    with pytest.raises(InvalidMappingError):
+        parse_device_category(device_category_str)
+
+
+@pytest.mark.parametrize(
+    "device_category_str",
+    ["NOTAVALIDHEXSTRING", "5.0"],
+)
+def test_parse_device_category__raises_valueerror(device_category_str):
+    """Test parse_device_category raises ValueError for values that don't represent a valid hex strings"""
+    with pytest.raises(ValueError):
+        parse_device_category(device_category_str)
