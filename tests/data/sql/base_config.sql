@@ -261,3 +261,10 @@ INSERT INTO public.site_group_assignment("site_group_assignment_id", "changed_ti
 VALUES (4, '2024-02-11 04:55:44.500', 1, 2);
 
 SELECT pg_catalog.setval('public.site_group_assignment_site_group_assignment_id_seq', 5, true);
+
+
+INSERT INTO public.site_der("site_der_id", "changed_time", "site_id") 
+VALUES (1, '2024-03-14 04:55:44.500', 1, 2);
+INSERT INTO public.site_der("site_der_id", "changed_time", "site_id") 
+VALUES (2, '2024-03-14 05:55:44.500', 1, 1);
+SELECT pg_catalog.setval('public.site_der_site_der_id_seq', 3, true);
