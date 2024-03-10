@@ -1,6 +1,7 @@
+import sys
 from dataclasses import dataclass
 from datetime import datetime
-from enum import IntEnum, IntFlag, StrEnum, auto
+from enum import IntEnum, IntFlag, auto
 from typing import List, Optional, Union
 
 import pytest
@@ -36,16 +37,24 @@ class CustomFlags(IntFlag):
     FLAG_4 = auto()
 
 
-class CustomStringEnum(StrEnum):
-    VALUE_1 = "My Custom Value 1"
-    VALUE_2 = "My Custom Value 2"
-    VALUE_3 = "VALUE_3"
-
-
 class CustomIntEnum(IntEnum):
     VALUE_1 = auto()
     VALUE_2 = auto()
     VALUE_3 = 998
+
+
+ALL_ENUM_TYPES: list[type] = [CustomFlags, CustomIntEnum]
+
+# StrEnum is something we want support for but it's was only introduced in python 3.11
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+
+    class CustomStringEnum(StrEnum):
+        VALUE_1 = "My Custom Value 1"
+        VALUE_2 = "My Custom Value 2"
+        VALUE_3 = "VALUE_3"
+
+    ALL_ENUM_TYPES.append(CustomStringEnum)
 
 
 class ParentClass(Base):
@@ -156,7 +165,7 @@ def test_get_enum_type_non_enums():
     assert get_enum_type(Mapped[Optional[int]], False) is None
 
 
-@pytest.mark.parametrize("t", [CustomFlags, CustomIntEnum, CustomStringEnum])
+@pytest.mark.parametrize("t", ALL_ENUM_TYPES)
 def test_get_enum_type_with_enums(t):
     assert get_enum_type(t, False) is t
     assert get_enum_type(Optional[t], False) is t
@@ -173,7 +182,7 @@ def test_get_enum_type_with_enums(t):
     assert get_enum_type(Union[int, str, Optional[t]], True) is Optional[t]
 
 
-@pytest.mark.parametrize("t", [CustomIntEnum, CustomFlags, CustomStringEnum])
+@pytest.mark.parametrize("t", ALL_ENUM_TYPES)
 def test_generate_value_enums(t: type):
     """Tests that generate_value plays nice with enum values"""
 
