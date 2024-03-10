@@ -2,6 +2,7 @@ import inspect
 from dataclasses import dataclass, fields, is_dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from enum import Enum
 from types import NoneType
 from typing import Any, Callable, Optional, Union, get_args, get_origin, get_type_hints
 
@@ -17,6 +18,61 @@ class _PlaceholderDataclassBase:
     """Dataclass has no base class - instead we fall back to using this as a placeholder"""
 
 
+def safe_is_subclass(class_to_check: type, parent_class: type) -> bool:
+    try:
+        return issubclass(class_to_check, parent_class)
+    except TypeError:
+        # This is working around some quirks with Python
+        # eg - issubclass(list[int], ParentClass) will return False
+        #      issubclass(typing.List[int], ParentClass) will raise a TypeError
+        #      issubclass(Optional[int], ParentClass) will raise a TypeError
+        return False
+
+
+def get_enum_type(t: Optional[type], include_optional: bool) -> Optional[type]:
+    """If t is an enum type (ignoring Optional/Passthrough types) - return the underlying
+    subclass of Enum. Otherwise return None. include_optional = True will cause any Optional[] wrappers around the
+    enum type to be returned - otherwise just the raw enum_type will be returned
+
+
+    Eg get_enum_type(Mapped[Optional[MyIntEnum]], False) will return MyIntEum
+    Eg get_enum_type(Mapped[Optional[MyIntEnum]], True) will return Optional[MyIntEum]
+    Eg get_enum_type(MyIntEum, False) will return MyIntEum
+    Eg get_enum_type(MyIntEum, True) will return MyIntEum
+    Eg get_enum_type(Mapped[int], True) will return None
+    """
+    if t is None:
+        return None
+
+    if is_passthrough_type(t):
+        t = remove_passthrough_type(t)
+
+    # If t is Optional[MyEnum] or just MyEnum - inner_enum_type will be MyEnum in either case
+    inner_enum_type = t
+    optional = False
+    if is_optional_type(t):
+        optional = True
+        inner_enum_type = get_optional_type_argument(t)
+        assert inner_enum_type is not None
+
+    is_union = get_origin(t) == Union and len([a for a in get_args(t) if a is not NoneType]) > 1
+    if is_union:
+        for union_arg in get_args(t):
+            arg_enum = get_enum_type(union_arg, include_optional)
+            if arg_enum is not None:
+                if optional and include_optional:
+                    return Optional[arg_enum]
+                else:
+                    return arg_enum
+    elif safe_is_subclass(inner_enum_type, Enum):
+        if include_optional:
+            return t
+        else:
+            return inner_enum_type
+
+    return None
+
+
 def generate_value(t: type, seed: int = 1, optional_is_none: bool = False) -> Any:
     """Generates a seeded value based on the specified type. Throws an exception if it's not matched
 
@@ -25,6 +81,13 @@ def generate_value(t: type, seed: int = 1, optional_is_none: bool = False) -> An
         return None
 
     primitive_type = get_first_generatable_primitive(t, include_optional=False)
+
+    # Enums are treated as a unique generation case - these are picked from the set of all possible enum vals
+    enum_t = get_enum_type(t, False)
+    if enum_t is not None:
+        enum_values = list(enum_t)
+        return enum_values[seed % len(enum_values)]
+
     if primitive_type not in PRIMITIVE_VALUE_GENERATORS:
         raise Exception(f"Unsupported type {t} for seed {seed}")
 
@@ -45,6 +108,11 @@ def get_first_generatable_primitive(t: type, include_optional: bool) -> Optional
     # if we can generate the type out of the box - we're done
     if t in PRIMITIVE_VALUE_GENERATORS:
         return t
+
+    # if type is an enum - we generate this differently
+    enum_t = get_enum_type(t, include_optional)
+    if enum_t is not None:
+        return enum_t
 
     # Check if the type is an extension of a primitive type
     if hasattr(t, "__bases__"):  # we need this check as types like Optional don't have this property
@@ -86,6 +154,8 @@ def remove_passthrough_type(t: type) -> type:
 def is_generatable_type(t: type) -> bool:
     """Returns true if the type is generatable using generate_value (essentially is it a primitive type)"""
     primitive_type = get_first_generatable_primitive(t, include_optional=False)
+    if get_enum_type(primitive_type, False) is not None:
+        return True  # Enums are a special case
     return primitive_type in PRIMITIVE_VALUE_GENERATORS
 
 

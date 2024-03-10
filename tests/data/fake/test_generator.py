@@ -1,7 +1,8 @@
+import sys
 from dataclasses import dataclass
 from datetime import datetime
-from enum import IntFlag, auto
-from typing import Optional, Union
+from enum import IntEnum, IntFlag, auto
+from typing import List, Optional, Union
 
 import pytest
 from envoy_schema.server.schema.sep2.base import BaseXmlModelWithNS
@@ -16,6 +17,7 @@ from tests.data.fake.generator import (
     clone_class_instance,
     generate_class_instance,
     generate_value,
+    get_enum_type,
     get_first_generatable_primitive,
     get_generatable_class_base,
     get_optional_type_argument,
@@ -33,6 +35,26 @@ class CustomFlags(IntFlag):
     FLAG_2 = auto()
     FLAG_3 = auto()
     FLAG_4 = auto()
+
+
+class CustomIntEnum(IntEnum):
+    VALUE_1 = auto()
+    VALUE_2 = auto()
+    VALUE_3 = 998
+
+
+ALL_ENUM_TYPES: list[type] = [CustomFlags, CustomIntEnum]
+
+# StrEnum is something we want support for but it's was only introduced in python 3.11
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+
+    class CustomStringEnum(StrEnum):
+        VALUE_1 = "My Custom Value 1"
+        VALUE_2 = "My Custom Value 2"
+        VALUE_3 = "VALUE_3"
+
+    ALL_ENUM_TYPES.append(CustomStringEnum)
 
 
 class ParentClass(Base):
@@ -130,6 +152,61 @@ def test_generate_value():
         generate_value(list[int], 1)
 
 
+def test_get_enum_type_non_enums():
+    assert get_enum_type(None, True) is None
+    assert get_enum_type(None, False) is None
+    assert get_enum_type(Union[int, str], True) is None
+    assert get_enum_type(Union[int, str], False) is None
+    assert get_enum_type(int, True) is None
+    assert get_enum_type(int, False) is None
+    assert get_enum_type(Optional[int], True) is None
+    assert get_enum_type(Optional[int], False) is None
+    assert get_enum_type(Mapped[Optional[int]], True) is None
+    assert get_enum_type(Mapped[Optional[int]], False) is None
+
+
+@pytest.mark.parametrize("t", ALL_ENUM_TYPES)
+def test_get_enum_type_with_enums(t):
+    assert get_enum_type(t, False) == t
+    assert get_enum_type(Optional[t], False) == t
+    assert get_enum_type(Mapped[Optional[t]], False) == t
+    assert get_enum_type(Mapped[t], False) == t
+    assert get_enum_type(Union[int, str, t], False) == t
+    assert get_enum_type(Union[int, str, Optional[t]], False) == t
+
+    assert get_enum_type(t, True) == t
+    assert get_enum_type(Optional[t], True) == Optional[t]
+    assert get_enum_type(Mapped[Optional[t]], True) == Optional[t]
+    assert get_enum_type(Mapped[t], True) == t
+    assert get_enum_type(Union[int, str, t], True) == t
+    assert get_enum_type(Union[int, str, Optional[t]], True) == Optional[t]
+
+
+@pytest.mark.parametrize("t", ALL_ENUM_TYPES)
+def test_generate_value_enums(t: type):
+    """Tests that generate_value plays nice with enum values"""
+
+    COUNT = len(t) * 3
+    assert COUNT > 0
+    generated_items: list = []
+    for i in range(COUNT):
+        v = generate_value(t, i)
+        assert isinstance(v, t)
+        assert v == generate_value(Optional[t], i, optional_is_none=False)
+        assert v == generate_value(Mapped[Optional[t]], i, optional_is_none=False)
+        assert v == generate_value(Mapped[t], i, optional_is_none=True)
+        assert generate_value(Optional[t], i, optional_is_none=True) is None
+
+        generated_items.append(v)
+
+    assert len(generated_items) == COUNT
+
+    unique_items = set(generated_items)
+    assert len(unique_items) < COUNT
+    assert len(unique_items) == len(t)
+    assert all([v in t for v in generated_items]), "All generated values should be enum members"
+
+
 def test_get_generatable_class_base():
     assert get_generatable_class_base(ParentClass) == Base
     assert get_generatable_class_base(ChildClass) == Base
@@ -217,6 +294,8 @@ def test_is_generatable_type():
     assert not is_generatable_type(Mapped[Optional[ParentClass]])
 
     # check collections
+    assert not is_generatable_type(Optional[list[ParentClass]])
+    assert not is_generatable_type(Optional[List[ParentClass]])
     assert not is_generatable_type(list[ParentClass])
     assert not is_generatable_type(list[int])
     assert not is_generatable_type(set[datetime])
@@ -234,13 +313,18 @@ def test_get_first_generatable_primitive():
     assert get_first_generatable_primitive(IntExtension, include_optional=True) == int
     assert get_first_generatable_primitive(FurtherIntExtension, include_optional=True) == int
     assert get_first_generatable_primitive(StringExtension, include_optional=True) == str
-    assert get_first_generatable_primitive(CustomFlags, include_optional=True) == int
+    assert get_first_generatable_primitive(CustomFlags, include_optional=True) == CustomFlags
+    assert get_first_generatable_primitive(Optional[CustomFlags], include_optional=True) == Optional[CustomFlags]
     assert get_first_generatable_primitive(Optional[int], include_optional=True) == Optional[int]
     assert get_first_generatable_primitive(Optional[FurtherIntExtension], include_optional=True) == Optional[int]
     assert get_first_generatable_primitive(Union[int, str], include_optional=True) == int
     assert get_first_generatable_primitive(Union[Optional[str], int], include_optional=True) == Optional[str]
     assert get_first_generatable_primitive(Mapped[str], include_optional=True) == str
     assert get_first_generatable_primitive(Mapped[Optional[str]], include_optional=True) == Optional[str]
+    assert get_first_generatable_primitive(Mapped[CustomFlags], include_optional=True) == CustomFlags
+    assert (
+        get_first_generatable_primitive(Mapped[Optional[CustomFlags]], include_optional=True) == Optional[CustomFlags]
+    )
     assert get_first_generatable_primitive(Mapped[Optional[Union[str, int]]], include_optional=True) == Optional[str]
     assert (
         get_first_generatable_primitive(Mapped[Optional[Union[StringExtension, int]]], include_optional=True)
@@ -260,13 +344,16 @@ def test_get_first_generatable_primitive():
     assert get_first_generatable_primitive(IntExtension, include_optional=False) == int
     assert get_first_generatable_primitive(FurtherIntExtension, include_optional=False) == int
     assert get_first_generatable_primitive(StringExtension, include_optional=False) == str
-    assert get_first_generatable_primitive(CustomFlags, include_optional=False) == int
+    assert get_first_generatable_primitive(CustomFlags, include_optional=False) == CustomFlags
+    assert get_first_generatable_primitive(Optional[CustomFlags], include_optional=False) == CustomFlags
     assert get_first_generatable_primitive(Optional[int], include_optional=False) == int
     assert get_first_generatable_primitive(Optional[FurtherIntExtension], include_optional=False) == int
     assert get_first_generatable_primitive(Union[int, str], include_optional=False) == int
     assert get_first_generatable_primitive(Union[Optional[str], int], include_optional=False) == str
     assert get_first_generatable_primitive(Mapped[str], include_optional=False) == str
     assert get_first_generatable_primitive(Mapped[Optional[str]], include_optional=False) == str
+    assert get_first_generatable_primitive(Mapped[CustomFlags], include_optional=False) == CustomFlags
+    assert get_first_generatable_primitive(Mapped[Optional[CustomFlags]], include_optional=False) == CustomFlags
     assert get_first_generatable_primitive(Mapped[Optional[Union[str, int]]], include_optional=False) == str
     assert get_first_generatable_primitive(Mapped[Optional[Union[StringExtension, int]]], include_optional=False) == str
 

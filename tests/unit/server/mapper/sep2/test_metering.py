@@ -117,19 +117,7 @@ def test_MirrorUsagePointMapper_map_to_response():
     """Tests that no exceptions are raised when mapping some common SiteReadingType's"""
     site: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
     srt_all_set: SiteReadingType = generate_class_instance(SiteReadingType, seed=202, optional_is_none=False)
-    srt_all_set.uom = UomType.FREQUENCY_HZ
-    srt_all_set.accumulation_behaviour = AccumulationBehaviourType.CUMULATIVE
-    srt_all_set.kind = KindType.DEMAND
-    srt_all_set.phase = PhaseCode.PHASE_AN_S1N
-    srt_all_set.data_qualifier = DataQualifierType.MAXIMUM
-    srt_all_set.flow_direction = FlowDirectionType.FORWARD
     srt_optional: SiteReadingType = generate_class_instance(SiteReadingType, seed=303, optional_is_none=True)
-    srt_optional.uom = UomType.REAL_POWER_WATT
-    srt_optional.accumulation_behaviour = AccumulationBehaviourType.SUMMATION
-    srt_optional.kind = KindType.CURRENCY
-    srt_optional.phase = PhaseCode.NOT_APPLICABLE
-    srt_optional.data_qualifier = DataQualifierType.AVERAGE
-    srt_optional.flow_direction = FlowDirectionType.NOT_APPLICABLE
     rs_params = RequestStateParameters(1, None)
 
     result_all_set = MirrorUsagePointMapper.map_to_response(rs_params, srt_all_set, site)
