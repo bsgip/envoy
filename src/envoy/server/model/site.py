@@ -1,18 +1,28 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
 from envoy_schema.server.schema.sep2.der import (
     AbnormalCategoryType,
+    AlarmStatusType,
+    ConnectStatusType,
     DERControlType,
     DERType,
     DOESupportedMode,
+    InverterStatusType,
+    LocalControlModeStatusType,
     NormalCategoryType,
+    OperationalModeStatusType,
+    StateOfChargeStatusValue,
+    StorageModeStatusType,
 )
 from envoy_schema.server.schema.sep2.types import DeviceCategory
-from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
+
+PERCENT_DECIMAL_PLACES = 4
 
 
 class Site(Base):
@@ -103,6 +113,12 @@ class SiteDER(Base):
         back_populates="site_der", uselist=False, lazy="raise"
     )
     site_der_setting: Mapped[Optional["SiteDERSetting"]] = relationship(
+        back_populates="site_der", uselist=False, lazy="raise"
+    )
+    site_der_availability: Mapped[Optional["SiteDERAvailability"]] = relationship(
+        back_populates="site_der", uselist=False, lazy="raise"
+    )
+    site_der_status: Mapped[Optional["SiteDERStatus"]] = relationship(
         back_populates="site_der", uselist=False, lazy="raise"
     )
 
@@ -229,6 +245,60 @@ class SiteDERSetting(Base):
     v_ref_ofs_value: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     v_ref_ofs_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     doe_modes_enabled: Mapped[Optional[DOESupportedMode]] = mapped_column(INTEGER, nullable=True)
+
+    site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_setting", lazy="raise", single_parent=True)
+    __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)
+
+
+class SiteDERAvailability(Base):
+    """Represents the current availability values associated with a SiteDER. Typically used for communicating
+    the current snapshot of DER energy held in reserve"""
+
+    __tablename__ = "site_der_availability"
+
+    site_der_availability_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    site_der_id: Mapped[int] = mapped_column(ForeignKey("site_der.site_der_id", ondelete="CASCADE"))
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+    # These values correspond to a flattened version of sep2 DERAvailability
+    availability_duration_sec: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    max_charge_duration_sec: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    reserved_charge_percent: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(8, PERCENT_DECIMAL_PLACES), nullable=True
+    )  # Needs to
+    reserved_deliver_percent: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(8, PERCENT_DECIMAL_PLACES), nullable=True
+    )
+    estimated_var_avail_value: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    estimated_var_avail_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    estimated_w_avail_value: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    estimated_w_avail_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+
+    site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_setting", lazy="raise", single_parent=True)
+    __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)
+
+
+class SiteDERStatus(Base):
+    """Represents the current status values associated with a SiteDER. Typically used for communicating
+    the current snapshot of DER status"""
+
+    __tablename__ = "site_der_status"
+
+    site_der_status_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    site_der_id: Mapped[int] = mapped_column(ForeignKey("site_der.site_der_id", ondelete="CASCADE"))
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+    # These values correspond to a flattened version of sep2 DERStatus
+    alarm_status: Mapped[Optional[AlarmStatusType]] = mapped_column(INTEGER, nullable=True)
+    generator_connect_status: Mapped[Optional[ConnectStatusType]] = mapped_column(INTEGER, nullable=True)
+    inverter_status: Mapped[Optional[InverterStatusType]] = mapped_column(INTEGER, nullable=True)
+    local_control_mode_status: Mapped[Optional[LocalControlModeStatusType]] = mapped_column(INTEGER, nullable=True)
+    manufacturer_status: Mapped[Optional[str]] = mapped_column(VARCHAR(6), nullable=True)
+    manufacturer_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    operational_mode_status: Mapped[Optional[OperationalModeStatusType]] = mapped_column(INTEGER, nullable=True)
+    state_of_charge_status: Mapped[Optional[StateOfChargeStatusValue]] = mapped_column(INTEGER, nullable=True)
+    storage_mode_status: Mapped[Optional[StorageModeStatusType]] = mapped_column(INTEGER, nullable=True)
+    storage_connect_status: Mapped[Optional[ConnectStatusType]] = mapped_column(INTEGER, nullable=True)
 
     site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_setting", lazy="raise", single_parent=True)
     __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)
