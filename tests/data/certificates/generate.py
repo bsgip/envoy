@@ -14,7 +14,7 @@ def run_command(ps: list[str]):
     if result.returncode != 0:
         cmd = " ".join(ps)
         raise Exception(
-            f"result.returncode {result.returncode} for command\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}\n{cmd}"
+            f"returncode {result.returncode} for command\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}\n{cmd}"
         )
 
 

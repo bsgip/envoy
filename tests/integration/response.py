@@ -32,10 +32,10 @@ def assert_response_header(
     body = read_response_body_string(response)
     assert (
         response.status_code == expected_status_code
-    ), f"Got HTTP {response.status_code} expected HTTP {expected_status_code} request: {response.request.url.path}\nResponse body:\n{body}"
+    ), f"Got HTTP {response.status_code} expected HTTP {expected_status_code} request: {response.request.url.path}\nResponse body:\n{body}"  # noqa E501
     assert (
         expected_content_type is not None and actual_content_type == expected_content_type
-    ), f"Got Content {actual_content_type} expected {expected_content_type} request: {response.request.url.path}\nResponse body:\n{body}"
+    ), f"Got Content {actual_content_type} expected {expected_content_type} request: {response.request.url.path}\nResponse body:\n{body}"  # noqa E501
 
 
 def assert_error_response(response: httpx.Response):
@@ -46,15 +46,15 @@ def assert_error_response(response: httpx.Response):
         return  # can't validate something that isn't there
 
     parsed_response: ErrorResponse = ErrorResponse.from_xml(body)
-    assert type(parsed_response.reasonCode) == ReasonCodeType
-    assert parsed_response.message is None or type(parsed_response.message) == str
+    assert isinstance(parsed_response.reasonCode, ReasonCodeType)
+    assert parsed_response.message is None or isinstance(parsed_response.message, str)
 
 
 def read_location_header(response: httpx.Response) -> str:
     """Attempts to read the Location header - throws an exception if not found"""
     if LOCATION_HEADER_NAME not in response.headers:
         raise Exception(
-            f"Location header '{LOCATION_HEADER_NAME}' was not returned in response (status code {response.status_code}). Headers: {response.headers.keys()}"
+            f"Header '{LOCATION_HEADER_NAME}' not returned ({response.status_code}). Headers: {response.headers.keys()}"
         )
     return response.headers[LOCATION_HEADER_NAME]
 

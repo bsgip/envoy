@@ -22,10 +22,12 @@ def test_get_tz_key_via_zoneinfo():
 
 # fmt: off
 @pytest.mark.parametrize("dt, dst_start, dst_end, dst_offset", [
-    # Currently in DST. start indicates the time in the past that DST turned on. End indicates when it swaps in the near future
+    # Currently in DST. start indicates the time in the past that DST turned on.
+    # End indicates when it swaps in the near future
     (datetime(2022, 2, 3, 4, 5, 6, tzinfo=ZoneInfo("Australia/Sydney")), 1633190400, 1648915200, 3600),
 
-    # Currently out of DST. Start indicates October start in a few months. End indicates the April end in the following year
+    # Currently out of DST. Start indicates October start in a few months.
+    # End indicates the April end in the following year
     (datetime(2022, 6, 7, 8, 9, 10, tzinfo=ZoneInfo("Australia/Sydney")), 1664640000, 1680364800, 0),
 
     # Missing timezone details

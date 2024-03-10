@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import pytest

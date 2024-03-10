@@ -53,7 +53,7 @@ def compare_ET_Element_to_reference_ET_Element(
 
         elif v != match:
             error_messages.append(
-                f"[{search_location}] Key ({k}) in input attrib ({model.attrib}) does not match ref attrib ({ref.attrib})"
+                f"[{search_location}] Key ({k}) in input attrib ({model.attrib}) mismatch ref attrib ({ref.attrib})"
             )
 
     # reference inputs have trailing whitespace when read from buffer

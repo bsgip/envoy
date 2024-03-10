@@ -3,7 +3,6 @@ from datetime import datetime
 
 import pytest
 from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.exception import InvalidIdError, NotFoundError
 from envoy.server.manager.metering import MirrorMeteringManager

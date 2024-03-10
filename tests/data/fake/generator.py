@@ -2,6 +2,7 @@ import inspect
 from dataclasses import dataclass, fields, is_dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from types import NoneType
 from typing import Any, Callable, Optional, Union, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel
@@ -127,7 +128,7 @@ def get_optional_type_argument(t: type) -> Optional[type]:
         return None
 
     # get the first non None type
-    return [arg for arg in type_args if arg != type(None)][0]
+    return [arg for arg in type_args if arg is not NoneType][0]
 
 
 def is_optional_type(t: type) -> bool:
@@ -140,7 +141,7 @@ def is_member_public(member_name: str) -> bool:
     return len(member_name) > 0 and member_name[0] != "_"
 
 
-def generate_class_instance(
+def generate_class_instance(  # noqa: C901
     t: type,
     seed: int = 1,
     optional_is_none: bool = False,
