@@ -4,7 +4,6 @@ from decimal import Decimal
 
 import pytest
 from envoy_schema.server.schema.sep2.pricing import TariffProfileResponse, TimeTariffIntervalResponse
-from envoy_schema.server.schema.sep2.types import CurrencyCode
 
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
@@ -69,7 +68,6 @@ def test_tariff_profile_nosite_mapping():
     """Non exhaustive test of the tariff profile mapping - mainly to sanity check important fields and ensure
     that exceptions aren't being raised"""
     all_set: Tariff = generate_class_instance(Tariff, seed=101, optional_is_none=False)
-    all_set.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
     rs_params = RequestStateParameters(1, None)
     mapped_all_set = TariffProfileMapper.map_to_nosite_response(rs_params, all_set)
     assert mapped_all_set
@@ -85,7 +83,6 @@ def test_tariff_profile_nosite_mapping():
     ), "Raw tariff mappings have no rates - need site info to get this information"
 
     some_set: Tariff = generate_class_instance(Tariff, seed=202, optional_is_none=True)
-    some_set.currency_code = CurrencyCode.US_DOLLAR
     mapped_some_set = TariffProfileMapper.map_to_nosite_response(rs_params, some_set)
     assert mapped_some_set
     assert mapped_some_set.href
@@ -106,7 +103,6 @@ def test_tariff_profile_mapping():
     site_id = 9876
     total_rates = 76543
     all_set: Tariff = generate_class_instance(Tariff, seed=101, optional_is_none=False)
-    all_set.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
     rs_params = RequestStateParameters(1, None)
     mapped_all_set = TariffProfileMapper.map_to_response(rs_params, all_set, site_id, total_rates)
     assert mapped_all_set
@@ -121,7 +117,6 @@ def test_tariff_profile_mapping():
     assert mapped_all_set.RateComponentListLink.all_ == total_rates
 
     some_set: Tariff = generate_class_instance(Tariff, seed=202, optional_is_none=True)
-    some_set.currency_code = CurrencyCode.US_DOLLAR
     mapped_some_set = TariffProfileMapper.map_to_response(rs_params, some_set, site_id, total_rates)
     assert mapped_some_set
     assert mapped_some_set.href
@@ -142,8 +137,6 @@ def test_tariff_profile_list_nosite_mapping():
         generate_class_instance(Tariff, seed=101, optional_is_none=False),
         generate_class_instance(Tariff, seed=202, optional_is_none=True),
     ]
-    tariffs[0].currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
-    tariffs[1].currency_code = CurrencyCode.US_DOLLAR
     count = 123
     rs_params = RequestStateParameters(1, None)
 
@@ -163,8 +156,6 @@ def test_tariff_profile_list_mapping():
         generate_class_instance(Tariff, seed=202, optional_is_none=True),
     ]
     tariff_rate_counts = [456, 789]
-    tariffs[0].currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
-    tariffs[1].currency_code = CurrencyCode.US_DOLLAR
     tariff_count = 123
     site_id = 112234
     rs_params = RequestStateParameters(1, None)
@@ -402,7 +393,6 @@ def test_mrid_uniqueness():
     tariff: Tariff = generate_class_instance(Tariff)
     rate: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate)
     tariff.tariff_id = id
-    tariff.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
     rs_params = RequestStateParameters(1, None)
 
     rate.tariff_generated_rate_id = id
