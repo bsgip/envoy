@@ -274,7 +274,7 @@ class SiteDERAvailability(Base):
     estimated_w_avail_value: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     estimated_w_avail_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
 
-    site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_setting", lazy="raise", single_parent=True)
+    site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_availability", lazy="raise", single_parent=True)
     __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)
 
 
@@ -300,5 +300,5 @@ class SiteDERStatus(Base):
     storage_mode_status: Mapped[Optional[StorageModeStatusType]] = mapped_column(INTEGER, nullable=True)
     storage_connect_status: Mapped[Optional[ConnectStatusType]] = mapped_column(INTEGER, nullable=True)
 
-    site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_setting", lazy="raise", single_parent=True)
+    site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_status", lazy="raise", single_parent=True)
     __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)

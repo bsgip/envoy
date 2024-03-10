@@ -13,7 +13,7 @@ def generate_default_site_der(site_der_id: int, site_id: int) -> SiteDER:
     DER to be pre populated - so if we have nothing in the DB - we instead generate an empty SiteDER"""
     return SiteDER(
         site_der_id=site_der_id,
-        siteId=site_id,
+        site_id=site_id,
         changed_time=utc_now(),
         site_der_rating=None,
         site_der_setting=None,
@@ -32,11 +32,13 @@ async def select_site_der_for_site(session: AsyncSession, aggregator_id: int, si
         select(SiteDER)
         .where((SiteDER.site_id == site_id) & (Site.aggregator_id == aggregator_id))
         .join(Site)
-        .order_by(SiteDER.site_der_id)
+        .order_by(SiteDER.site_der_id.desc())
         .limit(1)
         .options(
-            selectinload(SiteDER.site_der_rating).selectinload(SiteDER.site_der_setting),
-            selectinload(SiteDER.site_der_availability).selectinload(SiteDER.site_der_status),
+            selectinload(SiteDER.site_der_rating),
+            selectinload(SiteDER.site_der_setting),
+            selectinload(SiteDER.site_der_availability),
+            selectinload(SiteDER.site_der_status),
         )
     )
 
