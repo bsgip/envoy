@@ -167,19 +167,19 @@ def test_get_enum_type_non_enums():
 
 @pytest.mark.parametrize("t", ALL_ENUM_TYPES)
 def test_get_enum_type_with_enums(t):
-    assert get_enum_type(t, False) is t
-    assert get_enum_type(Optional[t], False) is t
-    assert get_enum_type(Mapped[Optional[t]], False) is t
-    assert get_enum_type(Mapped[t], False) is t
-    assert get_enum_type(Union[int, str, t], False) is t
-    assert get_enum_type(Union[int, str, Optional[t]], False) is t
+    assert get_enum_type(t, False) == t
+    assert get_enum_type(Optional[t], False) == t
+    assert get_enum_type(Mapped[Optional[t]], False) == t
+    assert get_enum_type(Mapped[t], False) == t
+    assert get_enum_type(Union[int, str, t], False) == t
+    assert get_enum_type(Union[int, str, Optional[t]], False) == t
 
-    assert get_enum_type(t, True) is t
-    assert get_enum_type(Optional[t], True) is Optional[t]
-    assert get_enum_type(Mapped[Optional[t]], True) is Optional[t]
-    assert get_enum_type(Mapped[t], True) is t
-    assert get_enum_type(Union[int, str, t], True) is t
-    assert get_enum_type(Union[int, str, Optional[t]], True) is Optional[t]
+    assert get_enum_type(t, True) == t
+    assert get_enum_type(Optional[t], True) == Optional[t]
+    assert get_enum_type(Mapped[Optional[t]], True) == Optional[t]
+    assert get_enum_type(Mapped[t], True) == t
+    assert get_enum_type(Union[int, str, t], True) == t
+    assert get_enum_type(Union[int, str, Optional[t]], True) == Optional[t]
 
 
 @pytest.mark.parametrize("t", ALL_ENUM_TYPES)
