@@ -96,7 +96,7 @@ async def test_select_and_count_doe_filters(
     async with generate_async_session(pg_base_config) as session:
         does = await select_does(session, agg_id, site_id, 0, datetime.min, 99)
         count = await count_does(session, agg_id, site_id, datetime.min)
-        assert type(count) == int
+        assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count
         for (id, expected_datetime), doe in zip(expected_id_and_starts, does):
@@ -123,7 +123,7 @@ async def test_select_and_count_doe_filters_la_time(
     async with generate_async_session(pg_la_timezone) as session:
         does = await select_does(session, agg_id, site_id, 0, datetime.min, 99)
         count = await count_does(session, agg_id, site_id, datetime.min)
-        assert type(count) == int
+        assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count
         for (id, expected_datetime), doe in zip(expected_id_and_starts, does):
@@ -173,7 +173,7 @@ async def test_select_and_count_doe_for_day_filters(
     async with generate_async_session(pg_base_config) as session:
         does = await select_does_for_day(session, agg_id, site_id, day, 0, datetime.min, 99)
         count = await count_does_for_day(session, agg_id, site_id, day, datetime.min)
-        assert type(count) == int
+        assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count
         for (id, expected_datetime), doe in zip(expected_id_and_starts, does):
@@ -201,7 +201,7 @@ async def test_select_and_count_doe_for_day_filters_la_time(
     async with generate_async_session(pg_la_timezone) as session:
         does = await select_does_for_day(session, agg_id, site_id, day, 0, datetime.min, 99)
         count = await count_does_for_day(session, agg_id, site_id, day, datetime.min)
-        assert type(count) == int
+        assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count
         for (id, expected_datetime), doe in zip(expected_id_and_starts, does):
@@ -211,18 +211,40 @@ async def test_select_and_count_doe_for_day_filters_la_time(
 @pytest.mark.parametrize(
     "expected_id_and_starts, timestamp, agg_id, site_id",
     [
-        # fmt: off
-        ([(5, datetime(2023, 5, 7, 1, 0, 0))], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")), 1, 1),
-        ([(5, datetime(2023, 5, 7, 1, 0, 0)), (9, datetime(2023, 5, 7, 1, 0, 1))], datetime(2023, 5, 7, 1, 0, 1, tzinfo=ZoneInfo("Australia/Brisbane")), 1, 1),
-        ([(5, datetime(2023, 5, 7, 1, 0, 0)), (9, datetime(2023, 5, 7, 1, 0, 1))], datetime(2023, 5, 7, 1, 3, 22, tzinfo=ZoneInfo("Australia/Brisbane")), 1, 1),
-        ([(9, datetime(2023, 5, 7, 1, 0, 1)), (6, datetime(2023, 5, 7, 1, 5, 0))], datetime(2023, 5, 7, 1, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane")), 1, 1),
-        ([(7, datetime(2023, 5, 7, 1, 10, 0))], datetime(2023, 5, 7, 1, 10, 0, tzinfo=ZoneInfo("Australia/Brisbane")), 1, 1),
-
+        (
+            [(5, datetime(2023, 5, 7, 1, 0, 0))],
+            datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
+            1,
+        ),
+        (
+            [(5, datetime(2023, 5, 7, 1, 0, 0)), (9, datetime(2023, 5, 7, 1, 0, 1))],
+            datetime(2023, 5, 7, 1, 0, 1, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
+            1,
+        ),
+        (
+            [(5, datetime(2023, 5, 7, 1, 0, 0)), (9, datetime(2023, 5, 7, 1, 0, 1))],
+            datetime(2023, 5, 7, 1, 3, 22, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
+            1,
+        ),
+        (
+            [(9, datetime(2023, 5, 7, 1, 0, 1)), (6, datetime(2023, 5, 7, 1, 5, 0))],
+            datetime(2023, 5, 7, 1, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
+            1,
+        ),
+        (
+            [(7, datetime(2023, 5, 7, 1, 10, 0))],
+            datetime(2023, 5, 7, 1, 10, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
+            1,
+        ),
         # Throw the timestamp timezone off
         ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles")), 1, 1),
         ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")), 1, 2),
         ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")), 2, 1),
-        # fmt: on
     ],
 )
 @pytest.mark.anyio
@@ -237,7 +259,7 @@ async def test_select_and_count_doe_for_timestamp_filters(
     async with generate_async_session(pg_additional_does) as session:
         does = await select_does_at_timestamp(session, agg_id, site_id, timestamp, 0, datetime.min, 99)
         count = await count_does_at_timestamp(session, agg_id, site_id, timestamp, datetime.min)
-        assert type(count) == int
+        assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count
         for (id, expected_datetime), doe in zip(expected_id_and_starts, does):

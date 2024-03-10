@@ -4,7 +4,6 @@ from datetime import datetime
 import pytest
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
-from envoy_schema.server.schema.sep2.primitive_types import HexBinary32
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
 from envoy.server.exception import InvalidMappingError
@@ -119,7 +118,7 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     assert result_all_set.changed_time == changed_time
     assert result_all_set.aggregator_id == aggregator_id
     assert result_all_set.lfdi == end_device_all_set.lFDI
-    assert type(result_all_set.device_category) == DeviceCategory
+    assert isinstance(result_all_set.device_category, DeviceCategory)
     assert result_all_set.device_category == int("c0ffee", 16)
     assert result_all_set.timezone_id == "abc/123"
 
@@ -129,7 +128,7 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     assert result_optional.changed_time == changed_time
     assert result_optional.aggregator_id == aggregator_id
     assert result_optional.lfdi == end_device_optional.lFDI
-    assert type(result_all_set.device_category) == DeviceCategory
+    assert isinstance(result_all_set.device_category, DeviceCategory)
     assert result_optional.device_category == DeviceCategory(0)
     assert result_optional.timezone_id == "abc/123"
 

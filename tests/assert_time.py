@@ -7,10 +7,10 @@ def assert_fuzzy_datetime_match(
 ):
     """Asserts that two datetimes are within fuzziness_seconds of each other. If the times are numbers then they
     will be interpreted as a timestamp"""
-    if type(expected_time) != datetime:
+    if not isinstance(expected_time, datetime):
         expected_time = datetime.fromtimestamp(float(expected_time))
 
-    if type(actual_time) != datetime:
+    if not isinstance(actual_time, datetime):
         actual_time = datetime.fromtimestamp(float(actual_time))
 
     delta_seconds = (expected_time - actual_time).total_seconds()

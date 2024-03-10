@@ -16,7 +16,6 @@ from envoy.server.api.auth.azure import _PUBLIC_KEY_URI_FORMAT, _TOKEN_URI_FORMA
 from envoy.server.main import generate_app
 from envoy.server.settings import generate_settings
 from tests.integration.response import assert_response_header
-from tests.postgres_testing import generate_async_conn_str_from_connection
 from tests.unit.jwt import (
     DEFAULT_CLIENT_ID,
     DEFAULT_DATABASE_RESOURCE_ID,

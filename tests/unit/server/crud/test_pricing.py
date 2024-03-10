@@ -221,7 +221,7 @@ async def test_select_and_count_tariff_rates_for_day_filters(
     async with generate_async_session(pg_base_config) as session:
         rates = await select_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, 0, datetime.min, 99)
         count = await count_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, datetime.min)
-    assert type(count) == int
+    assert isinstance(count, int)
     assert len(rates) == len(expected_id_and_starts)
     assert len(rates) == count
     for (id, expected_datetime), rate in zip(expected_id_and_starts, rates):
@@ -257,7 +257,7 @@ async def test_select_and_count_tariff_rates_for_day_filters_la_time(
     async with generate_async_session(pg_la_timezone) as session:
         rates = await select_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, 0, datetime.min, 99)
         count = await count_tariff_rates_for_day(session, agg_id, tariff_id, site_id, day, datetime.min)
-        assert type(count) == int
+        assert isinstance(count, int)
         assert len(rates) == len(expected_id_and_starts)
         assert len(rates) == count
         for (id, expected_datetime), rate in zip(expected_id_and_starts, rates):

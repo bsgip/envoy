@@ -383,7 +383,7 @@ def test_time_tariff_interval_list_mapping(
     assert mapped.results == len(rates)
     assert len(mapped.TimeTariffInterval) == len(rates)
     assert all(
-        [type(x) == TimeTariffIntervalResponse for x in mapped.TimeTariffInterval]
+        [isinstance(x, TimeTariffIntervalResponse) for x in mapped.TimeTariffInterval]
     ), "Checking all list items are the correct type"
     list_items_mrids = [x.mRID for x in mapped.TimeTariffInterval]
     assert len(list_items_mrids) == len(set(list_items_mrids)), "Checking all list items are unique"

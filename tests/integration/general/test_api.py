@@ -249,10 +249,10 @@ async def test_crawl_hrefs_with_prefix(client: AsyncClient, valid_headers: dict)
             prefixed_new_uri = match.group(1)
             assert prefixed_new_uri.startswith(
                 TEST_HREF_PREFIX_VALUE
-            ), f"GET uri {uri} returned a href {prefixed_new_uri} that was NOT prefixed with {TEST_HREF_PREFIX_VALUE}\n{body}"
+            ), f"GET uri {uri} returned a href {prefixed_new_uri} NOT prefixed with {TEST_HREF_PREFIX_VALUE}\n{body}"
 
             # The actual URI that our server will respond to is sans the prefix value
-            new_uri = prefixed_new_uri[len(TEST_HREF_PREFIX_VALUE) :]
+            new_uri = prefixed_new_uri[len(TEST_HREF_PREFIX_VALUE) :]  # noqa E203
             if new_uri not in visited_uris:
                 uris_to_visit.append((new_uri, uri))
     assert len(visited_uris) > len(ALL_ENDPOINTS_WITH_SUPPORTED_METHODS), "Sanity check to ensure we are finding uris"

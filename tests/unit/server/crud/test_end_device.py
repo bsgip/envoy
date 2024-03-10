@@ -167,7 +167,7 @@ async def test_select_single_site_with_site_id(
             assert site is None
         else:
             (nmi, lfdi, sfdi, dc, changed_time) = expected_vals
-            assert type(site) == Site
+            assert isinstance(site, Site)
             assert site.site_id == site_id
             assert site.aggregator_id == agg_id
             assert site.nmi == nmi
@@ -225,7 +225,7 @@ async def test_select_single_site_with_sfdi(
             assert site is None
         else:
             (site_id, nmi, lfdi, dc, changed_time) = expected_vals
-            assert type(site) == Site
+            assert isinstance(site, Site)
             assert site.site_id == site_id
             assert site.aggregator_id == agg_id
             assert site.nmi == nmi
@@ -241,44 +241,7 @@ async def test_select_single_site_with_lfdi(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # Site 3 for Agg 2
         site_3 = await select_single_site_with_lfdi(session, "site3-lfdi", 2)
-        assert type(site_3) == Site
-        assert site_3.site_id == 3
-        assert site_3.nmi == "3333333333"
-        assert site_3.aggregator_id == 2
-        assert_datetime_equal(site_3.changed_time, datetime(2022, 2, 3, 8, 9, 10, tzinfo=timezone.utc))
-        assert site_3.lfdi == "site3-lfdi"
-        assert site_3.sfdi == 3333
-        assert site_3.device_category == DeviceCategory(2)
-
-        # Site 1 for Agg 1
-        site_1 = await select_single_site_with_lfdi(session, "site1-lfdi", 1)
-        assert type(site_1) == Site
-        assert site_1.site_id == 1
-        assert site_1.nmi == "1111111111"
-        assert site_1.aggregator_id == 1
-        assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc))
-        assert site_1.lfdi == "site1-lfdi"
-        assert site_1.sfdi == 1111
-        assert site_1.device_category == DeviceCategory(0)
-
-        # test mismatched ids
-        assert await select_single_site_with_lfdi(session, "site1-lfdi", 2) is None
-        assert await select_single_site_with_lfdi(session, "site3-lfdi", 1) is None
-        assert await select_single_site_with_lfdi(session, "site3-lfdi", 3) is None
-
-        # test bad ids
-        assert await select_single_site_with_lfdi(session, "site1-lfdi", 99) is None
-        assert await select_single_site_with_lfdi(session, "site99-lfdi", 1) is None
-        assert await select_single_site_with_lfdi(session, "", -1) is None
-
-
-@pytest.mark.anyio
-async def test_select_single_site_with_lfdi(pg_base_config):
-    """Tests that the returned objects match the DB contents (and handle lookup misses)"""
-    async with generate_async_session(pg_base_config) as session:
-        # Site 3 for Agg 2
-        site_3 = await select_single_site_with_lfdi(session, "site3-lfdi", 2)
-        assert type(site_3) == Site
+        assert isinstance(site_3, Site)
         assert site_3.site_id == 3
         assert site_3.nmi == "3333333333"
         assert site_3.aggregator_id == 2
@@ -289,7 +252,7 @@ async def test_select_single_site_with_lfdi(pg_base_config):
 
         # Site 1 for Agg 1
         site_1 = await select_single_site_with_lfdi(session, "site1-lfdi", 1)
-        assert type(site_1) == Site
+        assert isinstance(site_1, Site)
         assert site_1.site_id == 1
         assert site_1.nmi == "1111111111"
         assert site_1.aggregator_id == 1
@@ -336,7 +299,7 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
 
         # Sanity check another site in the same aggregator
         site_1 = await select_single_site_with_site_id(session, 1, 1)
-        assert type(site_1) == Site
+        assert isinstance(site_1, Site)
         assert site_1.site_id == 1
         assert site_1.nmi == "1111111111"
         assert site_1.aggregator_id == 1
@@ -391,7 +354,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
 
         # Sanity check another site in the same aggregator
         site_2 = await select_single_site_with_site_id(session, 2, aggregator_id)
-        assert type(site_2) == Site
+        assert isinstance(site_2, Site)
         assert site_2.site_id == 2
         assert site_2.nmi == "2222222222"
         assert site_2.aggregator_id == aggregator_id

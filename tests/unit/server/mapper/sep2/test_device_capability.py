@@ -1,5 +1,5 @@
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
-from envoy_schema.server.schema.sep2.identification import Link, ListLink
+from envoy_schema.server.schema.sep2.identification import ListLink
 
 from envoy.server.mapper.sep2.device_capability import DeviceCapabilityMapper
 from envoy.server.request_state import RequestStateParameters

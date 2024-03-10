@@ -15,7 +15,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERProgramResponse,
 )
 from httpx import AsyncClient
-from sqlalchemy import Sequence, select
+from sqlalchemy import select
 
 from envoy.server.mapper.csip_aus.doe import DERControlMapper
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DynamicOperatingEnvelope

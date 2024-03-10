@@ -460,7 +460,7 @@ def test_clone_class_instance_sql_alchemy():
 
     assert clone
     assert clone is not original
-    assert type(clone) == ParentClass
+    assert isinstance(clone, ParentClass)
 
     assert clone.parent_id is original.parent_id
     assert clone.name is original.name
@@ -472,7 +472,7 @@ def test_clone_class_instance_sql_alchemy():
     clone_with_ignores: ParentClass = clone_class_instance(original, ignored_properties=set(["created", "total"]))
     assert clone_with_ignores
     assert clone_with_ignores is not original
-    assert type(clone_with_ignores) == ParentClass
+    assert isinstance(clone_with_ignores, ParentClass)
 
     assert clone_with_ignores.parent_id is original.parent_id
     assert clone_with_ignores.name is original.name
@@ -489,7 +489,7 @@ def test_clone_class_instance_xml():
 
     assert clone
     assert clone is not original
-    assert type(clone) == FurtherXmlClass
+    assert isinstance(clone, FurtherXmlClass)
 
     assert clone.myInt is original.myInt
     assert clone.myStr is original.myStr

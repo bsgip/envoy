@@ -1,18 +1,14 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import pytest
-from asyncpg import Connection
-from sqlalchemy import select
 
 from envoy.admin.crud.billing import BillingData, fetch_aggregator, fetch_billing_data
-from envoy.admin.crud.doe import upsert_many_doe
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.tariff import TariffGeneratedRate
-from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 from tests.postgres_testing import generate_async_session
 
 
@@ -34,7 +30,7 @@ aest = ZoneInfo("Australia/Brisbane")  # This is UTC+10 to align with the start 
 
 
 @pytest.mark.parametrize(
-    "period_start, period_end, aggregator_id, tariff_id, expected_tariff_imports, expected_doe_imports, expected_wh_readings, expected_varh_readings",
+    "period_start, period_end, aggregator_id, tariff_id, expected_tariff_imports, expected_doe_imports, expected_wh_readings, expected_varh_readings",  # noqa e501
     [
         (
             datetime(2023, 9, 10, tzinfo=aest),  # Period start

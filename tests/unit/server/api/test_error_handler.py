@@ -13,21 +13,21 @@ def test_http_status_code_to_reason_code_nocrash():
     # test ints
     for i in range(-600, 600):
         reason_code = http_status_code_to_reason_code(i)
-        assert reason_code is not None and type(reason_code) == ReasonCodeType, f"Failure at {i}"
+        assert reason_code is not None and isinstance(reason_code, ReasonCodeType), f"Failure at {i}"
 
     # test enums
     for e in HTTPStatus:
         reason_code = http_status_code_to_reason_code(e)
-        assert reason_code is not None and type(reason_code) == ReasonCodeType, f"Failure at {e}"
+        assert reason_code is not None and isinstance(reason_code, ReasonCodeType), f"Failure at {e}"
 
         # test that enum values are equivalent to the enums directly (eg 500 == INTERNAL_SERVER_ERROR)
         assert http_status_code_to_reason_code(e.value) == http_status_code_to_reason_code(e)
 
     reason_code = http_status_code_to_reason_code(None)
-    assert reason_code is not None and type(reason_code) == ReasonCodeType
+    assert reason_code is not None and isinstance(reason_code, ReasonCodeType)
 
     reason_code = http_status_code_to_reason_code("401")
-    assert reason_code is not None and type(reason_code) == ReasonCodeType
+    assert reason_code is not None and isinstance(reason_code, ReasonCodeType)
 
 
 def test_generate_error_response_optional_message_encoding():
