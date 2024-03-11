@@ -216,7 +216,8 @@ def generate_class_instance(  # noqa: C901
     seed: int = 1,
     optional_is_none: bool = False,
     generate_relationships: bool = False,
-    visited_types: Optional[set[type]] = None,
+    visited_types_with_sources: Optional[dict[type, list[Optional[tuple[str, type]]]]] = None,
+    source_variable: Optional[tuple[str, type]] = None,
 ) -> Any:
     """Given a child class of a key to CLASS_INSTANCE_GENERATORS - generate an instance of that class
     with all properties being assigned unique values based off of seed. The values will match type hints
@@ -228,15 +229,21 @@ def generate_class_instance(  # noqa: C901
 
     If the type cannot be instantiated due to missing type hints / other info exceptions will be raised
 
-    visited_types should not be specified - it's for internal use only"""
+    visited_types_with_sources should not be specified - it's for internal use only
+    source_variable should not be specified - it's for internal use only"""
     t = remove_passthrough_type(t)
 
     # stop back references from infinite looping
-    if visited_types is None:
-        visited_types = set()
-    if t in visited_types:
+    if visited_types_with_sources is None:
+        visited_types_with_sources = {}
+    sources = visited_types_with_sources.get(t, None)
+    if sources and (None in sources or source_variable in sources):
+        # If we've looped back to the original type OR we've visited this type from the same source - abort!
+        # Same source being the same member from the same type
         return None
-    visited_types.add(t)
+    if sources is None:
+        visited_types_with_sources[t] = sources = []
+    sources.append(source_variable)
 
     # We can only generate class instances of classes that inherit from a known base
     t_generatable_base = get_generatable_class_base(t)
@@ -293,12 +300,14 @@ def generate_class_instance(  # noqa: C901
                 generated_value = None
                 is_list = False
             elif generate_relationships:
+                relationship_type = optional_arg_type if is_optional else member_type
                 generated_value = generate_class_instance(
-                    member_type,
+                    relationship_type,
                     seed=current_seed,
                     optional_is_none=optional_is_none,
                     generate_relationships=generate_relationships,
-                    visited_types=visited_types,
+                    visited_types_with_sources=visited_types_with_sources,
+                    source_variable=(member_name, t),
                 )
 
                 # None can be generated when Type A has child B that includes a backreference to A. in these

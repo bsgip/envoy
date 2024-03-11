@@ -23,6 +23,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from envoy.server.model import Base
 
 PERCENT_DECIMAL_PLACES = 4
+PERCENT_DECIMAL_POWER = pow(10, PERCENT_DECIMAL_PLACES)
 
 
 class Site(Base):
@@ -291,14 +292,21 @@ class SiteDERStatus(Base):
     # These values correspond to a flattened version of sep2 DERStatus
     alarm_status: Mapped[Optional[AlarmStatusType]] = mapped_column(INTEGER, nullable=True)
     generator_connect_status: Mapped[Optional[ConnectStatusType]] = mapped_column(INTEGER, nullable=True)
+    generator_connect_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     inverter_status: Mapped[Optional[InverterStatusType]] = mapped_column(INTEGER, nullable=True)
+    inverter_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     local_control_mode_status: Mapped[Optional[LocalControlModeStatusType]] = mapped_column(INTEGER, nullable=True)
+    local_control_mode_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     manufacturer_status: Mapped[Optional[str]] = mapped_column(VARCHAR(6), nullable=True)
     manufacturer_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     operational_mode_status: Mapped[Optional[OperationalModeStatusType]] = mapped_column(INTEGER, nullable=True)
+    operational_mode_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     state_of_charge_status: Mapped[Optional[StateOfChargeStatusValue]] = mapped_column(INTEGER, nullable=True)
+    state_of_charge_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     storage_mode_status: Mapped[Optional[StorageModeStatusType]] = mapped_column(INTEGER, nullable=True)
+    storage_mode_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     storage_connect_status: Mapped[Optional[ConnectStatusType]] = mapped_column(INTEGER, nullable=True)
+    storage_connect_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_status", lazy="raise", single_parent=True)
     __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)

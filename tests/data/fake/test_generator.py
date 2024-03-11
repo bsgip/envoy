@@ -115,6 +115,7 @@ class XmlClass(BaseXmlModelWithNS):
     myStr: StringExtension = element()
     myChildren: list[ChildXmlClass] = element()
     mySibling: SiblingXmlClass = element()
+    myOptionalSibling: Optional[SiblingXmlClass] = element(default=None)
 
 
 class FurtherXmlClass(XmlClass):
@@ -397,13 +398,18 @@ def test_generate_xml_basic_values():
 
 
 def test_generate_xml_instance_relationships():
-    p1: FurtherXmlClass = generate_class_instance(FurtherXmlClass, generate_relationships=True)
+    p1: FurtherXmlClass = generate_class_instance(FurtherXmlClass, generate_relationships=True, optional_is_none=False)
     assert p1.myChildren is not None and len(p1.myChildren) == 1 and isinstance(p1.myChildren[0], ChildXmlClass)
     assert p1.mySibling is not None and isinstance(p1.mySibling, SiblingXmlClass)
+    assert p1.myOptionalSibling is not None and isinstance(p1.myOptionalSibling, SiblingXmlClass)
+    assert p1.mySibling.siblingStr != p1.myOptionalSibling.siblingStr, "Different instances have different vals"
 
-    p2: FurtherXmlClass = generate_class_instance(FurtherXmlClass, seed=112, generate_relationships=True)
+    p2: FurtherXmlClass = generate_class_instance(
+        FurtherXmlClass, seed=112, generate_relationships=True, optional_is_none=True
+    )
     assert p2.myChildren is not None and len(p2.myChildren) == 1 and isinstance(p2.myChildren[0], ChildXmlClass)
     assert p2.mySibling is not None and isinstance(p2.mySibling, SiblingXmlClass)
+    assert p2.myOptionalSibling is None
 
     assert p1.myChildren[0].childInt != p2.myChildren[0].childInt, "Differing seed values generate different results"
     assert p1.myChildren[0].childList != p2.myChildren[0].childList, "Differing seed values generate different results"
