@@ -1,8 +1,8 @@
 """added_siteder
 
-Revision ID: abdfefae0214
+Revision ID: 9edddd3c2d15
 Revises: 28d4321746ee
-Create Date: 2024-03-11 15:46:07.148103
+Create Date: 2024-03-11 18:12:02.282504
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'abdfefae0214'
+revision = '9edddd3c2d15'
 down_revision = '28d4321746ee'
 branch_labels = None
 depends_on = None
@@ -111,7 +111,7 @@ def upgrade() -> None:
     sa.Column('es_low_volt', sa.INTEGER(), nullable=True),
     sa.Column('es_ramp_tms', sa.INTEGER(), nullable=True),
     sa.Column('es_random_delay', sa.INTEGER(), nullable=True),
-    sa.Column('es_grad_w', sa.INTEGER(), nullable=False),
+    sa.Column('grad_w', sa.INTEGER(), nullable=False),
     sa.Column('max_a_value', sa.INTEGER(), nullable=True),
     sa.Column('max_a_multiplier', sa.INTEGER(), nullable=True),
     sa.Column('max_ah_value', sa.INTEGER(), nullable=True),

@@ -207,7 +207,7 @@ class SiteDERSetting(Base):
     es_low_volt: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     es_ramp_tms: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     es_random_delay: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
-    es_grad_w: Mapped[int] = mapped_column(INTEGER)
+    grad_w: Mapped[int] = mapped_column(INTEGER)
     max_a_value: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     max_a_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     max_ah_value: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)

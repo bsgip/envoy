@@ -15,9 +15,15 @@ from envoy_schema.server.schema.sep2.der import (
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMapper, DERStatusMapper, to_hex_binary
+from envoy.server.mapper.sep2.der import (
+    DERAvailabilityMapper,
+    DERCapabilityMapper,
+    DERSettingMapper,
+    DERStatusMapper,
+    to_hex_binary,
+)
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
-from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERStatus
+from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.request_state import RequestStateParameters
 from tests.assert_time import assert_datetime_equal
 from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance, generate_value
@@ -117,3 +123,32 @@ def test_der_capability_roundtrip(optional_is_none: bool):
     )
     assert actual.href.startswith("/my/prefix")
     assert str(site_id) in actual.href
+
+
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_der_settings_roundtrip(optional_is_none: bool):
+    """Tests that DERSettings mapping is reversible"""
+    expected: DERSettings = generate_class_instance(
+        DERSettings, seed=101, optional_is_none=optional_is_none, generate_relationships=True
+    )
+    expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_HFRT_MAY_TRIP | DERControlType.OP_MOD_FREQ_DROOP)
+    site_id = 9876
+    rs_params = RequestStateParameters(111, "/my/prefix")
+    changed_time = datetime(2023, 8, 9, 1, 2, 4)
+
+    mapped = DERSettingMapper.map_from_request(changed_time, expected)
+    assert isinstance(mapped, SiteDERSetting)
+    assert mapped.changed_time == changed_time
+
+    actual = DERSettingMapper.map_to_response(rs_params, site_id, mapped)
+    assert isinstance(actual, DERSettings)
+
+    assert_class_instance_equality(
+        DERSettings,
+        expected,
+        actual,
+        ignored_properties=set(["href", "subscribable", "type", "updatedTime"]),
+    )
+    assert actual.href.startswith("/my/prefix")
+    assert str(site_id) in actual.href
+    assert_datetime_equal(changed_time, actual.updatedTime)

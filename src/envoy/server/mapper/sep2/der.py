@@ -28,6 +28,7 @@ from envoy.server.model.site import (
     SiteDER,
     SiteDERAvailability,
     SiteDERRating,
+    SiteDERSetting,
     SiteDERStatus,
 )
 from envoy.server.request_state import RequestStateParameters
@@ -455,5 +456,115 @@ class DERCapabilityMapper:
         )
         (m.under_excited_w_value, m.under_excited_w_multiplier) = set_value_multiplier(der_cap.rtgUnderExcitedW)
         (m.v_nom_value, m.v_nom_multiplier) = set_value_multiplier(der_cap.rtgVNom)
+
+        return m
+
+
+class DERSettingMapper:
+    @staticmethod
+    def map_to_response(rs_params: RequestStateParameters, site_id: int, der_setting: SiteDERSetting) -> DERSettings:
+        return DERSettings.model_validate(
+            {
+                "href": generate_href(uri.DERSettingsUri, rs_params, site_id=site_id, der_id=der_setting.site_der_id),
+                "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
+                "modesEnabled": to_hex_binary(der_setting.modes_enabled),
+                "setESDelay": der_setting.es_delay,
+                "setESHighFreq": der_setting.es_high_freq,
+                "setESHighVolt": der_setting.es_high_volt,
+                "setESLowFreq": der_setting.es_low_freq,
+                "setESLowVolt": der_setting.es_low_volt,
+                "setESRampTms": der_setting.es_ramp_tms,
+                "setESRandomDelay": der_setting.es_random_delay,
+                "setGradW": der_setting.grad_w,
+                "setMaxA": get_value_multiplier(der_setting.max_a_value, der_setting.max_a_multiplier),
+                "setMaxAh": get_value_multiplier(der_setting.max_ah_value, der_setting.max_ah_multiplier),
+                "setMaxChargeRateVA": get_value_multiplier(
+                    der_setting.max_charge_rate_va_value, der_setting.max_charge_rate_va_multiplier
+                ),
+                "setMaxChargeRateW": get_value_multiplier(
+                    der_setting.max_charge_rate_w_value, der_setting.max_charge_rate_w_multiplier
+                ),
+                "setMaxDischargeRateVA": get_value_multiplier(
+                    der_setting.max_discharge_rate_va_value, der_setting.max_discharge_rate_va_multiplier
+                ),
+                "setMaxDischargeRateW": get_value_multiplier(
+                    der_setting.max_discharge_rate_w_value, der_setting.max_discharge_rate_w_multiplier
+                ),
+                "setMaxV": get_value_multiplier(der_setting.max_v_value, der_setting.max_v_multiplier),
+                "setMaxVA": get_value_multiplier(der_setting.max_va_value, der_setting.max_va_multiplier),
+                "setMaxVar": get_value_multiplier(der_setting.max_var_value, der_setting.max_var_multiplier),
+                "setMaxVarNeg": get_value_multiplier(der_setting.max_var_neg_value, der_setting.max_var_neg_multiplier),
+                "setMaxW": get_value_multiplier(der_setting.max_w_value, der_setting.max_w_multiplier),
+                "setMaxWh": get_value_multiplier(der_setting.max_wh_value, der_setting.max_wh_multiplier),
+                "setMinPFOverExcited": get_value_multiplier(
+                    der_setting.min_pf_over_excited_displacement,
+                    der_setting.min_pf_over_excited_multiplier,
+                    value_name="displacement",
+                ),
+                "setMinPFUnderExcited": get_value_multiplier(
+                    der_setting.min_pf_under_excited_displacement,
+                    der_setting.min_pf_under_excited_multiplier,
+                    value_name="displacement",
+                ),
+                "setMinV": get_value_multiplier(der_setting.min_v_value, der_setting.min_v_multiplier),
+                "setSoftGradW": der_setting.soft_grad_w,
+                "setVNom": get_value_multiplier(der_setting.v_nom_value, der_setting.v_nom_multiplier),
+                "setVRef": get_value_multiplier(der_setting.v_ref_value, der_setting.v_ref_multiplier),
+                "setVRefOfs": get_value_multiplier(der_setting.v_ref_ofs_value, der_setting.v_ref_ofs_multiplier),
+                "updatedTime": int(der_setting.changed_time.timestamp()),
+                "doeModesEnabled": der_setting.doe_modes_enabled,
+            }
+        )
+
+    @staticmethod
+    def map_from_request(changed_time: datetime, der_setting: DERSettings) -> SiteDERSetting:
+        modes_enabled: Optional[DERControlType] = None
+        if der_setting.modesEnabled:
+            modes_enabled = DERControlType(int(der_setting.modesEnabled, 16))
+
+        m = SiteDERSetting(
+            modes_enabled=modes_enabled,
+            es_delay=der_setting.setESDelay,
+            es_high_freq=der_setting.setESHighFreq,
+            es_high_volt=der_setting.setESHighVolt,
+            es_low_freq=der_setting.setESLowFreq,
+            es_low_volt=der_setting.setESLowVolt,
+            es_ramp_tms=der_setting.setESRampTms,
+            es_random_delay=der_setting.setESRandomDelay,
+            grad_w=der_setting.setGradW,
+            soft_grad_w=der_setting.setSoftGradW,
+            doe_modes_enabled=der_setting.doeModesEnabled,
+            changed_time=changed_time,
+        )
+        (m.max_a_value, m.max_a_multiplier) = set_value_multiplier(der_setting.setMaxA)
+        (m.max_ah_value, m.max_ah_multiplier) = set_value_multiplier(der_setting.setMaxAh)
+        (m.max_charge_rate_va_value, m.max_charge_rate_va_multiplier) = set_value_multiplier(
+            der_setting.setMaxChargeRateVA
+        )
+        (m.max_charge_rate_w_value, m.max_charge_rate_w_multiplier) = set_value_multiplier(
+            der_setting.setMaxChargeRateW
+        )
+        (m.max_discharge_rate_va_value, m.max_discharge_rate_va_multiplier) = set_value_multiplier(
+            der_setting.setMaxDischargeRateVA
+        )
+        (m.max_discharge_rate_w_value, m.max_discharge_rate_w_multiplier) = set_value_multiplier(
+            der_setting.setMaxDischargeRateW
+        )
+        (m.max_v_value, m.max_v_multiplier) = set_value_multiplier(der_setting.setMaxV)
+        (m.max_var_value, m.max_var_multiplier) = set_value_multiplier(der_setting.setMaxVar)
+        (m.max_var_neg_value, m.max_var_neg_multiplier) = set_value_multiplier(der_setting.setMaxVarNeg)
+        (m.max_w_value, m.max_w_multiplier) = cast(tuple[int, int], set_value_multiplier(der_setting.setMaxW))
+        (m.max_wh_value, m.max_wh_multiplier) = set_value_multiplier(der_setting.setMaxWh)
+
+        (m.min_pf_over_excited_displacement, m.min_pf_over_excited_multiplier) = set_value_multiplier(
+            der_setting.setMinPFOverExcited
+        )
+        (m.min_pf_under_excited_displacement, m.min_pf_under_excited_multiplier) = set_value_multiplier(
+            der_setting.setMinPFUnderExcited
+        )
+        (m.min_v_value, m.min_v_multiplier) = set_value_multiplier(der_setting.setMinV)
+        (m.v_nom_value, m.v_nom_multiplier) = set_value_multiplier(der_setting.setVNom)
+        (m.v_ref_value, m.v_ref_multiplier) = set_value_multiplier(der_setting.setVRef)
+        (m.v_ref_ofs_value, m.v_ref_ofs_multiplier) = set_value_multiplier(der_setting.setVRefOfs)
 
         return m
