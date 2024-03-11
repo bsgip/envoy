@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, Protocol, Sequence
+from typing import Optional, Protocol, Sequence, Union, cast
 
 import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
@@ -10,6 +10,7 @@ from envoy_schema.server.schema.sep2.der import (
     ConnectStatusType,
     DERAvailability,
     DERCapability,
+    DERControlType,
     DERListResponse,
     DERSettings,
     DERStatus,
@@ -21,7 +22,14 @@ from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, Devic
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
-from envoy.server.model.site import PERCENT_DECIMAL_POWER, Site, SiteDER, SiteDERAvailability, SiteDERStatus
+from envoy.server.model.site import (
+    PERCENT_DECIMAL_POWER,
+    Site,
+    SiteDER,
+    SiteDERAvailability,
+    SiteDERRating,
+    SiteDERStatus,
+)
 from envoy.server.request_state import RequestStateParameters
 from envoy.server.settings import settings
 
@@ -33,22 +41,34 @@ class ValueMultiplier(Protocol):
     multiplier: int
 
 
-def get_value_multiplier(value: Optional[int], multiplier: Optional[int]) -> Optional[dict]:
+class DisplacementMultiplier(Protocol):
+    """Protocol that captures ActivePower/ReactivePower and other similar types"""
+
+    displacement: int
+    multiplier: int
+
+
+def get_value_multiplier(value: Optional[int], multiplier: Optional[int], value_name: str = "value") -> Optional[dict]:
     """Utility for setting {"value": X, "multiplier": Y} pydantic models that is a nice
     shorthand for populating a variety of DER data types (eg ActivePower/ReactivePower)"""
     if value is not None and multiplier is not None:
-        return {"value": value, "multiplier": multiplier}
+        return {value_name: value, "multiplier": multiplier}
     return None
 
 
-def set_value_multiplier(vm: Optional[ValueMultiplier]) -> tuple[Optional[int], Optional[int]]:
-    """Utility for undoing get_value_multiplier. Returns the value / multiplier
+def set_value_multiplier(
+    vm: Union[Optional[ValueMultiplier], Optional[DisplacementMultiplier]]
+) -> tuple[Optional[int], Optional[int]]:
+    """Utility for undoing get_value_multiplier. Returns the value|displacement / multiplier
     for the specified vm that should allow a quick shorthand for setting the values back
     on a DB model"""
     if vm is None:
         return (None, None)
 
-    return (vm.value, vm.multiplier)
+    if hasattr(vm, "value"):
+        return (vm.value, vm.multiplier)
+    else:
+        return (vm.displacement, vm.multiplier)
 
 
 def to_sep2_percent(d: Optional[Decimal]) -> Optional[int]:
@@ -322,3 +342,118 @@ class DERStatusMapper:
             storage_connect_status=stor_conn_status,
             storage_connect_status_time=stor_conn_status_time,
         )
+
+
+class DERCapabilityMapper:
+    @staticmethod
+    def map_to_response(rs_params: RequestStateParameters, site_id: int, der_rating: SiteDERRating) -> DERCapability:
+        return DERCapability.model_validate(
+            {
+                "href": generate_href(uri.DERCapabilityUri, rs_params, site_id=site_id, der_id=der_rating.site_der_id),
+                "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
+                "modesSupported": to_hex_binary(der_rating.modes_supported),
+                "rtgAbnormalCategory": der_rating.abnormal_category,
+                "rtgMaxA": get_value_multiplier(der_rating.max_a_value, der_rating.max_a_multiplier),
+                "rtgMaxAh": get_value_multiplier(der_rating.max_ah_value, der_rating.max_ah_multiplier),
+                "rtgMaxChargeRateVA": get_value_multiplier(
+                    der_rating.max_charge_rate_va_value, der_rating.max_charge_rate_va_multiplier
+                ),
+                "rtgMaxChargeRateW": get_value_multiplier(
+                    der_rating.max_charge_rate_w_value, der_rating.max_charge_rate_w_multiplier
+                ),
+                "rtgMaxDischargeRateVA": get_value_multiplier(
+                    der_rating.max_discharge_rate_va_value, der_rating.max_discharge_rate_va_multiplier
+                ),
+                "rtgMaxDischargeRateW": get_value_multiplier(
+                    der_rating.max_discharge_rate_w_value, der_rating.max_discharge_rate_w_multiplier
+                ),
+                "rtgMaxV": get_value_multiplier(der_rating.max_v_value, der_rating.max_v_multiplier),
+                "rtgMaxVA": get_value_multiplier(der_rating.max_va_value, der_rating.max_va_multiplier),
+                "rtgMaxVar": get_value_multiplier(der_rating.max_var_value, der_rating.max_var_multiplier),
+                "rtgMaxVarNeg": get_value_multiplier(der_rating.max_var_neg_value, der_rating.max_var_neg_multiplier),
+                "rtgMaxW": get_value_multiplier(der_rating.max_w_value, der_rating.max_w_multiplier),
+                "rtgMaxWh": get_value_multiplier(der_rating.max_wh_value, der_rating.max_wh_multiplier),
+                "rtgMinPFOverExcited": get_value_multiplier(
+                    der_rating.min_pf_over_excited_displacement,
+                    der_rating.min_pf_over_excited_multiplier,
+                    value_name="displacement",
+                ),
+                "rtgMinPFUnderExcited": get_value_multiplier(
+                    der_rating.min_pf_under_excited_displacement,
+                    der_rating.min_pf_under_excited_multiplier,
+                    value_name="displacement",
+                ),
+                "rtgMinV": get_value_multiplier(der_rating.min_v_value, der_rating.min_v_multiplier),
+                "rtgNormalCategory": der_rating.normal_category,
+                "rtgOverExcitedPF": get_value_multiplier(
+                    der_rating.over_excited_pf_displacement,
+                    der_rating.over_excited_pf_multiplier,
+                    value_name="displacement",
+                ),
+                "rtgOverExcitedW": get_value_multiplier(
+                    der_rating.over_excited_w_value, der_rating.over_excited_pf_multiplier
+                ),
+                "rtgReactiveSusceptance": get_value_multiplier(
+                    der_rating.reactive_susceptance_value, der_rating.reactive_susceptance_multiplier
+                ),
+                "rtgUnderExcitedPF": get_value_multiplier(
+                    der_rating.under_excited_pf_displacement,
+                    der_rating.under_excited_pf_multiplier,
+                    value_name="displacement",
+                ),
+                "rtgUnderExcitedW": get_value_multiplier(
+                    der_rating.under_excited_w_value, der_rating.under_excited_w_multiplier
+                ),
+                "rtgVNom": get_value_multiplier(der_rating.v_nom_value, der_rating.v_nom_multiplier),
+                "type_": der_rating.der_type,
+                "doeModesSupported": der_rating.doe_modes_supported,
+            }
+        )
+
+    @staticmethod
+    def map_from_request(changed_time: datetime, der_cap: DERCapability) -> SiteDERRating:
+
+        m = SiteDERRating(
+            modes_supported=DERControlType(int(der_cap.modesSupported, 16)),
+            der_type=der_cap.type_,
+            doe_modes_supported=der_cap.doeModesSupported,
+            changed_time=changed_time,
+            normal_category=der_cap.rtgNormalCategory,
+            abnormal_category=der_cap.rtgAbnormalCategory,
+        )
+        (m.max_a_value, m.max_a_multiplier) = set_value_multiplier(der_cap.rtgMaxA)
+        (m.max_ah_value, m.max_ah_multiplier) = set_value_multiplier(der_cap.rtgMaxAh)
+        (m.max_charge_rate_va_value, m.max_charge_rate_va_multiplier) = set_value_multiplier(der_cap.rtgMaxChargeRateVA)
+        (m.max_charge_rate_w_value, m.max_charge_rate_w_multiplier) = set_value_multiplier(der_cap.rtgMaxChargeRateW)
+        (m.max_discharge_rate_va_value, m.max_discharge_rate_va_multiplier) = set_value_multiplier(
+            der_cap.rtgMaxDischargeRateVA
+        )
+        (m.max_discharge_rate_w_value, m.max_discharge_rate_w_multiplier) = set_value_multiplier(
+            der_cap.rtgMaxDischargeRateW
+        )
+        (m.max_v_value, m.max_v_multiplier) = set_value_multiplier(der_cap.rtgMaxV)
+        (m.max_va_value, m.max_va_multiplier) = set_value_multiplier(der_cap.rtgMaxVA)
+        (m.max_var_value, m.max_var_multiplier) = set_value_multiplier(der_cap.rtgMaxVar)
+        (m.max_var_neg_value, m.max_var_neg_multiplier) = set_value_multiplier(der_cap.rtgMaxVarNeg)
+        (m.max_w_value, m.max_w_multiplier) = cast(tuple[int, int], set_value_multiplier(der_cap.rtgMaxW))
+        (m.max_wh_value, m.max_wh_multiplier) = set_value_multiplier(der_cap.rtgMaxWh)
+
+        (m.min_pf_over_excited_displacement, m.min_pf_over_excited_multiplier) = set_value_multiplier(
+            der_cap.rtgMinPFOverExcited
+        )
+        (m.min_pf_under_excited_displacement, m.min_pf_under_excited_multiplier) = set_value_multiplier(
+            der_cap.rtgMinPFUnderExcited
+        )
+        (m.min_v_value, m.min_v_multiplier) = set_value_multiplier(der_cap.rtgMinV)
+        (m.over_excited_pf_displacement, m.over_excited_pf_multiplier) = set_value_multiplier(der_cap.rtgOverExcitedPF)
+        (m.over_excited_w_value, m.over_excited_w_multiplier) = set_value_multiplier(der_cap.rtgOverExcitedW)
+        (m.reactive_susceptance_value, m.reactive_susceptance_multiplier) = set_value_multiplier(
+            der_cap.rtgReactiveSusceptance
+        )
+        (m.under_excited_pf_displacement, m.under_excited_pf_multiplier) = set_value_multiplier(
+            der_cap.rtgUnderExcitedPF
+        )
+        (m.under_excited_w_value, m.under_excited_w_multiplier) = set_value_multiplier(der_cap.rtgUnderExcitedW)
+        (m.v_nom_value, m.v_nom_multiplier) = set_value_multiplier(der_cap.rtgVNom)
+
+        return m
