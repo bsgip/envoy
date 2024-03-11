@@ -4,18 +4,19 @@ import pytest
 
 from envoy.server.crud.der import generate_default_site_der, select_site_der_for_site
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
-from tests.assert_time import assert_datetime_equal, assert_nowish
+from tests.assert_time import assert_datetime_equal
 from tests.data.fake.generator import assert_class_instance_equality, clone_class_instance, generate_class_instance
 from tests.postgres_testing import generate_async_session
 
 
 def test_generate_default_site_der():
     """Simple sanity check - do we get a SiteDER object back"""
-    site_der = generate_default_site_der(11, 22)
+    changed_time = datetime(2022, 1, 2, 3, 4, 5)
+    site_der = generate_default_site_der(22, changed_time)
     assert isinstance(site_der, SiteDER)
-    assert site_der.site_der_id == 11
+    assert site_der.site_der_id is None
     assert site_der.site_id == 22
-    assert_nowish(site_der.changed_time)
+    assert_datetime_equal(changed_time, site_der.changed_time)
 
 
 @pytest.mark.parametrize("aggregator_id, site_id", [(2, 1), (1, 99), (99, 1)])
