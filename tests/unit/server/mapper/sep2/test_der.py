@@ -1,32 +1,96 @@
-import unittest.mock as mock
 from datetime import datetime
+from typing import Optional
 
 import pytest
-from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
 from envoy_schema.server.schema.sep2.der import (
+    DER,
     AlarmStatusType,
     ConnectStatusType,
     DERAvailability,
     DERCapability,
     DERControlType,
+    DERListResponse,
     DERSettings,
     DERStatus,
 )
-from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy_schema.server.schema.sep2.identification import Link
 
-from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.der import (
     DERAvailabilityMapper,
     DERCapabilityMapper,
+    DERMapper,
     DERSettingMapper,
     DERStatusMapper,
     to_hex_binary,
 )
-from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
-from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.request_state import RequestStateParameters
 from tests.assert_time import assert_datetime_equal
-from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance, generate_value
+from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
+
+
+def test_der_mapping():
+    all_set: SiteDER = generate_class_instance(SiteDER, seed=101, optional_is_none=False, generate_relationships=True)
+    with_none: SiteDER = generate_class_instance(SiteDER, seed=202, optional_is_none=True, generate_relationships=True)
+
+    rs_params = RequestStateParameters(111, "/my/prefix")
+    derp_id = "my_derp_id"
+
+    mapped_all_set = DERMapper.map_to_response(rs_params, all_set, derp_id)
+    assert isinstance(mapped_all_set, DER)
+
+    assert mapped_all_set.href.startswith("/my/prefix")
+    assert str(all_set.site_id) in mapped_all_set.href
+    assert isinstance(mapped_all_set.AssociatedDERProgramListLink, Link)
+    assert isinstance(mapped_all_set.CurrentDERProgramLink, Link)
+    assert isinstance(mapped_all_set.DERAvailabilityLink, Link)
+    assert isinstance(mapped_all_set.DERCapabilityLink, Link)
+    assert isinstance(mapped_all_set.DERSettingsLink, Link)
+    assert isinstance(mapped_all_set.DERStatusLink, Link)
+    assert derp_id in mapped_all_set.CurrentDERProgramLink.href
+    assert str(all_set.site_id) in mapped_all_set.CurrentDERProgramLink.href
+
+    # Test with NO active der program id
+    mapped_all_set_no_actderp = DERMapper.map_to_response(rs_params, all_set, None)
+    assert isinstance(mapped_all_set_no_actderp, DER)
+    assert mapped_all_set_no_actderp.href.startswith("/my/prefix")
+    assert str(all_set.site_id) in mapped_all_set_no_actderp.href
+    assert mapped_all_set_no_actderp.CurrentDERProgramLink is None
+
+    mapped_with_none = DERMapper.map_to_response(rs_params, with_none, derp_id)
+    assert isinstance(mapped_with_none, DER)
+    assert mapped_with_none.href.startswith("/my/prefix")
+    assert str(with_none.site_id) in mapped_with_none.href
+    assert isinstance(mapped_with_none.AssociatedDERProgramListLink, Link)
+    assert isinstance(mapped_with_none.CurrentDERProgramLink, Link)
+    assert isinstance(mapped_with_none.DERAvailabilityLink, Link)
+    assert isinstance(mapped_with_none.DERCapabilityLink, Link)
+    assert isinstance(mapped_with_none.DERSettingsLink, Link)
+    assert isinstance(mapped_with_none.DERStatusLink, Link)
+    assert derp_id in mapped_with_none.CurrentDERProgramLink.href
+    assert str(with_none.site_id) in mapped_with_none.CurrentDERProgramLink.href
+
+
+def test_der_list():
+    ders: list[tuple[SiteDER, Optional[str]]] = [
+        (generate_class_instance(SiteDER, seed=101, optional_is_none=False, generate_relationships=True), "DERPID1"),
+        (generate_class_instance(SiteDER, seed=202, optional_is_none=False, generate_relationships=True), None),
+        (generate_class_instance(SiteDER, seed=303, optional_is_none=True, generate_relationships=True), None),
+        (generate_class_instance(SiteDER, seed=404, optional_is_none=True, generate_relationships=True), "DERPID2"),
+    ]
+
+    rs_params = RequestStateParameters(111, "/my/prefix")
+    site_id = 11
+    poll_rate = 99
+    count = 42
+
+    mapped = DERMapper.map_to_list_response(rs_params, site_id, poll_rate, ders, count)
+    assert isinstance(mapped, DERListResponse)
+    assert mapped.results == 4
+    assert mapped.all_ == count
+    assert mapped.pollRate == poll_rate
+    assert len(mapped.DER_) == 4
+    assert all([isinstance(x, DER) for x in mapped.DER_])
 
 
 @pytest.mark.parametrize("optional_is_none", [True, False])

@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, Protocol, Sequence, Union, cast
+from typing import Optional, Protocol, Union, cast
 
 import envoy_schema.server.schema.uri as uri
-from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
 from envoy_schema.server.schema.sep2.der import (
     DER,
     AlarmStatusType,
@@ -15,16 +14,12 @@ from envoy_schema.server.schema.sep2.der import (
     DERSettings,
     DERStatus,
 )
-from envoy_schema.server.schema.sep2.der_control_types import ActivePower, PowerFactor, ReactivePower
-from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
-from envoy_schema.server.schema.sep2.identification import Link, ListLink
-from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory, SubscribableType
+from envoy_schema.server.schema.sep2.identification import Link
+from envoy_schema.server.schema.sep2.types import SubscribableType
 
-from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.model.site import (
     PERCENT_DECIMAL_POWER,
-    Site,
     SiteDER,
     SiteDERAvailability,
     SiteDERRating,
@@ -32,7 +27,6 @@ from envoy.server.model.site import (
     SiteDERStatus,
 )
 from envoy.server.request_state import RequestStateParameters
-from envoy.server.settings import settings
 
 
 class ValueMultiplier(Protocol):
@@ -43,7 +37,7 @@ class ValueMultiplier(Protocol):
 
 
 class DisplacementMultiplier(Protocol):
-    """Protocol that captures ActivePower/ReactivePower and other similar types"""
+    """Protocol that captures PowerFactor and other similar types"""
 
     displacement: int
     multiplier: int
@@ -110,28 +104,22 @@ class DERMapper:
                 "href": der_href,
                 "AssociatedDERProgramListLink": {
                     "href": generate_href(
-                        uri.AssociatedDERProgramListUri, rs_params, site_id=der.site_id, der_program_id=active_derp_id
+                        uri.AssociatedDERProgramListUri, rs_params, site_id=der.site_id, der_id=der.site_der_id
                     )
                 },
                 "CurrentDERProgramLink": current_derp_link,
                 "DERStatusLink": {
-                    "href": generate_href(
-                        uri.DERStatusUri, rs_params, site_id=der.site_id, der_program_id=active_derp_id
-                    )
+                    "href": generate_href(uri.DERStatusUri, rs_params, site_id=der.site_id, der_id=der.site_der_id)
                 },
                 "DERCapabilityLink": {
-                    "href": generate_href(
-                        uri.DERCapabilityUri, rs_params, site_id=der.site_id, der_program_id=active_derp_id
-                    )
+                    "href": generate_href(uri.DERCapabilityUri, rs_params, site_id=der.site_id, der_id=der.site_der_id)
                 },
                 "DERSettingsLink": {
-                    "href": generate_href(
-                        uri.DERSettingsUri, rs_params, site_id=der.site_id, der_program_id=active_derp_id
-                    )
+                    "href": generate_href(uri.DERSettingsUri, rs_params, site_id=der.site_id, der_id=der.site_der_id)
                 },
                 "DERAvailabilityLink": {
                     "href": generate_href(
-                        uri.DERAvailabilityUri, rs_params, site_id=der.site_id, der_program_id=active_derp_id
+                        uri.DERAvailabilityUri, rs_params, site_id=der.site_id, der_id=der.site_der_id
                     )
                 },
             }
@@ -151,7 +139,7 @@ class DERMapper:
         return DERListResponse.model_validate(
             {
                 "href": generate_href(uri.DERListUri, rs_params, site_id=site_id),
-                "poll_rate": poll_rate_seconds,
+                "pollRate": poll_rate_seconds,
                 "all_": der_count,
                 "results": len(ders_with_act_derp_id),
                 "DER_": [
