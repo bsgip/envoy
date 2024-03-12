@@ -1,39 +1,29 @@
 from datetime import datetime
-from secrets import token_bytes
 from typing import Optional
 
-from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
 from envoy_schema.server.schema.sep2.der import (
     DER,
-    AlarmStatusType,
-    ConnectStatusType,
     DERAvailability,
     DERCapability,
-    DERControlType,
     DERListResponse,
     DERSettings,
     DERStatus,
 )
-from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.der import generate_default_site_der, select_site_der_for_site
-from envoy.server.crud.end_device import (
-    select_aggregator_site_count,
-    select_all_sites_with_aggregator_id,
-    select_single_site_with_sfdi,
-    select_single_site_with_site_id,
-    upsert_site_for_aggregator,
-)
-from envoy.server.exception import NotFoundError, UnableToGenerateIdError
+from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.exception import NotFoundError
 from envoy.server.manager.time import utc_now
-from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
-from envoy.server.mapper.sep2.der import DERCapabilityMapper, DERMapper
-from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
+from envoy.server.mapper.sep2.der import (
+    DERAvailabilityMapper,
+    DERCapabilityMapper,
+    DERMapper,
+    DERSettingMapper,
+    DERStatusMapper,
+)
 from envoy.server.model.site import SiteDER
-from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_state import RequestStateParameters
 
 PUBLIC_SITE_DER_ID = 1  # We won't be exposing the DER id (csip aus implies only having a single DER per site)
@@ -151,15 +141,188 @@ class DERCapabilityManager:
             # we are inserting a whole new DER and rating
             site_der.site_der_rating = new_der_rating
             session.add(site_der)
-            await session.commit()
         elif site_der.site_der_rating is None:
             # we are inserting a new rating
             new_der_rating.site_der_id = site_der.site_der_id
             site_der.site_der_rating = new_der_rating
-            await session.commit()
         else:
             # we are updating an existing rating
             new_der_rating.site_der_id = site_der.site_der_id
             new_der_rating.site_der_rating_id = site_der.site_der_rating.site_der_rating_id
             await session.merge(new_der_rating)
-            await session.commit()
+
+        await session.commit()
+
+
+class DERSettingsManager:
+
+    @staticmethod
+    async def fetch_der_settings_for_site(
+        session: AsyncSession,
+        site_id: int,
+        site_der_id: int,
+        request_params: RequestStateParameters,
+    ) -> DERSettings:
+        """Fetches a single DER Settings for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed
+        or if no DERSettings has been stored."""
+
+        site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
+        site_der.site_der_id = PUBLIC_SITE_DER_ID
+
+        if site_der_id != PUBLIC_SITE_DER_ID:
+            raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
+
+        if site_der.site_der_setting is None:
+            raise NotFoundError(f"no DERSettings on record for DER {site_der_id} in site {site_id}")
+
+        return DERSettingMapper.map_to_response(request_params, site_id, site_der.site_der_setting)
+
+    @staticmethod
+    async def upsert_der_settings_for_site(
+        session: AsyncSession,
+        site_id: int,
+        site_der_id: int,
+        request_params: RequestStateParameters,
+        der_settings: DERSettings,
+    ) -> None:
+        """Handles creating/updating the DERSettings for the specified site der. Raises NotFoundError
+        if the site/der can't be found"""
+
+        if site_der_id != PUBLIC_SITE_DER_ID:
+            raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
+
+        now = utc_now()
+        new_der_setting = DERSettingMapper.map_from_request(now, der_settings)
+
+        site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
+        if site_der.site_der_id is None:
+            # we are inserting a whole new DER and settings
+            site_der.site_der_setting = new_der_setting
+            session.add(site_der)
+        elif site_der.site_der_setting is None:
+            # we are inserting a new setting
+            new_der_setting.site_der_id = site_der.site_der_id
+            site_der.site_der_setting = new_der_setting
+        else:
+            # we are updating an existing setting
+            new_der_setting.site_der_id = site_der.site_der_id
+            new_der_setting.site_der_setting_id = site_der.site_der_setting.site_der_setting_id
+            await session.merge(new_der_setting)
+
+        await session.commit()
+
+
+class DERAvailabilityManager:
+
+    @staticmethod
+    async def fetch_der_availability_for_site(
+        session: AsyncSession,
+        site_id: int,
+        site_der_id: int,
+        request_params: RequestStateParameters,
+    ) -> DERAvailability:
+        """Fetches a single DER Availability for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed
+        or if no DERSettings has been stored."""
+
+        site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
+        site_der.site_der_id = PUBLIC_SITE_DER_ID
+
+        if site_der_id != PUBLIC_SITE_DER_ID:
+            raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
+
+        if site_der.site_der_availability is None:
+            raise NotFoundError(f"no DERAvailability on record for DER {site_der_id} in site {site_id}")
+
+        return DERAvailabilityMapper.map_to_response(request_params, site_id, site_der.site_der_availability)
+
+    @staticmethod
+    async def upsert_der_availability_for_site(
+        session: AsyncSession,
+        site_id: int,
+        site_der_id: int,
+        request_params: RequestStateParameters,
+        der_availability: DERAvailability,
+    ) -> None:
+        """Handles creating/updating the DERAvailability for the specified site der. Raises NotFoundError
+        if the site/der can't be found"""
+
+        if site_der_id != PUBLIC_SITE_DER_ID:
+            raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
+
+        now = utc_now()
+        new_der_availability = DERAvailabilityMapper.map_from_request(now, der_availability)
+
+        site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
+        if site_der.site_der_id is None:
+            # we are inserting a whole new DER and availability
+            site_der.site_der_availability = new_der_availability
+            session.add(site_der)
+        elif site_der.site_der_availability is None:
+            # we are inserting a new availability
+            new_der_availability.site_der_id = site_der.site_der_id
+            site_der.site_der_availability = new_der_availability
+        else:
+            # we are updating an existing availability
+            new_der_availability.site_der_id = site_der.site_der_id
+            new_der_availability.site_der_availability_id = site_der.site_der_availability.site_der_availability_id
+            await session.merge(new_der_availability)
+
+        await session.commit()
+
+
+class DERStatusManager:
+
+    @staticmethod
+    async def fetch_der_status_for_site(
+        session: AsyncSession,
+        site_id: int,
+        site_der_id: int,
+        request_params: RequestStateParameters,
+    ) -> DERStatus:
+        """Fetches a single DER Status for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed
+        or if no DERSettings has been stored."""
+
+        site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
+        site_der.site_der_id = PUBLIC_SITE_DER_ID
+
+        if site_der_id != PUBLIC_SITE_DER_ID:
+            raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
+
+        if site_der.site_der_status is None:
+            raise NotFoundError(f"no DERStatus on record for DER {site_der_id} in site {site_id}")
+
+        return DERStatusMapper.map_to_response(request_params, site_id, site_der.site_der_status)
+
+    @staticmethod
+    async def upsert_der_status_for_site(
+        session: AsyncSession,
+        site_id: int,
+        site_der_id: int,
+        request_params: RequestStateParameters,
+        der_status: DERStatus,
+    ) -> None:
+        """Handles creating/updating the DERStatus for the specified site der. Raises NotFoundError
+        if the site/der can't be found"""
+
+        if site_der_id != PUBLIC_SITE_DER_ID:
+            raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
+
+        now = utc_now()
+        new_der_status = DERStatusMapper.map_from_request(now, der_status)
+
+        site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
+        if site_der.site_der_id is None:
+            # we are inserting a whole new DER and status
+            site_der.site_der_status = new_der_status
+            session.add(site_der)
+        elif site_der.site_der_status is None:
+            # we are inserting a new status
+            new_der_status.site_der_id = site_der.site_der_id
+            site_der.site_der_status = new_der_status
+        else:
+            # we are updating an existing status
+            new_der_status.site_der_id = site_der.site_der_id
+            new_der_status.site_der_status_id = site_der.site_der_status.site_der_status_id
+            await session.merge(new_der_status)
+
+        await session.commit()
