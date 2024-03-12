@@ -69,13 +69,13 @@ def set_value_multiplier(
 def to_sep2_percent(d: Optional[Decimal]) -> Optional[int]:
     if d is None:
         return None
-    return int(d * PERCENT_DECIMAL_POWER)
+    return int(d * 100)  # sep2 percent is expressed in hundredths of a percent
 
 
 def from_sep2_percent(v: Optional[int]) -> Optional[Decimal]:
     if v is None:
         return None
-    return Decimal(v) / PERCENT_DECIMAL_POWER
+    return Decimal(v) / 100  # sep2 percent is expressed in hundredths of a percent
 
 
 def to_hex_binary(v: Optional[int]) -> Optional[str]:

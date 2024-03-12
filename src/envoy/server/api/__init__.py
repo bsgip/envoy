@@ -1,6 +1,7 @@
 """Holds all controllers/routing for incoming requests"""
 
 from envoy.server.api.csip_aus.connection_point import router as cp_router
+from envoy.server.api.sep2.der import router as der_router
 from envoy.server.api.sep2.derp import router as derp_router
 from envoy.server.api.sep2.device_capability import router as dcap_router
 from envoy.server.api.sep2.end_device import router as edev_router
@@ -13,6 +14,17 @@ from envoy.server.api.unsecured.health import router as health_router
 
 __all__ = ["routers"]
 
-routers = [cp_router, dcap_router, edev_router, derp_router, fsa_router, mm_router, price_router, sub_router, tm_router]
+routers = [
+    cp_router,
+    dcap_router,
+    edev_router,
+    der_router,
+    derp_router,
+    fsa_router,
+    mm_router,
+    price_router,
+    sub_router,
+    tm_router,
+]
 
 unsecured_routers = [health_router]

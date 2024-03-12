@@ -203,7 +203,7 @@ async def test_fetch_der_list_for_site_pagination(
         (2, 1, PUBLIC_SITE_DER_ID),  # Invalid agg_id
         (1, 99, PUBLIC_SITE_DER_ID),  # Invalid site id
         (1, 1, PUBLIC_SITE_DER_ID + 1),  # invalid DER id
-        (1, 1, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
+        (1, 2, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
         (1, 4, PUBLIC_SITE_DER_ID),  # There is DER or entity record in the db
     ],
 )
@@ -237,6 +237,9 @@ async def test_upsert_der_capability_not_found(pg_base_config, agg_id: int, site
     rs_params = RequestStateParameters(agg_id, None)
 
     async with generate_async_session(pg_base_config) as session:
+        initial_count = (await session.execute(select(func.count()).select_from(SiteDERRating))).scalar_one()
+
+    async with generate_async_session(pg_base_config) as session:
         e: DERCapability = generate_class_instance(DERCapability, generate_relationships=True)
         e.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT)
 
@@ -252,30 +255,22 @@ async def test_upsert_der_capability_not_found(pg_base_config, agg_id: int, site
     # Validate we haven't added any rows on accident
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(func.count()).select_from(SiteDERRating))
-        assert resp.scalar_one() == 0
+        assert resp.scalar_one() == initial_count
 
 
 @pytest.mark.parametrize(
-    "site_id, update_site_der_id",
+    "site_id",
     [
-        (1, None),  # Existing DER - insert record
-        (1, 2),  # Existing DER - update record
-        (4, None),  # Missing DER - insert both
+        1,  # This site has existing DER record and entity record (will update entity record)
+        2,  # This site has existing DER record but no entity record (will insert entity record)
+        4,  # This site has no DER/entity record (will insert both records)
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_capability_roundtrip(pg_base_config, site_id: int, update_site_der_id: Optional[int]):
+async def test_upsert_der_capability_roundtrip(pg_base_config, site_id: int):
     """Tests the various success paths through updating"""
     agg_id = 1
     rs_params = RequestStateParameters(agg_id, "/custom/prefix")
-
-    # If set - insert a new entity that will be forced to update
-    if update_site_der_id is not None:
-        async with generate_async_session(pg_base_config) as session:
-            updated_entity: SiteDERRating = generate_class_instance(SiteDERRating, seed=1001)
-            updated_entity.site_der_id = update_site_der_id
-            session.add(updated_entity)
-            await session.commit()
 
     # Do the upsert
     expected: DERCapability = generate_class_instance(DERCapability, seed=22, generate_relationships=True)
@@ -306,11 +301,6 @@ async def test_upsert_der_capability_roundtrip(pg_base_config, site_id: int, upd
         assert actual.href.startswith(rs_params.href_prefix)
         assert str(site_id) in actual.href
 
-    # Validate we haven't added multiple rows on accident
-    async with generate_async_session(pg_base_config) as session:
-        resp = await session.execute(select(func.count()).select_from(SiteDERRating))
-        assert resp.scalar_one() == 1
-
 
 @pytest.mark.parametrize(
     "agg_id, site_id, der_id",
@@ -319,7 +309,7 @@ async def test_upsert_der_capability_roundtrip(pg_base_config, site_id: int, upd
         (2, 1, PUBLIC_SITE_DER_ID),  # Invalid agg_id
         (1, 99, PUBLIC_SITE_DER_ID),  # Invalid site id
         (1, 1, PUBLIC_SITE_DER_ID + 1),  # invalid DER id
-        (1, 1, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
+        (1, 2, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
         (1, 4, PUBLIC_SITE_DER_ID),  # There is DER or entity record in the db
     ],
 )
@@ -353,6 +343,9 @@ async def test_upsert_der_settings_not_found(pg_base_config, agg_id: int, site_i
     rs_params = RequestStateParameters(agg_id, None)
 
     async with generate_async_session(pg_base_config) as session:
+        initial_count = (await session.execute(select(func.count()).select_from(SiteDERSetting))).scalar_one()
+
+    async with generate_async_session(pg_base_config) as session:
         e: DERSettings = generate_class_instance(DERSettings, generate_relationships=True)
         e.modesEnabled = to_hex_binary(DERControlType.OP_MOD_FIXED_PF_ABSORB_W)
 
@@ -368,30 +361,22 @@ async def test_upsert_der_settings_not_found(pg_base_config, agg_id: int, site_i
     # Validate we haven't added any rows on accident
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(func.count()).select_from(SiteDERSetting))
-        assert resp.scalar_one() == 0
+        assert resp.scalar_one() == initial_count
 
 
 @pytest.mark.parametrize(
-    "site_id, update_site_der_id",
+    "site_id",
     [
-        (1, None),  # Existing DER - insert record
-        (1, 2),  # Existing DER - update record
-        (4, None),  # Missing DER - insert both
+        1,  # This site has existing DER record and entity record (will update entity record)
+        2,  # This site has existing DER record but no entity record (will insert entity record)
+        4,  # This site has no DER/entity record (will insert both records)
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_settings_roundtrip(pg_base_config, site_id: int, update_site_der_id: Optional[int]):
+async def test_upsert_der_settings_roundtrip(pg_base_config, site_id: int):
     """Tests the various success paths through updating"""
     agg_id = 1
     rs_params = RequestStateParameters(agg_id, "/custom/pfx")
-
-    # If set - insert a new entity that will be forced to update
-    if update_site_der_id is not None:
-        async with generate_async_session(pg_base_config) as session:
-            updated_entity: SiteDERSetting = generate_class_instance(SiteDERSetting, seed=1001)
-            updated_entity.site_der_id = update_site_der_id
-            session.add(updated_entity)
-            await session.commit()
 
     # Do the upsert
     expected: DERSettings = generate_class_instance(DERSettings, seed=22, generate_relationships=True)
@@ -419,11 +404,6 @@ async def test_upsert_der_settings_roundtrip(pg_base_config, site_id: int, updat
         assert str(site_id) in actual.href
         assert_nowish(actual.updatedTime)  # updatedTime gets set to server time
 
-    # Validate we haven't added multiple rows on accident
-    async with generate_async_session(pg_base_config) as session:
-        resp = await session.execute(select(func.count()).select_from(SiteDERSetting))
-        assert resp.scalar_one() == 1
-
 
 @pytest.mark.parametrize(
     "agg_id, site_id, der_id",
@@ -432,7 +412,7 @@ async def test_upsert_der_settings_roundtrip(pg_base_config, site_id: int, updat
         (2, 1, PUBLIC_SITE_DER_ID),  # Invalid agg_id
         (1, 99, PUBLIC_SITE_DER_ID),  # Invalid site id
         (1, 1, PUBLIC_SITE_DER_ID + 1),  # invalid DER id
-        (1, 1, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
+        (1, 2, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
         (1, 4, PUBLIC_SITE_DER_ID),  # There is DER or entity record in the db
     ],
 )
@@ -466,6 +446,9 @@ async def test_upsert_der_availability_not_found(pg_base_config, agg_id: int, si
     rs_params = RequestStateParameters(agg_id, None)
 
     async with generate_async_session(pg_base_config) as session:
+        initial_count = (await session.execute(select(func.count()).select_from(SiteDERAvailability))).scalar_one()
+
+    async with generate_async_session(pg_base_config) as session:
         e: DERAvailability = generate_class_instance(DERAvailability, generate_relationships=True)
 
         with pytest.raises(NotFoundError):
@@ -480,30 +463,22 @@ async def test_upsert_der_availability_not_found(pg_base_config, agg_id: int, si
     # Validate we haven't added any rows on accident
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(func.count()).select_from(SiteDERAvailability))
-        assert resp.scalar_one() == 0
+        assert resp.scalar_one() == initial_count
 
 
 @pytest.mark.parametrize(
-    "site_id, update_site_der_id",
+    "site_id",
     [
-        (1, None),  # Existing DER - insert record
-        (1, 2),  # Existing DER - update record
-        (4, None),  # Missing DER - insert both
+        1,  # This site has existing DER record and entity record (will update entity record)
+        2,  # This site has existing DER record but no entity record (will insert entity record)
+        4,  # This site has no DER/entity record (will insert both records)
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_availability_roundtrip(pg_base_config, site_id: int, update_site_der_id: Optional[int]):
+async def test_upsert_der_availability_roundtrip(pg_base_config, site_id: int):
     """Tests the various success paths through updating"""
     agg_id = 1
     rs_params = RequestStateParameters(agg_id, "/custom/pfx")
-
-    # If set - insert a new entity that will be forced to update
-    if update_site_der_id is not None:
-        async with generate_async_session(pg_base_config) as session:
-            updated_entity: SiteDERAvailability = generate_class_instance(SiteDERAvailability, seed=1001)
-            updated_entity.site_der_id = update_site_der_id
-            session.add(updated_entity)
-            await session.commit()
 
     # Do the upsert
     expected: DERAvailability = generate_class_instance(DERAvailability, seed=22, generate_relationships=True)
@@ -532,11 +507,6 @@ async def test_upsert_der_availability_roundtrip(pg_base_config, site_id: int, u
         assert str(site_id) in actual.href
         assert_nowish(actual.readingTime)  # Should be set to server time
 
-    # Validate we haven't added multiple rows on accident
-    async with generate_async_session(pg_base_config) as session:
-        resp = await session.execute(select(func.count()).select_from(SiteDERAvailability))
-        assert resp.scalar_one() == 1
-
 
 @pytest.mark.parametrize(
     "agg_id, site_id, der_id",
@@ -545,7 +515,7 @@ async def test_upsert_der_availability_roundtrip(pg_base_config, site_id: int, u
         (2, 1, PUBLIC_SITE_DER_ID),  # Invalid agg_id
         (1, 99, PUBLIC_SITE_DER_ID),  # Invalid site id
         (1, 1, PUBLIC_SITE_DER_ID + 1),  # invalid DER id
-        (1, 1, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
+        (1, 2, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
         (1, 4, PUBLIC_SITE_DER_ID),  # There is DER or entity record in the db
     ],
 )
@@ -579,6 +549,9 @@ async def test_upsert_der_status_not_found(pg_base_config, agg_id: int, site_id:
     rs_params = RequestStateParameters(agg_id, None)
 
     async with generate_async_session(pg_base_config) as session:
+        initial_count = (await session.execute(select(func.count()).select_from(SiteDERStatus))).scalar_one()
+
+    async with generate_async_session(pg_base_config) as session:
         e: DERStatus = generate_class_instance(DERStatus, generate_relationships=True)
         e.alarmStatus = to_hex_binary(AlarmStatusType.DER_FAULT_EMERGENCY_REMOTE)
         e.genConnectStatus.value = to_hex_binary(ConnectStatusType.AVAILABLE | ConnectStatusType.OPERATING)
@@ -596,32 +569,22 @@ async def test_upsert_der_status_not_found(pg_base_config, agg_id: int, site_id:
     # Validate we haven't added any rows on accident
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(func.count()).select_from(SiteDERStatus))
-        assert resp.scalar_one() == 0
+        assert resp.scalar_one() == initial_count
 
 
 @pytest.mark.parametrize(
-    "site_id, update_site_der_id",
+    "site_id",
     [
-        (1, None),  # Existing DER - insert record
-        (1, 2),  # Existing DER - update record
-        (4, None),  # Missing DER - insert both
+        1,  # This site has existing DER record and entity record (will update entity record)
+        2,  # This site has existing DER record but no entity record (will insert entity record)
+        4,  # This site has no DER/entity record (will insert both records)
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_status_roundtrip(pg_base_config, site_id: int, update_site_der_id: Optional[int]):
+async def test_upsert_der_status_roundtrip(pg_base_config, site_id: int):
     """Tests the various success paths through updating"""
     agg_id = 1
     rs_params = RequestStateParameters(agg_id, "/custom/pfx")
-
-    # If set - insert a new entity that will be forced to update
-    if update_site_der_id is not None:
-        async with generate_async_session(pg_base_config) as session:
-            updated_entity: SiteDERStatus = generate_class_instance(SiteDERStatus, seed=1001)
-            updated_entity.manufacturer_status = "short"  # length limit
-            updated_entity.site_der_id = update_site_der_id
-
-            session.add(updated_entity)
-            await session.commit()
 
     # Do the upsert
     expected: DERStatus = generate_class_instance(DERStatus, seed=22, generate_relationships=True)
@@ -653,8 +616,3 @@ async def test_upsert_der_status_roundtrip(pg_base_config, site_id: int, update_
         assert actual.href.startswith(rs_params.href_prefix)
         assert str(site_id) in actual.href
         assert_nowish(actual.readingTime)  # Should be set to server time
-
-    # Validate we haven't added multiple rows on accident
-    async with generate_async_session(pg_base_config) as session:
-        resp = await session.execute(select(func.count()).select_from(SiteDERStatus))
-        assert resp.scalar_one() == 1

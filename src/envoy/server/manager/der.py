@@ -109,7 +109,6 @@ class DERCapabilityManager:
         or if no DERCapability has been stored."""
 
         site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
-        site_der.site_der_id = PUBLIC_SITE_DER_ID
 
         if site_der_id != PUBLIC_SITE_DER_ID:
             raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
@@ -117,6 +116,8 @@ class DERCapabilityManager:
         if site_der.site_der_rating is None:
             raise NotFoundError(f"no DERCapability on record for DER {site_der_id} in site {site_id}")
 
+        site_der.site_der_id = PUBLIC_SITE_DER_ID
+        site_der.site_der_rating.site_der_id = PUBLIC_SITE_DER_ID
         return DERCapabilityMapper.map_to_response(request_params, site_id, site_der.site_der_rating)
 
     @staticmethod
@@ -167,7 +168,6 @@ class DERSettingsManager:
         or if no DERSettings has been stored."""
 
         site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
-        site_der.site_der_id = PUBLIC_SITE_DER_ID
 
         if site_der_id != PUBLIC_SITE_DER_ID:
             raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
@@ -175,6 +175,8 @@ class DERSettingsManager:
         if site_der.site_der_setting is None:
             raise NotFoundError(f"no DERSettings on record for DER {site_der_id} in site {site_id}")
 
+        site_der.site_der_id = PUBLIC_SITE_DER_ID
+        site_der.site_der_setting.site_der_id = PUBLIC_SITE_DER_ID
         return DERSettingMapper.map_to_response(request_params, site_id, site_der.site_der_setting)
 
     @staticmethod
@@ -225,7 +227,6 @@ class DERAvailabilityManager:
         or if no DERSettings has been stored."""
 
         site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
-        site_der.site_der_id = PUBLIC_SITE_DER_ID
 
         if site_der_id != PUBLIC_SITE_DER_ID:
             raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
@@ -233,6 +234,8 @@ class DERAvailabilityManager:
         if site_der.site_der_availability is None:
             raise NotFoundError(f"no DERAvailability on record for DER {site_der_id} in site {site_id}")
 
+        site_der.site_der_id = PUBLIC_SITE_DER_ID
+        site_der.site_der_availability.site_der_id = PUBLIC_SITE_DER_ID
         return DERAvailabilityMapper.map_to_response(request_params, site_id, site_der.site_der_availability)
 
     @staticmethod
@@ -283,7 +286,6 @@ class DERStatusManager:
         or if no DERSettings has been stored."""
 
         site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
-        site_der.site_der_id = PUBLIC_SITE_DER_ID
 
         if site_der_id != PUBLIC_SITE_DER_ID:
             raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
@@ -291,6 +293,8 @@ class DERStatusManager:
         if site_der.site_der_status is None:
             raise NotFoundError(f"no DERStatus on record for DER {site_der_id} in site {site_id}")
 
+        site_der.site_der_id = PUBLIC_SITE_DER_ID
+        site_der.site_der_status.site_der_id = PUBLIC_SITE_DER_ID
         return DERStatusMapper.map_to_response(request_params, site_id, site_der.site_der_status)
 
     @staticmethod
