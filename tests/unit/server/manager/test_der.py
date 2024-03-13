@@ -1,6 +1,5 @@
 import unittest.mock as mock
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 import pytest
 from envoy_schema.server.schema.sep2.der import (
@@ -30,7 +29,7 @@ from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_state import RequestStateParameters
-from tests.assert_time import assert_datetime_equal, assert_nowish
+from tests.assert_time import assert_datetime_equal
 from tests.data.fake.generator import assert_class_instance_equality, clone_class_instance, generate_class_instance
 from tests.postgres_testing import generate_async_session
 from tests.unit.mocks import assert_mock_session, create_async_result, create_mock_session

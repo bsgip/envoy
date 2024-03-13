@@ -17,7 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.manager.der import PUBLIC_SITE_DER_ID
-from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from tests.assert_time import assert_nowish
 from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 from tests.integration.request import build_paging_params

@@ -5,8 +5,10 @@ from typing import Optional
 
 import envoy_schema.server.schema.uri as uris
 import pytest
+from envoy_schema.server.schema.sep2.der import DERCapability
 from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
 from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading
+from envoy_schema.server.schema.sep2.pub_sub import Notification as Sep2Notification
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
 from envoy_schema.server.schema.sep2.pub_sub import SubscriptionEncoding, SubscriptionListResponse
 from envoy_schema.server.schema.sep2.types import DeviceCategory
@@ -15,11 +17,12 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from envoy.server.crud.subscription import select_subscription_by_id
+from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.subscription import Subscription
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
-from tests.data.fake.generator import generate_class_instance
+from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import (
@@ -316,3 +319,50 @@ async def test_submit_conditional_reading(client: AsyncClient, notifications_ena
     # Simple check on the notification content
     assert "dead" not in notifications_enabled.logged_requests[0].content
     assert "beef" in notifications_enabled.logged_requests[0].content
+
+
+@pytest.mark.anyio
+async def test_der_capability_subscription(
+    client: AsyncClient, sub_list_uri_format: str, notifications_enabled: MockedAsyncClient
+):
+    """Create a sub and see if an updated DER capability generates a notification"""
+
+    # subscribe
+    insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
+    insert_request.encoding = SubscriptionEncoding.XML
+    insert_request.notificationURI = "https://example.com/456?foo=bar"
+    insert_request.subscribedResource = uris.DERCapabilityUri.format(site_id=1, der_id=PUBLIC_SITE_DER_ID)
+    response = await client.post(
+        sub_list_uri_format.format(site_id=1),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=Sep2Subscription.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+
+    # create an updated capability
+    updated_cap: DERCapability = generate_class_instance(DERCapability, generate_relationships=True)
+    updated_cap.modesSupported = "3"
+    response = await client.put(
+        uris.DERCapabilityUri.format(site_id=1, der_id=PUBLIC_SITE_DER_ID),
+        content=updated_cap.to_xml(skip_empty=True),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+    )
+    assert_response_header(response, HTTPStatus.NO_CONTENT, expected_content_type=None)
+
+    # check for notification
+    assert await notifications_enabled.wait_for_request(timeout_seconds=30)
+    expected_notification_uri = insert_request.notificationURI
+    assert notifications_enabled.get_calls == 0
+    assert notifications_enabled.post_calls == 1
+    assert notifications_enabled.post_calls_by_uri[expected_notification_uri] == 1
+
+    notification = Sep2Notification.from_xml(notifications_enabled.logged_requests[0].content)
+    assert notification.subscribedResource == insert_request.subscribedResource
+    assert notification.resource is not None
+
+    assert_class_instance_equality(
+        DERCapability,
+        updated_cap,
+        notification.resource,
+        ignored_properties=set(["href", "type", "subscribable"]),
+    )

@@ -91,16 +91,16 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
         return (rate.site.aggregator_id, rate.tariff_id, rate.site_id, rate.start_time.date())
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         availability = cast(SiteDERAvailability, entity)
-        return (availability.site_der.site.aggregator_id, availability.site_der.site_id, availability.site_der_id)
+        return (availability.site_der.site.aggregator_id, availability.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_RATING:
         rating = cast(SiteDERRating, entity)
-        return (rating.site_der.site.aggregator_id, rating.site_der.site_id, rating.site_der_id)
+        return (rating.site_der.site.aggregator_id, rating.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_SETTING:
         setting = cast(SiteDERSetting, entity)
-        return (setting.site_der.site.aggregator_id, setting.site_der.site_id, setting.site_der_id)
+        return (setting.site_der.site.aggregator_id, setting.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         status = cast(SiteDERStatus, entity)
-        return (status.site_der.site.aggregator_id, status.site_der.site_id, status.site_der_id)
+        return (status.site_der.site.aggregator_id, status.site_der.site_id, PUBLIC_SITE_DER_ID)
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate batch key")
 

@@ -18,14 +18,7 @@ from envoy_schema.server.schema.sep2.identification import Link
 from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.mapper.common import generate_href
-from envoy.server.model.site import (
-    PERCENT_DECIMAL_POWER,
-    SiteDER,
-    SiteDERAvailability,
-    SiteDERRating,
-    SiteDERSetting,
-    SiteDERStatus,
-)
+from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.request_state import RequestStateParameters
 
 

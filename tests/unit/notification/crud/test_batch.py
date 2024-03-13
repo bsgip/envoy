@@ -27,6 +27,7 @@ from envoy.notification.crud.batch import (
 )
 from envoy.notification.exception import NotificationError
 from envoy.server.crud.end_device import Site
+from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
@@ -147,6 +148,54 @@ def test_get_batch_key_invalid():
                 site=Site(site_id=3, aggregator_id=1),
             ),
             (1, 2, 3, date(2023, 2, 3)),
+        ),
+        (
+            SubscriptionResource.SITE_DER_AVAILABILITY,
+            SiteDERAvailability(
+                site_der_id=11,
+                site_der_availability_id=22,
+                site_der=SiteDER(
+                    site_id=3,
+                    site=Site(site_id=3, aggregator_id=1),
+                ),
+            ),
+            (1, 3, PUBLIC_SITE_DER_ID),
+        ),
+        (
+            SubscriptionResource.SITE_DER_RATING,
+            SiteDERRating(
+                site_der_id=11,
+                site_der_rating_id=22,
+                site_der=SiteDER(
+                    site_id=3,
+                    site=Site(site_id=3, aggregator_id=1),
+                ),
+            ),
+            (1, 3, PUBLIC_SITE_DER_ID),
+        ),
+        (
+            SubscriptionResource.SITE_DER_SETTING,
+            SiteDERSetting(
+                site_der_id=11,
+                site_der_setting_id=22,
+                site_der=SiteDER(
+                    site_id=3,
+                    site=Site(site_id=3, aggregator_id=1),
+                ),
+            ),
+            (1, 3, PUBLIC_SITE_DER_ID),
+        ),
+        (
+            SubscriptionResource.SITE_DER_STATUS,
+            SiteDERStatus(
+                site_der_id=11,
+                site_der_status_id=22,
+                site_der=SiteDER(
+                    site_id=3,
+                    site=Site(site_id=3, aggregator_id=1),
+                ),
+            ),
+            (1, 3, PUBLIC_SITE_DER_ID),
         ),
     ],
 )

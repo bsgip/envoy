@@ -15,6 +15,7 @@ from envoy.server.crud.subscription import (
     select_subscriptions_for_site,
 )
 from envoy.server.exception import BadRequestError, NotFoundError
+from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.pub_sub import SubscriptionListMapper, SubscriptionMapper
 from envoy.server.model.subscription import SubscriptionResource
@@ -123,6 +124,14 @@ class SubscriptionManager:
                 tp = await select_single_tariff(session, sub.resource_id)
                 if tp is None:
                     raise BadRequestError(f"Invalid tariff_id {sub.resource_id} for site {site_id}")
+            elif (
+                sub.resource_type == SubscriptionResource.SITE_DER_AVAILABILITY
+                or sub.resource_type == SubscriptionResource.SITE_DER_RATING
+                or sub.resource_type == SubscriptionResource.SITE_DER_SETTING
+                or sub.resource_type == SubscriptionResource.SITE_DER_STATUS
+            ):
+                if sub.resource_id != PUBLIC_SITE_DER_ID:
+                    raise BadRequestError(f"Invalid der_id {sub.resource_id} for site {site_id}")
             else:
                 raise BadRequestError("sub.resource_id is improperly set. Check subscribedResource is valid.")
 
