@@ -8,7 +8,11 @@ from envoy_schema.server.schema.sep2.end_device import EndDeviceResponse
 from envoy_schema.server.schema.sep2.metering import Reading
 from envoy_schema.server.schema.sep2.pricing import TimeTariffIntervalResponse
 from envoy_schema.server.schema.sep2.pub_sub import (
+    XSI_TYPE_DER_AVAILABILITY,
+    XSI_TYPE_DER_CAPABILITY,
     XSI_TYPE_DER_CONTROL_LIST,
+    XSI_TYPE_DER_SETTINGS,
+    XSI_TYPE_DER_STATUS,
     XSI_TYPE_END_DEVICE_LIST,
     XSI_TYPE_READING_LIST,
     XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
@@ -17,20 +21,49 @@ from envoy_schema.server.schema.sep2.pub_sub import Condition as Sep2Condition
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier, Notification
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
 from envoy_schema.server.schema.sep2.pub_sub import SubscriptionListResponse
-from envoy_schema.server.schema.uri import DERControlListUri, EndDeviceListUri
+from envoy_schema.server.schema.uri import (
+    DERAvailabilityUri,
+    DERCapabilityUri,
+    DERControlListUri,
+    DERSettingsUri,
+    DERStatusUri,
+    EndDeviceListUri,
+)
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
+from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper, SubscriptionListMapper, SubscriptionMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import Site
+from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import generate_class_instance
+
+
+@pytest.mark.parametrize("resource", list(SubscriptionResource))
+def test_SubscriptionMapper_calculate_resource_href_at_least_one_supported_combo(resource: SubscriptionResource):
+    """Validates the various SubscriptionResource values should have at least 1 supported combo of site/resource id"""
+
+    hrefs: list[str] = []
+    for site_id, resource_id in product([1, None], [2, None]):
+        sub: Subscription = generate_class_instance(Subscription)
+        sub.resource_type = resource
+        sub.scoped_site_id = site_id
+        sub.resource_id = resource_id
+
+        try:
+            href = SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, None))
+            assert href and isinstance(href, str)
+            hrefs.append(href)
+        except InvalidMappingError:
+            pass
+
+    assert len(hrefs) > 0, f"Expected at least one combo of site/resource ID to generate a validate href for {resource}"
 
 
 @pytest.mark.parametrize("resource, site_id, resource_id", product(SubscriptionResource, [1, None], [2, None]))
@@ -113,7 +146,7 @@ def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
             assert str(resource_id) in href, "If the ID is specified - it should be in the generated href"
 
     assert len(all_hrefs) == len(set(all_hrefs)), f"Expected all hrefs to be unique: {all_hrefs}"
-    assert total_fails < 10, "There shouldn't be this many combinations generating InvalidMappingError - go investigate"
+    assert total_fails < 25, "There shouldn't be this many combinations generating InvalidMappingError - go investigate"
 
 
 def test_SubscriptionMapper_map_to_response_condition():
@@ -301,6 +334,12 @@ def test_SubscriptionMapper_map_from_request():
         ("/edev/55/derp/doe_but_not/derc", InvalidMappingError),
         ("/edev/55-3/derp/doe/derc", InvalidMappingError),
         ("/edev/55/derp/doe", InvalidMappingError),
+        ("/edev/55/der/1/dera", (SubscriptionResource.SITE_DER_AVAILABILITY, 55, 1)),
+        ("/edev/55/der/1/dera/other", InvalidMappingError),
+        ("/edev/55/der/1/derg", (SubscriptionResource.SITE_DER_SETTING, 55, 1)),
+        ("/edev/55/der/1/dercap", (SubscriptionResource.SITE_DER_RATING, 55, 1)),
+        ("/edev/55/der/1/ders", (SubscriptionResource.SITE_DER_STATUS, 55, 1)),
+        ("/edev/55/der/1/derx", InvalidMappingError),
         ("/", InvalidMappingError),
         ("edev", InvalidMappingError),
         ("edev/123", InvalidMappingError),
@@ -405,3 +444,97 @@ def test_NotificationMapper_map_rates_to_response():
     assert notification.resource.type == XSI_TYPE_TIME_TARIFF_INTERVAL_LIST
     assert len(notification.resource.TimeTariffInterval) == 2
     assert all([isinstance(r, TimeTariffIntervalResponse) for r in notification.resource.TimeTariffInterval])
+
+
+def test_NotificationMapper_map_der_availability_to_response():
+    all_set: SiteDERAvailability = generate_class_instance(SiteDERAvailability, seed=1, optional_is_none=False)
+
+    sub = generate_class_instance(Subscription, seed=303)
+    rs_params = RequestStateParameters(1, "/custom/prefix")
+    site_id = 123
+    der_id = 456
+
+    notification_all_set = NotificationMapper.map_der_availability_to_response(site_id, der_id, all_set, sub, rs_params)
+    assert isinstance(notification_all_set, Notification)
+    assert notification_all_set.subscribedResource.startswith("/custom/prefix")
+    assert DERAvailabilityUri.format(site_id=site_id, der_id=der_id) in notification_all_set.subscribedResource
+    assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification_all_set.subscriptionURI
+
+    # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
+    # mapper unit tests
+    assert notification_all_set.resource.type == XSI_TYPE_DER_AVAILABILITY
+    assert notification_all_set.resource.statWAvail.value == all_set.estimated_w_avail_value
+    assert notification_all_set.resource.statWAvail.multiplier == all_set.estimated_w_avail_multiplier
+    assert notification_all_set.resource.reservePercent == int(all_set.reserved_deliver_percent * 100)
+
+
+def test_NotificationMapper_map_der_rating_to_response():
+    all_set: SiteDERRating = generate_class_instance(SiteDERRating, seed=1, optional_is_none=False)
+
+    sub = generate_class_instance(Subscription, seed=303)
+    rs_params = RequestStateParameters(1, "/custom/prefix")
+    site_id = 123
+    der_id = 456
+
+    notification_all_set = NotificationMapper.map_der_rating_to_response(site_id, der_id, all_set, sub, rs_params)
+    assert isinstance(notification_all_set, Notification)
+    assert notification_all_set.subscribedResource.startswith("/custom/prefix")
+    assert DERCapabilityUri.format(site_id=site_id, der_id=der_id) in notification_all_set.subscribedResource
+    assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification_all_set.subscriptionURI
+
+    # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
+    # mapper unit tests
+    assert notification_all_set.resource.type == XSI_TYPE_DER_CAPABILITY
+    assert notification_all_set.resource.rtgMaxW.value == all_set.max_w_value
+    assert notification_all_set.resource.rtgMaxW.multiplier == all_set.max_w_multiplier
+    assert notification_all_set.resource.rtgMaxV.value == all_set.max_v_value
+
+
+def test_NotificationMapper_map_der_settings_to_response():
+    all_set: SiteDERSetting = generate_class_instance(SiteDERSetting, seed=1, optional_is_none=False)
+
+    sub = generate_class_instance(Subscription, seed=303)
+    rs_params = RequestStateParameters(1, "/custom/prefix")
+    site_id = 123
+    der_id = 456
+
+    notification_all_set = NotificationMapper.map_der_settings_to_response(site_id, der_id, all_set, sub, rs_params)
+    assert isinstance(notification_all_set, Notification)
+    assert notification_all_set.subscribedResource.startswith("/custom/prefix")
+    assert DERSettingsUri.format(site_id=site_id, der_id=der_id) in notification_all_set.subscribedResource
+    assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification_all_set.subscriptionURI
+
+    # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
+    # mapper unit tests
+    assert notification_all_set.resource.type == XSI_TYPE_DER_SETTINGS
+    assert notification_all_set.resource.setMaxW.value == all_set.max_w_value
+    assert notification_all_set.resource.setMaxW.multiplier == all_set.max_w_multiplier
+    assert notification_all_set.resource.setMaxV.value == all_set.max_v_value
+    assert notification_all_set.resource.setESDelay == all_set.es_delay
+
+
+def test_NotificationMapper_map_der_status_to_response():
+    all_set: SiteDERStatus = generate_class_instance(SiteDERStatus, seed=1, optional_is_none=False)
+
+    sub = generate_class_instance(Subscription, seed=303)
+    rs_params = RequestStateParameters(1, "/custom/prefix")
+    site_id = 123
+    der_id = 456
+
+    notification_all_set = NotificationMapper.map_der_status_to_response(site_id, der_id, all_set, sub, rs_params)
+    assert isinstance(notification_all_set, Notification)
+    assert notification_all_set.subscribedResource.startswith("/custom/prefix")
+    assert DERStatusUri.format(site_id=site_id, der_id=der_id) in notification_all_set.subscribedResource
+    assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification_all_set.subscriptionURI
+
+    # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
+    # mapper unit tests
+    assert notification_all_set.resource.type == XSI_TYPE_DER_STATUS
+    assert notification_all_set.resource.inverterStatus.value == all_set.inverter_status
+    assert notification_all_set.resource.inverterStatus.dateTime == int(all_set.inverter_status_time.timestamp())
+    assert notification_all_set.resource.operationalModeStatus.value == all_set.operational_mode_status
+    assert notification_all_set.resource.genConnectStatus.value == to_hex_binary(all_set.generator_connect_status)

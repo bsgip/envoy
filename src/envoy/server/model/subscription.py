@@ -17,6 +17,10 @@ class SubscriptionResource(IntEnum):
     DYNAMIC_OPERATING_ENVELOPE = auto()
     TARIFF_GENERATED_RATE = auto()
     READING = auto()
+    SITE_DER_AVAILABILITY = auto()
+    SITE_DER_RATING = auto()
+    SITE_DER_SETTING = auto()
+    SITE_DER_STATUS = auto()
 
 
 class Subscription(Base):
