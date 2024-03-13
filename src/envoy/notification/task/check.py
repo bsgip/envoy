@@ -13,6 +13,10 @@ from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
     TResourceModel,
+    fetch_der_availability_by_changed_at,
+    fetch_der_rating_by_changed_at,
+    fetch_der_setting_by_changed_at,
+    fetch_der_status_by_changed_at,
     fetch_does_by_changed_at,
     fetch_rates_by_changed_at,
     fetch_readings_by_changed_at,
@@ -27,7 +31,7 @@ from envoy.notification.task.transmit import transmit_notification
 from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper, SubscriptionMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import Site
+from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -36,6 +40,15 @@ from envoy.server.request_state import RequestStateParameters
 logger = logging.getLogger(__name__)
 
 MAX_NOTIFICATION_PAGE_SIZE = 100
+
+DER_RESOURCES = set(
+    [
+        SubscriptionResource.SITE_DER_AVAILABILITY,
+        SubscriptionResource.SITE_DER_RATING,
+        SubscriptionResource.SITE_DER_SETTING,
+        SubscriptionResource.SITE_DER_STATUS,
+    ]
+)
 
 
 @dataclass
@@ -91,6 +104,16 @@ def get_entity_pages(
                     batch_key=batch_key,
                     pricing_reading_type=price_type,
                 )
+    elif resource in DER_RESOURCES:
+        # DER resources can't be notified as a list - so treat these all as individual notifications
+        for entity in entities:
+            yield NotificationEntities(
+                entities=[entity],
+                subscription=sub,
+                notification_id=uuid4(),
+                batch_key=batch_key,
+                pricing_reading_type=None,
+            )
     else:
         for entity_page in batched(entities, page_size):
             yield NotificationEntities(
@@ -180,6 +203,34 @@ def entities_to_notification(
         return NotificationMapper.map_readings_to_response(
             site_id, site_reading_type_id, cast(Sequence[SiteReading], entities), sub, rs_params
         )
+    elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
+        # SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
+        (_, site_id, site_der_id) = batch_key
+        availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None
+        return NotificationMapper.map_der_availability_to_response(
+            site_id, site_der_id, availability, sub, rs_params
+        )  # We will only EVER have single element lists for this resource
+    elif resource == SubscriptionResource.SITE_DER_RATING:
+        # SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
+        (_, site_id, site_der_id) = batch_key
+        rating = cast(SiteDERRating, entities[0]) if len(entities) > 0 else None
+        return NotificationMapper.map_der_rating_to_response(
+            site_id, site_der_id, rating, sub, rs_params
+        )  # We will only EVER have single element lists for this resource
+    elif resource == SubscriptionResource.SITE_DER_SETTING:
+        # SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
+        (_, site_id, site_der_id) = batch_key
+        settings = cast(SiteDERSetting, entities[0]) if len(entities) > 0 else None
+        return NotificationMapper.map_der_settings_to_response(
+            site_id, site_der_id, settings, sub, rs_params
+        )  # We will only EVER have single element lists for this resource
+    elif resource == SubscriptionResource.SITE_DER_STATUS:
+        # SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
+        (_, site_id, site_der_id) = batch_key
+        status = cast(SiteDERStatus, entities[0]) if len(entities) > 0 else None
+        return NotificationMapper.map_der_status_to_response(
+            site_id, site_der_id, status, sub, rs_params
+        )  # We will only EVER have single element lists for this resource
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify way to map entities")
 
@@ -196,6 +247,14 @@ async def fetch_batched_entities(
         return await fetch_does_by_changed_at(session, timestamp)
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         return await fetch_rates_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
+        return await fetch_der_availability_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.SITE_DER_RATING:
+        return await fetch_der_rating_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.SITE_DER_SETTING:
+        return await fetch_der_setting_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.SITE_DER_STATUS:
+        return await fetch_der_status_by_changed_at(session, timestamp)
     else:
         raise NotificationError(f"Unsupported resource type: {resource}")
 

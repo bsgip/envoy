@@ -446,6 +446,23 @@ def test_NotificationMapper_map_rates_to_response():
     assert all([isinstance(r, TimeTariffIntervalResponse) for r in notification.resource.TimeTariffInterval])
 
 
+def test_NotificationMapper_map_der_availability_to_response_missing():
+
+    sub = generate_class_instance(Subscription, seed=303)
+    rs_params = RequestStateParameters(1, "/custom/prefix")
+    site_id = 123
+    der_id = 456
+
+    notification_all_set = NotificationMapper.map_der_availability_to_response(site_id, der_id, None, sub, rs_params)
+    assert isinstance(notification_all_set, Notification)
+    assert notification_all_set.subscribedResource.startswith("/custom/prefix")
+    assert DERAvailabilityUri.format(site_id=site_id, der_id=der_id) in notification_all_set.subscribedResource
+    assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification_all_set.subscriptionURI
+
+    assert notification_all_set.resource is None
+
+
 def test_NotificationMapper_map_der_availability_to_response():
     all_set: SiteDERAvailability = generate_class_instance(SiteDERAvailability, seed=1, optional_is_none=False)
 
@@ -467,6 +484,22 @@ def test_NotificationMapper_map_der_availability_to_response():
     assert notification_all_set.resource.statWAvail.value == all_set.estimated_w_avail_value
     assert notification_all_set.resource.statWAvail.multiplier == all_set.estimated_w_avail_multiplier
     assert notification_all_set.resource.reservePercent == int(all_set.reserved_deliver_percent * 100)
+
+
+def test_NotificationMapper_map_der_rating_to_response_missing():
+    sub = generate_class_instance(Subscription, seed=303)
+    rs_params = RequestStateParameters(1, "/custom/prefix")
+    site_id = 123
+    der_id = 456
+
+    notification_all_set = NotificationMapper.map_der_rating_to_response(site_id, der_id, None, sub, rs_params)
+    assert isinstance(notification_all_set, Notification)
+    assert notification_all_set.subscribedResource.startswith("/custom/prefix")
+    assert DERCapabilityUri.format(site_id=site_id, der_id=der_id) in notification_all_set.subscribedResource
+    assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification_all_set.subscriptionURI
+
+    assert notification_all_set.resource is None
 
 
 def test_NotificationMapper_map_der_rating_to_response():
@@ -492,6 +525,22 @@ def test_NotificationMapper_map_der_rating_to_response():
     assert notification_all_set.resource.rtgMaxV.value == all_set.max_v_value
 
 
+def test_NotificationMapper_map_der_settings_to_response_missing():
+    sub = generate_class_instance(Subscription, seed=303)
+    rs_params = RequestStateParameters(1, "/custom/prefix")
+    site_id = 123
+    der_id = 456
+
+    notification_all_set = NotificationMapper.map_der_settings_to_response(site_id, der_id, None, sub, rs_params)
+    assert isinstance(notification_all_set, Notification)
+    assert notification_all_set.subscribedResource.startswith("/custom/prefix")
+    assert DERSettingsUri.format(site_id=site_id, der_id=der_id) in notification_all_set.subscribedResource
+    assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification_all_set.subscriptionURI
+
+    assert notification_all_set.resource is None
+
+
 def test_NotificationMapper_map_der_settings_to_response():
     all_set: SiteDERSetting = generate_class_instance(SiteDERSetting, seed=1, optional_is_none=False)
 
@@ -514,6 +563,21 @@ def test_NotificationMapper_map_der_settings_to_response():
     assert notification_all_set.resource.setMaxW.multiplier == all_set.max_w_multiplier
     assert notification_all_set.resource.setMaxV.value == all_set.max_v_value
     assert notification_all_set.resource.setESDelay == all_set.es_delay
+
+
+def test_NotificationMapper_map_der_status_to_response_missing():
+    sub = generate_class_instance(Subscription, seed=303)
+    rs_params = RequestStateParameters(1, "/custom/prefix")
+    site_id = 123
+    der_id = 456
+
+    notification_all_set = NotificationMapper.map_der_status_to_response(site_id, der_id, None, sub, rs_params)
+    assert isinstance(notification_all_set, Notification)
+    assert notification_all_set.subscribedResource.startswith("/custom/prefix")
+    assert DERStatusUri.format(site_id=site_id, der_id=der_id) in notification_all_set.subscribedResource
+    assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification_all_set.subscriptionURI
+    assert notification_all_set.resource is None
 
 
 def test_NotificationMapper_map_der_status_to_response():

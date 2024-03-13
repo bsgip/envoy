@@ -1,5 +1,6 @@
 import unittest.mock as mock
 from datetime import datetime, timezone
+from typing import cast
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -12,6 +13,7 @@ from envoy_schema.server.schema.sep2.pub_sub import (
 from envoy.notification.crud.batch import AggregatorBatchedEntities, get_batch_key
 from envoy.notification.exception import NotificationError
 from envoy.notification.task.check import (
+    DER_RESOURCES,
     NotificationEntities,
     batched,
     check_db_upsert,
@@ -20,9 +22,10 @@ from envoy.notification.task.check import (
     fetch_batched_entities,
     get_entity_pages,
 )
+from envoy.server.manager.der import PUBLIC_SITE_DER_ID
 from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import Site
+from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import PRICE_DECIMAL_POWER, TariffGeneratedRate
@@ -129,6 +132,36 @@ def test_get_entity_pages_rates(mock_batched: mock.MagicMock):
 
 
 @pytest.mark.parametrize(
+    "resource",
+    [
+        SubscriptionResource.SITE_DER_AVAILABILITY,
+        SubscriptionResource.SITE_DER_RATING,
+        SubscriptionResource.SITE_DER_SETTING,
+        SubscriptionResource.SITE_DER_STATUS,
+    ],
+)
+def test_get_entity_pages_der(resource: SubscriptionResource):
+    """Similar to test_get_entity_pages_basic but tests the special case of rates multiplying the pages out for
+    each PricingReadingType"""
+    sub = Subscription()
+    batch_key = (1, 2, "three")
+    page_size = 999
+    entities = [
+        SiteDERStatus(site_der_status_id=1),
+        SiteDERStatus(site_der_status_id=2),
+        SiteDERStatus(site_der_status_id=3),
+    ]
+
+    actual = list(get_entity_pages(resource, sub, batch_key, page_size, entities))
+    assert len(actual) == len(entities), "We expect 3 single entities for DER resources"
+    assert all([isinstance(ne, NotificationEntities) for ne in actual])
+
+    # We expect 3 notifications - each with a single entity
+    assert all([len(n.entities) == 1 for n in actual])
+    assert [e.site_der_status_id for n in actual for e in n.entities] == [1, 2, 3]
+
+
+@pytest.mark.parametrize(
     "sub, resource, entities, expected_passing_entity_indexes",
     [
         #
@@ -199,6 +232,22 @@ def test_get_entity_pages_rates(mock_batched: mock.MagicMock):
                 SiteReading(site_reading_id=4, site_reading_type_id=1, site_reading_type=SiteReadingType(site_id=1)),
             ],
             [0, 2],
+        ),
+        (
+            Subscription(
+                resource_type=SubscriptionResource.SITE_DER_STATUS, resource_id=PUBLIC_SITE_DER_ID, conditions=[]
+            ),
+            SubscriptionResource.SITE_DER_STATUS,
+            [SiteDERStatus(site_der_status_id=3), SiteDERStatus(site_der_status_id=4)],
+            [0, 1],  # DER uses a fixed site_der_id value
+        ),
+        (
+            Subscription(
+                resource_type=SubscriptionResource.SITE_DER_STATUS, resource_id=PUBLIC_SITE_DER_ID + 1, conditions=[]
+            ),
+            SubscriptionResource.SITE_DER_STATUS,
+            [SiteDERStatus(site_der_status_id=3), SiteDERStatus(site_der_status_id=4)],
+            [],  # DER uses a fixed site_der_id value
         ),
         #
         # Combo resource/site id filtering
@@ -356,6 +405,10 @@ def test_entities_to_notification_unknown_resource():
         (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, DynamicOperatingEnvelope),
         (SubscriptionResource.READING, SiteReading),
         (SubscriptionResource.TARIFF_GENERATED_RATE, TariffGeneratedRate),
+        (SubscriptionResource.SITE_DER_AVAILABILITY, SiteDERAvailability),
+        (SubscriptionResource.SITE_DER_RATING, SiteDERRating),
+        (SubscriptionResource.SITE_DER_SETTING, SiteDERSetting),
+        (SubscriptionResource.SITE_DER_STATUS, SiteDERStatus),
     ],
 )
 def test_entities_to_notification_sites(resource: SubscriptionResource, entity_class: type):
@@ -373,7 +426,11 @@ def test_entities_to_notification_sites(resource: SubscriptionResource, entity_c
     for entity_length in [0, 1, 3]:
         entities = []
         for i in range(entity_length):
-            entities.append(generate_class_instance(entity_class, seed=i, generate_relationships=True))
+            # Generate test instances - tweaking them if the generated values fall foul of pydantic range validation
+            e = generate_class_instance(entity_class, seed=i, generate_relationships=True)
+            if isinstance(e, SiteDERStatus):
+                cast(SiteDERStatus, e).state_of_charge_status = i
+            entities.append(e)
 
         notification = entities_to_notification(resource, sub, batch_key, href_prefix, entities, pricing_reading_type)
         assert isinstance(notification, Notification)
@@ -382,9 +439,18 @@ def test_entities_to_notification_sites(resource: SubscriptionResource, entity_c
         assert "{" not in notification.subscribedResource, "Trying to catch format variables not being replaced"
         assert "{" not in notification.subscriptionURI, "Trying to catch format variables not being replaced"
 
-        assert isinstance(notification.resource, NotificationResourceCombined)
-        assert notification.resource.all_ == len(entities)
-        assert notification.resource.results == len(entities)
+        # DER resources are NOT list enabled and either set resource with the first element or leave it None
+        if resource in DER_RESOURCES:
+            if entity_length > 0:
+                assert isinstance(notification.resource, NotificationResourceCombined)
+                assert notification.resource.all_ is None
+                assert notification.resource.results is None
+            else:
+                assert notification.resource is None
+        else:
+            assert notification.resource.all_ == len(entities)
+            assert notification.resource.results == len(entities)
+            assert isinstance(notification.resource, NotificationResourceCombined)
 
         if resource == SubscriptionResource.SITE:
             assert len(notification.resource.EndDevice) == len(entities)
@@ -394,6 +460,14 @@ def test_entities_to_notification_sites(resource: SubscriptionResource, entity_c
             assert len(notification.resource.Readings) == len(entities)
         elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
             assert len(notification.resource.TimeTariffInterval) == len(entities)
+        elif resource == SubscriptionResource.SITE_DER_AVAILABILITY and entity_length:
+            assert notification.resource.statWAvail.value == entities[0].estimated_w_avail_value
+        elif resource == SubscriptionResource.SITE_DER_RATING and entity_length:
+            assert notification.resource.doeModesSupported == entities[0].doe_modes_supported
+        elif resource == SubscriptionResource.SITE_DER_SETTING and entity_length:
+            assert notification.resource.doeModesEnabled == entities[0].doe_modes_enabled
+        elif resource == SubscriptionResource.SITE_DER_STATUS and entity_length:
+            assert notification.resource.inverterStatus.value == entities[0].inverter_status
 
 
 @pytest.mark.anyio

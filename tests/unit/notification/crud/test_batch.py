@@ -12,6 +12,10 @@ from sqlalchemy import select
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
     TResourceModel,
+    fetch_der_availability_by_changed_at,
+    fetch_der_rating_by_changed_at,
+    fetch_der_setting_by_changed_at,
+    fetch_der_status_by_changed_at,
     fetch_does_by_changed_at,
     fetch_rates_by_changed_at,
     fetch_readings_by_changed_at,
@@ -24,6 +28,7 @@ from envoy.notification.crud.batch import (
 from envoy.notification.exception import NotificationError
 from envoy.server.crud.end_device import Site
 from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -617,3 +622,127 @@ async def test_fetch_readings_by_timestamp_multiple_aggs(pg_base_config):
         empty_batch = await fetch_readings_by_changed_at(session, timestamp - timedelta(milliseconds=50))
         assert empty_batch.total_entities == 0
         assert len(empty_batch.models_by_batch_key) == 0
+
+
+@pytest.mark.parametrize(
+    "timestamp,expected_ids",
+    [
+        (
+            datetime(2022, 7, 23, 10, 3, 23, 500000, tzinfo=timezone.utc),
+            [1],
+        ),
+        (
+            datetime(2021, 2, 3, 4, 5, 7),  # timestamp mismatch
+            [],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_der_availability_by_timestamp(pg_base_config, timestamp: datetime, expected_ids: list[int]):
+    """Tests that entities are filtered/returned correctly"""
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_der_availability_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(expected_ids)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda doe: doe.site_der_availability_id)
+
+        assert all([isinstance(e, SiteDERAvailability) for e in list_entities])
+        for i in range(len(expected_ids)):
+            assert list_entities[i].site_der_availability_id == expected_ids[i]
+
+        assert all([isinstance(e.site_der, SiteDER) for e in list_entities]), "SiteDER relationship populated"
+        assert all([isinstance(e.site_der.site, Site) for e in list_entities]), "Site relationship populated"
+
+
+@pytest.mark.parametrize(
+    "timestamp,expected_ids",
+    [
+        (
+            datetime(2022, 4, 13, 10, 1, 42, 500000, tzinfo=timezone.utc),
+            [1],
+        ),
+        (
+            datetime(2022, 2, 3, 4, 5, 7),  # timestamp mismatch
+            [],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_der_rating_by_timestamp(pg_base_config, timestamp: datetime, expected_ids: list[int]):
+    """Tests that entities are filtered/returned correctly"""
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_der_rating_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(expected_ids)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda doe: doe.site_der_rating_id)
+
+        assert all([isinstance(e, SiteDERRating) for e in list_entities])
+        for i in range(len(expected_ids)):
+            assert list_entities[i].site_der_rating_id == expected_ids[i]
+
+        assert all([isinstance(e.site_der, SiteDER) for e in list_entities]), "SiteDER relationship populated"
+        assert all([isinstance(e.site_der.site, Site) for e in list_entities]), "Site relationship populated"
+
+
+@pytest.mark.parametrize(
+    "timestamp,expected_ids",
+    [
+        (
+            datetime(2022, 2, 9, 11, 6, 44, 500000, tzinfo=timezone.utc),
+            [1],
+        ),
+        (
+            datetime(2022, 2, 3, 4, 5, 8),  # timestamp mismatch
+            [],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_der_setting_by_timestamp(pg_base_config, timestamp: datetime, expected_ids: list[int]):
+    """Tests that entities are filtered/returned correctly"""
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_der_setting_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(expected_ids)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda doe: doe.site_der_setting_id)
+
+        assert all([isinstance(e, SiteDERSetting) for e in list_entities])
+        for i in range(len(expected_ids)):
+            assert list_entities[i].site_der_setting_id == expected_ids[i]
+
+        assert all([isinstance(e.site_der, SiteDER) for e in list_entities]), "SiteDER relationship populated"
+        assert all([isinstance(e.site_der.site, Site) for e in list_entities]), "Site relationship populated"
+
+
+@pytest.mark.parametrize(
+    "timestamp,expected_ids",
+    [
+        (
+            datetime(2022, 11, 1, 11, 5, 4, 500000, tzinfo=timezone.utc),
+            [1],
+        ),
+        (
+            datetime(2022, 2, 3, 4, 5, 8),  # timestamp mismatch
+            [],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_der_status_by_timestamp(pg_base_config, timestamp: datetime, expected_ids: list[int]):
+    """Tests that entities are filtered/returned correctly"""
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_der_status_by_changed_at(session, timestamp)
+        assert batch.total_entities == len(expected_ids)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        list_entities.sort(key=lambda doe: doe.site_der_status_id)
+
+        assert all([isinstance(e, SiteDERStatus) for e in list_entities])
+        for i in range(len(expected_ids)):
+            assert list_entities[i].site_der_status_id == expected_ids[i]
+
+        assert all([isinstance(e.site_der, SiteDER) for e in list_entities]), "SiteDER relationship populated"
+        assert all([isinstance(e.site_der.site, Site) for e in list_entities]), "Site relationship populated"

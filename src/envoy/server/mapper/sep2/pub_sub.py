@@ -468,7 +468,7 @@ class NotificationMapper:
     def map_der_availability_to_response(
         site_id: int,
         der_id: int,
-        der_availability: SiteDERAvailability,
+        der_availability: Optional[SiteDERAvailability],
         sub: Subscription,
         rs_params: RequestStateParameters,
     ) -> Notification:
@@ -480,15 +480,18 @@ class NotificationMapper:
             der_id=der_id,
         )
 
-        # Easiest way to map entity to resource is via model_dump
-        resource = DERAvailabilityMapper.map_to_response(rs_params, site_id, der_availability)
-        resource.type = XSI_TYPE_DER_AVAILABILITY
+        resource_model: Optional[dict] = None
+        if der_availability is not None:
+            # Easiest way to map entity to resource is via model_dump
+            resource = DERAvailabilityMapper.map_to_response(rs_params, site_id, der_availability)
+            resource.type = XSI_TYPE_DER_AVAILABILITY
+            resource_model = resource.model_dump()
         return Notification.model_validate(
             {
                 "subscribedResource": der_avail_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
                 "status": NotificationStatus.DEFAULT,
-                "resource": resource.model_dump(),
+                "resource": resource_model,
             }
         )
 
@@ -496,7 +499,7 @@ class NotificationMapper:
     def map_der_rating_to_response(
         site_id: int,
         der_id: int,
-        der_rating: SiteDERRating,
+        der_rating: Optional[SiteDERRating],
         sub: Subscription,
         rs_params: RequestStateParameters,
     ) -> Notification:
@@ -508,15 +511,18 @@ class NotificationMapper:
             der_id=der_id,
         )
 
-        # Easiest way to map entity to resource is via model_dump
-        resource = DERCapabilityMapper.map_to_response(rs_params, site_id, der_rating)
-        resource.type = XSI_TYPE_DER_CAPABILITY
+        resource_model: Optional[dict] = None
+        if der_rating is not None:
+            # Easiest way to map entity to resource is via model_dump
+            resource = DERCapabilityMapper.map_to_response(rs_params, site_id, der_rating)
+            resource.type = XSI_TYPE_DER_CAPABILITY
+            resource_model = resource.model_dump()
         return Notification.model_validate(
             {
                 "subscribedResource": der_rating_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
                 "status": NotificationStatus.DEFAULT,
-                "resource": resource.model_dump(),
+                "resource": resource_model,
             }
         )
 
@@ -524,7 +530,7 @@ class NotificationMapper:
     def map_der_settings_to_response(
         site_id: int,
         der_id: int,
-        der_setting: SiteDERSetting,
+        der_setting: Optional[SiteDERSetting],
         sub: Subscription,
         rs_params: RequestStateParameters,
     ) -> Notification:
@@ -536,15 +542,19 @@ class NotificationMapper:
             der_id=der_id,
         )
 
-        # Easiest way to map entity to resource is via model_dump
-        resource = DERSettingMapper.map_to_response(rs_params, site_id, der_setting)
-        resource.type = XSI_TYPE_DER_SETTINGS
+        resource_model: Optional[dict] = None
+        if der_setting is not None:
+            # Easiest way to map entity to resource is via model_dump
+            resource = DERSettingMapper.map_to_response(rs_params, site_id, der_setting)
+            resource.type = XSI_TYPE_DER_SETTINGS
+            resource_model = resource.model_dump()
+
         return Notification.model_validate(
             {
                 "subscribedResource": der_settings_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
                 "status": NotificationStatus.DEFAULT,
-                "resource": resource.model_dump(),
+                "resource": resource_model,
             }
         )
 
@@ -552,7 +562,7 @@ class NotificationMapper:
     def map_der_status_to_response(
         site_id: int,
         der_id: int,
-        der_setting: SiteDERStatus,
+        der_status: Optional[SiteDERStatus],
         sub: Subscription,
         rs_params: RequestStateParameters,
     ) -> Notification:
@@ -564,14 +574,18 @@ class NotificationMapper:
             der_id=der_id,
         )
 
-        # Easiest way to map entity to resource is via model_dump
-        resource = DERStatusMapper.map_to_response(rs_params, site_id, der_setting)
-        resource.type = XSI_TYPE_DER_STATUS
+        resource_model: Optional[dict] = None
+        if der_status is not None:
+            # Easiest way to map entity to resource is via model_dump
+            resource = DERStatusMapper.map_to_response(rs_params, site_id, der_status)
+            resource.type = XSI_TYPE_DER_STATUS
+            resource_model = resource.model_dump()
+
         return Notification.model_validate(
             {
                 "subscribedResource": der_status_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
                 "status": NotificationStatus.DEFAULT,
-                "resource": resource.model_dump(),
+                "resource": resource_model,
             }
         )
