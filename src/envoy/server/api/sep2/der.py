@@ -9,6 +9,7 @@ from fastapi_async_sqlalchemy import db
 from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
     extract_datetime_from_paging_param,
+    extract_default_doe,
     extract_limit_from_paging_param,
     extract_request_params,
     extract_start_from_paging_param,
@@ -22,6 +23,8 @@ from envoy.server.manager.der import (
     DERSettingsManager,
     DERStatusManager,
 )
+from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
+from envoy.server.manager.derp import DERProgramManager
 
 logger = logging.getLogger(__name__)
 
@@ -317,3 +320,42 @@ async def put_der_settings(
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
 
     return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+@router.head(uri.AssociatedDERProgramListUri)
+@router.get(uri.AssociatedDERProgramListUri, status_code=HTTPStatus.OK)
+async def get_derprogram_list(
+    request: Request,
+    site_id: int,
+    der_id: int,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> Response:
+    """Responds with a single DERProgramListResponse containing DER programs for the specified site/DER
+
+    Args:
+        site_id: Path parameter, the target EndDevice's internal registration number.
+        start: list query parameter for the start index value. Default 0.
+        after: list query parameter for lists with a datetime primary index. Default 0.
+        limit: list query parameter for the maximum number of objects to return. Default 1.
+
+    Returns:
+        fastapi.Response object.
+    """
+    if der_id != PUBLIC_SITE_DER_ID:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail=f"No DER with ID {der_id}")
+
+    try:
+        derp_list = await DERProgramManager.fetch_list_for_site(
+            db.session,
+            request_params=extract_request_params(request),
+            site_id=site_id,
+            default_doe=extract_default_doe(request),
+        )
+    except BadRequestError as ex:
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NotFoundError:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(derp_list)

@@ -381,7 +381,7 @@ async def test_upsert_site_for_aggregator_cant_change_agg_id(pg_base_config):
         original_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
         assert original_site
 
-        update_attempt_site = clone_class_instance(original_site, ignored_properties=set(["assignments"]))
+        update_attempt_site = clone_class_instance(original_site, ignored_properties=set(["assignments", "site_ders"]))
         update_attempt_site.aggregator_id = 3
         update_attempt_site.nmi = "new-nmi"
 

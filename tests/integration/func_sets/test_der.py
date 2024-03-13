@@ -9,6 +9,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERAvailability,
     DERCapability,
     DERListResponse,
+    DERProgramListResponse,
     DERSettings,
     DERStatus,
 )
@@ -406,3 +407,45 @@ async def test_roundtrip_upsert_der_status(
 
     async with generate_async_session(pg_base_config) as session:
         await assert_sub_entity_count(session, SiteDERStatus, before_count, expected_not_found, expected_update)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "site_id, der_id, expected_doe_count",
+    [
+        (1, PUBLIC_SITE_DER_ID, 3),
+        (1, PUBLIC_SITE_DER_ID + 1, None),  # invalid der_id
+        (2, PUBLIC_SITE_DER_ID, 1),
+        (3, PUBLIC_SITE_DER_ID, None),  # Belongs to agg 2
+        (4, PUBLIC_SITE_DER_ID, 0),
+        (5, PUBLIC_SITE_DER_ID, None),  # DNE
+    ],
+)
+async def test_get_associated_derprogram_list(
+    client: AsyncClient,
+    site_id: int,
+    der_id: int,
+    expected_doe_count: Optional[int],
+    valid_headers: dict,
+):
+    """Tests getting DERPrograms for various sites/der and validates access constraints
+
+    Being a virtual entity - we don't go too hard on validating the paging (it'll always
+    be a single element or a 404)"""
+
+    # Test a known site
+    href = uri.AssociatedDERProgramListUri.format(site_id=site_id, der_id=der_id)
+    query = href + build_paging_params(limit=99)
+    response = await client.get(query, headers=valid_headers)
+
+    if expected_doe_count is None:
+        assert_response_header(response, HTTPStatus.NOT_FOUND)
+        assert_error_response(response)
+    else:
+        assert_response_header(response, HTTPStatus.OK)
+        body = read_response_body_string(response)
+        assert len(body) > 0
+        parsed_response: DERProgramListResponse = DERProgramListResponse.from_xml(body)
+        assert parsed_response.all_ == 1
+        assert parsed_response.results == 1
+        assert parsed_response.DERProgram[0].DERControlListLink.all_ == expected_doe_count
