@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from envoy.notification.exception import NotificationError
 from envoy.server.crud.common import localize_start_time
-from envoy.server.manager.der import PUBLIC_SITE_DER_ID
+from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading

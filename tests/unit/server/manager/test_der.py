@@ -17,7 +17,6 @@ from sqlalchemy import func, select
 
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.der import (
-    PUBLIC_SITE_DER_ID,
     DERAvailabilityManager,
     DERCapabilityManager,
     DERManager,
@@ -25,14 +24,16 @@ from envoy.server.manager.der import (
     DERStatusManager,
     site_der_for_site,
 )
+from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_state import RequestStateParameters
-from tests.assert_time import assert_nowish
+from tests.assert_time import assert_datetime_equal, assert_nowish
 from tests.data.fake.generator import assert_class_instance_equality, clone_class_instance, generate_class_instance
 from tests.postgres_testing import generate_async_session
-from tests.unit.mocks import assert_mock_session, create_mock_session
+from tests.unit.mocks import assert_mock_session, create_async_result, create_mock_session
 
 
 @mock.patch("envoy.server.manager.der.select_site_der_for_site")
@@ -222,6 +223,7 @@ async def test_fetch_der_capability_not_found(pg_base_config, agg_id: int, site_
             )
 
 
+@mock.patch("envoy.server.manager.der.NotificationManager")
 @pytest.mark.parametrize(
     "agg_id, site_id, der_id",
     [
@@ -232,9 +234,13 @@ async def test_fetch_der_capability_not_found(pg_base_config, agg_id: int, site_
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_capability_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
+async def test_upsert_der_capability_not_found(
+    mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
+):
     """Tests the various ways a NotFoundError can be raised"""
     rs_params = RequestStateParameters(agg_id, None)
+
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     async with generate_async_session(pg_base_config) as session:
         initial_count = (await session.execute(select(func.count()).select_from(SiteDERRating))).scalar_one()
@@ -257,7 +263,11 @@ async def test_upsert_der_capability_not_found(pg_base_config, agg_id: int, site
         resp = await session.execute(select(func.count()).select_from(SiteDERRating))
         assert resp.scalar_one() == initial_count
 
+    mock_NotificationManager.notify_upserted_entities.assert_not_called()
 
+
+@mock.patch("envoy.server.manager.der.NotificationManager")
+@mock.patch("envoy.server.manager.der.utc_now")
 @pytest.mark.parametrize(
     "site_id",
     [
@@ -267,10 +277,16 @@ async def test_upsert_der_capability_not_found(pg_base_config, agg_id: int, site
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_capability_roundtrip(pg_base_config, site_id: int):
+async def test_upsert_der_capability_roundtrip(
+    mock_utc_now: mock.MagicMock, mock_NotificationManager: mock.MagicMock, pg_base_config, site_id: int
+):
     """Tests the various success paths through updating"""
     agg_id = 1
     rs_params = RequestStateParameters(agg_id, "/custom/prefix")
+    now = datetime(2023, 5, 6, 7, 8, 11)
+
+    mock_utc_now.return_value = now
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
     expected: DERCapability = generate_class_instance(DERCapability, seed=22, generate_relationships=True)
@@ -301,6 +317,8 @@ async def test_upsert_der_capability_roundtrip(pg_base_config, site_id: int):
         assert actual.href.startswith(rs_params.href_prefix)
         assert str(site_id) in actual.href
 
+    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE_DER_RATING, now)
+
 
 @pytest.mark.parametrize(
     "agg_id, site_id, der_id",
@@ -328,6 +346,7 @@ async def test_fetch_der_settings_not_found(pg_base_config, agg_id: int, site_id
             )
 
 
+@mock.patch("envoy.server.manager.der.NotificationManager")
 @pytest.mark.parametrize(
     "agg_id, site_id, der_id",
     [
@@ -338,9 +357,13 @@ async def test_fetch_der_settings_not_found(pg_base_config, agg_id: int, site_id
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_settings_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
+async def test_upsert_der_settings_not_found(
+    mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
+):
     """Tests the various ways a NotFoundError can be raised"""
     rs_params = RequestStateParameters(agg_id, None)
+
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     async with generate_async_session(pg_base_config) as session:
         initial_count = (await session.execute(select(func.count()).select_from(SiteDERSetting))).scalar_one()
@@ -363,7 +386,11 @@ async def test_upsert_der_settings_not_found(pg_base_config, agg_id: int, site_i
         resp = await session.execute(select(func.count()).select_from(SiteDERSetting))
         assert resp.scalar_one() == initial_count
 
+    mock_NotificationManager.notify_upserted_entities.assert_not_called()
 
+
+@mock.patch("envoy.server.manager.der.NotificationManager")
+@mock.patch("envoy.server.manager.der.utc_now")
 @pytest.mark.parametrize(
     "site_id",
     [
@@ -373,10 +400,16 @@ async def test_upsert_der_settings_not_found(pg_base_config, agg_id: int, site_i
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_settings_roundtrip(pg_base_config, site_id: int):
+async def test_upsert_der_settings_roundtrip(
+    mock_utc_now: mock.MagicMock, mock_NotificationManager: mock.MagicMock, pg_base_config, site_id: int
+):
     """Tests the various success paths through updating"""
     agg_id = 1
     rs_params = RequestStateParameters(agg_id, "/custom/pfx")
+    now = datetime(2023, 5, 2, 7, 8, 9)
+
+    mock_utc_now.return_value = now
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
     expected: DERSettings = generate_class_instance(DERSettings, seed=22, generate_relationships=True)
@@ -402,7 +435,11 @@ async def test_upsert_der_settings_roundtrip(pg_base_config, site_id: int):
         )
         assert actual.href.startswith(rs_params.href_prefix)
         assert str(site_id) in actual.href
-        assert_nowish(actual.updatedTime)  # updatedTime gets set to server time
+        assert_datetime_equal(now, actual.updatedTime)  # Should be set to server time
+
+    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(
+        SubscriptionResource.SITE_DER_SETTING, now
+    )
 
 
 @pytest.mark.parametrize(
@@ -431,6 +468,7 @@ async def test_fetch_der_availability_not_found(pg_base_config, agg_id: int, sit
             )
 
 
+@mock.patch("envoy.server.manager.der.NotificationManager")
 @pytest.mark.parametrize(
     "agg_id, site_id, der_id",
     [
@@ -441,9 +479,13 @@ async def test_fetch_der_availability_not_found(pg_base_config, agg_id: int, sit
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_availability_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
+async def test_upsert_der_availability_not_found(
+    mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
+):
     """Tests the various ways a NotFoundError can be raised"""
     rs_params = RequestStateParameters(agg_id, None)
+
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     async with generate_async_session(pg_base_config) as session:
         initial_count = (await session.execute(select(func.count()).select_from(SiteDERAvailability))).scalar_one()
@@ -465,7 +507,11 @@ async def test_upsert_der_availability_not_found(pg_base_config, agg_id: int, si
         resp = await session.execute(select(func.count()).select_from(SiteDERAvailability))
         assert resp.scalar_one() == initial_count
 
+    mock_NotificationManager.notify_upserted_entities.assert_not_called()
 
+
+@mock.patch("envoy.server.manager.der.NotificationManager")
+@mock.patch("envoy.server.manager.der.utc_now")
 @pytest.mark.parametrize(
     "site_id",
     [
@@ -475,10 +521,16 @@ async def test_upsert_der_availability_not_found(pg_base_config, agg_id: int, si
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_availability_roundtrip(pg_base_config, site_id: int):
+async def test_upsert_der_availability_roundtrip(
+    mock_utc_now: mock.MagicMock, mock_NotificationManager: mock.MagicMock, pg_base_config, site_id: int
+):
     """Tests the various success paths through updating"""
     agg_id = 1
     rs_params = RequestStateParameters(agg_id, "/custom/pfx")
+    now = datetime(2024, 5, 6, 7, 8, 9)
+
+    mock_utc_now.return_value = now
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
     expected: DERAvailability = generate_class_instance(DERAvailability, seed=22, generate_relationships=True)
@@ -505,7 +557,11 @@ async def test_upsert_der_availability_roundtrip(pg_base_config, site_id: int):
         )
         assert actual.href.startswith(rs_params.href_prefix)
         assert str(site_id) in actual.href
-        assert_nowish(actual.readingTime)  # Should be set to server time
+        assert_datetime_equal(now, actual.readingTime)  # Should be set to server time
+
+    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(
+        SubscriptionResource.SITE_DER_AVAILABILITY, now
+    )
 
 
 @pytest.mark.parametrize(
@@ -534,6 +590,7 @@ async def test_fetch_der_status_not_found(pg_base_config, agg_id: int, site_id: 
             )
 
 
+@mock.patch("envoy.server.manager.der.NotificationManager")
 @pytest.mark.parametrize(
     "agg_id, site_id, der_id",
     [
@@ -544,9 +601,13 @@ async def test_fetch_der_status_not_found(pg_base_config, agg_id: int, site_id: 
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_status_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
+async def test_upsert_der_status_not_found(
+    mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
+):
     """Tests the various ways a NotFoundError can be raised"""
     rs_params = RequestStateParameters(agg_id, None)
+
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     async with generate_async_session(pg_base_config) as session:
         initial_count = (await session.execute(select(func.count()).select_from(SiteDERStatus))).scalar_one()
@@ -571,7 +632,11 @@ async def test_upsert_der_status_not_found(pg_base_config, agg_id: int, site_id:
         resp = await session.execute(select(func.count()).select_from(SiteDERStatus))
         assert resp.scalar_one() == initial_count
 
+    mock_NotificationManager.notify_upserted_entities.assert_not_called()
 
+
+@mock.patch("envoy.server.manager.der.NotificationManager")
+@mock.patch("envoy.server.manager.der.utc_now")
 @pytest.mark.parametrize(
     "site_id",
     [
@@ -581,10 +646,16 @@ async def test_upsert_der_status_not_found(pg_base_config, agg_id: int, site_id:
     ],
 )
 @pytest.mark.anyio
-async def test_upsert_der_status_roundtrip(pg_base_config, site_id: int):
+async def test_upsert_der_status_roundtrip(
+    mock_utc_now: mock.MagicMock, mock_NotificationManager: mock.MagicMock, pg_base_config, site_id: int
+):
     """Tests the various success paths through updating"""
     agg_id = 1
     rs_params = RequestStateParameters(agg_id, "/custom/pfx")
+    now = datetime(2023, 5, 6, 7, 8, 9)
+
+    mock_utc_now.return_value = now
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
     expected: DERStatus = generate_class_instance(DERStatus, seed=22, generate_relationships=True)
@@ -615,4 +686,6 @@ async def test_upsert_der_status_roundtrip(pg_base_config, site_id: int):
         )
         assert actual.href.startswith(rs_params.href_prefix)
         assert str(site_id) in actual.href
-        assert_nowish(actual.readingTime)  # Should be set to server time
+        assert_datetime_equal(now, actual.readingTime)  # Should be set to server time
+
+    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE_DER_STATUS, now)

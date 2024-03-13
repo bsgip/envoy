@@ -11,9 +11,11 @@ from envoy_schema.server.schema.sep2.der import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.der import generate_default_site_der, select_site_der_for_site
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
+from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID, STATIC_POLL_RATE_SECONDS
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.der import (
@@ -24,11 +26,8 @@ from envoy.server.mapper.sep2.der import (
     DERStatusMapper,
 )
 from envoy.server.model.site import SiteDER
+from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_state import RequestStateParameters
-
-PUBLIC_SITE_DER_ID = 1  # We won't be exposing the DER id (csip aus implies only having a single DER per site)
-
-STATIC_POLL_RATE_SECONDS = 300  # This should eventually migrate to a config option / dynamic value
 
 
 async def site_der_for_site(session: AsyncSession, aggregator_id: int, site_id: int) -> SiteDER:
@@ -134,8 +133,8 @@ class DERCapabilityManager:
         if site_der_id != PUBLIC_SITE_DER_ID:
             raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
 
-        now = utc_now()
-        new_der_rating = DERCapabilityMapper.map_from_request(now, der_capability)
+        changed_time = utc_now()
+        new_der_rating = DERCapabilityMapper.map_from_request(changed_time, der_capability)
 
         site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
         if site_der.site_der_id is None:
@@ -153,6 +152,8 @@ class DERCapabilityManager:
             await session.merge(new_der_rating)
 
         await session.commit()
+
+        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE_DER_RATING, changed_time)
 
 
 class DERSettingsManager:
@@ -193,8 +194,8 @@ class DERSettingsManager:
         if site_der_id != PUBLIC_SITE_DER_ID:
             raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
 
-        now = utc_now()
-        new_der_setting = DERSettingMapper.map_from_request(now, der_settings)
+        changed_time = utc_now()
+        new_der_setting = DERSettingMapper.map_from_request(changed_time, der_settings)
 
         site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
         if site_der.site_der_id is None:
@@ -212,6 +213,8 @@ class DERSettingsManager:
             await session.merge(new_der_setting)
 
         await session.commit()
+
+        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE_DER_SETTING, changed_time)
 
 
 class DERAvailabilityManager:
@@ -252,8 +255,8 @@ class DERAvailabilityManager:
         if site_der_id != PUBLIC_SITE_DER_ID:
             raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
 
-        now = utc_now()
-        new_der_availability = DERAvailabilityMapper.map_from_request(now, der_availability)
+        changed_time = utc_now()
+        new_der_availability = DERAvailabilityMapper.map_from_request(changed_time, der_availability)
 
         site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
         if site_der.site_der_id is None:
@@ -271,6 +274,8 @@ class DERAvailabilityManager:
             await session.merge(new_der_availability)
 
         await session.commit()
+
+        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE_DER_AVAILABILITY, changed_time)
 
 
 class DERStatusManager:
@@ -311,8 +316,8 @@ class DERStatusManager:
         if site_der_id != PUBLIC_SITE_DER_ID:
             raise NotFoundError(f"no DER with id {site_der_id} in site {site_id}")
 
-        now = utc_now()
-        new_der_status = DERStatusMapper.map_from_request(now, der_status)
+        changed_time = utc_now()
+        new_der_status = DERStatusMapper.map_from_request(changed_time, der_status)
 
         site_der = await site_der_for_site(session, aggregator_id=request_params.aggregator_id, site_id=site_id)
         if site_der.site_der_id is None:
@@ -330,3 +335,5 @@ class DERStatusManager:
             await session.merge(new_der_status)
 
         await session.commit()
+
+        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE_DER_STATUS, changed_time)

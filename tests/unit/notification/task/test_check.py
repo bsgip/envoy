@@ -22,7 +22,7 @@ from envoy.notification.task.check import (
     fetch_batched_entities,
     get_entity_pages,
 )
-from envoy.server.manager.der import PUBLIC_SITE_DER_ID
+from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus

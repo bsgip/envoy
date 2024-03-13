@@ -34,7 +34,6 @@ from envoy_schema.server.schema.uri import (
 from parse import parse  # type: ignore
 
 from envoy.server.exception import InvalidMappingError
-from envoy.server.manager.der import PUBLIC_SITE_DER_ID
 from envoy.server.mapper.common import generate_href, remove_href_prefix
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID, DERControlMapper
 from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMapper, DERSettingMapper, DERStatusMapper
