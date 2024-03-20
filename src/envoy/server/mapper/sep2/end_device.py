@@ -28,7 +28,7 @@ class EndDeviceMapper:
                 "changedTime": int(site.changed_time.timestamp()),
                 "enabled": True,
                 "ConnectionPointLink": ConnectionPointLink(href=edev_href + "/cp"),
-                "FunctionSetAssignmentsListLink": ListLink(href=fsa_href)
+                "FunctionSetAssignmentsListLink": ListLink(href=fsa_href),
             }
         )
 
