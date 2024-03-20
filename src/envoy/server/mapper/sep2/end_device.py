@@ -5,7 +5,7 @@ import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory, SubscribableType
-
+from envoy_schema.server.schema.sep2.identification import ListLink
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.model.site import Site
@@ -17,6 +17,7 @@ class EndDeviceMapper:
     @staticmethod
     def map_to_response(rs_params: RequestStateParameters, site: Site) -> EndDeviceResponse:
         edev_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site.site_id)
+        fsa_href = generate_href(uri.FunctionSetAssignmentsListUri, rs_params, site_id=site.site_id)
         return EndDeviceResponse.model_validate(
             {
                 "href": edev_href,
@@ -27,6 +28,7 @@ class EndDeviceMapper:
                 "changedTime": int(site.changed_time.timestamp()),
                 "enabled": True,
                 "ConnectionPointLink": ConnectionPointLink(href=edev_href + "/cp"),
+                "FunctionSetAssignmentsListLink": ListLink(href=fsa_href)
             }
         )
 

@@ -125,6 +125,7 @@ async def test_get_enddevice(client: AsyncClient, edev_fetch_uri_format: str):
     assert parsed_response.lFDI == "site2-lfdi"
     assert parsed_response.sFDI == 2222
     assert parsed_response.deviceCategory == "1"
+    assert parsed_response.FunctionSetAssignmentsListLink is not None
 
     # check fetching outside aggregator
     uri = edev_fetch_uri_format.format(site_id=3)  # This belongs to agg2
