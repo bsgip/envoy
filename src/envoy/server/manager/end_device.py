@@ -74,7 +74,8 @@ class EndDeviceManager:
         if end_device.sFDI is None or end_device.sFDI == 0:
             (sfdi, lfdi) = await EndDeviceManager.generate_unique_device_id(session, request_params.aggregator_id)
             end_device.sFDI = sfdi
-            end_device.lFDI = lfdi if not end_device.lFDI else lfdi  # Only update LFDI if not specified
+            if not end_device.lFDI:
+                end_device.lFDI = lfdi  # Only update LFDI if not specified (i.e preserve what they send)
             logger.info(f"add_or_update_enddevice_for_aggregator: generated sfdi {sfdi} and lfdi {lfdi}")
 
         logger.info(
