@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from secrets import token_bytes
 from typing import Optional
@@ -20,6 +21,8 @@ from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_state import RequestStateParameters
+
+logger = logging.getLogger(__name__)
 
 
 class EndDeviceManager:
@@ -71,8 +74,13 @@ class EndDeviceManager:
         if end_device.sFDI is None or end_device.sFDI == 0:
             (sfdi, lfdi) = await EndDeviceManager.generate_unique_device_id(session, request_params.aggregator_id)
             end_device.sFDI = sfdi
-            end_device.lFDI = lfdi
+            if not end_device.lFDI:
+                end_device.lFDI = lfdi  # Only update LFDI if not specified (i.e preserve what they send)
+            logger.info(f"add_or_update_enddevice_for_aggregator: generated sfdi {sfdi} and lfdi {lfdi}")
 
+        logger.info(
+            f"add_or_update_enddevice_for_aggregator: upserting sfdi {end_device.sFDI} and lfdi {end_device.lFDI}"
+        )
         changed_time = utc_now()
         site = EndDeviceMapper.map_from_request(end_device, request_params.aggregator_id, changed_time)
         result = await upsert_site_for_aggregator(session, request_params.aggregator_id, site)

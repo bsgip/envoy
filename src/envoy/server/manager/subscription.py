@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -20,6 +21,8 @@ from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.pub_sub import SubscriptionListMapper, SubscriptionMapper
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_state import RequestStateParameters
+
+logger = logging.getLogger(__name__)
 
 
 class SubscriptionManager:
@@ -81,6 +84,8 @@ class SubscriptionManager:
             session, aggregator_id=request_params.aggregator_id, site_id=site_id, subscription_id=subscription_id
         )
         await session.commit()
+
+        logger.info(f"delete_subscription_for_site: site {site_id} subscription_id {subscription_id}")
         return removed
 
     @staticmethod
@@ -138,5 +143,7 @@ class SubscriptionManager:
         # Insert the subscription
         new_sub_id = await insert_subscription(session, sub)
         await session.commit()
+
+        logger.info(f"add_subscription_for_site: site {site_id} new_sub_id {new_sub_id} type {sub.resource_type}")
 
         return new_sub_id
