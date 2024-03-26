@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from envoy_schema.server.schema.sep2.metering_mirror import (
@@ -26,6 +27,8 @@ from envoy.server.mapper.sep2.metering import (
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_state import RequestStateParameters
 
+logger = logging.getLogger(__name__)
+
 
 class MirrorMeteringManager:
     @staticmethod
@@ -51,6 +54,8 @@ class MirrorMeteringManager:
             session=session, aggregator_id=request_params.aggregator_id, site_reading_type=srt
         )
         await session.commit()
+
+        logger.info(f"create_or_update_mirror_usage_point: upsert for site {site.site_id} site_reading_type {srt_id}")
         return srt_id
 
     @staticmethod

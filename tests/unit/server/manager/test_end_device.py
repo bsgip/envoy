@@ -1,5 +1,6 @@
 import unittest.mock as mock
 from datetime import datetime
+from typing import Optional
 
 import pytest
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
@@ -176,20 +177,22 @@ async def test_add_or_update_enddevice_for_aggregator_with_sfdi(
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
 @mock.patch("envoy.server.manager.end_device.utc_now")
 @mock.patch("envoy.server.manager.end_device.select_single_site_with_sfdi")
-async def test_add_or_update_enddevice_for_aggregator_no_sfdi(
+async def test_add_or_update_enddevice_for_aggregator_no_sfdi_with_lfdi(
     mock_select_single_site_with_sfdi: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
     mock_EndDeviceMapper: mock.MagicMock,
     mock_upsert_site_for_aggregator: mock.MagicMock,
     mock_NotificationManager: mock.MagicMock,
 ):
-    """Checks that the enddevice update just passes through to the relevant CRUD (assuming the sfdi is undefined)"""
+    """Checks that the enddevice update just passes through to the relevant CRUD (assuming the sfdi is undefined)
+
+    In this case SFDI will be regenerated (as its missing) but LFDI was specified and will be left alone"""
     # Arrange
     mock_session = create_mock_session()
     aggregator_id = 3
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     end_device.sFDI = 0  # set the sfdi to 0 to trigger a regenerate
-    end_device.lFDI = ""
+    end_device.lFDI = "originallfdi"
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
     rsp_params = RequestStateParameters(aggregator_id, None)
@@ -210,7 +213,60 @@ async def test_add_or_update_enddevice_for_aggregator_no_sfdi(
     assert_mock_session(mock_session, committed=True)
     mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
     assert mock_EndDeviceMapper.map_from_request.call_args[0][0].sFDI != 0, "sfdi should be regenerated"
-    assert mock_EndDeviceMapper.map_from_request.call_args[0][0].lFDI != "", "lfdi should be regenerated"
+    assert mock_EndDeviceMapper.map_from_request.call_args[0][0].lFDI == "originallfdi", "lfdi should be left alone"
+    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
+    mock_utc_now.assert_called_once()
+    mock_select_single_site_with_sfdi.assert_called_once()
+    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.NotificationManager")
+@mock.patch("envoy.server.manager.end_device.upsert_site_for_aggregator")
+@mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
+@mock.patch("envoy.server.manager.end_device.utc_now")
+@mock.patch("envoy.server.manager.end_device.select_single_site_with_sfdi")
+@pytest.mark.parametrize("missing_lfdi_value", [None, ""])
+async def test_add_or_update_enddevice_for_aggregator_no_sfdi_no_lfdi(
+    mock_select_single_site_with_sfdi: mock.MagicMock,
+    mock_utc_now: mock.MagicMock,
+    mock_EndDeviceMapper: mock.MagicMock,
+    mock_upsert_site_for_aggregator: mock.MagicMock,
+    mock_NotificationManager: mock.MagicMock,
+    missing_lfdi_value: Optional[str],
+):
+    """Checks that the enddevice update just passes through to the relevant CRUD (assuming the sfdi is undefined)
+
+    In this case SFDI and LFDI will be regenerated (as they are both missing)"""
+    # Arrange
+    mock_session = create_mock_session()
+    aggregator_id = 3
+    end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    end_device.sFDI = 0
+    end_device.lFDI = missing_lfdi_value
+    mapped_site: Site = generate_class_instance(Site)
+    now: datetime = datetime(2020, 1, 2, 3, 4)
+    rsp_params = RequestStateParameters(aggregator_id, None)
+
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_select_single_site_with_sfdi.return_value = None
+    mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
+    mock_upsert_site_for_aggregator.return_value = 4321
+    mock_utc_now.return_value = now
+
+    # Act
+    returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
+        mock_session, rsp_params, end_device
+    )
+    assert returned_site_id == mock_upsert_site_for_aggregator.return_value
+
+    # Assert
+    assert_mock_session(mock_session, committed=True)
+    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
+    assert mock_EndDeviceMapper.map_from_request.call_args[0][0].sFDI != 0, "sfdi should be regenerated"
+    actual_lfdi = mock_EndDeviceMapper.map_from_request.call_args[0][0].lFDI
+    assert actual_lfdi != missing_lfdi_value
+    assert len(actual_lfdi) > 5
     mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_called_once()

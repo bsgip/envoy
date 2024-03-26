@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -28,6 +29,8 @@ from envoy.server.mapper.sep2.der import (
 from envoy.server.model.site import SiteDER
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_state import RequestStateParameters
+
+logger = logging.getLogger(__name__)
 
 
 async def site_der_for_site(session: AsyncSession, aggregator_id: int, site_id: int) -> SiteDER:
