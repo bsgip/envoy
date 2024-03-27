@@ -34,7 +34,14 @@ def extract_request_params(request: Request) -> RequestStateParameters:
     if not href_prefix:
         href_prefix = None
 
-    return RequestStateParameters(aggregator_id=id, href_prefix=href_prefix)
+    aggregator_lfdi = request.state.aggregator_lfdi
+    if not aggregator_lfdi:  # disallow empty string and None
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail="aggregator_lfdi has not been extracted correctly by Envoy middleware.",
+        )
+
+    return RequestStateParameters(aggregator_id=id, aggregator_lfdi=aggregator_lfdi, href_prefix=href_prefix)
 
 
 def extract_default_doe(request: Request) -> Optional[DefaultDoeConfiguration]:

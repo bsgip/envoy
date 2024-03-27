@@ -27,7 +27,7 @@ from tests.data.fake.generator import generate_class_instance
 )
 def test_create_reading_type(enum_val: PricingReadingType):
     """Just makes sure we don't get any exceptions for the known enum types"""
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
     result = PricingReadingTypeMapper.create_reading_type(rs_params, enum_val)
     assert result
     assert result.href
@@ -61,14 +61,14 @@ def test_create_reading_type_failure(bad_enum_val):
     """Tests that bad enum lookups fail in a predictable way"""
 
     with pytest.raises(InvalidMappingError):
-        PricingReadingTypeMapper.create_reading_type(RequestStateParameters(1, None), bad_enum_val)
+        PricingReadingTypeMapper.create_reading_type(RequestStateParameters(1, None, None), bad_enum_val)
 
 
 def test_tariff_profile_nosite_mapping():
     """Non exhaustive test of the tariff profile mapping - mainly to sanity check important fields and ensure
     that exceptions aren't being raised"""
     all_set: Tariff = generate_class_instance(Tariff, seed=101, optional_is_none=False)
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
     mapped_all_set = TariffProfileMapper.map_to_nosite_response(rs_params, all_set)
     assert mapped_all_set
     assert mapped_all_set.href
@@ -103,7 +103,7 @@ def test_tariff_profile_mapping():
     site_id = 9876
     total_rates = 76543
     all_set: Tariff = generate_class_instance(Tariff, seed=101, optional_is_none=False)
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
     mapped_all_set = TariffProfileMapper.map_to_response(rs_params, all_set, site_id, total_rates)
     assert mapped_all_set
     assert mapped_all_set.href
@@ -138,7 +138,7 @@ def test_tariff_profile_list_nosite_mapping():
         generate_class_instance(Tariff, seed=202, optional_is_none=True),
     ]
     count = 123
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     mapped_all_set = TariffProfileMapper.map_to_list_nosite_response(rs_params, tariffs, count)
     assert mapped_all_set
@@ -158,7 +158,7 @@ def test_tariff_profile_list_mapping():
     tariff_rate_counts = [456, 789]
     tariff_count = 123
     site_id = 112234
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     mapped_all_set = TariffProfileMapper.map_to_list_response(
         rs_params, zip(tariffs, tariff_rate_counts), tariff_count, site_id
@@ -185,7 +185,7 @@ def test_rate_component_mapping(mock_PricingReadingTypeMapper: mock.MagicMock):
     site_id: int = 789
     pricing_reading: PricingReadingType = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
     day: date = date(2014, 1, 25)
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     pricing_reading_type_href = "/abc/213"
     mock_PricingReadingTypeMapper.pricing_reading_type_href = mock.Mock(return_value=pricing_reading_type_href)
@@ -257,7 +257,7 @@ def test_rate_component_list_mapping_paging(rates):
 
     stats = TariffGeneratedRateDailyStats(total_distinct_dates=9876, single_date_counts=input_date_counts)
     expected_count = (len(input_date_counts) * TOTAL_PRICING_READING_TYPES) - skip_end - skip_start
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     list_response = RateComponentMapper.map_to_list_response(rs_params, stats, skip_start, skip_end, 1, 1)
 
@@ -297,7 +297,7 @@ def test_consumption_tariff_interval_mapping_prices(input_price: Decimal, expect
     pricing_reading: PricingReadingType = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
     day: date = date(2015, 9, 23)
     time_of_day: time = time(9, 40)
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     mapped = ConsumptionTariffIntervalMapper.map_to_response(
         rs_params, tariff_id, site_id, pricing_reading, day, time_of_day, input_price
@@ -327,7 +327,7 @@ def test_time_tariff_interval_mapping(
     rt = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
     cti_list_href = "abc/123"
     extracted_price = Decimal("543.211")
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     mock_PricingReadingTypeMapper.extract_price = mock.Mock(return_value=extracted_price)
     mock_ConsumptionTariffIntervalMapper.list_href = mock.Mock(return_value=cti_list_href)
@@ -367,7 +367,7 @@ def test_time_tariff_interval_list_mapping(
     total = 632
     mock_PricingReadingTypeMapper.extract_price = mock.Mock(return_value=extracted_price)
     mock_ConsumptionTariffIntervalMapper.list_href = mock.Mock(return_value=cti_list_href)
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     mapped = TimeTariffIntervalMapper.map_to_list_response(rs_params, rates, rt, total)
     assert mapped.all_ == total
@@ -393,7 +393,7 @@ def test_mrid_uniqueness():
     tariff: Tariff = generate_class_instance(Tariff)
     rate: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate)
     tariff.tariff_id = id
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     rate.tariff_generated_rate_id = id
     rate.tariff_id = id

@@ -60,14 +60,16 @@ def test_generate_mrid_128_bit():
 )
 def test_generate_href(uri_format: str, prefix: Optional[str], args: Any, kwargs: Any, expected: str):
     """Tests various combinations of args/kwargs/prefixes"""
+    request_state_parameters = RequestStateParameters(1, None, prefix)
+
     if args is not None and kwargs is not None:
-        assert generate_href(uri_format, RequestStateParameters(1, prefix), *args, **kwargs) == expected
+        assert generate_href(uri_format, request_state_parameters, *args, **kwargs) == expected
     elif args is not None:
-        assert generate_href(uri_format, RequestStateParameters(1, prefix), *args) == expected
+        assert generate_href(uri_format, request_state_parameters, *args) == expected
     elif kwargs is not None:
-        assert generate_href(uri_format, RequestStateParameters(1, prefix), **kwargs) == expected
+        assert generate_href(uri_format, request_state_parameters, **kwargs) == expected
     else:
-        assert generate_href(uri_format, RequestStateParameters(1, prefix)) == expected
+        assert generate_href(uri_format, request_state_parameters) == expected
 
 
 @pytest.mark.parametrize(
@@ -83,7 +85,7 @@ def test_generate_href(uri_format: str, prefix: Optional[str], args: Any, kwargs
     ],
 )
 def test_remove_href_prefix(uri: str, prefix: Optional[str], expected: str):
-    ps = RequestStateParameters(1, prefix)
+    ps = RequestStateParameters(1, None, prefix)
     assert remove_href_prefix(uri, ps) == expected
 
 
@@ -91,10 +93,10 @@ def test_generate_href_format_errors():
     """Ensures that errors raised by format propogate up"""
 
     with pytest.raises(KeyError):
-        generate_href("{p1}/{p2}", RequestStateParameters(1, None), p1="val1")
+        generate_href("{p1}/{p2}", RequestStateParameters(1, None, None), p1="val1")
 
     with pytest.raises(KeyError):
-        generate_href("{p1}/{p2}", RequestStateParameters(1, "prefix/"), p1="val1")
+        generate_href("{p1}/{p2}", RequestStateParameters(1, None, "prefix/"), p1="val1")
 
 
 @pytest.mark.parametrize(

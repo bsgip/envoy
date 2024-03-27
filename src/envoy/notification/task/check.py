@@ -173,7 +173,7 @@ def entities_to_notification(
     pricing_reading_type: Optional[PricingReadingType],
 ) -> Sep2Notification:
     """Givens a subscription and associated entities - generate the notification content that will be sent out"""
-    rs_params = RequestStateParameters(sub.aggregator_id, href_prefix)
+    rs_params = RequestStateParameters(aggregator_id=sub.aggregator_id, aggregator_lfdi=None, href_prefix=href_prefix)
     if resource == SubscriptionResource.SITE:
         return NotificationMapper.map_sites_to_response(cast(Sequence[Site], entities), sub, rs_params)
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
@@ -317,7 +317,7 @@ async def check_db_upsert(
             content = content.decode()
 
         agg_id = n.batch_key[0]  # Aggregator ID is ALWAYS the first element of the batch_key
-        rs_params = RequestStateParameters(agg_id, href_prefix)
+        rs_params = RequestStateParameters(aggregator_id=agg_id, aggregator_lfdi=None, href_prefix=href_prefix)
 
         try:
             await transmit_notification.kicker().with_broker(broker).kiq(

@@ -15,7 +15,7 @@ def test_map_to_response():
     site_id = 9
     doe_count = 1  # End devices can only have 1 DOE associated with them
     tariff_count = 6
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
     result = FunctionSetAssignmentsMapper.map_to_response(
         rs_params=rs_params, fsa_id=fsa_id, site_id=site_id, doe_count=doe_count, tariff_count=tariff_count
     )
@@ -29,7 +29,7 @@ def test_map_to_response():
 def test_map_to_list_response():
     site_id = 10
     function_set_assignments = [generator.generate_class_instance(FunctionSetAssignmentsResponse)]
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     result = FunctionSetAssignmentsMapper.map_to_list_response(
         rs_params=rs_params, function_set_assignments=function_set_assignments, site_id=site_id

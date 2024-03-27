@@ -12,7 +12,7 @@ from envoy.server.request_state import RequestStateParameters
 async def test_device_capability_manager_calls_get_supported_links(mock_map_to_response: mock.Mock):
     aggregator_id = 123
     session = mock.Mock()
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     with mock.patch("envoy.server.crud.link.get_supported_links") as get_supported_links:
         _ = await DeviceCapabilityManager.fetch_device_capability(session=session, request_params=rs_params)
@@ -24,7 +24,7 @@ async def test_device_capability_manager_calls_get_supported_links(mock_map_to_r
 async def test_device_capability_manager_calls_map_to_response():
     aggregator_id = 123
     links = mock.Mock()
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     with mock.patch("envoy.server.crud.link.get_supported_links", return_value=links), mock.patch(
         "envoy.server.manager.device_capability.DeviceCapabilityMapper.map_to_response"

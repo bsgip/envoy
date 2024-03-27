@@ -36,7 +36,7 @@ async def test_fetch_subscription_by_id_filtering(
     to enumerate all the various ways None can be returned (despite getting a sub returned from the DB)"""
     # Arrange
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     sub_id = 87
 
     mock_sub: Subscription = generate_class_instance(Subscription)
@@ -69,7 +69,7 @@ async def test_fetch_subscription_by_id_not_found(
     """Quick tests on the various ways filter options can affect the returned subscriptions"""
     # Arrange
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     sub_id = 87
     mock_select_subscription_by_id.return_value = None
 
@@ -96,7 +96,7 @@ async def test_fetch_subscriptions_for_site(
     """Quick tests on the various ways filter options can affect the returned subscriptions"""
     # Arrange
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     mock_sub_count = 123
     mock_sub_list = [
         generate_class_instance(Subscription, seed=1, optional_is_none=False),
@@ -151,7 +151,7 @@ async def test_delete_subscription_for_site(mock_delete_subscription_for_site: m
     """Ensures session is handled properly on delete"""
     # Arrange
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
 
     site_id = 456
     sub_id = 5213
@@ -187,7 +187,7 @@ async def test_add_subscription_for_site_bad_agg_lookup(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_id = 456
     sub = generate_class_instance(Sep2Subscription)
@@ -225,7 +225,7 @@ async def test_add_subscription_for_site_bad_site_id(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_id = 456
     site_reading_type_id = 5432
@@ -274,7 +274,7 @@ async def test_add_subscription_for_site_TARIFF_RATE(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_id = 456
     tariff_id = 5433
@@ -323,7 +323,7 @@ async def test_add_subscription_for_site_TARIFF_RATE_missing(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_id = 456
     tariff_id = 5433
@@ -372,7 +372,7 @@ async def test_add_subscription_for_site_READING(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_id = 456
     site_reading_type_id = 5432
@@ -423,7 +423,7 @@ async def test_add_subscription_for_site_READING_bad_site_id(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_id = 456
     site_reading_type_id = 5432
@@ -474,7 +474,7 @@ async def test_add_subscription_for_site_READING_missing(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_id = 456
     site_reading_type_id = 5432
@@ -525,7 +525,7 @@ async def test_add_subscription_for_site_SITE(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    rs_params = RequestStateParameters(981, None)
+    rs_params = RequestStateParameters(981, None, None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_id = 456
     sub = generate_class_instance(Sep2Subscription)

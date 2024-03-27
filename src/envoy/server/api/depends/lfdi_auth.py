@@ -45,6 +45,7 @@ class LFDIAuthDepends:
         if not client_ids:
             raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised certificate ID.")
 
+        request.state.aggregator_lfdi = lfdi
         request.state.certificate_id = client_ids.certificate_id
         request.state.aggregator_id = client_ids.aggregator_id
 

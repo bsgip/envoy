@@ -19,7 +19,7 @@ def test_device_category_round_trip():
     for dc in [DEVICE_CATEGORY_ALL_SET] + [x for x in DeviceCategory]:
         site: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
         site.device_category = dc
-        rs_params = RequestStateParameters(1, None)
+        rs_params = RequestStateParameters(1, None, None)
 
         end_device = EndDeviceMapper.map_to_response(rs_params, site)
 
@@ -31,7 +31,7 @@ def test_map_to_response():
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
     site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
     site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     result_all_set = EndDeviceMapper.map_to_response(rs_params, site_all_set)
     assert result_all_set is not None
@@ -69,7 +69,7 @@ def test_list_map_to_response():
     site3: Site = generate_class_instance(Site, seed=505, optional_is_none=True, generate_relationships=False)
     site4: Site = generate_class_instance(Site, seed=606, optional_is_none=True, generate_relationships=True)
     site_count = 199
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     all_sites = [site1, site2, site3, site4]
 

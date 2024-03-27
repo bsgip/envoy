@@ -12,7 +12,9 @@ def test_map_to_response():
         "EndDeviceListLink": {"all_": "1", "href": "/edev"},
     }
 
-    device_capability = DeviceCapabilityMapper.map_to_response(rs_params=RequestStateParameters(1, None), links=links)
+    device_capability = DeviceCapabilityMapper.map_to_response(
+        rs_params=RequestStateParameters(1, None, None), links=links
+    )
     assert device_capability is not None
     assert isinstance(device_capability, DeviceCapabilityResponse)
     # assert isinstance(device_capability.DemandResponseProgramListLink, ListLink)

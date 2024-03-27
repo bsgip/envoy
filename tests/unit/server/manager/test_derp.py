@@ -43,7 +43,7 @@ async def test_program_fetch_list(
     mock_select_single_site_with_site_id.return_value = existing_site
     mock_count_does.return_value = doe_count
     mock_DERProgramMapper.doe_program_list_response = mock.Mock(return_value=mapped_list)
-    rsp_params = RequestStateParameters(agg_id, "651")
+    rsp_params = RequestStateParameters(agg_id, None, "651")
 
     # Act
     result = await DERProgramManager.fetch_list_for_site(mock_session, rsp_params, site_id, default_doe)
@@ -73,7 +73,7 @@ async def test_program_fetch_list_site_dne(
 
     mock_session = create_mock_session()
     mock_select_single_site_with_site_id.return_value = None
-    rsp_params = RequestStateParameters(agg_id, None)
+    rsp_params = RequestStateParameters(agg_id, None, None)
 
     # Act
     with pytest.raises(NotFoundError):
@@ -108,7 +108,7 @@ async def test_program_fetch(
     mock_select_single_site_with_site_id.return_value = existing_site
     mock_count_does.return_value = doe_count
     mock_DERProgramMapper.doe_program_response = mock.Mock(return_value=mapped_program)
-    rsp_params = RequestStateParameters(agg_id, None)
+    rsp_params = RequestStateParameters(agg_id, None, None)
 
     # Act
     result = await DERProgramManager.fetch_doe_program_for_site(mock_session, rsp_params, site_id, default_doe)
@@ -142,7 +142,7 @@ async def test_program_fetch_site_dne(
     # Act
     with pytest.raises(NotFoundError):
         await DERProgramManager.fetch_doe_program_for_site(
-            mock_session, RequestStateParameters(agg_id, None), site_id, default_doe
+            mock_session, RequestStateParameters(agg_id, None, None), site_id, default_doe
         )
 
     # Assert
@@ -177,7 +177,7 @@ async def test_fetch_doe_controls_for_site(
     mock_count_does.return_value = doe_count
     mock_select_does.return_value = does_page
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
-    rsp_params = RequestStateParameters(agg_id, None)
+    rsp_params = RequestStateParameters(agg_id, None, None)
 
     # Act
     result = await DERControlManager.fetch_doe_controls_for_site(
@@ -218,7 +218,7 @@ async def test_fetch_doe_controls_for_site_for_day(
         generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True),
     ]
     mapped_list = generate_class_instance(DERControlListResponse)
-    rsp_params = RequestStateParameters(agg_id, None)
+    rsp_params = RequestStateParameters(agg_id, None, None)
 
     mock_session = create_mock_session()
     mock_count_does_for_day.return_value = doe_count
@@ -267,7 +267,7 @@ async def test_fetch_active_doe_controls_for_site(
     mock_select_does_at_timestamp.return_value = returned_does
     mock_count_does_at_timestamp.return_value = returned_count
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
-    rsp_params = RequestStateParameters(agg_id, "651")
+    rsp_params = RequestStateParameters(agg_id, None, "651")
 
     # Act
     result = await DERControlManager.fetch_active_doe_controls_for_site(
@@ -313,7 +313,7 @@ async def test_fetch_default_doe_controls_for_site(
     mapped_control = generate_class_instance(DefaultDERControl)
 
     mock_session = create_mock_session()
-    rsp_params = RequestStateParameters(agg_id, "651")
+    rsp_params = RequestStateParameters(agg_id, None, "651")
 
     mock_select_single_site_with_site_id.return_value = returned_site
     mock_DERControlMapper.map_to_default_response = mock.Mock(return_value=mapped_control)
@@ -345,7 +345,7 @@ async def test_fetch_default_doe_controls_for_site_bad_site(
     mapped_control = generate_class_instance(DefaultDERControl)
 
     mock_session = create_mock_session()
-    rsp_params = RequestStateParameters(agg_id, "651")
+    rsp_params = RequestStateParameters(agg_id, None, "651")
 
     mock_select_single_site_with_site_id.return_value = None
     mock_DERControlMapper.map_to_default_response = mock.Mock(return_value=mapped_control)
@@ -378,7 +378,7 @@ async def test_fetch_default_doe_controls_for_site_no_default(
     mapped_control = generate_class_instance(DefaultDERControl)
 
     mock_session = create_mock_session()
-    rsp_params = RequestStateParameters(agg_id, "651")
+    rsp_params = RequestStateParameters(agg_id, None, "651")
 
     mock_select_single_site_with_site_id.return_value = returned_site
     mock_DERControlMapper.map_to_default_response = mock.Mock(return_value=mapped_control)

@@ -28,7 +28,7 @@ async def test_function_set_assignments_fetch_function_set_assignments_for_aggre
     tariff_count = 3
     fsa_id = 1
     mapped_fsa: FunctionSetAssignmentsResponse = generator.generate_class_instance(FunctionSetAssignmentsResponse)
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     # Just do a simple passthrough
     mock_FunctionSetAssignmentsMapper.map_to_response = mock.Mock(return_value=mapped_fsa)
@@ -66,7 +66,7 @@ async def test_function_set_assignments_fetch_function_set_assignments_list_for_
     mapped_fsal: FunctionSetAssignmentsListResponse = generator.generate_class_instance(
         FunctionSetAssignmentsListResponse
     )
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     # Just do a simple passthrough
     mock_FunctionSetAssignmentsMapper.map_to_list_response = mock.Mock(return_value=mapped_fsal)

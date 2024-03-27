@@ -52,6 +52,9 @@ async def test_get_supported_links(
 ):
     async with generate_async_session(pg_base_config) as session:
         links = await link.get_supported_links(
-            session=session, model=model, rs_params=RequestStateParameters(1, prefix), uri_parameters=uri_parameters
+            session=session,
+            model=model,
+            rs_params=RequestStateParameters(1, None, prefix),
+            uri_parameters=uri_parameters,
         )
     assert links == expected_links

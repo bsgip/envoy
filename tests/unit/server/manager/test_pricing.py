@@ -99,7 +99,7 @@ async def test_fetch_tariff_profile_list_no_site(
     changed = datetime.now()
     limit = 222
     count = 33
-    rs_params = RequestStateParameters(435, None)
+    rs_params = RequestStateParameters(435, None, None)
     tariffs = [generate_class_instance(Tariff)]
     mapped_tariffs = generate_class_instance(TariffProfileListResponse)
 
@@ -144,7 +144,7 @@ async def test_fetch_tariff_profile_list(
     tariff_2_rate_count = 4521
     tariffs = [tariff_1, tariff_2]
     mapped_tariffs = generate_class_instance(TariffProfileListResponse)
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     def count_unique_rate_days_handler(
         session, request_params: RequestStateParameters, tariff_id: int, site_id: int, changed_after: datetime
@@ -200,7 +200,7 @@ async def test_fetch_tariff_profile_nosite(
     """Simple test to ensure dependencies are called correctly"""
     mock_session = create_mock_session()
     tariff_id = 111
-    rs_params = RequestStateParameters(435, None)
+    rs_params = RequestStateParameters(435, None, None)
     tariff = generate_class_instance(Tariff)
     mapped_tp = generate_class_instance(TariffProfileResponse)
 
@@ -221,7 +221,7 @@ async def test_fetch_tariff_profile_nosite_missing(mock_select_single_tariff: mo
     """Simple test to ensure dependencies are called correctly"""
     mock_session = create_mock_session()
     tariff_id = 111
-    rs_params = RequestStateParameters(444, None)
+    rs_params = RequestStateParameters(444, None, None)
     mock_select_single_tariff.return_value = None
 
     response = await TariffProfileManager.fetch_tariff_profile_no_site(mock_session, rs_params, tariff_id)
@@ -246,7 +246,7 @@ async def test_fetch_tariff_profile(
     tariff_id = 222
     site_id = 333
     rates = 444
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     tariff = generate_class_instance(Tariff)
     mapped_tp = generate_class_instance(TariffProfileResponse)
@@ -272,7 +272,7 @@ async def test_fetch_tariff_profile_missing(mock_select_single_tariff: mock.Magi
     agg_id = 111
     tariff_id = 222
     site_id = 333
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     mock_select_single_tariff.return_value = None
 
@@ -298,7 +298,7 @@ async def test_fetch_rate_component(
     rc_id = "2012-02-03"
     mapped_rc = generate_class_instance(RateComponentResponse)
     pricing_type = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     mock_count_tariff_rates_for_day.return_value = count
     mock_RateComponentMapper.map_to_response = mock.Mock(return_value=mapped_rc)
@@ -333,7 +333,7 @@ async def test_fetch_rate_component_list(
     total_distinct_dates = 62
     start = 4
     limit = 8
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
     mapped_list = generate_class_instance(RateComponentListResponse)
     rate_stats = TariffGeneratedRateDailyStats(
         single_date_counts=input_date_counts, total_distinct_dates=total_distinct_dates
@@ -431,7 +431,7 @@ async def test_fetch_rate_component_list_pagination(mock_select_rate_daily_stats
     agg_id = 222
     site_id = 333
     changed_after = datetime.now()
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     mock_select_rate_daily_stats.return_value = TariffGeneratedRateDailyStats(
         single_date_counts=input_date_counts, total_distinct_dates=42
@@ -496,7 +496,7 @@ async def test_fetch_rate_component_list_full_db(pg_base_config, page_data):
 
     async with generate_async_session(pg_base_config) as session:
         list_response = await RateComponentManager.fetch_rate_component_list(
-            session, RequestStateParameters(1, "345"), 1, 1, start, datetime.min, limit
+            session, RequestStateParameters(1, None, "345"), 1, 1, start, datetime.min, limit
         )
 
         assert (
@@ -535,7 +535,7 @@ async def test_fetch_consumption_tariff_interval_list(
     time_tariff_interval = "13:37"
     price = 12345
     pricing_type = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
     mapped_cti_list = generate_class_instance(ConsumptionTariffIntervalListResponse)
     mock_session = create_mock_session()
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=date(2022, 1, 2))
@@ -586,7 +586,7 @@ async def test_fetch_consumption_tariff_interval(
     price = -14567
     pricing_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
     mapped_cti = generate_class_instance(ConsumptionTariffIntervalResponse)
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
     mock_session = create_mock_session()
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=date(2022, 1, 2))
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=time(1, 2))
@@ -640,7 +640,7 @@ async def test_fetch_time_tariff_interval_existing(
     mock_session = create_mock_session()
     parsed_date = date(2022, 1, 2)
     parsed_time = time(3, 4)
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=parsed_date)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=parsed_time)
@@ -688,7 +688,7 @@ async def test_fetch_time_tariff_interval_missing(
     mock_session = create_mock_session()
     parsed_date = date(2022, 1, 2)
     parsed_time = time(3, 4)
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=parsed_date)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=parsed_time)
@@ -740,7 +740,7 @@ async def test_fetch_time_tariff_interval_list(
     start = 2
     after = datetime(2023, 1, 2, 3, 4)
     limit = 5
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=parsed_date)
     mock_select_tariff_rates_for_day.return_value = existing_rates

@@ -33,7 +33,7 @@ def test_der_mapping():
     all_set: SiteDER = generate_class_instance(SiteDER, seed=101, optional_is_none=False, generate_relationships=True)
     with_none: SiteDER = generate_class_instance(SiteDER, seed=202, optional_is_none=True, generate_relationships=True)
 
-    rs_params = RequestStateParameters(111, "/my/prefix")
+    rs_params = RequestStateParameters(111, None, "/my/prefix")
     derp_id = "my_derp_id"
 
     mapped_all_set = DERMapper.map_to_response(rs_params, all_set, derp_id)
@@ -79,7 +79,7 @@ def test_der_list():
         (generate_class_instance(SiteDER, seed=404, optional_is_none=True, generate_relationships=True), "DERPID2"),
     ]
 
-    rs_params = RequestStateParameters(111, "/my/prefix")
+    rs_params = RequestStateParameters(111, None, "/my/prefix")
     site_id = 11
     poll_rate = 99
     count = 42
@@ -100,7 +100,7 @@ def test_der_avail_roundtrip(optional_is_none: bool):
         DERAvailability, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
     site_id = 9876
-    rs_params = RequestStateParameters(111, "/my/prefix")
+    rs_params = RequestStateParameters(111, None, "/my/prefix")
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERAvailabilityMapper.map_from_request(changed_time, expected)
@@ -140,7 +140,7 @@ def test_der_status_roundtrip(optional_is_none: bool):
             )
 
     site_id = 9876
-    rs_params = RequestStateParameters(111, "/my/prefix")
+    rs_params = RequestStateParameters(111, None, "/my/prefix")
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERStatusMapper.map_from_request(changed_time, expected)
@@ -169,7 +169,7 @@ def test_der_capability_roundtrip(optional_is_none: bool):
     )
     expected.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT | DERControlType.OP_MOD_FREQ_DROOP)
     site_id = 9876
-    rs_params = RequestStateParameters(111, "/my/prefix")
+    rs_params = RequestStateParameters(111, None, "/my/prefix")
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERCapabilityMapper.map_from_request(changed_time, expected)
@@ -197,7 +197,7 @@ def test_der_settings_roundtrip(optional_is_none: bool):
     )
     expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_HFRT_MAY_TRIP | DERControlType.OP_MOD_FREQ_DROOP)
     site_id = 9876
-    rs_params = RequestStateParameters(111, "/my/prefix")
+    rs_params = RequestStateParameters(111, None, "/my/prefix")
     changed_time = datetime(2023, 8, 9, 1, 2, 4)
 
     mapped = DERSettingMapper.map_from_request(changed_time, expected)

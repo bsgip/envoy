@@ -57,7 +57,7 @@ def test_SubscriptionMapper_calculate_resource_href_at_least_one_supported_combo
         sub.resource_id = resource_id
 
         try:
-            href = SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, None))
+            href = SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, None, None))
             assert href and isinstance(href, str)
             hrefs.append(href)
         except InvalidMappingError:
@@ -79,7 +79,7 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
     # set output to None if we hit an unsupported combo of inputs
     href_no_prefix: Optional[str]
     try:
-        href_no_prefix = SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, None))
+        href_no_prefix = SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, None, None))
         assert href_no_prefix
     except InvalidMappingError:
         href_no_prefix = None
@@ -88,7 +88,7 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
     prefix = "/my/prefix/for/tests"
     href_with_prefix: Optional[str]
     try:
-        href_with_prefix = SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, prefix))
+        href_with_prefix = SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, None, prefix))
         assert href_with_prefix
     except InvalidMappingError:
         href_with_prefix = None
@@ -101,14 +101,14 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
         # The hrefs should be identical (sans prefix)
         assert href_with_prefix.startswith(prefix)
         assert not href_no_prefix.startswith(prefix)
-        assert href_with_prefix == generate_href(href_no_prefix, RequestStateParameters(99, prefix))
+        assert href_with_prefix == generate_href(href_no_prefix, RequestStateParameters(99, None, prefix))
 
 
 def test_SubscriptionMapper_calculate_resource_href_bad_type():
     sub: Subscription = generate_class_instance(Subscription)
     sub.resource_type = 9876  # invalid type
     with pytest.raises(InvalidMappingError):
-        SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, None))
+        SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, None, None))
 
 
 def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
@@ -131,7 +131,7 @@ def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
         sub.resource_id = resource_id
 
         try:
-            href = SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, None))
+            href = SubscriptionMapper.calculate_resource_href(sub, RequestStateParameters(99, None, None))
         except InvalidMappingError:
             total_fails = total_fails + 1
             continue
@@ -184,8 +184,8 @@ def test_SubscriptionMapper_map_to_response():
     sub_with_condition.notification_uri = "http://my.example:33/foo"
     sub_with_condition.resource_type = SubscriptionResource.SITE
 
-    rs_params_base = RequestStateParameters(aggregator_id=1, href_prefix=None)
-    rs_params_prefix = RequestStateParameters(aggregator_id=1, href_prefix="/my/prefix")
+    rs_params_base = RequestStateParameters(aggregator_id=1, aggregator_lfdi=None, href_prefix=None)
+    rs_params_prefix = RequestStateParameters(aggregator_id=1, aggregator_lfdi=None, href_prefix="/my/prefix")
 
     # check prefix is applied
     sep2_prefix = SubscriptionMapper.map_to_response(sub_all_set, rs_params_prefix)
@@ -233,7 +233,7 @@ def test_SubscriptionListMapper_map_to_site_response():
     sub_list[1].scoped_site_id = 1
     sub_count = 43
     site_id = 876
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
 
     mapped = SubscriptionListMapper.map_to_site_response(rs_params, site_id, sub_list, sub_count)
 
@@ -251,8 +251,8 @@ def test_SubscriptionMapper_calculate_subscription_href():
     sub_all_set = generate_class_instance(Subscription, seed=101, optional_is_none=False)
     sub_optional = generate_class_instance(Subscription, seed=101, optional_is_none=True)
 
-    rs_params_base = RequestStateParameters(aggregator_id=1, href_prefix=None)
-    rs_params_prefix = RequestStateParameters(aggregator_id=1, href_prefix="/my/prefix")
+    rs_params_base = RequestStateParameters(aggregator_id=1, aggregator_lfdi=None, href_prefix=None)
+    rs_params_prefix = RequestStateParameters(aggregator_id=1, aggregator_lfdi=None, href_prefix="/my/prefix")
 
     # Subscriptions scoped to a EndDevice are different to those that are "global"
     assert SubscriptionMapper.calculate_subscription_href(
@@ -286,7 +286,7 @@ def test_SubscriptionMapper_map_from_request():
     sub_condition.condition = generate_class_instance(Sep2Condition)
     sub_condition.condition.attributeIdentifier = ConditionAttributeIdentifier.READING_VALUE
 
-    rs_params_prefix = RequestStateParameters(aggregator_id=1, href_prefix="/prefix")
+    rs_params_prefix = RequestStateParameters(aggregator_id=1, aggregator_lfdi=None, href_prefix="/prefix")
     valid_domains = set(["foo.bar", "example.com"])
     changed_time = datetime(2022, 3, 4, 5, 6, 7)
 
@@ -359,7 +359,7 @@ def test_NotificationMapper_map_sites_to_response():
     site2 = generate_class_instance(Site, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
 
     notification = NotificationMapper.map_sites_to_response([site1, site2], sub, rs_params)
     assert isinstance(notification, Notification)
@@ -378,7 +378,7 @@ def test_NotificationMapper_map_does_to_response():
     doe2 = generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 123
 
     notification = NotificationMapper.map_does_to_response(site_id, [doe1, doe2], sub, rs_params)
@@ -398,7 +398,7 @@ def test_NotificationMapper_map_readings_to_response():
     sr2 = generate_class_instance(SiteReading, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 123
     site_reading_type_id = 456
 
@@ -423,7 +423,7 @@ def test_NotificationMapper_map_rates_to_response():
     rate2 = generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 999
     tariff_id = 888
     day = datetime.now().date()
@@ -449,7 +449,7 @@ def test_NotificationMapper_map_rates_to_response():
 def test_NotificationMapper_map_der_availability_to_response_missing():
 
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 123
     der_id = 456
 
@@ -467,7 +467,7 @@ def test_NotificationMapper_map_der_availability_to_response():
     all_set: SiteDERAvailability = generate_class_instance(SiteDERAvailability, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 123
     der_id = 456
 
@@ -488,7 +488,7 @@ def test_NotificationMapper_map_der_availability_to_response():
 
 def test_NotificationMapper_map_der_rating_to_response_missing():
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 123
     der_id = 456
 
@@ -506,7 +506,7 @@ def test_NotificationMapper_map_der_rating_to_response():
     all_set: SiteDERRating = generate_class_instance(SiteDERRating, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 123
     der_id = 456
 
@@ -527,7 +527,7 @@ def test_NotificationMapper_map_der_rating_to_response():
 
 def test_NotificationMapper_map_der_settings_to_response_missing():
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 123
     der_id = 456
 
@@ -545,7 +545,7 @@ def test_NotificationMapper_map_der_settings_to_response():
     all_set: SiteDERSetting = generate_class_instance(SiteDERSetting, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 123
     der_id = 456
 
@@ -567,7 +567,7 @@ def test_NotificationMapper_map_der_settings_to_response():
 
 def test_NotificationMapper_map_der_status_to_response_missing():
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 123
     der_id = 456
 
@@ -584,7 +584,7 @@ def test_NotificationMapper_map_der_status_to_response():
     all_set: SiteDERStatus = generate_class_instance(SiteDERStatus, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
-    rs_params = RequestStateParameters(1, "/custom/prefix")
+    rs_params = RequestStateParameters(1, None, "/custom/prefix")
     site_id = 123
     der_id = 456
 

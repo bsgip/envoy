@@ -32,7 +32,7 @@ async def test_create_or_fetch_mirror_usage_point(
     existing_site: Site = generate_class_instance(Site)
     mapped_srt: SiteReadingType = generate_class_instance(SiteReadingType)
     srt_id = 3
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_select_single_site_with_lfdi.return_value = existing_site
     mock_MirrorUsagePointMapper.map_from_request = mock.Mock(return_value=mapped_srt)
@@ -67,7 +67,7 @@ async def test_create_or_fetch_mirror_usage_point_no_site(mock_select_single_sit
     mock_session = create_mock_session()
     aggregator_id = 2
     mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_select_single_site_with_lfdi.return_value = None
 
@@ -100,7 +100,7 @@ async def test_fetch_mirror_usage_point(
     mapped_mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
     existing_srt: SiteReadingType = generate_class_instance(SiteReadingType)
     existing_srt.site = generate_class_instance(Site)
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_fetch_site_reading_type_for_aggregator.return_value = existing_srt
     mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
@@ -128,7 +128,7 @@ async def test_fetch_mirror_usage_point_no_srt(
     mock_session = create_mock_session()
     aggregator_id = 2
     srt_id = 3
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_fetch_site_reading_type_for_aggregator.return_value = None
 
@@ -161,7 +161,7 @@ async def test_add_or_update_readings(
     mmr: MirrorMeterReading = generate_class_instance(MirrorMeterReading, seed=101)
     existing_sr: SiteReadingType = generate_class_instance(SiteReadingType, seed=202)
     mapped_readings: list[SiteReading] = [generate_class_instance(SiteReading, seed=303)]
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_fetch_site_reading_type_for_aggregator.return_value = existing_sr
     mock_MirrorMeterReadingMapper.map_from_request = mock.Mock(return_value=mapped_readings)
@@ -196,7 +196,7 @@ async def test_add_or_update_readings_no_srt(mock_fetch_site_reading_type_for_ag
     aggregator_id = 2
     site_reading_type_id = 3
     mmr: MirrorMeterReading = generate_class_instance(MirrorMeterReading, seed=101)
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_fetch_site_reading_type_for_aggregator.return_value = None
 
@@ -234,7 +234,7 @@ async def test_list_mirror_usage_points(
     changed_after = datetime.now()
     existing_srts: list[SiteReadingType] = [generate_class_instance(SiteReadingType, seed=101)]
     mup_response: list[SiteReading] = [generate_class_instance(SiteReading, seed=202)]
-    rs_params = RequestStateParameters(aggregator_id, None)
+    rs_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_count_site_reading_types_for_aggregator.return_value = count
     mock_fetch_site_reading_types_page_for_aggregator.return_value = existing_srts

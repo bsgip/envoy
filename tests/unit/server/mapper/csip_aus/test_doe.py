@@ -85,7 +85,7 @@ def test_map_derc_to_list_response():
 
     all_does = [doe1, doe2, doe3, doe4]
     site_id = 54121
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     result = DERControlMapper.map_to_list_response(
         rs_params, all_does, site_count, site_id, DERControlListSource.DER_CONTROL_LIST
@@ -119,7 +119,7 @@ def test_map_derp_doe_program_response_with_default_doe():
     a default doe specified)"""
     site_id = 123
     total_does = 456
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
     default_doe = generate_class_instance(DefaultDoeConfiguration)
 
     result = DERProgramMapper.doe_program_response(rs_params, site_id, total_does, default_doe)
@@ -148,7 +148,7 @@ def test_map_derp_doe_program_response_no_default_doe():
     default doe specified)"""
     site_id = 123
     total_does = 456
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     result = DERProgramMapper.doe_program_response(rs_params, site_id, total_does, None)
     assert result is not None
@@ -164,7 +164,7 @@ def test_map_derp_doe_program_list_response_no_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
     site_id = 123
     total_does = 456
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     result = DERProgramMapper.doe_program_list_response(rs_params, site_id, total_does, None)
     assert result is not None
@@ -185,7 +185,7 @@ def test_map_derp_doe_program_list_response_with_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
     site_id = 123
     total_does = 456
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
     default_doe = generate_class_instance(DefaultDoeConfiguration)
 
     result = DERProgramMapper.doe_program_list_response(rs_params, site_id, total_does, default_doe)
@@ -206,7 +206,7 @@ def test_map_derp_doe_program_list_response_with_default_doe():
 def test_mrid_uniqueness():
     """Test our mrids for controls differ from programs even when the ID's are the same"""
     site_id = 1
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
     doe: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope)
     doe.site_id = site_id
     doe.dynamic_operating_envelope_id = site_id  # intentionally the same as site_id

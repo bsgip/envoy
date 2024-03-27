@@ -118,7 +118,7 @@ def test_MirrorUsagePointMapper_map_to_response():
     site: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
     srt_all_set: SiteReadingType = generate_class_instance(SiteReadingType, seed=202, optional_is_none=False)
     srt_optional: SiteReadingType = generate_class_instance(SiteReadingType, seed=303, optional_is_none=True)
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     result_all_set = MirrorUsagePointMapper.map_to_response(rs_params, srt_all_set, site)
     assert result_all_set is not None
@@ -161,7 +161,7 @@ def test_MirrorUsagePointMapper_map_to_list_response(mock_MirrorUsagePointMapper
     srt_all_set: SiteReadingType = generate_class_instance(SiteReadingType, seed=202, optional_is_none=False)
     srt_all_set.site = site
     mapped_mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=303)
-    rs_params = RequestStateParameters(1, None)
+    rs_params = RequestStateParameters(1, None, None)
 
     mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
 

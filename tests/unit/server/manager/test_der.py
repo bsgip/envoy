@@ -125,7 +125,7 @@ async def test_fetch_der_for_site_der_exists(
 ):
     """Fetch when site_der_for_site returns an instance"""
     site_id = 123
-    rs_params = RequestStateParameters(456, None)
+    rs_params = RequestStateParameters(456, None, None)
     mock_session = create_mock_session()
 
     site_der: SiteDER = generate_class_instance(SiteDER, seed=101)
@@ -151,7 +151,7 @@ async def test_fetch_der_for_site_bad_der_id(
 ):
     """Fetch when DER ID is incorrect"""
     site_id = 123
-    rs_params = RequestStateParameters(456, None)
+    rs_params = RequestStateParameters(456, None, None)
     mock_session = create_mock_session()
 
     with pytest.raises(NotFoundError):
@@ -181,7 +181,7 @@ async def test_fetch_der_list_for_site_pagination(
 ):
     """Fetch when site_der_for_site returns an instance"""
     site_id = 123
-    rs_params = RequestStateParameters(456, None)
+    rs_params = RequestStateParameters(456, None, None)
     mock_session = create_mock_session()
 
     site_der: SiteDER = generate_class_instance(SiteDER, seed=101)
@@ -210,7 +210,7 @@ async def test_fetch_der_list_for_site_pagination(
 @pytest.mark.anyio
 async def test_fetch_der_capability_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
@@ -237,7 +237,7 @@ async def test_upsert_der_capability_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -281,7 +281,7 @@ async def test_upsert_der_capability_roundtrip(
 ):
     """Tests the various success paths through updating"""
     agg_id = 1
-    rs_params = RequestStateParameters(agg_id, "/custom/prefix")
+    rs_params = RequestStateParameters(agg_id, None, "/custom/prefix")
     now = datetime(2023, 5, 6, 7, 8, 11)
 
     mock_utc_now.return_value = now
@@ -333,7 +333,7 @@ async def test_upsert_der_capability_roundtrip(
 @pytest.mark.anyio
 async def test_fetch_der_settings_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
@@ -360,7 +360,7 @@ async def test_upsert_der_settings_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -404,7 +404,7 @@ async def test_upsert_der_settings_roundtrip(
 ):
     """Tests the various success paths through updating"""
     agg_id = 1
-    rs_params = RequestStateParameters(agg_id, "/custom/pfx")
+    rs_params = RequestStateParameters(agg_id, None, "/custom/pfx")
     now = datetime(2023, 5, 2, 7, 8, 9)
 
     mock_utc_now.return_value = now
@@ -455,7 +455,7 @@ async def test_upsert_der_settings_roundtrip(
 @pytest.mark.anyio
 async def test_fetch_der_availability_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
@@ -482,7 +482,7 @@ async def test_upsert_der_availability_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -525,7 +525,7 @@ async def test_upsert_der_availability_roundtrip(
 ):
     """Tests the various success paths through updating"""
     agg_id = 1
-    rs_params = RequestStateParameters(agg_id, "/custom/pfx")
+    rs_params = RequestStateParameters(agg_id, None, "/custom/pfx")
     now = datetime(2024, 5, 6, 7, 8, 9)
 
     mock_utc_now.return_value = now
@@ -577,7 +577,7 @@ async def test_upsert_der_availability_roundtrip(
 @pytest.mark.anyio
 async def test_fetch_der_status_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
@@ -604,7 +604,7 @@ async def test_upsert_der_status_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None)
+    rs_params = RequestStateParameters(agg_id, None, None)
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -650,7 +650,7 @@ async def test_upsert_der_status_roundtrip(
 ):
     """Tests the various success paths through updating"""
     agg_id = 1
-    rs_params = RequestStateParameters(agg_id, "/custom/pfx")
+    rs_params = RequestStateParameters(agg_id, None, "/custom/pfx")
     now = datetime(2023, 5, 6, 7, 8, 9)
 
     mock_utc_now.return_value = now

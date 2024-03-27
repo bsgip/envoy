@@ -24,7 +24,9 @@ async def test_get_supported_links_calls_get_link_field_names_with_model_schema(
     model = pydantic_xml.BaseXmlModel
 
     with mock.patch("envoy.server.crud.link.get_link_field_names") as get_link_field_names:
-        await link.get_supported_links(session=mock.Mock(), model=model, rs_params=RequestStateParameters(1, None))
+        await link.get_supported_links(
+            session=mock.Mock(), model=model, rs_params=RequestStateParameters(1, None, None)
+        )
 
     get_link_field_names.assert_called_once_with(model)
 
@@ -44,7 +46,7 @@ async def test_get_supported_links_calls_filter_with_check_link_supported_and_li
         "envoy.server.crud.link.check_link_supported", return_value=True
     ) as check_link_supported, mock.patch("envoy.server.crud.link.filter") as patched_filter:
         await link.get_supported_links(
-            session=mock.Mock(), model=mock.Mock(), rs_params=RequestStateParameters(123, None)
+            session=mock.Mock(), model=mock.Mock(), rs_params=RequestStateParameters(123, None, None)
         )
 
     patched_filter.assert_called_with(check_link_supported, link_names)
@@ -63,7 +65,7 @@ async def test_get_supported_links_calls_get_formatted_links_with_supported_link
 ) -> None:
     supported_links_names = mock.Mock()
     uri_parameters = mock.Mock()
-    rs_params = RequestStateParameters(123, None)
+    rs_params = RequestStateParameters(123, None, None)
 
     with mock.patch("envoy.server.crud.link.filter", return_value=supported_links_names), mock.patch(
         "envoy.server.crud.link.get_formatted_links"
@@ -98,7 +100,9 @@ async def test_get_supported_links_awaits_get_resource_counts_with_supported_lin
     with mock.patch("envoy.server.crud.link.get_formatted_links", return_value=supported_links), mock.patch(
         "envoy.server.crud.link.get_resource_counts"
     ) as get_resource_counts:
-        await link.get_supported_links(session=session, model=mock.Mock(), rs_params=RequestStateParameters(123, None))
+        await link.get_supported_links(
+            session=session, model=mock.Mock(), rs_params=RequestStateParameters(123, None, None)
+        )
 
     get_resource_counts.assert_awaited_once_with(session=session, link_names=supported_links.keys(), aggregator_id=123)
 
@@ -119,7 +123,7 @@ async def test_get_supported_links_calls_add_resource_counts_to_links_with_suppo
         "envoy.server.crud.link.get_resource_counts", return_value=resource_counts
     ), mock.patch("envoy.server.crud.link.add_resource_counts_to_links") as add_resource_counts_to_links:
         await link.get_supported_links(
-            session=mock.Mock(), model=mock.Mock(), rs_params=RequestStateParameters(123, None)
+            session=mock.Mock(), model=mock.Mock(), rs_params=RequestStateParameters(123, None, None)
         )
 
     add_resource_counts_to_links.assert_called_once_with(links=supported_links, resource_counts=resource_counts)
@@ -344,7 +348,7 @@ def test_check_function_set_supported_raise_exception(function_set_status_mappin
     ],
 )
 def test_get_formatted_links(link_names, uri_parameters, expected):
-    assert link.get_formatted_links(link_names, RequestStateParameters(1, None), uri_parameters) == expected
+    assert link.get_formatted_links(link_names, RequestStateParameters(1, None, None), uri_parameters) == expected
 
 
 @pytest.mark.parametrize(
@@ -362,7 +366,7 @@ def test_get_formatted_links(link_names, uri_parameters, expected):
 )
 def test_get_formatted_links_raises_exception(link_names, uri_parameters):
     with pytest.raises(link.MissingUriParameterError):
-        link.get_formatted_links(link_names, RequestStateParameters(1, None), uri_parameters)
+        link.get_formatted_links(link_names, RequestStateParameters(1, None, None), uri_parameters)
 
 
 class NoProps(BaseXmlModelWithNS):
