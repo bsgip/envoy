@@ -99,6 +99,39 @@ async def test_end_device_manager_fetch_existing_device(
 
 
 @pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.get_virtual_site_for_aggregator")
+@mock.patch("envoy.server.manager.end_device.VirtualEndDeviceMapper")
+async def test_end_device_manager_get_virtual_end_device(
+    mock_VirtualEndDeviceMapper: mock.MagicMock, mock_get_virtual_site_for_aggregator: mock.MagicMock
+):
+    """Check that the manager will handle requests for the virtual end device"""
+
+    # Arrange
+    mock_session = create_mock_session()
+    site_id = 0
+    aggregator_id = 2
+    aggregator_lfdi = "123456"
+    raw_site: Site = generate_class_instance(Site)
+    mapped_ed: EndDeviceResponse = generate_class_instance(EndDeviceResponse)
+    rsp_params = RequestStateParameters(aggregator_id, aggregator_lfdi, None)
+
+    # Just do a simple passthrough
+    mock_get_virtual_site_for_aggregator.return_value = raw_site
+    mock_VirtualEndDeviceMapper.map_to_response = mock.Mock(return_value=mapped_ed)
+
+    # Act
+    result = await EndDeviceManager.fetch_enddevice_with_site_id(mock_session, site_id, rsp_params)
+
+    # Assert
+    assert result is mapped_ed
+    assert_mock_session(mock_session, committed=False)
+    mock_get_virtual_site_for_aggregator.assert_called_once_with(
+        session=mock_session, aggregator_id=aggregator_id, aggregator_lfdi=aggregator_lfdi
+    )
+    mock_VirtualEndDeviceMapper.map_to_response.assert_called_once_with(rsp_params, raw_site)
+
+
+@pytest.mark.anyio
 @mock.patch("envoy.server.manager.end_device.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
 async def test_end_device_manager_fetch_missing_device(

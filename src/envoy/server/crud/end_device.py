@@ -1,14 +1,20 @@
 from datetime import datetime
 from typing import Optional, Sequence
 
+from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.crud import common
 from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.site import Site
+
+# Valid site_ids for end_devices start 1 and increase
+# Only a site_id of 0 is left, which we will use for the virtual end-device/site associated with the aggregator
+VIRTUAL_END_DEVICE_SITE_ID = 0
 
 
 async def select_aggregator_site_count(session: AsyncSession, aggregator_id: int, after: datetime) -> int:
@@ -52,34 +58,50 @@ async def select_all_sites_with_aggregator_id(
     return resp.scalars().all()
 
 
-async def get_virtual_site_for_aggregator(session: AsyncSession, aggregator_id: int) -> Optional[Site]:
-    """Returns a virtual site to represent the aggregator. Return None if the aggregator isn't found"""
+async def get_virtual_site_for_aggregator(
+    session: AsyncSession, aggregator_id: int, aggregator_lfdi: str
+) -> Optional[Site]:
+    """Returns a virtual site to represent the aggregator.
+
+    Returns None if the aggregator isn't found.
+    Raises ValueError if aggregator lfdi cannot be converted to an sfdi.
+    """
 
     # Check if the aggregator exists
     aggregator: Aggregator = await select_aggregator(session=session, aggregator_id=aggregator_id)
     if aggregator is None:
         return None
 
-    # The virtual site shares various attributes (lfdi, sfdi, timezone etc.) with the first site under the aggregator.
+    # The virtual site shares attributes (e.g. timezone) with the first site under the aggregator.
     first_site_under_aggregator: Site = await select_first_site_under_aggregator(
         session=session, aggregator_id=aggregator_id
     )
-    if first_site_under_aggregator is None:
-        return None
+    DEFAULT_TIMEZONE_ID = "Australia/Brisbane"
+    timezone_id = first_site_under_aggregator.timezone_id if first_site_under_aggregator else DEFAULT_TIMEZONE_ID
+
+    # lfdi is hex string, convert to sfdi (integer)
+    try:
+        aggregator_sfdi = common.convert_lfdi_to_sfdi(lfdi=aggregator_lfdi)
+    except ValueError:
+        raise ValueError(f"Invalid aggregator LFDI. Cannot convert '{aggregator_lfdi}' to an SFDI.")
 
     # The aggregator doesn't have a changed time of it own.
     # Virtual sites will have a changed_time representing when they were requested.
     changed_time = utc_now()
 
+    # Use a DeviceCategory with all categories set, which could never happen for a genuine end device
+    # This can be used as a potential way to identity the virtual end device
+    device_category = DEVICE_CATEGORY_ALL_SET
+
     # Since the site is virtual we create the Site in-place here and return it
     return Site(
-        site_id=0,
-        lfdi=first_site_under_aggregator.lfdi,
-        sfdi=first_site_under_aggregator.sfdi,
+        site_id=VIRTUAL_END_DEVICE_SITE_ID,
+        lfdi=aggregator_lfdi,
+        sfdi=aggregator_sfdi,
         changed_time=changed_time,
         aggregator_id=aggregator_id,
-        device_category=first_site_under_aggregator.device_category,
-        timezone_id=first_site_under_aggregator.timezone_id,
+        device_category=device_category,
+        timezone_id=timezone_id,
     )
 
 

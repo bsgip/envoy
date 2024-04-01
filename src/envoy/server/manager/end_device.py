@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.end_device import (
+    VIRTUAL_END_DEVICE_SITE_ID,
+    get_virtual_site_for_aggregator,
     select_aggregator_site_count,
     select_all_sites_with_aggregator_id,
     select_single_site_with_sfdi,
@@ -17,7 +19,7 @@ from envoy.server.crud.end_device import (
 from envoy.server.exception import UnableToGenerateIdError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
-from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
+from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper, VirtualEndDeviceMapper
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_state import RequestStateParameters
 
@@ -27,12 +29,22 @@ class EndDeviceManager:
     async def fetch_enddevice_with_site_id(
         session: AsyncSession, site_id: int, request_params: RequestStateParameters
     ) -> Optional[EndDeviceResponse]:
-        site = await select_single_site_with_site_id(
-            session=session, site_id=site_id, aggregator_id=request_params.aggregator_id
-        )
+        # site_id of 0 refers to a virtual end-device (associated with the aggregator)
+        if site_id == VIRTUAL_END_DEVICE_SITE_ID:
+            site = await get_virtual_site_for_aggregator(
+                session=session,
+                aggregator_id=request_params.aggregator_id,
+                aggregator_lfdi=request_params.aggregator_lfdi,
+            )
+            mapper = VirtualEndDeviceMapper
+        else:
+            site = await select_single_site_with_site_id(
+                session=session, site_id=site_id, aggregator_id=request_params.aggregator_id
+            )
+            mapper = EndDeviceMapper
         if site is None:
             return None
-        return EndDeviceMapper.map_to_response(request_params, site)
+        return mapper.map_to_response(request_params, site)
 
     @staticmethod
     async def generate_unique_device_id(session: AsyncSession, aggregator_id: int) -> tuple[int, str]:

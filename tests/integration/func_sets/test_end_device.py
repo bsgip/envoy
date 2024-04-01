@@ -4,11 +4,13 @@ from http import HTTPStatus
 
 import pytest
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
-from envoy_schema.server.schema.sep2.types import DeviceCategory
+from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 from httpx import AsyncClient
 
 from tests.assert_time import assert_nowish
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as AGG_1_LDFI_FROM_VALID_CERT
+from tests.data.certificates.certificate1 import TEST_CERTIFICATE_SFDI as AGG_1_SDFI_FROM_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
 from tests.data.fake.generator import generate_class_instance
@@ -138,6 +140,21 @@ async def test_get_enddevice(client: AsyncClient, edev_fetch_uri_format: str):
     response = await client.get(uri, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.NOT_FOUND)
     assert_error_response(response)
+
+    # Check fetching virtual end device for aggregator
+    # The virtual end device always has a site_id of 0
+    uri = edev_fetch_uri_format.format(site_id=0)
+    response = await client.get(uri, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(body)
+    assert_nowish(parsed_response.changedTime)
+    assert parsed_response.href == uri
+    assert parsed_response.enabled == 1
+    assert parsed_response.lFDI == AGG_1_LDFI_FROM_VALID_CERT
+    assert parsed_response.sFDI == int(AGG_1_SDFI_FROM_VALID_CERT)
+    assert parsed_response.deviceCategory == f"{DEVICE_CATEGORY_ALL_SET:x}"
 
 
 @pytest.mark.anyio

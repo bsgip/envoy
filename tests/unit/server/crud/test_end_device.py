@@ -123,52 +123,76 @@ async def test_select_all_sites_with_aggregator_id_filters(pg_base_config):
 
 
 @pytest.mark.parametrize(
-    "aggregator_id, expected_values",
+    "aggregator_id, aggregator_lfdi, timezone_id",
     [
         (
-            1,
-            ("site1-lfdi", 1111, DeviceCategory(0), "Australia/Brisbane"),  # Values for first site under aggregator 1
+            1,  # Aggregator 1 has 3 sites
+            "9dfdd56f6128cdc894a1e42c690cab197184a8e9",
+            "Australia/Brisbane",  # Values for first site under aggregator 1
         ),
         (
-            2,
-            ("site3-lfdi", 3333, DeviceCategory(2), "Australia/Brisbane"),  # Values for first site under aggregator 2
+            2,  # Aggregator 2 has 1 site
+            "0x123123ffff",
+            "Australia/Brisbane",  # Values for first site under aggregator 2
+        ),
+        (
+            3,  # Aggregator 3 has no sites
+            "FFFFFFFFF",
+            "Australia/Brisbane",  # Default timezone if aggregator has no sites
         ),
     ],
 )
 @pytest.mark.anyio
-async def test_get_virtual_site_for_aggregator(pg_base_config, aggregator_id: int, expected_values):
+async def test_get_virtual_site_for_aggregator(
+    pg_base_config, aggregator_id: int, aggregator_lfdi: str, timezone_id: str
+):
     """Tests that get_virtual_site_for_aggregator creates a suitable virtual site for an aggregator"""
-    async with generate_async_session(pg_base_config) as session:
-        lfdi, sfdi, device_category, timezone_id = expected_values
 
-        virtual_site = await get_virtual_site_for_aggregator(session, aggregator_id=aggregator_id)
+    from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET
+
+    async with generate_async_session(pg_base_config) as session:
+
+        virtual_site = await get_virtual_site_for_aggregator(
+            session, aggregator_id=aggregator_id, aggregator_lfdi=aggregator_lfdi
+        )
 
         assert virtual_site.site_id == 0  # Virtual sites always have a site_id of 0
         assert virtual_site.aggregator_id == aggregator_id
         assert_nowish(virtual_site.changed_time)  # Vitual sites have a changed time set to when they are requested
 
         # Virtual sites inherit these values from the first site under the aggregator
-        assert virtual_site.lfdi == lfdi
-        assert virtual_site.sfdi == sfdi
-        assert virtual_site.device_category == device_category
+        assert virtual_site.lfdi == aggregator_lfdi
+        assert virtual_site.sfdi
+        assert virtual_site.device_category == DEVICE_CATEGORY_ALL_SET
         assert virtual_site.timezone_id == timezone_id
 
 
-@pytest.mark.parametrize("aggregator_id", [3])
+@pytest.mark.parametrize(
+    "aggregator_lfdi",
+    [
+        (""),  # Empty string not a valid lfdi
+        ("LFDI"),  # Contains characters not part of valid hex string
+        ("!@#$"),  # Contains characters not part of valid hex string
+    ],
+)
 @pytest.mark.anyio
-async def test_get_virtual_site_for_aggregator__no_sites(pg_base_config, aggregator_id: int):
-    """Tests get_virtual_site_for_aggregator. Returns None if aggregator has no sites"""
-    async with generate_async_session(pg_base_config) as session:
-        virtual_site = await get_virtual_site_for_aggregator(session, aggregator_id=aggregator_id)
-        assert virtual_site is None
+async def test_get_virtual_site_for_aggregator__raises_exception_with_invalid_lfdi(
+    pg_base_config, aggregator_lfdi: str
+):
+    with pytest.raises(ValueError):
+        async with generate_async_session(pg_base_config) as session:
+            _ = await get_virtual_site_for_aggregator(session, aggregator_id=1, aggregator_lfdi=aggregator_lfdi)
 
 
 @pytest.mark.parametrize("aggregator_id", [4, 99])
 @pytest.mark.anyio
 async def test_get_virtual_site_for_aggregator__no_aggregator(pg_base_config, aggregator_id: int):
     """Tests get_virtual_site_for_aggregator. Returns None if aggregator not present"""
+    aggregator_lfdi = "9dfdd56f6128cdc894a1e42c690cab197184a8e9"
     async with generate_async_session(pg_base_config) as session:
-        virtual_site = await get_virtual_site_for_aggregator(session, aggregator_id=aggregator_id)
+        virtual_site = await get_virtual_site_for_aggregator(
+            session, aggregator_id=aggregator_id, aggregator_lfdi=aggregator_lfdi
+        )
         assert virtual_site is None
 
 

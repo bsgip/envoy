@@ -7,7 +7,7 @@ from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, En
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper
+from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper, VirtualEndDeviceMapper
 from envoy.server.model.site import Site
 from envoy.server.request_state import RequestStateParameters
 from tests.data.fake.generator import generate_class_instance, generate_value
@@ -147,3 +147,24 @@ def test_map_from_request_invalid_device_category():
 
     with pytest.raises(InvalidMappingError):
         EndDeviceMapper.map_from_request(dc_negative, 1, datetime.now())
+
+
+def test_virtual_end_device_map_to_response():
+    """Simple sanity check on the virtual end device mapper to ensure things don't break with a variety of values."""
+    site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
+    site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
+    rs_params = RequestStateParameters(1, None, None)
+
+    result_all_set = VirtualEndDeviceMapper.map_to_response(rs_params, site_all_set)
+    assert result_all_set is not None
+    assert isinstance(result_all_set, EndDeviceResponse)
+    assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
+    assert result_all_set.lFDI == site_all_set.lfdi
+    assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
+
+    result_optional = EndDeviceMapper.map_to_response(rs_params, site_optional)
+    assert result_optional is not None
+    assert isinstance(result_optional, EndDeviceResponse)
+    assert result_optional.changedTime == site_optional.changed_time.timestamp()
+    assert result_optional.lFDI == site_optional.lfdi
+    assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"

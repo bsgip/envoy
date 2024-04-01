@@ -21,3 +21,37 @@ def localize_start_time(rate_and_tz: Optional[Row[tuple[EntityWithStartTime, str
     tz = ZoneInfo(tz_name)
     entity.start_time = entity.start_time.astimezone(tz)
     return entity
+
+
+def convert_lfdi_to_sfdi(lfdi: str) -> int:
+    """This function generates the 2030.5-2018 sFDI (Short-form device identifier) from a
+    2030.5-2018 lFDI (Long-form device identifier). More details on the sFDI can be found in
+    section 6.3.3 of the IEEE Std 2030.5-2018.
+
+    To generate the sFDI from the lFDI the following steps are performed:
+        1- Left truncate the lFDI to 36 bits.
+        2- From the result of Step (1), calculate a sum-of-digits checksum digit.
+        3- Right concatenate the checksum digit to the result of Step (1).
+
+    Args:
+        lfdi: The 2030.5-2018 lFDI as string.
+
+    Return:
+        The sFDI as integer.
+    """
+    NUMBER_BITS_TO_LEFT_TRUNCATE = 36
+
+    # Convert lfdi hex string to integer
+    lfdi = int(lfdi, base=16)
+
+    # Truncate the lFDI
+    sfdi_no_sod_checksum = lfdi >> (lfdi.bit_length() - NUMBER_BITS_TO_LEFT_TRUNCATE)
+
+    # Calculate sum-of-digits checksum digit
+    sod_checksum = 10 - sum([int(digit) for digit in str(sfdi_no_sod_checksum)]) % 10
+
+    # Right concatenate the checksum digit and return
+    sfdi_as_string = str(sfdi_no_sod_checksum) + str(sod_checksum)
+
+    # Return integer representation
+    return int(sfdi_as_string)

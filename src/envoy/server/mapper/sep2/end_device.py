@@ -44,6 +44,23 @@ class EndDeviceMapper:
         )
 
 
+class VirtualEndDeviceMapper:
+    @staticmethod
+    def map_to_response(rs_params: RequestStateParameters, site: Site) -> EndDeviceResponse:
+        edev_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site.site_id)
+        return EndDeviceResponse.model_validate(
+            {
+                "href": edev_href,
+                "lFDI": site.lfdi,
+                "sFDI": site.sfdi,
+                "subscribable": SubscribableType.resource_does_not_support_subscriptions,
+                "deviceCategory": f"{site.device_category:x}",  # deviceCategory is a hex string
+                "changedTime": int(site.changed_time.timestamp()),
+                "enabled": True,
+            }
+        )
+
+
 class EndDeviceListMapper:
     @staticmethod
     def map_to_response(
