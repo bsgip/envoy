@@ -8,7 +8,6 @@ from lxml.etree import XMLSyntaxError  # type: ignore # nosec: This will need to
 from pydantic_core import ValidationError
 
 from envoy.notification.handler import enable_notification_client
-from envoy.server.api import routers, unsecured_routers
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
 from envoy.server.api.depends.default_doe import DefaultDoeDepends
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
@@ -19,6 +18,7 @@ from envoy.server.api.error_handler import (
     validation_exception_handler,
     xml_exception_handler,
 )
+from envoy.server.api.router import routers, unsecured_routers
 from envoy.server.database import enable_dynamic_azure_ad_database_credentials
 from envoy.server.lifespan import generate_combined_lifespan_manager
 from envoy.server.settings import AppSettings, settings
