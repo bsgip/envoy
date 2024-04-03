@@ -35,7 +35,7 @@ class PowerForecastLog(Base):
     calculation_log_id: Mapped[int] = mapped_column(
         ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE")
     )
-    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="assignments", lazy="raise")
+    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="power_forecast_logs", lazy="raise")
 
 
 class PowerTargetLog(Base):
@@ -65,7 +65,7 @@ class PowerTargetLog(Base):
     calculation_log_id: Mapped[int] = mapped_column(
         ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE")
     )
-    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="assignments", lazy="raise")
+    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="power_target_logs", lazy="raise")
 
 
 class PowerFlowLog(Base):
@@ -96,7 +96,7 @@ class PowerFlowLog(Base):
     calculation_log_id: Mapped[int] = mapped_column(
         ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE")
     )
-    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="assignments", lazy="raise")
+    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="power_flow_logs", lazy="raise")
 
 
 class WeatherForecastLog(Base):
@@ -125,6 +125,8 @@ class WeatherForecastLog(Base):
     calculation_log_id: Mapped[int] = mapped_column(
         ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE")
     )
+
+    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="weather_forecast_logs", lazy="raise")
 
 
 class CalculationLog(Base):
