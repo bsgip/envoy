@@ -138,8 +138,38 @@ class EndDeviceListManager:
         after: datetime,
         limit: int,
     ) -> EndDeviceListResponse:
+        """
+
+        start = 0 return [virtual_site, site_1, site_2, site_3, ...]
+        start = 1 return [site_1, site_2, site_3, ...]
+        start = 2 return [site_2, site_3, ...]
+        """
+
+        # Include the virtual site?
+        if start == 0:
+            # Get the virtual site associated with the aggregator
+            virtual_site = await get_virtual_site_for_aggregator(
+                session=session,
+                aggregator_id=request_params.aggregator_id,
+                aggregator_lfdi=request_params.aggregator_lfdi,
+            )
+
+            # Adjust limit to account for the virtual site
+            limit -= 1
+        else:
+            virtual_site = None
+
+        # Ensure a start value of either 0 or 1 will return the first site for the aggregator
+        start = max(0, start - 1)
+
         site_list = await select_all_sites_with_aggregator_id(
             session, request_params.aggregator_id, start, after, limit
         )
         site_count = await select_aggregator_site_count(session, request_params.aggregator_id, after)
-        return EndDeviceListMapper.map_to_response(request_params, site_list, site_count)
+
+        # site_count should include the virtual site
+        site_count += 1
+
+        return EndDeviceListMapper.map_to_response(
+            rs_params=request_params, site_list=site_list, site_count=site_count, virtual_site=virtual_site
+        )

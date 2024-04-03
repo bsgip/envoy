@@ -287,8 +287,15 @@ async def test_fetch_enddevicelist_with_aggregator_id(
     assert result is mapped_ed_list
     assert_mock_session(mock_session, committed=False)
 
-    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(rsp_params, returned_sites, returned_site_count)
-    mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session, aggregator_id, start, after, limit)
+    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(
+        rs_params=rsp_params,
+        site_list=returned_sites,
+        site_count=returned_site_count + 1,
+        virtual_site=None,
+    )
+    mock_select_all_sites_with_aggregator_id.assert_called_once_with(
+        mock_session, aggregator_id, start - 1, after, limit
+    )
     mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, after)
 
 
@@ -327,8 +334,12 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(
     assert result is mapped_ed_list
     assert_mock_session(mock_session, committed=False)
 
-    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(rsp_params, returned_sites, returned_site_count)
-    mock_select_all_sites_with_aggregator_id.assert_called_once_with(mock_session, aggregator_id, start, after, limit)
+    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(
+        rs_params=rsp_params, site_list=returned_sites, site_count=returned_site_count + 1, virtual_site=None
+    )
+    mock_select_all_sites_with_aggregator_id.assert_called_once_with(
+        mock_session, aggregator_id, start - 1, after, limit
+    )
     mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, after)
 
 

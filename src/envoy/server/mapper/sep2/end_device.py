@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Sequence
+from typing import Optional, Sequence
 
 import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
@@ -64,14 +64,30 @@ class VirtualEndDeviceMapper:
 class EndDeviceListMapper:
     @staticmethod
     def map_to_response(
-        rs_params: RequestStateParameters, site_list: Sequence[Site], site_count: int
+        rs_params: RequestStateParameters,
+        site_list: Sequence[Site],
+        site_count: int,
+        virtual_site: Optional[Site] = None,
     ) -> EndDeviceListResponse:
+
+        end_devices = [EndDeviceMapper.map_to_response(rs_params, site) for site in site_list]
+        result_count = len(end_devices)
+
+        # Add the virtual site to the results if present
+        if virtual_site:
+            # The sites list needs to be sorted descending in changed_time.
+            # The virtual site has a changed_time matching when the call to `get_virtual_site_for_aggregator` was made.
+            # We assume the virtual site will *always* be the most recent site and therefore we add the
+            # virtual site to the front of the list of sites.
+            end_devices.insert(0, VirtualEndDeviceMapper.map_to_response(rs_params, virtual_site))
+            result_count += 1
+
         return EndDeviceListResponse.model_validate(
             {
                 "href": generate_href(uri.EndDeviceListUri, rs_params),
                 "all_": site_count,
-                "results": len(site_list),
+                "results": result_count,
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
-                "EndDevice": [EndDeviceMapper.map_to_response(rs_params, site) for site in site_list],
+                "EndDevice": end_devices,
             }
         )
