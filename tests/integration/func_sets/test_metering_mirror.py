@@ -260,8 +260,16 @@ async def test_create_update_mup_href_prefix(client: AsyncClient, mup: MirrorUsa
     assert read_location_header(response) == expected_href
 
 
+@pytest.mark.parametrize(
+    "min_val, max_val",
+    [
+        (9, -10),  # Normal values
+        (int("FFFFFFFFFFFF", 16), -int("FFFFFFFFFFFF", 16)),  # int48 max/min values (sep2 uses int48 value range)
+        (0, 0),  # zero values
+    ],
+)
 @pytest.mark.anyio
-async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config):
+async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config, min_val, max_val):
     """Submits a batch of readings to a mup and checks the DB to see if they are created"""
     mmr: MirrorMeterReading = MirrorMeterReading.model_validate(
         {
@@ -274,8 +282,8 @@ async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config):
                         "start": 1341579365,
                     },
                     "readings": [
-                        {"value": 9, "timePeriod": {"duration": 301, "start": 1341579365}, "localID": "123"},
-                        {"value": -10, "timePeriod": {"duration": 302, "start": 1341579666}, "localID": "0f0d"},
+                        {"value": max_val, "timePeriod": {"duration": 301, "start": 1341579365}, "localID": "123"},
+                        {"value": min_val, "timePeriod": {"duration": 302, "start": 1341579666}, "localID": "0f0d"},
                     ],
                 }
             ],
@@ -301,14 +309,14 @@ async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config):
         assert len(all_readings) == 6, "We should've added 2 readings"
         assert all_readings[-2].site_reading_type_id == mup_id
         assert all_readings[-2].local_id == int("123", base=16)
-        assert all_readings[-2].value == 9
+        assert all_readings[-2].value == max_val
         assert all_readings[-2].time_period_seconds == 301
         assert all_readings[-2].time_period_start == datetime.fromtimestamp(1341579365, tz=timezone.utc)
         assert_nowish(all_readings[-2].changed_time)
 
         assert all_readings[-1].site_reading_type_id == mup_id
         assert all_readings[-1].local_id == int("0f0d", base=16)
-        assert all_readings[-1].value == -10
+        assert all_readings[-1].value == min_val
         assert all_readings[-1].time_period_seconds == 302
         assert all_readings[-1].time_period_start == datetime.fromtimestamp(1341579666, tz=timezone.utc)
         assert_nowish(all_readings[-1].changed_time)
