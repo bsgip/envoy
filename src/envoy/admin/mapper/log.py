@@ -6,7 +6,6 @@ from envoy_schema.admin.schema.log import PowerForecastLog as PublicPowerForecas
 from envoy_schema.admin.schema.log import PowerTargetLog as PublicPowerTargetLog
 from envoy_schema.admin.schema.log import WeatherForecastLog as PublicWeatherForecastLog
 
-from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.log import CalculationLog, PowerFlowLog, PowerForecastLog, PowerTargetLog, WeatherForecastLog
 
 

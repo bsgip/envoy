@@ -44,7 +44,7 @@ class PowerTargetLog(Base):
 
     __tablename__ = "power_target_log"
 
-    power_forecast_log_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    power_target_log_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     interval_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When is this forecast specifically for?
     interval_duration_seconds: Mapped[int] = mapped_column(INTEGER)

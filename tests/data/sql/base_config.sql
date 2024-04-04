@@ -287,3 +287,44 @@ SELECT pg_catalog.setval('public.site_der_setting_site_der_setting_id_seq', 2, t
 INSERT INTO public.site_der_status (site_der_status_id, site_der_id, changed_time, alarm_status, generator_connect_status, generator_connect_status_time, inverter_status, inverter_status_time, local_control_mode_status, local_control_mode_status_time, manufacturer_status, manufacturer_status_time, operational_mode_status, operational_mode_status_time, state_of_charge_status, state_of_charge_status_time, storage_mode_status, storage_mode_status_time, storage_connect_status, storage_connect_status_time) 
 VALUES (1, 2, '2022-11-01 11:05:04.500', 64, 1, '2010-11-03 11:05:06+11', 10, '2010-11-05 11:05:08+11', 1, '2010-11-07 11:05:10+11', 'mnstat', '2010-11-09 11:05:12+11', 1, '2010-11-11 11:05:14+11', NULL, '2016-05-06 10:38:37+10', 1, '2016-05-10 10:38:41+10', 8, '2016-05-08 10:38:39+10');
 SELECT pg_catalog.setval('public.site_der_status_site_der_status_id_seq', 2, true);
+
+
+-- Calculation log 1/2 have the same interval but calculation log 2 has a more recent created time
+-- Only calculation log 2 will have child entities
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_interval_start", "calculation_interval_duration_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+VALUES (1, '2024-01-21 01:22:33.500', '2024-01-31 01:02:03', 86401, 'topo-id-1', 'external-id-1', 'description-1', '2024-01-20 01:11:00.500', '2024-01-20 01:11:11.500', 'weather-location-1');
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_interval_start", "calculation_interval_duration_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+VALUES (2, '2024-01-21 02:22:33.500', '2024-01-31 01:02:03', 86402, 'topo-id-2', 'external-id-2', 'description-2', '2024-01-20 02:11:00.500', '2024-02-20 01:11:11.500', 'weather-location-2');
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_interval_start", "calculation_interval_duration_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+VALUES (3, '2024-01-21 03:22:33.500', '2024-01-31 02:02:03', 86403, 'topo-id-3', 'external-id-3', 'description-3', '2024-01-20 03:11:00.500', '2024-03-20 01:11:11.500', 'weather-location-3');
+SELECT pg_catalog.setval('public.calculation_log_calculation_log_id_seq', 4, true);
+
+INSERT INTO public.weather_forecast_log("weather_forecast_log_id", "interval_start", "interval_duration_seconds", "air_temperature_degrees_c", "apparent_temperature_degrees_c", "dew_point_degrees_c", "humidity_percent", "cloud_cover_percent", "rain_probability_percent", "rain_mm", "rain_rate_mm", "global_horizontal_irradiance_watts_m2", "wind_speed_50m_km_h", "calculation_log_id") 
+VALUES (1, '2024-02-01 00:01:05', 111, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 2);
+INSERT INTO public.weather_forecast_log("weather_forecast_log_id", "interval_start", "interval_duration_seconds", "air_temperature_degrees_c", "apparent_temperature_degrees_c", "dew_point_degrees_c", "humidity_percent", "cloud_cover_percent", "rain_probability_percent", "rain_mm", "rain_rate_mm", "global_horizontal_irradiance_watts_m2", "wind_speed_50m_km_h", "calculation_log_id") 
+VALUES (2, '2024-02-01 00:01:05', 112, 21.5, 22.5, 23.5, 24.5, 25.5, 26.5, 27.5, 28.5, 29.5, 22.5, 3);
+SELECT pg_catalog.setval('public.weather_forecast_log_weather_forecast_log_id_seq', 3, true);
+
+INSERT INTO public.power_flow_log("power_flow_log_id", "interval_start", "interval_duration_seconds", "site_id", "solve_name", "pu_voltage_min", "pu_voltage_max", "pu_voltage", "thermal_max_percent", "calculation_log_id") 
+VALUES (1, '2024-02-01 00:00:05', 112, 1, 'solve-1', 1.01, 1.02, 1.03, 1.04, 2);
+INSERT INTO public.power_flow_log("power_flow_log_id", "interval_start", "interval_duration_seconds", "site_id", "solve_name", "pu_voltage_min", "pu_voltage_max", "pu_voltage", "thermal_max_percent", "calculation_log_id") 
+VALUES (2, '2024-02-01 00:00:10', 113, NULL, 'solve-2', 2.02, 2.03, 2.04, 2.05, 2);
+INSERT INTO public.power_flow_log("power_flow_log_id", "interval_start", "interval_duration_seconds", "site_id", "solve_name", "pu_voltage_min", "pu_voltage_max", "pu_voltage", "thermal_max_percent", "calculation_log_id") 
+VALUES (3, '2024-02-01 00:00:10', 114, NULL, 'solve-3', 3.02, 3.03, 3.04, 3.05, 3);
+SELECT pg_catalog.setval('public.power_flow_log_power_flow_log_id_seq', 4, true);
+
+INSERT INTO public.power_target_log("power_target_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "target_active_power_watts", "target_reactive_power_var", "calculation_log_id") 
+VALUES (1, '2024-02-01 00:00:05', 114, 'device-id-1', 1, 11, 12, 2);
+INSERT INTO public.power_target_log("power_target_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "target_active_power_watts", "target_reactive_power_var", "calculation_log_id") 
+VALUES (2, '2024-02-01 00:00:10', 115, 'device-id-2', NULL, 21, 22, 2);
+INSERT INTO public.power_target_log("power_target_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "target_active_power_watts", "target_reactive_power_var", "calculation_log_id") 
+VALUES (3, '2024-02-01 00:00:10', 116, 'device-id-3', NULL, 31, 33, 3);
+SELECT pg_catalog.setval('public.power_target_log_power_target_log_id_seq', 4, true);
+
+INSERT INTO public.power_forecast_log("power_forecast_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "active_power_watts", "reactive_power_var", "calculation_log_id") 
+VALUES (1, '2024-02-01 01:00:05', 115, 'device-id-1', 1, 111, 112, 2);
+INSERT INTO public.power_forecast_log("power_forecast_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "active_power_watts", "reactive_power_var", "calculation_log_id") 
+VALUES (2, '2024-02-01 01:00:10', 116, 'device-id-2', NULL, 211, 212, 2);
+INSERT INTO public.power_forecast_log("power_forecast_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "active_power_watts", "reactive_power_var", "calculation_log_id") 
+VALUES (3, '2024-02-01 01:00:10', 117, 'device-id-3', NULL, 311, 312, 3);
+SELECT pg_catalog.setval('public.power_forecast_log_power_forecast_log_id_seq', 4, true);

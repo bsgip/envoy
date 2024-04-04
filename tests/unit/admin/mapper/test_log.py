@@ -1,10 +1,10 @@
 from datetime import datetime
 
 import pytest
-from envoy_schema.admin.schema.log import CalculationLogRequest, CalculationLogResponse
+from envoy_schema.admin.schema.log import CalculationLogResponse
 
 from envoy.admin.mapper.log import CalculationLogMapper
-from envoy.server.model.log import CalculationLog, PowerFlowLog, PowerForecastLog, PowerTargetLog
+from envoy.server.model.log import CalculationLog, PowerFlowLog, PowerForecastLog, PowerTargetLog, WeatherForecastLog
 from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 
 
@@ -31,5 +31,35 @@ def test_log_mapper_roundtrip(optional_as_none: bool):
     assert len(actual.power_flow_logs) == len(original.power_flow_logs)
     for actual_pf, original_pf in zip(actual.power_flow_logs, original.power_flow_logs):
         assert_class_instance_equality(
-            PowerFlowLog, original_pf, actual_pf, ignored_properties=set(["power_flow_log_id"])
+            PowerFlowLog, original_pf, actual_pf, ignored_properties=set(["power_flow_log_id", "calculation_log_id"])
+        )
+
+    # Assert PowerTarget
+    assert len(actual.power_target_logs) == len(original.power_target_logs)
+    for actual_pt, original_pt in zip(actual.power_target_logs, original.power_target_logs):
+        assert_class_instance_equality(
+            PowerTargetLog,
+            original_pt,
+            actual_pt,
+            ignored_properties=set(["power_target_log_id", "calculation_log_id"]),
+        )
+
+    # Assert PowerForecast
+    assert len(actual.power_forecast_logs) == len(original.power_forecast_logs)
+    for actual_pfore, original_pfore in zip(actual.power_forecast_logs, original.power_forecast_logs):
+        assert_class_instance_equality(
+            PowerForecastLog,
+            original_pfore,
+            actual_pfore,
+            ignored_properties=set(["power_forecast_log_id", "calculation_log_id"]),
+        )
+
+    # Assert WeatherForecast
+    assert len(actual.weather_forecast_logs) == len(original.weather_forecast_logs)
+    for actual_w, original_w in zip(actual.weather_forecast_logs, original.weather_forecast_logs):
+        assert_class_instance_equality(
+            WeatherForecastLog,
+            original_w,
+            actual_w,
+            ignored_properties=set(["weather_forecast_log_id", "calculation_log_id"]),
         )

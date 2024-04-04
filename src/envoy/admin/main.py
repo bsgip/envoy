@@ -51,6 +51,7 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     new_app.add_middleware(SQLAlchemyMiddleware, **new_settings.db_middleware_kwargs)
     for router in routers:
         new_app.include_router(router)
+
     return new_app
 
 
