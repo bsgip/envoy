@@ -61,3 +61,8 @@ async def test_fetch_billing_data_timezone(
     assert [(r.site_id, r.value) for r in body.varh_readings] == [
         (1, Decimal("5.5")),
     ]
+
+    assert [(r.site_id, r.value) for r in body.watt_readings] == [
+        (1, Decimal("9.9")),
+        (1, Decimal("101.0")),
+    ]

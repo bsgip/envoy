@@ -91,6 +91,11 @@ def test_map_to_response(optional_is_none: bool):
         ],
         active_does=[generate_class_instance(DynamicOperatingEnvelope, seed=404, optional_is_none=optional_is_none)],
         active_tariffs=[generate_class_instance(TariffGeneratedRate, seed=505, optional_is_none=optional_is_none)],
+        watt_readings=[
+            generate_class_instance(
+                SiteReading, seed=606, optional_is_none=optional_is_none, generate_relationships=True
+            )
+        ],
     )
 
     mapped = BillingMapper.map_to_response(agg, tariff_id, period_start, period_end, billing_data)
@@ -101,6 +106,7 @@ def test_map_to_response(optional_is_none: bool):
     assert len(mapped.active_tariffs) == 1
 
     # This isn't meant to be exhaustive - the other tests will cover that - this will just ensure
-    # the wh readings to go the wh list.
+    # the wh readings to go the wh list etc.
     assert mapped.varh_readings[0].period_start == billing_data.varh_readings[0].time_period_start
     assert mapped.wh_readings[0].period_start == billing_data.wh_readings[0].time_period_start
+    assert mapped.watt_readings[0].period_start == billing_data.watt_readings[0].time_period_start
