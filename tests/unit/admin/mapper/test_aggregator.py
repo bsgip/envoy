@@ -31,7 +31,7 @@ def test_aggregator_to_response(optional_is_none: bool, has_domains: bool):
         assert len(mdl.domains) == 0
 
 
-def test_aggregator_to_response():
+def test_aggregator_to_page_response():
     agg1: Aggregator = generate_class_instance(Aggregator, seed=101, optional_is_none=True, generate_relationships=True)
     agg2: Aggregator = generate_class_instance(
         Aggregator, seed=202, optional_is_none=False, generate_relationships=False

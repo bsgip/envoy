@@ -1,12 +1,8 @@
-from typing import Optional
-
 import pytest
 from sqlalchemy import select
 
 from envoy.admin.crud.aggregator import count_all_aggregators, select_all_aggregators
-from envoy.admin.crud.site import count_all_site_groups, count_all_sites, select_all_site_groups, select_all_sites
 from envoy.server.model.aggregator import Aggregator, AggregatorDomain
-from envoy.server.model.site import Site, SiteGroup
 from tests.postgres_testing import generate_async_session
 
 
