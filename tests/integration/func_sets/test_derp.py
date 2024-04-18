@@ -300,9 +300,9 @@ async def test_get_dercontrol_list(
         control: DERControlResponse = ctrl
         assert control.DERControlBase_
         assert control.DERControlBase_.opModImpLimW.value == expected_import
-        assert control.DERControlBase_.opModImpLimW.multiplier == DOE_DECIMAL_PLACES
+        assert control.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
         assert control.DERControlBase_.opModExpLimW.value == expected_output
-        assert control.DERControlBase_.opModExpLimW.multiplier == DOE_DECIMAL_PLACES
+        assert control.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
         assert_datetime_equal(expected_start, control.interval.start)
 
 
@@ -426,9 +426,9 @@ async def test_get_dercontrol_list_day(
         control: DERControlResponse = ctrl
         assert control.DERControlBase_
         assert control.DERControlBase_.opModImpLimW.value == expected_import
-        assert control.DERControlBase_.opModImpLimW.multiplier == DOE_DECIMAL_PLACES
+        assert control.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
         assert control.DERControlBase_.opModExpLimW.value == expected_output
-        assert control.DERControlBase_.opModExpLimW.multiplier == DOE_DECIMAL_PLACES
+        assert control.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
         assert_datetime_equal(expected_start, control.interval.start)
 
 

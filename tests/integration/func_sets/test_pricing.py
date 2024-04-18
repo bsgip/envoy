@@ -149,7 +149,7 @@ async def test_get_tariffprofile_nosite(
         parsed_response: TariffProfileResponse = TariffProfileResponse.from_xml(body)
         assert parsed_response.href == expected_href, "We received the wrong reading type"
         assert parsed_response.currency
-        assert parsed_response.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
+        assert parsed_response.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES
 
 
 @pytest.mark.anyio
@@ -189,7 +189,7 @@ async def test_get_tariffprofile(
         parsed_response: TariffProfileResponse = TariffProfileResponse.from_xml(body)
         assert parsed_response.href == expected_href, "We received the wrong entity id"
         assert parsed_response.currency
-        assert parsed_response.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
+        assert parsed_response.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES
         assert parsed_response.RateComponentListLink
         assert parsed_response.RateComponentListLink.all_ == expected_ratecount
 
