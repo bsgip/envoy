@@ -48,7 +48,7 @@ class TariffProfileMapper:
                 "mRID": generate_mrid(TARIFF_PROFILE_MRID_PREFIX, tariff.tariff_id),
                 "description": tariff.name,
                 "currency": tariff.currency_code,
-                "pricePowerOfTenMultiplier": PRICE_DECIMAL_PLACES,
+                "pricePowerOfTenMultiplier": -PRICE_DECIMAL_PLACES,  # Needs to negate - $1 is encoded as 10000 * 10^-4
                 "rateCode": tariff.dnsp_code,
                 "primacyType": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
