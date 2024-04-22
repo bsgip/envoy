@@ -39,7 +39,7 @@ class DERControlMapper:
         return ActivePower.model_validate(
             {
                 "value": int(p * DOE_DECIMAL_POWER),
-                "multiplier": DOE_DECIMAL_PLACES,
+                "multiplier": -DOE_DECIMAL_PLACES,  # We negate as we are encoding 1.23 as 123 * 10^-2
             }
         )
 

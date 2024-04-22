@@ -56,6 +56,7 @@ class BillingMapper:
             tariff_id=tariff_id,
             varh_readings=[BillingMapper.map_reading(r) for r in data.varh_readings],
             wh_readings=[BillingMapper.map_reading(r) for r in data.wh_readings],
+            watt_readings=[BillingMapper.map_reading(r) for r in data.watt_readings],
             active_does=[BillingMapper.map_doe(d) for d in data.active_does],
             active_tariffs=[BillingMapper.map_rate(r) for r in data.active_tariffs],
         )

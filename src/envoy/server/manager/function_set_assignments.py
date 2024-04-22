@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from envoy_schema.server.schema.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.crud import pricing
 from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
 from envoy.server.request_state import RequestStateParameters
+from envoy.server.crud.end_device import select_single_site_with_site_id
 
 
 class FunctionSetAssignmentsManager:
@@ -18,7 +20,13 @@ class FunctionSetAssignmentsManager:
         request_params: RequestStateParameters,
         site_id: int,
         fsa_id: int,
-    ) -> FunctionSetAssignmentsResponse:
+    ) -> Optional[FunctionSetAssignmentsResponse]:
+        site = await select_single_site_with_site_id(
+            session=session, site_id=site_id, aggregator_id=request_params.aggregator_id
+        )
+        if site is None:
+            return None
+
         tariff_count = await pricing.select_tariff_count(session, datetime.min)
         doe_count = 1
         return FunctionSetAssignmentsMapper.map_to_response(
@@ -30,7 +38,7 @@ class FunctionSetAssignmentsManager:
         session: AsyncSession,
         request_params: RequestStateParameters,
         site_id: int,
-    ) -> FunctionSetAssignmentsListResponse:
+    ) -> Optional[FunctionSetAssignmentsListResponse]:
         # At present a function sets assignments list response will only return 1 function set assignments response
         # We hard-code the fsa_id to be 1
         DEFAULT_FSA_ID = 1
@@ -40,7 +48,9 @@ class FunctionSetAssignmentsManager:
                 session=session, request_params=request_params, site_id=site_id, fsa_id=DEFAULT_FSA_ID
             )
         )
-
-        return FunctionSetAssignmentsMapper.map_to_list_response(
-            rs_params=request_params, function_set_assignments=[function_set_assignments], site_id=site_id
-        )
+        if function_set_assignments is None:
+            return None
+        else:
+            return FunctionSetAssignmentsMapper.map_to_list_response(
+                rs_params=request_params, function_set_assignments=[function_set_assignments], site_id=site_id
+            )

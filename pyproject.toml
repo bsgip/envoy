@@ -40,7 +40,8 @@ dependencies = [
     "alembic",
     "tzlocal",
     "pydantic_xml[lxml]",
-    "pydantic",
+    "pydantic!=2.7.0",
+    "pydantic-xml!=2.9.1",                                            # Known compatibility issue with pydantic
     "pydantic-settings",
     "python-dateutil",
     "asyncpg",

@@ -65,9 +65,25 @@ VALUES (1007, -- site_reading_type_id
     '2022-05-06 11:22:33' -- changed_time
     );
 
--- Real Energy - site 2
+-- Real Watt Power - site 1
 INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
 VALUES (1008, -- site_reading_type_id
+    1, -- aggregator_id
+    1, -- site_id
+    38, -- uom
+    2, -- data_qualifier
+    1, -- flow_direction
+    3, -- accumulation_behaviour
+    37, -- kind
+    64, -- phase
+    1, -- power_of_ten_multiplier
+    0, -- default_interval_seconds
+    '2022-05-06 11:22:33.500' -- changed_time
+    );
+
+-- Real Energy - site 2
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+VALUES (1009, -- site_reading_type_id
     1, -- aggregator_id
     2, -- site_id
     72, -- uom
@@ -83,7 +99,7 @@ VALUES (1008, -- site_reading_type_id
 
 -- Reactive Energy - site 3
 INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
-VALUES (1009, -- site_reading_type_id
+VALUES (1010, -- site_reading_type_id
     2, -- aggregator_id
     3, -- site_id
     72, -- uom
@@ -98,7 +114,7 @@ VALUES (1009, -- site_reading_type_id
     );
 
 
-SELECT pg_catalog.setval('public.site_reading_type_site_reading_type_id_seq', 1010, true);
+SELECT pg_catalog.setval('public.site_reading_type_site_reading_type_id_seq', 1011, true);
 
 
 INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
@@ -163,7 +179,37 @@ VALUES (
     );
 INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
-    1008, -- site_reading_type_id
+    1008, -- site_reading_type_id 
+    '2022-06-07 11:22:33', -- changed_time
+    1, -- local_id
+    1, -- quality_flags
+    '2023-09-10 00:00:00+10', -- time_period_start
+    300, -- time_period_seconds
+    99 -- value
+    );
+INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (
+    1008, -- site_reading_type_id 
+    '2022-06-07 11:22:33', -- changed_time
+    1, -- local_id
+    1, -- quality_flags
+    '2023-09-10 00:05:00+10', -- time_period_start
+    300, -- time_period_seconds
+    1010 -- value
+    );
+INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (
+    1008, -- site_reading_type_id 
+    '2022-06-07 11:22:33', -- changed_time
+    1, -- local_id
+    1, -- quality_flags
+    '2023-09-11 00:00:00+10', -- time_period_start
+    300, -- time_period_seconds
+    1111 -- value
+    );
+INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+VALUES (
+    1009, -- site_reading_type_id
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -173,7 +219,7 @@ VALUES (
     );
 INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
-    1009, -- site_reading_type_id
+    1010, -- site_reading_type_id
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags

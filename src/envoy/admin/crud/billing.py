@@ -18,6 +18,7 @@ from envoy.server.model.tariff import TariffGeneratedRate
 class BillingData:
     varh_readings: Sequence[SiteReading]  # Reactive Energy readings
     wh_readings: Sequence[SiteReading]  # Watt Hour readings
+    watt_readings: Sequence[SiteReading]  # Watt readings to use a failover if wh_readings are missing
     active_tariffs: Sequence[TariffGeneratedRate]
     active_does: Sequence[DynamicOperatingEnvelope]
 
@@ -65,6 +66,19 @@ async def fetch_billing_data(
         .order_by(SiteReadingType.site_id, SiteReading.time_period_start)
     )
 
+    watt_result = await session.execute(
+        select(SiteReading)
+        .join(SiteReadingType)
+        .where(
+            (SiteReadingType.aggregator_id == aggregator_id)
+            & (SiteReading.time_period_start >= period_start)
+            & (SiteReading.time_period_start < period_end)
+            & (SiteReadingType.uom == UomType.REAL_POWER_WATT)
+        )
+        .options(joinedload(SiteReading.site_reading_type))
+        .order_by(SiteReadingType.site_id, SiteReading.time_period_start)
+    )
+
     varh_result = await session.execute(
         select(SiteReading)
         .join(SiteReadingType)
@@ -83,6 +97,7 @@ async def fetch_billing_data(
         active_does=does_result.scalars().all(),
         wh_readings=wh_result.scalars().all(),
         varh_readings=varh_result.scalars().all(),
+        watt_readings=watt_result.scalars().all(),
     )
 
 

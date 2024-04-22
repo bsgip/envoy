@@ -1,0 +1,438 @@
+{
+	"info": {
+		"_postman_id": "876e900f-dfd8-4c09-941a-8d3dbef6e918",
+		"name": "envoy (admin server)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "24300585"
+	},
+	"item": [
+		{
+			"name": "Aggregator",
+			"item": [
+				{
+					"name": "GET Aggregators",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator?s=0&l=100",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Aggregator",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator/{{AGGREGATOR_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator",
+								"{{AGGREGATOR_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Billing",
+			"item": [
+				{
+					"name": "GET Aggregator Billing Report",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/billing/aggregator/{{AGGREGATOR_ID}}/tariff/{{TARIFF_ID}}/period/{{PERIOD_START}}/{{PERIOD_END}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"billing",
+								"aggregator",
+								"{{AGGREGATOR_ID}}",
+								"tariff",
+								"{{TARIFF_ID}}",
+								"period",
+								"{{PERIOD_START}}",
+								"{{PERIOD_END}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "DOE",
+			"item": [
+				{
+					"name": "Add DOEs",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n    \"site_id\": 1,\n    \"duration_seconds\": 300,\n    \"import_limit_active_watts\": 1111,\n    \"export_limit_watts\": -2222,\n    \"start_time\": \"2024-02-28T00:10:00Z\"\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/doe",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"doe"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Logs",
+			"item": [
+				{
+					"name": "Add Calculation Log",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"calculation_interval_start\": \"2010-01-02T00:00:01Z\",\n  \"calculation_interval_duration_seconds\": 2,\n  \"topology_id\": \"feeder-123\",\n  \"external_id\": \"abc123\",\n  \"description\": \"Description of log\",\n  \"power_forecast_creation_time\": \"2010-01-07T00:00:06Z\",\n  \"weather_forecast_creation_time\": \"2010-01-08T00:00:07Z\",\n  \"weather_forecast_location_id\": \"Ashby, Perth\",\n  \"power_forecast_logs\": [\n    {\n      \"interval_start\": \"2010-01-02T00:00:01Z\",\n      \"interval_duration_seconds\": 2,\n      \"external_device_id\": \"aaa\",\n      \"site_id\": 1,\n      \"active_power_watts\": 5,\n      \"reactive_power_var\": 6\n    }\n  ],\n  \"power_target_logs\": [\n    {\n      \"interval_start\": \"2010-01-02T00:00:01Z\",\n      \"interval_duration_seconds\": 2,\n      \"external_device_id\": \"111\",\n      \"site_id\": 1,\n      \"target_active_power_watts\": 5,\n      \"target_reactive_power_var\": 6\n    }\n  ],\n  \"power_flow_logs\": [\n    {\n      \"interval_start\": \"2010-01-02T00:00:01Z\",\n      \"interval_duration_seconds\": 2,\n      \"external_device_id\": \"111\",\n      \"site_id\": 1,\n      \"solve_name\": \"PRE\",\n      \"pu_voltage_min\": \"6\",\n      \"pu_voltage_max\": \"7\",\n      \"pu_voltage\": \"8\",\n      \"thermal_max_percent\": \"9\"\n    }\n  ],\n  \"weather_forecast_logs\": [\n    {\n      \"air_temperature_degrees_c\": \"1\",\n      \"apparent_temperature_degrees_c\": \"2\",\n      \"dew_point_degrees_c\": \"3\",\n      \"humidity_percent\": \"4\",\n      \"cloud_cover_percent\": \"5\",\n      \"rain_probability_percent\": \"6\",\n      \"rain_mm\": \"7\",\n      \"rain_rate_mm\": \"8\",\n      \"global_horizontal_irradiance_watts_m2\": \"9\",\n      \"wind_speed_50m_km_h\": \"10\",\n      \"interval_start\": \"2010-01-12T00:00:11Z\",\n      \"interval_duration_seconds\": 12\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/calculation_log",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"calculation_log"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Calculation Log",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/calculation_log/{{CALCULATION_LOG_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"calculation_log",
+								"{{CALCULATION_LOG_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Pricing",
+			"item": [
+				{
+					"name": "GET Tariffs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff?s=0&l=100",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Tariff",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff/{{TARIFF_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff",
+								"{{TARIFF_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Tariff",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n    \"name\": \"Tariff Name\",\n    \"dnsp_code\": \"ABC123\",\n    \"currency_code\": \"AUD\"\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/tariff",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Tariff Generated Rate",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n    \"tariff_id\": 1,\n    \"site_id\": 1,\n    \"start_time\": \"2024-02-03T00:00:00\",\n    \"duration_seconds\": 300,\n    \"import_active_price\": 0.4,\n    \"export_active_price\": -0.4,\n    \"import_reactive_price\": 0,\n    \"export_reactive_price\": 0\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/tariff_generated_rate",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff_generated_rate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Tariff",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n    \"name\": \"Tariff Name\",\n    \"dnsp_code\": \"ABC123\",\n    \"currency_code\": \"AUD\"\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/tariff/{{TARIFF_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff",
+								"{{TARIFF_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Site",
+			"item": [
+				{
+					"name": "GET Sites",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site?group=cohort-1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site"
+							],
+							"query": [
+								{
+									"key": "group",
+									"value": "cohort-1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Site Groups",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_group",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_group"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Site Group",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_group/{{SITE_GROUP_NAME}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_group",
+								"{{SITE_GROUP_NAME}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "{{ADMIN_PASSWORD}}",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "{{ADMIN_USER}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "HOST",
+			"value": "127.0.0.1:8001",
+			"type": "string"
+		},
+		{
+			"key": "ADMIN_USER",
+			"value": "admin",
+			"type": "string"
+		},
+		{
+			"key": "ADMIN_PASSWORD",
+			"value": "password",
+			"type": "string"
+		},
+		{
+			"key": "AGGREGATOR_ID",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "TARIFF_ID",
+			"value": "1"
+		},
+		{
+			"key": "PERIOD_START",
+			"value": "2024-02-03T00:00:00"
+		},
+		{
+			"key": "PERIOD_END",
+			"value": "2024-02-04T00:00:00"
+		},
+		{
+			"key": "CALCULATION_LOG_ID",
+			"value": "1"
+		},
+		{
+			"key": "SITE_GROUP_NAME",
+			"value": "group1"
+		}
+	]
+}

@@ -72,7 +72,7 @@ def test_tariff_profile_nosite_mapping():
     mapped_all_set = TariffProfileMapper.map_to_nosite_response(rs_params, all_set)
     assert mapped_all_set
     assert mapped_all_set.href
-    assert mapped_all_set.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
+    assert mapped_all_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES
     assert mapped_all_set.rateCode == all_set.dnsp_code
     assert mapped_all_set.currency == all_set.currency_code
     assert mapped_all_set.RateComponentListLink
@@ -86,7 +86,7 @@ def test_tariff_profile_nosite_mapping():
     mapped_some_set = TariffProfileMapper.map_to_nosite_response(rs_params, some_set)
     assert mapped_some_set
     assert mapped_some_set.href
-    assert mapped_some_set.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
+    assert mapped_some_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES
     assert mapped_some_set.rateCode == some_set.dnsp_code
     assert mapped_some_set.currency == some_set.currency_code
     assert mapped_some_set.RateComponentListLink
@@ -107,7 +107,7 @@ def test_tariff_profile_mapping():
     mapped_all_set = TariffProfileMapper.map_to_response(rs_params, all_set, site_id, total_rates)
     assert mapped_all_set
     assert mapped_all_set.href
-    assert mapped_all_set.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
+    assert mapped_all_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES, "We send $1 as 10000 * 10^-4"
     assert mapped_all_set.rateCode == all_set.dnsp_code
     assert mapped_all_set.currency == all_set.currency_code
     assert mapped_all_set.RateComponentListLink
@@ -120,7 +120,7 @@ def test_tariff_profile_mapping():
     mapped_some_set = TariffProfileMapper.map_to_response(rs_params, some_set, site_id, total_rates)
     assert mapped_some_set
     assert mapped_some_set.href
-    assert mapped_some_set.pricePowerOfTenMultiplier == PRICE_DECIMAL_PLACES
+    assert mapped_some_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES
     assert mapped_some_set.rateCode == some_set.dnsp_code
     assert mapped_some_set.currency == some_set.currency_code
     assert mapped_some_set.RateComponentListLink

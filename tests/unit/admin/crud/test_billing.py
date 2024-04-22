@@ -30,7 +30,7 @@ aest = ZoneInfo("Australia/Brisbane")  # This is UTC+10 to align with the start 
 
 
 @pytest.mark.parametrize(
-    "period_start, period_end, aggregator_id, tariff_id, expected_tariff_imports, expected_doe_imports, expected_wh_readings, expected_varh_readings",  # noqa e501
+    "period_start, period_end, aggregator_id, tariff_id, expected_tariff_imports, expected_doe_imports, expected_wh_readings, expected_varh_readings, expected_watt_readings",  # noqa e501
     [
         (
             datetime(2023, 9, 10, tzinfo=aest),  # Period start
@@ -56,6 +56,7 @@ aest = ZoneInfo("Australia/Brisbane")  # This is UTC+10 to align with the start 
             [  # expected_var_readings
                 (1, 73, 55),
             ],
+            [(1, 38, 99), (1, 38, 1010)],  # expected_watt_readings
         ),
         # Variation on date
         (
@@ -78,6 +79,7 @@ aest = ZoneInfo("Australia/Brisbane")  # This is UTC+10 to align with the start 
             [  # expected_var_readings
                 (1, 73, 66),
             ],
+            [(1, 38, 1111)],  # expected_watt_readings
         ),
         # Variation on tariff ID
         (
@@ -97,6 +99,7 @@ aest = ZoneInfo("Australia/Brisbane")  # This is UTC+10 to align with the start 
             [  # expected_var_readings
                 (1, 73, 66),
             ],
+            [(1, 38, 1111)],  # expected_watt_readings
         ),
         # Time mismatch
         (
@@ -108,6 +111,7 @@ aest = ZoneInfo("Australia/Brisbane")  # This is UTC+10 to align with the start 
             [],  # expected_doe_imports
             [],  # expected_wh_readings
             [],  # expected_var_readings
+            [],  # expected_watt_readings
         ),
         # Agg ID mismatch
         (
@@ -119,6 +123,7 @@ aest = ZoneInfo("Australia/Brisbane")  # This is UTC+10 to align with the start 
             [],  # expected_doe_imports
             [],  # expected_wh_readings
             [],  # expected_var_readings
+            [],  # expected_watt_readings
         ),
     ],
 )
@@ -133,6 +138,7 @@ async def test_fetch_billing_data(
     expected_doe_imports: list,
     expected_wh_readings: list,
     expected_varh_readings: list,
+    expected_watt_readings: list,
 ):
     """Assert fetch billing data fetches the correct data given a pg_billing_data database"""
 
@@ -157,6 +163,10 @@ async def test_fetch_billing_data(
         assert [
             (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.varh_readings
         ] == expected_varh_readings
+
+        assert [
+            (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.watt_readings
+        ] == expected_watt_readings
 
 
 @pytest.mark.anyio

@@ -28,8 +28,8 @@ def test_map_derc_to_response():
     assert result_all_set.interval.start == doe.start_time.timestamp()
     assert result_all_set.interval.duration == doe.duration_seconds
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
-    assert result_all_set.DERControlBase_.opModImpLimW.multiplier == DOE_DECIMAL_PLACES
-    assert result_all_set.DERControlBase_.opModExpLimW.multiplier == DOE_DECIMAL_PLACES
+    assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
+    assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * DOE_DECIMAL_POWER)
     assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * DOE_DECIMAL_POWER)
 
@@ -39,8 +39,8 @@ def test_map_derc_to_response():
     assert result_optional.interval.start == doe_opt.start_time.timestamp()
     assert result_optional.interval.duration == doe_opt.duration_seconds
     assert isinstance(result_optional.DERControlBase_, DERControlBase)
-    assert result_optional.DERControlBase_.opModImpLimW.multiplier == DOE_DECIMAL_PLACES
-    assert result_optional.DERControlBase_.opModExpLimW.multiplier == DOE_DECIMAL_PLACES
+    assert result_optional.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
+    assert result_optional.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_optional.DERControlBase_.opModImpLimW.value == int(
         doe_opt.import_limit_active_watts * DOE_DECIMAL_POWER
     )
@@ -57,8 +57,8 @@ def test_map_default_to_response():
     assert result_all_set is not None
     assert isinstance(result_all_set, DefaultDERControl)
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
-    assert result_all_set.DERControlBase_.opModImpLimW.multiplier == DOE_DECIMAL_PLACES
-    assert result_all_set.DERControlBase_.opModExpLimW.multiplier == DOE_DECIMAL_PLACES
+    assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
+    assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(
         doe_default.import_limit_active_watts * DOE_DECIMAL_POWER
     )

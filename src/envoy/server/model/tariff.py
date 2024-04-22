@@ -42,16 +42,16 @@ class TariffGeneratedRate(Base):
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this rate applies for
     import_active_price: Mapped[Decimal] = mapped_column(
         DECIMAL(10, PRICE_DECIMAL_PLACES)
-    )  # calculated rate for importing active power # noqa e501
+    )  # calculated rate for importing active power - price is dollars per kw/h
     export_active_price: Mapped[Decimal] = mapped_column(
         DECIMAL(10, PRICE_DECIMAL_PLACES)
-    )  # calculated rate for exporting active power # noqa e501
+    )  # calculated rate for exporting active power - price is dollars per kw/h
     import_reactive_price: Mapped[Decimal] = mapped_column(
         DECIMAL(10, PRICE_DECIMAL_PLACES)
-    )  # calculated rate for importing reactive power # noqa e501
+    )  # calculated rate for importing reactive power - price is dollars per kvar/h
     export_reactive_price: Mapped[Decimal] = mapped_column(
         DECIMAL(10, PRICE_DECIMAL_PLACES)
-    )  # calculated rate for exporting reactive power # noqa e501
+    )  # calculated rate for exporting reactive power - price is dollars per kvar/h
 
     tariff: Mapped["Tariff"] = relationship(back_populates="generated_rates", lazy="raise")
     site: Mapped["Site"] = relationship(lazy="raise")

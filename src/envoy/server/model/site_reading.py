@@ -10,7 +10,7 @@ from envoy_schema.server.schema.sep2.types import (
     QualityFlagsType,
     UomType,
 )
-from sqlalchemy import INTEGER, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import INTEGER, BigInteger, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base, Site
@@ -82,7 +82,7 @@ class SiteReading(Base):
     time_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading starts
     time_period_seconds: Mapped[int] = mapped_column(INTEGER)  # Length of the reading in seconds
     value: Mapped[int] = mapped_column(
-        INTEGER
+        BigInteger
     )  # actual reading value - type/power of ten are defined in the parent reading set
 
     site_reading_type: Mapped["SiteReadingType"] = relationship(lazy="raise")
