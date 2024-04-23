@@ -34,6 +34,12 @@ def connection_point_uri_format():
         (1, None, AGG_2_VALID_CERT, HTTPStatus.NOT_FOUND),  # Agg 2 can't access site 1
         (3, None, AGG_3_VALID_CERT, HTTPStatus.NOT_FOUND),  # Agg 3 can't access site 3
         (99, None, AGG_1_VALID_CERT, HTTPStatus.NOT_FOUND),  # Site 99 does not exist
+        (
+            0,
+            None,
+            AGG_1_VALID_CERT,
+            HTTPStatus.NOT_FOUND,
+        ),  # Virtual EndDevice doesn't exist for the purpose of creating a CP
     ],
 )
 @pytest.mark.anyio
@@ -140,3 +146,17 @@ async def test_connectionpoint_update_bad_xml(client: AsyncClient, connection_po
     response = await client.post(url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=bad_xml)
     assert_response_header(response, HTTPStatus.BAD_REQUEST)
     assert_error_response(response)
+
+
+@pytest.mark.anyio
+async def test_connectionpoint_update_aggregator_edev_returns_404(
+    client: AsyncClient, connection_point_uri_format: str
+):
+    """Tests that an aggregator can't update the connection point of an aggregator end device"""
+
+    href = connection_point_uri_format.format(site_id=0)
+    new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id="1212121212")
+    response = await client.post(
+        url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
+    )
+    assert response.status_code == HTTPStatus.NOT_FOUND

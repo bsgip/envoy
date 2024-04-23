@@ -279,7 +279,7 @@ async def test_add_or_update_enddevice_for_aggregator_no_sfdi_no_lfdi(
     end_device.lFDI = missing_lfdi_value
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
-    rsp_params = RequestStateParameters(aggregator_id, None)
+    rsp_params = RequestStateParameters(aggregator_id, None, None)
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
     mock_select_single_site_with_sfdi.return_value = None

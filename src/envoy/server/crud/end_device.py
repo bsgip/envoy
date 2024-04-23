@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, Sequence
 
-from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET
+from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_NONE_SET
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -89,9 +89,11 @@ async def get_virtual_site_for_aggregator(
     # Virtual sites will have a changed_time representing when they were requested.
     changed_time = utc_now()
 
-    # Use a DeviceCategory with all categories set, which could never happen for a genuine end device
+    # Use a DeviceCategory with no categories set, which could never happen for a genuine end device
     # This can be used as a potential way to identity the virtual end device
-    device_category = DEVICE_CATEGORY_ALL_SET
+    # Note that CSIP doesn't identify the device category that an aggregator should use
+    # so no category/capability is a reasonable default
+    device_category = DEVICE_CATEGORY_NONE_SET
 
     # Since the site is virtual we create the Site in-place here and return it
     return Site(

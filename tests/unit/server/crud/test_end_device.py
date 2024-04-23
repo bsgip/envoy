@@ -148,7 +148,7 @@ async def test_get_virtual_site_for_aggregator(
 ):
     """Tests that get_virtual_site_for_aggregator creates a suitable virtual site for an aggregator"""
 
-    from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET
+    from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_NONE_SET
 
     async with generate_async_session(pg_base_config) as session:
 
@@ -163,7 +163,7 @@ async def test_get_virtual_site_for_aggregator(
         # Virtual sites inherit these values from the first site under the aggregator
         assert virtual_site.lfdi == aggregator_lfdi
         assert virtual_site.sfdi
-        assert virtual_site.device_category == DEVICE_CATEGORY_ALL_SET
+        assert virtual_site.device_category == DEVICE_CATEGORY_NONE_SET
         assert virtual_site.timezone_id == timezone_id
 
 
