@@ -62,7 +62,7 @@ async def _does_for_day(
     is_counting: bool,
     session: AsyncSession,
     aggregator_id: int,
-    site_id: int,
+    site_id: Optional[int],
     day: Optional[date],
     start: int,
     changed_after: datetime,
@@ -70,7 +70,9 @@ async def _does_for_day(
 ) -> Union[Sequence[DOE], int]:
     """Internal utility for fetching doe's for a specific day (if specified) that either counts or returns the entities
 
-    Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
+    Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC
+
+    Where the site_id is None, all sites for the aggregator will be considered."""
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
@@ -80,14 +82,16 @@ async def _does_for_day(
     else:
         select_clause = select(DOE, Site.timezone_id)
 
+    # If there is a site_id specified we will filter on that, otherwise we will consider all sites for the aggregator
+    where_clause = (DOE.changed_time >= changed_after) & (Site.aggregator_id == aggregator_id)
+    if site_id is not None:
+        where_clause &= DOE.site_id == site_id
+
     # fmt: off
     stmt = (
         select_clause
         .join(DOE.site)
-        .where(
-            (DOE.changed_time >= changed_after) &
-            (DOE.site_id == site_id) &
-            (Site.aggregator_id == aggregator_id))
+        .where(where_clause)
         .offset(start)
         .limit(limit)
     )
@@ -109,7 +113,7 @@ async def _does_for_day(
         return [localize_start_time(doe_and_tz) for doe_and_tz in resp.all()]
 
 
-async def count_does(session: AsyncSession, aggregator_id: int, site_id: int, changed_after: datetime) -> int:
+async def count_does(session: AsyncSession, aggregator_id: int, site_id: Optional[int], changed_after: datetime) -> int:
     """Fetches the number of DynamicOperatingEnvelope's stored. Date will be assessed in the local timezone for the site
 
     changed_after: Only doe's with a changed_time greater than this value will be counted (0 will count everything)"""
@@ -120,7 +124,7 @@ async def count_does(session: AsyncSession, aggregator_id: int, site_id: int, ch
 
 
 async def select_does(
-    session: AsyncSession, aggregator_id: int, site_id: int, start: int, changed_after: datetime, limit: int
+    session: AsyncSession, aggregator_id: int, site_id: Optional[int], start: int, changed_after: datetime, limit: int
 ) -> Sequence[DOE]:
     """Selects DynamicOperatingEnvelope entities (with pagination). Date will be assessed in the local
     timezone for the site
@@ -138,7 +142,7 @@ async def select_does(
 
 
 async def count_does_for_day(
-    session: AsyncSession, aggregator_id: int, site_id: int, day: date, changed_after: datetime
+    session: AsyncSession, aggregator_id: int, site_id: Optional[int], day: date, changed_after: datetime
 ) -> int:
     """Fetches the number of DynamicOperatingEnvelope's stored for the specified day. Date will be assessed in the local
     timezone for the site

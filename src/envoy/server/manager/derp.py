@@ -17,7 +17,7 @@ from envoy.server.crud.doe import (
     select_does_at_timestamp,
     select_does_for_day,
 )
-from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID, select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
@@ -36,12 +36,17 @@ class DERProgramManager:
         """Program lists are static - this will just return a single fixed Dynamic Operating Envelope Program
 
         if site_id DNE is inaccessible to aggregator_id a NotFoundError will be raised"""
+        if site_id == VIRTUAL_END_DEVICE_SITE_ID:
+            # Set site_id to None as we will query across all available sites
+            query_scope_site_id = None
+        else:
+            site = await select_single_site_with_site_id(session, site_id, request_params.aggregator_id)
+            query_scope_site_id = site_id
+            if not site:
+                raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
 
-        site = await select_single_site_with_site_id(session, site_id, request_params.aggregator_id)
-        if not site:
-            raise NotFoundError(f"site_id {site_id} is not accessible / does not exist")
-
-        total_does = await count_does(session, request_params.aggregator_id, site_id, datetime.min)
+        total_does = await count_does(session, request_params.aggregator_id, query_scope_site_id, datetime.min)
+        # Note that the actual site_id is used to construct the response as it is required for the href
         return DERProgramMapper.doe_program_list_response(request_params, site_id, total_does, default_doe)
 
     @staticmethod
@@ -74,9 +79,15 @@ class DERControlManager:
     ) -> DERControlListResponse:
         """DER Controls are how Dynamic Operating Envelopes are communicated. This will provide a pagination API
         for iterating DOE's stored against a particular site"""
-
-        does = await select_does(session, request_params.aggregator_id, site_id, start, changed_after, limit)
-        total_count = await count_does(session, request_params.aggregator_id, site_id, changed_after)
+        if site_id == VIRTUAL_END_DEVICE_SITE_ID:
+            # Set site_id to None as we will query across all available sites
+            query_scope_site_id = None
+        else:
+            query_scope_site_id = site_id
+        does = await select_does(
+            session, request_params.aggregator_id, query_scope_site_id, start, changed_after, limit
+        )
+        total_count = await count_does(session, request_params.aggregator_id, query_scope_site_id, changed_after)
         return DERControlMapper.map_to_list_response(
             request_params, does, total_count, site_id, DERControlListSource.DER_CONTROL_LIST
         )
