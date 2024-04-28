@@ -63,6 +63,6 @@ async def get_time_resource(request: Request) -> Response:
             dstOffset=dst_info.dst_offset,
             dstStartTime=dst_info.dst_start,
             quality=TimeQualityType.level_3_source,
-            tzOffset=tz_offset,
+            tzOffset=int(tz_offset),
         )
     )
