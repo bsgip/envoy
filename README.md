@@ -109,6 +109,12 @@ postgres=# create user envoyuser with encrypted password 'mypass';
 postgres=# grant all privileges on database envoydb to envoyuser;
 ```
 
+Note: for postgres>=15, create privileges on the public schema are no longer created by default. 
+To enable table creation with the envoyuser, grant ownership of the database (local development only)
+```
+postgres=# ALTER DATABASE envoydb TO OWNER envoyuser;
+```
+
 5. Create `.env` file
 
 Envoy is is dependent on a number of environment variables listed in the table below.

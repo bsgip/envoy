@@ -148,22 +148,23 @@ async def test_get_virtual_site_for_aggregator(
 ):
     """Tests that get_virtual_site_for_aggregator creates a suitable virtual site for an aggregator"""
 
-    from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_NONE_SET
+    from envoy_schema.server.schema.sep2.types import DeviceCategory
 
     async with generate_async_session(pg_base_config) as session:
-
         virtual_site = await get_virtual_site_for_aggregator(
             session, aggregator_id=aggregator_id, aggregator_lfdi=aggregator_lfdi
         )
 
         assert virtual_site.site_id == 0  # Virtual sites always have a site_id of 0
         assert virtual_site.aggregator_id == aggregator_id
-        assert_nowish(virtual_site.changed_time)  # Vitual sites have a changed time set to when they are requested
+        assert_nowish(
+            virtual_site.changed_time
+        )  # Vitual sites have a changed time set to when they are requested
 
         # Virtual sites inherit these values from the first site under the aggregator
         assert virtual_site.lfdi == aggregator_lfdi
         assert virtual_site.sfdi
-        assert virtual_site.device_category == DEVICE_CATEGORY_NONE_SET
+        assert virtual_site.device_category == DeviceCategory(0)
         assert virtual_site.timezone_id == timezone_id
 
 

@@ -4,7 +4,7 @@ from http import HTTPStatus
 
 import pytest
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
-from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_NONE_SET, DeviceCategory
+from envoy_schema.server.schema.sep2.types import DeviceCategory
 from httpx import AsyncClient
 
 from envoy.server.manager.time import utc_now
@@ -170,7 +170,7 @@ async def test_get_enddevice(client: AsyncClient, edev_fetch_uri_format: str):
     assert parsed_response.enabled == 1
     assert parsed_response.lFDI == AGG_1_LDFI_FROM_VALID_CERT
     assert parsed_response.sFDI == int(AGG_1_SDFI_FROM_VALID_CERT)
-    assert parsed_response.deviceCategory == f"{DEVICE_CATEGORY_NONE_SET:x}"
+    assert parsed_response.deviceCategory == f"{DeviceCategory(0):x}"
 
 
 @pytest.mark.anyio
