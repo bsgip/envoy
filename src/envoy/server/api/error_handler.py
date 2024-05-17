@@ -30,9 +30,7 @@ def generate_error_response(
 
     return XmlResponse(
         status_code=status_code,
-        content=ErrorResponse(
-            **{"reasonCode": reason_code, "message": message, "maxRetryDuration": max_retry_duration}
-        ),
+        content=ErrorResponse(reasonCode=reason_code, message=message, maxRetryDuration=max_retry_duration),
     )
 
 

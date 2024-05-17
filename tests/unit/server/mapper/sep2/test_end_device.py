@@ -4,6 +4,7 @@ from datetime import datetime
 import pytest
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy_schema.server.schema.sep2.identification import ListLink
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
 from envoy.server.exception import InvalidMappingError
@@ -40,12 +41,19 @@ def test_map_to_response():
     assert result_all_set.lFDI == site_all_set.lfdi
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_all_set.ConnectionPointLink, ConnectionPointLink)
-    assert (
-        result_all_set.ConnectionPointLink.href != result_all_set.href
-    ), "Expected connection point href to extend base href"
-    assert result_all_set.ConnectionPointLink.href.startswith(
-        result_all_set.href
-    ), "Expected connection point href to extend base href"
+    assert isinstance(result_all_set.DERListLink, ListLink)
+    assert isinstance(result_all_set.SubscriptionListLink, ListLink)
+
+    # Validate the links are unique and all extend the edev base href
+    all_child_hrefs = [
+        result_all_set.ConnectionPointLink.href,
+        result_all_set.DERListLink.href,
+        result_all_set.SubscriptionListLink.href,
+    ]
+    assert len(all_child_hrefs) == len(set(all_child_hrefs)), f"Expected unique hrefs for {all_child_hrefs}"
+    for child_href in all_child_hrefs:
+        assert child_href != result_all_set.href, "Children must NOT match base href"
+        assert child_href.startswith(result_all_set.href), "Children must extend base href"
 
     result_optional = EndDeviceMapper.map_to_response(rs_params, site_optional)
     assert result_optional is not None
@@ -54,12 +62,19 @@ def test_map_to_response():
     assert result_optional.lFDI == site_optional.lfdi
     assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_optional.ConnectionPointLink, ConnectionPointLink)
-    assert (
-        result_optional.ConnectionPointLink.href != result_optional.href
-    ), "Expected connection point href to extend base href"
-    assert result_optional.ConnectionPointLink.href.startswith(
-        result_optional.href
-    ), "Expected connection point href to extend base href"
+    assert isinstance(result_optional.DERListLink, ListLink)
+    assert isinstance(result_optional.SubscriptionListLink, ListLink)
+
+    # Validate the links are unique and all extend the edev base href
+    all_child_hrefs = [
+        result_optional.ConnectionPointLink.href,
+        result_optional.DERListLink.href,
+        result_optional.SubscriptionListLink.href,
+    ]
+    assert len(all_child_hrefs) == len(set(all_child_hrefs)), f"Expected unique hrefs for {all_child_hrefs}"
+    for child_href in all_child_hrefs:
+        assert child_href != result_optional.href, "Children must NOT match base href"
+        assert child_href.startswith(result_optional.href), "Children must extend base href"
 
 
 def test_list_map_to_response():

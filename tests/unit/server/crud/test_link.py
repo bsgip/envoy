@@ -3,12 +3,12 @@ from typing import Optional
 
 import pydantic_xml
 import pytest
-from envoy_schema.server.schema.function_set import FunctionSet, FunctionSetStatus
 from envoy_schema.server.schema.sep2.base import BaseXmlModelWithNS
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
 from envoy.server.crud import link
 from envoy.server.crud.link import LinkParameters
+from envoy.server.function_set import FunctionSet, FunctionSetStatus
 from envoy.server.request_state import RequestStateParameters
 
 

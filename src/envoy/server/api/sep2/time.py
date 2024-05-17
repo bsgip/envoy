@@ -54,14 +54,15 @@ async def get_time_resource(request: Request) -> Response:
     tz_offset = now_utcoffset.total_seconds() - dst_info.dst_offset
 
     href = generate_href(request.url.path, extract_request_params(request))
-    time_dict = {
-        "href": href,
-        "currentTime": int(now_time.timestamp()),
-        "dstEndTime": dst_info.dst_end,
-        "dstOffset": dst_info.dst_offset,
-        "dstStartTime": dst_info.dst_start,
-        "quality": TimeQualityType.level_3_source,
-        "tzOffset": tz_offset,
-    }
 
-    return XmlResponse(TimeResponse(**time_dict))
+    return XmlResponse(
+        TimeResponse(
+            href=href,
+            currentTime=int(now_time.timestamp()),
+            dstEndTime=dst_info.dst_end,
+            dstOffset=dst_info.dst_offset,
+            dstStartTime=dst_info.dst_start,
+            quality=TimeQualityType.level_3_source,
+            tzOffset=int(tz_offset),
+        )
+    )

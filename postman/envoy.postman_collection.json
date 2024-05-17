@@ -1731,7 +1731,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERSettings\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesEnabled>0</modesEnabled>\n    <setGradW>1001</setGradW>\n\t<setMaxW>\n\t\t<value>1001</value>\n\t\t<multiplier>1</multiplier>\n\t</setMaxW>\n\t<csipaus:doeModesEnabled>1</csipaus:doeModesEnabled>\n</DERSettings>",
+							"raw": "<DERSettings\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesEnabled>0</modesEnabled>\n\t<updatedTime>1715060552</updatedTime>\n\t<setMaxW>\n\t<setGradW>1001</setGradW>\n\t<setMaxW>\n\t\t<value>1001</value>\n\t\t<multiplier>1</multiplier>\n\t</setMaxW>\n\t<csipaus:doeModesEnabled>1</csipaus:doeModesEnabled>\n</DERSettings>",
 							"options": {
 								"raw": {
 									"language": "xml"

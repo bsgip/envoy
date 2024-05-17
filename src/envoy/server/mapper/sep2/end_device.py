@@ -18,6 +18,8 @@ class EndDeviceMapper:
     def map_to_response(rs_params: RequestStateParameters, site: Site) -> EndDeviceResponse:
         edev_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site.site_id)
         fsa_href = generate_href(uri.FunctionSetAssignmentsListUri, rs_params, site_id=site.site_id)
+        der_href = generate_href(uri.DERListUri, rs_params, site_id=site.site_id)
+        pubsub_href = generate_href(uri.SubscriptionListUri, rs_params, site_id=site.site_id)
         return EndDeviceResponse.model_validate(
             {
                 "href": edev_href,
@@ -28,6 +30,8 @@ class EndDeviceMapper:
                 "changedTime": int(site.changed_time.timestamp()),
                 "enabled": True,
                 "ConnectionPointLink": ConnectionPointLink(href=edev_href + "/cp"),
+                "DERListLink": ListLink(href=der_href, all_=1),  # Always a single DER
+                "SubscriptionListLink": ListLink(href=pubsub_href),
                 "FunctionSetAssignmentsListLink": ListLink(href=fsa_href),
             }
         )

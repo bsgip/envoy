@@ -1,11 +1,13 @@
 import re
 import unittest.mock as mock
+from datetime import datetime
 from http import HTTPStatus
 from typing import Optional
 
 import pytest
 from httpx import AsyncClient, Response
 
+from envoy.server.crud.end_device import select_single_site_with_site_id
 from tests.integration.http import HTTPMethod
 from tests.integration.response import (
     assert_response_header,
@@ -13,6 +15,7 @@ from tests.integration.response import (
     run_azure_ad_unauthorised_tests,
     run_basic_unauthorised_tests,
 )
+from tests.postgres_testing import generate_async_session
 from tests.unit.jwt import TEST_KEY_1_PATH, generate_rs256_jwt, load_rsa_pk
 from tests.unit.mocks import MockedAsyncClient
 from tests.unit.server.api.auth.test_azure import generate_test_jwks_response
@@ -186,20 +189,17 @@ async def test_fingerprint_auth(
         assert_response_header(response, HTTPStatus.OK, expected_content_type=None)
 
 
-@pytest.mark.anyio
-async def test_crawl_hrefs(client: AsyncClient, valid_headers: dict):
-    """Crawls through ALL_ENDPOINTS_WITH_SUPPORTED_METHODS - makes every get request
-    and trawls the responses looking for more hrefs. the idea is to ensure that every sequence
-    of hrefs point to valid endpoints within envoy"""
+async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_prefix: Optional[str]) -> set[str]:
+    """Internal utility - crawls all ALL_ENDPOINTS_WITH_SUPPORTED_METHODS. Returns all crawled URIs"""
     uris_to_visit = [
-        (uri, "initial") for (methods, uri) in ALL_ENDPOINTS_WITH_SUPPORTED_METHODS if HTTPMethod.GET in methods
+        (uri, ["."]) for (methods, uri) in ALL_ENDPOINTS_WITH_SUPPORTED_METHODS if HTTPMethod.GET in methods
     ]
     visited_uris: set[str] = set()
     href_extractor = re.compile('href[\\r\\n ]*=[\\r\\n ]*"([^"]*)"', re.MULTILINE | re.IGNORECASE)
 
     while len(uris_to_visit) > 0:
         # get the next URI to visit
-        (uri, src_uri) = uris_to_visit.pop()
+        (uri, src_uris) = uris_to_visit.pop()
         if uri in visited_uris:
             continue
         visited_uris.add(uri)
@@ -207,16 +207,43 @@ async def test_crawl_hrefs(client: AsyncClient, valid_headers: dict):
         # make the request
         response = await client.get(uri, headers=valid_headers)
         if response.status_code == HTTPStatus.NOT_FOUND:
-            assert False, f"URI {uri} is not found. It was sourced from {src_uri}"
+            assert False, f"URI {uri} is not found. It was sourced from {src_uris}"
         assert_response_header(response, HTTPStatus.OK)
         body = read_response_body_string(response)
         assert len(body) > 0, f"Empty body for {uri}"
 
         # search for more hrefs to request from our response
+        # Ensure they all start with prefix
         for match in re.finditer(href_extractor, body):
             new_uri = match.group(1)
+
+            if expected_href_prefix is not None:
+                assert new_uri.startswith(
+                    expected_href_prefix
+                ), f"GET uri {uri} returned a href {new_uri} NOT prefixed with {expected_href_prefix}\n{body}"
+
+                # The actual URI that our server will respond to is sans the prefix value
+                new_uri = new_uri[len(expected_href_prefix) :]  # noqa E203
+
             if new_uri not in visited_uris:
-                uris_to_visit.append((new_uri, uri))
+                uris_to_visit.append((new_uri, src_uris + [uri]))
+    return visited_uris
+
+
+@pytest.mark.anyio
+async def test_crawl_hrefs(pg_base_config, client: AsyncClient, valid_headers: dict):
+    """Crawls through ALL_ENDPOINTS_WITH_SUPPORTED_METHODS - makes every get request
+    and trawls the responses looking for more hrefs. the idea is to ensure that every sequence
+    of hrefs point to valid endpoints within envoy"""
+
+    # Currently our edev list will return /edev/4 at the head (due to changed_time) - we want
+    # want /edev/1 at the head so we update the DB before crawling
+    async with generate_async_session(pg_base_config) as session:
+        site = await select_single_site_with_site_id(session, 1, 1)
+        site.changed_time = datetime(2028, 11, 10)
+        await session.commit()
+
+    visited_uris = await _do_crawl(client, valid_headers, None)
     assert len(visited_uris) > len(ALL_ENDPOINTS_WITH_SUPPORTED_METHODS), "Sanity check to ensure we are finding uris"
 
 
@@ -225,42 +252,18 @@ TEST_HREF_PREFIX_VALUE = "/my/prefix"
 
 @pytest.mark.anyio
 @pytest.mark.href_prefix(TEST_HREF_PREFIX_VALUE)
-async def test_crawl_hrefs_with_prefix(client: AsyncClient, valid_headers: dict):
+async def test_crawl_hrefs_with_prefix(pg_base_config, client: AsyncClient, valid_headers: dict):
     """Crawls through ALL_ENDPOINTS_WITH_SUPPORTED_METHODS - makes every get request
     and trawls the responses looking for more hrefs. Similar to test_crawl_hrefs the idea is to ensure that every
     sequence of hrefs point to valid endpoints within envoy but what makes this test unique is that HREF_PREFIX is
     set and is expected to be applied to all outgoing URIs"""
-    uris_to_visit = [
-        (uri, "initial") for (methods, uri) in ALL_ENDPOINTS_WITH_SUPPORTED_METHODS if HTTPMethod.GET in methods
-    ]
-    visited_uris: set[str] = set()
-    href_extractor = re.compile('href[\\r\\n ]*=[\\r\\n ]*"([^"]*)"', re.MULTILINE | re.IGNORECASE)
 
-    while len(uris_to_visit) > 0:
-        # get the next URI to visit
-        (uri, src_uri) = uris_to_visit.pop()
-        if uri in visited_uris:
-            continue
-        visited_uris.add(uri)
+    # Currently our edev list will return /edev/4 at the head (due to changed_time) - we want
+    # want /edev/1 at the head so we update the DB before crawling
+    async with generate_async_session(pg_base_config) as session:
+        site = await select_single_site_with_site_id(session, 1, 1)
+        site.changed_time = datetime(2028, 11, 10)
+        await session.commit()
 
-        # make the request
-        response = await client.get(uri, headers=valid_headers)
-        if response.status_code == HTTPStatus.NOT_FOUND:
-            assert False, f"URI {uri} is not found. It was sourced from {src_uri}"
-        assert_response_header(response, HTTPStatus.OK)
-        body = read_response_body_string(response)
-        assert len(body) > 0, f"Empty body for {uri}"
-
-        # search for more hrefs to request from our response
-        # Ensure they all start with TEST_HREF_PREFIX_VALUE
-        for match in re.finditer(href_extractor, body):
-            prefixed_new_uri = match.group(1)
-            assert prefixed_new_uri.startswith(
-                TEST_HREF_PREFIX_VALUE
-            ), f"GET uri {uri} returned a href {prefixed_new_uri} NOT prefixed with {TEST_HREF_PREFIX_VALUE}\n{body}"
-
-            # The actual URI that our server will respond to is sans the prefix value
-            new_uri = prefixed_new_uri[len(TEST_HREF_PREFIX_VALUE) :]  # noqa E203
-            if new_uri not in visited_uris:
-                uris_to_visit.append((new_uri, uri))
+    visited_uris = await _do_crawl(client, valid_headers, TEST_HREF_PREFIX_VALUE)
     assert len(visited_uris) > len(ALL_ENDPOINTS_WITH_SUPPORTED_METHODS), "Sanity check to ensure we are finding uris"
