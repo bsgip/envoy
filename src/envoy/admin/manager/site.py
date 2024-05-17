@@ -16,7 +16,9 @@ class SiteManager:
         """Admin specific (paginated) fetch of sites that covers all aggregators.
         group_filter: If specified - filter to sites that belong to a group with this name"""
         site_count = await count_all_sites(session, group_filter)
-        sites = await select_all_sites(session, group_filter=group_filter, start=start, limit=limit)
+        sites = await select_all_sites(
+            session, group_filter=group_filter, start=start, limit=limit, include_groups=True
+        )
         return SiteMapper.map_to_response(total_count=site_count, limit=limit, start=start, sites=sites)
 
     @staticmethod
