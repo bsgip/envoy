@@ -1,6 +1,7 @@
 from typing import Optional
 
 import pytest
+from sqlalchemy.exc import InvalidRequestError
 
 from envoy.admin.crud.site import count_all_site_groups, count_all_sites, select_all_site_groups, select_all_sites
 from envoy.server.model.site import Site, SiteGroup
@@ -26,33 +27,53 @@ async def test_count_all_sites_empty(pg_empty_config):
 
 
 @pytest.mark.parametrize(
-    "start, limit, group, expected_site_ids",
+    "start, limit, group, expected_site_ids, expected_group_ids",
     [
-        (0, 500, None, [1, 2, 3, 4]),
-        (0, 500, "", [1, 2, 3, 4]),
-        (0, 500, "Group-1", [1, 2, 3]),
-        (0, 500, "Group-2", [1]),
-        (0, 500, "Group-3", []),
-        (0, 500, "Group-DNE", []),
-        (1, 500, None, [2, 3, 4]),
-        (2, 500, None, [3, 4]),
-        (3, 500, None, [4]),
-        (4, 500, None, []),
-        (1, 2, None, [2, 3]),
-        (2, 2, None, [3, 4]),
-        (0, 0, None, []),
-        (1, 1, "Group-1", [2]),
+        (0, 500, None, [1, 2, 3, 4], [[1, 2], [1], [1], []]),
+        (0, 500, "", [1, 2, 3, 4], [[1, 2], [1], [1], []]),
+        (0, 500, "Group-1", [1, 2, 3], [[1, 2], [1], [1]]),
+        (0, 500, "Group-2", [1], [[1, 2]]),
+        (0, 500, "Group-3", [], []),
+        (0, 500, "Group-DNE", [], []),
+        (1, 500, None, [2, 3, 4], [[1], [1], []]),
+        (2, 500, None, [3, 4], [[1], []]),
+        (3, 500, None, [4], [[]]),
+        (4, 500, None, [], []),
+        (1, 2, None, [2, 3], [[1], [1]]),
+        (2, 2, None, [3, 4], [[1], []]),
+        (0, 0, None, [], []),
+        (1, 1, "Group-1", [2], [[1]]),
     ],
 )
 @pytest.mark.anyio
 async def test_select_all_sites(
-    pg_base_config, start: int, limit: int, group: Optional[str], expected_site_ids: list[int]
+    pg_base_config,
+    start: int,
+    limit: int,
+    group: Optional[str],
+    expected_site_ids: list[int],
+    expected_group_ids: list[list[int]],
 ):
     async with generate_async_session(pg_base_config) as session:
-        sites = await select_all_sites(session, group, start, limit)
-        assert len(sites) == len(expected_site_ids)
-        assert all([isinstance(s, Site) for s in sites])
-        assert expected_site_ids == [s.site_id for s in sites]
+        sites_no_groups = await select_all_sites(session, group, start, limit, include_groups=False)
+
+    async with generate_async_session(pg_base_config) as session:
+        sites_with_groups = await select_all_sites(session, group, start, limit, include_groups=True)
+
+    # Validate groups vs no groups are identical
+    assert all([isinstance(s, Site) for s in sites_no_groups])
+    assert all([isinstance(s, Site) for s in sites_with_groups])
+    assert len(sites_no_groups) == len(sites_with_groups)
+    assert expected_site_ids == [s.site_id for s in sites_no_groups]
+    assert expected_site_ids == [s.site_id for s in sites_with_groups]
+
+    # Validate the groups were returned as expected
+    assert expected_group_ids == [[a.group.site_group_id for a in s.assignments] for s in sites_with_groups]
+
+    # And that sites without groups don't have any groups
+    if len(sites_no_groups) > 0:
+        with pytest.raises(InvalidRequestError):
+            assert all([len(s.assignments) == 0 for s in sites_no_groups])
 
 
 @pytest.mark.anyio
