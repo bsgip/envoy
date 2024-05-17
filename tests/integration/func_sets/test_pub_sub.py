@@ -50,7 +50,14 @@ def sub_uri_format():
     [
         (AGG_1_VALID_CERT, 4, [4, 5]),
         (AGG_2_VALID_CERT, 3, [3]),
+        (
+            AGG_1_VALID_CERT,
+            0,
+            [1, 2, 4, 5],
+        ),  # aggregator end device should get all subs across all sites (for this agg)
+        (AGG_2_VALID_CERT, 0, [3]),  # aggregator end device should get all subs across all sites (for this agg)
         (AGG_3_VALID_CERT, 4, []),  # Inaccessible to this aggregator
+        (AGG_3_VALID_CERT, 0, []),  # Agg3 has 0 subscriptions across all sites
         (AGG_1_VALID_CERT, 1, []),  # Nothing under site
         (AGG_1_VALID_CERT, 99, []),  # site DNE
     ],
@@ -239,6 +246,38 @@ async def test_create_subscription(client: AsyncClient, sub_list_uri_format: str
     # check that other aggregators can't fetch it
     response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_2_VALID_CERT)})
     assert_response_header(response, HTTPStatus.NOT_FOUND)
+    assert_error_response(response)
+
+
+@pytest.mark.parametrize(
+    "invalid_resource",
+    [
+        "/edev/3/derp/doe/derc",  # Site 3 belongs to Agg 2
+        "/edev/3",  # Site 3 belongs to Agg 2
+        "/edev/3/der/1/dercap",  # Site 3 belongs to Agg 2
+        "/edev/3/der/1/dera",  # Site 3 belongs to Agg 2
+        "/edev/3/der/1/ders",  # Site 3 belongs to Agg 2
+        "/edev/3/der/1/derg",  # Site 3 belongs to Agg 2
+        "/edev/3/tp/1/rc",  # Site 3 belongs to Agg 2
+        "/upt/3/mr/2/rs/all/r",  # Site 3 belongs to Agg 2
+    ],
+)
+@pytest.mark.anyio
+async def test_create_subscription_invalid_site_id(
+    client: AsyncClient, sub_list_uri_format: str, invalid_resource: str
+):
+    """When creating a sub check that the edev belongs to the requesting aggregator"""
+
+    insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
+    insert_request.encoding = SubscriptionEncoding.XML
+    insert_request.notificationURI = "https://example.com/456?foo=bar"
+    insert_request.subscribedResource = invalid_resource
+    response = await client.post(
+        sub_list_uri_format.format(site_id=1),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=Sep2Subscription.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.BAD_REQUEST)
     assert_error_response(response)
 
 
