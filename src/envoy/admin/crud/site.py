@@ -2,6 +2,7 @@ from typing import Optional, Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from envoy.server.model.site import Site, SiteGroup, SiteGroupAssignment
 
@@ -18,7 +19,7 @@ async def count_all_sites(session: AsyncSession, group_filter: Optional[str]) ->
 
 
 async def select_all_sites(
-    session: AsyncSession, group_filter: Optional[str], start: int, limit: int
+    session: AsyncSession, group_filter: Optional[str], start: int, limit: int, include_groups: bool = False
 ) -> Sequence[Site]:
     """Admin selecting of sites - no filtering on aggregator is made"""
 
@@ -30,6 +31,9 @@ async def select_all_sites(
             Site.site_id.asc(),
         )
     )
+
+    if include_groups:
+        stmt = stmt.options(selectinload(Site.assignments).selectinload(SiteGroupAssignment.group))
 
     if group_filter:
         stmt = stmt.join(SiteGroupAssignment).join(SiteGroup).where(SiteGroup.name == group_filter)
