@@ -1,12 +1,6 @@
 import subprocess
 
-
-def sum_digits(n: int) -> int:
-    s = 0
-    while n:
-        s += n % 10
-        n //= 10
-    return s
+from envoy.server.crud.common import convert_lfdi_to_sfdi
 
 
 def run_command(ps: list[str]):
@@ -54,10 +48,7 @@ if __name__ == "__main__":
     fingerprint = raw_fingerprint.split("=")[1].lower().rstrip()
 
     lfdi = "".join(fingerprint.split(":")[:20])
-
-    raw_sfdi = int(("0x" + lfdi[:9]), 16)
-    sfdi_checksum = (10 - (sum_digits(raw_sfdi) % 10)) % 10
-    sfdi = raw_sfdi * 10 + sfdi_checksum
+    sfdi = convert_lfdi_to_sfdi(lfdi)
 
     print(f'TEST_CERTIFICATE_PEM = b"""{raw_pem}"""\n')
     print(f'TEST_CERTIFICATE_FINGERPRINT = (\n"    {fingerprint.replace(":", "")}"\n)\n')

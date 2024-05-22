@@ -23,6 +23,18 @@ def localize_start_time(rate_and_tz: Optional[Row[tuple[EntityWithStartTime, str
     return entity
 
 
+def sum_digits(n: int) -> int:
+    """Sums all base10 digits in n and returns the results.
+    Eg:
+    11 -> 2
+    456 -> 15"""
+    s = 0
+    while n:
+        s += n % 10
+        n //= 10
+    return s
+
+
 def convert_lfdi_to_sfdi(lfdi: str) -> int:
     """This function generates the 2030.5-2018 sFDI (Short-form device identifier) from a
     2030.5-2018 lFDI (Long-form device identifier). More details on the sFDI can be found in
@@ -39,19 +51,6 @@ def convert_lfdi_to_sfdi(lfdi: str) -> int:
     Return:
         The sFDI as integer.
     """
-    NUMBER_BITS_TO_LEFT_TRUNCATE = 36
-
-    # Convert lfdi hex string to integer
-    lfdi = int(lfdi, base=16)
-
-    # Truncate the lFDI
-    sfdi_no_sod_checksum = lfdi >> (lfdi.bit_length() - NUMBER_BITS_TO_LEFT_TRUNCATE)
-
-    # Calculate sum-of-digits checksum digit
-    sod_checksum = 10 - sum([int(digit) for digit in str(sfdi_no_sod_checksum)]) % 10
-
-    # Right concatenate the checksum digit and return
-    sfdi_as_string = str(sfdi_no_sod_checksum) + str(sod_checksum)
-
-    # Return integer representation
-    return int(sfdi_as_string)
+    raw_sfdi = int(("0x" + lfdi[:9]), 16)
+    sfdi_checksum = (10 - (sum_digits(raw_sfdi) % 10)) % 10
+    return raw_sfdi * 10 + sfdi_checksum
