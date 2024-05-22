@@ -69,12 +69,12 @@ async def get_virtual_site_for_aggregator(
     """
 
     # Check if the aggregator exists
-    aggregator: Aggregator = await select_aggregator(session=session, aggregator_id=aggregator_id)
+    aggregator: Optional[Aggregator] = await select_aggregator(session=session, aggregator_id=aggregator_id)
     if aggregator is None:
         return None
 
     # The virtual site shares attributes (e.g. timezone) with the first site under the aggregator.
-    first_site_under_aggregator: Site = await select_first_site_under_aggregator(
+    first_site_under_aggregator: Optional[Site] = await select_first_site_under_aggregator(
         session=session, aggregator_id=aggregator_id
     )
 

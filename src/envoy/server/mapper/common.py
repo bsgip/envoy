@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
@@ -61,7 +61,7 @@ def remove_href_prefix(href: str, request_state_params: RequestStateParameters) 
         return "/" + href
 
 
-def parse_device_category(device_category_str: str):
+def parse_device_category(device_category_str: Optional[str]) -> DeviceCategory:
     """Parse a hex string representation of a device category into a DeviceCategory"""
     if not device_category_str:
         return DeviceCategory(0)

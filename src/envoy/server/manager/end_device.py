@@ -39,15 +39,16 @@ class EndDeviceManager:
                 aggregator_id=request_params.aggregator_id,
                 aggregator_lfdi=request_params.aggregator_lfdi,
             )
-            mapper = VirtualEndDeviceMapper
+            if site is None:
+                return None
+            return VirtualEndDeviceMapper.map_to_response(request_params, site)
         else:
             site = await select_single_site_with_site_id(
                 session=session, site_id=site_id, aggregator_id=request_params.aggregator_id
             )
-            mapper = EndDeviceMapper
-        if site is None:
-            return None
-        return mapper.map_to_response(request_params, site)
+            if site is None:
+                return None
+            return EndDeviceMapper.map_to_response(request_params, site)
 
     @staticmethod
     async def generate_unique_device_id(session: AsyncSession, aggregator_id: int) -> tuple[int, str]:

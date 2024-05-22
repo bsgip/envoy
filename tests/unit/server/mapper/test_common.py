@@ -101,11 +101,18 @@ def test_generate_href_format_errors():
 
 @pytest.mark.parametrize(
     "device_category_str, expected_value",
-    [("2000000", DeviceCategory.OTHER_STORAGE_SYSTEM), ("1", DeviceCategory.PROGRAMMABLE_COMMUNICATING_THERMOSTAT)],
+    [
+        ("2000000", DeviceCategory.OTHER_STORAGE_SYSTEM),
+        ("1", DeviceCategory.PROGRAMMABLE_COMMUNICATING_THERMOSTAT),
+        ("", DeviceCategory(0)),
+        (None, DeviceCategory(0)),
+    ],
 )
-def test_parse_device_category(device_category_str, expected_value):
+def test_parse_device_category(device_category_str: Optional[str], expected_value: DeviceCategory):
     """Test parse_device_category string conversion to DeviceCategory"""
-    assert parse_device_category(device_category_str) == expected_value
+    result = parse_device_category(device_category_str)
+    assert isinstance(result, DeviceCategory)
+    assert result == expected_value
 
 
 @pytest.mark.parametrize(
