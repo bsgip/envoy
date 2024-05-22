@@ -7,6 +7,7 @@ from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscrip
 from envoy_schema.server.schema.sep2.pub_sub import SubscriptionListResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.subscription import SubscriptionManager
 from envoy.server.model.aggregator import Aggregator, AggregatorDomain
@@ -380,6 +381,7 @@ async def test_add_subscription_for_site_READING(
     mapped_sub = Subscription(
         resource_type=SubscriptionResource.READING, scoped_site_id=site_id, resource_id=site_reading_type_id
     )
+    mapped_sub.scoped_site_id = site_id
 
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
@@ -405,6 +407,60 @@ async def test_add_subscription_for_site_READING(
         mock_session, rs_params.aggregator_id, site_reading_type_id, include_site_relation=False
     )
     mock_insert_subscription.assert_called_once_with(mock_session, mapped_sub)
+    assert mapped_sub.scoped_site_id == site_id, "Site scope should be left alone"
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.subscription.utc_now")
+@mock.patch("envoy.server.manager.subscription.select_aggregator")
+@mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
+@mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.subscription.select_single_tariff")
+@mock.patch("envoy.server.manager.subscription.insert_subscription")
+async def test_add_subscription_for_site_READING_unscoped(
+    mock_insert_subscription: mock.MagicMock,
+    mock_select_single_tariff: mock.MagicMock,
+    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+    mock_SubscriptionMapper: mock.MagicMock,
+    mock_select_aggregator: mock.MagicMock,
+    mock_utc_now: mock.MagicMock,
+):
+    mock_session: AsyncSession = create_mock_session()
+    rs_params = RequestStateParameters(981, None, None)
+    now = datetime(2014, 4, 5, 6, 7, 8)
+    site_id = VIRTUAL_END_DEVICE_SITE_ID
+    site_reading_type_id = 5432
+    sub = generate_class_instance(Sep2Subscription)
+    mapped_sub = Subscription(
+        resource_type=SubscriptionResource.READING, scoped_site_id=site_id, resource_id=site_reading_type_id
+    )
+    mapped_sub.scoped_site_id = site_id
+
+    mock_utc_now.return_value = now
+    mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
+    mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
+    mock_insert_subscription.return_value = 98765
+    mock_fetch_site_reading_type_for_aggregator.return_value = SiteReadingType(site_id=site_id)
+
+    # Act
+    actual_result = await SubscriptionManager.add_subscription_for_site(mock_session, rs_params, sub, site_id)
+
+    assert actual_result == mock_insert_subscription.return_value
+    assert_mock_session(mock_session, committed=True)
+    mock_utc_now.assert_called_once()
+    mock_select_aggregator.assert_called_once_with(mock_session, rs_params.aggregator_id)
+    mock_SubscriptionMapper.map_from_request.assert_called_once_with(
+        subscription=sub,
+        rs_params=rs_params,
+        aggregator_domains=set(["domain.value1"]),
+        changed_time=now,
+    )
+    mock_select_single_tariff.assert_not_called()
+    mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
+        mock_session, rs_params.aggregator_id, site_reading_type_id, include_site_relation=False
+    )
+    mock_insert_subscription.assert_called_once_with(mock_session, mapped_sub)
+    assert mapped_sub.scoped_site_id is None, "Site scope shouldve been removed"
 
 
 @pytest.mark.anyio

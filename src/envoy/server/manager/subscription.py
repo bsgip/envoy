@@ -6,6 +6,7 @@ from envoy_schema.server.schema.sep2.pub_sub import Subscription, SubscriptionLi
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.aggregator import select_aggregator
+from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.pricing import select_single_tariff
 from envoy.server.crud.site_reading import fetch_site_reading_type_for_aggregator
 from envoy.server.crud.subscription import (
@@ -116,6 +117,10 @@ class SubscriptionManager:
             raise BadRequestError(
                 f"Mismatch on subscribedResource EndDevice id {sub.scoped_site_id} expected {site_id}"
             )
+
+        # If the subscription is for the virtual end device - we interpret that as not having a site id scope
+        if sub.scoped_site_id == VIRTUAL_END_DEVICE_SITE_ID:
+            sub.scoped_site_id = None
 
         # Lookup the linked entity (if any) to ensure it's accessible to this site
         if sub.resource_id is not None:
