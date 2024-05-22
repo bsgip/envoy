@@ -20,6 +20,7 @@ from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.subscription import select_subscription_by_id
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.subscription import Subscription
+from tests.assert_time import assert_nowish
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
@@ -301,6 +302,70 @@ async def test_create_subscription_site_id_outside_aggregator(
         )
         assert_response_header(response, HTTPStatus.BAD_REQUEST)
         assert_error_response(response)
+
+
+@pytest.mark.parametrize("sub_href", subscribable_resource_hrefs(site_id=1, pricing_reading_type_id=1))
+@pytest.mark.anyio
+async def test_create_site_scoped_subscription_entry_added_to_db(
+    pg_base_config, client: AsyncClient, sub_list_uri_format: str, sub_href: str
+):
+    """Simple test that subscription creation works across endpoints from subscribable_resource_hrefs
+    (when the subscription is going to be scoped to a single site)"""
+    edev_id = 1
+
+    insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
+    insert_request.encoding = SubscriptionEncoding.XML
+    insert_request.notificationURI = "https://example.com/456?foo=bar"
+    insert_request.subscribedResource = sub_href
+    response = await client.post(
+        sub_list_uri_format.format(site_id=edev_id),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=Sep2Subscription.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    location_header = read_location_header(response)
+    assert location_header
+    sub_id = int(location_header.split("/")[-1])  # the last part of the href should be a subscription id
+
+    # Validate the DB record is properly scoped
+    async with generate_async_session(pg_base_config) as session:
+        resp = await session.execute(select(Subscription).where(Subscription.subscription_id == sub_id).limit(1))
+        created_sub = resp.scalars().first()
+        assert created_sub.scoped_site_id == edev_id, "Expected a site scoped sub"
+        assert_nowish(created_sub.changed_time)
+
+
+@pytest.mark.parametrize(
+    "sub_href", subscribable_resource_hrefs(site_id=VIRTUAL_END_DEVICE_SITE_ID, pricing_reading_type_id=1)
+)
+@pytest.mark.anyio
+async def test_create_unscoped_subscription_entry_added_to_db(
+    pg_base_config, client: AsyncClient, sub_list_uri_format: str, sub_href: str
+):
+    """Simple test that subscription creation works across endpoints from subscribable_resource_hrefs
+    (when the subscription is going to be done via the aggregator end device)"""
+    edev_id = VIRTUAL_END_DEVICE_SITE_ID
+
+    insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
+    insert_request.encoding = SubscriptionEncoding.XML
+    insert_request.notificationURI = "https://example.com/456?foo=bar"
+    insert_request.subscribedResource = sub_href
+    response = await client.post(
+        sub_list_uri_format.format(site_id=edev_id),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=Sep2Subscription.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    location_header = read_location_header(response)
+    assert location_header
+    sub_id = int(location_header.split("/")[-1])  # the last part of the href should be a subscription id
+
+    # Validate the DB record is properly scoped
+    async with generate_async_session(pg_base_config) as session:
+        resp = await session.execute(select(Subscription).where(Subscription.subscription_id == sub_id).limit(1))
+        created_sub = resp.scalars().first()
+        assert created_sub.scoped_site_id is None, "Expected a unscoped sub"
+        assert_nowish(created_sub.changed_time)
 
 
 @pytest.mark.anyio
