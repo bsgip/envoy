@@ -11,6 +11,7 @@ from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.site import Site
+from envoy.server.settings import settings
 
 # Valid site_ids for end_devices start 1 and increase
 # Only a site_id of 0 is left, which we will use for the virtual end-device/site associated with the aggregator
@@ -76,8 +77,8 @@ async def get_virtual_site_for_aggregator(
     first_site_under_aggregator: Site = await select_first_site_under_aggregator(
         session=session, aggregator_id=aggregator_id
     )
-    DEFAULT_TIMEZONE_ID = "Australia/Brisbane"
-    timezone_id = first_site_under_aggregator.timezone_id if first_site_under_aggregator else DEFAULT_TIMEZONE_ID
+
+    timezone_id = first_site_under_aggregator.timezone_id if first_site_under_aggregator else settings.default_timezone
 
     # lfdi is hex string, convert to sfdi (integer)
     try:
