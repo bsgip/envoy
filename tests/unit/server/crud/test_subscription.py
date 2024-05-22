@@ -176,13 +176,20 @@ async def test_select_subscriptions_for_aggregator_content_only(pg_base_config):
         (2, 3, 0, None, datetime.min, [3]),
         (1, 4, 0, None, datetime.min, [4, 5]),
         (1, 5, 0, None, datetime.min, []),
+        # Test the aggregator end device query
+        (1, None, 0, None, datetime.min, [1, 2, 4, 5]),
+        (2, None, 0, None, datetime.min, [3]),
+        (3, None, 0, None, datetime.min, []),
         # Test basic pagination
         (1, 4, 0, 1, datetime.min, [4]),
         (1, 4, 1, 1, datetime.min, [5]),
         (1, 4, 1, None, datetime.min, [5]),
+        (1, None, 1, 2, datetime.min, [2, 4]),
         # Test datetime filter
         (1, 4, 0, None, datetime(2024, 1, 2, 12, 20, 0, tzinfo=timezone.utc), [4, 5]),
+        (1, None, 0, None, datetime(2024, 1, 2, 12, 20, 0, tzinfo=timezone.utc), [2, 4, 5]),
         (1, 4, 0, None, datetime(2024, 1, 2, 15, 22, 33, tzinfo=timezone.utc), [5]),
+        (1, None, 0, None, datetime(2024, 1, 2, 15, 22, 33, tzinfo=timezone.utc), [5]),
         (1, 4, 0, None, datetime(2024, 1, 2, 15, 22, 34, tzinfo=timezone.utc), []),
         # Test aggregator filters
         (2, 4, 0, None, datetime.min, []),
@@ -194,7 +201,7 @@ async def test_select_subscriptions_for_aggregator_content_only(pg_base_config):
 async def test_select_count_subscriptions_for_site(
     pg_base_config,
     aggregator_id: int,
-    site_id: int,
+    site_id: Optional[int],
     start: int,
     limit: Optional[int],
     changed_after: datetime,

@@ -188,7 +188,7 @@ VALUES (2, -- subscription_id
     1, -- aggregator_id
     '2024-01-02 12:22:33.500', -- changed_time
     2, -- resource_type
-    2, -- resource_id
+    NULL, -- resource_id
     2, -- scoped_site_id
     'https://example.com:22/path/', -- notification_uri
     22 -- entity_limit

@@ -28,6 +28,7 @@ def sum_digits(n: int) -> int:
     Eg:
     11 -> 2
     456 -> 15"""
+    n = abs(n)
     s = 0
     while n:
         s += n % 10

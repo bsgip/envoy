@@ -33,6 +33,7 @@ from envoy_schema.server.schema.uri import (
 )
 from parse import parse  # type: ignore
 
+from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, remove_href_prefix
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID, DERControlMapper
@@ -46,6 +47,11 @@ from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_state import RequestStateParameters
+
+
+def _parse_site_id_from_match(raw_site_id: str) -> Optional[int]:
+    site_id = int(raw_site_id)
+    return site_id if site_id != VIRTUAL_END_DEVICE_SITE_ID else None
 
 
 class SubscriptionMapper:
@@ -65,31 +71,21 @@ class SubscriptionMapper:
         """Calculates the href for a Subscription.subscribedResource based on what the subscription is tracking
 
         Some combos of resource_type/scoped_site_id/resource_id may be invalid and will raise InvalidMappingError"""
+
+        href_site_id: int = VIRTUAL_END_DEVICE_SITE_ID if sub.scoped_site_id is None else sub.scoped_site_id
         if sub.resource_type == SubscriptionResource.SITE:
             if sub.scoped_site_id is None:
                 return generate_href(EndDeviceListUri, rs_params)
             else:
-                return generate_href(EndDeviceUri, rs_params, site_id=sub.scoped_site_id)
+                return generate_href(EndDeviceUri, rs_params, site_id=href_site_id)
         elif sub.resource_type == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-            if sub.scoped_site_id is None:
-                raise InvalidMappingError(
-                    f"Subscribing to DOEs without a scoped_site_id is unsupported on sub {sub.subscription_id}"
-                )
-
             if sub.resource_id is not None:
                 raise InvalidMappingError(
                     f"Subscribing to DOEs with resource_id is unsupported on sub {sub.subscription_id}"
                 )
 
-            return generate_href(
-                DERControlListUri, rs_params, site_id=sub.scoped_site_id, der_program_id=DOE_PROGRAM_ID
-            )
+            return generate_href(DERControlListUri, rs_params, site_id=href_site_id, der_program_id=DOE_PROGRAM_ID)
         elif sub.resource_type == SubscriptionResource.READING:
-            if sub.scoped_site_id is None:
-                raise InvalidMappingError(
-                    f"Subscribing to readings without a scoped_site_id is unsupported on sub {sub.subscription_id}"
-                )
-
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to readings without a resource_id is unsupported on sub {sub.subscription_id}"
@@ -98,16 +94,11 @@ class SubscriptionMapper:
             return generate_href(
                 ReadingListUri,
                 rs_params,
-                site_id=sub.scoped_site_id,
+                site_id=href_site_id,
                 site_reading_type_id=sub.resource_id,
                 reading_set_id=READING_SET_ALL_ID,
             )
         elif sub.resource_type == SubscriptionResource.TARIFF_GENERATED_RATE:
-            if sub.scoped_site_id is None:
-                raise InvalidMappingError(
-                    f"Subscribing to rates without a scoped_site_id is unsupported on sub {sub.subscription_id}"
-                )
-
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to rates without a resource_id is unsupported on sub {sub.subscription_id}"
@@ -126,55 +117,38 @@ class SubscriptionMapper:
             return generate_href(
                 RateComponentListUri,
                 rs_params,
-                site_id=sub.scoped_site_id,
+                site_id=href_site_id,
                 tariff_id=sub.resource_id,
             )
         elif sub.resource_type == SubscriptionResource.SITE_DER_AVAILABILITY:
-            if sub.scoped_site_id is None:
-                raise InvalidMappingError(
-                    f"Subscribing to DERAvailability requires scoped_site_id on sub {sub.subscription_id}"
-                )
-
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DERAvailability requires resource_id on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERAvailabilityUri, rs_params, site_id=sub.scoped_site_id, der_id=sub.resource_id)
+            return generate_href(DERAvailabilityUri, rs_params, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_RATING:
-            if sub.scoped_site_id is None:
-                raise InvalidMappingError(
-                    f"Subscribing to DERCapability requires scoped_site_id on sub {sub.subscription_id}"
-                )
 
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DERCapability requires resource_id on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERCapabilityUri, rs_params, site_id=sub.scoped_site_id, der_id=sub.resource_id)
+            return generate_href(DERCapabilityUri, rs_params, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_SETTING:
-            if sub.scoped_site_id is None:
-                raise InvalidMappingError(
-                    f"Subscribing to DERSettings requires scoped_site_id on sub {sub.subscription_id}"
-                )
 
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DERSettings requires resource_id on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERSettingsUri, rs_params, site_id=sub.scoped_site_id, der_id=sub.resource_id)
+            return generate_href(DERSettingsUri, rs_params, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_STATUS:
-            if sub.scoped_site_id is None:
-                raise InvalidMappingError(
-                    f"Subscribing to DERStatus requires scoped_site_id on sub {sub.subscription_id}"
-                )
 
             if sub.resource_id is None:
                 raise InvalidMappingError(f"Subscribing to DERStatus requires resource_id on sub {sub.subscription_id}")
 
-            return generate_href(DERStatusUri, rs_params, site_id=sub.scoped_site_id, der_id=sub.resource_id)
+            return generate_href(DERStatusUri, rs_params, site_id=href_site_id, der_id=sub.resource_id)
         else:
             raise InvalidMappingError(
                 f"Cannot map a resource HREF for resource_type {sub.resource_type} on sub {sub.subscription_id}"
@@ -222,7 +196,7 @@ class SubscriptionMapper:
             try:
                 return (
                     SubscriptionResource.READING,
-                    int(result["site_id"]),
+                    _parse_site_id_from_match(result["site_id"]),
                     int(result["site_reading_type_id"]),
                 )
             except ValueError:
@@ -234,7 +208,7 @@ class SubscriptionMapper:
             try:
                 return (
                     SubscriptionResource.TARIFF_GENERATED_RATE,
-                    int(result["site_id"]),
+                    _parse_site_id_from_match(result["site_id"]),
                     int(result["tariff_id"]),
                 )
             except ValueError:
@@ -244,7 +218,11 @@ class SubscriptionMapper:
         result = parse(DERControlListUri, href)
         if result and result["der_program_id"] == DOE_PROGRAM_ID:
             try:
-                return (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, int(result["site_id"]), None)
+                return (
+                    SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
+                    _parse_site_id_from_match(result["site_id"]),
+                    None,
+                )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DOE resource")
 
@@ -252,7 +230,11 @@ class SubscriptionMapper:
         result = parse(DERAvailabilityUri, href)
         if result:
             try:
-                return (SubscriptionResource.SITE_DER_AVAILABILITY, int(result["site_id"]), int(result["der_id"]))
+                return (
+                    SubscriptionResource.SITE_DER_AVAILABILITY,
+                    _parse_site_id_from_match(result["site_id"]),
+                    int(result["der_id"]),
+                )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERAvailability resource")
 
@@ -260,7 +242,11 @@ class SubscriptionMapper:
         result = parse(DERCapabilityUri, href)
         if result:
             try:
-                return (SubscriptionResource.SITE_DER_RATING, int(result["site_id"]), int(result["der_id"]))
+                return (
+                    SubscriptionResource.SITE_DER_RATING,
+                    _parse_site_id_from_match(result["site_id"]),
+                    int(result["der_id"]),
+                )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERRating resource")
 
@@ -268,7 +254,11 @@ class SubscriptionMapper:
         result = parse(DERSettingsUri, href)
         if result:
             try:
-                return (SubscriptionResource.SITE_DER_SETTING, int(result["site_id"]), int(result["der_id"]))
+                return (
+                    SubscriptionResource.SITE_DER_SETTING,
+                    _parse_site_id_from_match(result["site_id"]),
+                    int(result["der_id"]),
+                )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERSetting resource")
 
@@ -276,7 +266,11 @@ class SubscriptionMapper:
         result = parse(DERStatusUri, href)
         if result:
             try:
-                return (SubscriptionResource.SITE_DER_STATUS, int(result["site_id"]), int(result["der_id"]))
+                return (
+                    SubscriptionResource.SITE_DER_STATUS,
+                    _parse_site_id_from_match(result["site_id"]),
+                    int(result["der_id"]),
+                )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERStatus resource")
 
@@ -284,7 +278,7 @@ class SubscriptionMapper:
         result = parse(EndDeviceUri, href)
         if result:
             try:
-                return (SubscriptionResource.SITE, int(result["site_id"]), None)
+                return (SubscriptionResource.SITE, _parse_site_id_from_match(result["site_id"]), None)
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a EndDevice resource")
 

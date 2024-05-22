@@ -68,7 +68,7 @@ async def count_subscriptions_for_aggregator(
 async def select_subscriptions_for_site(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: int,
+    site_id: Optional[int],
     start: int,
     changed_after: datetime,
     limit: Optional[int],
@@ -79,16 +79,15 @@ async def select_subscriptions_for_site(
 
     stmt = (
         select(Subscription)
-        .where(
-            (Subscription.aggregator_id == aggregator_id)
-            & (Subscription.changed_time >= changed_after)
-            & (Subscription.scoped_site_id == site_id)
-        )
+        .where((Subscription.aggregator_id == aggregator_id) & (Subscription.changed_time >= changed_after))
         .options(selectinload(Subscription.conditions))
         .order_by(Subscription.subscription_id)
         .offset(start)
         .limit(limit)
     )
+
+    if site_id is not None:
+        stmt = stmt.where(Subscription.scoped_site_id == site_id)
 
     resp = await session.execute(stmt)
     return resp.scalars().all()
@@ -97,7 +96,7 @@ async def select_subscriptions_for_site(
 async def count_subscriptions_for_site(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: int,
+    site_id: Optional[int],
     changed_after: datetime,
 ) -> int:
     """Similar to select_subscriptions_for_site but instead returns a count"""
@@ -105,12 +104,11 @@ async def count_subscriptions_for_site(
     stmt = (
         select(func.count())
         .select_from(Subscription)
-        .where(
-            (Subscription.aggregator_id == aggregator_id)
-            & (Subscription.changed_time >= changed_after)
-            & (Subscription.scoped_site_id == site_id)
-        )
+        .where((Subscription.aggregator_id == aggregator_id) & (Subscription.changed_time >= changed_after))
     )
+
+    if site_id is not None:
+        stmt = stmt.where(Subscription.scoped_site_id == site_id)
 
     resp = await session.execute(stmt)
     return resp.scalar_one()

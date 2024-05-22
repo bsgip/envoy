@@ -7,7 +7,7 @@ from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
 from envoy_schema.admin.schema.uri import DoeCreateUri, TariffGeneratedRateCreateUri
 from httpx import AsyncClient
-from sqlalchemy import insert
+from sqlalchemy import delete, insert, select
 
 from envoy.notification.task.transmit import HEADER_NOTIFICATION_ID
 from envoy.server.model.subscription import Subscription, SubscriptionResource
@@ -19,8 +19,15 @@ from tests.unit.mocks import MockedAsyncClient
 
 @pytest.mark.anyio
 async def test_create_does_no_active_subscription(
-    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient
+    pg_base_config, admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient
 ):
+    # There is currently a DOE sub in place - delete it before the test
+    async with generate_async_session(pg_base_config) as session:
+        select_result = await session.execute(select(Subscription).where(Subscription.subscription_id == 2))
+        sub = select_result.scalar_one()
+        await session.delete(sub)
+        await session.commit()
+
     doe = generate_class_instance(DynamicOperatingEnvelopeRequest)
     doe.site_id = 1
 
@@ -46,6 +53,9 @@ async def test_create_does_with_active_subscription(
     subscription1_uri = "http://my.example:542/uri"
     subscription2_uri = "https://my.other.example:542/uri"
     async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
         # this is unscoped
         await session.execute(
             insert(Subscription).values(

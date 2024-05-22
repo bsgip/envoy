@@ -56,10 +56,12 @@ class SubscriptionManager:
         limit: int,
     ) -> SubscriptionListResponse:
         """Fetches all subscriptions underneath the specified site"""
+        site_id_filter: Optional[int] = site_id if site_id != VIRTUAL_END_DEVICE_SITE_ID else None
+
         sub_list = await select_subscriptions_for_site(
             session,
             aggregator_id=request_params.aggregator_id,
-            site_id=site_id,
+            site_id=site_id_filter,
             start=start,
             changed_after=after,
             limit=limit,
@@ -67,7 +69,7 @@ class SubscriptionManager:
         sub_count = await count_subscriptions_for_site(
             session,
             aggregator_id=request_params.aggregator_id,
-            site_id=site_id,
+            site_id=site_id_filter,
             changed_after=after,
         )
 
