@@ -20,7 +20,7 @@ from tests.postgres_testing import generate_async_session
 
 def assert_doe_for_id(
     expected_doe_id: Optional[int],
-    expected_site_id: int,
+    expected_site_id: Optional[int],
     expected_datetime: Optional[datetime],
     expected_tz: Optional[str],
     actual_rate: Optional[DOE],
@@ -33,7 +33,7 @@ def assert_doe_for_id(
     else:
         assert actual_rate
         assert actual_rate.dynamic_operating_envelope_id == expected_doe_id
-        assert actual_rate.site_id == expected_site_id
+        assert expected_site_id is None or actual_rate.site_id == expected_site_id
         if check_duration_seconds:
             assert actual_rate.duration_seconds == 10 * expected_doe_id + expected_doe_id
         assert actual_rate.import_limit_active_watts == Decimal(f"{expected_doe_id}.11")
@@ -86,6 +86,16 @@ async def test_select_doe_pagination(pg_base_config, expected_ids: list[int], st
         ([(3, datetime(2022, 5, 7, 1, 2))], 1, 2),
         ([], 2, 1),
         ([], 1, 3),
+        (
+            [
+                (3, datetime(2022, 5, 7, 1, 2)),  # For site #2
+                (1, datetime(2022, 5, 7, 1, 2)),  # Site #1
+                (2, datetime(2022, 5, 7, 3, 4)),  # Site #1
+                (4, datetime(2022, 5, 8, 1, 2)),  # Site #1
+            ],
+            1,
+            None,  # This is how the DERControlManager handles an aggregator level query
+        ),
     ],
 )
 @pytest.mark.anyio
