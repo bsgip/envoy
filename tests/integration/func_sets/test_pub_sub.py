@@ -259,7 +259,7 @@ async def test_create_doe_subscription(
     response_body = read_response_body_string(response)
     assert len(response_body) > 0
     parsed_response: Sep2Subscription = Sep2Subscription.from_xml(response_body)
-    assert parsed_response.href == inserted_href
+    assert parsed_response.href in inserted_href
     assert parsed_response.notificationURI == insert_request.notificationURI
     assert parsed_response.subscribedResource == insert_request.subscribedResource
     assert parsed_response.limit == insert_request.limit

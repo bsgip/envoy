@@ -132,12 +132,12 @@ async def test_select_all_sites_with_aggregator_id_filters(pg_base_config):
         ),
         (
             2,  # Aggregator 2 has 1 site
-            "0x123123ffff",
+            "403ba02aa36fa072c47eb3299daaafe94399adad",
             "Australia/Brisbane",  # Values for first site under aggregator 2
         ),
         (
             3,  # Aggregator 3 has no sites
-            "FFFFFFFFF",
+            "8ad1d4ce1d3b353ebee21230a89e4172b18f520e",
             "Australia/Brisbane",  # Default timezone if aggregator has no sites
         ),
     ],

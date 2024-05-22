@@ -22,7 +22,13 @@ from tests.unit.mocks import assert_mock_session, create_mock_session
 @pytest.mark.anyio
 @pytest.mark.parametrize(
     "site_id_filter, scoped_site_id, expect_none",
-    [(1, 2, True), (1, 1, False), (1, None, True), (None, 2, False), (None, None, False)],
+    [
+        (1, 2, True),
+        (1, 1, False),
+        (1, None, True),
+        (VIRTUAL_END_DEVICE_SITE_ID, 2, False),
+        (VIRTUAL_END_DEVICE_SITE_ID, None, False),
+    ],
 )
 @mock.patch("envoy.server.manager.subscription.select_subscription_by_id")
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
@@ -440,7 +446,9 @@ async def test_add_subscription_for_site_READING_unscoped(
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
     mock_insert_subscription.return_value = 98765
-    mock_fetch_site_reading_type_for_aggregator.return_value = SiteReadingType(site_id=site_id)
+    mock_fetch_site_reading_type_for_aggregator.return_value = SiteReadingType(
+        site_id=VIRTUAL_END_DEVICE_SITE_ID + 1
+    )  # Ensure this differs from VIRTUAL_END_DEVICE_SITE_ID
 
     # Act
     actual_result = await SubscriptionManager.add_subscription_for_site(mock_session, rs_params, sub, site_id)

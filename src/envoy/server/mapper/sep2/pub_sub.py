@@ -26,7 +26,6 @@ from envoy_schema.server.schema.uri import (
     EndDeviceUri,
     RateComponentListUri,
     ReadingListUri,
-    SubscriptionGlobalUri,
     SubscriptionListUri,
     SubscriptionUri,
     TimeTariffIntervalListUri,
@@ -59,12 +58,8 @@ class SubscriptionMapper:
     def calculate_subscription_href(sub: Subscription, rs_params: RequestStateParameters) -> str:
         """Calculates the href for a subscription - this will vary depending on whether the subscription
         is narrowed to a particular end_device or is unscoped"""
-        if sub.scoped_site_id is None:
-            return generate_href(SubscriptionGlobalUri, rs_params, subscription_id=sub.subscription_id)
-        else:
-            return generate_href(
-                SubscriptionUri, rs_params, site_id=sub.scoped_site_id, subscription_id=sub.subscription_id
-            )
+        site_id: int = sub.scoped_site_id if sub.scoped_site_id is not None else VIRTUAL_END_DEVICE_SITE_ID
+        return generate_href(SubscriptionUri, rs_params, site_id=site_id, subscription_id=sub.subscription_id)
 
     @staticmethod
     def calculate_resource_href(sub: Subscription, rs_params: RequestStateParameters) -> str:  # noqa C901

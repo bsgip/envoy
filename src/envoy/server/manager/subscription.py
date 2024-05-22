@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class SubscriptionManager:
     @staticmethod
     async def fetch_subscription_by_id(
-        session: AsyncSession, request_params: RequestStateParameters, subscription_id: int, site_id: Optional[int]
+        session: AsyncSession, request_params: RequestStateParameters, subscription_id: int, site_id: int
     ) -> Optional[Subscription]:
         """Fetches a subscription for a particular request (optionally scoped to a single site_id)
 
@@ -41,7 +41,9 @@ class SubscriptionManager:
         if sub is None:
             return None
 
-        if site_id is not None and sub.scoped_site_id != site_id:
+        # non virtual site ids must align with the requested site id
+        # or more simply - the virtual site can request any site subscription (within its aggregator)
+        if site_id != VIRTUAL_END_DEVICE_SITE_ID and site_id != sub.scoped_site_id:
             return None
 
         return SubscriptionMapper.map_to_response(sub, request_params)
@@ -115,7 +117,8 @@ class SubscriptionManager:
         )
 
         # Validate site_id came through OK
-        if sub.scoped_site_id != site_id:
+        mapped_site_id_scope = sub.scoped_site_id if sub.scoped_site_id is not None else VIRTUAL_END_DEVICE_SITE_ID
+        if mapped_site_id_scope != site_id:
             raise BadRequestError(
                 f"Mismatch on subscribedResource EndDevice id {sub.scoped_site_id} expected {site_id}"
             )
@@ -130,7 +133,7 @@ class SubscriptionManager:
                 srt = await fetch_site_reading_type_for_aggregator(
                     session, request_params.aggregator_id, sub.resource_id, include_site_relation=False
                 )
-                if srt is None or srt.site_id != site_id:
+                if srt is None or (site_id != VIRTUAL_END_DEVICE_SITE_ID and srt.site_id != site_id):
                     raise BadRequestError(f"Invalid site_reading_type_id {sub.resource_id} for site {site_id}")
             elif sub.resource_type == SubscriptionResource.TARIFF_GENERATED_RATE:
                 tp = await select_single_tariff(session, sub.resource_id)

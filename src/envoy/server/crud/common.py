@@ -47,11 +47,14 @@ def convert_lfdi_to_sfdi(lfdi: str) -> int:
         3- Right concatenate the checksum digit to the result of Step (1).
 
     Args:
-        lfdi: The 2030.5-2018 lFDI as string.
+        lfdi: The 2030.5-2018 lFDI as string of 40 hex characters (eg '18aff1802d ... 12d')
 
     Return:
         The sFDI as integer.
     """
+    if len(lfdi) != 40:
+        raise ValueError(f"lfdi should be 40 hex characters. Received {len(lfdi)} chars")
+
     raw_sfdi = int(("0x" + lfdi[:9]), 16)
     sfdi_checksum = (10 - (sum_digits(raw_sfdi) % 10)) % 10
     return raw_sfdi * 10 + sfdi_checksum
