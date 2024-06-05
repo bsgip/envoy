@@ -82,6 +82,27 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "GET Calculation Log Billing Report",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/billing/calculation_log/1/tariff/{TARIFF_ID}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"billing",
+								"calculation_log",
+								"1",
+								"tariff",
+								"{{TARIFF_ID}}"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -158,6 +179,26 @@
 							"path": [
 								"calculation_log",
 								"{{CALCULATION_LOG_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Calculation Logs for Period",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/calculation_log/period/{{PERIOD_START}}/{{PERIOD_END}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"calculation_log",
+								"period",
+								"{{PERIOD_START}}",
+								"{{PERIOD_END}}"
 							]
 						}
 					},
