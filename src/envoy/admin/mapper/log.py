@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Sequence
 
-from envoy_schema.admin.schema.log import CalculationLogRequest, CalculationLogResponse
+from envoy_schema.admin.schema.log import CalculationLogListResponse, CalculationLogRequest, CalculationLogResponse
 from envoy_schema.admin.schema.log import PowerFlowLog as PublicPowerFlowLog
 from envoy_schema.admin.schema.log import PowerForecastLog as PublicPowerForecastLog
 from envoy_schema.admin.schema.log import PowerTargetLog as PublicPowerTargetLog
@@ -79,19 +80,10 @@ class CalculationLogMapper:
         )
 
     @staticmethod
-    def map_to_response(calculation_log: CalculationLog) -> CalculationLogResponse:
-        return CalculationLogResponse(
-            calculation_log_id=calculation_log.calculation_log_id,
-            created_time=calculation_log.created_time,
-            calculation_interval_start=calculation_log.calculation_interval_start,
-            calculation_interval_duration_seconds=calculation_log.calculation_interval_duration_seconds,
-            topology_id=calculation_log.topology_id,
-            external_id=calculation_log.external_id,
-            description=calculation_log.description,
-            power_forecast_creation_time=calculation_log.power_forecast_creation_time,
-            weather_forecast_creation_time=calculation_log.weather_forecast_creation_time,
-            weather_forecast_location_id=calculation_log.weather_forecast_location_id,
-            power_forecast_logs=[
+    def map_to_response(calculation_log: CalculationLog, include_child_logs: bool = True) -> CalculationLogResponse:
+
+        if include_child_logs:
+            power_forecast_logs = [
                 PublicPowerForecastLog(
                     interval_start=e.interval_start,
                     interval_duration_seconds=e.interval_duration_seconds,
@@ -101,8 +93,8 @@ class CalculationLogMapper:
                     reactive_power_var=e.reactive_power_var,
                 )
                 for e in calculation_log.power_forecast_logs
-            ],
-            power_target_logs=[
+            ]
+            power_target_logs = [
                 PublicPowerTargetLog(
                     interval_start=e.interval_start,
                     interval_duration_seconds=e.interval_duration_seconds,
@@ -112,8 +104,8 @@ class CalculationLogMapper:
                     target_reactive_power_var=e.target_reactive_power_var,
                 )
                 for e in calculation_log.power_target_logs
-            ],
-            power_flow_logs=[
+            ]
+            power_flow_logs = [
                 PublicPowerFlowLog(
                     interval_start=e.interval_start,
                     interval_duration_seconds=e.interval_duration_seconds,
@@ -126,8 +118,8 @@ class CalculationLogMapper:
                     thermal_max_percent=e.thermal_max_percent,
                 )
                 for e in calculation_log.power_flow_logs
-            ],
-            weather_forecast_logs=[
+            ]
+            weather_forecast_logs = [
                 PublicWeatherForecastLog(
                     interval_start=e.interval_start,
                     interval_duration_seconds=e.interval_duration_seconds,
@@ -143,5 +135,39 @@ class CalculationLogMapper:
                     wind_speed_50m_km_h=e.wind_speed_50m_km_h,
                 )
                 for e in calculation_log.weather_forecast_logs
+            ]
+        else:
+            power_forecast_logs = []
+            power_target_logs = []
+            power_flow_logs = []
+            weather_forecast_logs = []
+
+        return CalculationLogResponse(
+            calculation_log_id=calculation_log.calculation_log_id,
+            created_time=calculation_log.created_time,
+            calculation_interval_start=calculation_log.calculation_interval_start,
+            calculation_interval_duration_seconds=calculation_log.calculation_interval_duration_seconds,
+            topology_id=calculation_log.topology_id,
+            external_id=calculation_log.external_id,
+            description=calculation_log.description,
+            power_forecast_creation_time=calculation_log.power_forecast_creation_time,
+            weather_forecast_creation_time=calculation_log.weather_forecast_creation_time,
+            weather_forecast_location_id=calculation_log.weather_forecast_location_id,
+            power_forecast_logs=power_forecast_logs,
+            power_target_logs=power_target_logs,
+            power_flow_logs=power_flow_logs,
+            weather_forecast_logs=weather_forecast_logs,
+        )
+
+    @staticmethod
+    def map_to_list_response(
+        calculation_logs: Sequence[CalculationLog], count: int, start: int, limit: int
+    ) -> CalculationLogListResponse:
+        return CalculationLogListResponse(
+            limit=limit,
+            start=start,
+            total_calculation_logs=count,
+            calculation_logs=[
+                CalculationLogMapper.map_to_response(c, include_child_logs=False) for c in calculation_logs
             ],
         )

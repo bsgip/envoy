@@ -3,7 +3,11 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from envoy.admin.crud.log import select_calculation_log_by_id, select_most_recent_calculation_log_for_interval_start
+from envoy.admin.crud.log import (
+    count_calculation_logs_for_period,
+    select_calculation_log_by_id,
+    select_calculation_logs_for_period,
+)
 from envoy.server.model.log import CalculationLog, PowerFlowLog, PowerForecastLog, PowerTargetLog, WeatherForecastLog
 from tests.assert_time import assert_datetime_equal
 from tests.postgres_testing import generate_async_session
@@ -57,42 +61,109 @@ async def test_select_calculation_log_by_id(pg_base_config):
         assert [e.power_forecast_log_id for e in calc_log_2.power_forecast_logs] == [1, 2]
 
 
+AEST = ZoneInfo("Australia/Brisbane")
+
+
 @pytest.mark.parametrize(
-    "interval_start",
+    "period_start, period_end, start, limit, expected_ids, expected_count",
     [
-        datetime(2016, 1, 2),  # Naive datetime
-        datetime(2024, 1, 31, 1, 2, 3, tzinfo=ZoneInfo("Australia/Perth")),  # wrong timezone
-        datetime(2024, 1, 31, 0, 0, 0, tzinfo=timezone.utc),  # same date - wrong time
+        (
+            datetime(2023, 9, 8, 0, 0, 0, tzinfo=AEST),
+            datetime(2023, 9, 9, 0, 0, 0, tzinfo=AEST),
+            0,
+            100,
+            [],
+            0,
+        ),  # Too early
+        (
+            datetime(2023, 9, 11, 0, 0, 0, tzinfo=AEST),
+            datetime(2023, 9, 12, 0, 0, 0, tzinfo=AEST),
+            0,
+            100,
+            [],
+            0,
+        ),  # Too late
+        (
+            datetime(2023, 9, 10, 0, 0, 0, tzinfo=AEST),
+            datetime(2023, 9, 11, 0, 0, 0, tzinfo=AEST),
+            0,
+            100,
+            [4, 5, 6],
+            3,
+        ),  # Perfectly match 1 day range
+        (
+            datetime(2023, 9, 9, 0, 0, 0, tzinfo=AEST),
+            datetime(2023, 9, 11, 0, 0, 0, tzinfo=AEST),
+            0,
+            100,
+            [4, 5, 6, 7],
+            4,
+        ),  # Perfectly match 2 day Range
+        (
+            datetime(2023, 9, 8, 0, 0, 0, tzinfo=AEST),
+            datetime(2023, 9, 12, 0, 0, 0, tzinfo=AEST),
+            0,
+            100,
+            [4, 5, 6, 7],
+            4,
+        ),  # Full encapsulation of Range
+        (
+            datetime(2023, 9, 10, 12, 0, 0, tzinfo=AEST),
+            datetime(2023, 9, 11, 12, 0, 0, tzinfo=AEST),
+            0,
+            100,
+            [4, 5],
+            2,
+        ),  # Intersect (but 6 will not match as it only has a 5 minute period)
+        (
+            datetime(2023, 9, 10, 0, 0, 10, tzinfo=AEST),
+            datetime(2023, 9, 10, 10, 0, 0, tzinfo=AEST),
+            0,
+            100,
+            [4, 5, 6],
+            3,
+        ),  # Encapsulated by the logs
+        (
+            datetime(2023, 9, 9, 0, 0, 0, tzinfo=AEST),
+            datetime(2023, 9, 11, 0, 0, 0, tzinfo=AEST),
+            0,
+            2,
+            [4, 5],
+            4,
+        ),  # Paging
+        (
+            datetime(2023, 9, 9, 0, 0, 0, tzinfo=AEST),
+            datetime(2023, 9, 11, 0, 0, 0, tzinfo=AEST),
+            2,
+            2,
+            [6, 7],
+            4,
+        ),  # Paging
+        (
+            datetime(2023, 9, 9, 0, 0, 0, tzinfo=AEST),
+            datetime(2023, 9, 11, 0, 0, 0, tzinfo=AEST),
+            4,
+            2,
+            [],
+            4,
+        ),  # Paging
     ],
 )
 @pytest.mark.anyio
-async def test_select_most_recent_calculation_log_for_interval_start_missing(pg_base_config, interval_start: datetime):
-    """Does an invalid date generate None without error"""
-    async with generate_async_session(pg_base_config) as session:
-        assert await select_most_recent_calculation_log_for_interval_start(session, interval_start) is None
-
-
-@pytest.mark.anyio
-async def test_select_most_recent_calculation_log_for_interval_start(pg_base_config):
+async def test_select_calculation_logs_for_period(
+    pg_billing_data,
+    period_start: datetime,
+    period_end: datetime,
+    start: int,
+    limit: int,
+    expected_ids: list[int],
+    expected_count: int,
+):
     """Tests that the correct log with child relations are returned"""
 
-    # This interval has 2 calculation logs - only the most recent (calc_2) will be returned
-    interval_start = datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc)
-    async with generate_async_session(pg_base_config) as session:
-        calc_log_2 = await select_most_recent_calculation_log_for_interval_start(session, interval_start)
-        assert calc_log_2 is not None and isinstance(calc_log_2, CalculationLog)
-        assert calc_log_2.external_id == "external-id-2"
-        assert_datetime_equal(calc_log_2.calculation_interval_start, interval_start)
-        assert calc_log_2.calculation_interval_duration_seconds == 86402
-        assert len(calc_log_2.weather_forecast_logs) == 1
-        assert len(calc_log_2.power_flow_logs) == 2
-        assert len(calc_log_2.power_target_logs) == 2
-        assert len(calc_log_2.power_forecast_logs) == 2
-        assert all(isinstance(e, WeatherForecastLog) for e in calc_log_2.weather_forecast_logs)
-        assert all(isinstance(e, PowerFlowLog) for e in calc_log_2.power_flow_logs)
-        assert all(isinstance(e, PowerTargetLog) for e in calc_log_2.power_target_logs)
-        assert all(isinstance(e, PowerForecastLog) for e in calc_log_2.power_forecast_logs)
-        assert [e.weather_forecast_log_id for e in calc_log_2.weather_forecast_logs] == [1]
-        assert [e.power_flow_log_id for e in calc_log_2.power_flow_logs] == [1, 2]
-        assert [e.power_target_log_id for e in calc_log_2.power_target_logs] == [1, 2]
-        assert [e.power_forecast_log_id for e in calc_log_2.power_forecast_logs] == [1, 2]
+    async with generate_async_session(pg_billing_data) as session:
+        calc_logs = await select_calculation_logs_for_period(session, period_start, period_end, start, limit)
+        assert all([isinstance(log, CalculationLog) for log in calc_logs])
+        assert [log.calculation_log_id for log in calc_logs] == expected_ids
+
+        assert await count_calculation_logs_for_period(session, period_start, period_end) == expected_count

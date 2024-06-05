@@ -97,7 +97,7 @@ VALUES (1009, -- site_reading_type_id
     '2022-05-06 11:22:33' -- changed_time
     );
 
--- Reactive Energy - site 3
+-- Real Energy - site 3
 INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
 VALUES (1010, -- site_reading_type_id
     2, -- aggregator_id
@@ -227,3 +227,39 @@ VALUES (
     300, -- time_period_seconds
     88 -- value
     );
+
+
+-- Calc log 4 will align with billing data and sites 1/3
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_interval_start", "calculation_interval_duration_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+VALUES (4, '2024-01-21 03:22:33.500', '2023-09-10 00:00+10', 86400, 'topo-id-4', 'external-id-4', 'description-4', '2024-01-20 03:11:00.500', '2024-03-20 01:11:11.500', 'weather-location-4');
+-- Calc log 5 will align with billing data and have no sites
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_interval_start", "calculation_interval_duration_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+VALUES (5, '2024-01-21 03:22:33.500', '2023-09-10 00:00+10', 86400, 'topo-id-5', 'external-id-5', 'description-5', '2024-01-20 03:11:00.500', '2024-03-20 01:11:11.500', 'weather-location-5');
+-- Calc log 6 will align with the first 5 minutes of billing data and site 1
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_interval_start", "calculation_interval_duration_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+VALUES (6, '2024-01-21 03:22:33.500', '2023-09-10 00:00+10', 300, 'topo-id-6', 'external-id-6', 'description-6', '2024-01-20 03:11:00.500', '2024-03-20 01:11:11.500', 'weather-location-6');
+-- Calc log 7 will NOT align on billing period and will have site 1
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_interval_start", "calculation_interval_duration_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+VALUES (7, '2024-01-21 03:22:33.500', '2023-09-09 00:00+10', 86400, 'topo-id-7', 'external-id-7', 'description-7', '2024-01-20 03:11:00.500', '2024-03-20 01:11:11.500', 'weather-location-7');
+SELECT pg_catalog.setval('public.calculation_log_calculation_log_id_seq', 8, true);
+
+
+INSERT INTO public.power_flow_log("power_flow_log_id", "interval_start", "interval_duration_seconds", "site_id", "solve_name", "pu_voltage_min", "pu_voltage_max", "pu_voltage", "thermal_max_percent", "calculation_log_id") 
+VALUES (4, '2024-02-01 00:00:05', 115, 1, 'solve-1', 4.01, 4.02, 4.03, 4.04, 4);
+INSERT INTO public.power_flow_log("power_flow_log_id", "interval_start", "interval_duration_seconds", "site_id", "solve_name", "pu_voltage_min", "pu_voltage_max", "pu_voltage", "thermal_max_percent", "calculation_log_id") 
+VALUES (5, '2024-02-01 00:00:05', 116, NULL, 'solve-1', 5.01, 5.02, 5.03, 5.04, 4);
+INSERT INTO public.power_flow_log("power_flow_log_id", "interval_start", "interval_duration_seconds", "site_id", "solve_name", "pu_voltage_min", "pu_voltage_max", "pu_voltage", "thermal_max_percent", "calculation_log_id") 
+VALUES (6, '2024-02-01 00:00:05', 117, 1, 'solve-1', 6.01, 6.02, 6.03, 6.04, 7);
+SELECT pg_catalog.setval('public.power_flow_log_power_flow_log_id_seq', 7, true);
+
+INSERT INTO public.power_target_log("power_target_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "target_active_power_watts", "target_reactive_power_var", "calculation_log_id") 
+VALUES (4, '2024-02-01 00:00:05', 117, 'device-id-4', 3, 41, 42, 4);
+INSERT INTO public.power_target_log("power_target_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "target_active_power_watts", "target_reactive_power_var", "calculation_log_id") 
+VALUES (5, '2024-02-01 00:00:05', 118, 'device-id-5', NULL, 51, 52, 4);
+SELECT pg_catalog.setval('public.power_target_log_power_target_log_id_seq', 6, true);
+
+INSERT INTO public.power_forecast_log("power_forecast_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "active_power_watts", "reactive_power_var", "calculation_log_id") 
+VALUES (4, '2024-02-01 01:00:05', 118, 'device-id-4', 1, 411, 412, 6);
+INSERT INTO public.power_forecast_log("power_forecast_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "active_power_watts", "reactive_power_var", "calculation_log_id") 
+VALUES (5, '2024-02-01 01:00:05', 119, 'device-id-5', NULL, 511, 512, 4);
+SELECT pg_catalog.setval('public.power_forecast_log_power_forecast_log_id_seq', 6, true);

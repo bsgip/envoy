@@ -1,11 +1,18 @@
 from datetime import datetime
 from decimal import Decimal
 
-from envoy_schema.admin.schema.billing import BillingDoe, BillingReading, BillingResponse, BillingTariffRate
+from envoy_schema.admin.schema.billing import (
+    AggregatorBillingResponse,
+    BillingDoe,
+    BillingReading,
+    BillingTariffRate,
+    CalculationLogBillingResponse,
+)
 
 from envoy.admin.crud.billing import BillingData
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.log import CalculationLog
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.tariff import TariffGeneratedRate
 
@@ -45,14 +52,28 @@ class BillingMapper:
         )
 
     @staticmethod
-    def map_to_response(
+    def map_to_aggregator_response(
         aggregator: Aggregator, tariff_id: int, period_start: datetime, period_end: datetime, data: BillingData
-    ) -> BillingResponse:
-        return BillingResponse(
+    ) -> AggregatorBillingResponse:
+        return AggregatorBillingResponse(
             aggregator_id=aggregator.aggregator_id,
             aggregator_name=aggregator.name,
             period_start=period_start,
             period_end=period_end,
+            tariff_id=tariff_id,
+            varh_readings=[BillingMapper.map_reading(r) for r in data.varh_readings],
+            wh_readings=[BillingMapper.map_reading(r) for r in data.wh_readings],
+            watt_readings=[BillingMapper.map_reading(r) for r in data.watt_readings],
+            active_does=[BillingMapper.map_doe(d) for d in data.active_does],
+            active_tariffs=[BillingMapper.map_rate(r) for r in data.active_tariffs],
+        )
+
+    @staticmethod
+    def map_to_calculation_log_response(
+        calculation_log: CalculationLog, tariff_id: int, data: BillingData
+    ) -> CalculationLogBillingResponse:
+        return CalculationLogBillingResponse(
+            calculation_log_id=calculation_log.calculation_log_id,
             tariff_id=tariff_id,
             varh_readings=[BillingMapper.map_reading(r) for r in data.varh_readings],
             wh_readings=[BillingMapper.map_reading(r) for r in data.wh_readings],

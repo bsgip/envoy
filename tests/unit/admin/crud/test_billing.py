@@ -1,10 +1,17 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
 
-from envoy.admin.crud.billing import BillingData, fetch_aggregator, fetch_billing_data
+from envoy.admin.crud.billing import (
+    BillingData,
+    fetch_aggregator,
+    fetch_aggregator_billing_data,
+    fetch_calculation_log_billing_data,
+)
+from envoy.admin.crud.log import select_calculation_log_by_id
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
@@ -128,7 +135,7 @@ aest = ZoneInfo("Australia/Brisbane")  # This is UTC+10 to align with the start 
     ],
 )
 @pytest.mark.anyio
-async def test_fetch_billing_data(
+async def test_fetch_aggregator_billing_data(
     pg_billing_data,
     period_start: datetime,
     period_end: datetime,
@@ -143,13 +150,147 @@ async def test_fetch_billing_data(
     """Assert fetch billing data fetches the correct data given a pg_billing_data database"""
 
     async with generate_async_session(pg_billing_data) as session:
-        billing_data = await fetch_billing_data(
+        billing_data = await fetch_aggregator_billing_data(
             period_start=period_start,
             period_end=period_end,
             aggregator_id=aggregator_id,
             session=session,
             tariff_id=tariff_id,
         )
+        assert_billing_data_types(billing_data)
+
+        assert [b.import_active_price for b in billing_data.active_tariffs] == expected_tariff_imports
+
+        assert [b.import_limit_active_watts for b in billing_data.active_does] == expected_doe_imports
+
+        assert [
+            (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.wh_readings
+        ] == expected_wh_readings
+
+        assert [
+            (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.varh_readings
+        ] == expected_varh_readings
+
+        assert [
+            (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.watt_readings
+        ] == expected_watt_readings
+
+
+@pytest.mark.parametrize(
+    "calculation_log_id, tariff_id, expected_tariff_imports, expected_doe_imports, expected_wh_readings, expected_varh_readings, expected_watt_readings",  # noqa e501
+    [
+        (99, 1, None, None, None, None, None),
+        (
+            4,  # calculation_log_id
+            1,  # tariff_id
+            [  # expected_tariff_imports
+                Decimal("1.1"),
+                Decimal("2.1"),
+                Decimal("3.1"),
+                Decimal("7.1"),
+            ],
+            [  # expected_doe_imports
+                Decimal("1.11"),
+                Decimal("2.11"),
+                Decimal("6.11"),
+            ],
+            [  # expected_wh_readings
+                (1, 72, 11),
+                (1, 72, 22),
+                (3, 72, 88),
+            ],
+            [  # expected_var_readings
+                (1, 73, 55),
+            ],
+            [(1, 38, 99), (1, 38, 1010)],  # expected_watt_readings
+        ),
+        (
+            5,  # calculation_log_id
+            1,  # tariff_id
+            [],  # expected_tariff_imports
+            [],  # expected_doe_imports
+            [],  # expected_wh_readings
+            [],  # expected_var_readings
+            [],  # expected_watt_readings
+        ),
+        (
+            6,  # calculation_log_id
+            1,  # tariff_id
+            [  # expected_tariff_imports
+                Decimal("1.1"),
+            ],
+            [  # expected_doe_imports
+                Decimal("1.11"),
+            ],
+            [  # expected_wh_readings
+                (1, 72, 11),
+            ],
+            [  # expected_var_readings
+                (1, 73, 55),
+            ],
+            [(1, 38, 99)],  # expected_watt_readings
+        ),
+        (
+            7,  # calculation_log_id
+            1,  # tariff_id
+            [],  # expected_tariff_imports
+            [],  # expected_doe_imports
+            [],  # expected_wh_readings
+            [],  # expected_var_readings
+            [],  # expected_watt_readings
+        ),
+        (
+            4,  # calculation_log_id
+            99,  # tariff_id
+            [],  # expected_tariff_imports
+            [  # expected_doe_imports
+                Decimal("1.11"),
+                Decimal("2.11"),
+                Decimal("6.11"),
+            ],
+            [  # expected_wh_readings
+                (1, 72, 11),
+                (1, 72, 22),
+                (3, 72, 88),
+            ],
+            [  # expected_var_readings
+                (1, 73, 55),
+            ],
+            [(1, 38, 99), (1, 38, 1010)],  # expected_watt_readings
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_calculation_log_billing_data(
+    pg_billing_data,
+    calculation_log_id: int,
+    tariff_id: int,
+    expected_tariff_imports: Optional[list],
+    expected_doe_imports: Optional[list],
+    expected_wh_readings: Optional[list],
+    expected_varh_readings: Optional[list],
+    expected_watt_readings: Optional[list],
+):
+    """Assert fetch billing data fetches the correct data given a pg_billing_data database"""
+
+    async with generate_async_session(pg_billing_data) as session:
+        calculation_log = await select_calculation_log_by_id(session, calculation_log_id)
+        if calculation_log is None:
+            assert (
+                expected_tariff_imports is None
+                and expected_doe_imports is None
+                and expected_wh_readings is None
+                and expected_varh_readings is None
+                and expected_watt_readings is None
+            )
+            return
+
+        billing_data = await fetch_calculation_log_billing_data(
+            calculation_log=calculation_log,
+            session=session,
+            tariff_id=tariff_id,
+        )
+
         assert_billing_data_types(billing_data)
 
         assert [b.import_active_price for b in billing_data.active_tariffs] == expected_tariff_imports

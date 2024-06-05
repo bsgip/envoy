@@ -1,9 +1,11 @@
 from datetime import datetime, timezone
 from http import HTTPStatus
 from itertools import product
+from typing import Optional
 
 import pytest
 from envoy_schema.admin.schema.log import (
+    CalculationLogListResponse,
     CalculationLogRequest,
     CalculationLogResponse,
     PowerFlowLog,
@@ -11,7 +13,7 @@ from envoy_schema.admin.schema.log import (
     PowerTargetLog,
     WeatherForecastLog,
 )
-from envoy_schema.admin.schema.uri import CalculationLogCreateUri, CalculationLogForDateUri, CalculationLogUri
+from envoy_schema.admin.schema.uri import CalculationLogCreateUri, CalculationLogsForPeriod, CalculationLogUri
 from httpx import AsyncClient
 
 from envoy.server.api.response import LOCATION_HEADER_NAME
@@ -50,23 +52,6 @@ async def test_get_calculation_log_by_id(admin_client_auth: AsyncClient):
 @pytest.mark.anyio
 async def test_get_calculation_log_by_id_missing(admin_client_auth: AsyncClient):
     resp = await admin_client_auth.get(CalculationLogUri.format(calculation_log_id=4))
-    assert resp.status_code == HTTPStatus.NOT_FOUND
-
-
-@pytest.mark.parametrize("interval_start_str", ["2024-01-31T01:02:03Z", "2024-01-31T01:02:03+00:00"])
-@pytest.mark.anyio
-async def test_get_calculation_log_by_interval(admin_client_auth: AsyncClient, interval_start_str: str):
-    resp = await admin_client_auth.get(CalculationLogForDateUri.format(calculation_interval_start=interval_start_str))
-    assert resp.status_code == HTTPStatus.OK
-
-    calc_log_2 = CalculationLogResponse.model_validate_json(resp.content)
-    assert_calc_log_2(calc_log_2)
-
-
-@pytest.mark.parametrize("interval_start_str", ["2024-01-31T00:00:00Z", "2024-01-31T01:02:03+10:00"])
-@pytest.mark.anyio
-async def test_get_calculation_log_by_interval_missing(admin_client_auth: AsyncClient, interval_start_str: str):
-    resp = await admin_client_auth.get(CalculationLogForDateUri.format(calculation_interval_start=interval_start_str))
     assert resp.status_code == HTTPStatus.NOT_FOUND
 
 
@@ -117,3 +102,72 @@ async def test_calculation_log_roundtrip_with_children(
         assert len(returned_log.power_flow_logs) == 0
         assert len(returned_log.power_forecast_logs) == 0
         assert len(returned_log.power_target_logs) == 0
+
+
+@pytest.mark.parametrize(
+    "period_start, period_end, start, limit, expected_ids, expected_count",
+    [
+        (
+            "2023-09-08T00:00+10:00",
+            "2023-09-09T00:00+10:00",
+            None,
+            None,
+            [],
+            0,
+        ),  # Too early
+        (
+            "2023-09-11T00:00+10:00",
+            "2023-09-12T00:00+10:00",
+            0,
+            None,
+            [],
+            0,
+        ),  # Too late
+        (
+            "2023-09-08T00:00+10:00",
+            "2023-09-12T00:00+10:00",
+            None,
+            5,
+            [4, 5, 6, 7],
+            4,
+        ),  # Perfectly match 2 day Range
+        (
+            "2023-09-08T00:00+10:00",
+            "2023-09-12T00:00+10:00",
+            1,
+            2,
+            [5, 6],
+            4,
+        ),  # Paging
+    ],
+)
+@pytest.mark.anyio
+async def test_get_calculation_logs_for_period(
+    pg_billing_data,
+    admin_client_auth: AsyncClient,
+    period_start: str,
+    period_end: str,
+    start: Optional[int],
+    limit: Optional[int],
+    expected_ids: list[int],
+    expected_count: int,
+):
+    uri = CalculationLogsForPeriod.format(period_start=period_start, period_end=period_end) + "?"
+    if start is not None:
+        uri += f"&start={start}"
+    if limit is not None:
+        uri += f"&limit={limit}"
+    resp = await admin_client_auth.get(uri)
+    assert resp.status_code == HTTPStatus.OK
+
+    log_list = CalculationLogListResponse.model_validate_json(resp.content)
+    assert log_list.total_calculation_logs == expected_count
+    assert log_list.start == (start if start is not None else 0)
+    assert log_list.limit == (limit if limit is not None else 100)
+    assert all([isinstance(cl, CalculationLogResponse) for cl in log_list.calculation_logs])
+    assert all([cl.power_flow_logs == [] for cl in log_list.calculation_logs]), "No child logs in list endpoint"
+    assert all([cl.power_forecast_logs == [] for cl in log_list.calculation_logs]), "No child logs in list endpoint"
+    assert all([cl.power_target_logs == [] for cl in log_list.calculation_logs]), "No child logs in list endpoint"
+    assert all([cl.weather_forecast_logs == [] for cl in log_list.calculation_logs]), "No child logs in list endpoint"
+
+    assert [cl.calculation_log_id for cl in log_list.calculation_logs] == expected_ids

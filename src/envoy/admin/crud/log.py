@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Sequence, Union, cast
 
-from sqlalchemy import select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -25,25 +25,61 @@ async def select_calculation_log_by_id(session: AsyncSession, calculation_log_id
     return resp.scalars().one_or_none()
 
 
-async def select_most_recent_calculation_log_for_interval_start(
-    session: AsyncSession, calculation_interval_start: datetime
-) -> Optional[CalculationLog]:
-    """Admin fetching of a calculation log by calculation interval date. Fetches the most recent calculation log
-    for the interval date
+async def _calculation_logs_for_period(
+    is_counting: bool,
+    session: AsyncSession,
+    period_start: datetime,
+    period_end: datetime,
+    start: int,
+    limit: Optional[int],
+) -> Union[Sequence[CalculationLog], int]:
 
-    returns the log with all child entities included"""
+    select_clause: Union[Select[tuple[int]], Select[tuple[CalculationLog]]]
+    if is_counting:
+        select_clause = select(func.count()).select_from(CalculationLog)
+    else:
+        select_clause = select(CalculationLog)
+
     stmt = (
-        select(CalculationLog)
-        .where((CalculationLog.calculation_interval_start == calculation_interval_start))
-        .order_by(CalculationLog.created_time.desc())
-        .limit(1)
-        .options(
-            selectinload(CalculationLog.weather_forecast_logs),
-            selectinload(CalculationLog.power_flow_logs),
-            selectinload(CalculationLog.power_target_logs),
-            selectinload(CalculationLog.power_forecast_logs),
+        select_clause.where(
+            ~(
+                (CalculationLog.calculation_interval_start >= period_end)
+                | (
+                    (
+                        CalculationLog.calculation_interval_start
+                        + func.make_interval(0, 0, 0, 0, 0, 0, CalculationLog.calculation_interval_duration_seconds)
+                    )
+                    <= period_start
+                )
+            )
         )
+        .offset(start)
+        .limit(limit)
     )
 
+    if not is_counting:
+        stmt = stmt.order_by(CalculationLog.calculation_log_id)
+
     resp = await session.execute(stmt)
-    return resp.scalars().one_or_none()
+    if is_counting:
+        return resp.scalar_one()
+    else:
+        return resp.scalars().all()
+
+
+async def count_calculation_logs_for_period(session: AsyncSession, period_start: datetime, period_end: datetime) -> int:
+    """Similar to select_calculation_logs_for_period but instead returns the full count of all matching entities"""
+    return cast(int, await _calculation_logs_for_period(True, session, period_start, period_end, 0, None))
+
+
+async def select_calculation_logs_for_period(
+    session: AsyncSession, period_start: datetime, period_end: datetime, start: int, limit: int
+) -> Sequence[CalculationLog]:
+    """Admin fetching of a calculation logs by comparing a calculation log against a period of time. Returns ANY
+    calculation log whose start/end times intersect the specified period (start time inclusive, end time exclusive)
+
+    Does NOT include any child logs"""
+    return cast(
+        Sequence[CalculationLog],
+        await _calculation_logs_for_period(False, session, period_start, period_end, start, limit),
+    )
