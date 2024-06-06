@@ -2,8 +2,13 @@ import logging
 from datetime import datetime
 from http import HTTPStatus
 
-from envoy_schema.admin.schema.billing import AggregatorBillingResponse, CalculationLogBillingResponse
-from envoy_schema.admin.schema.uri import AggregatorBillingUri, CalculationLogBillingUri
+from envoy_schema.admin.schema.billing import (
+    AggregatorBillingResponse,
+    CalculationLogBillingResponse,
+    SiteBillingRequest,
+    SiteBillingResponse,
+)
+from envoy_schema.admin.schema.uri import AggregatorBillingUri, CalculationLogBillingUri, SitePeriodBillingUri
 from fastapi import APIRouter, Path
 from fastapi_async_sqlalchemy import db
 
@@ -74,3 +79,24 @@ async def get_calculation_log_billing_data(
         )
     except NotFoundError as exc:
         raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "The requested calculation log id doesn't exist")
+
+
+@router.post(SitePeriodBillingUri, status_code=HTTPStatus.OK, response_model=SiteBillingResponse)
+async def get_sites_billing_data(req: SiteBillingRequest) -> SiteBillingResponse:
+    """Endpoint for fetching all site billing data associated with a time period. This is a relatively intensive
+    operation - it's been designed for running over a daily period.
+
+    POST Body SiteBillingRequest:
+        period_start: The (inclusive) start datetime to request data for (include timezone)
+        period_end: The (exclusive) end datetime to request data for (include timezone)
+        site_ids: The site ids to request data for
+        tariff_id: The tariff id to request rate data for
+
+    Returns:
+        SiteBillingResponse
+
+    """
+    return await BillingManager.generate_sites_billing_report(
+        session=db.session,
+        request=req,
+    )

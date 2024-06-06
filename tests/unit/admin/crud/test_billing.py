@@ -10,6 +10,7 @@ from envoy.admin.crud.billing import (
     fetch_aggregator,
     fetch_aggregator_billing_data,
     fetch_calculation_log_billing_data,
+    fetch_sites_billing_data,
 )
 from envoy.admin.crud.log import select_calculation_log_by_id
 from envoy.server.model.aggregator import Aggregator
@@ -291,6 +292,176 @@ async def test_fetch_calculation_log_billing_data(
             tariff_id=tariff_id,
         )
 
+        assert_billing_data_types(billing_data)
+
+        assert [b.import_active_price for b in billing_data.active_tariffs] == expected_tariff_imports
+
+        assert [b.import_limit_active_watts for b in billing_data.active_does] == expected_doe_imports
+
+        assert [
+            (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.wh_readings
+        ] == expected_wh_readings
+
+        assert [
+            (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.varh_readings
+        ] == expected_varh_readings
+
+        assert [
+            (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.watt_readings
+        ] == expected_watt_readings
+
+
+@pytest.mark.parametrize(
+    "period_start, period_end, site_ids, tariff_id, expected_tariff_imports, expected_doe_imports, expected_wh_readings, expected_varh_readings, expected_watt_readings",  # noqa e501
+    [
+        (
+            datetime(2023, 9, 10, tzinfo=aest),  # Period start
+            datetime(2023, 9, 11, tzinfo=aest),  # Period end
+            [1, 2, 4],  # site_ids
+            1,  # tariff_id
+            [  # expected_tariff_imports
+                Decimal("1.1"),
+                Decimal("2.1"),
+                Decimal("3.1"),
+                Decimal("6.1"),
+            ],
+            [  # expected_doe_imports
+                Decimal("1.11"),
+                Decimal("2.11"),
+                Decimal("5.11"),
+            ],
+            [  # expected_wh_readings
+                (1, 72, 11),
+                (1, 72, 22),
+                (2, 72, 77),
+            ],
+            [  # expected_var_readings
+                (1, 73, 55),
+            ],
+            [(1, 38, 99), (1, 38, 1010)],  # expected_watt_readings
+        ),
+        # Variation on sites
+        (
+            datetime(2023, 9, 10, tzinfo=aest),  # Period start
+            datetime(2023, 9, 11, tzinfo=aest),  # Period end
+            [2],  # site_ids
+            1,  # tariff_id
+            [  # expected_tariff_imports
+                Decimal("6.1"),
+            ],
+            [  # expected_doe_imports
+                Decimal("5.11"),
+            ],
+            [  # expected_wh_readings
+                (2, 72, 77),
+            ],
+            [],  # expected_var_readings
+            [],  # expected_watt_readings
+        ),
+        # Variation on date
+        (
+            datetime(2023, 9, 11, tzinfo=aest),  # Period start
+            datetime(2023, 9, 12, tzinfo=aest),  # Period end
+            [1, 2, 4],  # site_ids
+            1,  # tariff_id
+            [  # expected_tariff_imports
+                Decimal("4.1"),
+                Decimal("5.1"),
+            ],
+            [  # expected_doe_imports
+                Decimal("3.11"),
+                Decimal("4.11"),
+            ],
+            [  # expected_wh_readings
+                (1, 72, 33),
+                (1, 72, 44),
+            ],
+            [  # expected_var_readings
+                (1, 73, 66),
+            ],
+            [(1, 38, 1111)],  # expected_watt_readings
+        ),
+        # Variation on tariff ID
+        (
+            datetime(2023, 9, 11, tzinfo=aest),  # Period start
+            datetime(2023, 9, 12, tzinfo=aest),  # Period end
+            [1, 2, 4],  # site_ids
+            2,  # tariff_id
+            [],  # expected_tariff_imports
+            [  # expected_doe_imports
+                Decimal("3.11"),
+                Decimal("4.11"),
+            ],
+            [  # expected_wh_readings
+                (1, 72, 33),
+                (1, 72, 44),
+            ],
+            [  # expected_var_readings
+                (1, 73, 66),
+            ],
+            [(1, 38, 1111)],  # expected_watt_readings
+        ),
+        # Time mismatch
+        (
+            datetime(2023, 9, 9, tzinfo=aest),  # Period start
+            datetime(2023, 9, 10, tzinfo=aest),  # Period end
+            [1, 2, 4],  # site_ids
+            1,  # tariff_id
+            [],  # expected_tariff_imports
+            [],  # expected_doe_imports
+            [],  # expected_wh_readings
+            [],  # expected_var_readings
+            [],  # expected_watt_readings
+        ),
+        # Site ID mismatch
+        (
+            datetime(2023, 9, 10, tzinfo=aest),  # Period start
+            datetime(2023, 9, 11, tzinfo=aest),  # Period end
+            [99],  # site_ids
+            1,  # tariff_id
+            [],  # expected_tariff_imports
+            [],  # expected_doe_imports
+            [],  # expected_wh_readings
+            [],  # expected_var_readings
+            [],  # expected_watt_readings
+        ),
+        # Site ID Empty
+        (
+            datetime(2023, 9, 10, tzinfo=aest),  # Period start
+            datetime(2023, 9, 11, tzinfo=aest),  # Period end
+            [],  # site_ids
+            1,  # tariff_id
+            [],  # expected_tariff_imports
+            [],  # expected_doe_imports
+            [],  # expected_wh_readings
+            [],  # expected_var_readings
+            [],  # expected_watt_readings
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_sites_billing_data(
+    pg_billing_data,
+    period_start: datetime,
+    period_end: datetime,
+    site_ids: list[int],
+    tariff_id: int,
+    expected_tariff_imports: list,
+    expected_doe_imports: list,
+    expected_wh_readings: list,
+    expected_varh_readings: list,
+    expected_watt_readings: list,
+):
+    """Assert fetch billing data fetches the correct data given a pg_billing_data database"""
+
+    async with generate_async_session(pg_billing_data) as session:
+        billing_data = await fetch_sites_billing_data(
+            period_start=period_start,
+            period_end=period_end,
+            site_ids=site_ids,
+            session=session,
+            tariff_id=tariff_id,
+        )
         assert_billing_data_types(billing_data)
 
         assert [b.import_active_price for b in billing_data.active_tariffs] == expected_tariff_imports

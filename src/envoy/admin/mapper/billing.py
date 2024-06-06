@@ -7,6 +7,7 @@ from envoy_schema.admin.schema.billing import (
     BillingReading,
     BillingTariffRate,
     CalculationLogBillingResponse,
+    SiteBillingResponse,
 )
 
 from envoy.admin.crud.billing import BillingData
@@ -58,6 +59,22 @@ class BillingMapper:
         return AggregatorBillingResponse(
             aggregator_id=aggregator.aggregator_id,
             aggregator_name=aggregator.name,
+            period_start=period_start,
+            period_end=period_end,
+            tariff_id=tariff_id,
+            varh_readings=[BillingMapper.map_reading(r) for r in data.varh_readings],
+            wh_readings=[BillingMapper.map_reading(r) for r in data.wh_readings],
+            watt_readings=[BillingMapper.map_reading(r) for r in data.watt_readings],
+            active_does=[BillingMapper.map_doe(d) for d in data.active_does],
+            active_tariffs=[BillingMapper.map_rate(r) for r in data.active_tariffs],
+        )
+
+    @staticmethod
+    def map_to_sites_response(
+        site_ids: list[int], tariff_id: int, period_start: datetime, period_end: datetime, data: BillingData
+    ) -> SiteBillingResponse:
+        return SiteBillingResponse(
+            site_ids=site_ids,
             period_start=period_start,
             period_end=period_end,
             tariff_id=tariff_id,

@@ -1,12 +1,17 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from http import HTTPStatus
 from zoneinfo import ZoneInfo
 
 import pytest
-from envoy_schema.admin.schema.billing import AggregatorBillingResponse, CalculationLogBillingResponse
-from envoy_schema.admin.schema.uri import AggregatorBillingUri, CalculationLogBillingUri
+from envoy_schema.admin.schema.billing import (
+    AggregatorBillingResponse,
+    CalculationLogBillingResponse,
+    SiteBillingRequest,
+    SiteBillingResponse,
+)
+from envoy_schema.admin.schema.uri import AggregatorBillingUri, CalculationLogBillingUri, SitePeriodBillingUri
 from httpx import AsyncClient
 
 from tests.assert_time import assert_datetime_equal
@@ -131,3 +136,54 @@ async def test_fetch_calculation_log_billing_data_bad_id(pg_billing_data, admin_
     assert_response_header(
         response, expected_status_code=HTTPStatus.NOT_FOUND, expected_content_type="application/json"
     )
+
+
+@pytest.mark.anyio
+async def test_fetch_sites_billing_data(pg_billing_data, admin_client_auth: AsyncClient):
+    uri = SitePeriodBillingUri
+    request = SiteBillingRequest(
+        site_ids=[1, 2, 4],
+        tariff_id=1,
+        period_start=datetime(2023, 9, 9, 14, 0, tzinfo=timezone.utc),
+        period_end=datetime(2023, 9, 10, 14, 0, tzinfo=timezone.utc),
+    )
+    response = await admin_client_auth.post(uri, content=request.model_dump_json())
+    assert_response_header(response, expected_status_code=HTTPStatus.OK, expected_content_type="application/json")
+    json_body = json.loads(read_response_body_string(response))
+    body = SiteBillingResponse.model_validate(json_body)
+
+    assert_datetime_equal(body.period_start, datetime(2023, 9, 10, 0, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")))
+    assert_datetime_equal(body.period_end, datetime(2023, 9, 11, 0, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")))
+    assert body.site_ids == [1, 2, 4]
+    assert body.tariff_id == 1
+
+    assert [
+        (t.site_id, t.import_active_price, t.export_active_price, t.import_reactive_price, t.export_reactive_price)
+        for t in body.active_tariffs
+    ] == [
+        (1, Decimal("1.1"), Decimal("-1.2"), Decimal("1.3"), Decimal("-1.4")),
+        (1, Decimal("2.1"), Decimal("-2.2"), Decimal("2.3"), Decimal("-2.4")),
+        (1, Decimal("3.1"), Decimal("-3.2"), Decimal("3.3"), Decimal("-3.4")),
+        (2, Decimal("6.1"), Decimal("-6.2"), Decimal("6.3"), Decimal("-6.4")),
+    ]
+
+    assert [(d.site_id, d.import_limit_active_watts, d.export_limit_watts) for d in body.active_does] == [
+        (1, Decimal("1.11"), Decimal("-1.22")),
+        (1, Decimal("2.11"), Decimal("-2.22")),
+        (2, Decimal("5.11"), Decimal("-5.22")),
+    ]
+
+    assert [(r.site_id, r.value) for r in body.wh_readings] == [
+        (1, Decimal("1.1")),
+        (1, Decimal("2.2")),
+        (2, Decimal("7.7")),
+    ]
+
+    assert [(r.site_id, r.value) for r in body.varh_readings] == [
+        (1, Decimal("5.5")),
+    ]
+
+    assert [(r.site_id, r.value) for r in body.watt_readings] == [
+        (1, Decimal("9.9")),
+        (1, Decimal("101.0")),
+    ]

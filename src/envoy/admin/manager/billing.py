@@ -1,9 +1,19 @@
 from datetime import datetime
 
-from envoy_schema.admin.schema.billing import AggregatorBillingResponse, CalculationLogBillingResponse
+from envoy_schema.admin.schema.billing import (
+    AggregatorBillingResponse,
+    CalculationLogBillingResponse,
+    SiteBillingRequest,
+    SiteBillingResponse,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.admin.crud.billing import fetch_aggregator, fetch_aggregator_billing_data, fetch_calculation_log_billing_data
+from envoy.admin.crud.billing import (
+    fetch_aggregator,
+    fetch_aggregator_billing_data,
+    fetch_calculation_log_billing_data,
+    fetch_sites_billing_data,
+)
 from envoy.admin.crud.log import select_calculation_log_by_id
 from envoy.admin.mapper.billing import BillingMapper
 from envoy.server.exception import NotFoundError
@@ -25,6 +35,21 @@ class BillingManager:
         )
 
         return BillingMapper.map_to_aggregator_response(aggregator, tariff_id, period_start, period_end, billing_data)
+
+    @staticmethod
+    async def generate_sites_billing_report(session: AsyncSession, request: SiteBillingRequest) -> SiteBillingResponse:
+        """Generates billing report data for a specific time period/set of sites."""
+        billing_data = await fetch_sites_billing_data(
+            session,
+            site_ids=request.site_ids,
+            tariff_id=request.tariff_id,
+            period_start=request.period_start,
+            period_end=request.period_end,
+        )
+
+        return BillingMapper.map_to_sites_response(
+            request.site_ids, request.tariff_id, request.period_start, request.period_end, billing_data
+        )
 
     @staticmethod
     async def generate_calculation_log_billing_report(

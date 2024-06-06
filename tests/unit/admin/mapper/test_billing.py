@@ -8,6 +8,7 @@ from envoy_schema.admin.schema.billing import (
     BillingReading,
     BillingTariffRate,
     CalculationLogBillingResponse,
+    SiteBillingResponse,
 )
 
 from envoy.admin.crud.billing import BillingData
@@ -107,6 +108,58 @@ def test_map_to_aggregator_response(optional_is_none: bool):
 
     mapped = BillingMapper.map_to_aggregator_response(agg, tariff_id, period_start, period_end, billing_data)
     assert isinstance(mapped, AggregatorBillingResponse)
+    assert mapped.period_start == period_start
+    assert mapped.period_end == period_end
+    assert mapped.aggregator_name == agg.name
+    assert mapped.aggregator_id == agg.aggregator_id
+    assert mapped.tariff_id == tariff_id
+    assert len(mapped.varh_readings) == 1
+    assert len(mapped.wh_readings) == 1
+    assert len(mapped.active_does) == 1
+    assert len(mapped.active_tariffs) == 1
+
+    # This isn't meant to be exhaustive - the other tests will cover that - this will just ensure
+    # the wh readings to go the wh list etc.
+    assert mapped.varh_readings[0].period_start == billing_data.varh_readings[0].time_period_start
+    assert mapped.wh_readings[0].period_start == billing_data.wh_readings[0].time_period_start
+    assert mapped.watt_readings[0].period_start == billing_data.watt_readings[0].time_period_start
+
+
+@pytest.mark.parametrize(
+    "optional_is_none",
+    [(True), (False)],
+)
+def test_map_to_sites_response(optional_is_none: bool):
+    site_ids = [44, 1, 69]
+    period_start = datetime(2023, 4, 5, 6, 7)
+    period_end = datetime(2023, 6, 7, 8, 9, tzinfo=timezone.utc)
+    tariff_id = 456
+    billing_data: BillingData = BillingData(
+        varh_readings=[
+            generate_class_instance(
+                SiteReading, seed=202, optional_is_none=optional_is_none, generate_relationships=True
+            )
+        ],
+        wh_readings=[
+            generate_class_instance(
+                SiteReading, seed=303, optional_is_none=optional_is_none, generate_relationships=True
+            )
+        ],
+        active_does=[generate_class_instance(DynamicOperatingEnvelope, seed=404, optional_is_none=optional_is_none)],
+        active_tariffs=[generate_class_instance(TariffGeneratedRate, seed=505, optional_is_none=optional_is_none)],
+        watt_readings=[
+            generate_class_instance(
+                SiteReading, seed=606, optional_is_none=optional_is_none, generate_relationships=True
+            )
+        ],
+    )
+
+    mapped = BillingMapper.map_to_sites_response(site_ids, tariff_id, period_start, period_end, billing_data)
+    assert isinstance(mapped, SiteBillingResponse)
+    assert mapped.site_ids == site_ids
+    assert mapped.period_start == period_start
+    assert mapped.period_end == period_end
+    assert mapped.tariff_id == tariff_id
     assert len(mapped.varh_readings) == 1
     assert len(mapped.wh_readings) == 1
     assert len(mapped.active_does) == 1
@@ -149,6 +202,7 @@ def test_map_to_calculation_log_response(optional_is_none: bool):
     mapped = BillingMapper.map_to_calculation_log_response(log, tariff_id, billing_data)
     assert isinstance(mapped, CalculationLogBillingResponse)
     assert mapped.calculation_log_id == log.calculation_log_id
+    assert mapped.tariff_id == tariff_id
     assert len(mapped.varh_readings) == 1
     assert len(mapped.wh_readings) == 1
     assert len(mapped.active_does) == 1
