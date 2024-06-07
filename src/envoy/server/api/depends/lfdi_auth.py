@@ -6,7 +6,20 @@ from http import HTTPStatus
 from fastapi import HTTPException, Request
 from fastapi_async_sqlalchemy import db
 
-from envoy.server.crud.auth import select_client_ids_using_lfdi
+from envoy.server.crud.auth import ClientIdDetails, select_all_client_id_details
+from envoy.server.cache import AsyncCache, ExpiringValue
+
+
+async def update_client_id_details_cache() -> dict[str, ExpiringValue[ClientIdDetails]]:
+    """To be called on cache miss. Updates the entire clientIdDetails cache with active (non-expired) client details from the
+    Certificate and AggregatorCertificateAssignment tables.
+    """
+
+    # We create a fresh session here to ensure that anything fetched from the DB does NOT pollute the
+    # session used by the rest of the request - This is out of an abundance of paranoia
+    async with db():
+        client_ids = await select_all_client_id_details(db.session)
+    return {cid.lfdi: ExpiringValue(expiry=cid.expiry, value=cid) for cid in client_ids}
 
 
 class LFDIAuthDepends:
@@ -20,10 +33,12 @@ class LFDIAuthDepends:
     """
 
     cert_header: str
+    cache: AsyncCache[str, ClientIdDetails]
 
     def __init__(self, cert_header: str):
         # fastapi will always return headers in lowercase form
         self.cert_header = cert_header.lower()
+        self.cache = AsyncCache(update_fn=update_client_id_details_cache)
 
     async def __call__(self, request: Request) -> None:
         # Try extracting the lfdi from either the PEM if we receive it directly or the fingerprint if we get that
@@ -39,15 +54,14 @@ class LFDIAuthDepends:
         else:
             lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_header_val)
 
-        async with db():
-            client_ids = await select_client_ids_using_lfdi(lfdi, db.session)
+        # get client id details from cache, will return None if expired or never existed.
 
-        if not client_ids:
+        client_id = await self.cache.get_value(lfdi)
+        if not client_id:
             raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised certificate ID.")
 
         request.state.aggregator_lfdi = lfdi
-        request.state.certificate_id = client_ids.certificate_id
-        request.state.aggregator_id = client_ids.aggregator_id
+        request.state.aggregator_id = client_id.aggregator_id
 
     @staticmethod
     def generate_lfdi_from_pem(cert_pem: str) -> str:
