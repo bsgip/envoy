@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pytest
 
 from envoy.server.crud.auth import ClientIdDetails, select_all_client_id_details

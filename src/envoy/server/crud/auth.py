@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +16,8 @@ class ClientIdDetails:
 
 
 async def select_all_client_id_details(session: AsyncSession) -> list[ClientIdDetails]:
-    """Query to retrieve all client id details sourced from the 'certificate' and 'aggregator_certificate_assignment' tables.
+    """Query to retrieve all client id details sourced from the 'certificate' and
+    'aggregator_certificate_assignment' tables.
     NB. Assumption is that only aggregator clients are allowed to communicate with envoy.
 
     Expired certificates will NOT be returned by this function

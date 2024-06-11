@@ -1,5 +1,6 @@
 import base64
 import hashlib
+from typing import Any
 import urllib.parse
 from http import HTTPStatus
 
@@ -10,9 +11,9 @@ from envoy.server.crud.auth import ClientIdDetails, select_all_client_id_details
 from envoy.server.cache import AsyncCache, ExpiringValue
 
 
-async def update_client_id_details_cache() -> dict[str, ExpiringValue[ClientIdDetails]]:
-    """To be called on cache miss. Updates the entire clientIdDetails cache with active (non-expired) client details from the
-    Certificate and AggregatorCertificateAssignment tables.
+async def update_client_id_details_cache(_: Any) -> dict[str, ExpiringValue[ClientIdDetails]]:
+    """To be called on cache miss. Updates the entire clientIdDetails cache with active (non-expired) client details
+    from the Certificate and AggregatorCertificateAssignment tables.
     """
 
     # We create a fresh session here to ensure that anything fetched from the DB does NOT pollute the
@@ -56,7 +57,7 @@ class LFDIAuthDepends:
 
         # get client id details from cache, will return None if expired or never existed.
 
-        client_id = await self.cache.get_value(lfdi)
+        client_id = await self.cache.get_value(None, lfdi)
         if not client_id:
             raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised certificate ID.")
 

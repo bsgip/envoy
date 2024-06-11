@@ -51,7 +51,7 @@ async def test_update_client_id_details_cache(
     mock_select_all_client_id_details.return_value = client_details
 
     # act
-    result = await update_client_id_details_cache()
+    result = await update_client_id_details_cache(None)
 
     # assert
     assert isinstance(result, dict)
