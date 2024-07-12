@@ -40,7 +40,7 @@ dependencies = [
     "alembic",
     "tzlocal",
     "pydantic_xml[lxml]",
-    "pydantic!=2.7.0",
+    "pydantic!=2.7.0,pydantic<2.8.0",                                 # pydantic 2.8 requires migrations
     "pydantic-xml!=2.9.1",                                            # Known compatibility issue with pydantic
     "pydantic-settings",
     "python-dateutil",
