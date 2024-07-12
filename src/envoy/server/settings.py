@@ -19,6 +19,8 @@ class AppSettings(CommonSettings):
     default_doe_import_active_watts: Optional[str] = None  # Constant default DERControl import as a decimal float
     default_doe_export_active_watts: Optional[str] = None  # Constant default DERControl export as a decimal float
 
+    replace_ns_map: Optional[dict] = None
+
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:
         return {
