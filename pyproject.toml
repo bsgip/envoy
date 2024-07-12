@@ -40,7 +40,7 @@ dependencies = [
     "alembic",
     "tzlocal",
     "pydantic_xml[lxml]",
-    "pydantic!=2.7.0,<2.8.0",                                         # pydantic 2.8 requires migrations
+    "pydantic!=2.7.0",
     "pydantic-xml!=2.9.1",                                            # Known compatibility issue with pydantic
     "pydantic-settings",
     "python-dateutil",
@@ -52,7 +52,7 @@ dependencies = [
     "pyjwt",
     "cryptography",
     "httpx",
-    "taskiq",
+    "taskiq!=0.11.5,!=0.11.6",                                        # Known compatibiity issue with pydantic
     "taskiq-aio-pika",
     "parse",
     "envoy_schema @ git+ssh://git@github.com/bsgip/envoy-schema.git",
