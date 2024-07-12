@@ -3,6 +3,7 @@ from itertools import product
 from typing import Optional, Union, cast
 
 import pytest
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.der import DERControlResponse
 from envoy_schema.server.schema.sep2.end_device import EndDeviceResponse
 from envoy_schema.server.schema.sep2.metering import Reading
@@ -43,7 +44,6 @@ from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_state import RequestStateParameters
-from tests.data.fake.generator import generate_class_instance
 
 
 @pytest.mark.parametrize("resource", list(SubscriptionResource))

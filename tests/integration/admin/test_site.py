@@ -3,6 +3,7 @@ from http import HTTPStatus
 from typing import Optional
 
 import pytest
+from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
 from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteUri
@@ -10,7 +11,6 @@ from httpx import AsyncClient
 
 from envoy.admin.crud.site import count_all_site_groups, count_all_sites
 from tests.integration.response import read_response_body_string
-from tests.postgres_testing import generate_async_session
 
 
 def _build_query_string(start: Optional[int], limit: Optional[int], group_filter: Optional[str]) -> str:

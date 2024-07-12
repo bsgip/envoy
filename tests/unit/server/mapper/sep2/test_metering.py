@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 
 import envoy_schema.server.schema.uri as uris
 import pytest
+from assertical.asserts.generator import assert_class_instance_equality
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.metering import Reading, ReadingType
 from envoy_schema.server.schema.sep2.metering_mirror import (
     MirrorMeterReading,
@@ -30,7 +32,6 @@ from envoy.server.mapper.sep2.metering import (
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.request_state import RequestStateParameters
-from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 
 
 def _no_uom_test_cases():

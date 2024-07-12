@@ -3,6 +3,9 @@ from http import HTTPStatus
 from zoneinfo import ZoneInfo
 
 import pytest
+from assertical.fake.generator import generate_class_instance
+from assertical.fake.http import HTTPMethod, MockedAsyncClient
+from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
 from envoy_schema.admin.schema.uri import DoeCreateUri, TariffGeneratedRateCreateUri
@@ -12,9 +15,6 @@ from sqlalchemy import delete, insert, select
 from envoy.notification.task.transmit import HEADER_NOTIFICATION_ID
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import PRICE_DECIMAL_POWER
-from tests.data.fake.generator import generate_class_instance
-from tests.postgres_testing import generate_async_session
-from tests.unit.mocks import MockedAsyncClient
 
 
 @pytest.mark.anyio
@@ -40,8 +40,8 @@ async def test_create_does_no_active_subscription(
 
     assert not await notifications_enabled.wait_for_request(timeout_seconds=2)
 
-    assert notifications_enabled.post_calls == 0
-    assert notifications_enabled.get_calls == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
 
 
 @pytest.mark.anyio
@@ -109,10 +109,10 @@ async def test_create_does_with_active_subscription(
     # DOE 1,2 are batch 1 and go to sub1
     # DOE 3 is batch 2 and go to sub1 and sub2
     # DOE 4 is batch 3 and has no subscriptions (it belongs to a different aggregator)
-    assert notifications_enabled.get_calls == 0
-    assert notifications_enabled.post_calls == 3
-    assert notifications_enabled.post_calls_by_uri[subscription1_uri] == 2
-    assert notifications_enabled.post_calls_by_uri[subscription2_uri] == 1
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 3
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription2_uri)] == 1
 
     assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
     assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
@@ -213,9 +213,9 @@ async def test_create_does_with_paginated_notifications(
     assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
 
     # We should get 2 pages of notifications despite them all belonging to the same batch
-    assert notifications_enabled.get_calls == 0
-    assert notifications_enabled.post_calls == 2
-    assert notifications_enabled.post_calls_by_uri[subscription1_uri] == 2
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 2
 
     assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
     assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
@@ -301,9 +301,9 @@ async def test_create_rates_with_active_subscription(
     assert await notifications_enabled.wait_for_n_requests(n=4, timeout_seconds=30)
 
     # There will be 4 price notifications going out (one for each price type)
-    assert notifications_enabled.get_calls == 0
-    assert notifications_enabled.post_calls == 4
-    assert notifications_enabled.post_calls_by_uri[subscription1_uri] == 4
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 4
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 4
 
     assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
     assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(

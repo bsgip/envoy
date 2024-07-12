@@ -1,10 +1,10 @@
 from datetime import datetime
 
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 
 from envoy.admin.mapper.doe import DoeListMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from tests.data.fake.generator import generate_class_instance
 
 
 def test_doe_mapper_from_request():

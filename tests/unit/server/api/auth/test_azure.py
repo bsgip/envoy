@@ -7,6 +7,9 @@ from urllib.parse import quote
 
 import jwt
 import pytest
+from assertical.asserts.type import assert_dict_type
+from assertical.fake.asyncio import create_async_result
+from assertical.fake.http import HTTPMethod, MockedAsyncClient
 from httpx import Response
 
 from envoy.server.api.auth.azure import (
@@ -35,7 +38,6 @@ from tests.unit.jwt import (
     generate_rs256_jwt,
     load_rsa_pk,
 )
-from tests.unit.mocks import MockedAsyncClient, create_async_result
 
 # cSpell: disable - No spell checking in this file due to a large number of b64 strings
 
@@ -116,7 +118,7 @@ async def test_update_jwk_cache(mock_parse_from_jwks_json: mock.MagicMock, mock_
     mock_parse_from_jwks_json.assert_called_once_with(
         [generate_azure_jwk_definition(pk2), generate_azure_jwk_definition(pk1)]
     )
-    mocked_client.get_calls == 1
+    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
 
 @pytest.mark.anyio
@@ -136,7 +138,7 @@ async def test_update_jwk_cache_http_error(mock_parse_from_jwks_json: mock.Magic
 
     # Assert
     mock_parse_from_jwks_json.assert_not_called()
-    mocked_client.get_calls == 1
+    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
 
 @pytest.mark.anyio
@@ -156,7 +158,7 @@ async def test_update_jwk_cache_exception(mock_parse_from_jwks_json: mock.MagicM
 
     # Assert
     mock_parse_from_jwks_json.assert_not_called()
-    mocked_client.get_calls == 1
+    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
 
 def jwk_value_for_key(key_file: str) -> JWK:
@@ -280,7 +282,7 @@ async def test_request_azure_ad_token(mock_AsyncClient: mock.MagicMock):
     output_token.resource_id == resource_id
     output_token.token == "eyJ0eXAiOiJKV1Q...", "The value direct from the token-response.json"
     output_token.expiry == datetime.fromtimestamp(1690938812)
-    mocked_client.get_calls == 1
+    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
     assert mocked_client.logged_requests[0].headers == {"Metadata": "true"}
     assert quote(resource_id) in mocked_client.logged_requests[0].uri, "Resource ID should be included in request"
@@ -304,7 +306,7 @@ async def test_request_azure_ad_token_http_error(mock_AsyncClient: mock.MagicMoc
         await request_azure_ad_token(cfg)
 
     # Assert
-    mocked_client.get_calls == 1
+    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
 
 @pytest.mark.anyio
@@ -324,7 +326,7 @@ async def test_request_azure_ad_token_exception(mock_AsyncClient: mock.MagicMock
         await request_azure_ad_token(cfg)
 
     # Assert
-    mocked_client.get_calls == 1
+    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
 
 @pytest.mark.anyio
@@ -342,8 +344,7 @@ async def test_update_azure_ad_token_cache(mock_request_azure_ad_token: mock.Mag
 
     # Assert
     mock_request_azure_ad_token.assert_called_once_with(cfg)
-    assert isinstance(token_cache, dict)
-    assert len(token_cache) == 1
+    assert_dict_type(str, ExpiringValue, token_cache, count=1)
 
     expiring_val = token_cache["my-resource-id"]
     assert isinstance(expiring_val, ExpiringValue)

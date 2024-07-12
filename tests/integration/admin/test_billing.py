@@ -5,6 +5,7 @@ from http import HTTPStatus
 from zoneinfo import ZoneInfo
 
 import pytest
+from assertical.asserts.time import assert_datetime_equal
 from envoy_schema.admin.schema.billing import (
     AggregatorBillingResponse,
     CalculationLogBillingResponse,
@@ -14,7 +15,6 @@ from envoy_schema.admin.schema.billing import (
 from envoy_schema.admin.schema.uri import AggregatorBillingUri, CalculationLogBillingUri, SitePeriodBillingUri
 from httpx import AsyncClient
 
-from tests.assert_time import assert_datetime_equal
 from tests.integration.response import assert_response_header, read_response_body_string
 
 

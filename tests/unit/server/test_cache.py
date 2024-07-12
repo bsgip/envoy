@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import pytest
+from assertical.fake.asyncio import create_async_result
 
 from envoy.server.cache import AsyncCache, ExpiringValue
-from tests.unit.mocks import create_async_result
 
 
 @dataclass

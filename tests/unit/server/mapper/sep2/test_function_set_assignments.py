@@ -1,3 +1,4 @@
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2 import identification
 
 from envoy.server.mapper.sep2.function_set_assignments import (
@@ -6,7 +7,6 @@ from envoy.server.mapper.sep2.function_set_assignments import (
     FunctionSetAssignmentsResponse,
 )
 from envoy.server.request_state import RequestStateParameters
-from tests.data.fake import generator
 
 
 def test_map_to_response():
@@ -28,7 +28,7 @@ def test_map_to_response():
 
 def test_map_to_list_response():
     site_id = 10
-    function_set_assignments = [generator.generate_class_instance(FunctionSetAssignmentsResponse)]
+    function_set_assignments = [generate_class_instance(FunctionSetAssignmentsResponse)]
     rs_params = RequestStateParameters(1, None, None)
 
     result = FunctionSetAssignmentsMapper.map_to_list_response(

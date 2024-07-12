@@ -1,11 +1,14 @@
-from datetime import datetime
-import pytest
 import unittest.mock as mock
+from datetime import datetime
+
+import pytest
+from assertical.asserts.type import assert_dict_type
+from assertical.fake.asyncio import create_async_result
+from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
 
 from envoy.server.api.depends.lfdi_auth import update_client_id_details_cache
 from envoy.server.cache import ExpiringValue
 from envoy.server.crud.auth import ClientIdDetails
-from tests.unit.mocks import assert_mock_session, create_async_result, create_mock_session
 
 
 def dt(seed) -> datetime:
@@ -54,9 +57,7 @@ async def test_update_client_id_details_cache(
     result = await update_client_id_details_cache(None)
 
     # assert
-    assert isinstance(result, dict)
-    assert all([isinstance(k, str) for k in result.keys()])
-    assert all([isinstance(v, ExpiringValue) for v in result.values()])
+    assert_dict_type(str, ExpiringValue, result)
     assert all([isinstance(v.value, ClientIdDetails) for v in result.values()])
     assert all([k.value.expiry == k.expiry for k in result.values()])
     assert expected == result

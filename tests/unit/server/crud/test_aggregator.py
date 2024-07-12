@@ -1,8 +1,8 @@
 import pytest
+from assertical.fixtures.postgres import generate_async_session
 
 from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.model.aggregator import Aggregator
-from tests.postgres_testing import generate_async_session
 
 
 @pytest.mark.anyio

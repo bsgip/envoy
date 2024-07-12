@@ -5,6 +5,11 @@ from typing import Optional
 
 import envoy_schema.server.schema.uri as uris
 import pytest
+from assertical.asserts.generator import assert_class_instance_equality
+from assertical.asserts.time import assert_nowish
+from assertical.fake.generator import generate_class_instance
+from assertical.fake.http import HTTPMethod, MockedAsyncClient
+from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.der import DERCapability
 from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
 from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading
@@ -20,11 +25,9 @@ from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.subscription import select_subscription_by_id
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.subscription import Subscription
-from tests.assert_time import assert_nowish
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
-from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import (
@@ -33,8 +36,6 @@ from tests.integration.response import (
     read_location_header,
     read_response_body_string,
 )
-from tests.postgres_testing import generate_async_session
-from tests.unit.mocks import MockedAsyncClient
 
 
 @pytest.fixture
@@ -422,9 +423,9 @@ async def test_create_end_device_subscription(client: AsyncClient, notifications
     assert await notifications_enabled.wait_for_request(timeout_seconds=30)
 
     expected_notification_uri = "https://example.com:11/path/"  # from the base_config.sql
-    assert notifications_enabled.get_calls == 0
-    assert notifications_enabled.post_calls == 1
-    assert notifications_enabled.post_calls_by_uri[expected_notification_uri] == 1
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, expected_notification_uri)] == 1
 
     # Simple check on the notification content
     assert inserted_href in notifications_enabled.logged_requests[0].content
@@ -471,9 +472,9 @@ async def test_submit_conditional_reading(client: AsyncClient, notifications_ena
     assert await notifications_enabled.wait_for_request(timeout_seconds=30)
 
     expected_notification_uri = "https://example.com:55/path/"  # from the base_config.sql
-    assert notifications_enabled.get_calls == 0
-    assert notifications_enabled.post_calls == 1
-    assert notifications_enabled.post_calls_by_uri[expected_notification_uri] == 1
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, expected_notification_uri)] == 1
 
     # Simple check on the notification content
     assert "dead" not in notifications_enabled.logged_requests[0].content
@@ -511,9 +512,9 @@ async def test_der_capability_subscription(
     # check for notification
     assert await notifications_enabled.wait_for_request(timeout_seconds=30)
     expected_notification_uri = insert_request.notificationURI
-    assert notifications_enabled.get_calls == 0
-    assert notifications_enabled.post_calls == 1
-    assert notifications_enabled.post_calls_by_uri[expected_notification_uri] == 1
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, expected_notification_uri)] == 1
 
     notification = Sep2Notification.from_xml(notifications_enabled.logged_requests[0].content)
     assert notification.subscribedResource == insert_request.subscribedResource

@@ -1,3 +1,5 @@
+from assertical.asserts.type import assert_list_type
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.der import (
     DefaultDERControl,
     DERControlBase,
@@ -12,7 +14,6 @@ from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMap
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from envoy.server.request_state import RequestStateParameters
-from tests.data.fake.generator import generate_class_instance
 
 
 def test_map_derc_to_response():
@@ -94,9 +95,7 @@ def test_map_derc_to_list_response():
     assert isinstance(result, DERControlListResponse)
     assert result.all_ == site_count
     assert result.results == len(all_does)
-    assert isinstance(result.DERControl, list)
-    assert len(result.DERControl) == len(all_does)
-    assert all([isinstance(derc, DERControlResponse) for derc in result.DERControl])
+    assert_list_type(DERControlResponse, result.DERControl, len(all_does))
     assert len(set([derc.mRID for derc in result.DERControl])) == len(
         all_does
     ), f"Expected {len(all_does)} unique mrid's in the children"
@@ -108,8 +107,7 @@ def test_map_derc_to_list_response():
     assert empty_result is not None
     assert isinstance(empty_result, DERControlListResponse)
     assert empty_result.all_ == site_count
-    assert isinstance(empty_result.DERControl, list)
-    assert len(empty_result.DERControl) == 0
+    assert_list_type(DERControlResponse, empty_result.DERControl, 0)
 
     assert result.href != empty_result.href, "The derc list source is different so the hrefs should vary"
 
@@ -171,8 +169,7 @@ def test_map_derp_doe_program_list_response_no_default_doe():
     assert isinstance(result, DERProgramListResponse)
     assert result.href
     assert result.DERProgram is not None
-    assert len(result.DERProgram) == 1
-    assert all([isinstance(p, DERProgramResponse) for p in result.DERProgram])
+    assert_list_type(DERProgramResponse, result.DERProgram, 1)
     assert result.all_ == 1
     assert result.results == 1
 

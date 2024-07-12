@@ -2,11 +2,11 @@ from typing import Any, Optional
 
 import pydantic_xml
 import pytest
+from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 from envoy.server.crud import link
 from envoy.server.request_state import RequestStateParameters
-from tests.postgres_testing import generate_async_session
 
 
 @pytest.mark.anyio

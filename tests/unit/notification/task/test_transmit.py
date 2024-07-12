@@ -5,6 +5,7 @@ from typing import Union
 from uuid import uuid4
 
 import pytest
+from assertical.fake.http import HTTPMethod, MockedAsyncClient
 from httpx import Response
 
 from envoy.notification.exception import NotificationError
@@ -16,7 +17,6 @@ from envoy.notification.task.transmit import (
     schedule_retry_transmission,
     transmit_notification,
 )
-from tests.unit.mocks import MockedAsyncClient
 from tests.unit.notification.mocks import (
     assert_task_kicked_n_times,
     assert_task_kicked_with_broker_delay_and_args,
@@ -124,7 +124,7 @@ async def test_do_transmit_notification_success(mock_AsyncClient: mock.MagicMock
 
     # Should have had an outgoing request
     assert len(mocked_client.logged_requests) == 1
-    assert mocked_client.post_calls == 1
+    assert mocked_client.call_count_by_method_uri[(HTTPMethod.POST, remote_uri)] == 1
     assert mocked_client.logged_requests[0].uri == remote_uri
     assert mocked_client.logged_requests[0].content == content
     headers = mocked_client.logged_requests[0].headers
@@ -161,7 +161,7 @@ async def test_do_transmit_notification_immediately_abort(mock_AsyncClient: mock
 
     # Should have had an outgoing request
     assert len(mocked_client.logged_requests) == 1
-    assert mocked_client.post_calls == 1
+    assert mocked_client.call_count_by_method_uri[(HTTPMethod.POST, remote_uri)] == 1
     assert mocked_client.logged_requests[0].uri == remote_uri
     assert mocked_client.logged_requests[0].content == content
     headers = mocked_client.logged_requests[0].headers
@@ -204,7 +204,7 @@ async def test_do_transmit_notification_potential_retry(
         await do_transmit_notification(remote_uri, content, subscription_href, notification_id, attempt)
 
     # Should have had an outgoing request
-    assert mocked_client.post_calls == 1
+    assert mocked_client.call_count_by_method_uri[(HTTPMethod.POST, remote_uri)] == 1
 
 
 @pytest.mark.anyio

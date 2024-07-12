@@ -1,12 +1,13 @@
 from itertools import product
 
 import pytest
+from assertical.asserts.generator import assert_class_instance_equality
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.aggregator import AggregatorDomain as AggregatorDomainResponse
 from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorResponse
 
 from envoy.admin.mapper.aggregator import AggregatorMapper
 from envoy.server.model.aggregator import Aggregator
-from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 
 
 @pytest.mark.parametrize("optional_is_none, has_domains", product([True, False], [True, False]))

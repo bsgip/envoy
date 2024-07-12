@@ -2,6 +2,8 @@ import unittest.mock as mock
 from datetime import datetime
 
 import pytest
+from assertical.asserts.type import assert_list_type
+from assertical.fake.generator import generate_class_instance, generate_value
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from envoy_schema.server.schema.sep2.identification import ListLink
@@ -11,7 +13,6 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper, VirtualEndDeviceMapper
 from envoy.server.model.site import Site
 from envoy.server.request_state import RequestStateParameters
-from tests.data.fake.generator import generate_class_instance, generate_value
 
 
 def test_device_category_round_trip():
@@ -93,9 +94,7 @@ def test_list_map_to_response():
     assert isinstance(result, EndDeviceListResponse)
     assert result.all_ == site_count
     assert result.results == len(all_sites)
-    assert isinstance(result.EndDevice, list)
-    assert len(result.EndDevice) == len(all_sites)
-    assert all([isinstance(ed, EndDeviceResponse) for ed in result.EndDevice])
+    assert_list_type(EndDeviceResponse, result.EndDevice, len(all_sites))
     assert len(set([ed.lFDI for ed in result.EndDevice])) == len(
         all_sites
     ), f"Expected {len(all_sites)} unique LFDI's in the children"
@@ -104,15 +103,13 @@ def test_list_map_to_response():
     assert empty_result is not None
     assert isinstance(empty_result, EndDeviceListResponse)
     assert empty_result.all_ == site_count
-    assert isinstance(empty_result.EndDevice, list)
-    assert len(empty_result.EndDevice) == 0
+    assert_list_type(EndDeviceResponse, empty_result.EndDevice, 0)
 
     no_result = EndDeviceListMapper.map_to_response(rs_params, [], 0)
     assert no_result is not None
     assert isinstance(no_result, EndDeviceListResponse)
     assert no_result.all_ == 0
-    assert isinstance(no_result.EndDevice, list)
-    assert len(no_result.EndDevice) == 0
+    assert_list_type(EndDeviceResponse, no_result.EndDevice, 0)
 
 
 @mock.patch("envoy.server.mapper.sep2.end_device.settings")

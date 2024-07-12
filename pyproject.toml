@@ -79,6 +79,7 @@ test = [
     "httpx",
     "defusedxml",
     "asgi_lifespan",
+    "assertical @ git+ssh://git@github.com/bsgip/assertical.git",
 ]
 
 [tool.setuptools.package-data]

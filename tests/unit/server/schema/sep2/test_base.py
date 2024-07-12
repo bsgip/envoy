@@ -1,9 +1,8 @@
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.der import DERControlBase, DERControlResponse
 from envoy_schema.server.schema.sep2.end_device import AbstractDevice
 from envoy_schema.server.schema.sep2.identification import IdentifiedObject
 from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
-
-from tests.data.fake.generator import generate_class_instance
 
 
 def test_roundtrip_identified_object():

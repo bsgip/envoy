@@ -7,10 +7,10 @@ from typing import Generator
 
 import alembic.config
 import pytest
+from assertical.fixtures.postgres import generate_async_conn_str_from_connection
 from psycopg import Connection
 from pytest_postgresql import factories
 
-from tests.postgres_testing import generate_async_conn_str_from_connection
 from tests.unit.jwt import DEFAULT_CLIENT_ID, DEFAULT_DATABASE_RESOURCE_ID, DEFAULT_ISSUER, DEFAULT_TENANT_ID
 
 DEFAULT_DOE_IMPORT_ACTIVE_WATTS = Decimal("8200")

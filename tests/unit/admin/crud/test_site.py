@@ -1,11 +1,11 @@
 from typing import Optional
 
 import pytest
+from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy.exc import InvalidRequestError
 
 from envoy.admin.crud.site import count_all_site_groups, count_all_sites, select_all_site_groups, select_all_sites
 from envoy.server.model.site import Site, SiteGroup
-from tests.postgres_testing import generate_async_session
 
 
 @pytest.mark.anyio

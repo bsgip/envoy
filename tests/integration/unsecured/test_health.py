@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 
 import pytest
+from assertical.fixtures.postgres import generate_async_session
 from httpx import AsyncClient
 from sqlalchemy import select
 
@@ -9,7 +10,6 @@ from envoy.server.api.unsecured.health import HEALTH_DOE_URI, HEALTH_DYNAMIC_PRI
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.tariff import TariffGeneratedRate
 from tests.integration.response import read_response_body_string
-from tests.postgres_testing import generate_async_session
 
 
 @pytest.mark.anyio

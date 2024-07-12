@@ -17,9 +17,5 @@ def test_map_to_response():
     )
     assert device_capability is not None
     assert isinstance(device_capability, DeviceCapabilityResponse)
-    # assert isinstance(device_capability.DemandResponseProgramListLink, ListLink)
-    # assert device_capability.DemandResponseProgramListLink == ListLink(href="/drp", all_="1")
-    # assert isinstance(device_capability.MessagingProgramListLink, ListLink)
-    # assert device_capability.MessagingProgramListLink == ListLink(href="/msg", all_="2")
     assert isinstance(device_capability.EndDeviceListLink, ListLink)
     assert device_capability.EndDeviceListLink == ListLink(href="/edev", all_="1")

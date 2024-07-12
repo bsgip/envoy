@@ -3,13 +3,13 @@ from http import HTTPStatus
 from typing import Optional
 
 import pytest
+from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.aggregator import AggregatorDomain, AggregatorPageResponse, AggregatorResponse
 from envoy_schema.admin.schema.uri import AggregatorListUri, AggregatorUri
 from httpx import AsyncClient
 
 from envoy.admin.crud.aggregator import count_all_aggregators
 from tests.integration.response import read_response_body_string
-from tests.postgres_testing import generate_async_session
 
 
 def _build_query_string(start: Optional[int], limit: Optional[int]) -> str:

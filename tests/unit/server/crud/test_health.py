@@ -2,6 +2,7 @@ import unittest.mock as mock
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import select
 
 from envoy.server.crud.health import (
@@ -14,7 +15,6 @@ from envoy.server.crud.health import (
 )
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.tariff import TariffGeneratedRate
-from tests.postgres_testing import generate_async_session
 
 
 def test_health_defaults():

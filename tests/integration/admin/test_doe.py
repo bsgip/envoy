@@ -1,11 +1,10 @@
 from http import HTTPStatus
 
 import pytest
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.uri import DoeCreateUri
 from httpx import AsyncClient
-
-from tests.data.fake.generator import generate_class_instance
 
 
 @pytest.mark.anyio

@@ -4,8 +4,9 @@ from http import HTTPStatus
 from typing import AsyncGenerator
 
 import pytest
-from asgi_lifespan import LifespanManager
-from httpx import ASGITransport, AsyncClient, Response
+from assertical.fake.http import MockedAsyncClient
+from assertical.fixtures.fastapi import start_app_with_client
+from httpx import Response
 from psycopg import Connection
 
 from envoy.admin.main import generate_app as admin_gen_app
@@ -17,7 +18,6 @@ from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as VALID_C
 from tests.integration.integration_server import cert_header
 from tests.integration.notification import TestableBroker
 from tests.unit.jwt import generate_rs256_jwt
-from tests.unit.mocks import MockedAsyncClient
 
 
 @pytest.fixture
@@ -28,9 +28,8 @@ async def client_empty_db(pg_empty_config: Connection):
     # We want a new app instance for every test - otherwise connection pools get shared and we hit problems
     # when trying to run multiple tests sequentially
     app = generate_app(generate_settings())
-    async with LifespanManager(app):  # This ensures that startup events are fired when the app starts
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-            yield c
+    async with start_app_with_client(app) as c:
+        yield c
 
 
 @pytest.fixture
@@ -63,9 +62,8 @@ async def admin_client_auth(pg_base_config: Connection):
     # We want a new app instance for every test - otherwise connection pools get shared and we hit problems
     # when trying to run multiple tests sequentially
     app = admin_gen_app(settings)
-    async with LifespanManager(app):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", auth=basic_auth) as c:
-            yield c
+    async with start_app_with_client(app, client_auth=basic_auth) as c:
+        yield c
 
 
 @pytest.fixture(scope="function")
@@ -75,9 +73,8 @@ async def admin_client_unauth(pg_base_config: Connection):
     # We want a new app instance for every test - otherwise connection pools get shared and we hit problems
     # when trying to run multiple tests sequentially
     app = admin_gen_app(admin_gen_settings())
-    async with LifespanManager(app):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-            yield c
+    async with start_app_with_client(app) as c:
+        yield c
 
 
 @pytest.fixture(scope="session")

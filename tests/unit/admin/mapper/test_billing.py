@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytest
+from assertical.asserts.generator import assert_class_instance_equality
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.billing import (
     AggregatorBillingResponse,
     BillingDoe,
@@ -18,7 +20,6 @@ from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.log import CalculationLog
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.tariff import TariffGeneratedRate
-from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 
 
 @pytest.mark.parametrize(

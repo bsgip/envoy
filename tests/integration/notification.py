@@ -1,10 +1,10 @@
 from typing import Optional
 
+from assertical.fixtures.postgres import SingleAsyncEngineState
 from psycopg import Connection
 from taskiq import BrokerMessage, InMemoryBroker
 
 from envoy.notification.handler import STATE_DB_SESSION_MAKER, STATE_HREF_PREFIX
-from tests.postgres_testing import SingleAsyncEngineState
 
 
 class TestableBroker(InMemoryBroker):

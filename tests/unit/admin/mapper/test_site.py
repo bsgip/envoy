@@ -1,10 +1,11 @@
+from assertical.asserts.generator import assert_class_instance_equality
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.site import SiteGroup as AdminSiteGroup
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
 
 from envoy.admin.mapper.site import SiteGroupMapper, SiteMapper
 from envoy.server.model.site import Site, SiteGroup
-from tests.data.fake.generator import assert_class_instance_equality, generate_class_instance
 
 
 def test_site_single_entity_mapper():

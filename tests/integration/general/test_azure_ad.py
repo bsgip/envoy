@@ -5,8 +5,9 @@ from datetime import datetime, timedelta
 from http import HTTPStatus
 
 import pytest
-from asgi_lifespan import LifespanManager
-from httpx import ASGITransport, AsyncClient, Response
+from assertical.fake.http import HTTPMethod, MockedAsyncClient
+from assertical.fixtures.fastapi import start_app_with_client
+from httpx import AsyncClient, Response
 from psycopg import Connection
 from sqlalchemy import event
 from sqlalchemy.pool import Pool
@@ -23,7 +24,6 @@ from tests.unit.jwt import (
     TEST_KEY_1_PATH,
     load_rsa_pk,
 )
-from tests.unit.mocks import MockedAsyncClient
 from tests.unit.server.api.auth.test_azure import generate_test_jwks_response
 
 
@@ -71,9 +71,8 @@ async def client_with_async_mock(pg_base_config: Connection):
         mock_AsyncClient.return_value = mocked_client
 
         app = generate_app(generate_settings())
-        async with LifespanManager(app):  # This ensures that startup events are fired when the app starts
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                yield (c, mocked_client)
+        async with start_app_with_client(app) as c:  # This ensures that startup events are fired when the app starts
+            yield (c, mocked_client)
 
 
 @pytest.mark.azure_ad_auth
@@ -98,8 +97,6 @@ async def test_enable_dynamic_azure_ad_database_credentials(
 
     event.listen(Pool, "connect", on_db_connect)
 
-    # await sleep(2.5)  # let the server startup
-
     try:
         # Now fire off a basic request to the time endpoint
         response = await client.request(
@@ -110,9 +107,9 @@ async def test_enable_dynamic_azure_ad_database_credentials(
         assert_response_header(response, HTTPStatus.OK)
 
         # Now validate that our db_token was used in the DB connection
-        assert mocked_client.get_calls == 2, "One call to JWK, one call to token lookup"
-        assert mocked_client.get_calls_by_uri[TOKEN_URI] == 1
-        assert mocked_client.get_calls_by_uri[JWK_URI] == 1
+        assert mocked_client.call_count_by_method[HTTPMethod.GET] == 2, "One call to JWK, one call to token lookup"
+        assert mocked_client.call_count_by_method_uri[(HTTPMethod.GET, TOKEN_URI)] == 1
+        assert mocked_client.call_count_by_method_uri[(HTTPMethod.GET, JWK_URI)] == 1
 
         # Lets dig into the guts of the current setup to pull out the db connections to see that
         # it includes our injected token
@@ -161,8 +158,9 @@ async def test_refresh_seconds_updating_cache(
         assert_response_header(response, HTTPStatus.OK)
 
         # Now validate that our db_token was used in the DB connection
-        token_requests = mocked_client.get_calls_by_uri[TOKEN_URI]
-        jw_requests = mocked_client.get_calls_by_uri[JWK_URI]
+
+        token_requests = mocked_client.call_count_by_method_uri[(HTTPMethod.GET, TOKEN_URI)]
+        jw_requests = mocked_client.call_count_by_method_uri[(HTTPMethod.GET, JWK_URI)]
         assert (
             token_requests >= 3 and token_requests <= 4
         ), "Depending on delays - should have 3 or 4 requests given the retry frequency and delay"

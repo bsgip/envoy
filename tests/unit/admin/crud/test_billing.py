@@ -4,6 +4,8 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
+from assertical.asserts.type import assert_list_type
+from assertical.fixtures.postgres import generate_async_session
 
 from envoy.admin.crud.billing import (
     BillingData,
@@ -17,20 +19,16 @@ from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.tariff import TariffGeneratedRate
-from tests.postgres_testing import generate_async_session
 
 
 def assert_billing_data_types(bd: BillingData):
     assert isinstance(bd, BillingData)
-    assert isinstance(bd.active_does, list)
-    assert isinstance(bd.active_tariffs, list)
-    assert isinstance(bd.varh_readings, list)
-    assert isinstance(bd.wh_readings, list)
-    assert all([isinstance(e, DynamicOperatingEnvelope) for e in bd.active_does])
-    assert all([isinstance(e, TariffGeneratedRate) for e in bd.active_tariffs])
-    assert all([isinstance(e, SiteReading) for e in bd.varh_readings])
+    assert_list_type(DynamicOperatingEnvelope, bd.active_does)
+    assert_list_type(TariffGeneratedRate, bd.active_tariffs)
+    assert_list_type(SiteReading, bd.varh_readings)
+    assert_list_type(SiteReading, bd.wh_readings)
+
     assert all([isinstance(e.site_reading_type, SiteReadingType) for e in bd.varh_readings])
-    assert all([isinstance(e, SiteReading) for e in bd.wh_readings])
     assert all([isinstance(e.site_reading_type, SiteReadingType) for e in bd.wh_readings])
 
 

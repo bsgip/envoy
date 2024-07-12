@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import pytest
+from assertical.asserts.time import assert_datetime_equal
+from assertical.fixtures.postgres import generate_async_session
 
 from envoy.admin.crud.log import (
     count_calculation_logs_for_period,
@@ -9,8 +11,6 @@ from envoy.admin.crud.log import (
     select_calculation_logs_for_period,
 )
 from envoy.server.model.log import CalculationLog, PowerFlowLog, PowerForecastLog, PowerTargetLog, WeatherForecastLog
-from tests.assert_time import assert_datetime_equal
-from tests.postgres_testing import generate_async_session
 
 
 @pytest.mark.parametrize("id", [0, -1, 4])

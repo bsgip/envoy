@@ -1,19 +1,14 @@
 from datetime import timedelta
-import pytest
 
+import pytest
+from assertical.asserts.generator import assert_class_instance_equality
+from assertical.fake.generator import generate_class_instance
+from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import select
 
-from envoy.admin.crud.pricing import (
-    insert_single_tariff,
-    update_single_tariff,
-    upsert_many_tariff_genrate,
-)
+from envoy.admin.crud.pricing import insert_single_tariff, update_single_tariff, upsert_many_tariff_genrate
 from envoy.server.crud.pricing import select_single_tariff
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
-
-
-from tests.postgres_testing import generate_async_session
-from tests.data.fake.generator import generate_class_instance, assert_class_instance_equality
 
 
 async def _select_latest_tariff_generated_rate(session):

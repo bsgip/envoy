@@ -5,6 +5,8 @@ from http import HTTPStatus
 from typing import Optional
 
 import pytest
+from assertical.fake.http import MockedAsyncClient
+from assertical.fixtures.postgres import generate_async_session
 from httpx import AsyncClient, Response
 
 from envoy.server.crud.end_device import select_single_site_with_site_id
@@ -15,9 +17,7 @@ from tests.integration.response import (
     run_azure_ad_unauthorised_tests,
     run_basic_unauthorised_tests,
 )
-from tests.postgres_testing import generate_async_session
 from tests.unit.jwt import TEST_KEY_1_PATH, generate_rs256_jwt, load_rsa_pk
-from tests.unit.mocks import MockedAsyncClient
 from tests.unit.server.api.auth.test_azure import generate_test_jwks_response
 
 EMPTY_XML_DOC = '<?xml version="1.0" encoding="UTF-8"?>\n<tag/>'

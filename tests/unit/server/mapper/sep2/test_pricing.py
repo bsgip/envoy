@@ -3,6 +3,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 import pytest
+from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.pricing import TariffProfileResponse, TimeTariffIntervalResponse
 
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
@@ -18,7 +19,6 @@ from envoy.server.mapper.sep2.pricing import (
 )
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, Tariff, TariffGeneratedRate
 from envoy.server.request_state import RequestStateParameters
-from tests.data.fake.generator import generate_class_instance
 
 
 @pytest.mark.parametrize(
