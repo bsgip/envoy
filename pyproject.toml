@@ -13,6 +13,7 @@ markers = [
     "azure_ad_auth: marks tests to enable the azure active directory auth dependency",
     "azure_ad_db: marks tests to enable the azure active directory dynamic db creds dependency (requires azure_ad_auth)",
     "azure_ad_db_refresh_secs: marks tests to set the config value azure_ad_db_refresh_secs (requires azure_ad_db)",
+    "allow_eq_xmlns_middleware: tbd",
 ]
 
 [tool.bandit]

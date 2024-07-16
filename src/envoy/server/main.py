@@ -12,7 +12,7 @@ from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
 from envoy.server.api.depends.default_doe import DefaultDoeDepends
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
 from envoy.server.api.depends.path_prefix import PathPrefixDepends
-from envoy.server.api.depends.csipaus import ReplaceIncomingXmlNsDepends
+from envoy.server.api.depends.xml import AllowEquivalentXmlNsMiddleware
 from envoy.server.api.error_handler import (
     general_exception_handler,
     http_exception_handler,
@@ -82,12 +82,15 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
                 )
             )
 
-    # if replace_ns_map specified - include the ReplaceIncomingXmlNsDepends
-    if new_settings.replace_ns_map:
-        global_dependencies.append(Depends(ReplaceIncomingXmlNsDepends(new_settings.replace_ns_map)))
-
     new_app = FastAPI(**new_settings.fastapi_kwargs, lifespan=generate_combined_lifespan_manager(lifespan_managers))
     new_app.add_middleware(SQLAlchemyMiddleware, **new_settings.db_middleware_kwargs)
+
+    # if replace_ns_map specified - include the AllowEquivalentXmlNsMiddleware
+    if new_settings.install_allow_equivalent_xmlns_middleware:
+        new_app.add_middleware(
+            AllowEquivalentXmlNsMiddleware, equivalent_ns_map={"http://csipaus.org/ns": "https://csipaus.org/ns"}
+        )
+
     for router in routers:
         new_app.include_router(router, dependencies=global_dependencies)
     for router in unsecured_routers:
