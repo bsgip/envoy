@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Generator, Iterable, Optional
 
 from envoy_schema.admin.schema.billing import (
     AggregatorBillingResponse,
@@ -29,6 +30,40 @@ class BillingMapper:
             duration_seconds=reading.time_period_seconds,
             value=value,
         )
+
+    @staticmethod
+    def aggregate_readings_for_site_timestamp(readings: Iterable[SiteReading]) -> Generator[BillingReading, None, None]:
+        """Given an incoming stream of readings, aggregate any readings that coincide with eachother by adding them.
+
+        NOTE: Expects readings to be sorted on site_id/timestamp - unsorted lists will fail to aggregate correctly
+
+        The final result is a set of readings that have had their phasing info added together"""
+
+        last_key: tuple[int, datetime] = (-1, datetime.min)
+        last_reading: Optional[BillingReading] = None
+        for next_reading in readings:
+            next_key = (next_reading.site_reading_type.site_id, next_reading.time_period_start)
+            mapped_next_reading = BillingMapper.map_reading(next_reading)
+
+            if next_key == last_key:
+                # If our key matches the previously iterated reading, we roll this reading data into the previous value
+                # and then continue looking
+                if last_reading is None:
+                    raise Exception(f"key {next_key} matched {last_key} but last_reading is None.")  # Shouldn't happen
+
+                last_reading.value += mapped_next_reading.value
+                continue
+            else:
+                # In this case, we are done rolling values into the previous value and can return it
+                if last_reading is not None:
+                    yield last_reading
+
+                last_reading = mapped_next_reading
+                last_key = next_key
+
+        # once we are done - return the last reading we were aggregating
+        if last_reading is not None:
+            yield last_reading
 
     @staticmethod
     def map_doe(doe: DynamicOperatingEnvelope) -> BillingDoe:
@@ -62,9 +97,9 @@ class BillingMapper:
             period_start=period_start,
             period_end=period_end,
             tariff_id=tariff_id,
-            varh_readings=[BillingMapper.map_reading(r) for r in data.varh_readings],
-            wh_readings=[BillingMapper.map_reading(r) for r in data.wh_readings],
-            watt_readings=[BillingMapper.map_reading(r) for r in data.watt_readings],
+            varh_readings=list(BillingMapper.aggregate_readings_for_site_timestamp(data.varh_readings)),
+            wh_readings=list(BillingMapper.aggregate_readings_for_site_timestamp(data.wh_readings)),
+            watt_readings=list(BillingMapper.aggregate_readings_for_site_timestamp(data.watt_readings)),
             active_does=[BillingMapper.map_doe(d) for d in data.active_does],
             active_tariffs=[BillingMapper.map_rate(r) for r in data.active_tariffs],
         )
@@ -78,9 +113,9 @@ class BillingMapper:
             period_start=period_start,
             period_end=period_end,
             tariff_id=tariff_id,
-            varh_readings=[BillingMapper.map_reading(r) for r in data.varh_readings],
-            wh_readings=[BillingMapper.map_reading(r) for r in data.wh_readings],
-            watt_readings=[BillingMapper.map_reading(r) for r in data.watt_readings],
+            varh_readings=list(BillingMapper.aggregate_readings_for_site_timestamp(data.varh_readings)),
+            wh_readings=list(BillingMapper.aggregate_readings_for_site_timestamp(data.wh_readings)),
+            watt_readings=list(BillingMapper.aggregate_readings_for_site_timestamp(data.watt_readings)),
             active_does=[BillingMapper.map_doe(d) for d in data.active_does],
             active_tariffs=[BillingMapper.map_rate(r) for r in data.active_tariffs],
         )
@@ -92,9 +127,9 @@ class BillingMapper:
         return CalculationLogBillingResponse(
             calculation_log_id=calculation_log.calculation_log_id,
             tariff_id=tariff_id,
-            varh_readings=[BillingMapper.map_reading(r) for r in data.varh_readings],
-            wh_readings=[BillingMapper.map_reading(r) for r in data.wh_readings],
-            watt_readings=[BillingMapper.map_reading(r) for r in data.watt_readings],
+            varh_readings=list(BillingMapper.aggregate_readings_for_site_timestamp(data.varh_readings)),
+            wh_readings=list(BillingMapper.aggregate_readings_for_site_timestamp(data.wh_readings)),
+            watt_readings=list(BillingMapper.aggregate_readings_for_site_timestamp(data.watt_readings)),
             active_does=[BillingMapper.map_doe(d) for d in data.active_does],
             active_tariffs=[BillingMapper.map_rate(r) for r in data.active_tariffs],
         )
