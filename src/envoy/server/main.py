@@ -88,7 +88,7 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     # if replace_ns_map specified - include the AllowEquivalentXmlNsMiddleware
     if new_settings.install_allow_equivalent_xmlns_middleware:
         new_app.add_middleware(
-            AllowEquivalentXmlNsMiddleware, equivalent_ns_map={"http://csipaus.org/ns": "https://csipaus.org/ns"}
+            AllowEquivalentXmlNsMiddleware, equivalent_ns_map={b"http://csipaus.org/ns": b"https://csipaus.org/ns"}
         )
 
     for router in routers:

@@ -85,7 +85,7 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Generator[Con
         os.environ["DEFAULT_DOE_EXPORT_ACTIVE_WATTS"] = str(DEFAULT_DOE_EXPORT_ACTIVE_WATTS)
 
     if request.node.get_closest_marker("allow_eq_xmlns_middleware"):
-        os.environ["INSTALL_ALLOW_EQUIVALENT_XMLNS_MIDDLEWARE"] = True
+        os.environ["INSTALL_ALLOW_EQUIVALENT_XMLNS_MIDDLEWARE"] = "true"
 
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()
