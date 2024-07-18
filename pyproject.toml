@@ -13,7 +13,7 @@ markers = [
     "azure_ad_auth: marks tests to enable the azure active directory auth dependency",
     "azure_ad_db: marks tests to enable the azure active directory dynamic db creds dependency (requires azure_ad_auth)",
     "azure_ad_db_refresh_secs: marks tests to set the config value azure_ad_db_refresh_secs (requires azure_ad_db)",
-    "allow_eq_xmlns_middleware: tbd",
+    "csipv11a_xmlns_optin_middleware: mark tests to install the csip-aus v11a xml namespace opt-in middleware",
 ]
 
 [tool.bandit]
@@ -34,7 +34,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "envoy"
-version = "0.0.1"
+version = "0.6.0"
 dependencies = [
     "fastapi>=0.94.1",
     "sqlalchemy>=2.0.0",
@@ -42,7 +42,7 @@ dependencies = [
     "tzlocal",
     "pydantic_xml[lxml]",
     "pydantic!=2.7.0",
-    "pydantic-xml!=2.9.1",                                            # Known compatibility issue with pydantic
+    "pydantic-xml!=2.9.1",      # Known compatibility issue with pydantic
     "pydantic-settings",
     "python-dateutil",
     "asyncpg",
@@ -56,7 +56,7 @@ dependencies = [
     "taskiq!=0.11.5,!=0.11.6",                                        # Known compatibiity issue with pydantic
     "taskiq-aio-pika",
     "parse",
-    "envoy_schema @ git+ssh://git@github.com/bsgip/envoy-schema.git",
+    "envoy_schema>=0.2,<0.3",
 ]
 
 [project.optional-dependencies]
