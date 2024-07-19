@@ -5,7 +5,6 @@ from psycopg import Connection
 import pytest
 from httpx import AsyncClient
 import envoy_schema.server.schema.uri as uris
-from envoy_schema.server.schema.sep2.der import DER
 from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointRequest
 from assertical.fake.generator import generate_class_instance

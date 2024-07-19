@@ -1,8 +1,7 @@
 """ Module for CSIP-Australia specific middleware and depends.
 """
 
-from typing import Awaitable, Callable
-from fastapi import Request, Response, FastAPI
+from fastapi import FastAPI
 from starlette.types import Receive, Scope, Send, Message
 
 
