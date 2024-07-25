@@ -85,7 +85,7 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     new_app = FastAPI(**new_settings.fastapi_kwargs, lifespan=generate_combined_lifespan_manager(lifespan_managers))
     new_app.add_middleware(SQLAlchemyMiddleware, **new_settings.db_middleware_kwargs)
 
-    # # if replace_ns_map specified - include the AllowEquivalentXmlNsMiddleware
+    # if install_csip_v11a_opt_in_middleware is true - include the CSIPV11aXmlNsOptInMiddleware
     if new_settings.install_csip_v11a_opt_in_middleware:
         new_app.add_middleware(CSIPV11aXmlNsOptInMiddleware)
 

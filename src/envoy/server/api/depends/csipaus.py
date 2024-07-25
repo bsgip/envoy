@@ -29,8 +29,6 @@ class CSIPV11aXmlNsOptInMiddleware:
             app (FastAPI): FastAPI app.
         """
         self.app: FastAPI = app
-        self.initial_message: Message = {}
-        self.started: bool = False
 
     def check_opt_in_header(self, scope: Scope) -> bool:
         # Check of v1.1a opt-in header
@@ -56,6 +54,10 @@ class CSIPV11aXmlNsOptInMiddleware:
             await self.app(scope, receive, send)
             return
 
+        resp_initial_message: Message = {}  # This initial message holds the headers and status code
+        resp_original_body: bytearray = bytearray()  # This will be used to accumulate the body sent from Starlette
+        sent_init_msg: bool = False  #
+
         async def replace_request_namespace() -> Message:
             message = await receive()
             body = message.get("body", False)
@@ -65,23 +67,40 @@ class CSIPV11aXmlNsOptInMiddleware:
             return message
 
         async def replace_response_namespace(message: Message) -> None:
+            nonlocal resp_initial_message, resp_original_body, sent_init_msg
+
             if message["type"] == "http.response.start":
-                # Don't send the initial message until we've determined how to
-                # modify the outgoing headers correctly.
-                self.initial_message = message
+                # This initial message holds the headers. We will not send it until we have updated
+                # the content-length header after receiving and modifying the response body.
+                # NB. Refer here (https://www.starlette.io/responses/) for how response message
+                # is formed (Starlette will automatically include a Content-Length header).
+                resp_initial_message = message
 
             elif message["type"] == "http.response.body":
-                body = message.get("body", b"")
+                more_body = message.get("more_body", False)
 
-                if body:
-                    body = body.replace(self.equivalent_ns_map[1], self.equivalent_ns_map[0], 1)
-                    message["body"] = body
-                    headers = MutableHeaders(raw=self.initial_message["headers"])
-                    headers["Content-Length"] = str(len(body))
+                # accumulate the body from the response stream
+                resp_original_body.extend(message.get("body", b""))
 
-                if not self.started:
-                    self.started = True
-                    await send(self.initial_message)
+                # no more body, we can now update content-length
+                if not more_body:
+                    resp_original_body = resp_original_body.replace(
+                        self.equivalent_ns_map[1], self.equivalent_ns_map[0], 1
+                    )
+                    message["body"] = resp_original_body
+                    headers = MutableHeaders(
+                        raw=resp_initial_message["headers"]
+                    )  # Headers/MutableHeaders are case-insensitive multidicts
+                    headers["Content-Length"] = str(len(resp_original_body))
+
+                    sent_init_msg = True  # should never have sent the initial message until this point
+                    await send(resp_initial_message)
+                    await send(message)
+
+            else:
+                if not sent_init_msg:
+                    await send(resp_initial_message)
+                    sent_init_msg = True
                 await send(message)
 
         await self.app(scope, replace_request_namespace, replace_response_namespace)

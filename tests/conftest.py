@@ -46,7 +46,10 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Generator[Con
     if pem_marker is not None:
         os.environ["CERT_HEADER"] = str(pem_marker.args[0])
     else:
-        os.unsetenv("CERT_HEADER")
+        if "CERT_HEADER" in os.environ:
+            # Described here (https://docs.python.org/3/library/os.html#os.environ) as how you unset variables,
+            # calling os.unsetenv directly does not update this os.environ mapping.
+            del os.environ["CERT_HEADER"]
 
     azure_ad_auth_marker = request.node.get_closest_marker("azure_ad_auth")
     if azure_ad_auth_marker is not None:
@@ -68,7 +71,8 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Generator[Con
     if azure_ad_db_refresh_secs_marker is not None:
         os.environ["AZURE_AD_DB_REFRESH_SECS"] = str(azure_ad_db_refresh_secs_marker.args[0])
     else:
-        os.unsetenv("AZURE_AD_DB_REFRESH_SECS")
+        if "AZURE_AD_DB_REFRESH_SECS" in os.environ:
+            del os.environ["AZURE_AD_DB_REFRESH_SECS"]
 
     href_prefix_marker = request.node.get_closest_marker("href_prefix")
     if href_prefix_marker is not None:
@@ -86,6 +90,8 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Generator[Con
 
     if request.node.get_closest_marker("csipv11a_xmlns_optin_middleware"):
         os.environ["INSTALL_CSIP_V11A_OPT_IN_MIDDLEWARE"] = "true"
+    else:
+        os.environ["INSTALL_CSIP_V11A_OPT_IN_MIDDLEWARE"] = "false"
 
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()
