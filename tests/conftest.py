@@ -8,6 +8,7 @@ from typing import Generator
 import alembic.config
 import pytest
 from assertical.fixtures.postgres import generate_async_conn_str_from_connection
+from assertical.fixtures.environment import environment_snapshot
 from psycopg import Connection
 from pytest_postgresql import factories
 
@@ -31,7 +32,15 @@ if test_with_docker:
 
 
 @pytest.fixture
-def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Generator[Connection, None, None]:
+def preserved_environment():
+    with environment_snapshot():
+        yield
+
+
+@pytest.fixture
+def pg_empty_config(
+    preserved_environment, postgresql, request: pytest.FixtureRequest
+) -> Generator[Connection, None, None]:
     """Sets up the testing DB, applies alembic migrations but does NOT add any entities"""
 
     # Install the DATABASE_URL before running alembic
@@ -39,59 +48,36 @@ def pg_empty_config(postgresql, request: pytest.FixtureRequest) -> Generator[Con
 
     if "notifications_enabled" in request.fixturenames:
         os.environ["ENABLE_NOTIFICATIONS"] = "True"
-    else:
-        os.environ["ENABLE_NOTIFICATIONS"] = "False"
 
     pem_marker = request.node.get_closest_marker("cert_header")
     if pem_marker is not None:
         os.environ["CERT_HEADER"] = str(pem_marker.args[0])
-    else:
-        if "CERT_HEADER" in os.environ:
-            # Described here (https://docs.python.org/3/library/os.html#os.environ) as how you unset variables,
-            # calling os.unsetenv directly does not update this os.environ mapping.
-            del os.environ["CERT_HEADER"]
 
     azure_ad_auth_marker = request.node.get_closest_marker("azure_ad_auth")
     if azure_ad_auth_marker is not None:
         os.environ["AZURE_AD_TENANT_ID"] = DEFAULT_TENANT_ID
         os.environ["AZURE_AD_CLIENT_ID"] = DEFAULT_CLIENT_ID
         os.environ["AZURE_AD_VALID_ISSUER"] = DEFAULT_ISSUER
-    else:
-        os.environ["AZURE_AD_TENANT_ID"] = ""
-        os.environ["AZURE_AD_CLIENT_ID"] = ""
-        os.environ["AZURE_AD_VALID_ISSUER"] = ""
 
     azure_ad_db_marker = request.node.get_closest_marker("azure_ad_db")
     if azure_ad_db_marker is not None:
         os.environ["AZURE_AD_DB_RESOURCE_ID"] = DEFAULT_DATABASE_RESOURCE_ID
-    else:
-        os.environ["AZURE_AD_DB_RESOURCE_ID"] = ""
 
     azure_ad_db_refresh_secs_marker = request.node.get_closest_marker("azure_ad_db_refresh_secs")
     if azure_ad_db_refresh_secs_marker is not None:
         os.environ["AZURE_AD_DB_REFRESH_SECS"] = str(azure_ad_db_refresh_secs_marker.args[0])
-    else:
-        if "AZURE_AD_DB_REFRESH_SECS" in os.environ:
-            del os.environ["AZURE_AD_DB_REFRESH_SECS"]
 
     href_prefix_marker = request.node.get_closest_marker("href_prefix")
     if href_prefix_marker is not None:
         os.environ["HREF_PREFIX"] = str(href_prefix_marker.args[0])
-    else:
-        os.environ["HREF_PREFIX"] = ""
 
     no_default_doe_marker = request.node.get_closest_marker("no_default_doe")
-    if no_default_doe_marker is not None:
-        os.environ["DEFAULT_DOE_IMPORT_ACTIVE_WATTS"] = ""
-        os.environ["DEFAULT_DOE_EXPORT_ACTIVE_WATTS"] = ""
-    else:
+    if no_default_doe_marker is None:
         os.environ["DEFAULT_DOE_IMPORT_ACTIVE_WATTS"] = str(DEFAULT_DOE_IMPORT_ACTIVE_WATTS)
         os.environ["DEFAULT_DOE_EXPORT_ACTIVE_WATTS"] = str(DEFAULT_DOE_EXPORT_ACTIVE_WATTS)
 
     if request.node.get_closest_marker("csipv11a_xmlns_optin_middleware"):
         os.environ["INSTALL_CSIP_V11A_OPT_IN_MIDDLEWARE"] = "true"
-    else:
-        os.environ["INSTALL_CSIP_V11A_OPT_IN_MIDDLEWARE"] = "false"
 
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()
