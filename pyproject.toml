@@ -56,7 +56,7 @@ dependencies = [
     "taskiq!=0.11.5,!=0.11.6",                                               # Known compatibiity issue with pydantic
     "taskiq-aio-pika",
     "parse",
-    "envoy_schema @ git+ssh://git@github.com/bsgip/envoy-schema.git@v0.2.0",
+    "envoy_schema @ git+ssh://git@github.com/bsgip/envoy-schema.git@v0.3.0",
 ]
 
 [project.optional-dependencies]
