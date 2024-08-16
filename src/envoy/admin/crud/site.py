@@ -1,27 +1,38 @@
+from datetime import datetime
 from typing import Optional, Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from envoy.server.model.site import Site, SiteGroup, SiteGroupAssignment
+from envoy.server.model.site import Site, SiteDER, SiteGroup, SiteGroupAssignment
 
 
-async def count_all_sites(session: AsyncSession, group_filter: Optional[str]) -> int:
-    """Admin counting of sites - no filtering on aggregator is made"""
+async def count_all_sites(session: AsyncSession, group_filter: Optional[str], changed_after: Optional[datetime]) -> int:
+    """Admin counting of sites - no filtering on aggregator is made. If changed_after is specified, only
+    sites that have their changed_time >= changed_after will be included"""
     stmt = select(func.count()).select_from(Site)
 
     if group_filter:
         stmt = stmt.join(SiteGroupAssignment).join(SiteGroup).where(SiteGroup.name == group_filter)
+
+    if changed_after and changed_after != datetime.min:
+        stmt = stmt.where(Site.changed_time >= changed_after)
 
     resp = await session.execute(stmt)
     return resp.scalar_one()
 
 
 async def select_all_sites(
-    session: AsyncSession, group_filter: Optional[str], start: int, limit: int, include_groups: bool = False
+    session: AsyncSession,
+    group_filter: Optional[str],
+    start: int,
+    limit: int,
+    changed_after: Optional[datetime],
+    include_groups: bool = False,
+    include_der: bool = False,
 ) -> Sequence[Site]:
-    """Admin selecting of sites - no filtering on aggregator is made"""
+    """Admin selecting of sites - no filtering on aggregator is made."""
 
     stmt = (
         select(Site)
@@ -35,8 +46,19 @@ async def select_all_sites(
     if include_groups:
         stmt = stmt.options(selectinload(Site.assignments).selectinload(SiteGroupAssignment.group))
 
+    if include_der:
+        stmt = stmt.options(
+            selectinload(Site.site_ders).selectinload(SiteDER.site_der_availability),
+            selectinload(Site.site_ders).selectinload(SiteDER.site_der_rating),
+            selectinload(Site.site_ders).selectinload(SiteDER.site_der_setting),
+            selectinload(Site.site_ders).selectinload(SiteDER.site_der_status),
+        )
+
     if group_filter:
         stmt = stmt.join(SiteGroupAssignment).join(SiteGroup).where(SiteGroup.name == group_filter)
+
+    if changed_after and changed_after != datetime.min:
+        stmt = stmt.where(Site.changed_time >= changed_after)
 
     resp = await session.execute(stmt)
     return resp.scalars().all()
