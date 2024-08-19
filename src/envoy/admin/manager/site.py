@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from envoy_schema.admin.schema.site import SitePageResponse
@@ -11,13 +12,20 @@ from envoy.admin.mapper.site import SiteGroupMapper, SiteMapper
 class SiteManager:
     @staticmethod
     async def get_all_sites(
-        session: AsyncSession, start: int, limit: int, group_filter: Optional[str]
+        session: AsyncSession, start: int, limit: int, group_filter: Optional[str], changed_after: Optional[datetime]
     ) -> SitePageResponse:
         """Admin specific (paginated) fetch of sites that covers all aggregators.
-        group_filter: If specified - filter to sites that belong to a group with this name"""
-        site_count = await count_all_sites(session, group_filter)
+        group_filter: If specified - filter to sites that belong to a group with this name
+        changed_after: If specified - filter to sites whose changed date is >= this value"""
+        site_count = await count_all_sites(session, group_filter, changed_after)
         sites = await select_all_sites(
-            session, group_filter=group_filter, start=start, limit=limit, include_groups=True
+            session,
+            group_filter=group_filter,
+            changed_after=changed_after,
+            start=start,
+            limit=limit,
+            include_groups=True,
+            include_der=True,
         )
         return SiteMapper.map_to_response(total_count=site_count, limit=limit, start=start, sites=sites)
 

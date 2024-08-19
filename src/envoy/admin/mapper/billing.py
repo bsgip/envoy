@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import Generator, Iterable, Optional
 
 from envoy_schema.admin.schema.billing import (
@@ -13,6 +12,7 @@ from envoy_schema.admin.schema.billing import (
 from envoy_schema.server.schema.sep2.types import AccumulationBehaviourType, DataQualifierType, FlowDirectionType
 
 from envoy.admin.crud.billing import BillingData
+from envoy.server.mapper.common import pow10_to_decimal_value
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.log import CalculationLog
@@ -23,14 +23,16 @@ from envoy.server.model.tariff import TariffGeneratedRate
 class BillingMapper:
     @staticmethod
     def map_reading(reading: SiteReading) -> BillingReading:
-        power = Decimal("10") ** -reading.site_reading_type.power_of_ten_multiplier
+        value = pow10_to_decimal_value(reading.value, reading.site_reading_type.power_of_ten_multiplier)
+        if value is None:
+            raise Exception(
+                f"SiteReading {reading.site_reading_id} can't generate reading value value '{reading.value}'"
+            )
 
         # If the reading is from the perspective of a client EXPORTING into the grid, we need to flip the sign
         # to align with our internal interpretation of +'ve meaning import and -'ve meaning export
-        sign: int = 1
         if reading.site_reading_type.flow_direction == FlowDirectionType.REVERSE:
-            sign = -1
-        value = Decimal(reading.value) * power * sign
+            value = -value
 
         return BillingReading(
             site_id=reading.site_reading_type.site_id,

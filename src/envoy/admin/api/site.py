@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from http import HTTPStatus
 from typing import Optional
 
@@ -21,13 +22,15 @@ async def get_all_sites(
     start: list[int] = Query([0]),
     limit: list[int] = Query([100]),
     group: list[str] = Query([]),
+    after: Optional[datetime] = Query(None),
 ) -> SitePageResponse:
     """Endpoint for a paginated list of Site Objects, ordered by site_id attribute.
 
     Query Param:
-        start: list query parameter for the start index value. Default 0.
-        limit: list query parameter for the maximum number of objects to return. Default 100.
-        group: list query parameter for the SiteGroup name by which to filter returned sites. Default no filter
+        start: start index value (for pagination). Default 0.
+        limit: maximum number of objects to return. Default 100. Max 500.
+        group: SiteGroup name by which to filter returned sites. Default no filter
+        after: If set, returns objects that have been created/modified after this timestamp (inclusive).
 
     Returns:
         SitePageResponse
@@ -41,6 +44,7 @@ async def get_all_sites(
         session=db.session,
         start=extract_start_from_paging_param(start),
         limit=extract_limit_from_paging_param(limit),
+        changed_after=after,
         group_filter=group_filter,
     )
 

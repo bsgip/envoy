@@ -1,12 +1,45 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Optional, Union
 
 import pytest
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import generate_href, generate_mrid, parse_device_category, remove_href_prefix
+from envoy.server.mapper.common import (
+    generate_href,
+    generate_mrid,
+    parse_device_category,
+    pow10_to_decimal_value,
+    remove_href_prefix,
+)
 from envoy.server.request_state import RequestStateParameters
+
+
+@pytest.mark.parametrize(
+    "value, multiplier, expected",
+    [
+        (None, None, None),
+        (None, 3, None),
+        (3, None, Decimal(3)),
+        (1234, 3, Decimal(1234000)),
+        (1234, -3, Decimal("1.234")),
+        (1234, 0, Decimal(1234)),
+        (0, 4, Decimal(0)),
+        (55, -1, Decimal("5.5")),
+        (55, -2, Decimal("0.55")),
+        (55, -3, Decimal("0.055")),
+    ],
+)
+def test_to_decimal_value(value: Optional[int], multiplier: Optional[int], expected: Optional[Decimal]):
+    actual = pow10_to_decimal_value(value, multiplier)
+    if actual is not None:
+        assert isinstance(actual, Decimal)
+    assert actual == expected
+
+    # Also test negation of value
+    if actual is not None:
+        assert pow10_to_decimal_value(-value, multiplier) == -expected
 
 
 @pytest.mark.parametrize(

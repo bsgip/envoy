@@ -3,7 +3,7 @@ from http import HTTPStatus
 
 from asyncpg.exceptions import CardinalityViolationError  # type: ignore
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
-from envoy_schema.admin.schema.uri import DoeCreateUri
+from envoy_schema.admin.schema.uri import DoeUri
 from fastapi import APIRouter
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post(DoeCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
+@router.post(DoeUri, status_code=HTTPStatus.CREATED, response_model=None)
 async def create_doe(doe_list: list[DynamicOperatingEnvelopeRequest]) -> None:
     """Bulk creation of 'Dynamic Operating Envelopes'. Each DynamicOperatingEnvelope is associated
     with a Site object via the site_id attribute.

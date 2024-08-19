@@ -1,3 +1,4 @@
+from decimal import Decimal
 from itertools import chain
 from typing import Any, Optional, Union
 
@@ -72,3 +73,20 @@ def parse_device_category(device_category_str: Optional[str]) -> DeviceCategory:
             f"deviceCategory: {device_category_str} int({raw_dc}) doesn't map to a known DeviceCategory"
         )
     return DeviceCategory(raw_dc)
+
+
+def pow10_to_decimal_value(value: Optional[int], pow10_multiplier: Optional[int]) -> Optional[Decimal]:
+    """Converts a value and a power of ten multiplier into a raw Decimal value.
+
+    If multiplier is not specified - it will be assumed to be 0
+
+    Eg (Assuming the value represents Watts)
+        to_decimal_value(1234, 3) would be equivalent to saying 1234 KiloWatts or 1,234,000 Watts
+        to_decimal_value(1234, -3) would be equivalent to saying 1234 MilliWatts or 1.234 Watts"""
+    if value is None:
+        return None
+
+    if pow10_multiplier is None:
+        return Decimal(value)
+    else:
+        return Decimal(value) * (Decimal("10") ** pow10_multiplier)

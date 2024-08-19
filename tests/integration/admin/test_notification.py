@@ -8,7 +8,7 @@ from assertical.fake.http import HTTPMethod, MockedAsyncClient
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
-from envoy_schema.admin.schema.uri import DoeCreateUri, TariffGeneratedRateCreateUri
+from envoy_schema.admin.schema.uri import DoeUri, TariffGeneratedRateCreateUri
 from httpx import AsyncClient
 from sqlalchemy import delete, insert, select
 
@@ -34,7 +34,7 @@ async def test_create_does_no_active_subscription(
     doe_1 = generate_class_instance(DynamicOperatingEnvelopeRequest)
     doe_1.site_id = 2
 
-    resp = await admin_client_auth.post(DoeCreateUri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
+    resp = await admin_client_auth.post(DoeUri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
 
     assert resp.status_code == HTTPStatus.CREATED
 
@@ -98,7 +98,7 @@ async def test_create_does_with_active_subscription(
 
     content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
     resp = await admin_client_auth.post(
-        DoeCreateUri,
+        DoeUri,
         content=f"[{content}]",
     )
     assert resp.status_code == HTTPStatus.CREATED
@@ -204,7 +204,7 @@ async def test_create_does_with_paginated_notifications(
 
     content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
     resp = await admin_client_auth.post(
-        DoeCreateUri,
+        DoeUri,
         content=f"[{content}]",
     )
     assert resp.status_code == HTTPStatus.CREATED
