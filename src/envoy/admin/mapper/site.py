@@ -7,7 +7,6 @@ from envoy_schema.admin.schema.site import SiteGroup as AdminSiteGroup
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
 from envoy_schema.server.schema.sep2.der import DERType, DOESupportedMode
-from sqlalchemy import cast
 
 from envoy.server.mapper.common import pow10_to_decimal_value
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus, SiteGroup
@@ -183,10 +182,17 @@ class SiteMapper:
         )
 
     @staticmethod
-    def map_to_response(total_count: int, limit: int, start: int, sites: Iterable[Site]) -> SitePageResponse:
+    def map_to_response(
+        total_count: int, limit: int, start: int, group: Optional[str], after: Optional[datetime], sites: Iterable[Site]
+    ) -> SitePageResponse:
         """Maps a set of sites to a single SitePageResponse. It's expected that sites will have their groups included"""
         return SitePageResponse(
-            total_count=total_count, limit=limit, start=start, sites=[SiteMapper.map_to_site_response(s) for s in sites]
+            total_count=total_count,
+            limit=limit,
+            start=start,
+            after=after,
+            group=group,
+            sites=[SiteMapper.map_to_site_response(s) for s in sites],
         )
 
 

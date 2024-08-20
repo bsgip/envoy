@@ -30,7 +30,7 @@ async def get_all_sites(
         start: start index value (for pagination). Default 0.
         limit: maximum number of objects to return. Default 100. Max 500.
         group: SiteGroup name by which to filter returned sites. Default no filter
-        after: If set, returns objects that have been created/modified after this timestamp (inclusive).
+        after: Filters objects that have been created/modified after this timestamp (inclusive). Default no filter.
 
     Returns:
         SitePageResponse

@@ -27,7 +27,14 @@ class SiteManager:
             include_groups=True,
             include_der=True,
         )
-        return SiteMapper.map_to_response(total_count=site_count, limit=limit, start=start, sites=sites)
+        return SiteMapper.map_to_response(
+            total_count=site_count,
+            limit=limit,
+            start=start,
+            group=group_filter,
+            after=changed_after,
+            sites=sites,
+        )
 
     @staticmethod
     async def get_all_site_groups(session: AsyncSession, start: int, limit: int) -> SiteGroupPageResponse:

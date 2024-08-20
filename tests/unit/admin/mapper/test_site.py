@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from itertools import product
 from typing import Optional, get_type_hints
@@ -170,13 +171,17 @@ def test_site_page_mapper():
     count = 123
     limit = 456
     start = 789
+    after = datetime(2022, 5, 6, 7, 8, 9)
+    group_filter = "abc-123"
 
-    mapped = SiteMapper.map_to_response(count, limit, start, sites)
+    mapped = SiteMapper.map_to_response(count, limit, start, group_filter, after, sites)
     assert isinstance(mapped, SitePageResponse)
 
     assert mapped.total_count == count
     assert mapped.limit == limit
     assert mapped.start == start
+    assert mapped.after == after
+    assert mapped.group == group_filter
     assert len(sites) == len(mapped.sites)
     assert all([isinstance(s, SiteResponse) for s in mapped.sites])
 
