@@ -165,7 +165,7 @@ async def test_get_all_site_groups(
     async with generate_async_session(pg_base_config) as session:
         expected_total_groups = await count_all_site_groups(session)
 
-    response = await admin_client_auth.get(SiteGroupListUri + _build_query_string(start, limit, None))
+    response = await admin_client_auth.get(SiteGroupListUri + _build_query_string(start, limit, None, None))
     assert response.status_code == HTTPStatus.OK
 
     body = read_response_body_string(response)
