@@ -60,18 +60,18 @@ async def test_fetch_aggregator_billing_data_timezone(
     ]
 
     assert [(r.site_id, r.value) for r in body.wh_readings] == [
-        (1, Decimal("1.1")),
-        (1, Decimal("2.2")),
-        (2, Decimal("7.7")),
+        (1, Decimal("110")),
+        (1, Decimal("220")),
+        (2, Decimal("770")),
     ]
 
     assert [(r.site_id, r.value) for r in body.varh_readings] == [
-        (1, Decimal("5.5")),
+        (1, Decimal("550")),
     ]
 
     assert [(r.site_id, r.value) for r in body.watt_readings] == [
-        (1, Decimal("9.9")),
-        (1, Decimal("101.0")),
+        (1, Decimal("990")),
+        (1, Decimal("10100")),
     ]
 
 
@@ -114,18 +114,18 @@ async def test_fetch_calculation_log_billing_data_timezone(pg_billing_data, admi
     ]
 
     assert [(r.site_id, r.value) for r in body.wh_readings] == [
-        (1, Decimal("1.1")),
-        (1, Decimal("2.2")),
-        (3, Decimal("8.8")),
+        (1, Decimal("110")),
+        (1, Decimal("220")),
+        (3, Decimal("880")),
     ]
 
     assert [(r.site_id, r.value) for r in body.varh_readings] == [
-        (1, Decimal("5.5")),
+        (1, Decimal("550")),
     ]
 
     assert [(r.site_id, r.value) for r in body.watt_readings] == [
-        (1, Decimal("9.9")),
-        (1, Decimal("101.0")),
+        (1, Decimal("990")),
+        (1, Decimal("10100")),
     ]
 
 
@@ -174,16 +174,16 @@ async def test_fetch_sites_billing_data(pg_billing_data, admin_client_auth: Asyn
     ]
 
     assert [(r.site_id, r.value) for r in body.wh_readings] == [
-        (1, Decimal("1.1")),
-        (1, Decimal("2.2")),
-        (2, Decimal("7.7")),
+        (1, Decimal("110")),
+        (1, Decimal("220")),
+        (2, Decimal("770")),
     ]
 
     assert [(r.site_id, r.value) for r in body.varh_readings] == [
-        (1, Decimal("5.5")),
+        (1, Decimal("550")),
     ]
 
     assert [(r.site_id, r.value) for r in body.watt_readings] == [
-        (1, Decimal("9.9")),
-        (1, Decimal("101.0")),
+        (1, Decimal("990")),
+        (1, Decimal("10100")),
     ]
