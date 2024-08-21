@@ -42,7 +42,12 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
             )
         )
 
-    admin_auth = AdminAuthDepends(settings.admin_username, settings.admin_password)
+    admin_auth = AdminAuthDepends(
+        new_settings.admin_username,
+        new_settings.admin_password,
+        new_settings.read_only_user,
+        new_settings.read_only_keys,
+    )
     new_app = FastAPI(
         **new_settings.fastapi_kwargs,
         dependencies=[Depends(admin_auth)],

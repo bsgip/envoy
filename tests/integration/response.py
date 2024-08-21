@@ -32,10 +32,10 @@ def assert_response_header(
     body = read_response_body_string(response)
     assert (
         response.status_code == expected_status_code
-    ), f"Got HTTP {response.status_code} expected HTTP {expected_status_code} request: {response.request.url.path}\nResponse body:\n{body}"  # noqa E501
+    ), f"Got HTTP {response.status_code} expected HTTP {expected_status_code} request: {response.request.method} {response.request.url.path}\nResponse body:\n{body}"  # noqa E501
     assert (
         expected_content_type is not None and actual_content_type == expected_content_type
-    ), f"Got Content {actual_content_type} expected {expected_content_type} request: {response.request.url.path}\nResponse body:\n{body}"  # noqa E501
+    ), f"Got Content {actual_content_type} expected {expected_content_type} request:  {response.request.method} {response.request.url.path}\nResponse body:\n{body}"  # noqa E501
 
 
 def assert_error_response(response: httpx.Response):

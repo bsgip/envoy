@@ -14,7 +14,6 @@ class AppSettings(CommonSettings):
     version: str = "0.0.0"
 
     cert_header: str = "x-forwarded-client-cert"  # either client certificate in PEM format or the sha256 fingerprint
-    default_timezone: str = "Australia/Brisbane"
 
     default_doe_import_active_watts: Optional[str] = None  # Constant default DERControl import as a decimal float
     default_doe_export_active_watts: Optional[str] = None  # Constant default DERControl export as a decimal float

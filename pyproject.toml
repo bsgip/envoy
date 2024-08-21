@@ -14,6 +14,7 @@ markers = [
     "azure_ad_db: marks tests to enable the azure active directory dynamic db creds dependency (requires azure_ad_auth)",
     "azure_ad_db_refresh_secs: marks tests to set the config value azure_ad_db_refresh_secs (requires azure_ad_db)",
     "csipv11a_xmlns_optin_middleware: mark tests to install the csip-aus v11a xml namespace opt-in middleware",
+    "admin_ro_user: marks tests that install the admin server 'Read Only' user/passwords",
 ]
 
 [tool.bandit]

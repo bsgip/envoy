@@ -19,6 +19,10 @@ from tests.integration.integration_server import cert_header
 from tests.integration.notification import TestableBroker
 from tests.unit.jwt import generate_rs256_jwt
 
+READONLY_USER_NAME = "mycustomrouser"
+READONLY_USER_KEY_1 = "my_custom+!@#$23key1"  # Fake password for testing readonly user
+READONLY_USER_KEY_2 = "another_custom+!@#$23key2"  # Fake password for testing readonly user
+
 
 @pytest.fixture
 async def client_empty_db(pg_empty_config: Connection):
@@ -55,7 +59,7 @@ def valid_headers_with_azure_ad():
 
 @pytest.fixture(scope="function")
 async def admin_client_auth(pg_base_config: Connection):
-    """Creates an AsyncClient for a test that is configured to talk to the main server app"""
+    """Creates an AsyncClient for a test that is configured to talk to the admin server app"""
     settings = admin_gen_settings()
     basic_auth = (settings.admin_username, settings.admin_password)
 
@@ -67,8 +71,23 @@ async def admin_client_auth(pg_base_config: Connection):
 
 
 @pytest.fixture(scope="function")
+async def admin_client_readonly_auth(pg_base_config: Connection):
+    """Creates an AsyncClient for a test that is configured to talk to the admin server app that will authenticate
+    with the READONLY_USER_NAME/READONLY_USER_KEY_2 combo"""
+    settings = admin_gen_settings()
+    basic_auth = (READONLY_USER_NAME, READONLY_USER_KEY_2)
+
+    # We want a new app instance for every test - otherwise connection pools get shared and we hit problems
+    # when trying to run multiple tests sequentially
+    app = admin_gen_app(settings)
+    async with start_app_with_client(app, client_auth=basic_auth) as c:
+        yield c
+
+
+@pytest.fixture(scope="function")
 async def admin_client_unauth(pg_base_config: Connection):
-    """Creates an AsyncClient for a test that is configured to talk to the main server app"""
+    """Creates an AsyncClient for a test that is configured to talk to the admin server app that doesn't
+    have any authentication installed"""
 
     # We want a new app instance for every test - otherwise connection pools get shared and we hit problems
     # when trying to run multiple tests sequentially
@@ -78,7 +97,7 @@ async def admin_client_unauth(pg_base_config: Connection):
 
 
 @pytest.fixture(scope="session")
-def admin_path_methods():
+def admin_path_methods() -> defaultdict[str, list[str]]:
     app = admin_gen_app(admin_gen_settings())
     path_methods = defaultdict(list)
     for route in app.routes:

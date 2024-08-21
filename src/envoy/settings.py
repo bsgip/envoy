@@ -37,6 +37,7 @@ class CommonSettings(BaseSettings):
     )
 
     database_url: PostgresDsn
+    default_timezone: str = "Australia/Brisbane"
 
     href_prefix: Optional[str] = None  # Will ensure all outgoing href's are prefixed with this value (None = disabled)
 

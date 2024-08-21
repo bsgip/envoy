@@ -20,11 +20,11 @@ Envoy has a number of configuration settings that turn on/off optional functiona
 
 Typically settings are set by setting an environment variable with the same name (case insensitive).
 
+**Common Settings**
 
 | **Setting** | **Type** | **Purpose** |
 | ----------- | -------- | ----------- |
 | `database_url` | `string` | The core `PostgresDsn` for connecting to the envoy database. eg `postgresql+asyncpg://envoyuser:mypass@localhost:5432/envoydb` |
-| `cert_header` | `string` | The name of the HTTP header that API endpoints will look for to validate a client. This should be set by the TLS termination point and can contain either a full client certificate in PEM format or the sha256 fingerprint of that certificate. defaults to "x-forwarded-client-cert" |
 | `default_timezone` | `string` | The timezone name that will be used as the default for new sites registered in band (defaults to "Australia/Brisbane") |
 | `enable_notifications` | `bool` | Whether notifications for active subscriptions will be generated. Notifications will either be handled in a local threadpool (if `rabbit_mq_broker_url` is None or via a dedicated task_iq worker connected to the same `rabbit_mq_broker_url` instance) |
 | `rabbit_mq_broker_url` | `string` | URL to a rabbit MQ instance that will handle notifications. Eg `amqp://user:password@localhost:5672`. Will require a worker servicing this instance |
@@ -34,8 +34,23 @@ Typically settings are set by setting an environment variable with the same name
 | `azure_ad_db_resource_id` | `string` | If set (with the other Azure AD options) - replaces the db connection password dynamically with a token minted from the tenant token service for this resource id. The token ID should match the resource ID of a managed database service. This token will be rotated as it expires. |
 | `azure_ad_db_refresh_secs` | `int` | If `azure_ad_db_resource_id` is set - the value of this variable will be the rate at which tokens are manually refreshed (in seconds) |
 | `href_prefix` | `string` | Used for when the server is exposed externally under a path prefix. The value of this variable will be prefixed to all returned `href` elements |
+
+**Additional Utility Server Settings (server)**
+
+| **Setting** | **Type** | **Purpose** |
+| ----------- | -------- | ----------- |
+| `cert_header` | `string` | The name of the HTTP header that API endpoints will look for to validate a client. This should be set by the TLS termination point and can contain either a full client certificate in PEM format or the sha256 fingerprint of that certificate. defaults to "x-forwarded-client-cert" |
 | `default_doe_import_active_watts` | `float` | If set - the DefaultDERControl endpoint will be activated with the DOE extensions for import being set to this value (requires `default_doe_export_active_watts`)|
 | `default_doe_export_active_watts` | `float` | If set - the DefaultDERControl endpoint will be activated with the DOE extensions for export being set to this value (requires `default_doe_import_active_watts`)|
+
+**Additional Admin Server Settings (admin)**
+
+| **Setting** | **Type** | **Purpose** |
+| ----------- | -------- | ----------- |
+| `admin_username` | `string` | The username for HTTP BASIC credentials that will grant "admin" access to all endpoints. Should only be used for tight integrations with local calculation engines |
+| `admin_password` | `string` | The password for HTTP BASIC credentials that pairs with `admin_username` |
+| `read_only_user` | `string` | The username for HTTP BASIC credentials that will grant "read only" access to all GET endpoints. |
+| `read_only_keys` | `list[string]` | Various passwords for HTTP BASIC credentials that each pair with `read_only_username`. Multiple entries should be encoded as a JSON list eg: `READ_ONLY_KEYS='"Password1", "Password2"]'` |
 
 ### Azure Active Directory Support + Managed Identity
 

@@ -14,10 +14,11 @@ class AppSettings(CommonSettings):
     title: str = "envoy-admin"
     version: str = "0.0.0"
 
-    default_timezone: str = "Australia/Brisbane"
-
     admin_username: str
     admin_password: str
+
+    read_only_user: str = "rouser"
+    read_only_keys: list[str] = []  # Passwords that match with read_only_user and grant access to GET endpoints
 
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:
