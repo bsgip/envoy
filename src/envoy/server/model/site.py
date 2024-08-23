@@ -136,7 +136,7 @@ class SiteDERRating(Base):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
     # These values correspond to a flattened version of sep2 DERCapability
-    modes_supported: Mapped[DERControlType] = mapped_column(INTEGER, nullable=True)
+    modes_supported: Mapped[Optional[DERControlType]] = mapped_column(INTEGER, nullable=True)
     abnormal_category: Mapped[Optional[AbnormalCategoryType]] = mapped_column(INTEGER, nullable=True)
     max_a_value: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     max_a_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
@@ -199,7 +199,7 @@ class SiteDERSetting(Base):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
     # These values correspond to a flattened version of sep2 DERSettings
-    modes_enabled: Mapped[DERControlType] = mapped_column(INTEGER, nullable=True)
+    modes_enabled: Mapped[Optional[DERControlType]] = mapped_column(INTEGER, nullable=True)
     es_delay: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     es_high_freq: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     es_high_volt: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)

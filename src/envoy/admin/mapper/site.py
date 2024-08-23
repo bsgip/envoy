@@ -82,17 +82,25 @@ class SiteMapper:
         """Maps a DER Rating / Setting  associated with a site into a single DERConfiguration. Values from setting
         will be preferenced over values from rating"""
 
-        changed_time: datetime
-        modes_supported: DERControlType
+        changed_time: Optional[datetime] = None
+        modes_supported: Optional[DERControlType] = None
+
+        if rating:
+            changed_time = rating.changed_time
+            if rating.modes_supported is not None:
+                modes_supported = rating.modes_supported
+
         if setting:
             changed_time = setting.changed_time
-            modes_supported = setting.modes_enabled
-        elif rating:
-            changed_time = rating.changed_time
-            modes_supported = rating.modes_supported
-        else:
+            if setting.modes_enabled is not None:
+                modes_supported = setting.modes_enabled
+
+        if changed_time is None:
             # If setting and rating aren't set - just return None
             return None
+
+        if modes_supported is None:
+            modes_supported = DERControlType(0)
 
         doe_modes: DOESupportedMode = DOESupportedMode(0)
         if setting and setting.doe_modes_enabled is not None:
