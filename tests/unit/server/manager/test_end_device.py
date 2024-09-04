@@ -115,7 +115,7 @@ async def test_end_device_manager_get_virtual_end_device(
     aggregator_lfdi = "123456"
     raw_site: Site = generate_class_instance(Site)
     mapped_ed: EndDeviceResponse = generate_class_instance(EndDeviceResponse)
-    rsp_params = RequestStateParameters(aggregator_id, aggregator_lfdi, None)
+    rsp_params = RequestStateParameters(aggregator_id, None, aggregator_lfdi, 0, None)
 
     # Just do a simple passthrough
     mock_get_virtual_site_for_aggregator.return_value = raw_site

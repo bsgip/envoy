@@ -232,8 +232,10 @@ def test_SubscriptionMapper_map_to_response():
     sub_with_condition.notification_uri = "http://my.example:33/foo"
     sub_with_condition.resource_type = SubscriptionResource.SITE
 
-    rs_params_base = RequestStateParameters(aggregator_id=1, aggregator_lfdi=None, href_prefix=None)
-    rs_params_prefix = RequestStateParameters(aggregator_id=1, aggregator_lfdi=None, href_prefix="/my/prefix")
+    rs_params_base = RequestStateParameters(aggregator_id=1, site_id=None, sfdi=0, lfdi=None, href_prefix=None)
+    rs_params_prefix = RequestStateParameters(
+        aggregator_id=1, site_id=None, sfdi=0, lfdi=None, href_prefix="/my/prefix"
+    )
 
     # check prefix is applied
     sep2_prefix = SubscriptionMapper.map_to_response(sub_all_set, rs_params_prefix)
@@ -299,8 +301,10 @@ def test_SubscriptionMapper_calculate_subscription_href():
     sub_all_set = generate_class_instance(Subscription, seed=101, optional_is_none=False)
     sub_optional = generate_class_instance(Subscription, seed=101, optional_is_none=True)
 
-    rs_params_base = RequestStateParameters(aggregator_id=1, aggregator_lfdi=None, href_prefix=None)
-    rs_params_prefix = RequestStateParameters(aggregator_id=1, aggregator_lfdi=None, href_prefix="/my/prefix")
+    rs_params_base = RequestStateParameters(aggregator_id=1, site_id=None, sfdi=0, lfdi=None, href_prefix=None)
+    rs_params_prefix = RequestStateParameters(
+        aggregator_id=1, site_id=None, sfdi=0, lfdi=None, href_prefix="/my/prefix"
+    )
 
     # Subscriptions scoped to a EndDevice are different to those that are "global"
     assert SubscriptionMapper.calculate_subscription_href(
@@ -334,7 +338,7 @@ def test_SubscriptionMapper_map_from_request():
     sub_condition.condition = generate_class_instance(Sep2Condition)
     sub_condition.condition.attributeIdentifier = ConditionAttributeIdentifier.READING_VALUE
 
-    rs_params_prefix = RequestStateParameters(aggregator_id=1, aggregator_lfdi=None, href_prefix="/prefix")
+    rs_params_prefix = RequestStateParameters(aggregator_id=1, site_id=None, sfdi=0, lfdi=None, href_prefix="/prefix")
     valid_domains = set(["foo.bar", "example.com"])
     changed_time = datetime(2022, 3, 4, 5, 6, 7)
 

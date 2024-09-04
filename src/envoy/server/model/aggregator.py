@@ -5,6 +5,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
 
+# There will ALWAYS be an aggregator in the DB with this ID. It's to group all the device specific registrations
+# that come direct from a client with a device certificate
+NULL_AGGREGATOR_ID: int = 0
+
 
 class Aggregator(Base):
     "Represents a Distributed Energy Resource (DER) aggregator"

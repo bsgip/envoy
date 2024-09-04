@@ -22,6 +22,8 @@ class AppSettings(CommonSettings):
         False  # Flag whether to install the envoy.server.api.depends.csipaus.AllowEquivalentXmlNsMiddleware
     )
 
+    allow_device_registration: bool = False  # True: LFDI auth will allow unknown certs to register single EndDevices
+
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:
         return {

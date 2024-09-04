@@ -23,25 +23,24 @@ def extract_request_params(request: Request) -> RequestStateParameters:
             detail="Envoy middleware is not decorating incoming requests correctly.",
         )
 
-    id = request.state.aggregator_id
-    if id is None:
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail="aggregator_id has not been been extracted correctly by Envoy middleware.",
-        )
+    aggregator_id: Optional[int] = request.state.aggregator_id
+    site_id: Optional[int] = request.state.site_id
 
     href_prefix: Optional[str] = getattr(request.state, "href_prefix", None)
     if not href_prefix:
         href_prefix = None
 
-    aggregator_lfdi = request.state.aggregator_lfdi
-    if not aggregator_lfdi:  # disallow empty string and None
+    lfdi = request.state.lfdi
+    sfdi = request.state.sfdi
+    if not lfdi or not sfdi:  # disallow empty string and None
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail="aggregator_lfdi has not been extracted correctly by Envoy middleware.",
+            detail=f"lfdi '{lfdi}' or sfdi '{sfdi}' have not been extracted correctly by Envoy middleware.",
         )
 
-    return RequestStateParameters(aggregator_id=id, aggregator_lfdi=aggregator_lfdi, href_prefix=href_prefix)
+    return RequestStateParameters(
+        aggregator_id=aggregator_id, site_id=site_id, lfdi=lfdi, sfdi=sfdi, href_prefix=href_prefix
+    )
 
 
 def extract_default_doe(request: Request) -> Optional[DefaultDoeConfiguration]:

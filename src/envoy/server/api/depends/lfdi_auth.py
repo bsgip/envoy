@@ -1,14 +1,17 @@
 import base64
 import hashlib
-from typing import Any
 import urllib.parse
 from http import HTTPStatus
+from typing import Any, Optional
 
 from fastapi import HTTPException, Request
 from fastapi_async_sqlalchemy import db
 
-from envoy.server.crud.auth import ClientIdDetails, select_all_client_id_details
 from envoy.server.cache import AsyncCache, ExpiringValue
+from envoy.server.crud.auth import ClientIdDetails, select_all_client_id_details
+from envoy.server.crud.common import convert_lfdi_to_sfdi
+from envoy.server.crud.end_device import select_single_site_with_sfdi
+from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 
 
 async def update_client_id_details_cache(_: Any) -> dict[str, ExpiringValue[ClientIdDetails]]:
@@ -34,11 +37,13 @@ class LFDIAuthDepends:
     """
 
     cert_header: str
+    allow_device_registration: bool
     cache: AsyncCache[str, ClientIdDetails]
 
-    def __init__(self, cert_header: str):
+    def __init__(self, cert_header: str, allow_device_registration: bool):
         # fastapi will always return headers in lowercase form
         self.cert_header = cert_header.lower()
+        self.allow_device_registration = allow_device_registration
         self.cache = AsyncCache(update_fn=update_client_id_details_cache)
 
     async def __call__(self, request: Request) -> None:
@@ -55,14 +60,32 @@ class LFDIAuthDepends:
         else:
             lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_header_val)
 
+        sfdi = convert_lfdi_to_sfdi(lfdi)
+
         # get client id details from cache, will return None if expired or never existed.
-
         client_id = await self.cache.get_value(None, lfdi)
-        if not client_id:
-            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised certificate ID.")
+        site_id: Optional[int] = None
+        aggregator_id: Optional[int] = None
+        if client_id:
+            aggregator_id = client_id.aggregator_id
+        else:
+            # The cert has passed our TLS termination so its signing chain is valid - the only question
+            # is whether this server is setup to allow single device registration or whether all requests must
+            # be routed through an aggregator (and their client cert)
+            if self.allow_device_registration:
+                async with db():
+                    site = await select_single_site_with_sfdi(db.session, sfdi=sfdi, aggregator_id=NULL_AGGREGATOR_ID)
+                    if site is not None:
+                        site_id = site.site_id
+            else:
+                # Reject the attempted device cert request
+                raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised client certificate.")
 
-        request.state.aggregator_lfdi = lfdi
-        request.state.aggregator_id = client_id.aggregator_id
+        request.state.lfdi = lfdi
+        request.state.sfdi = sfdi
+
+        request.state.aggregator_id = aggregator_id
+        request.state.site_id = site_id
 
     @staticmethod
     def generate_lfdi_from_pem(cert_pem: str) -> str:
