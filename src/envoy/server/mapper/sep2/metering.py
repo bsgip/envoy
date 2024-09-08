@@ -23,7 +23,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.request_scope import RequestStateParameters
+from envoy.server.request_scope import BaseRequestScope
 
 MIRROR_USAGE_POINT_MRID_PREFIX: int = int("f051", 16)
 MIRROR_METER_READING_MRID_PREFIX: int = int("4ead", 16)
@@ -89,7 +89,7 @@ class MirrorUsagePointMapper:
         )
 
     @staticmethod
-    def map_to_response(rs_params: RequestStateParameters, srt: SiteReadingType, site: Site) -> MirrorUsagePoint:
+    def map_to_response(rs_params: BaseRequestScope, srt: SiteReadingType, site: Site) -> MirrorUsagePoint:
         """Maps a SiteReadingType and associated Site into a MirrorUsagePoint"""
 
         return MirrorUsagePoint.model_validate(
@@ -125,7 +125,7 @@ class MirrorUsagePointMapper:
 class MirrorUsagePointListMapper:
     @staticmethod
     def map_to_list_response(
-        rs_params: RequestStateParameters, srts: Sequence[SiteReadingType], srt_count: int
+        rs_params: BaseRequestScope, srts: Sequence[SiteReadingType], srt_count: int
     ) -> MirrorUsagePointListResponse:
         """Maps a set of SiteReadingType (requires the associated site relationship being populated for each
         SiteReadingType)"""

@@ -32,10 +32,8 @@ async def get_function_set_assignments(site_id: int, fsa_id: int, request: Reque
     Returns:
         fastapi.Response object.
     """
-    function_set_assignments = (
-        await FunctionSetAssignmentsManager.fetch_function_set_assignments_for_aggregator_and_site(
-            session=db.session, request_params=extract_request_scope(request), site_id=site_id, fsa_id=fsa_id
-        )
+    function_set_assignments = await FunctionSetAssignmentsManager.fetch_function_set_assignments_for_scope(
+        session=db.session, scope=extract_request_scope(request).to_site_request_scope(site_id), fsa_id=fsa_id
     )
 
     if function_set_assignments is None:
@@ -69,12 +67,9 @@ async def get_function_set_assignments_list(
     # however FunctionSetAssignment will only ever return 1 FunctionSetAssignment per site so we ignore `start`
     # `limit`.
 
-    function_set_assignments_list = (
-        await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_aggregator_and_site(
-            session=db.session,
-            site_id=site_id,
-            request_params=extract_request_scope(request),
-        )
+    function_set_assignments_list = await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_scope(
+        session=db.session,
+        scope=extract_request_scope(request).to_site_request_scope(site_id),
     )
     if function_set_assignments_list is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")

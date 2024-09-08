@@ -31,7 +31,7 @@ async def get_connectionpoint(site_id: int, request: Request) -> Response:
 
     """
     connection_point = await EndDeviceManager.fetch_connection_point_for_site(
-        db.session, site_id, extract_request_scope(request)
+        session=db.session, scope=extract_request_scope(request).to_site_request_scope(site_id)
     )
     if connection_point is None:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
@@ -55,10 +55,10 @@ async def update_connectionpoint(
         fastapi.Response object.
 
     """
-    rs_params = extract_request_scope(request)
-    updated = await EndDeviceManager.update_nmi_for_site(db.session, rs_params, site_id, payload.id)
+    scope = extract_request_scope(request).to_site_request_scope(site_id)
+    updated = await EndDeviceManager.update_nmi_for_site(session=db.session, scope=scope, nmi=payload.id)
     if not updated:
         return Response(status_code=HTTPStatus.NOT_FOUND)
 
-    location_href = generate_href(uri.ConnectionPointUri, rs_params, site_id=site_id)
+    location_href = generate_href(uri.ConnectionPointUri, scope)
     return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})

@@ -386,7 +386,7 @@ async def test_add_or_update_enddevice_for_scope_device(
 @mock.patch("envoy.server.manager.end_device.select_all_sites_with_aggregator_id")
 @mock.patch("envoy.server.manager.end_device.select_aggregator_site_count")
 @mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
-async def test_fetch_enddevicelist_for_scope_aggregator(
+async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
     mock_EndDeviceListMapper: mock.MagicMock,
     mock_select_aggregator_site_count: mock.MagicMock,
     mock_select_all_sites_with_aggregator_id: mock.MagicMock,
@@ -428,6 +428,63 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
         mock_session, scope.aggregator_id, start - 1, after, limit
     )
     mock_select_aggregator_site_count.assert_called_once_with(mock_session, scope.aggregator_id, after)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.select_all_sites_with_aggregator_id")
+@mock.patch("envoy.server.manager.end_device.select_aggregator_site_count")
+@mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
+@mock.patch("envoy.server.manager.end_device.get_virtual_site_for_aggregator")
+async def test_fetch_enddevicelist_for_scope_aggregator(
+    mock_get_virtual_site_for_aggregator: mock.MagicMock,
+    mock_EndDeviceListMapper: mock.MagicMock,
+    mock_select_aggregator_site_count: mock.MagicMock,
+    mock_select_all_sites_with_aggregator_id: mock.MagicMock,
+):
+    """Checks that fetching the enddevice list just passes through to the relevant CRUD"""
+    # Arrange
+    mock_session = create_mock_session()
+    start = 0
+    after = datetime.now()
+    limit = 5
+    mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
+    returned_site_count = 123
+    returned_sites: list[Site] = [
+        generate_class_instance(Site, seed=101, optional_is_none=False),
+        generate_class_instance(Site, seed=202, optional_is_none=True),
+    ]
+    returned_virtual_site = (generate_class_instance(Site, seed=303, optional_is_none=True),)
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, site_id=None)
+
+    mock_get_virtual_site_for_aggregator.return_value = returned_virtual_site
+    mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
+    mock_select_all_sites_with_aggregator_id.return_value = returned_sites
+    mock_select_aggregator_site_count.return_value = returned_site_count
+
+    # Act
+    result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_for_scope(
+        mock_session, scope, start, after, limit
+    )
+
+    # Assert
+    assert result is mapped_ed_list
+    assert_mock_session(mock_session, committed=False)
+
+    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(
+        scope=scope,
+        site_list=returned_sites,
+        site_count=returned_site_count + 1,
+        virtual_site=returned_virtual_site,
+    )
+    mock_select_all_sites_with_aggregator_id.assert_called_once_with(
+        mock_session, scope.aggregator_id, start, after, limit - 1
+    )
+    mock_select_aggregator_site_count.assert_called_once_with(mock_session, scope.aggregator_id, after)
+    mock_get_virtual_site_for_aggregator.assert_called_once_with(
+        mock_session,
+        aggregator_id=scope.aggregator_id,
+        aggregator_lfdi=scope.lfdi,
+    )
 
 
 @pytest.mark.anyio

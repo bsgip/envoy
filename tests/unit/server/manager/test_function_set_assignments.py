@@ -36,11 +36,11 @@ async def test_function_set_assignments_fetch_function_set_assignments_for_aggre
     # Act
     with mock.patch("envoy.server.manager.function_set_assignments.pricing.select_tariff_count") as select_tariff_count:
         select_tariff_count.return_value = tariff_count
-        result = await FunctionSetAssignmentsManager.fetch_function_set_assignments_for_aggregator_and_site(
+        result = await FunctionSetAssignmentsManager.fetch_function_set_assignments_for_scope(
             session=mock_session,
             fsa_id=fsa_id,
             site_id=site_id,
-            request_params=rs_params,
+            scope=rs_params,
         )
 
     # Assert
@@ -77,8 +77,8 @@ async def test_function_set_assignments_fetch_function_set_assignments_list_for_
         )
     ) as fetch_function_set_assignments_for_aggregator_and_site:
         fetch_function_set_assignments_for_aggregator_and_site.return_value = mapped_fsa
-        result = await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_aggregator_and_site(
-            session=mock_session, request_params=rs_params, site_id=site_id
+        result = await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_scope(
+            session=mock_session, scope=rs_params, site_id=site_id
         )
 
     # Assert
