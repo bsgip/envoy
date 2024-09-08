@@ -13,7 +13,7 @@ from envoy.server.mapper.common import (
     pow10_to_decimal_value,
     remove_href_prefix,
 )
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import BaseRequestScope
 
 
 @pytest.mark.parametrize(
@@ -93,7 +93,7 @@ def test_generate_mrid_128_bit():
 )
 def test_generate_href(uri_format: str, prefix: Optional[str], args: Any, kwargs: Any, expected: str):
     """Tests various combinations of args/kwargs/prefixes"""
-    request_state_parameters = RequestStateParameters(1, None, prefix)
+    request_state_parameters = BaseRequestScope("lfdi-val", 1234, prefix)
 
     if args is not None and kwargs is not None:
         assert generate_href(uri_format, request_state_parameters, *args, **kwargs) == expected
@@ -118,7 +118,7 @@ def test_generate_href(uri_format: str, prefix: Optional[str], args: Any, kwargs
     ],
 )
 def test_remove_href_prefix(uri: str, prefix: Optional[str], expected: str):
-    ps = RequestStateParameters(1, None, prefix)
+    ps = BaseRequestScope("lfdi", 111, prefix)
     assert remove_href_prefix(uri, ps) == expected
 
 
@@ -126,10 +126,10 @@ def test_generate_href_format_errors():
     """Ensures that errors raised by format propogate up"""
 
     with pytest.raises(KeyError):
-        generate_href("{p1}/{p2}", RequestStateParameters(1, None, None), p1="val1")
+        generate_href("{p1}/{p2}", BaseRequestScope("lfdi", 111, None), p1="val1")
 
     with pytest.raises(KeyError):
-        generate_href("{p1}/{p2}", RequestStateParameters(1, None, "prefix/"), p1="val1")
+        generate_href("{p1}/{p2}", BaseRequestScope("lfdi", 111, "prefix/"), p1="val1")
 
 
 @pytest.mark.parametrize(

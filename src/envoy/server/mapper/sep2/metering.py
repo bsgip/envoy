@@ -23,7 +23,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 MIRROR_USAGE_POINT_MRID_PREFIX: int = int("f051", 16)
 MIRROR_METER_READING_MRID_PREFIX: int = int("4ead", 16)

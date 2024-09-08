@@ -9,7 +9,7 @@ from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy.server.crud import link
 from envoy.server.crud.link import LinkParameters
 from envoy.server.function_set import FunctionSet, FunctionSetStatus
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 @pytest.mark.anyio
@@ -24,9 +24,7 @@ async def test_get_supported_links_calls_get_link_field_names_with_model_schema(
     model = pydantic_xml.BaseXmlModel
 
     with mock.patch("envoy.server.crud.link.get_link_field_names") as get_link_field_names:
-        await link.get_supported_links(
-            session=mock.Mock(), model=model, rs_params=RequestStateParameters(1, None, None)
-        )
+        await link.get_supported_links(session=mock.Mock(), model=model, scope=RequestStateParameters(1, None, None))
 
     get_link_field_names.assert_called_once_with(model)
 
@@ -46,7 +44,7 @@ async def test_get_supported_links_calls_filter_with_check_link_supported_and_li
         "envoy.server.crud.link.check_link_supported", return_value=True
     ) as check_link_supported, mock.patch("envoy.server.crud.link.filter") as patched_filter:
         await link.get_supported_links(
-            session=mock.Mock(), model=mock.Mock(), rs_params=RequestStateParameters(123, None, None)
+            session=mock.Mock(), model=mock.Mock(), scope=RequestStateParameters(123, None, None)
         )
 
     patched_filter.assert_called_with(check_link_supported, link_names)
@@ -73,7 +71,7 @@ async def test_get_supported_links_calls_get_formatted_links_with_supported_link
         await link.get_supported_links(
             session=mock.Mock(),
             model=mock.Mock(),
-            rs_params=rs_params,
+            scope=rs_params,
             uri_parameters=uri_parameters,
         )
 
@@ -101,7 +99,7 @@ async def test_get_supported_links_awaits_get_resource_counts_with_supported_lin
         "envoy.server.crud.link.get_resource_counts"
     ) as get_resource_counts:
         await link.get_supported_links(
-            session=session, model=mock.Mock(), rs_params=RequestStateParameters(123, None, None)
+            session=session, model=mock.Mock(), scope=RequestStateParameters(123, None, None)
         )
 
     get_resource_counts.assert_awaited_once_with(session=session, link_names=supported_links.keys(), aggregator_id=123)
@@ -123,7 +121,7 @@ async def test_get_supported_links_calls_add_resource_counts_to_links_with_suppo
         "envoy.server.crud.link.get_resource_counts", return_value=resource_counts
     ), mock.patch("envoy.server.crud.link.add_resource_counts_to_links") as add_resource_counts_to_links:
         await link.get_supported_links(
-            session=mock.Mock(), model=mock.Mock(), rs_params=RequestStateParameters(123, None, None)
+            session=mock.Mock(), model=mock.Mock(), scope=RequestStateParameters(123, None, None)
         )
 
     add_resource_counts_to_links.assert_called_once_with(links=supported_links, resource_counts=resource_counts)

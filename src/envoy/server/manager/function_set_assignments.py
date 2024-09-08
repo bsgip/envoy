@@ -8,9 +8,9 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud import pricing
-from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
-from envoy.server.request_state import RequestStateParameters
 from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
+from envoy.server.request_scope import RequestStateParameters
 
 
 class FunctionSetAssignmentsManager:

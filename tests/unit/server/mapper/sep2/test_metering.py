@@ -31,7 +31,7 @@ from envoy.server.mapper.sep2.metering import (
 )
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 def _no_uom_test_cases():

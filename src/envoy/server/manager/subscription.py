@@ -21,7 +21,7 @@ from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.pub_sub import SubscriptionListMapper, SubscriptionMapper
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 logger = logging.getLogger(__name__)
 

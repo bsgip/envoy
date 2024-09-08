@@ -18,7 +18,7 @@ from envoy.server.mapper.sep2.pricing import (
     TimeTariffIntervalMapper,
 )
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, Tariff, TariffGeneratedRate
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 @pytest.mark.parametrize(

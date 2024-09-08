@@ -20,7 +20,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import AggregatorRequestScope, SiteRequestScope
 
 DOE_PROGRAM_MRID_PREFIX: int = int("D0E", 16)
 DOE_PROGRAM_ID: str = "doe"
@@ -83,32 +83,37 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def doe_list_href(request_state_params: RequestStateParameters, site_id: int) -> str:
+    def doe_list_href(request_scope: AggregatorRequestScope) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
-            uri.DERControlListUri, request_state_params, site_id=site_id, der_program_id=DOE_PROGRAM_ID
+            uri.DERControlListUri, request_scope, site_id=request_scope.display_site_id, der_program_id=DOE_PROGRAM_ID
         )
 
     @staticmethod
-    def active_doe_list_href(request_state_params: RequestStateParameters, site_id: int) -> str:
+    def active_doe_list_href(request_scope: AggregatorRequestScope) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
-            uri.ActiveDERControlListUri, request_state_params, site_id=site_id, der_program_id=DOE_PROGRAM_ID
+            uri.ActiveDERControlListUri,
+            request_scope,
+            site_id=request_scope.display_site_id,
+            der_program_id=DOE_PROGRAM_ID,
         )
 
     @staticmethod
-    def default_doe_href(request_state_params: RequestStateParameters, site_id: int) -> str:
+    def default_doe_href(request_scope: AggregatorRequestScope) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
-            uri.DefaultDERControlUri, request_state_params, site_id=site_id, der_program_id=DOE_PROGRAM_ID
+            uri.DefaultDERControlUri,
+            request_scope,
+            site_id=request_scope.display_site_id,
+            der_program_id=DOE_PROGRAM_ID,
         )
 
     @staticmethod
     def map_to_list_response(
-        rs_params: RequestStateParameters,
+        request_scope: AggregatorRequestScope,
         does: Sequence[DynamicOperatingEnvelope],
         total_does: int,
-        site_id: int,
         source: DERControlListSource,
     ) -> DERControlListResponse:
         """Maps a page of DOEs into a DERControlListResponse. total_does should be the total of all DOEs accessible
@@ -118,9 +123,9 @@ class DERControlMapper:
 
         href: str
         if source == DERControlListSource.DER_CONTROL_LIST:
-            href = DERControlMapper.doe_list_href(rs_params, site_id)
+            href = DERControlMapper.doe_list_href(request_scope)
         elif source == DERControlListSource.ACTIVE_DER_CONTROL_LIST:
-            href = DERControlMapper.active_doe_list_href(rs_params, site_id)
+            href = DERControlMapper.active_doe_list_href(request_scope)
         else:
             raise InvalidMappingError(f"Unsupported source {source} for calculating href")
 
@@ -137,18 +142,20 @@ class DERControlMapper:
 
 class DERProgramMapper:
     @staticmethod
-    def doe_href(rs_params: RequestStateParameters, site_id: int) -> str:
+    def doe_href(rq_scope: AggregatorRequestScope) -> str:
         """Returns a href for a particular site's DER Program for Dynamic Operating Envelopes"""
-        return generate_href(uri.DERProgramUri, rs_params, site_id=site_id, der_program_id=DOE_PROGRAM_ID)
+        return generate_href(
+            uri.DERProgramUri, rq_scope, site_id=rq_scope.display_site_id, der_program_id=DOE_PROGRAM_ID
+        )
 
     @staticmethod
-    def doe_list_href(rs_params: RequestStateParameters, site_id: int) -> str:
+    def doe_list_href(rq_scope: AggregatorRequestScope) -> str:
         """Returns a href for a particular site's DER Program list"""
-        return generate_href(uri.DERProgramListUri, rs_params, site_id=site_id)
+        return generate_href(uri.DERProgramListUri, rq_scope, site_id=rq_scope.display_site_id)
 
     @staticmethod
     def doe_program_response(
-        rs_params: RequestStateParameters, site_id: int, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
+        rq_scope: SiteRequestScope, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
     ) -> DERProgramResponse:
         """Returns a static Dynamic Operating Envelope program response"""
 
@@ -157,26 +164,26 @@ class DERProgramMapper:
         if default_doe is not None:
             default_der_link = Link.model_validate(
                 {
-                    "href": DERControlMapper.default_doe_href(rs_params, site_id),
+                    "href": DERControlMapper.default_doe_href(rq_scope),
                 }
             )
 
         return DERProgramResponse.model_validate(
             {
-                "href": DERProgramMapper.doe_href(rs_params, site_id),
-                "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, site_id),
+                "href": DERProgramMapper.doe_href(rq_scope),
+                "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, rq_scope.display_site_id),
                 "primacy": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
                 "description": "Dynamic Operating Envelope",
                 "DefaultDERControlLink": default_der_link,
                 "ActiveDERControlListLink": ListLink.model_validate(
                     {
-                        "href": DERControlMapper.active_doe_list_href(rs_params, site_id),
+                        "href": DERControlMapper.active_doe_list_href(rq_scope),
                         "all_": 1 if total_does > 0 else 0,
                     }
                 ),
                 "DERControlListLink": ListLink.model_validate(
                     {
-                        "href": DERControlMapper.doe_list_href(rs_params, site_id),
+                        "href": DERControlMapper.doe_list_href(rq_scope, rq_scope.display_site_id),
                         "all_": total_does,
                     }
                 ),
@@ -185,13 +192,13 @@ class DERProgramMapper:
 
     @staticmethod
     def doe_program_list_response(
-        rs_params: RequestStateParameters, site_id: int, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
+        rq_scope: SiteRequestScope, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
     ) -> DERProgramListResponse:
         """Returns a fixed list of just the DOE Program"""
         return DERProgramListResponse.model_validate(
             {
-                "href": DERProgramMapper.doe_list_href(rs_params, site_id),
-                "DERProgram": [DERProgramMapper.doe_program_response(rs_params, site_id, total_does, default_doe)],
+                "href": DERProgramMapper.doe_list_href(rq_scope),
+                "DERProgram": [DERProgramMapper.doe_program_response(rq_scope, total_does, default_doe)],
                 "all_": 1,
                 "results": 1,
             }

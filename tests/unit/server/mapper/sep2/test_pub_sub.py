@@ -43,7 +43,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 @pytest.mark.parametrize("resource", list(SubscriptionResource))

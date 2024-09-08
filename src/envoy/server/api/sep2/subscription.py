@@ -10,7 +10,7 @@ from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
-    extract_request_params,
+    extract_request_scope,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
@@ -45,7 +45,7 @@ async def get_subscription(
 
     """
     sub = await SubscriptionManager.fetch_subscription_by_id(
-        db.session, extract_request_params(request), site_id=site_id, subscription_id=subscription_id
+        db.session, extract_request_scope(request), site_id=site_id, subscription_id=subscription_id
     )
     if sub is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
@@ -80,7 +80,7 @@ async def get_subscriptions_for_site(
     return XmlResponse(
         await SubscriptionManager.fetch_subscriptions_for_site(
             db.session,
-            extract_request_params(request),
+            extract_request_scope(request),
             site_id=site_id,
             start=extract_start_from_paging_param(start),
             after=extract_datetime_from_paging_param(after),
@@ -110,7 +110,7 @@ async def delete_subscription(
 
     """
     removed = await SubscriptionManager.delete_subscription_for_site(
-        db.session, extract_request_params(request), site_id=site_id, subscription_id=subscription_id
+        db.session, extract_request_scope(request), site_id=site_id, subscription_id=subscription_id
     )
     return Response(status_code=HTTPStatus.NO_CONTENT if removed else HTTPStatus.NOT_FOUND)
 
@@ -133,7 +133,7 @@ async def create_subscription(
         fastapi.Response object.
 
     """
-    rs_params = extract_request_params(request)
+    rs_params = extract_request_scope(request)
     try:
         sub_id = await SubscriptionManager.add_subscription_for_site(db.session, rs_params, payload, site_id)
         location_href = generate_href(uri.SubscriptionUri, rs_params, site_id=site_id, subscription_id=sub_id)

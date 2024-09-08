@@ -11,7 +11,7 @@ from envoy.server.exception import InvalidIdError, NotFoundError
 from envoy.server.manager.metering import MirrorMeteringManager
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 @pytest.mark.anyio

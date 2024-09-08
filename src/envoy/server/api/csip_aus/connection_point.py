@@ -6,7 +6,7 @@ from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPoint
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi_async_sqlalchemy import db
 
-from envoy.server.api.request import extract_request_params
+from envoy.server.api.request import extract_request_scope
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.manager.end_device import EndDeviceManager
 from envoy.server.mapper.common import generate_href
@@ -31,7 +31,7 @@ async def get_connectionpoint(site_id: int, request: Request) -> Response:
 
     """
     connection_point = await EndDeviceManager.fetch_connection_point_for_site(
-        db.session, site_id, extract_request_params(request)
+        db.session, site_id, extract_request_scope(request)
     )
     if connection_point is None:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
@@ -55,7 +55,7 @@ async def update_connectionpoint(
         fastapi.Response object.
 
     """
-    rs_params = extract_request_params(request)
+    rs_params = extract_request_scope(request)
     updated = await EndDeviceManager.update_nmi_for_site(db.session, rs_params, site_id, payload.id)
     if not updated:
         return Response(status_code=HTTPStatus.NOT_FOUND)

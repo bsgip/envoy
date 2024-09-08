@@ -10,6 +10,7 @@ from starlette.datastructures import Headers
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
 from envoy.server.crud.auth import ClientIdDetails
 from envoy.server.main import settings
+from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.site import Site
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as TEST_CERTIFICATE_FINGERPRINT_1
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as TEST_CERTIFICATE_LFDI_1
@@ -131,9 +132,11 @@ async def test_lfdiauthdepends_site_specific_cert(
     mock_select_single_site_with_sfdi: mock.MagicMock,
 ):
     SITE_ID = 154125
+    SFDI = 54112
+
     # Arrange
     mock_select_all_client_id_details.return_value = []
-    mock_select_single_site_with_sfdi.return_value = generate_class_instance(Site, site_id=SITE_ID)
+    mock_select_single_site_with_sfdi.return_value = generate_class_instance(Site, site_id=SITE_ID, sfdi=SFDI)
     req = Request(
         {
             "type": "http",
@@ -154,6 +157,8 @@ async def test_lfdiauthdepends_site_specific_cert(
 
     mock_select_all_client_id_details.assert_called_once()
     mock_select_single_site_with_sfdi.assert_called_once()
+    mock_select_single_site_with_sfdi.call_args_list[0].kwargs["sfdi"] == SFDI
+    mock_select_single_site_with_sfdi.call_args_list[0].kwargs["aggregator_id"] == NULL_AGGREGATOR_ID
 
 
 @pytest.mark.anyio

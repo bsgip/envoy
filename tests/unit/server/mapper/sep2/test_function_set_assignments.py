@@ -6,7 +6,7 @@ from envoy.server.mapper.sep2.function_set_assignments import (
     FunctionSetAssignmentsMapper,
     FunctionSetAssignmentsResponse,
 )
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 def test_map_to_response():

@@ -17,7 +17,7 @@ from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
-    extract_request_params,
+    extract_request_scope,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
@@ -58,7 +58,7 @@ async def get_mirror_usage_point_list(
     try:
         mup_list = await MirrorMeteringManager.list_mirror_usage_points(
             db.session,
-            request_params=extract_request_params(request),
+            request_params=extract_request_scope(request),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -87,7 +87,7 @@ async def post_mirror_usage_point_list(
         fastapi.Response object.
 
     """
-    rs_params = extract_request_params(request)
+    rs_params = extract_request_scope(request)
     try:
         mup_id = await MirrorMeteringManager.create_or_update_mirror_usage_point(
             db.session, request_params=rs_params, mup=payload
@@ -127,7 +127,7 @@ async def get_mirror_usage_point(
     try:
         mup_list = await MirrorMeteringManager.fetch_mirror_usage_point(
             db.session,
-            request_params=extract_request_params(request),
+            request_params=extract_request_scope(request),
             site_reading_type_id=mup_id,
         )
     except BadRequestError as ex:
@@ -163,7 +163,7 @@ async def post_mirror_usage_point(
 
     try:
         await MirrorMeteringManager.add_or_update_readings(
-            db.session, request_params=extract_request_params(request), site_reading_type_id=mup_id, mmr=payload
+            db.session, request_params=extract_request_scope(request), site_reading_type_id=mup_id, mmr=payload
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

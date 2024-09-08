@@ -11,7 +11,7 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 )
 
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 @pytest.mark.anyio

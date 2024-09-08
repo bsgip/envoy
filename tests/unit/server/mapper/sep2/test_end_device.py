@@ -12,7 +12,7 @@ from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, Devic
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper, VirtualEndDeviceMapper
 from envoy.server.model.site import Site
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 def test_device_category_round_trip():

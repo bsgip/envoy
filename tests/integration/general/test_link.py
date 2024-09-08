@@ -6,7 +6,7 @@ from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 from envoy.server.crud import link
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 @pytest.mark.anyio
@@ -54,7 +54,7 @@ async def test_get_supported_links(
         links = await link.get_supported_links(
             session=session,
             model=model,
-            rs_params=RequestStateParameters(1, None, prefix),
+            scope=RequestStateParameters(1, None, prefix),
             uri_parameters=uri_parameters,
         )
     assert links == expected_links

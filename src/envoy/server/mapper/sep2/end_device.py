@@ -9,17 +9,17 @@ from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.mapper.common import generate_href, parse_device_category
 from envoy.server.model.site import Site
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import BaseRequestScope
 from envoy.server.settings import settings
 
 
 class EndDeviceMapper:
     @staticmethod
-    def map_to_response(rs_params: RequestStateParameters, site: Site) -> EndDeviceResponse:
-        edev_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site.site_id)
-        fsa_href = generate_href(uri.FunctionSetAssignmentsListUri, rs_params, site_id=site.site_id)
-        der_href = generate_href(uri.DERListUri, rs_params, site_id=site.site_id)
-        pubsub_href = generate_href(uri.SubscriptionListUri, rs_params, site_id=site.site_id)
+    def map_to_response(scope: BaseRequestScope, site: Site) -> EndDeviceResponse:
+        edev_href = generate_href(uri.EndDeviceUri, scope, site_id=site.site_id)
+        fsa_href = generate_href(uri.FunctionSetAssignmentsListUri, scope, site_id=site.site_id)
+        der_href = generate_href(uri.DERListUri, scope, site_id=site.site_id)
+        pubsub_href = generate_href(uri.SubscriptionListUri, scope, site_id=site.site_id)
         return EndDeviceResponse.model_validate(
             {
                 "href": edev_href,
@@ -50,8 +50,8 @@ class EndDeviceMapper:
 
 class VirtualEndDeviceMapper:
     @staticmethod
-    def map_to_response(rs_params: RequestStateParameters, site: Site) -> EndDeviceResponse:
-        edev_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site.site_id)
+    def map_to_response(scope: BaseRequestScope, site: Site) -> EndDeviceResponse:
+        edev_href = generate_href(uri.EndDeviceUri, scope, site_id=site.site_id)
         return EndDeviceResponse.model_validate(
             {
                 "href": edev_href,
@@ -68,13 +68,13 @@ class VirtualEndDeviceMapper:
 class EndDeviceListMapper:
     @staticmethod
     def map_to_response(
-        rs_params: RequestStateParameters,
+        scope: BaseRequestScope,
         site_list: Sequence[Site],
         site_count: int,
         virtual_site: Optional[Site] = None,
     ) -> EndDeviceListResponse:
 
-        end_devices = [EndDeviceMapper.map_to_response(rs_params, site) for site in site_list]
+        end_devices = [EndDeviceMapper.map_to_response(scope, site) for site in site_list]
         result_count = len(end_devices)
 
         # Add the virtual site to the results if present
@@ -83,12 +83,12 @@ class EndDeviceListMapper:
             # The virtual site has a changed_time matching when the call to `get_virtual_site_for_aggregator` was made.
             # We assume the virtual site will *always* be the most recent site and therefore we add the
             # virtual site to the front of the list of sites.
-            end_devices.insert(0, VirtualEndDeviceMapper.map_to_response(rs_params, virtual_site))
+            end_devices.insert(0, VirtualEndDeviceMapper.map_to_response(scope, virtual_site))
             result_count += 1
 
         return EndDeviceListResponse.model_validate(
             {
-                "href": generate_href(uri.EndDeviceListUri, rs_params),
+                "href": generate_href(uri.EndDeviceListUri, scope),
                 "all_": site_count,
                 "results": result_count,
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,

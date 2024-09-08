@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.crud import end_device, site_reading
 from envoy.server.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
 from envoy.server.mapper.common import generate_href
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import BaseRequestScope
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,8 @@ SEP2_LINK_MAP = {
 async def get_supported_links(
     session: AsyncSession,
     model: type[pydantic_xml.BaseXmlModel],
-    rs_params: RequestStateParameters,
+    aggregator_id: int,
+    scope: BaseRequestScope,
     uri_parameters: Optional[dict] = None,
 ) -> dict[str, dict[str, str]]:
     """
@@ -212,11 +213,9 @@ async def get_supported_links(
     """
     link_names = get_link_field_names(model)
     supported_links_names = filter(check_link_supported, link_names)
-    supported_links = get_formatted_links(
-        rs_params=rs_params, link_names=supported_links_names, uri_parameters=uri_parameters
-    )
+    supported_links = get_formatted_links(scope=scope, link_names=supported_links_names, uri_parameters=uri_parameters)
     resource_counts = await get_resource_counts(
-        session=session, link_names=supported_links.keys(), aggregator_id=rs_params.aggregator_id
+        session=session, link_names=supported_links.keys(), aggregator_id=aggregator_id
     )
     updated_supported_links = add_resource_counts_to_links(links=supported_links, resource_counts=resource_counts)
 
@@ -348,7 +347,7 @@ def check_function_set_supported(function_set: FunctionSet, function_set_status:
 
 def get_formatted_links(
     link_names: Iterable[str],
-    rs_params: RequestStateParameters,
+    scope: BaseRequestScope,
     uri_parameters: Optional[dict] = None,
     link_map: dict[str, LinkParameters] = SEP2_LINK_MAP,
 ) -> dict[str, dict[str, str]]:
@@ -379,7 +378,7 @@ def get_formatted_links(
         if link_name in link_map:
             uri = link_map[link_name].uri
             try:
-                formatted_uri = generate_href(uri, rs_params, **uri_parameters)
+                formatted_uri = generate_href(uri, scope, **uri_parameters)
             except KeyError as ex:
                 raise MissingUriParameterError(f"KeyError for params {uri_parameters} error {ex}.")
             links[link_name] = {"href": formatted_uri}

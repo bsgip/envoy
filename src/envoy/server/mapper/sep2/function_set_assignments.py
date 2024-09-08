@@ -6,7 +6,7 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
 from envoy.server.mapper.common import generate_href, generate_mrid
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 # Function set assignments are virtual i.e. there are no corresponding tables in the database
 # We use the generate_mrid function to create a fake mRID and use FUNCTION_SET_ASSIGNMENTS_MRID_PREFIX

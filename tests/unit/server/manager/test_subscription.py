@@ -16,7 +16,7 @@ from envoy.server.model.aggregator import Aggregator, AggregatorDomain
 from envoy.server.model.site_reading import SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import Tariff
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 @pytest.mark.anyio

@@ -10,11 +10,12 @@ from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPoint
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.exception import UnableToGenerateIdError
+from envoy.server.exception import ForbiddenError, UnableToGenerateIdError
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
+from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.site import Site
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import AggregatorRequestScope, RawRequestScope, RequestStateParameters
 
 
 @pytest.mark.anyio
@@ -78,59 +79,54 @@ async def test_end_device_manager_fetch_existing_device(
 
     # Arrange
     mock_session = create_mock_session()
-    site_id = 1
-    aggregator_id = 2
     raw_site: Site = generate_class_instance(Site)
     mapped_ed: EndDeviceResponse = generate_class_instance(EndDeviceResponse)
-    rsp_params = RequestStateParameters(aggregator_id, None, None)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
 
     # Just do a simple passthrough
     mock_select_single_site_with_site_id.return_value = raw_site
     mock_EndDeviceMapper.map_to_response = mock.Mock(return_value=mapped_ed)
 
     # Act
-    result = await EndDeviceManager.fetch_enddevice_with_site_id(mock_session, site_id, rsp_params)
+    result = await EndDeviceManager.fetch_enddevice_for_scope(mock_session, scope)
 
     # Assert
     assert result is mapped_ed
     assert_mock_session(mock_session, committed=False)
     mock_select_single_site_with_site_id.assert_called_once_with(
-        session=mock_session, site_id=site_id, aggregator_id=aggregator_id
+        session=mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
     )
-    mock_EndDeviceMapper.map_to_response.assert_called_once_with(rsp_params, raw_site)
+    mock_EndDeviceMapper.map_to_response.assert_called_once_with(scope, raw_site)
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.end_device.get_virtual_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.VirtualEndDeviceMapper")
-async def test_end_device_manager_get_virtual_end_device(
+async def test_end_device_manager_fetch_enddevice_for_scope_virtual(
     mock_VirtualEndDeviceMapper: mock.MagicMock, mock_get_virtual_site_for_aggregator: mock.MagicMock
 ):
     """Check that the manager will handle requests for the virtual end device"""
 
     # Arrange
     mock_session = create_mock_session()
-    site_id = 0
-    aggregator_id = 2
-    aggregator_lfdi = "123456"
     raw_site: Site = generate_class_instance(Site)
     mapped_ed: EndDeviceResponse = generate_class_instance(EndDeviceResponse)
-    rsp_params = RequestStateParameters(aggregator_id, None, aggregator_lfdi, 0, None)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=None)
 
     # Just do a simple passthrough
     mock_get_virtual_site_for_aggregator.return_value = raw_site
     mock_VirtualEndDeviceMapper.map_to_response = mock.Mock(return_value=mapped_ed)
 
     # Act
-    result = await EndDeviceManager.fetch_enddevice_with_site_id(mock_session, site_id, rsp_params)
+    result = await EndDeviceManager.fetch_enddevice_for_scope(mock_session, scope)
 
     # Assert
     assert result is mapped_ed
     assert_mock_session(mock_session, committed=False)
     mock_get_virtual_site_for_aggregator.assert_called_once_with(
-        session=mock_session, aggregator_id=aggregator_id, aggregator_lfdi=aggregator_lfdi
+        session=mock_session, aggregator_id=scope.aggregator_id, aggregator_lfdi=scope.lfdi
     )
-    mock_VirtualEndDeviceMapper.map_to_response.assert_called_once_with(rsp_params, raw_site)
+    mock_VirtualEndDeviceMapper.map_to_response.assert_called_once_with(scope, raw_site)
 
 
 @pytest.mark.anyio
@@ -152,7 +148,7 @@ async def test_end_device_manager_fetch_missing_device(
     mock_EndDeviceMapper.map_to_response = mock.Mock()
 
     # Act
-    result = await EndDeviceManager.fetch_enddevice_with_site_id(mock_session, site_id, rsp_params)
+    result = await EndDeviceManager.fetch_enddevice_for_scope(mock_session, site_id, rsp_params)
 
     # Assert
     assert result is None
@@ -169,21 +165,21 @@ async def test_end_device_manager_fetch_missing_device(
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
 @mock.patch("envoy.server.manager.end_device.utc_now")
 @mock.patch("envoy.server.manager.end_device.select_single_site_with_sfdi")
-async def test_add_or_update_enddevice_for_aggregator_with_sfdi(
+async def test_add_or_update_enddevice_for_scope_aggregator_with_sfdi(
     mock_select_single_site_with_sfdi: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
     mock_EndDeviceMapper: mock.MagicMock,
     mock_upsert_site_for_aggregator: mock.MagicMock,
     mock_NotificationManager: mock.MagicMock,
 ):
-    """Checks that the enddevice update just passes through to the relevant CRUD (assuming the sfdi is specified)"""
+    """Checks that the enddevice update for an aggregator just passes through to the relevant CRUD (assuming the
+    sfdi is specified)"""
     # Arrange
     mock_session = create_mock_session()
-    aggregator_id = 3
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
-    rsp_params = RequestStateParameters(aggregator_id, None, None)
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, site_id=None)
 
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_upsert_site_for_aggregator.return_value = 4321
@@ -191,15 +187,13 @@ async def test_add_or_update_enddevice_for_aggregator_with_sfdi(
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Act
-    returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
-        mock_session, rsp_params, end_device
-    )
+    returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_scope(mock_session, scope, end_device)
     assert returned_site_id == mock_upsert_site_for_aggregator.return_value
 
     # Assert
     assert_mock_session(mock_session, committed=True)
-    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
-    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
+    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now)
+    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_not_called()
     mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
@@ -211,25 +205,25 @@ async def test_add_or_update_enddevice_for_aggregator_with_sfdi(
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
 @mock.patch("envoy.server.manager.end_device.utc_now")
 @mock.patch("envoy.server.manager.end_device.select_single_site_with_sfdi")
-async def test_add_or_update_enddevice_for_aggregator_no_sfdi_with_lfdi(
+async def test_add_or_update_enddevice_for_scope_aggregator_no_sfdi_with_lfdi(
     mock_select_single_site_with_sfdi: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
     mock_EndDeviceMapper: mock.MagicMock,
     mock_upsert_site_for_aggregator: mock.MagicMock,
     mock_NotificationManager: mock.MagicMock,
 ):
-    """Checks that the enddevice update just passes through to the relevant CRUD (assuming the sfdi is undefined)
+    """Checks that the enddevice update (for an aggregator) just passes through to the relevant CRUD (assuming the
+    sfdi is undefined)
 
     In this case SFDI will be regenerated (as its missing) but LFDI was specified and will be left alone"""
     # Arrange
     mock_session = create_mock_session()
-    aggregator_id = 3
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     end_device.sFDI = 0  # set the sfdi to 0 to trigger a regenerate
     end_device.lFDI = "originallfdi"
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
-    rsp_params = RequestStateParameters(aggregator_id, None, None)
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, site_id=None)
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
     mock_select_single_site_with_sfdi.return_value = None
@@ -238,17 +232,15 @@ async def test_add_or_update_enddevice_for_aggregator_no_sfdi_with_lfdi(
     mock_utc_now.return_value = now
 
     # Act
-    returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
-        mock_session, rsp_params, end_device
-    )
+    returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_scope(mock_session, scope, end_device)
     assert returned_site_id == mock_upsert_site_for_aggregator.return_value
 
     # Assert
     assert_mock_session(mock_session, committed=True)
-    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
+    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now)
     assert mock_EndDeviceMapper.map_from_request.call_args[0][0].sFDI != 0, "sfdi should be regenerated"
     assert mock_EndDeviceMapper.map_from_request.call_args[0][0].lFDI == "originallfdi", "lfdi should be left alone"
-    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
+    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_called_once()
     mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
@@ -261,7 +253,7 @@ async def test_add_or_update_enddevice_for_aggregator_no_sfdi_with_lfdi(
 @mock.patch("envoy.server.manager.end_device.utc_now")
 @mock.patch("envoy.server.manager.end_device.select_single_site_with_sfdi")
 @pytest.mark.parametrize("missing_lfdi_value", [None, ""])
-async def test_add_or_update_enddevice_for_aggregator_no_sfdi_no_lfdi(
+async def test_add_or_update_enddevice_for_scope_aggregator_no_sfdi_no_lfdi(
     mock_select_single_site_with_sfdi: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
     mock_EndDeviceMapper: mock.MagicMock,
@@ -274,13 +266,12 @@ async def test_add_or_update_enddevice_for_aggregator_no_sfdi_no_lfdi(
     In this case SFDI and LFDI will be regenerated (as they are both missing)"""
     # Arrange
     mock_session = create_mock_session()
-    aggregator_id = 3
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     end_device.sFDI = 0
     end_device.lFDI = missing_lfdi_value
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
-    rsp_params = RequestStateParameters(aggregator_id, None, None)
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, site_id=None)
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
     mock_select_single_site_with_sfdi.return_value = None
@@ -289,19 +280,103 @@ async def test_add_or_update_enddevice_for_aggregator_no_sfdi_no_lfdi(
     mock_utc_now.return_value = now
 
     # Act
-    returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(
-        mock_session, rsp_params, end_device
-    )
+    returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_scope(mock_session, scope, end_device)
     assert returned_site_id == mock_upsert_site_for_aggregator.return_value
 
     # Assert
     assert_mock_session(mock_session, committed=True)
-    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, aggregator_id, now)
+    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now)
     assert mock_EndDeviceMapper.map_from_request.call_args[0][0].sFDI != 0, "sfdi should be regenerated"
     actual_lfdi = mock_EndDeviceMapper.map_from_request.call_args[0][0].lFDI
     assert actual_lfdi != missing_lfdi_value
     assert len(actual_lfdi) > 5
-    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, aggregator_id, mapped_site)
+    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
+    mock_utc_now.assert_called_once()
+    mock_select_single_site_with_sfdi.assert_called_once()
+    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("missing_lfdi_value", [None, "", "deadbeef"])
+async def test_add_or_update_enddevice_for_scope_device_missing_lfdi(
+    missing_lfdi_value: Optional[str],
+):
+    """Checks that the enddevice update for a device cert fails if the lfdi mismatches on the incoming request"""
+    # Arrange
+    mock_session = create_mock_session()
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, aggregator_id=None)
+    end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    end_device.sFDI = scope.sfdi  # SFDI matches
+    end_device.lFDI = missing_lfdi_value  # LFDI mismatches
+
+    # Act
+    with pytest.raises(ForbiddenError):
+        await EndDeviceManager.add_or_update_enddevice_for_scope(mock_session, scope, end_device)
+
+    # Assert
+    assert_mock_session(mock_session, committed=False)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("missing_sfdi_value", [None, 0, -123])
+async def test_add_or_update_enddevice_for_scope_device_missing_sfdi(
+    missing_sfdi_value: Optional[str],
+):
+    """Checks that the enddevice update for a device cert fails if the sfdi mismatches on the incoming request"""
+    # Arrange
+    mock_session = create_mock_session()
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, aggregator_id=None)
+    end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    end_device.sFDI = missing_sfdi_value  # SFDI mismatches
+    end_device.lFDI = scope.lfdi  # LFDI matches
+
+    # Act
+    with pytest.raises(ForbiddenError):
+        await EndDeviceManager.add_or_update_enddevice_for_scope(mock_session, scope, end_device)
+
+    # Assert
+    assert_mock_session(mock_session, committed=False)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.NotificationManager")
+@mock.patch("envoy.server.manager.end_device.upsert_site_for_aggregator")
+@mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
+@mock.patch("envoy.server.manager.end_device.utc_now")
+@mock.patch("envoy.server.manager.end_device.select_single_site_with_sfdi")
+@pytest.mark.parametrize("scope_site_id", [None, 123454321])
+async def test_add_or_update_enddevice_for_scope_device(
+    mock_select_single_site_with_sfdi: mock.MagicMock,
+    mock_utc_now: mock.MagicMock,
+    mock_EndDeviceMapper: mock.MagicMock,
+    mock_upsert_site_for_aggregator: mock.MagicMock,
+    mock_NotificationManager: mock.MagicMock,
+    scope_site_id: Optional[int],
+):
+    """Checks that the enddevice update just passes through to the relevant CRUD (assuming the lfdi/sfdi match scope)"""
+    # Arrange
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, aggregator_id=None, site_id=scope_site_id)
+    mock_session = create_mock_session()
+    end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    end_device.sFDI = scope.sfdi
+    end_device.lFDI = scope.lfdi
+    mapped_site: Site = generate_class_instance(Site)
+    now: datetime = datetime(2020, 1, 2, 3, 4)
+
+    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_select_single_site_with_sfdi.return_value = None
+    mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
+    mock_upsert_site_for_aggregator.return_value = 4321
+    mock_utc_now.return_value = now
+
+    # Act
+    returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_scope(mock_session, scope, end_device)
+    assert returned_site_id == mock_upsert_site_for_aggregator.return_value
+
+    # Assert
+    assert_mock_session(mock_session, committed=True)
+    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now)
+    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, NULL_AGGREGATOR_ID, mapped_site)
     mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_called_once()
     mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
@@ -311,7 +386,7 @@ async def test_add_or_update_enddevice_for_aggregator_no_sfdi_no_lfdi(
 @mock.patch("envoy.server.manager.end_device.select_all_sites_with_aggregator_id")
 @mock.patch("envoy.server.manager.end_device.select_aggregator_site_count")
 @mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
-async def test_fetch_enddevicelist_with_aggregator_id(
+async def test_fetch_enddevicelist_for_scope_aggregator(
     mock_EndDeviceListMapper: mock.MagicMock,
     mock_select_aggregator_site_count: mock.MagicMock,
     mock_select_all_sites_with_aggregator_id: mock.MagicMock,
@@ -319,7 +394,6 @@ async def test_fetch_enddevicelist_with_aggregator_id(
     """Checks that fetching the enddevice list just passes through to the relevant CRUD"""
     # Arrange
     mock_session = create_mock_session()
-    aggregator_id = 3
     start = 4
     after = datetime.now()
     limit = 5
@@ -329,15 +403,15 @@ async def test_fetch_enddevicelist_with_aggregator_id(
         generate_class_instance(Site, seed=101, optional_is_none=False),
         generate_class_instance(Site, seed=202, optional_is_none=True),
     ]
-    rsp_params = RequestStateParameters(aggregator_id, None, None)
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, site_id=None)
 
     mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
     mock_select_all_sites_with_aggregator_id.return_value = returned_sites
     mock_select_aggregator_site_count.return_value = returned_site_count
 
     # Act
-    result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
-        mock_session, rsp_params, start, after, limit
+    result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_for_scope(
+        mock_session, scope, start, after, limit
     )
 
     # Assert
@@ -345,22 +419,72 @@ async def test_fetch_enddevicelist_with_aggregator_id(
     assert_mock_session(mock_session, committed=False)
 
     mock_EndDeviceListMapper.map_to_response.assert_called_once_with(
-        rs_params=rsp_params,
+        scope=scope,
         site_list=returned_sites,
         site_count=returned_site_count + 1,
         virtual_site=None,
     )
     mock_select_all_sites_with_aggregator_id.assert_called_once_with(
-        mock_session, aggregator_id, start - 1, after, limit
+        mock_session, scope.aggregator_id, start - 1, after, limit
     )
-    mock_select_aggregator_site_count.assert_called_once_with(mock_session, aggregator_id, after)
+    mock_select_aggregator_site_count.assert_called_once_with(mock_session, scope.aggregator_id, after)
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.end_device.select_all_sites_with_aggregator_id")
 @mock.patch("envoy.server.manager.end_device.select_aggregator_site_count")
 @mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
-async def test_fetch_enddevicelist_with_aggregator_id_empty_list(
+@pytest.mark.parametrize("scope_site_id", [None, 311984])
+async def test_fetch_enddevicelist_for_scope_device(
+    mock_EndDeviceListMapper: mock.MagicMock,
+    mock_select_aggregator_site_count: mock.MagicMock,
+    mock_select_all_sites_with_aggregator_id: mock.MagicMock,
+    scope_site_id: Optional[int],
+):
+    """Checks that fetching the enddevice list just passes through to the relevant CRUD"""
+    # Arrange
+    mock_session = create_mock_session()
+    start = 4
+    after = datetime.now()
+    limit = 5
+    mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
+    returned_site_count = 123
+    returned_sites: list[Site] = [
+        generate_class_instance(Site, seed=101, optional_is_none=False),
+        generate_class_instance(Site, seed=202, optional_is_none=True),
+    ]
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, aggregator_id=None, site_id=scope_site_id)
+
+    mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
+    mock_select_all_sites_with_aggregator_id.return_value = returned_sites
+    mock_select_aggregator_site_count.return_value = returned_site_count
+
+    # Act
+    result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_for_scope(
+        mock_session, scope, start, after, limit
+    )
+
+    # Assert
+    assert result is mapped_ed_list
+    assert_mock_session(mock_session, committed=False)
+
+    mock_EndDeviceListMapper.map_to_response.assert_called_once_with(
+        scope=scope,
+        site_list=returned_sites,
+        site_count=returned_site_count,
+        virtual_site=None,
+    )
+    mock_select_all_sites_with_aggregator_id.assert_called_once_with(
+        mock_session, scope.aggregator_id, start, after, limit
+    )
+    mock_select_aggregator_site_count.assert_called_once_with(mock_session, scope.aggregator_id, after)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.select_all_sites_with_aggregator_id")
+@mock.patch("envoy.server.manager.end_device.select_aggregator_site_count")
+@mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
+async def test_fetch_enddevicelist_for_scope_aggregator_empty_list(
     mock_EndDeviceListMapper: mock.MagicMock,
     mock_select_aggregator_site_count: mock.MagicMock,
     mock_select_all_sites_with_aggregator_id: mock.MagicMock,
@@ -376,15 +500,15 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(
     mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
     returned_site_count = 123
     returned_sites: list[Site] = []
-    rsp_params = RequestStateParameters(aggregator_id, None, None)
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, site_id=None)
 
     mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
     mock_select_all_sites_with_aggregator_id.return_value = returned_sites
     mock_select_aggregator_site_count.return_value = returned_site_count
 
     # Act
-    result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
-        mock_session, rsp_params, start, after, limit
+    result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_for_scope(
+        mock_session, scope, start, after, limit
     )
 
     # Assert
@@ -392,7 +516,7 @@ async def test_fetch_enddevicelist_with_aggregator_id_empty_list(
     assert_mock_session(mock_session, committed=False)
 
     mock_EndDeviceListMapper.map_to_response.assert_called_once_with(
-        rs_params=rsp_params, site_list=returned_sites, site_count=returned_site_count + 1, virtual_site=None
+        scope=scope, site_list=returned_sites, site_count=returned_site_count + 1, virtual_site=None
     )
     mock_select_all_sites_with_aggregator_id.assert_called_once_with(
         mock_session, aggregator_id, start - 1, after, limit

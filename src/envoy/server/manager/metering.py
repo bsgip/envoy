@@ -25,7 +25,7 @@ from envoy.server.mapper.sep2.metering import (
     MirrorUsagePointMapper,
 )
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 logger = logging.getLogger(__name__)
 

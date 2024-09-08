@@ -29,7 +29,7 @@ from envoy.server.manager.pricing import (
 from envoy.server.mapper.sep2.pricing import TOTAL_PRICING_READING_TYPES, PricingReadingType
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import RequestStateParameters
 
 
 @pytest.mark.parametrize(
