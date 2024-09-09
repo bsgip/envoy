@@ -1,5 +1,3 @@
-from typing import Union
-
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +23,7 @@ class DeviceCapabilityManager:
         links = await link.get_supported_links(
             session=session,
             aggregator_id=agg_id,
+            site_id=scope.site_id,
             scope=scope,
             model=DeviceCapabilityResponse,
         )

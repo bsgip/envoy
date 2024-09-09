@@ -180,6 +180,7 @@ async def get_supported_links(
     session: AsyncSession,
     model: type[pydantic_xml.BaseXmlModel],
     aggregator_id: int,
+    site_id: Optional[int],
     scope: BaseRequestScope,
     uri_parameters: Optional[dict] = None,
 ) -> dict[str, dict[str, str]]:
@@ -215,14 +216,16 @@ async def get_supported_links(
     supported_links_names = filter(check_link_supported, link_names)
     supported_links = get_formatted_links(scope=scope, link_names=supported_links_names, uri_parameters=uri_parameters)
     resource_counts = await get_resource_counts(
-        session=session, link_names=supported_links.keys(), aggregator_id=aggregator_id
+        session=session, link_names=supported_links.keys(), aggregator_id=aggregator_id, site_id=site_id
     )
     updated_supported_links = add_resource_counts_to_links(links=supported_links, resource_counts=resource_counts)
 
     return updated_supported_links
 
 
-async def get_resource_counts(session: AsyncSession, link_names: Iterable[str], aggregator_id: int) -> dict[str, int]:
+async def get_resource_counts(
+    session: AsyncSession, link_names: Iterable[str], aggregator_id: int, site_id: Optional[int]
+) -> dict[str, int]:
     """
     Returns the resource counts for all the ListLinks in list.
 
@@ -239,14 +242,18 @@ async def get_resource_counts(session: AsyncSession, link_names: Iterable[str], 
     for link_name in link_names:
         if link_name.endswith("ListLink"):
             try:
-                count = await get_resource_count(session=session, list_link_name=link_name, aggregator_id=aggregator_id)
+                count = await get_resource_count(
+                    session=session, list_link_name=link_name, aggregator_id=aggregator_id, site_id=site_id
+                )
                 resource_counts[link_name] = count
             except NotImplementedError as e:
                 logger.debug(e)
     return resource_counts
 
 
-async def get_resource_count(session: AsyncSession, list_link_name: str, aggregator_id: int) -> int:
+async def get_resource_count(
+    session: AsyncSession, list_link_name: str, aggregator_id: int, site_id: Optional[int]
+) -> int:
     """
     Returns the resource count for given ListLink.
 
@@ -256,6 +263,7 @@ async def get_resource_count(session: AsyncSession, list_link_name: str, aggrega
     Args:
         list_link_name: The name of the ListLink e.g. "EndDeviceListLink"
         aggregator_id: The id of the aggregator (determines which resources are accessible)
+        site_id: The (optional) site_id filter to be used in conjunction with aggregator_id
 
     Returns:
         The resource count.
@@ -264,12 +272,21 @@ async def get_resource_count(session: AsyncSession, list_link_name: str, aggrega
         NotImplementedError: Raised when a ListLink doesn't have a resource count lookup method.
     """
     if list_link_name == "EndDeviceListLink":
+
+        # If we are selecting a single site, we can avoid counting and just see if it exists and return 1 or 0
+        if site_id is not None:
+            site = await end_device.select_single_site_with_site_id(
+                session=session, site_id=site_id, aggregator_id=aggregator_id
+            )
+            return 1 if site is not None else 0
+
+        # Otherwise do a proper site count
         return await end_device.select_aggregator_site_count(
             session=session, aggregator_id=aggregator_id, after=datetime.min
         )
     elif list_link_name == "MirrorUsagePointListLink":
         return await site_reading.count_site_reading_types_for_aggregator(
-            session=session, aggregator_id=aggregator_id, changed_after=datetime.min
+            session=session, aggregator_id=aggregator_id, site_id=site_id, changed_after=datetime.min
         )
     else:
         raise NotImplementedError(f"No resource count implemented for '{list_link_name}'")

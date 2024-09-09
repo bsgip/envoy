@@ -191,7 +191,7 @@ def entities_to_notification(
             pricing_reading_type=pricing_reading_type,
             rates=cast(Sequence[TariffGeneratedRate], entities),
             sub=sub,
-            rs_params=rs_params,
+            scope=rs_params,
         )
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
