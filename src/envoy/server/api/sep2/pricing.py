@@ -72,7 +72,7 @@ async def get_tariffprofilelist_nositescope(
     try:
         tp_list = await TariffProfileManager.fetch_tariff_profile_list_no_site(
             db.session,
-            request_params=extract_request_scope(request),
+            scope=extract_request_scope(request),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -108,8 +108,7 @@ async def get_tariffprofilelist(
     try:
         tp_list = await TariffProfileManager.fetch_tariff_profile_list(
             db.session,
-            request_params=extract_request_scope(request),
-            site_id=site_id,
+            scope=extract_request_scope(request).to_site_request_scope(site_id),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -195,7 +194,7 @@ async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request
     """
     try:
         tp = await TariffProfileManager.fetch_tariff_profile(
-            db.session, extract_request_scope(request), tariff_id, site_id
+            db.session, extract_request_scope(request).to_site_request_scope(site_id), tariff_id
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -233,9 +232,8 @@ async def get_ratecomponentlist(
     try:
         rc_list = await RateComponentManager.fetch_rate_component_list(
             db.session,
-            request_params=extract_request_scope(request),
+            scope=extract_request_scope(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
-            site_id=site_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -268,9 +266,8 @@ async def get_singleratecomponent(
     try:
         rc = await RateComponentManager.fetch_rate_component(
             db.session,
-            request_params=extract_request_scope(request),
+            scope=extract_request_scope(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
-            site_id=site_id,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
         )
@@ -314,9 +311,8 @@ async def get_timetariffintervallist(
     try:
         tti_list = await TimeTariffIntervalManager.fetch_time_tariff_interval_list(
             db.session,
-            request_params=extract_request_scope(request),
+            scope=extract_request_scope(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
-            site_id=site_id,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
             start=extract_start_from_paging_param(start),
@@ -357,9 +353,8 @@ async def get_singletimetariffinterval(
     try:
         tti = await TimeTariffIntervalManager.fetch_time_tariff_interval(
             db.session,
-            request_params=extract_request_scope(request),
+            scope=extract_request_scope(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
-            site_id=site_id,
             rate_component_id=rate_component_id,
             time_tariff_interval=tti_id,
             pricing_type=pricing_reading,
@@ -411,9 +406,8 @@ async def get_consumptiontariffintervallist(
     try:
         cti_list = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(
             db.session,
-            request_params=extract_request_scope(request),
+            scope=extract_request_scope(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
-            site_id=site_id,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
             time_tariff_interval=tti_id,
@@ -460,9 +454,8 @@ async def get_singleconsumptiontariffinterval(
     try:
         cti = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval(
             db.session,
-            request_params=extract_request_scope(request),
+            scope=extract_request_scope(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
-            site_id=site_id,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
             time_tariff_interval=tti_id,
