@@ -45,7 +45,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
-from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope
 
 
 def _parse_site_id_from_match(raw_site_id: str) -> Optional[int]:
@@ -455,7 +455,7 @@ class NotificationMapper:
         der_id: int,
         der_availability: Optional[SiteDERAvailability],
         sub: Subscription,
-        scope: SiteRequestScope,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a single SiteDERAvailability into a notification"""
         der_avail_href = generate_href(
@@ -485,7 +485,7 @@ class NotificationMapper:
         der_id: int,
         der_rating: Optional[SiteDERRating],
         sub: Subscription,
-        scope: SiteRequestScope,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a single SiteDERRating into a notification"""
         der_rating_href = generate_href(
@@ -515,7 +515,7 @@ class NotificationMapper:
         der_id: int,
         der_setting: Optional[SiteDERSetting],
         sub: Subscription,
-        scope: SiteRequestScope,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a single SiteDERSetting into a notification"""
         der_settings_href = generate_href(
@@ -546,7 +546,7 @@ class NotificationMapper:
         der_id: int,
         der_status: Optional[SiteDERStatus],
         sub: Subscription,
-        scope: SiteRequestScope,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a single SiteDERStatus into a notification"""
         der_status_href = generate_href(

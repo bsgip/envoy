@@ -19,7 +19,7 @@ from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.mapper.common import generate_href
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
-from envoy.server.request_scope import BaseRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope
 
 
 class ValueMultiplier(Protocol):
@@ -114,7 +114,7 @@ class DERMapper:
 
     @staticmethod
     def map_to_list_response(
-        scope: SiteRequestScope,
+        scope: AggregatorRequestScope,
         poll_rate_seconds: int,
         ders_with_act_derp_id: list[tuple[SiteDER, Optional[str]]],
         der_count: int,
@@ -124,7 +124,7 @@ class DERMapper:
         ders_with_act_derp_id: SiteDER tupled with the Active DER Program ID for that SiteDER (if any)"""
         return DERListResponse.model_validate(
             {
-                "href": generate_href(uri.DERListUri, scope, site_id=scope.site_id),
+                "href": generate_href(uri.DERListUri, scope, site_id=scope.display_site_id),
                 "pollRate": poll_rate_seconds,
                 "all_": der_count,
                 "results": len(ders_with_act_derp_id),
@@ -135,11 +135,11 @@ class DERMapper:
 
 class DERAvailabilityMapper:
     @staticmethod
-    def map_to_response(scope: SiteRequestScope, der_avail: SiteDERAvailability) -> DERAvailability:
+    def map_to_response(scope: AggregatorRequestScope, der_avail: SiteDERAvailability) -> DERAvailability:
         return DERAvailability.model_validate(
             {
                 "href": generate_href(
-                    uri.DERAvailabilityUri, scope, site_id=scope.site_id, der_id=der_avail.site_der_id
+                    uri.DERAvailabilityUri, scope, site_id=scope.display_site_id, der_id=der_avail.site_der_id
                 ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "availabilityDuration": der_avail.availability_duration_sec,
@@ -172,7 +172,7 @@ class DERAvailabilityMapper:
 
 class DERStatusMapper:
     @staticmethod
-    def map_to_response(scope: SiteRequestScope, der_status: SiteDERStatus) -> DERStatus:
+    def map_to_response(scope: AggregatorRequestScope, der_status: SiteDERStatus) -> DERStatus:
         changed_timestamp = int(der_status.changed_time.timestamp())
 
         gen_conn_status: Optional[dict] = None
@@ -232,7 +232,9 @@ class DERStatusMapper:
             }
         return DERStatus.model_validate(
             {
-                "href": generate_href(uri.DERStatusUri, scope, site_id=scope.site_id, der_id=der_status.site_der_id),
+                "href": generate_href(
+                    uri.DERStatusUri, scope, site_id=scope.display_site_id, der_id=der_status.site_der_id
+                ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "alarmStatus": (
                     to_hex_binary(int(der_status.alarm_status)) if der_status.alarm_status is not None else None
@@ -319,11 +321,11 @@ class DERStatusMapper:
 
 class DERCapabilityMapper:
     @staticmethod
-    def map_to_response(scope: SiteRequestScope, der_rating: SiteDERRating) -> DERCapability:
+    def map_to_response(scope: AggregatorRequestScope, der_rating: SiteDERRating) -> DERCapability:
         return DERCapability.model_validate(
             {
                 "href": generate_href(
-                    uri.DERCapabilityUri, scope, site_id=scope.site_id, der_id=der_rating.site_der_id
+                    uri.DERCapabilityUri, scope, site_id=scope.display_site_id, der_id=der_rating.site_der_id
                 ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "modesSupported": to_hex_binary(der_rating.modes_supported),
@@ -436,10 +438,12 @@ class DERCapabilityMapper:
 
 class DERSettingMapper:
     @staticmethod
-    def map_to_response(scope: SiteRequestScope, der_setting: SiteDERSetting) -> DERSettings:
+    def map_to_response(scope: AggregatorRequestScope, der_setting: SiteDERSetting) -> DERSettings:
         return DERSettings.model_validate(
             {
-                "href": generate_href(uri.DERSettingsUri, scope, site_id=scope.site_id, der_id=der_setting.site_der_id),
+                "href": generate_href(
+                    uri.DERSettingsUri, scope, site_id=scope.display_site_id, der_id=der_setting.site_der_id
+                ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "modesEnabled": to_hex_binary(der_setting.modes_enabled),
                 "setESDelay": der_setting.es_delay,

@@ -21,7 +21,7 @@ from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.pub_sub import SubscriptionListMapper, SubscriptionMapper
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_scope import AggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ class SubscriptionManager:
 
     @staticmethod
     async def delete_subscription_for_site(
-        session: AsyncSession, scope: SiteRequestScope, subscription_id: int
+        session: AsyncSession, scope: AggregatorRequestScope, subscription_id: int
     ) -> bool:
         """This will delete the specified subscription with id (underneath site_id) and return True if successful and
         False otherwise"""

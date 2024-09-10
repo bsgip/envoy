@@ -15,7 +15,7 @@ from envoy.server.model.aggregator import Aggregator, AggregatorDomain
 from envoy.server.model.site_reading import SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import Tariff
-from envoy.server.request_scope import AggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope
 
 
 @pytest.mark.anyio
@@ -152,15 +152,17 @@ async def test_fetch_subscriptions_for_site(
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "retval",
-    [(True), (False)],
+    "retval, scope_site_id",
+    zip([True, False], [111, None]),
 )
 @mock.patch("envoy.server.manager.subscription.delete_subscription_for_site")
-async def test_delete_subscription_for_site(mock_delete_subscription_for_site: mock.MagicMock, retval: bool):
+async def test_delete_subscription_for_site(
+    mock_delete_subscription_for_site: mock.MagicMock, retval: bool, scope_site_id: Optional[int]
+):
     """Ensures session is handled properly on delete"""
     # Arrange
     mock_session: AsyncSession = create_mock_session()
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=scope_site_id)
 
     sub_id = 5213
 
@@ -461,7 +463,7 @@ async def test_add_subscription_for_site_READING_unscoped(
         mock_session, scope.aggregator_id, site_reading_type_id, scope.site_id, include_site_relation=False
     )
     mock_insert_subscription.assert_called_once_with(mock_session, mapped_sub)
-    assert mapped_sub.scoped_site_id is None, "Site scope shouldve been removed"
+    assert mapped_sub.scoped_site_id is None, "Site scope should've been removed"
 
 
 @pytest.mark.anyio

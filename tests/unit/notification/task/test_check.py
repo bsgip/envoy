@@ -1,6 +1,6 @@
 import unittest.mock as mock
 from datetime import datetime, timezone
-from typing import cast
+from typing import Optional, cast
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -24,13 +24,16 @@ from envoy.notification.task.check import (
     fetch_batched_entities,
     get_entity_pages,
 )
+from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.mapper.sep2.pricing import PricingReadingType
+from envoy.server.mapper.sep2.pub_sub import SubscriptionMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import PRICE_DECIMAL_POWER, TariffGeneratedRate
+from envoy.server.request_scope import AggregatorRequestScope
 from tests.unit.notification.mocks import (
     assert_task_kicked_n_times,
     assert_task_kicked_with_broker_and_args,
@@ -399,24 +402,34 @@ def test_entities_to_notification_unknown_resource():
 
 
 @pytest.mark.parametrize(
-    "resource, entity_class",
+    "resource, entity_class, sub_site_scope",
     [
-        (SubscriptionResource.SITE, Site),
-        (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, DynamicOperatingEnvelope),
-        (SubscriptionResource.READING, SiteReading),
-        (SubscriptionResource.TARIFF_GENERATED_RATE, TariffGeneratedRate),
-        (SubscriptionResource.SITE_DER_AVAILABILITY, SiteDERAvailability),
-        (SubscriptionResource.SITE_DER_RATING, SiteDERRating),
-        (SubscriptionResource.SITE_DER_SETTING, SiteDERSetting),
-        (SubscriptionResource.SITE_DER_STATUS, SiteDERStatus),
+        (SubscriptionResource.SITE, Site, None),
+        (SubscriptionResource.SITE, Site, 4567),
+        (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, DynamicOperatingEnvelope, None),
+        (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, DynamicOperatingEnvelope, 51531),
+        (SubscriptionResource.READING, SiteReading, None),
+        (SubscriptionResource.READING, SiteReading, 8979831),
+        (SubscriptionResource.TARIFF_GENERATED_RATE, TariffGeneratedRate, None),
+        (SubscriptionResource.TARIFF_GENERATED_RATE, TariffGeneratedRate, 98731),
+        (SubscriptionResource.SITE_DER_AVAILABILITY, SiteDERAvailability, None),
+        (SubscriptionResource.SITE_DER_AVAILABILITY, SiteDERAvailability, 89798),
+        (SubscriptionResource.SITE_DER_RATING, SiteDERRating, None),
+        (SubscriptionResource.SITE_DER_RATING, SiteDERRating, 12141),
+        (SubscriptionResource.SITE_DER_SETTING, SiteDERSetting, None),
+        (SubscriptionResource.SITE_DER_SETTING, SiteDERSetting, 12414),
+        (SubscriptionResource.SITE_DER_STATUS, SiteDERStatus, None),
+        (SubscriptionResource.SITE_DER_STATUS, SiteDERStatus, 987941),
     ],
 )
-def test_entities_to_notification_sites(resource: SubscriptionResource, entity_class: type):
+def test_entities_to_notification_sites(
+    resource: SubscriptionResource, entity_class: type, sub_site_scope: Optional[int]
+):
     """For every resource/type mapping - generate a notification and do some cursory examination of the
     resulting notification - the majority of the test are captured in the mapper unit tests - this is here
     to catch parameter errors / other simple issues"""
     href_prefix = "/my_href/prefix"
-    sub = Subscription(resource_type=resource, notification_uri="http://example.com/foo")
+    sub = Subscription(resource_type=resource, notification_uri="http://example.com/foo", scoped_site=sub_site_scope)
     pricing_reading_type = (
         PricingReadingType.EXPORT_ACTIVE_POWER_KWH if resource == SubscriptionResource.TARIFF_GENERATED_RATE else None
     )
@@ -451,6 +464,13 @@ def test_entities_to_notification_sites(resource: SubscriptionResource, entity_c
             assert notification.resource.all_ == len(entities)
             assert notification.resource.results == len(entities)
             assert isinstance(notification.resource, NotificationResourceCombined)
+
+        # The underlying sub scope should dictate how the top level object encodes site id in the hrefs
+        if notification.resource is not None:
+            if sub_site_scope is None:
+                assert f"/{VIRTUAL_END_DEVICE_SITE_ID}/" in notification.resource.href
+            else:
+                assert f"/{sub_site_scope}/" in notification.resource.href
 
         if resource == SubscriptionResource.SITE:
             assert len(notification.resource.EndDevice) == len(entities)
@@ -521,7 +541,7 @@ async def test_check_db_upsert(
 
     # Create some subscriptions for the two aggregators we implied above
     agg1_sub1: Subscription = generate_class_instance(Subscription, seed=11)  # Matches nothing
-    agg1_sub2: Subscription = generate_class_instance(Subscription, seed=22)
+    agg1_sub2: Subscription = generate_class_instance(Subscription, seed=22, optional_is_none=True)
     agg2_sub1: Subscription = generate_class_instance(Subscription, seed=33)
     mock_select_subscriptions_for_resource.side_effect = lambda session, agg_id, resource: (
         [agg1_sub1, agg1_sub2] if agg_id == batch1_entity1.site.aggregator_id else [agg2_sub1]
@@ -555,10 +575,28 @@ async def test_check_db_upsert(
     # There should be 2 notifications sent out (as one of the subscriptions match no entities)
     assert_task_kicked_n_times(mock_transmit_notification, 2)
     assert_task_kicked_with_broker_and_args(
-        mock_transmit_notification, mock_broker, remote_uri=agg1_sub2.notification_uri, attempt=0
+        mock_transmit_notification,
+        mock_broker,
+        remote_uri=agg1_sub2.notification_uri,
+        attempt=0,
+        subscription_href=SubscriptionMapper.calculate_subscription_href(
+            agg1_sub2,
+            generate_class_instance(
+                AggregatorRequestScope, display_site_id=VIRTUAL_END_DEVICE_SITE_ID, href_prefix=href_prefix
+            ),
+        ),
     )
     assert_task_kicked_with_broker_and_args(
-        mock_transmit_notification, mock_broker, remote_uri=agg2_sub1.notification_uri, attempt=0
+        mock_transmit_notification,
+        mock_broker,
+        remote_uri=agg2_sub1.notification_uri,
+        attempt=0,
+        subscription_href=SubscriptionMapper.calculate_subscription_href(
+            agg2_sub1,
+            generate_class_instance(
+                AggregatorRequestScope, display_site_id=agg2_sub1.scoped_site_id, href_prefix=href_prefix
+            ),
+        ),
     )
 
     mock_fetch_batched_entities.assert_called_once_with(mock_session, resource, timestamp)

@@ -82,7 +82,7 @@ async def test_get_supported_links_calls_get_formatted_links_with_supported_link
         )
 
     get_formatted_links.assert_called_once_with(
-        rs_params=scope, link_names=supported_links_names, uri_parameters=uri_parameters
+        scope=scope, link_names=supported_links_names, uri_parameters=uri_parameters
     )
 
 

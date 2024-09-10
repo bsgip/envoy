@@ -101,10 +101,10 @@ async def create_end_device(
         fastapi.Response object.
 
     """
-    rs_params = extract_request_scope(request)
+    scope = extract_request_scope(request)
     try:
-        site_id = await EndDeviceManager.add_or_update_enddevice_for_scope(db.session, rs_params, payload)
-        location_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site_id)
+        site_id = await EndDeviceManager.add_or_update_enddevice_for_scope(db.session, scope, payload)
+        location_href = generate_href(uri.EndDeviceUri, scope, site_id=site_id)
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
     except BadRequestError as exc:
         raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)

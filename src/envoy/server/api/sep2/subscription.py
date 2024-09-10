@@ -45,7 +45,7 @@ async def get_subscription(
 
     """
     sub = await SubscriptionManager.fetch_subscription_by_id(
-        db.session, extract_request_scope(request), site_id=site_id, subscription_id=subscription_id
+        db.session, extract_request_scope(request).to_aggregator_request_scope(site_id), subscription_id=subscription_id
     )
     if sub is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
@@ -80,8 +80,7 @@ async def get_subscriptions_for_site(
     return XmlResponse(
         await SubscriptionManager.fetch_subscriptions_for_site(
             db.session,
-            extract_request_scope(request),
-            site_id=site_id,
+            extract_request_scope(request).to_aggregator_request_scope(site_id),
             start=extract_start_from_paging_param(start),
             after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -110,7 +109,9 @@ async def delete_subscription(
 
     """
     removed = await SubscriptionManager.delete_subscription_for_site(
-        db.session, extract_request_scope(request), site_id=site_id, subscription_id=subscription_id
+        db.session,
+        extract_request_scope(request).to_aggregator_request_scope(site_id),
+        subscription_id=subscription_id,
     )
     return Response(status_code=HTTPStatus.NO_CONTENT if removed else HTTPStatus.NOT_FOUND)
 
@@ -133,10 +134,10 @@ async def create_subscription(
         fastapi.Response object.
 
     """
-    rs_params = extract_request_scope(request)
+    scope = extract_request_scope(request).to_aggregator_request_scope(site_id)
     try:
-        sub_id = await SubscriptionManager.add_subscription_for_site(db.session, rs_params, payload, site_id)
-        location_href = generate_href(uri.SubscriptionUri, rs_params, site_id=site_id, subscription_id=sub_id)
+        sub_id = await SubscriptionManager.add_subscription_for_site(db.session, scope, payload)
+        location_href = generate_href(uri.SubscriptionUri, scope, site_id=site_id, subscription_id=sub_id)
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
     except BadRequestError as exc:
         raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)

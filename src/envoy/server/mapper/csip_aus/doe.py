@@ -183,7 +183,7 @@ class DERProgramMapper:
                 ),
                 "DERControlListLink": ListLink.model_validate(
                     {
-                        "href": DERControlMapper.doe_list_href(rq_scope, rq_scope.display_site_id),
+                        "href": DERControlMapper.doe_list_href(rq_scope),
                         "all_": total_does,
                     }
                 ),

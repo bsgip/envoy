@@ -377,7 +377,7 @@ def get_formatted_links(
 
     Args:
         link_names: A list of link-names.
-        rs_params: Request state parameters that might influence the links being generated
+        scope: Request scope that might influence the links being generated
         uri_parameters: The parameters to be inserted into the link URI
         link_map: Maps link-names to URIs. Defaults to using SEP2_LINK_MAP.
 

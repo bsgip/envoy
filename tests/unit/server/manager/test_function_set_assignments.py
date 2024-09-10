@@ -11,7 +11,7 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 )
 
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
-from envoy.server.request_scope import RequestStateParameters
+from envoy.server.request_scope import SiteRequestScope
 
 
 @pytest.mark.anyio
@@ -23,12 +23,10 @@ async def test_function_set_assignments_fetch_function_set_assignments_for_aggre
 
     # Arrange
     mock_session = create_mock_session()  # The session should not be interacted with directly
-    site_id = 1
-    aggregator_id = 321
     tariff_count = 3
     fsa_id = 1
     mapped_fsa: FunctionSetAssignmentsResponse = generate_class_instance(FunctionSetAssignmentsResponse)
-    rs_params = RequestStateParameters(aggregator_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
     # Just do a simple passthrough
     mock_FunctionSetAssignmentsMapper.map_to_response = mock.Mock(return_value=mapped_fsa)
@@ -39,15 +37,14 @@ async def test_function_set_assignments_fetch_function_set_assignments_for_aggre
         result = await FunctionSetAssignmentsManager.fetch_function_set_assignments_for_scope(
             session=mock_session,
             fsa_id=fsa_id,
-            site_id=site_id,
-            scope=rs_params,
+            scope=scope,
         )
 
     # Assert
     assert result is mapped_fsa
     assert_mock_session(mock_session)
     mock_FunctionSetAssignmentsMapper.map_to_response.assert_called_once_with(
-        rs_params=rs_params, fsa_id=fsa_id, site_id=site_id, doe_count=1, tariff_count=tariff_count
+        scope=scope, fsa_id=fsa_id, site_id=scope.site_id, doe_count=1, tariff_count=tariff_count
     )
 
 
@@ -60,11 +57,9 @@ async def test_function_set_assignments_fetch_function_set_assignments_list_for_
 
     # Arrange
     mock_session = create_mock_session()  # The session should not be interacted with directly
-    aggregator_id = 321
-    site_id = 1
     mapped_fsa: FunctionSetAssignmentsResponse = generate_class_instance(FunctionSetAssignmentsResponse)
     mapped_fsal: FunctionSetAssignmentsListResponse = generate_class_instance(FunctionSetAssignmentsListResponse)
-    rs_params = RequestStateParameters(aggregator_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
     # Just do a simple passthrough
     mock_FunctionSetAssignmentsMapper.map_to_list_response = mock.Mock(return_value=mapped_fsal)
@@ -78,12 +73,12 @@ async def test_function_set_assignments_fetch_function_set_assignments_list_for_
     ) as fetch_function_set_assignments_for_aggregator_and_site:
         fetch_function_set_assignments_for_aggregator_and_site.return_value = mapped_fsa
         result = await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_scope(
-            session=mock_session, scope=rs_params, site_id=site_id
+            session=mock_session, scope=scope, site_id=scope.site_id
         )
 
     # Assert
     assert result == mapped_fsal
     assert_mock_session(mock_session)
     mock_FunctionSetAssignmentsMapper.map_to_list_response.assert_called_once_with(
-        rs_params=rs_params, function_set_assignments=[mapped_fsa], site_id=site_id
+        scope=scope, function_set_assignments=[mapped_fsa], site_id=scope.site_id
     )

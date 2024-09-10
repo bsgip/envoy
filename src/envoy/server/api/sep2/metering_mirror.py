@@ -89,11 +89,9 @@ async def post_mirror_usage_point_list(
         fastapi.Response object.
 
     """
-    rs_params = extract_request_scope(request)
+    scope = extract_request_scope(request)
     try:
-        mup_id = await MirrorMeteringManager.create_or_update_mirror_usage_point(
-            db.session, scope=rs_params, mup=payload
-        )
+        mup_id = await MirrorMeteringManager.create_or_update_mirror_usage_point(db.session, scope=scope, mup=payload)
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except ForbiddenError as ex:
@@ -103,7 +101,7 @@ async def post_mirror_usage_point_list(
 
     return Response(
         status_code=HTTPStatus.CREATED,
-        headers={LOCATION_HEADER_NAME: generate_href(uri.MirrorUsagePointUri, rs_params, mup_id=mup_id)},
+        headers={LOCATION_HEADER_NAME: generate_href(uri.MirrorUsagePointUri, scope, mup_id=mup_id)},
     )
 
 

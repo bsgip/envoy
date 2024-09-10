@@ -27,7 +27,7 @@ from envoy.server.mapper.sep2.der import (
     to_hex_binary,
 )
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
-from envoy.server.request_scope import BaseRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope
 
 
 def test_der_mapping():
@@ -80,7 +80,7 @@ def test_der_list():
         (generate_class_instance(SiteDER, seed=404, optional_is_none=True, generate_relationships=True), "DERPID2"),
     ]
 
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, site_id=11)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=11)
     poll_rate = 99
     count = 42
 
@@ -99,7 +99,7 @@ def test_der_avail_roundtrip(optional_is_none: bool):
     expected: DERAvailability = generate_class_instance(
         DERAvailability, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, site_id=9876)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=9876)
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERAvailabilityMapper.map_from_request(changed_time, expected)
@@ -116,7 +116,7 @@ def test_der_avail_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "readingTime", "subscribable", "type"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(scope.site_id) in actual.href
+    assert str(scope.display_site_id) in actual.href
     assert_datetime_equal(changed_time, actual.readingTime)
 
 
@@ -138,7 +138,7 @@ def test_der_status_roundtrip(optional_is_none: bool):
                 ConnectStatusType.OPERATING | ConnectStatusType.FAULT_ERROR
             )
 
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, site_id=9875)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=9875)
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERStatusMapper.map_from_request(changed_time, expected)
@@ -155,7 +155,7 @@ def test_der_status_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "readingTime", "subscribable", "type"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(scope.site_id) in actual.href
+    assert str(scope.display_site_id) in actual.href
     assert_datetime_equal(changed_time, actual.readingTime)
 
 
@@ -167,14 +167,14 @@ def test_der_capability_roundtrip(optional_is_none: bool):
     )
     expected.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT | DERControlType.OP_MOD_FREQ_DROOP)
     site_id = 9876
-    rs_params = BaseRequestScope("lfdi", 111, "/my/prefix")
+    scope = BaseRequestScope("lfdi", 111, "/my/prefix")
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERCapabilityMapper.map_from_request(changed_time, expected)
     assert isinstance(mapped, SiteDERRating)
     assert mapped.changed_time == changed_time
 
-    actual = DERCapabilityMapper.map_to_response(rs_params, site_id, mapped)
+    actual = DERCapabilityMapper.map_to_response(scope, site_id, mapped)
     assert isinstance(actual, DERCapability)
 
     assert_class_instance_equality(
@@ -194,7 +194,7 @@ def test_der_settings_roundtrip(optional_is_none: bool):
         DERSettings, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
     expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_HFRT_MAY_TRIP | DERControlType.OP_MOD_FREQ_DROOP)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, site_id=9876)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=9876)
     changed_time = datetime(2023, 8, 9, 1, 2, 4)
 
     mapped = DERSettingMapper.map_from_request(changed_time, expected)
@@ -211,5 +211,5 @@ def test_der_settings_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "subscribable", "type", "updatedTime"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(scope.site_id) in actual.href
+    assert str(scope.display_site_id) in actual.href
     assert_datetime_equal(changed_time, actual.updatedTime)
