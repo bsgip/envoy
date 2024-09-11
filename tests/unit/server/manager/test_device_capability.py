@@ -19,7 +19,11 @@ async def test_device_capability_manager_calls_get_supported_links(mock_map_to_r
         _ = await DeviceCapabilityManager.fetch_device_capability(session=session, scope=scope)
 
     get_supported_links.assert_awaited_once_with(
-        session=session, scope=scope, aggregator_id=scope.aggregator_id, model=DeviceCapabilityResponse
+        session=session,
+        scope=scope,
+        aggregator_id=scope.aggregator_id,
+        site_id=scope.site_id,
+        model=DeviceCapabilityResponse,
     )
 
 
@@ -33,7 +37,11 @@ async def test_device_capability_manager_calls_get_supported_links_agg_end_devic
         _ = await DeviceCapabilityManager.fetch_device_capability(session=session, scope=scope)
 
     get_supported_links.assert_awaited_once_with(
-        session=session, scope=scope, aggregator_id=NULL_AGGREGATOR_ID, model=DeviceCapabilityResponse
+        session=session,
+        scope=scope,
+        aggregator_id=NULL_AGGREGATOR_ID,
+        site_id=scope.site_id,
+        model=DeviceCapabilityResponse,
     )
 
 
@@ -45,9 +53,7 @@ async def test_device_capability_manager_calls_map_to_response():
     with mock.patch("envoy.server.crud.link.get_supported_links", return_value=links), mock.patch(
         "envoy.server.manager.device_capability.DeviceCapabilityMapper.map_to_response"
     ) as map_to_response:
-        _ = await DeviceCapabilityManager.fetch_device_capability(
-            session=mock.Mock(), scope=scope, aggregator_id=scope.aggregator_id
-        )
+        _ = await DeviceCapabilityManager.fetch_device_capability(session=mock.Mock(), scope=scope)
 
     map_to_response.assert_called_once_with(scope=scope, links=links)
 
@@ -56,8 +62,7 @@ async def test_device_capability_manager_calls_map_to_response():
 @mock.patch("envoy.server.manager.device_capability.DeviceCapabilityMapper.map_to_unregistered_response")
 async def test_device_capability_manager_unregistered_scope(mock_map_to_unregistered_response: mock.Mock):
     """Tests that an unregistered scope short-circuits into the unregistered response"""
-    scope: RawRequestScope = generate_class_instance(RawRequestScope, aggregator_id=None)
-    await DeviceCapabilityManager.fetch_device_capability(
-        session=mock.Mock(), scope=scope, aggregator_id=scope.aggregator_id
-    )
+
+    scope: RawRequestScope = generate_class_instance(RawRequestScope, aggregator_id=None, site_id=None)
+    await DeviceCapabilityManager.fetch_device_capability(session=mock.Mock(), scope=scope)
     mock_map_to_unregistered_response.assert_called_once_with(scope)

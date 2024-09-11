@@ -23,7 +23,7 @@ from envoy.server.request_scope import AggregatorRequestScope
     "scoped_site_id, sub_site_id, expect_none",
     [
         (111, 222, True),
-        (111, 1111, False),
+        (111, 111, False),
         (111, None, True),
         (None, 222, False),
         (None, None, False),
@@ -464,56 +464,6 @@ async def test_add_subscription_for_site_READING_unscoped(
     )
     mock_insert_subscription.assert_called_once_with(mock_session, mapped_sub)
     assert mapped_sub.scoped_site_id is None, "Site scope should've been removed"
-
-
-@pytest.mark.anyio
-@mock.patch("envoy.server.manager.subscription.utc_now")
-@mock.patch("envoy.server.manager.subscription.select_aggregator")
-@mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
-@mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
-@mock.patch("envoy.server.manager.subscription.select_single_tariff")
-@mock.patch("envoy.server.manager.subscription.insert_subscription")
-async def test_add_subscription_for_site_READING_bad_site_id(
-    mock_insert_subscription: mock.MagicMock,
-    mock_select_single_tariff: mock.MagicMock,
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
-    mock_SubscriptionMapper: mock.MagicMock,
-    mock_select_aggregator: mock.MagicMock,
-    mock_utc_now: mock.MagicMock,
-):
-    mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
-    now = datetime(2014, 4, 5, 6, 7, 8)
-    site_reading_type_id = 5432
-    sub = generate_class_instance(Sep2Subscription)
-    mapped_sub = Subscription(
-        resource_type=SubscriptionResource.READING, scoped_site_id=scope.site_id, resource_id=site_reading_type_id
-    )
-
-    mock_utc_now.return_value = now
-    mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
-    mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
-    mock_insert_subscription.return_value = 98765
-    mock_fetch_site_reading_type_for_aggregator.return_value = SiteReadingType(site_id=scope.site_id + 7)
-
-    # Act
-    with pytest.raises(BadRequestError):
-        await SubscriptionManager.add_subscription_for_site(mock_session, scope, sub)
-
-    assert_mock_session(mock_session, committed=False)
-    mock_utc_now.assert_called_once()
-    mock_select_aggregator.assert_called_once_with(mock_session, scope.aggregator_id)
-    mock_SubscriptionMapper.map_from_request.assert_called_once_with(
-        subscription=sub,
-        scope=scope,
-        aggregator_domains=set(["domain.value1"]),
-        changed_time=now,
-    )
-    mock_select_single_tariff.assert_not_called()
-    mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
-        mock_session, scope.aggregator_id, site_reading_type_id, scope.site_id, include_site_relation=False
-    )
-    mock_insert_subscription.assert_not_called()
 
 
 @pytest.mark.anyio

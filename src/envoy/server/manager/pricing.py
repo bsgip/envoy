@@ -54,9 +54,7 @@ class TariffProfileManager:
         unique_rate_days = await count_unique_rate_days(
             session, scope.aggregator_id, tariff_id, scope.site_id, datetime.min
         )
-        return TariffProfileMapper.map_to_response(
-            scope, tariff, scope.site_id, unique_rate_days * TOTAL_PRICING_READING_TYPES
-        )
+        return TariffProfileMapper.map_to_response(scope, tariff, unique_rate_days * TOTAL_PRICING_READING_TYPES)
 
     @staticmethod
     async def fetch_tariff_profile_list(
@@ -79,9 +77,7 @@ class TariffProfileManager:
             )
             tariff_rate_counts.append(rate_days * TOTAL_PRICING_READING_TYPES)
 
-        return TariffProfileMapper.map_to_list_response(
-            scope, zip(tariffs, tariff_rate_counts), scope.site_id, tariff_count
-        )
+        return TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts), tariff_count)
 
     @staticmethod
     async def fetch_tariff_profile_no_site(

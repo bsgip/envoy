@@ -43,7 +43,7 @@ class SubscriptionManager:
 
         # non virtual site ids must align with the requested site id
         # or more simply - the virtual site can request any site subscription (within its aggregator)
-        if scope.site_id != sub.scoped_site_id:
+        if scope.site_id is not None and scope.site_id != sub.scoped_site_id:
             return None
 
         return SubscriptionMapper.map_to_response(sub, scope)

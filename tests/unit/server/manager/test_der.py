@@ -126,7 +126,7 @@ async def test_fetch_der_for_site_der_exists(
     mock_DERMapper: mock.MagicMock,
 ):
     """Fetch when site_der_for_site returns an instance"""
-    scope = SiteRequestScope("lfdi", 9999, None, 1, 2)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mock_session = create_mock_session()
 
     site_der: SiteDER = generate_class_instance(SiteDER, seed=101)
@@ -134,7 +134,7 @@ async def test_fetch_der_for_site_der_exists(
     mock_map = mock.Mock()
     mock_DERMapper.map_to_response = mock.Mock(return_value=mock_map)
 
-    result = await DERManager.fetch_der_for_site(mock_session, PUBLIC_SITE_DER_ID, scope)
+    result = await DERManager.fetch_der_for_site(mock_session, scope, PUBLIC_SITE_DER_ID)
     assert result is mock_map
 
     assert site_der.site_der_id == PUBLIC_SITE_DER_ID, "This should've been set during the fetch"
@@ -153,11 +153,11 @@ async def test_fetch_der_for_site_bad_der_id(
     mock_DERMapper: mock.MagicMock,
 ):
     """Fetch when DER ID is incorrect"""
-    scope = SiteRequestScope("lfdi", 9999, None, 1, 2)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mock_session = create_mock_session()
 
     with pytest.raises(NotFoundError):
-        await DERManager.fetch_der_for_site(mock_session, PUBLIC_SITE_DER_ID + 1, scope)
+        await DERManager.fetch_der_for_site(mock_session, scope, PUBLIC_SITE_DER_ID + 1)
 
     mock_DERMapper.assert_not_called()
     mock_site_der_for_site.assert_not_called()
@@ -182,7 +182,7 @@ async def test_fetch_der_list_for_site_pagination(
     mock_site_der_for_site: mock.MagicMock, start: int, limit: int, after: datetime, expected_count: int
 ):
     """Fetch when site_der_for_site returns an instance"""
-    scope = SiteRequestScope("lfdi", 9999, None, 1, 2)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mock_session = create_mock_session()
 
     site_der: SiteDER = generate_class_instance(SiteDER, seed=101)
@@ -213,7 +213,7 @@ async def test_fetch_der_list_for_site_pagination(
 @pytest.mark.anyio
 async def test_fetch_der_capability_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    scope = SiteRequestScope("lfdi", 9999, None, 1, 2)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
@@ -239,7 +239,7 @@ async def test_upsert_der_capability_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    scope = SiteRequestScope("lfdi", 9999, None, 1, 2)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -281,7 +281,9 @@ async def test_upsert_der_capability_roundtrip(
     mock_utc_now: mock.MagicMock, mock_NotificationManager: mock.MagicMock, pg_base_config, site_id: int
 ):
     """Tests the various success paths through updating"""
-    scope = SiteRequestScope("lfdi", 9999, None, 1, site_id)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=1, site_id=site_id, href_prefix="/foo/bar"
+    )
     now = datetime(2023, 5, 6, 7, 8, 11)
 
     mock_utc_now.return_value = now
@@ -330,7 +332,9 @@ async def test_upsert_der_capability_roundtrip(
 @pytest.mark.anyio
 async def test_fetch_der_settings_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    scope = SiteRequestScope("lfdi", 9999, None, agg_id, site_id)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
@@ -356,7 +360,9 @@ async def test_upsert_der_settings_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    scope = SiteRequestScope("lfdi", 9999, None, agg_id, site_id)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -398,7 +404,9 @@ async def test_upsert_der_settings_roundtrip(
     mock_utc_now: mock.MagicMock, mock_NotificationManager: mock.MagicMock, pg_base_config, site_id: int
 ):
     """Tests the various success paths through updating"""
-    scope = SiteRequestScope("lfdi", 9999, "/custom/pfx", 1, site_id)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=1, site_id=site_id, href_prefix="/foo/bar"
+    )
     now = datetime(2023, 5, 2, 7, 8, 9)
 
     mock_utc_now.return_value = now
@@ -448,7 +456,9 @@ async def test_upsert_der_settings_roundtrip(
 @pytest.mark.anyio
 async def test_fetch_der_availability_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    scope = SiteRequestScope("lfdi", 9999, None, agg_id, site_id)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
@@ -474,7 +484,9 @@ async def test_upsert_der_availability_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    scope = SiteRequestScope("lfdi", 9999, None, agg_id, site_id)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -515,7 +527,9 @@ async def test_upsert_der_availability_roundtrip(
     mock_utc_now: mock.MagicMock, mock_NotificationManager: mock.MagicMock, pg_base_config, site_id: int
 ):
     """Tests the various success paths through updating"""
-    scope = SiteRequestScope("lfdi", 9999, None, 1, site_id)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=1, site_id=site_id, href_prefix="/foo/bar"
+    )
     now = datetime(2024, 5, 6, 7, 8, 9)
 
     mock_utc_now.return_value = now
@@ -564,7 +578,9 @@ async def test_upsert_der_availability_roundtrip(
 @pytest.mark.anyio
 async def test_fetch_der_status_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    scope = SiteRequestScope("lfdi", 9999, None, agg_id, site_id)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
@@ -590,7 +606,9 @@ async def test_upsert_der_status_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    scope = SiteRequestScope("lfdi", 9999, None, agg_id, site_id)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -635,7 +653,9 @@ async def test_upsert_der_status_roundtrip(
 ):
     """Tests the various success paths through updating"""
     agg_id = 1
-    scope = SiteRequestScope("lfdi", 9999, "/custom/pfx", agg_id, site_id)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id, href_prefix="/foo/bar"
+    )
     now = datetime(2023, 5, 6, 7, 8, 9)
 
     mock_utc_now.return_value = now

@@ -45,7 +45,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
-from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope
+from envoy.server.request_scope import AggregatorRequestScope
 
 
 def _parse_site_id_from_match(raw_site_id: str) -> Optional[int]:
@@ -451,11 +451,11 @@ class NotificationMapper:
     def map_der_availability_to_response(
         der_id: int,
         der_availability: Optional[SiteDERAvailability],
+        der_availability_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
     ) -> Notification:
-        """Turns a single SiteDERAvailability into a notification. If specified, der_availability is expected
-        to have the site_der relationship included."""
+        """Turns a single SiteDERAvailability into a notification."""
         der_avail_href = generate_href(
             DERAvailabilityUri,
             scope,
@@ -466,7 +466,7 @@ class NotificationMapper:
         resource_model: Optional[dict] = None
         if der_availability is not None:
             # Easiest way to map entity to resource is via model_dump
-            resource = DERAvailabilityMapper.map_to_response(scope, der_availability)
+            resource = DERAvailabilityMapper.map_to_response(scope, der_availability, der_availability_site_id)
             resource.type = XSI_TYPE_DER_AVAILABILITY
             resource_model = resource.model_dump()
         return Notification.model_validate(
@@ -482,11 +482,11 @@ class NotificationMapper:
     def map_der_rating_to_response(
         der_id: int,
         der_rating: Optional[SiteDERRating],
+        der_rating_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
     ) -> Notification:
-        """Turns a single SiteDERRating into a notification If specified, der_rating is expected
-        to have the site_der relationship included."""
+        """Turns a single SiteDERRating into a notification."""
         der_rating_href = generate_href(
             DERCapabilityUri,
             scope,
@@ -497,7 +497,7 @@ class NotificationMapper:
         resource_model: Optional[dict] = None
         if der_rating is not None:
             # Easiest way to map entity to resource is via model_dump
-            resource = DERCapabilityMapper.map_to_response(scope, der_rating)
+            resource = DERCapabilityMapper.map_to_response(scope, der_rating, der_rating_site_id)
             resource.type = XSI_TYPE_DER_CAPABILITY
             resource_model = resource.model_dump()
         return Notification.model_validate(
@@ -513,11 +513,11 @@ class NotificationMapper:
     def map_der_settings_to_response(
         der_id: int,
         der_setting: Optional[SiteDERSetting],
+        der_setting_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
     ) -> Notification:
-        """Turns a single SiteDERSetting into a notification. If specified, der_setting is expected
-        to have the site_der relationship included."""
+        """Turns a single SiteDERSetting into a notification."""
         der_settings_href = generate_href(
             DERSettingsUri,
             scope,
@@ -528,7 +528,7 @@ class NotificationMapper:
         resource_model: Optional[dict] = None
         if der_setting is not None:
             # Easiest way to map entity to resource is via model_dump
-            resource = DERSettingMapper.map_to_response(scope, der_setting)
+            resource = DERSettingMapper.map_to_response(scope, der_setting, der_setting_site_id)
             resource.type = XSI_TYPE_DER_SETTINGS
             resource_model = resource.model_dump()
 
@@ -545,11 +545,11 @@ class NotificationMapper:
     def map_der_status_to_response(
         der_id: int,
         der_status: Optional[SiteDERStatus],
+        der_status_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
     ) -> Notification:
-        """Turns a single SiteDERStatus into a notification. If specified, der_status is expected
-        to have the site_der relationship included."""
+        """Turns a single SiteDERStatus into a notification."""
         der_status_href = generate_href(
             DERStatusUri,
             scope,
@@ -560,7 +560,7 @@ class NotificationMapper:
         resource_model: Optional[dict] = None
         if der_status is not None:
             # Easiest way to map entity to resource is via model_dump
-            resource = DERStatusMapper.map_to_response(scope, der_status)
+            resource = DERStatusMapper.map_to_response(scope, der_status, der_status_site_id)
             resource.type = XSI_TYPE_DER_STATUS
             resource_model = resource.model_dump()
 

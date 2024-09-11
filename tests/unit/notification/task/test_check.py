@@ -467,7 +467,7 @@ def test_entities_to_notification_unknown_resource():
         (SubscriptionResource.SITE_DER_STATUS, SiteDERStatus, 987941),
     ],
 )
-def test_entities_to_notification_sites(
+def test_entities_to_notification_sites(  # noqa: C901
     resource: SubscriptionResource, entity_class: type, sub_site_id_scope: Optional[int]
 ):
     """For every resource/type mapping - generate a notification and do some cursory examination of the

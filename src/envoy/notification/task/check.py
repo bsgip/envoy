@@ -214,31 +214,31 @@ def entities_to_notification(
         )
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, _, site_der_id) = batch_key
+        (_, site_id, site_der_id) = batch_key
         availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_availability_to_response(
-            site_der_id, availability, sub, scope
+            site_der_id, availability, site_id, sub, scope
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_RATING:
         # SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, _, site_der_id) = batch_key
+        (_, site_id, site_der_id) = batch_key
         rating = cast(SiteDERRating, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_rating_to_response(
-            site_der_id, rating, sub, scope
+            site_der_id, rating, site_id, sub, scope
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_SETTING:
         # SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, _, site_der_id) = batch_key
+        (_, site_id, site_der_id) = batch_key
         settings = cast(SiteDERSetting, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_settings_to_response(
-            site_der_id, settings, sub, scope
+            site_der_id, settings, site_id, sub, scope
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         # SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, _, site_der_id) = batch_key
+        (_, site_id, site_der_id) = batch_key
         status = cast(SiteDERStatus, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_status_to_response(
-            site_der_id, status, sub, scope
+            site_der_id, status, site_id, sub, scope
         )  # We will only EVER have single element lists for this resource
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify way to map entities")

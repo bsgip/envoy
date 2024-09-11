@@ -3,6 +3,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 import pytest
+from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.pricing import TariffProfileResponse, TimeTariffIntervalResponse
 
@@ -18,7 +19,7 @@ from envoy.server.mapper.sep2.pricing import (
     TimeTariffIntervalMapper,
 )
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, Tariff, TariffGeneratedRate
-from envoy.server.request_scope import BaseRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, SiteRequestScope
 
 
 @pytest.mark.parametrize(
@@ -101,33 +102,32 @@ def test_tariff_profile_nosite_mapping():
 def test_tariff_profile_mapping():
     """Non exhaustive test of the tariff profile mapping - mainly to sanity check important fields and ensure
     that exceptions aren't being raised"""
-    site_id = 9876
     total_rates = 76543
     all_set: Tariff = generate_class_instance(Tariff, seed=101, optional_is_none=False)
-    scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
-    mapped_all_set = TariffProfileMapper.map_to_response(scope, all_set, site_id, total_rates)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=1001)
+    mapped_all_set = TariffProfileMapper.map_to_response(scope, all_set, total_rates)
     assert mapped_all_set
-    assert mapped_all_set.href
+    assert f"/{scope.display_site_id}" in mapped_all_set.href
     assert mapped_all_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES, "We send $1 as 10000 * 10^-4"
     assert mapped_all_set.rateCode == all_set.dnsp_code
     assert mapped_all_set.currency == all_set.currency_code
     assert mapped_all_set.RateComponentListLink
     assert mapped_all_set.RateComponentListLink.href
     assert mapped_all_set.RateComponentListLink.href.startswith(mapped_all_set.href)
-    assert str(site_id) in mapped_all_set.RateComponentListLink.href
+    assert f"/{scope.display_site_id}" in mapped_all_set.RateComponentListLink.href
     assert mapped_all_set.RateComponentListLink.all_ == total_rates
 
     some_set: Tariff = generate_class_instance(Tariff, seed=202, optional_is_none=True)
-    mapped_some_set = TariffProfileMapper.map_to_response(scope, some_set, site_id, total_rates)
+    mapped_some_set = TariffProfileMapper.map_to_response(scope, some_set, total_rates)
     assert mapped_some_set
-    assert mapped_some_set.href
-    assert mapped_some_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES
+    assert f"/{scope.display_site_id}" in mapped_some_set.href
+    assert mapped_some_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES, "We send $1 as 10000 * 10^-4"
     assert mapped_some_set.rateCode == some_set.dnsp_code
     assert mapped_some_set.currency == some_set.currency_code
     assert mapped_some_set.RateComponentListLink
     assert mapped_some_set.RateComponentListLink.href
     assert mapped_some_set.RateComponentListLink.href.startswith(mapped_some_set.href)
-    assert str(site_id) in mapped_some_set.RateComponentListLink.href
+    assert f"/{scope.display_site_id}" in mapped_some_set.RateComponentListLink.href
     assert mapped_some_set.RateComponentListLink.all_ == total_rates
 
 
@@ -145,8 +145,7 @@ def test_tariff_profile_list_nosite_mapping():
     assert mapped_all_set
     assert mapped_all_set.all_ == count
     assert mapped_all_set.results == 2
-    assert len(mapped_all_set.TariffProfile) == 2
-    assert all([isinstance(tp, TariffProfileResponse) for tp in mapped_all_set.TariffProfile])
+    assert_list_type(TariffProfileResponse, mapped_all_set.TariffProfile, 2)
 
 
 def test_tariff_profile_list_mapping():
@@ -158,19 +157,15 @@ def test_tariff_profile_list_mapping():
     ]
     tariff_rate_counts = [456, 789]
     tariff_count = 123
-    site_id = 112234
-    scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=1001)
 
-    mapped_all_set = TariffProfileMapper.map_to_list_response(
-        scope, zip(tariffs, tariff_rate_counts), tariff_count, site_id
-    )
+    mapped_all_set = TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts), tariff_count)
     assert mapped_all_set
     assert mapped_all_set.all_ == tariff_count
     assert mapped_all_set.results == 2
-    assert len(mapped_all_set.TariffProfile) == 2
-    assert all([isinstance(tp, TariffProfileResponse) for tp in mapped_all_set.TariffProfile])
-    assert all([str(site_id) in tp.href for tp in mapped_all_set.TariffProfile])
-    assert all([str(site_id) in tp.RateComponentListLink.href for tp in mapped_all_set.TariffProfile])
+    assert_list_type(TariffProfileResponse, mapped_all_set.TariffProfile, 2)
+    assert all([f"/{scope.display_site_id}" in tp.href for tp in mapped_all_set.TariffProfile])
+    assert all([f"/{scope.display_site_id}" in tp.RateComponentListLink.href for tp in mapped_all_set.TariffProfile])
 
     # Double check our rate component counts get handed down to the child lists correctly
     assert mapped_all_set.TariffProfile[0].RateComponentListLink.all_ == tariff_rate_counts[0]
@@ -185,7 +180,7 @@ def test_rate_component_mapping(mock_PricingReadingTypeMapper: mock.MagicMock):
     tariff_id: int = 456
     pricing_reading: PricingReadingType = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
     day: date = date(2014, 1, 25)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     pricing_reading_type_href = "/abc/213"
     mock_PricingReadingTypeMapper.pricing_reading_type_href = mock.Mock(return_value=pricing_reading_type_href)
@@ -259,7 +254,7 @@ def test_rate_component_list_mapping_paging(rates):
     expected_count = (len(input_date_counts) * TOTAL_PRICING_READING_TYPES) - skip_end - skip_start
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
-    list_response = RateComponentMapper.map_to_list_response(scope, stats, skip_start, skip_end, 1, 1)
+    list_response = RateComponentMapper.map_to_list_response(scope, stats, skip_start, skip_end, 1)
 
     # check the overall structure of the list
     assert list_response.all_ == 9876 * TOTAL_PRICING_READING_TYPES
@@ -304,7 +299,7 @@ def test_consumption_tariff_interval_mapping_prices(input_price: Decimal, expect
     assert mapped.price == expected_price
     assert mapped.href
     assert str(expected_price) in mapped.href
-    assert str(scope.site_id) in mapped.href
+    assert str(scope.display_site_id) in mapped.href
 
     mapped_list = ConsumptionTariffIntervalMapper.map_to_list_response(
         scope, tariff_id, pricing_reading, day, time_of_day, input_price
@@ -367,15 +362,12 @@ def test_time_tariff_interval_list_mapping(
     total = 632
     mock_PricingReadingTypeMapper.extract_price = mock.Mock(return_value=extracted_price)
     mock_ConsumptionTariffIntervalMapper.list_href = mock.Mock(return_value=cti_list_href)
-    scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=1001)
 
     mapped = TimeTariffIntervalMapper.map_to_list_response(scope, rates, rt, total)
     assert mapped.all_ == total
     assert mapped.results == len(rates)
-    assert len(mapped.TimeTariffInterval) == len(rates)
-    assert all(
-        [isinstance(x, TimeTariffIntervalResponse) for x in mapped.TimeTariffInterval]
-    ), "Checking all list items are the correct type"
+    assert_list_type(TimeTariffIntervalResponse, mapped.TimeTariffInterval, len(rates))
     list_items_mrids = [x.mRID for x in mapped.TimeTariffInterval]
     assert len(list_items_mrids) == len(set(list_items_mrids)), "Checking all list items are unique"
 
@@ -393,15 +385,15 @@ def test_mrid_uniqueness():
     tariff: Tariff = generate_class_instance(Tariff)
     rate: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate)
     tariff.tariff_id = id
-    scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
 
     rate.tariff_generated_rate_id = id
     rate.tariff_id = id
     rate.site_id = id
 
     tti = TimeTariffIntervalMapper.map_to_response(scope, rate, reading_type)
-    rc = RateComponentMapper.map_to_response(scope, 999, id, id, reading_type, day)
-    tp = TariffProfileMapper.map_to_response(scope, tariff, id, 999)
+    rc = RateComponentMapper.map_to_response(scope, 999, id, reading_type, day)
+    tp = TariffProfileMapper.map_to_response(scope, tariff, 999)
 
     assert tti.mRID != rc.mRID
     assert tti.mRID != tp.mRID

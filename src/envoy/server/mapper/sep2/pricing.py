@@ -33,7 +33,7 @@ from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
-from envoy.server.request_scope import BaseRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, SiteRequestScope
 
 TARIFF_PROFILE_MRID_PREFIX: int = int("B111", 16)
 RATE_MRID_PREFIX: int = int("D01A", 16)
@@ -57,14 +57,12 @@ class TariffProfileMapper:
         )
 
     @staticmethod
-    def map_to_response(
-        scope: BaseRequestScope, tariff: Tariff, encoded_site_id: int, total_rates: int
-    ) -> TariffProfileResponse:
+    def map_to_response(scope: AggregatorRequestScope, tariff: Tariff, total_rates: int) -> TariffProfileResponse:
         """Returns a mapped sep2 entity.
 
         This endpoint is designed to operate independent of a particular scope to allow encoding of multiple
         different sites. It's the responsibility of the caller to validate the scope before calling this."""
-        tp_href = generate_href(uri.TariffProfileUri, scope, tariff_id=tariff.tariff_id, site_id=encoded_site_id)
+        tp_href = generate_href(uri.TariffProfileUri, scope, tariff_id=tariff.tariff_id, site_id=scope.display_site_id)
         return TariffProfileMapper._map_to_response(tariff, tp_href, total_rates)
 
     @staticmethod
@@ -90,7 +88,7 @@ class TariffProfileMapper:
 
     @staticmethod
     def map_to_list_response(
-        scope: BaseRequestScope, tariffs: Iterator[tuple[Tariff, int]], encoded_site_id: int, total_tariffs: int
+        scope: AggregatorRequestScope, tariffs: Iterator[tuple[Tariff, int]], total_tariffs: int
     ) -> TariffProfileListResponse:
         """Returns a list containing multiple sep2 entities. The href's will be to the site specific
         TimeTariffProfile and RateComponentListLink
@@ -103,7 +101,7 @@ class TariffProfileMapper:
         tariff_profiles: list[TariffProfileResponse] = []
         tariffs_count: int = 0
         for tariff, rc_count in tariffs:
-            tariff_profiles.append(TariffProfileMapper.map_to_response(scope, tariff, encoded_site_id, rc_count))
+            tariff_profiles.append(TariffProfileMapper.map_to_response(scope, tariff, rc_count))
             tariffs_count = tariffs_count + 1
 
         return TariffProfileListResponse.model_validate(
@@ -269,9 +267,8 @@ class ConsumptionTariffIntervalMapper:
 
     @staticmethod
     def instance_href(
-        scope: BaseRequestScope,
+        scope: AggregatorRequestScope,
         tariff_id: int,
-        encoded_site_id: int,
         pricing_reading: PricingReadingType,
         day: date,
         time_of_day: time,
@@ -282,15 +279,15 @@ class ConsumptionTariffIntervalMapper:
         This endpoint is designed to operate independent of a particular scope to allow encoding of multiple
         different sites. It's the responsibility of the caller to validate the scope before calling this."""
         base = ConsumptionTariffIntervalMapper.list_href(
-            scope, tariff_id, encoded_site_id, pricing_reading, day, time_of_day, price
+            scope, tariff_id, scope.display_site_id, pricing_reading, day, time_of_day, price
         )
         return f"{base}/1"
 
     @staticmethod
     def list_href(
-        scope: BaseRequestScope,
+        scope: AggregatorRequestScope,
         tariff_id: int,
-        encoded_site_id: int,
+        tariff_site_id: int,
         pricing_reading: PricingReadingType,
         day: date,
         time_of_day: time,
@@ -308,7 +305,7 @@ class ConsumptionTariffIntervalMapper:
             uri.ConsumptionTariffIntervalListUri,
             scope,
             tariff_id=tariff_id,
-            site_id=encoded_site_id,
+            site_id=tariff_site_id,
             rate_component_id=rate_component_id,
             pricing_reading=pricing_reading,
             tti_id=tti_id,
@@ -326,9 +323,7 @@ class ConsumptionTariffIntervalMapper:
     ) -> ConsumptionTariffIntervalResponse:
         """Returns a ConsumptionTariffIntervalResponse with price being set to an integer by adjusting to
         PRICE_DECIMAL_PLACES"""
-        href = ConsumptionTariffIntervalMapper.instance_href(
-            scope, tariff_id, scope.site_id, pricing_rt, day, time_of_day, price
-        )
+        href = ConsumptionTariffIntervalMapper.instance_href(scope, tariff_id, pricing_rt, day, time_of_day, price)
         return ConsumptionTariffIntervalResponse.model_validate(
             {
                 "href": href,
@@ -363,7 +358,7 @@ class TimeTariffIntervalMapper:
     def instance_href(
         scope: BaseRequestScope,
         tariff_id: int,
-        encoded_site_id: int,
+        tariff_site_id: int,
         day: date,
         pricing_reading: PricingReadingType,
         time_of_day: time,
@@ -378,7 +373,7 @@ class TimeTariffIntervalMapper:
             uri.TimeTariffIntervalUri,
             scope,
             tariff_id=tariff_id,
-            site_id=encoded_site_id,
+            site_id=tariff_site_id,
             rate_component_id=rate_component_id,
             pricing_reading=pricing_reading,
             tti_id=tti_id,
@@ -386,7 +381,7 @@ class TimeTariffIntervalMapper:
 
     @staticmethod
     def map_to_response(
-        scope: BaseRequestScope, rate: TariffGeneratedRate, pricing_reading: PricingReadingType
+        scope: AggregatorRequestScope, rate: TariffGeneratedRate, pricing_reading: PricingReadingType
     ) -> TimeTariffIntervalResponse:
         """Creates a new TimeTariffIntervalResponse for the given rate and specific price reading"""
         start_d = rate.start_time.date()
@@ -421,7 +416,7 @@ class TimeTariffIntervalMapper:
 
     @staticmethod
     def map_to_list_response(
-        scope: BaseRequestScope,
+        scope: AggregatorRequestScope,
         rates: Sequence[TariffGeneratedRate],
         pricing_reading: PricingReadingType,
         total: int,

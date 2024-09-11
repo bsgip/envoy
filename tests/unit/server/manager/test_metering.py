@@ -134,7 +134,6 @@ async def test_create_or_fetch_mirror_usage_point_aggregator_no_site(mock_select
 
     # Arrange
     mock_session = create_mock_session()
-    aggregator_id = 2
     mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
     scope: RawRequestScope = generate_class_instance(RawRequestScope)
 
@@ -149,7 +148,7 @@ async def test_create_or_fetch_mirror_usage_point_aggregator_no_site(mock_select
     mock_select_single_site_with_lfdi.assert_called_once_with(
         session=mock_session,
         lfdi=mup.deviceLFDI,
-        aggregator_id=aggregator_id,
+        aggregator_id=scope.aggregator_id,
     )
 
 
@@ -163,7 +162,6 @@ async def test_create_or_fetch_mirror_usage_point_device_no_site(
 
     # Arrange
     mock_session = create_mock_session()
-    aggregator_id = 2
     mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
     scope: RawRequestScope = generate_class_instance(
         RawRequestScope, aggregator_id=None, site_id=scope_site_id, lfdi=mup.deviceLFDI
@@ -180,7 +178,7 @@ async def test_create_or_fetch_mirror_usage_point_device_no_site(
     mock_select_single_site_with_lfdi.assert_called_once_with(
         session=mock_session,
         lfdi=mup.deviceLFDI,
-        aggregator_id=aggregator_id,
+        aggregator_id=NULL_AGGREGATOR_ID if scope.aggregator_id is None else scope.aggregator_id,
     )
 
 
@@ -301,7 +299,11 @@ async def test_fetch_mirror_usage_point_no_srt(
     # Assert
     assert_mock_session(mock_session, committed=False)
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
-        session=mock_session, aggregator_id=agg_id, site_reading_type_id=srt_id, include_site_relation=True
+        session=mock_session,
+        aggregator_id=agg_id,
+        site_id=scope.site_id,
+        site_reading_type_id=srt_id,
+        include_site_relation=True,
     )
 
 
@@ -336,13 +338,14 @@ async def test_add_or_update_readings(
     mock_MirrorMeterReadingMapper.map_from_request = mock.Mock(return_value=mapped_readings)
 
     # Act
-    await MirrorMeteringManager.add_or_update_readings(mock_session, agg_id, site_reading_type_id, mmr)
+    await MirrorMeteringManager.add_or_update_readings(mock_session, scope, site_reading_type_id, mmr)
 
     # Assert
     assert_mock_session(mock_session, committed=True)
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
         session=mock_session,
         aggregator_id=agg_id,
+        site_id=scope.site_id,
         site_reading_type_id=site_reading_type_id,
         include_site_relation=False,
     )
@@ -371,7 +374,6 @@ async def test_add_or_update_readings_no_srt(
 
     # Arrange
     mock_session = create_mock_session()
-    aggregator_id = 2
     site_reading_type_id = 3
     mmr: MirrorMeterReading = generate_class_instance(MirrorMeterReading, seed=101)
 
@@ -385,7 +387,8 @@ async def test_add_or_update_readings_no_srt(
     assert_mock_session(mock_session, committed=False)
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
         session=mock_session,
-        aggregator_id=aggregator_id,
+        aggregator_id=NULL_AGGREGATOR_ID if scope.aggregator_id is None else scope.aggregator_id,
+        site_id=scope.site_id,
         site_reading_type_id=site_reading_type_id,
         include_site_relation=False,
     )
@@ -507,7 +510,6 @@ async def test_list_mirror_usage_points_device_unregistered():
 
     # Arrange
     mock_session = create_mock_session()
-    count = 456
     start = 4
     limit = 5
     changed_after = datetime.now()

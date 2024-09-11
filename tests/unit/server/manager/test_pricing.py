@@ -133,7 +133,6 @@ async def test_fetch_tariff_profile_list(
     start = 111
     changed = datetime.now()
     limit = 222
-    agg_id = 543
     tariff_count = 33
     tariff_1: Tariff = generate_class_instance(Tariff, seed=101)
     tariff_2: Tariff = generate_class_instance(Tariff, seed=202)
@@ -141,10 +140,10 @@ async def test_fetch_tariff_profile_list(
     tariff_2_rate_count = 4521
     tariffs = [tariff_1, tariff_2]
     mapped_tariffs = generate_class_instance(TariffProfileListResponse)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, aggregator_id=665, site_id=776)
 
     def count_unique_rate_days_handler(
-        session, scope: SiteRequestScope, tariff_id: int, changed_after: datetime
+        session, scope: SiteRequestScope, tariff_id: int, site_id: int, changed_after: datetime
     ) -> int:
         if tariff_id == tariff_1.tariff_id:
             return tariff_1_rate_count
@@ -170,19 +169,18 @@ async def test_fetch_tariff_profile_list(
     # We called count_unique_rate_days for each tariff returned
     all_mock_count_args = [c.args for c in mock_count_unique_rate_days.call_args_list]
     assert mock_count_unique_rate_days.call_count == 2
-    assert (mock_session, agg_id, tariff_1.tariff_id, scope.site_id, changed) in all_mock_count_args
-    assert (mock_session, agg_id, tariff_2.tariff_id, scope.site_id, changed) in all_mock_count_args
+    assert (mock_session, scope.aggregator_id, tariff_1.tariff_id, scope.site_id, changed) in all_mock_count_args
+    assert (mock_session, scope.aggregator_id, tariff_2.tariff_id, scope.site_id, changed) in all_mock_count_args
 
     # make sure we properly bundled up the resulting tariff + rate count tuples and passed it along to the mapper
     mock_TariffProfileMapper.map_to_list_response.assert_called_once()
     call_args = mock_TariffProfileMapper.map_to_list_response.call_args_list[0].args
-    (passed_scope, tariffs_with_rates, total_tariffs, called_site_id) = call_args
+    (passed_scope, tariffs_with_rates, total_tariffs) = call_args
     assert list(tariffs_with_rates) == [
         (tariff_1, tariff_1_rate_count * TOTAL_PRICING_READING_TYPES),
         (tariff_2, tariff_2_rate_count * TOTAL_PRICING_READING_TYPES),
     ]
     assert total_tariffs == tariff_count
-    assert called_site_id == scope.site_id
     assert passed_scope is scope
 
 
@@ -253,7 +251,7 @@ async def test_fetch_tariff_profile(
 
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
     expected_count = rates * TOTAL_PRICING_READING_TYPES
-    mock_TariffProfileMapper.map_to_response.assert_called_once_with(scope, tariff, scope.site_id, expected_count)
+    mock_TariffProfileMapper.map_to_response.assert_called_once_with(scope, tariff, expected_count)
     assert_mock_session(mock_session)
 
 
@@ -474,11 +472,11 @@ async def test_fetch_rate_component_list_full_db(pg_base_config, page_data):
         (last_date, last_count, last_price_type),
         expected_count,
     ) = page_data
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, aggregator_id=1, site_id=1)
 
     async with generate_async_session(pg_base_config) as session:
         list_response = await RateComponentManager.fetch_rate_component_list(
-            session, scope, 1, 1, start, datetime.min, limit
+            session, scope, 1, start, datetime.min, limit
         )
 
         assert (
@@ -668,6 +666,7 @@ async def test_fetch_time_tariff_interval_missing(
     # Act
     result = await TimeTariffIntervalManager.fetch_time_tariff_interval(
         mock_session,
+        scope,
         tariff_id,
         rate_component_id,
         time_tariff_interval,

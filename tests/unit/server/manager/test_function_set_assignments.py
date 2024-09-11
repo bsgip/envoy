@@ -44,7 +44,7 @@ async def test_function_set_assignments_fetch_function_set_assignments_for_aggre
     assert result is mapped_fsa
     assert_mock_session(mock_session)
     mock_FunctionSetAssignmentsMapper.map_to_response.assert_called_once_with(
-        scope=scope, fsa_id=fsa_id, site_id=scope.site_id, doe_count=1, tariff_count=tariff_count
+        scope=scope, fsa_id=fsa_id, doe_count=1, tariff_count=tariff_count
     )
 
 
@@ -68,17 +68,17 @@ async def test_function_set_assignments_fetch_function_set_assignments_list_for_
     with mock.patch(
         (
             "envoy.server.manager.function_set_assignments."
-            "FunctionSetAssignmentsManager.fetch_function_set_assignments_for_aggregator_and_site"
+            "FunctionSetAssignmentsManager.fetch_function_set_assignments_for_scope"
         )
     ) as fetch_function_set_assignments_for_aggregator_and_site:
         fetch_function_set_assignments_for_aggregator_and_site.return_value = mapped_fsa
         result = await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_scope(
-            session=mock_session, scope=scope, site_id=scope.site_id
+            session=mock_session, scope=scope
         )
 
     # Assert
     assert result == mapped_fsal
     assert_mock_session(mock_session)
     mock_FunctionSetAssignmentsMapper.map_to_list_response.assert_called_once_with(
-        scope=scope, function_set_assignments=[mapped_fsa], site_id=scope.site_id
+        scope=scope, function_set_assignments=[mapped_fsa]
     )

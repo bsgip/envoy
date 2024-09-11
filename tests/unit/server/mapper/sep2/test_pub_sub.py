@@ -40,7 +40,7 @@ from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper, SubscriptionListMapper, SubscriptionMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -566,7 +566,7 @@ def test_NotificationMapper_map_der_availability_to_response_missing():
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
-    notification_all_set = NotificationMapper.map_der_availability_to_response(der_id, None, sub, scope)
+    notification_all_set = NotificationMapper.map_der_availability_to_response(der_id, None, 99, sub, scope)
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -580,15 +580,14 @@ def test_NotificationMapper_map_der_availability_to_response_missing():
 
 
 def test_NotificationMapper_map_der_availability_to_response():
-    all_set: SiteDERAvailability = generate_class_instance(
-        SiteDERAvailability, seed=1, optional_is_none=False, site_der=generate_class_instance(SiteDER, site_id=789)
-    )
+    all_set: SiteDERAvailability = generate_class_instance(SiteDERAvailability, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
     der_id = 456
+    site_id = 789
 
-    notification_all_set = NotificationMapper.map_der_availability_to_response(der_id, all_set, sub, scope)
+    notification_all_set = NotificationMapper.map_der_availability_to_response(der_id, all_set, site_id, sub, scope)
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -598,7 +597,7 @@ def test_NotificationMapper_map_der_availability_to_response():
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
-    assert f"/{all_set.site_der.site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
+    assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
@@ -613,7 +612,7 @@ def test_NotificationMapper_map_der_rating_to_response_missing():
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
-    notification_all_set = NotificationMapper.map_der_rating_to_response(der_id, None, sub, scope)
+    notification_all_set = NotificationMapper.map_der_rating_to_response(der_id, None, 999, sub, scope)
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -626,15 +625,14 @@ def test_NotificationMapper_map_der_rating_to_response_missing():
 
 
 def test_NotificationMapper_map_der_rating_to_response():
-    all_set: SiteDERRating = generate_class_instance(
-        SiteDERRating, seed=1, optional_is_none=False, site_der=generate_class_instance(SiteDER, site_id=789)
-    )
+    all_set: SiteDERRating = generate_class_instance(SiteDERRating, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
     der_id = 456
+    site_id = 789
 
-    notification_all_set = NotificationMapper.map_der_rating_to_response(der_id, all_set, sub, scope)
+    notification_all_set = NotificationMapper.map_der_rating_to_response(der_id, all_set, site_id, sub, scope)
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -643,7 +641,7 @@ def test_NotificationMapper_map_der_rating_to_response():
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
-    assert f"/{all_set.site_der.site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
+    assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
@@ -658,7 +656,7 @@ def test_NotificationMapper_map_der_settings_to_response_missing():
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
-    notification_all_set = NotificationMapper.map_der_settings_to_response(der_id, None, sub, scope)
+    notification_all_set = NotificationMapper.map_der_settings_to_response(der_id, None, 999, sub, scope)
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -671,15 +669,14 @@ def test_NotificationMapper_map_der_settings_to_response_missing():
 
 
 def test_NotificationMapper_map_der_settings_to_response():
-    all_set: SiteDERSetting = generate_class_instance(
-        SiteDERSetting, seed=1, optional_is_none=False, site_der=generate_class_instance(SiteDER, site_id=789)
-    )
+    all_set: SiteDERSetting = generate_class_instance(SiteDERSetting, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
     der_id = 456
+    site_id = 789
 
-    notification_all_set = NotificationMapper.map_der_settings_to_response(der_id, all_set, sub, scope)
+    notification_all_set = NotificationMapper.map_der_settings_to_response(der_id, all_set, site_id, sub, scope)
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -688,7 +685,7 @@ def test_NotificationMapper_map_der_settings_to_response():
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
-    assert f"/{all_set.site_der.site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
+    assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
@@ -704,7 +701,7 @@ def test_NotificationMapper_map_der_status_to_response_missing():
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
-    notification_all_set = NotificationMapper.map_der_status_to_response(der_id, None, sub, scope)
+    notification_all_set = NotificationMapper.map_der_status_to_response(der_id, None, 998, sub, scope)
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert DERStatusUri.format(site_id=scope.display_site_id, der_id=der_id) in notification_all_set.subscribedResource
@@ -714,22 +711,21 @@ def test_NotificationMapper_map_der_status_to_response_missing():
 
 
 def test_NotificationMapper_map_der_status_to_response():
-    all_set: SiteDERStatus = generate_class_instance(
-        SiteDERStatus, seed=1, optional_is_none=False, site_der=generate_class_instance(SiteDER, site_id=789)
-    )
+    all_set: SiteDERStatus = generate_class_instance(SiteDERStatus, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
     der_id = 456
+    site_id = 789
 
-    notification_all_set = NotificationMapper.map_der_status_to_response(der_id, all_set, sub, scope)
+    notification_all_set = NotificationMapper.map_der_status_to_response(der_id, all_set, site_id, sub, scope)
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert DERStatusUri.format(site_id=scope.display_site_id, der_id=der_id) in notification_all_set.subscribedResource
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
-    assert f"/{all_set.site_der.site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
+    assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests

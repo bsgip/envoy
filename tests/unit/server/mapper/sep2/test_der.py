@@ -99,14 +99,17 @@ def test_der_avail_roundtrip(optional_is_none: bool):
     expected: DERAvailability = generate_class_instance(
         DERAvailability, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=9876)
+    scope: AggregatorRequestScope = generate_class_instance(
+        AggregatorRequestScope, site_id=9876, href_prefix="/my/prefix"
+    )
+    entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERAvailabilityMapper.map_from_request(changed_time, expected)
     assert isinstance(mapped, SiteDERAvailability)
     assert mapped.changed_time == changed_time
 
-    actual = DERAvailabilityMapper.map_to_response(scope, mapped)
+    actual = DERAvailabilityMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERAvailability)
 
     assert_class_instance_equality(
@@ -116,7 +119,9 @@ def test_der_avail_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "readingTime", "subscribable", "type"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(scope.display_site_id) in actual.href
+    assert f"/{entity_site_id}" in actual.href
+    assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
+    assert f"/{scope.site_id}" not in actual.href, "Should be using the entity site ID in the href"
     assert_datetime_equal(changed_time, actual.readingTime)
 
 
@@ -138,14 +143,17 @@ def test_der_status_roundtrip(optional_is_none: bool):
                 ConnectStatusType.OPERATING | ConnectStatusType.FAULT_ERROR
             )
 
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=9875)
+    scope: AggregatorRequestScope = generate_class_instance(
+        AggregatorRequestScope, site_id=9875, href_prefix="/my/prefix"
+    )
+    entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERStatusMapper.map_from_request(changed_time, expected)
     assert isinstance(mapped, SiteDERStatus)
     assert mapped.changed_time == changed_time
 
-    actual = DERStatusMapper.map_to_response(scope, mapped)
+    actual = DERStatusMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERStatus)
 
     assert_class_instance_equality(
@@ -155,7 +163,9 @@ def test_der_status_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "readingTime", "subscribable", "type"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(scope.display_site_id) in actual.href
+    assert f"/{entity_site_id}" in actual.href
+    assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
+    assert f"/{scope.site_id}" not in actual.href, "Should be using the entity site ID in the href"
     assert_datetime_equal(changed_time, actual.readingTime)
 
 
@@ -166,15 +176,15 @@ def test_der_capability_roundtrip(optional_is_none: bool):
         DERCapability, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
     expected.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT | DERControlType.OP_MOD_FREQ_DROOP)
-    site_id = 9876
-    scope = BaseRequestScope("lfdi", 111, "/my/prefix")
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=1991, href_prefix="/my/prefix")
+    entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERCapabilityMapper.map_from_request(changed_time, expected)
     assert isinstance(mapped, SiteDERRating)
     assert mapped.changed_time == changed_time
 
-    actual = DERCapabilityMapper.map_to_response(scope, site_id, mapped)
+    actual = DERCapabilityMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERCapability)
 
     assert_class_instance_equality(
@@ -184,7 +194,9 @@ def test_der_capability_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "subscribable", "type"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(site_id) in actual.href
+    assert f"/{entity_site_id}" in actual.href
+    assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
+    assert f"/{scope.site_id}" not in actual.href, "Should be using the entity site ID in the href"
 
 
 @pytest.mark.parametrize("optional_is_none", [True, False])
@@ -194,14 +206,15 @@ def test_der_settings_roundtrip(optional_is_none: bool):
         DERSettings, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
     expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_HFRT_MAY_TRIP | DERControlType.OP_MOD_FREQ_DROOP)
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=9876)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=9876, href_prefix="/my/prefix")
+    entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 4)
 
     mapped = DERSettingMapper.map_from_request(changed_time, expected)
     assert isinstance(mapped, SiteDERSetting)
     assert mapped.changed_time == changed_time
 
-    actual = DERSettingMapper.map_to_response(scope, mapped)
+    actual = DERSettingMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERSettings)
 
     assert_class_instance_equality(
@@ -211,5 +224,7 @@ def test_der_settings_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "subscribable", "type", "updatedTime"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(scope.display_site_id) in actual.href
+    assert f"/{entity_site_id}" in actual.href
+    assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
+    assert f"/{scope.site_id}" not in actual.href, "Should be using the entity site ID in the href"
     assert_datetime_equal(changed_time, actual.updatedTime)

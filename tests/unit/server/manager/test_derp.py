@@ -111,7 +111,7 @@ async def test_program_fetch(
     assert result is mapped_program
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_count_does.assert_called_once_with(mock_session, scope.aggregator_id, scope.site_id, datetime.min)
-    mock_DERProgramMapper.doe_program_response.assert_called_once_with(scope, scope.site_id, doe_count, default_doe)
+    mock_DERProgramMapper.doe_program_response.assert_called_once_with(scope, doe_count, default_doe)
     assert_mock_session(mock_session)
 
 
@@ -179,7 +179,7 @@ async def test_fetch_doe_controls_for_site(
         mock_session, scope.aggregator_id, scope.site_id, start, changed_after, limit
     )
     mock_DERControlMapper.map_to_list_response.assert_called_once_with(
-        scope, does_page, doe_count, scope.site_id, DERControlListSource.DER_CONTROL_LIST
+        scope, does_page, doe_count, DERControlListSource.DER_CONTROL_LIST
     )
     assert_mock_session(mock_session)
 

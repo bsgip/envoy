@@ -37,6 +37,8 @@ async def site_der_for_site(session: AsyncSession, aggregator_id: int, site_id: 
     """Utility for fetching the SiteDER for the specified site. If nothing is in the database, returns the
     default site der.
 
+    Will include
+
     Raises NotFoundError if site_id is missing / not accessible"""
     site_der = await select_site_der_for_site(session, site_id=site_id, aggregator_id=aggregator_id)
     if site_der is None:
@@ -117,7 +119,7 @@ class DERCapabilityManager:
 
         site_der.site_der_id = PUBLIC_SITE_DER_ID
         site_der.site_der_rating.site_der_id = PUBLIC_SITE_DER_ID
-        return DERCapabilityMapper.map_to_response(scope, site_der.site_der_rating)
+        return DERCapabilityMapper.map_to_response(scope, site_der.site_der_rating, scope.site_id)
 
     @staticmethod
     async def upsert_der_capability_for_site(
@@ -176,7 +178,7 @@ class DERSettingsManager:
 
         site_der.site_der_id = PUBLIC_SITE_DER_ID
         site_der.site_der_setting.site_der_id = PUBLIC_SITE_DER_ID
-        return DERSettingMapper.map_to_response(scope, site_der.site_der_setting)
+        return DERSettingMapper.map_to_response(scope, site_der.site_der_setting, scope.site_id)
 
     @staticmethod
     async def upsert_der_settings_for_site(
@@ -235,7 +237,7 @@ class DERAvailabilityManager:
 
         site_der.site_der_id = PUBLIC_SITE_DER_ID
         site_der.site_der_availability.site_der_id = PUBLIC_SITE_DER_ID
-        return DERAvailabilityMapper.map_to_response(scope, site_der.site_der_availability)
+        return DERAvailabilityMapper.map_to_response(scope, site_der.site_der_availability, scope.site_id)
 
     @staticmethod
     async def upsert_der_availability_for_site(
@@ -294,7 +296,7 @@ class DERStatusManager:
 
         site_der.site_der_id = PUBLIC_SITE_DER_ID
         site_der.site_der_status.site_der_id = PUBLIC_SITE_DER_ID
-        return DERStatusMapper.map_to_response(scope, site_der.site_der_status)
+        return DERStatusMapper.map_to_response(scope, site_der.site_der_status, scope.site_id)
 
     @staticmethod
     async def upsert_der_status_for_site(
