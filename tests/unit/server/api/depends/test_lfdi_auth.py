@@ -46,10 +46,11 @@ def test_generate_lfdi_from_pem():
 
 
 @pytest.mark.anyio
-async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response():
+@pytest.mark.parametrize("allow_device_registration", [True, False])
+async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response(allow_device_registration: bool):
     req = Request({"type": "http", "headers": {}})
 
-    lfdi_dep = LFDIAuthDepends(settings.cert_header)
+    lfdi_dep = LFDIAuthDepends(settings.cert_header, allow_device_registration)
 
     with pytest.raises(HTTPException) as exc:
         await lfdi_dep(req)

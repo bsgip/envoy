@@ -139,7 +139,7 @@ class DERAvailabilityMapper:
         return DERAvailability.model_validate(
             {
                 "href": generate_href(
-                    uri.DERAvailabilityUri, scope, site_id=scope.display_site_id, der_id=der_avail.site_der_id
+                    uri.DERAvailabilityUri, scope, site_id=der_avail.site_der.site_id, der_id=der_avail.site_der_id
                 ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "availabilityDuration": der_avail.availability_duration_sec,
@@ -233,7 +233,7 @@ class DERStatusMapper:
         return DERStatus.model_validate(
             {
                 "href": generate_href(
-                    uri.DERStatusUri, scope, site_id=scope.display_site_id, der_id=der_status.site_der_id
+                    uri.DERStatusUri, scope, site_id=der_status.site_der.site_id, der_id=der_status.site_der_id
                 ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "alarmStatus": (
@@ -325,7 +325,7 @@ class DERCapabilityMapper:
         return DERCapability.model_validate(
             {
                 "href": generate_href(
-                    uri.DERCapabilityUri, scope, site_id=scope.display_site_id, der_id=der_rating.site_der_id
+                    uri.DERCapabilityUri, scope, site_id=der_rating.site_der.site_id, der_id=der_rating.site_der_id
                 ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "modesSupported": to_hex_binary(der_rating.modes_supported),
@@ -442,7 +442,7 @@ class DERSettingMapper:
         return DERSettings.model_validate(
             {
                 "href": generate_href(
-                    uri.DERSettingsUri, scope, site_id=scope.display_site_id, der_id=der_setting.site_der_id
+                    uri.DERSettingsUri, scope, site_id=der_setting.site_der.site_id, der_id=der_setting.site_der_id
                 ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "modesEnabled": to_hex_binary(der_setting.modes_enabled),

@@ -66,6 +66,18 @@ class NotificationEntities(Generic[TResourceModel]):
 T = TypeVar("T")
 
 
+def scope_for_subscription(sub: Subscription, href_prefix: Optional[str]) -> AggregatorRequestScope:
+    """Generates a request scope for use with a subscription when mapping elements"""
+    return AggregatorRequestScope(
+        aggregator_id=sub.aggregator_id,
+        display_site_id=(VIRTUAL_END_DEVICE_SITE_ID if sub.scoped_site_id is None else sub.scoped_site_id),
+        site_id=sub.scoped_site_id,
+        sfdi=0,
+        lfdi="",
+        href_prefix=href_prefix,
+    )
+
+
 def batched(iterable: Iterable[T], chunk_size: int) -> Generator[list[T], None, None]:
     """This is a equivalent attempt at implementing the python 3.12 itertools.batched function.
 
@@ -174,14 +186,7 @@ def entities_to_notification(
     pricing_reading_type: Optional[PricingReadingType],
 ) -> Sep2Notification:
     """Givens a subscription and associated entities - generate the notification content that will be sent out"""
-    scope = AggregatorRequestScope(
-        aggregator_id=sub.aggregator_id,
-        display_site_id=(VIRTUAL_END_DEVICE_SITE_ID if sub.scoped_site_id is None else sub.scoped_site_id),
-        site_id=None,
-        lfdi="",
-        sfdi=0,
-        href_prefix=href_prefix,
-    )
+    scope = scope_for_subscription(sub, href_prefix)
     if resource == SubscriptionResource.SITE:
         return NotificationMapper.map_sites_to_response(cast(Sequence[Site], entities), sub, scope)
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
@@ -189,9 +194,8 @@ def entities_to_notification(
             raise NotificationError("SubscriptionResource.TARIFF_GENERATED_RATE requires pricing_reading_type")
 
         # TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
-        (_, tariff_id, site_id, day) = batch_key
+        (_, tariff_id, _, day) = batch_key
         return NotificationMapper.map_rates_to_response(
-            site_id=site_id,
             tariff_id=tariff_id,
             day=day,
             pricing_reading_type=pricing_reading_type,
@@ -201,40 +205,37 @@ def entities_to_notification(
         )
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
-        (_, site_id) = batch_key
-        return NotificationMapper.map_does_to_response(
-            site_id, cast(Sequence[DynamicOperatingEnvelope], entities), sub, scope
-        )
+        return NotificationMapper.map_does_to_response(cast(Sequence[DynamicOperatingEnvelope], entities), sub, scope)
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
-        (_, site_id, site_reading_type_id) = batch_key
+        (_, _, site_reading_type_id) = batch_key
         return NotificationMapper.map_readings_to_response(
-            site_id, site_reading_type_id, cast(Sequence[SiteReading], entities), sub, scope
+            site_reading_type_id, cast(Sequence[SiteReading], entities), sub, scope
         )
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, site_id, site_der_id) = batch_key
+        (_, _, site_der_id) = batch_key
         availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_availability_to_response(
             site_der_id, availability, sub, scope
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_RATING:
         # SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, site_id, site_der_id) = batch_key
+        (_, _, site_der_id) = batch_key
         rating = cast(SiteDERRating, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_rating_to_response(
             site_der_id, rating, sub, scope
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_SETTING:
         # SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, site_id, site_der_id) = batch_key
+        (_, _, site_der_id) = batch_key
         settings = cast(SiteDERSetting, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_settings_to_response(
             site_der_id, settings, sub, scope
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         # SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, site_id, site_der_id) = batch_key
+        (_, _, site_der_id) = batch_key
         status = cast(SiteDERStatus, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_status_to_response(
             site_der_id, status, sub, scope
@@ -325,16 +326,7 @@ async def check_db_upsert(
             content = content.decode()
 
         agg_id = n.batch_key[0]  # Aggregator ID is ALWAYS the first element of the batch_key
-        scope = AggregatorRequestScope(
-            aggregator_id=agg_id,
-            display_site_id=(
-                VIRTUAL_END_DEVICE_SITE_ID if n.subscription.scoped_site_id is None else n.subscription.scoped_site_id
-            ),
-            site_id=None,
-            sfdi=0,
-            lfdi="",
-            href_prefix=href_prefix,
-        )
+        scope = scope_for_subscription(n.subscription, href_prefix)
 
         try:
             await transmit_notification.kicker().with_broker(broker).kiq(

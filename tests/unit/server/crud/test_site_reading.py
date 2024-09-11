@@ -128,11 +128,12 @@ async def test_fetch_site_reading_type_for_aggregator(
     expected: Optional[SiteReadingType],
 ):
     """Tests the contents of the returned SiteReadingType"""
-    async with generate_async_session(pg_base_config) as session:
-        actual = await fetch_site_reading_type_for_aggregator(
-            session, aggregator_id, site_id, site_reading_type_id, include_site_relation=False
-        )
-        assert_class_instance_equality(SiteReadingType, expected, actual, ignored_properties=set(["site"]))
+    for include_site_relation in [True, False]:
+        async with generate_async_session(pg_base_config) as session:
+            actual = await fetch_site_reading_type_for_aggregator(
+                session, aggregator_id, site_reading_type_id, site_id, include_site_relation=include_site_relation
+            )
+            assert_class_instance_equality(SiteReadingType, expected, actual, ignored_properties=set(["site"]))
 
 
 @pytest.mark.anyio
@@ -141,19 +142,19 @@ async def test_fetch_site_reading_type_for_aggregator_relationship(pg_base_confi
     async with generate_async_session(pg_base_config) as session:
         # test with no site relation (ensure raise loading is enabled)
         actual_no_relation = await fetch_site_reading_type_for_aggregator(
-            session, 1, None, 1, include_site_relation=False
+            session, 1, 1, None, include_site_relation=False
         )
         with pytest.raises(Exception):
             actual_no_relation.site.lfdi
 
         # Test site relation can be navigated for different sites
         actual_with_relation = await fetch_site_reading_type_for_aggregator(
-            session, 1, None, 1, include_site_relation=True
+            session, 1, 1, None, include_site_relation=True
         )
         assert actual_with_relation.site.lfdi == "site1-lfdi"
 
         actual_4_with_relation = await fetch_site_reading_type_for_aggregator(
-            session, 1, None, 4, include_site_relation=True
+            session, 1, 4, None, include_site_relation=True
         )
         assert actual_4_with_relation.site.lfdi == "site2-lfdi"
 

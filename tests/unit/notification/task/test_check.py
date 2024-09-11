@@ -23,6 +23,7 @@ from envoy.notification.task.check import (
     entities_to_notification,
     fetch_batched_entities,
     get_entity_pages,
+    scope_for_subscription,
 )
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
@@ -41,6 +42,50 @@ from tests.unit.notification.mocks import (
     create_mock_broker,
     get_mock_task_kicker_call_args,
 )
+
+
+@pytest.mark.parametrize(
+    "sub, href_prefix, expected_display_id",
+    [
+        (
+            generate_class_instance(Subscription, optional_is_none=False, scoped_site_id=None),
+            None,
+            VIRTUAL_END_DEVICE_SITE_ID,
+        ),
+        (
+            generate_class_instance(Subscription, optional_is_none=False, scoped_site_id=55443),
+            None,
+            55443,
+        ),
+        (
+            generate_class_instance(Subscription, optional_is_none=True, scoped_site_id=None),
+            None,
+            VIRTUAL_END_DEVICE_SITE_ID,
+        ),
+        (
+            generate_class_instance(Subscription, optional_is_none=True, scoped_site_id=55442),
+            None,
+            55442,
+        ),
+        (
+            generate_class_instance(Subscription, optional_is_none=True, scoped_site_id=None),
+            "/my/prefix",
+            VIRTUAL_END_DEVICE_SITE_ID,
+        ),
+        (
+            generate_class_instance(Subscription, optional_is_none=True, scoped_site_id=55442),
+            "/my/prefix",
+            55442,
+        ),
+    ],
+)
+def test_scope_for_subscription(sub: Subscription, href_prefix: Optional[str], expected_display_id: int):
+    result = scope_for_subscription(sub, href_prefix)
+    assert isinstance(result, AggregatorRequestScope)
+    assert result.href_prefix == href_prefix
+    assert result.display_site_id == expected_display_id
+    assert result.site_id == sub.scoped_site_id
+    assert result.aggregator_id == sub.aggregator_id
 
 
 @pytest.mark.parametrize(
@@ -402,7 +447,7 @@ def test_entities_to_notification_unknown_resource():
 
 
 @pytest.mark.parametrize(
-    "resource, entity_class, sub_site_scope",
+    "resource, entity_class, sub_site_id_scope",
     [
         (SubscriptionResource.SITE, Site, None),
         (SubscriptionResource.SITE, Site, 4567),
@@ -423,13 +468,15 @@ def test_entities_to_notification_unknown_resource():
     ],
 )
 def test_entities_to_notification_sites(
-    resource: SubscriptionResource, entity_class: type, sub_site_scope: Optional[int]
+    resource: SubscriptionResource, entity_class: type, sub_site_id_scope: Optional[int]
 ):
     """For every resource/type mapping - generate a notification and do some cursory examination of the
     resulting notification - the majority of the test are captured in the mapper unit tests - this is here
     to catch parameter errors / other simple issues"""
     href_prefix = "/my_href/prefix"
-    sub = Subscription(resource_type=resource, notification_uri="http://example.com/foo", scoped_site=sub_site_scope)
+    sub = Subscription(
+        resource_type=resource, notification_uri="http://example.com/foo", scoped_site_id=sub_site_id_scope
+    )
     pricing_reading_type = (
         PricingReadingType.EXPORT_ACTIVE_POWER_KWH if resource == SubscriptionResource.TARIFF_GENERATED_RATE else None
     )
@@ -465,29 +512,37 @@ def test_entities_to_notification_sites(
             assert notification.resource.results == len(entities)
             assert isinstance(notification.resource, NotificationResourceCombined)
 
-        # The underlying sub scope should dictate how the top level object encodes site id in the hrefs
+        # The underlying sub site scope should dictate how the top level object encodes site id in the hrefs
+        expected_sub_resource_href_snippet: Optional[str] = None
         if notification.resource is not None:
-            if sub_site_scope is None:
-                assert f"/{VIRTUAL_END_DEVICE_SITE_ID}/" in notification.resource.href
+            if sub_site_id_scope is None:
+                expected_sub_resource_href_snippet = f"/{VIRTUAL_END_DEVICE_SITE_ID}"
             else:
-                assert f"/{sub_site_scope}/" in notification.resource.href
+                expected_sub_resource_href_snippet = f"/{sub_site_id_scope}"
 
         if resource == SubscriptionResource.SITE:
             assert len(notification.resource.EndDevice) == len(entities)
         elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
             assert len(notification.resource.DERControl) == len(entities)
+            assert expected_sub_resource_href_snippet in notification.subscribedResource
         elif resource == SubscriptionResource.READING:
             assert len(notification.resource.Readings) == len(entities)
+            assert expected_sub_resource_href_snippet in notification.subscribedResource
         elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
             assert len(notification.resource.TimeTariffInterval) == len(entities)
+            assert expected_sub_resource_href_snippet in notification.subscribedResource
         elif resource == SubscriptionResource.SITE_DER_AVAILABILITY and entity_length:
             assert notification.resource.statWAvail.value == entities[0].estimated_w_avail_value
+            assert expected_sub_resource_href_snippet in notification.subscribedResource
         elif resource == SubscriptionResource.SITE_DER_RATING and entity_length:
             assert notification.resource.doeModesSupported == entities[0].doe_modes_supported
+            assert expected_sub_resource_href_snippet in notification.subscribedResource
         elif resource == SubscriptionResource.SITE_DER_SETTING and entity_length:
             assert notification.resource.doeModesEnabled == entities[0].doe_modes_enabled
+            assert expected_sub_resource_href_snippet in notification.subscribedResource
         elif resource == SubscriptionResource.SITE_DER_STATUS and entity_length:
             assert notification.resource.inverterStatus.value == entities[0].inverter_status
+            assert expected_sub_resource_href_snippet in notification.subscribedResource
 
 
 @pytest.mark.anyio

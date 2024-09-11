@@ -17,7 +17,7 @@ def dt(seed) -> datetime:
 
 
 def cid(seed: int) -> ClientIdDetails:
-    return generate_class_instance(ClientIdDetails, seed=seed)
+    return generate_class_instance(ClientIdDetails, seed=seed, lfdi=str(seed), expiry=dt(seed))
 
 
 @pytest.mark.anyio

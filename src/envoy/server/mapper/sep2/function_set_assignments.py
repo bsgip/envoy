@@ -25,7 +25,7 @@ class FunctionSetAssignmentsMapper:
                     uri.FunctionSetAssignmentsUri,
                     scope,
                     fsa_id=fsa_id,
-                    site_id=site_id,
+                    site_id=scope.site_id,
                 ),
                 "mRID": generate_mrid(FUNCTION_SET_ASSIGNMENTS_MRID_PREFIX, fsa_id, scope.site_id),
                 "description": "",

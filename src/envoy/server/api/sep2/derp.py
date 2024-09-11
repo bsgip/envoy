@@ -47,7 +47,7 @@ async def get_derprogram_list(
     try:
         derp_list = await DERProgramManager.fetch_list_for_site(
             db.session,
-            scope=extract_request_scope(request).to_aggregator_request_scope(site_id),
+            scope=extract_request_scope(request).to_site_request_scope(site_id),
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
