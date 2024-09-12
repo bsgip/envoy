@@ -1,5 +1,6 @@
 import unittest.mock as mock
 from datetime import date, datetime, timezone
+from typing import Optional
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -8,6 +9,7 @@ from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
 from envoy_schema.server.schema.sep2.der import (
     DefaultDERControl,
     DERControlListResponse,
+    DERControlResponse,
     DERProgramListResponse,
     DERProgramResponse,
 )
@@ -25,10 +27,18 @@ from envoy.server.request_scope import AggregatorRequestScope, SiteRequestScope
 @mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.derp.count_does")
 @mock.patch("envoy.server.manager.derp.DERProgramMapper")
-async def test_program_fetch_list(
+@pytest.mark.parametrize(
+    "scope",
+    [
+        generate_class_instance(AggregatorRequestScope, site_id=123),
+        generate_class_instance(AggregatorRequestScope, site_id=None),
+    ],
+)
+async def test_program_fetch_list_for_scope(
     mock_DERProgramMapper: mock.MagicMock,
     mock_count_does: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
+    scope: AggregatorRequestScope,
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
@@ -41,14 +51,18 @@ async def test_program_fetch_list(
     mock_select_single_site_with_site_id.return_value = existing_site
     mock_count_does.return_value = doe_count
     mock_DERProgramMapper.doe_program_list_response = mock.Mock(return_value=mapped_list)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
     # Act
-    result = await DERProgramManager.fetch_list_for_site(mock_session, scope, default_doe)
+    result = await DERProgramManager.fetch_list_for_scope(mock_session, scope, default_doe)
 
     # Assert
     assert result is mapped_list
-    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
+
+    # We only validate site existence if we are scoped to that site specifically
+    if scope.site_id is None:
+        mock_select_single_site_with_site_id.assert_not_called()
+    else:
+        mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_count_does.assert_called_once_with(mock_session, scope.aggregator_id, scope.site_id, datetime.min)
     mock_DERProgramMapper.doe_program_list_response.assert_called_once_with(scope, doe_count, default_doe)
     assert_mock_session(mock_session)
@@ -58,7 +72,7 @@ async def test_program_fetch_list(
 @mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.derp.count_does")
 @mock.patch("envoy.server.manager.derp.DERProgramMapper")
-async def test_program_fetch_list_site_dne(
+async def test_program_fetch_list_scope_dne(
     mock_DERProgramMapper: mock.MagicMock,
     mock_count_does: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
@@ -69,11 +83,11 @@ async def test_program_fetch_list_site_dne(
 
     mock_session = create_mock_session()
     mock_select_single_site_with_site_id.return_value = None
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERProgramManager.fetch_list_for_site(mock_session, scope, default_doe)
+        await DERProgramManager.fetch_list_for_scope(mock_session, scope, default_doe)
 
     # Assert
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
@@ -86,10 +100,18 @@ async def test_program_fetch_list_site_dne(
 @mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.derp.count_does")
 @mock.patch("envoy.server.manager.derp.DERProgramMapper")
-async def test_program_fetch(
+@pytest.mark.parametrize(
+    "scope",
+    [
+        generate_class_instance(AggregatorRequestScope, site_id=123),
+        generate_class_instance(AggregatorRequestScope, site_id=None),
+    ],
+)
+async def test_program_fetch_for_scope(
     mock_DERProgramMapper: mock.MagicMock,
     mock_count_does: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
+    scope: AggregatorRequestScope,
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
@@ -97,7 +119,6 @@ async def test_program_fetch(
     existing_site = generate_class_instance(Site)
     mapped_program = generate_class_instance(DERProgramResponse)
     default_doe = generate_class_instance(DefaultDoeConfiguration)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
     mock_session = create_mock_session()
     mock_select_single_site_with_site_id.return_value = existing_site
@@ -105,11 +126,14 @@ async def test_program_fetch(
     mock_DERProgramMapper.doe_program_response = mock.Mock(return_value=mapped_program)
 
     # Act
-    result = await DERProgramManager.fetch_doe_program_for_site(mock_session, scope, default_doe)
+    result = await DERProgramManager.fetch_doe_program_for_scope(mock_session, scope, default_doe)
 
     # Assert
     assert result is mapped_program
-    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
+    if scope.site_id is None:
+        mock_select_single_site_with_site_id.assert_not_called()
+    else:
+        mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_count_does.assert_called_once_with(mock_session, scope.aggregator_id, scope.site_id, datetime.min)
     mock_DERProgramMapper.doe_program_response.assert_called_once_with(scope, doe_count, default_doe)
     assert_mock_session(mock_session)
@@ -134,7 +158,7 @@ async def test_program_fetch_site_dne(
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERProgramManager.fetch_doe_program_for_site(mock_session, scope, default_doe)
+        await DERProgramManager.fetch_doe_program_for_scope(mock_session, scope, default_doe)
 
     # Assert
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
@@ -144,10 +168,38 @@ async def test_program_fetch_site_dne(
 
 
 @pytest.mark.anyio
+@mock.patch("envoy.server.manager.derp.select_doe_for_scope")
+@mock.patch("envoy.server.manager.derp.DERControlMapper")
+@pytest.mark.parametrize("selected_doe", [generate_class_instance(DynamicOperatingEnvelope), None])
+async def test_fetch_doe_control_for_scope(
+    mock_DERControlMapper: mock.MagicMock,
+    mock_select_doe_for_scope: mock.MagicMock,
+    selected_doe: Optional[DynamicOperatingEnvelope],
+):
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    doe_id = 15115
+    mock_session = create_mock_session()
+
+    mapped_doe = generate_class_instance(DERControlResponse)
+    mock_select_doe_for_scope.return_value = selected_doe
+    mock_DERControlMapper.map_to_response = mock.Mock(return_value=mapped_doe)
+
+    result = await DERControlManager.fetch_doe_control_for_scope(mock_session, scope, doe_id)
+
+    assert_mock_session(mock_session, committed=False)
+    if selected_doe is None:
+        assert result is None
+    else:
+        assert result is mapped_doe
+        mock_DERControlMapper.map_to_response.assert_called_once_with(scope, selected_doe)
+    mock_select_doe_for_scope.assert_called_once_with(mock_session, scope.aggregator_id, scope.site_id, doe_id)
+
+
+@pytest.mark.anyio
 @mock.patch("envoy.server.manager.derp.select_does")
 @mock.patch("envoy.server.manager.derp.count_does")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
-async def test_fetch_doe_controls_for_site(
+async def test_fetch_doe_controls_for_scope(
     mock_DERControlMapper: mock.MagicMock, mock_count_does: mock.MagicMock, mock_select_does: mock.MagicMock
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
@@ -169,7 +221,7 @@ async def test_fetch_doe_controls_for_site(
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
 
     # Act
-    result = await DERControlManager.fetch_doe_controls_for_site(mock_session, scope, start, changed_after, limit)
+    result = await DERControlManager.fetch_doe_controls_for_scope(mock_session, scope, start, changed_after, limit)
 
     # Assert
     assert result is mapped_list
@@ -188,7 +240,7 @@ async def test_fetch_doe_controls_for_site(
 @mock.patch("envoy.server.manager.derp.select_does_for_day")
 @mock.patch("envoy.server.manager.derp.count_does_for_day")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
-async def test_fetch_doe_controls_for_site_for_day(
+async def test_fetch_doe_controls_for_scope_for_day(
     mock_DERControlMapper: mock.MagicMock,
     mock_count_does_for_day: mock.MagicMock,
     mock_select_does_for_day: mock.MagicMock,
@@ -213,7 +265,7 @@ async def test_fetch_doe_controls_for_site_for_day(
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
 
     # Act
-    result = await DERControlManager.fetch_doe_controls_for_site_day(
+    result = await DERControlManager.fetch_doe_controls_for_scope_day(
         mock_session, scope, day, start, changed_after, limit
     )
 
@@ -256,10 +308,10 @@ async def test_fetch_active_doe_controls_for_site(
     mock_select_does_at_timestamp.return_value = returned_does
     mock_count_does_at_timestamp.return_value = returned_count
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
 
     # Act
-    result = await DERControlManager.fetch_active_doe_controls_for_site(
+    result = await DERControlManager.fetch_active_doe_controls_for_scope(
         mock_session, scope, start, changed_after, limit
     )
 

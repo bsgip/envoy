@@ -11,6 +11,7 @@ from envoy.server.crud.doe import (
     count_does,
     count_does_at_timestamp,
     count_does_for_day,
+    select_doe_for_scope,
     select_does,
     select_does_at_timestamp,
     select_does_for_day,
@@ -23,21 +24,21 @@ def assert_doe_for_id(
     expected_site_id: Optional[int],
     expected_datetime: Optional[datetime],
     expected_tz: Optional[str],
-    actual_rate: Optional[DOE],
+    actual_doe: Optional[DOE],
     check_duration_seconds: bool = True,
 ):
     """Asserts the supplied doe matches the expected values for a doe with that id. These values are based
     purely on the data patterns in base_config.sql"""
     if expected_doe_id is None:
-        assert actual_rate is None
+        assert actual_doe is None
     else:
-        assert actual_rate
-        assert actual_rate.dynamic_operating_envelope_id == expected_doe_id
-        assert expected_site_id is None or actual_rate.site_id == expected_site_id
+        assert isinstance(actual_doe, DOE)
+        assert actual_doe.dynamic_operating_envelope_id == expected_doe_id
+        assert expected_site_id is None or actual_doe.site_id == expected_site_id
         if check_duration_seconds:
-            assert actual_rate.duration_seconds == 10 * expected_doe_id + expected_doe_id
-        assert actual_rate.import_limit_active_watts == Decimal(f"{expected_doe_id}.11")
-        assert actual_rate.export_limit_watts == Decimal(f"-{expected_doe_id}.22")
+            assert actual_doe.duration_seconds == 10 * expected_doe_id + expected_doe_id
+        assert actual_doe.import_limit_active_watts == Decimal(f"{expected_doe_id}.11")
+        assert actual_doe.export_limit_watts == Decimal(f"-{expected_doe_id}.22")
         if expected_datetime:
             tz = ZoneInfo(expected_tz)
             expected_in_local = datetime(
@@ -49,10 +50,58 @@ def assert_doe_for_id(
                 expected_datetime.second,
                 tzinfo=tz,
             )
-            assert_datetime_equal(actual_rate.start_time, expected_in_local)
-            assert actual_rate.start_time.tzname() == tz.tzname(
-                actual_rate.start_time
+            assert_datetime_equal(actual_doe.start_time, expected_in_local)
+            assert actual_doe.start_time.tzname() == tz.tzname(
+                actual_doe.start_time
             ), "Start time should be returned in local time"
+
+
+@pytest.mark.parametrize(
+    "agg_id, site_id, doe_id, expected_dt",
+    [
+        (1, 1, 5, datetime(2023, 5, 7, 1, 0, 0)),
+        (2, 3, 15, datetime(2023, 5, 7, 1, 5, 0)),
+        (1, 3, 15, None),
+        (0, 1, 1, None),
+        (2, 1, 15, None),
+        (1, 1, 99, None),
+        (1, 99, 5, None),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_doe_for_scope(
+    pg_additional_does, agg_id: int, site_id: Optional[int], doe_id: int, expected_dt: Optional[datetime]
+):
+    async with generate_async_session(pg_additional_does) as session:
+        actual = await select_doe_for_scope(session, agg_id, site_id, doe_id)
+        if expected_dt is None:
+            expected_id = None
+        else:
+            expected_id = doe_id
+        assert_doe_for_id(expected_id, site_id, expected_dt, "Australia/Brisbane", actual, check_duration_seconds=False)
+
+
+@pytest.mark.parametrize(
+    "agg_id, site_id, doe_id, expected_dt",
+    [
+        (1, 1, 1, datetime(2022, 5, 6, 8, 2)),  # Adjusted for LA time
+        (1, 1, 4, datetime(2022, 5, 7, 8, 2)),  # Adjusted for LA time
+        (99, 99, 99, None),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_doe_for_scope_la_timezone(
+    pg_la_timezone, agg_id: int, site_id: Optional[int], doe_id: int, expected_dt: Optional[datetime]
+):
+    async with generate_async_session(pg_la_timezone) as session:
+        actual = await select_doe_for_scope(session, agg_id, site_id, doe_id)
+        if expected_dt is None:
+            expected_id = None
+        else:
+            expected_id = doe_id
+        assert_doe_for_id(
+            expected_id, site_id, expected_dt, "America/Los_Angeles", actual, check_duration_seconds=False
+        )
 
 
 @pytest.mark.parametrize(
@@ -226,18 +275,44 @@ async def test_select_and_count_doe_for_day_filters_la_time(
             datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
             1,
             1,
-        ),
+        ),  # For Agg 1 / Site 1 at timestamp
+        (
+            [(10, datetime(2023, 5, 7, 1, 0, 0)), (5, datetime(2023, 5, 7, 1, 0, 0))],
+            datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
+            None,
+        ),  # For Agg 1 / ANY Site at timestamp
         (
             [(5, datetime(2023, 5, 7, 1, 0, 0)), (9, datetime(2023, 5, 7, 1, 0, 1))],
             datetime(2023, 5, 7, 1, 0, 1, tzinfo=ZoneInfo("Australia/Brisbane")),
             1,
             1,
-        ),
+        ),  # For Agg 1 / ANY Site at timestamp (that overlaps multiple DOEs)
+        (
+            [
+                (10, datetime(2023, 5, 7, 1, 0, 0)),
+                (5, datetime(2023, 5, 7, 1, 0, 0)),
+                (9, datetime(2023, 5, 7, 1, 0, 1)),
+            ],
+            datetime(2023, 5, 7, 1, 0, 1, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
+            None,
+        ),  # For Agg 1 / ANY Site at timestamp (that overlaps multiple DOEs)
         (
             [(5, datetime(2023, 5, 7, 1, 0, 0)), (9, datetime(2023, 5, 7, 1, 0, 1))],
             datetime(2023, 5, 7, 1, 3, 22, tzinfo=ZoneInfo("Australia/Brisbane")),
             1,
             1,
+        ),
+        (
+            [
+                (10, datetime(2023, 5, 7, 1, 0, 0)),
+                (5, datetime(2023, 5, 7, 1, 0, 0)),
+                (9, datetime(2023, 5, 7, 1, 0, 1)),
+            ],
+            datetime(2023, 5, 7, 1, 3, 22, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
+            None,
         ),
         (
             [(9, datetime(2023, 5, 7, 1, 0, 1)), (6, datetime(2023, 5, 7, 1, 5, 0))],
@@ -251,10 +326,39 @@ async def test_select_and_count_doe_for_day_filters_la_time(
             1,
             1,
         ),
+        (
+            [(14, datetime(2023, 5, 7, 1, 0, 0))],
+            datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            2,
+            3,
+        ),  # For agg 2
+        (
+            [],
+            datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            99,
+            1,
+        ),  # Bad Agg ID
+        (
+            [],
+            datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            2,
+            1,
+        ),  # Agg ID can't access another agg's sites
+        (
+            [],
+            datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            2,
+            0,
+        ),  # Zero site ID
+        (
+            [],
+            datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
+            99,
+        ),  # Missing site ID
         # Throw the timestamp timezone off
+        ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles")), 1, None),
         ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles")), 1, 1),
-        ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")), 1, 2),
-        ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")), 2, 1),
     ],
 )
 @pytest.mark.anyio
@@ -263,7 +367,7 @@ async def test_select_and_count_doe_for_timestamp_filters(
     expected_id_and_starts: list[tuple[int, datetime]],
     timestamp: datetime,
     agg_id: int,
-    site_id: int,
+    site_id: Optional[int],
 ):
     """Tests out the basic filters features and validates the associated count function too"""
     async with generate_async_session(pg_additional_does) as session:

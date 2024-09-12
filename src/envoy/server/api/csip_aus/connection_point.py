@@ -60,5 +60,5 @@ async def update_connectionpoint(
     if not updated:
         return Response(status_code=HTTPStatus.NOT_FOUND)
 
-    location_href = generate_href(uri.ConnectionPointUri, scope)
+    location_href = generate_href(uri.ConnectionPointUri, scope, site_id=scope.display_site_id)
     return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})

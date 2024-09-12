@@ -9,17 +9,45 @@ from envoy.server.model.doe import DynamicOperatingEnvelope as DOE
 from envoy.server.model.site import Site
 
 
+async def select_doe_for_scope(
+    session: AsyncSession,
+    aggregator_id: int,
+    site_id: Optional[int],
+    doe_id: int,
+) -> Optional[DOE]:
+    """Attempts to fetch a doe using its' DOE id, also scoping it to a particular aggregator/site
+
+    aggregator_id: The aggregator id to constrain the lookup to
+    site_id: If None - no effect otherwise the query will apply a filter on site_id using this value"""
+
+    stmt = (
+        select(DOE, Site.timezone_id)
+        .join(DOE.site)
+        .where((DOE.dynamic_operating_envelope_id == doe_id) & (Site.aggregator_id == aggregator_id))
+    )
+    if site_id is not None:
+        stmt = stmt.where(DOE.site_id == site_id)
+
+    resp = await session.execute(stmt)
+    raw = resp.one_or_none()
+    if raw is None:
+        return None
+    return localize_start_time(raw)
+
+
 async def _does_at_timestamp(
     is_counting: bool,
     session: AsyncSession,
     aggregator_id: int,
-    site_id: int,
+    site_id: Optional[int],
     timestamp: datetime,
     start: int,
     changed_after: datetime,
     limit: Optional[int],
 ) -> Union[Sequence[DOE], int]:
     """Internal utility for fetching doe's that are active for the specific timestamp
+
+    site_id: If None - no site_id filter applied, otherwise filter on site_id = Value
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
 
@@ -41,12 +69,14 @@ async def _does_at_timestamp(
             (DOE.start_time <= timestamp) &
             (DOE.start_time + (DOE.duration_seconds * one_second) > timestamp) &
             (DOE.changed_time >= changed_after) &
-            (DOE.site_id == site_id) &
             (Site.aggregator_id == aggregator_id))
         .offset(start)
         .limit(limit)
     )
     # fmt: on
+
+    if site_id is not None:
+        stmt = stmt.where(DOE.site_id == site_id)
 
     if not is_counting:
         stmt = stmt.order_by(DOE.start_time.asc(), DOE.changed_time.desc(), DOE.dynamic_operating_envelope_id.desc())
@@ -174,10 +204,12 @@ async def select_does_for_day(
 
 
 async def count_does_at_timestamp(
-    session: AsyncSession, aggregator_id: int, site_id: int, timestamp: datetime, changed_after: datetime
+    session: AsyncSession, aggregator_id: int, site_id: Optional[int], timestamp: datetime, changed_after: datetime
 ) -> int:
     """Fetches the number of DynamicOperatingEnvelope's stored that contain timestamp.
 
+    aggregator_id: The aggregator ID to filter sites/does against
+    site_id: If None, no filter on site_id otherwise filters the results to this specific site_id
     timestamp: The actual timestamp that a DOE range must contain in order to be considered
     changed_after: Only doe's with a changed_time greater than this value will be counted (0 will count everything)"""
 
@@ -189,7 +221,7 @@ async def count_does_at_timestamp(
 async def select_does_at_timestamp(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: int,
+    site_id: Optional[int],
     timestamp: datetime,
     start: int,
     changed_after: datetime,
@@ -198,7 +230,8 @@ async def select_does_at_timestamp(
     """Selects DynamicOperatingEnvelope entities (with pagination) that contain timestamp. Date will be assessed in the
     local timezone for the site
 
-    site_id: The specific site does are being requested for
+    aggregator_id: The aggregator ID to filter sites/does against
+    site_id: If None, no filter on site_id otherwise filters the results to this specific site_id
     timestamp: The actual timestamp that a DOE range must contain in order to be considered
     start: The number of matching entities to skip
     limit: The maximum number of entities to return

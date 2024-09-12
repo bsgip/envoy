@@ -379,7 +379,7 @@ class NotificationMapper:
                     "type": XSI_TYPE_DER_CONTROL_LIST,
                     "all_": len(does),
                     "results": len(does),
-                    "DERControl": [DERControlMapper.map_to_response(d) for d in does],
+                    "DERControl": [DERControlMapper.map_to_response(scope, d) for d in does],
                 },
             }
         )

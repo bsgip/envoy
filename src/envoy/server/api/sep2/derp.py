@@ -45,9 +45,9 @@ async def get_derprogram_list(
         fastapi.Response object.
     """
     try:
-        derp_list = await DERProgramManager.fetch_list_for_site(
+        derp_list = await DERProgramManager.fetch_list_for_scope(
             db.session,
-            scope=extract_request_scope(request).to_site_request_scope(site_id),
+            scope=extract_request_scope(request).to_aggregator_request_scope(site_id),
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
@@ -73,9 +73,9 @@ async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str
         raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
-        derp = await DERProgramManager.fetch_doe_program_for_site(
+        derp = await DERProgramManager.fetch_doe_program_for_scope(
             db.session,
-            scope=extract_request_scope(request).to_site_request_scope(site_id),
+            scope=extract_request_scope(request).to_aggregator_request_scope(site_id),
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
@@ -113,7 +113,7 @@ async def get_dercontrol_list(
         raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
-        derc_list = await DERControlManager.fetch_doe_controls_for_site(
+        derc_list = await DERControlManager.fetch_doe_controls_for_scope(
             db.session,
             scope=extract_request_scope(request).to_aggregator_request_scope(site_id),
             start=extract_start_from_paging_param(start),
@@ -126,6 +126,37 @@ async def get_dercontrol_list(
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
 
     return XmlResponse(derc_list)
+
+
+@router.head(uri.DERControlUri)
+@router.get(uri.DERControlUri, status_code=HTTPStatus.OK)
+async def get_der_control(request: Request, site_id: int, der_program_id: str, derc_id: int) -> Response:
+    """Responds with a single DERControlResponse with the specified ID or with 404 if it does not exist or
+    is inaccessible
+
+    Args:
+        site_id: Path parameter, the target EndDevice's internal registration number.
+        der_program_id: DERProgramID - only 'doe' is supported
+        derc_id: ID of the DERControl being looked up
+    Returns:
+        fastapi.Response object.
+    """
+    if der_program_id != DOE_PROGRAM_ID:
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
+
+    try:
+        derc = await DERControlManager.fetch_doe_control_for_scope(
+            db.session,
+            scope=extract_request_scope(request).to_aggregator_request_scope(site_id),
+            doe_id=derc_id,
+        )
+    except BadRequestError as ex:
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+
+    if derc is None:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(derc)
 
 
 @router.head(uri.ActiveDERControlListUri)
@@ -156,7 +187,7 @@ async def get_active_dercontrol_list(
         raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
-        derc_list = await DERControlManager.fetch_active_doe_controls_for_site(
+        derc_list = await DERControlManager.fetch_active_doe_controls_for_scope(
             db.session,
             scope=extract_request_scope(request).to_site_request_scope(site_id),
             start=extract_start_from_paging_param(start),
@@ -242,7 +273,7 @@ async def get_dercontrol_list_for_date(
         raise LoggedHttpException(logger, None, HTTPStatus.BAD_REQUEST, f"Expected YYYY-MM-DD date but got: {date}")
 
     try:
-        derc_list = await DERControlManager.fetch_doe_controls_for_site_day(
+        derc_list = await DERControlManager.fetch_doe_controls_for_scope_day(
             db.session,
             scope=extract_request_scope(request).to_site_request_scope(site_id),
             day=day,

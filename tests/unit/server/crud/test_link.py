@@ -176,11 +176,11 @@ async def test_get_resource_count(link_name: str, resource_count: int):
     "link_name, site_resource, expected_count",
     [("EndDeviceListLink", generate_class_instance(Site), 1), ("EndDeviceListLink", None, 0)],
 )
-async def test_get_resource_count_site_scope(link_name: str, site_resource: Optional[Site], resource_count: int):
+async def test_get_resource_count_site_scope(link_name: str, site_resource: Optional[Site], expected_count: int):
     with mock.patch("envoy.server.crud.end_device.select_single_site_with_site_id", return_value=site_resource):
         assert (
             await link.get_resource_count(session=mock.Mock(), list_link_name=link_name, aggregator_id=1, site_id=2)
-            == resource_count
+            == expected_count
         )
 
 

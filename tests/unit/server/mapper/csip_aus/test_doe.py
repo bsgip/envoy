@@ -22,24 +22,29 @@ def test_map_derc_to_response():
     doe_opt: DynamicOperatingEnvelope = generate_class_instance(
         DynamicOperatingEnvelope, seed=202, optional_is_none=True
     )
+    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/foo/bar")
 
-    result_all_set = DERControlMapper.map_to_response(doe)
+    result_all_set = DERControlMapper.map_to_response(scope, doe)
     assert result_all_set is not None
     assert isinstance(result_all_set, DERControlResponse)
     assert result_all_set.interval.start == doe.start_time.timestamp()
     assert result_all_set.interval.duration == doe.duration_seconds
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
+    assert result_all_set.href.startswith(scope.href_prefix)
+    assert f"/{scope.display_site_id}" in result_all_set.href
     assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * DOE_DECIMAL_POWER)
     assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * DOE_DECIMAL_POWER)
 
-    result_optional = DERControlMapper.map_to_response(doe_opt)
+    result_optional = DERControlMapper.map_to_response(scope, doe_opt)
     assert result_optional is not None
     assert isinstance(result_optional, DERControlResponse)
     assert result_optional.interval.start == doe_opt.start_time.timestamp()
     assert result_optional.interval.duration == doe_opt.duration_seconds
     assert isinstance(result_optional.DERControlBase_, DERControlBase)
+    assert result_optional.href.startswith(scope.href_prefix)
+    assert f"/{scope.display_site_id}" in result_optional.href
     assert result_optional.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_optional.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_optional.DERControlBase_.opModImpLimW.value == int(
@@ -209,5 +214,5 @@ def test_mrid_uniqueness():
     doe.dynamic_operating_envelope_id = site_id  # intentionally the same as site_id
 
     program = DERProgramMapper.doe_program_response(scope, 999, None)
-    control = DERControlMapper.map_to_response(doe)
+    control = DERControlMapper.map_to_response(scope, doe)
     assert program.mRID != control.mRID

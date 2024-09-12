@@ -20,7 +20,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
-from envoy.server.request_scope import AggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope
 
 DOE_PROGRAM_MRID_PREFIX: int = int("D0E", 16)
 DOE_PROGRAM_ID: str = "doe"
@@ -44,10 +44,17 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def map_to_response(doe: DynamicOperatingEnvelope) -> DERControlResponse:
+    def map_to_response(scope: AggregatorRequestScope, doe: DynamicOperatingEnvelope) -> DERControlResponse:
         """Creates a csip aus compliant DERControlResponse from the specific doe"""
         return DERControlResponse.model_validate(
             {
+                "href": generate_href(
+                    uri.DERControlUri,
+                    scope,
+                    site_id=scope.display_site_id,
+                    der_program_id=DOE_PROGRAM_ID,
+                    derc_id=doe.dynamic_operating_envelope_id,
+                ),
                 "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, doe.site_id, doe.dynamic_operating_envelope_id),
                 "version": 1,
                 "description": doe.start_time.isoformat(),
@@ -135,7 +142,7 @@ class DERControlMapper:
                 "all_": total_does,
                 "results": len(does),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
-                "DERControl": [DERControlMapper.map_to_response(site) for site in does],
+                "DERControl": [DERControlMapper.map_to_response(request_scope, site) for site in does],
             }
         )
 
@@ -155,7 +162,7 @@ class DERProgramMapper:
 
     @staticmethod
     def doe_program_response(
-        rq_scope: SiteRequestScope, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
+        rq_scope: AggregatorRequestScope, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
     ) -> DERProgramResponse:
         """Returns a static Dynamic Operating Envelope program response"""
 
@@ -192,7 +199,7 @@ class DERProgramMapper:
 
     @staticmethod
     def doe_program_list_response(
-        rq_scope: SiteRequestScope, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
+        rq_scope: AggregatorRequestScope, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
     ) -> DERProgramListResponse:
         """Returns a fixed list of just the DOE Program"""
         return DERProgramListResponse.model_validate(

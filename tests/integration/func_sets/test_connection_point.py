@@ -38,7 +38,7 @@ def connection_point_uri_format():
             0,
             None,
             AGG_1_VALID_CERT,
-            HTTPStatus.NOT_FOUND,
+            HTTPStatus.FORBIDDEN,
         ),  # Virtual EndDevice doesn't exist for the purpose of creating a CP
     ],
 )
@@ -149,7 +149,7 @@ async def test_connectionpoint_update_bad_xml(client: AsyncClient, connection_po
 
 
 @pytest.mark.anyio
-async def test_connectionpoint_update_aggregator_edev_returns_404(
+async def test_connectionpoint_update_aggregator_edev_returns_403(
     client: AsyncClient, connection_point_uri_format: str
 ):
     """Tests that an aggregator can't update the connection point of an aggregator end device"""
@@ -159,4 +159,4 @@ async def test_connectionpoint_update_aggregator_edev_returns_404(
     response = await client.post(
         url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
     )
-    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.status_code == HTTPStatus.FORBIDDEN

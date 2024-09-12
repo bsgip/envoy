@@ -345,7 +345,7 @@ async def get_derprogram_list(
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail=f"No DER with ID {der_id}")
 
     try:
-        derp_list = await DERProgramManager.fetch_list_for_site(
+        derp_list = await DERProgramManager.fetch_list_for_scope(
             db.session,
             scope=extract_request_scope(request).to_site_request_scope(site_id),
             default_doe=extract_default_doe(request),

@@ -15,7 +15,7 @@ from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManag
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.site import Site
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_scope import AggregatorRequestScope, RawRequestScope, RequestStateParameters
+from envoy.server.request_scope import AggregatorRequestScope, RawRequestScope, SiteRequestScope
 
 
 @pytest.mark.anyio
@@ -140,21 +140,19 @@ async def test_end_device_manager_fetch_missing_device(
 
     # Arrange
     mock_session = create_mock_session()
-    site_id = 1
-    aggregator_id = 2
-    rsp_params = RequestStateParameters(aggregator_id, None, None)
+    scope = generate_class_instance(AggregatorRequestScope)
 
     mock_select_single_site_with_site_id.return_value = None  # database entity is missing / bad ID lookup
     mock_EndDeviceMapper.map_to_response = mock.Mock()
 
     # Act
-    result = await EndDeviceManager.fetch_enddevice_for_scope(mock_session, site_id, rsp_params)
+    result = await EndDeviceManager.fetch_enddevice_for_scope(mock_session, scope)
 
     # Assert
     assert result is None
     assert_mock_session(mock_session, committed=False)
     mock_select_single_site_with_site_id.assert_called_once_with(
-        session=mock_session, site_id=site_id, aggregator_id=aggregator_id
+        session=mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
     )
     mock_EndDeviceMapper.map_to_response.assert_not_called()  # Don't map if there's nothing in the DB
 
@@ -644,24 +642,22 @@ async def test_end_device_manager_fetch_existing_connection_point(
 
     # Arrange
     mock_session = create_mock_session()
-    site_id = 1
-    aggregator_id = 2
     raw_site: Site = generate_class_instance(Site)
     mapped_cp: ConnectionPointResponse = generate_class_instance(ConnectionPointResponse)
-    rsp_params = RequestStateParameters(aggregator_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
     # Just do a simple passthrough
     mock_select_single_site_with_site_id.return_value = raw_site
     mock_ConnectionPointMapper.map_to_response = mock.Mock(return_value=mapped_cp)
 
     # Act
-    result = await EndDeviceManager.fetch_connection_point_for_site(mock_session, site_id, rsp_params)
+    result = await EndDeviceManager.fetch_connection_point_for_site(mock_session, scope)
 
     # Assert
     assert result is mapped_cp
     assert_mock_session(mock_session, committed=False)
     mock_select_single_site_with_site_id.assert_called_once_with(
-        session=mock_session, site_id=site_id, aggregator_id=aggregator_id
+        session=mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
     )
     mock_ConnectionPointMapper.map_to_response.assert_called_once_with(raw_site)
 
@@ -677,20 +673,18 @@ async def test_end_device_manager_fetch_missing_connection_point(
 
     # Arrange
     mock_session = create_mock_session()
-    site_id = 1
-    aggregator_id = 2
-    rsp_params = RequestStateParameters(aggregator_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
     mock_select_single_site_with_site_id.return_value = None  # database entity is missing / bad ID lookup
     mock_ConnectionPointMapper.map_to_response = mock.Mock()
 
     # Act
-    result = await EndDeviceManager.fetch_connection_point_for_site(mock_session, site_id, rsp_params)
+    result = await EndDeviceManager.fetch_connection_point_for_site(mock_session, scope)
 
     # Assert
     assert result is None
     assert_mock_session(mock_session, committed=False)
     mock_select_single_site_with_site_id.assert_called_once_with(
-        session=mock_session, site_id=site_id, aggregator_id=aggregator_id
+        session=mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
     )
     mock_ConnectionPointMapper.map_to_response.assert_not_called()  # Don't map if there's nothing in the DB
