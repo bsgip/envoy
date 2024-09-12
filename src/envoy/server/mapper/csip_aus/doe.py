@@ -15,6 +15,7 @@ from envoy_schema.server.schema.sep2.der import (
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.pricing import PrimacyType
 from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
+from envoy_schema.server.schema.sep2.event import EventStatus
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
@@ -58,6 +59,13 @@ class DERControlMapper:
                     }
                 ),
                 "creationTime": int(doe.changed_time.timestamp()),
+                "EventStatus_": EventStatus.model_validate(
+                    {
+                        "currentStatus": 0,  # Set to 'scheduled'
+                        "dateTime": int(doe.changed_time.timestamp()),  # Set to when the doe is was created
+                        "potentiallySuperseded": False,  # No idea where to get this info!
+                    }
+                ),
                 "DERControlBase_": DERControlBase.model_validate(
                     {
                         "opModImpLimW": DERControlMapper.map_to_active_power(doe.import_limit_active_watts),

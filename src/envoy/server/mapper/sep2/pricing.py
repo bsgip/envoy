@@ -28,7 +28,7 @@ from envoy_schema.server.schema.sep2.types import (
     TOUType,
     UomType,
 )
-
+from envoy_schema.server.schema.sep2.event import EventStatus
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
@@ -406,6 +406,13 @@ class TimeTariffIntervalMapper:
                     "start": int(rate.start_time.timestamp()),
                     "duration": rate.duration_seconds,
                 },
+                "EventStatus_": EventStatus.model_validate(
+                    {
+                        "currentStatus": 0,  # Set to 'scheduled'
+                        "dateTime": int(rate.changed_time.timestamp()),  # Set to when the doe is was created
+                        "potentiallySuperseded": False,  # No idea where to get this info!
+                    }
+                ),
                 "ConsumptionTariffIntervalListLink": ListLink(href=list_href, all_=1),  # single rate
             }
         )
