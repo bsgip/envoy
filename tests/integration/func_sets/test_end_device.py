@@ -5,15 +5,26 @@ from http import HTTPStatus
 import pytest
 from assertical.asserts.time import assert_nowish
 from assertical.fake.generator import generate_class_instance
+from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from httpx import AsyncClient
 
+from envoy.admin.crud.site import count_all_sites
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as AGG_1_LFDI_FROM_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_SFDI as AGG_1_SFDI_FROM_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
+from tests.data.certificates.certificate7 import TEST_CERTIFICATE_LFDI as REGISTERED_CERT_LFDI
+from tests.data.certificates.certificate7 import TEST_CERTIFICATE_PEM as REGISTERED_CERT
+from tests.data.certificates.certificate7 import TEST_CERTIFICATE_SFDI as REGISTERED_CERT_SFDI
+from tests.data.certificates.certificate8 import TEST_CERTIFICATE_LFDI as UNREGISTERED_CERT_LFDI
+from tests.data.certificates.certificate8 import TEST_CERTIFICATE_PEM as UNREGISTERED_CERT
+from tests.data.certificates.certificate8 import TEST_CERTIFICATE_SFDI as UNREGISTERED_CERT_SFDI
+from tests.data.certificates.certificate9 import TEST_CERTIFICATE_LFDI as OTHER_CERT_LFDI
+from tests.data.certificates.certificate9 import TEST_CERTIFICATE_PEM as OTHER_CERT
+from tests.data.certificates.certificate9 import TEST_CERTIFICATE_SFDI as OTHER_CERT_SFDI
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import (
@@ -418,3 +429,94 @@ async def test_update_end_device_bad_device_category(
     assert len(response_body) > 0
     parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
     assert parsed_response.deviceCategory == "0"  # Default value from the DB base config
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "unregistered_cert_header, lfdi, sfdi, expected",
+    [
+        (UNREGISTERED_CERT.decode(), UNREGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI), HTTPStatus.CREATED),
+        (UNREGISTERED_CERT_LFDI, UNREGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI), HTTPStatus.CREATED),
+        # Trying bad combos of lfdi/sfdi
+        (UNREGISTERED_CERT_LFDI, REGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),
+        (UNREGISTERED_CERT_LFDI, UNREGISTERED_CERT_LFDI, int(REGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),
+        (UNREGISTERED_CERT_LFDI, REGISTERED_CERT_LFDI, int(REGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),
+        (UNREGISTERED_CERT_LFDI, UNREGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),
+        (UNREGISTERED_CERT_LFDI, OTHER_CERT_LFDI, int(OTHER_CERT_SFDI), HTTPStatus.FORBIDDEN),
+    ],
+)
+async def test_create_end_device_device_registration(
+    edev_base_uri,
+    client: AsyncClient,
+    pg_base_config,
+    unregistered_cert_header: str,
+    lfdi: str,
+    sfdi: int,
+    expected: HTTPStatus,
+):
+    """Can a certificate register itself as a new end device"""
+
+    async with generate_async_session(pg_base_config) as session:
+        site_count_before = await count_all_sites(session, None, None)
+
+    insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    insert_request.postRate = 123
+    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
+    insert_request.lFDI = lfdi
+    insert_request.sFDI = int(sfdi)
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(unregistered_cert_header)},
+        content=EndDeviceRequest.to_xml(insert_request),
+    )
+    assert_response_header(response, expected, expected_content_type=None)
+
+    if expected == HTTPStatus.CREATED:
+        assert len(read_response_body_string(response)) == 0
+        expected_site_count = site_count_before + 1
+    else:
+        assert_error_response(response)
+        expected_site_count = site_count_before
+
+    async with generate_async_session(pg_base_config) as session:
+        assert expected_site_count == await count_all_sites(session, None, None)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "unregistered_cert_header, lfdi, sfdi",
+    [
+        (UNREGISTERED_CERT.decode(), UNREGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI)),
+        (UNREGISTERED_CERT_LFDI, UNREGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI)),
+    ],
+)
+@pytest.mark.disable_device_registration
+async def test_create_end_device_device_registration_disabled(
+    edev_base_uri,
+    client: AsyncClient,
+    pg_base_config,
+    unregistered_cert_header: str,
+    lfdi: str,
+    sfdi: int,
+):
+    """Do attempts for a certificate to register itself as a new end device fail if the device registration is
+    disabled"""
+
+    async with generate_async_session(pg_base_config) as session:
+        site_count_before = await count_all_sites(session, None, None)
+
+    insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    insert_request.postRate = 123
+    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
+    insert_request.lFDI = lfdi
+    insert_request.sFDI = int(sfdi)
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(unregistered_cert_header)},
+        content=EndDeviceRequest.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.FORBIDDEN, expected_content_type=None)
+    assert_error_response(response)
+
+    async with generate_async_session(pg_base_config) as session:
+        assert site_count_before == await count_all_sites(session, None, None)
