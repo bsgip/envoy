@@ -1,17 +1,21 @@
 import base64
 import hashlib
+import logging
 import urllib.parse
 from http import HTTPStatus
 from typing import Any, Optional
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from fastapi_async_sqlalchemy import db
 
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.cache import AsyncCache, ExpiringValue
 from envoy.server.crud.auth import ClientIdDetails, select_all_client_id_details
 from envoy.server.crud.common import convert_lfdi_to_sfdi
 from envoy.server.crud.end_device import select_single_site_with_sfdi
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
+
+logger = logging.getLogger(__name__)
 
 
 async def update_client_id_details_cache(_: Any) -> dict[str, ExpiringValue[ClientIdDetails]]:
@@ -50,7 +54,9 @@ class LFDIAuthDepends:
         # Try extracting the lfdi from either the PEM if we receive it directly or the fingerprint if we get that
         cert_header_val = request.headers.get(self.cert_header, None)
         if not cert_header_val:
-            raise HTTPException(
+            raise LoggedHttpException(
+                logger,
+                exc=None,
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail="Missing certificate PEM header/fingerprint from gateway.",
             )
@@ -60,7 +66,12 @@ class LFDIAuthDepends:
         else:
             lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_header_val)
 
-        sfdi = convert_lfdi_to_sfdi(lfdi)
+        try:
+            sfdi = convert_lfdi_to_sfdi(lfdi)
+        except Exception as exc:
+            raise LoggedHttpException(
+                logger, exc=exc, status_code=HTTPStatus.BAD_REQUEST, detail="Unrecognised client certificate."
+            )
 
         # get client id details from cache, will return None if expired or never existed.
         client_id = await self.cache.get_value(None, lfdi)
@@ -79,7 +90,9 @@ class LFDIAuthDepends:
                         site_id = site.site_id
             else:
                 # Reject the attempted device cert request
-                raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised client certificate.")
+                raise LoggedHttpException(
+                    logger, exc=None, status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised client certificate."
+                )
 
         request.state.lfdi = lfdi
         request.state.sfdi = sfdi

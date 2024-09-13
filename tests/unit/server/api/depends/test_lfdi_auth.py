@@ -62,6 +62,40 @@ async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response
 @mock.patch("envoy.server.api.depends.lfdi_auth.select_single_site_with_sfdi")
 @mock.patch("envoy.server.api.depends.lfdi_auth.select_all_client_id_details")
 @mock.patch("envoy.server.api.depends.lfdi_auth.db")
+@pytest.mark.parametrize(
+    "bad_cert_header",
+    ["test-abc123", TEST_CERTIFICATE_PEM_1.decode("utf-8")[4:], TEST_CERTIFICATE_LFDI_1[2:], TEST_CERTIFICATE_SFDI_1],
+)
+async def test_lfdiauthdepends_malformed_cert_fails_with_bad_request(
+    mock_db: mock.MagicMock,
+    mock_select_all_client_id_details: mock.MagicMock,
+    mock_select_single_site_with_sfdi: mock.MagicMock,
+    bad_cert_header: str,
+):
+    # Arrange
+    req = Request(
+        {
+            "type": "http",
+            "headers": Headers({cert_header: bad_cert_header}).raw,
+        }
+    )
+
+    lfdi_dep = LFDIAuthDepends(settings.cert_header, allow_device_registration=True)
+
+    # Act
+    with pytest.raises(HTTPException) as exc:
+        await lfdi_dep(req)
+
+    # Assert
+    assert exc.value.status_code == 400
+    mock_select_all_client_id_details.assert_not_called()
+    mock_select_single_site_with_sfdi.assert_not_called()
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.depends.lfdi_auth.select_single_site_with_sfdi")
+@mock.patch("envoy.server.api.depends.lfdi_auth.select_all_client_id_details")
+@mock.patch("envoy.server.api.depends.lfdi_auth.db")
 async def test_lfdiauthdepends_unregistered_cert_no_device_registration(
     mock_db: mock.MagicMock,
     mock_select_all_client_id_details: mock.MagicMock,

@@ -119,7 +119,7 @@ async def run_basic_unauthorised_tests(
     response = await client.request(
         method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: "abc-123"})
     )
-    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_response_header(response, HTTPStatus.BAD_REQUEST)
     assert_error_response(response)
 
 

@@ -42,6 +42,8 @@ Typically settings are set by setting an environment variable with the same name
 | `cert_header` | `string` | The name of the HTTP header that API endpoints will look for to validate a client. This should be set by the TLS termination point and can contain either a full client certificate in PEM format or the sha256 fingerprint of that certificate. defaults to "x-forwarded-client-cert" |
 | `default_doe_import_active_watts` | `float` | If set - the DefaultDERControl endpoint will be activated with the DOE extensions for import being set to this value (requires `default_doe_export_active_watts`)|
 | `default_doe_export_active_watts` | `float` | If set - the DefaultDERControl endpoint will be activated with the DOE extensions for export being set to this value (requires `default_doe_import_active_watts`)|
+| `allow_device_registration` | `bool` | If True - the registration workflows that enable unrecognised certs to generate/manage a single EndDevice (tied to that cert) will be enabled. Otherwise any cert will need to be registered out of band and assigned to an aggregator before connections can be made. Defaults to False|
+
 
 **Additional Admin Server Settings (admin)**
 

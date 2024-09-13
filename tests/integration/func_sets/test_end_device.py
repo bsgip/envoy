@@ -1,5 +1,5 @@
 import urllib.parse
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from http import HTTPStatus
 
 import pytest
@@ -9,7 +9,6 @@ from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, En
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from httpx import AsyncClient
 
-from envoy.server.manager.time import utc_now
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as AGG_1_LFDI_FROM_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_SFDI as AGG_1_SFDI_FROM_VALID_CERT
@@ -98,10 +97,20 @@ async def test_get_end_device_list_by_aggregator(
         (build_paging_params(limit=2, start=1), [], 1, AGG_3_VALID_CERT),
         (build_paging_params(), [633600933412], 1, AGG_3_VALID_CERT),
         (build_paging_params(start=1), [], 1, AGG_3_VALID_CERT),
-        # Request sites changed only a short while ago
+        # Request sites changed after any change_time values in the DB
         # Should only return the virtual site associated with the aggregator
-        (build_paging_params(changed_after=utc_now() - timedelta(minutes=1)), [357827241281], 1, AGG_1_VALID_CERT),
-        (build_paging_params(changed_after=utc_now() - timedelta(seconds=1)), [372641169614], 1, AGG_2_VALID_CERT),
+        (
+            build_paging_params(changed_after=datetime(2024, 9, 11, 0, 0, 0, tzinfo=timezone.utc)),
+            [357827241281],
+            1,
+            AGG_1_VALID_CERT,
+        ),
+        (
+            build_paging_params(changed_after=datetime(2024, 9, 11, 0, 0, 0, tzinfo=timezone.utc)),
+            [372641169614],
+            1,
+            AGG_2_VALID_CERT,
+        ),
     ],
 )
 @pytest.mark.anyio
