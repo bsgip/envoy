@@ -284,6 +284,7 @@ async def test_roundtrip_upsert_der_capability(
     capability_uri = uri.DERCapabilityUri.format(site_id=site_id, der_id=der_id)
     capability: DERCapability = generate_class_instance(DERCapability, seed=3001, generate_relationships=True)
     capability.modesSupported = "0"
+    capability.doeModesSupported = "3"
     response = await client.put(capability_uri, headers=valid_headers, content=capability.to_xml(skip_empty=True))
     if expected_not_found:
         assert_response_header(response, HTTPStatus.NOT_FOUND)
@@ -334,6 +335,7 @@ async def test_roundtrip_upsert_der_setting(
     setting_uri = uri.DERSettingsUri.format(site_id=site_id, der_id=der_id)
     settings: DERSettings = generate_class_instance(DERSettings, seed=4001, generate_relationships=True)
     settings.modesEnabled = "0"
+    settings.doeModesEnabled = "4"
     response = await client.put(setting_uri, headers=valid_headers, content=settings.to_xml(skip_empty=True))
     if expected_not_found:
         assert_response_header(response, HTTPStatus.NOT_FOUND)

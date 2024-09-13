@@ -70,10 +70,10 @@ class SubscriptionCondition(Base):
 
     attribute: Mapped[ConditionAttributeIdentifier] = mapped_column(INTEGER)
     lower_threshold: Mapped[int] = mapped_column(
-        INTEGER, nullable=True
+        INTEGER, nullable=False
     )  # If set - min of attribute value required to fire notification
     upper_threshold: Mapped[int] = mapped_column(
-        INTEGER, nullable=True
+        INTEGER, nullable=False
     )  # If set - max of attribute value required to fire notification
 
     subscription: Mapped["Subscription"] = relationship(back_populates="conditions", lazy="raise")

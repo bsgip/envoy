@@ -502,6 +502,7 @@ async def test_der_capability_subscription(
     # create an updated capability
     updated_cap: DERCapability = generate_class_instance(DERCapability, generate_relationships=True)
     updated_cap.modesSupported = "3"
+    updated_cap.doeModesSupported = "2"
     response = await client.put(
         uris.DERCapabilityUri.format(site_id=1, der_id=PUBLIC_SITE_DER_ID),
         content=updated_cap.to_xml(skip_empty=True),

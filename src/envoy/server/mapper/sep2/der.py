@@ -399,7 +399,7 @@ class DERCapabilityMapper:
         m = SiteDERRating(
             modes_supported=DERControlType(int(der_cap.modesSupported, 16)),
             der_type=der_cap.type_,
-            doe_modes_supported=DOESupportedMode(int(der_cap.doeModesSupported, 4)),
+            doe_modes_supported=DOESupportedMode(int(der_cap.doeModesSupported, 16)),
             changed_time=changed_time,
             normal_category=der_cap.rtgNormalCategory,
             abnormal_category=der_cap.rtgAbnormalCategory,
@@ -504,7 +504,7 @@ class DERSettingMapper:
         if der_setting.modesEnabled:
             modes_enabled = DERControlType(int(der_setting.modesEnabled, 16))
         if der_setting.doeModesEnabled:
-            doe_modes_enabled = DERControlType(int(der_setting.doeModesEnabled, 8))
+            doe_modes_enabled = DERControlType(int(der_setting.doeModesEnabled, 16))
 
         m = SiteDERSetting(
             modes_enabled=modes_enabled,
