@@ -62,8 +62,8 @@ class DERControlMapper:
                 "EventStatus_": EventStatus.model_validate(
                     {
                         "currentStatus": 0,  # Set to 'scheduled'
-                        "dateTime": int(doe.changed_time.timestamp()),  # Set to when the doe is was created
-                        "potentiallySuperseded": False,  # No idea where to get this info!
+                        "dateTime": int(doe.changed_time.timestamp()),  # Set to when the doe is created
+                        "potentiallySuperseded": False,
                     }
                 ),
                 "DERControlBase_": DERControlBase.model_validate(
