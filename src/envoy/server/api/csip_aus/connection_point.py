@@ -56,7 +56,9 @@ async def update_connectionpoint(
 
     """
     rs_params = extract_request_params(request)
-    updated = await EndDeviceManager.update_nmi_for_site(db.session, rs_params, site_id, payload.id)
+    updated = await EndDeviceManager.update_nmi_for_site(
+        db.session, rs_params, site_id, payload.id if payload.id else payload.id_v11  # Support for legacy csip
+    )
     if not updated:
         return Response(status_code=HTTPStatus.NOT_FOUND)
 
