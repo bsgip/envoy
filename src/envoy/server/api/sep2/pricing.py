@@ -10,7 +10,7 @@ from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
-    extract_request_scope,
+    extract_request_claims,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import XmlResponse
@@ -41,7 +41,7 @@ async def get_pricingreadingtype(request: Request, reading_type: PricingReadingT
         fastapi.Response object.
     """
     try:
-        return XmlResponse(PricingReadingTypeMapper.create_reading_type(extract_request_scope(request), reading_type))
+        return XmlResponse(PricingReadingTypeMapper.create_reading_type(extract_request_claims(request), reading_type))
     except BadRequestError:
         raise LoggedHttpException(
             logger, None, status_code=HTTPStatus.BAD_REQUEST, detail=f"Unsupported reading_type {reading_type}"
@@ -72,7 +72,7 @@ async def get_tariffprofilelist_nositescope(
     try:
         tp_list = await TariffProfileManager.fetch_tariff_profile_list_no_site(
             db.session,
-            scope=extract_request_scope(request),
+            scope=extract_request_claims(request),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -108,7 +108,7 @@ async def get_tariffprofilelist(
     try:
         tp_list = await TariffProfileManager.fetch_tariff_profile_list(
             db.session,
-            scope=extract_request_scope(request).to_site_request_scope(site_id),
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -136,7 +136,7 @@ async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) 
     """
     try:
         tp = await TariffProfileManager.fetch_tariff_profile_no_site(
-            db.session, extract_request_scope(request), tariff_id
+            db.session, extract_request_claims(request), tariff_id
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -174,7 +174,7 @@ async def get_ratecomponentlist_nositescope(
     # return an empty list - clients will only discover this endpoint by querying for tariff profiles
     # directly. Tariff profiles need to be discovered via function set assignments and from there
     # they will directed to the appropriate endpoint describing site scoped rates
-    href = generate_href(request.url.path, extract_request_scope(request))
+    href = generate_href(request.url.path, extract_request_claims(request))
     return XmlResponse(RateComponentListResponse.model_validate({"all_": 0, "results": 0, "href": href}))
 
 
@@ -194,7 +194,7 @@ async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request
     """
     try:
         tp = await TariffProfileManager.fetch_tariff_profile(
-            db.session, extract_request_scope(request).to_site_request_scope(site_id), tariff_id
+            db.session, extract_request_claims(request).to_site_request_scope(site_id), tariff_id
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -232,7 +232,7 @@ async def get_ratecomponentlist(
     try:
         rc_list = await RateComponentManager.fetch_rate_component_list(
             db.session,
-            scope=extract_request_scope(request).to_site_request_scope(site_id),
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
@@ -266,7 +266,7 @@ async def get_singleratecomponent(
     try:
         rc = await RateComponentManager.fetch_rate_component(
             db.session,
-            scope=extract_request_scope(request).to_site_request_scope(site_id),
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
@@ -311,7 +311,7 @@ async def get_timetariffintervallist(
     try:
         tti_list = await TimeTariffIntervalManager.fetch_time_tariff_interval_list(
             db.session,
-            scope=extract_request_scope(request).to_site_request_scope(site_id),
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
@@ -353,7 +353,7 @@ async def get_singletimetariffinterval(
     try:
         tti = await TimeTariffIntervalManager.fetch_time_tariff_interval(
             db.session,
-            scope=extract_request_scope(request).to_site_request_scope(site_id),
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
             rate_component_id=rate_component_id,
             time_tariff_interval=tti_id,
@@ -406,7 +406,7 @@ async def get_consumptiontariffintervallist(
     try:
         cti_list = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(
             db.session,
-            scope=extract_request_scope(request).to_site_request_scope(site_id),
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,
@@ -454,7 +454,7 @@ async def get_singleconsumptiontariffinterval(
     try:
         cti = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval(
             db.session,
-            scope=extract_request_scope(request).to_site_request_scope(site_id),
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
             rate_component_id=rate_component_id,
             pricing_type=pricing_reading,

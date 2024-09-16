@@ -1,6 +1,7 @@
 import urllib.parse
 from datetime import datetime, timezone
 from http import HTTPStatus
+from typing import Optional
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -9,13 +10,19 @@ from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from httpx import AsyncClient
+from sqlalchemy import select
 
 from envoy.admin.crud.site import count_all_sites
+from envoy.server.model.site import Site
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as AGG_1_LFDI_FROM_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_SFDI as AGG_1_SFDI_FROM_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
+from tests.data.certificates.certificate4 import TEST_CERTIFICATE_SFDI as AGG_2_SFDI_FROM_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
+from tests.data.certificates.certificate5 import TEST_CERTIFICATE_SFDI as AGG_3_SFDI_FROM_VALID_CERT
+from tests.data.certificates.certificate6 import TEST_CERTIFICATE_LFDI as OTHER_REGISTERED_CERT_LFDI
+from tests.data.certificates.certificate6 import TEST_CERTIFICATE_SFDI as OTHER_REGISTERED_CERT_SFDI
 from tests.data.certificates.certificate7 import TEST_CERTIFICATE_LFDI as REGISTERED_CERT_LFDI
 from tests.data.certificates.certificate7 import TEST_CERTIFICATE_PEM as REGISTERED_CERT
 from tests.data.certificates.certificate7 import TEST_CERTIFICATE_SFDI as REGISTERED_CERT_SFDI
@@ -23,7 +30,6 @@ from tests.data.certificates.certificate8 import TEST_CERTIFICATE_LFDI as UNREGI
 from tests.data.certificates.certificate8 import TEST_CERTIFICATE_PEM as UNREGISTERED_CERT
 from tests.data.certificates.certificate8 import TEST_CERTIFICATE_SFDI as UNREGISTERED_CERT_SFDI
 from tests.data.certificates.certificate9 import TEST_CERTIFICATE_LFDI as OTHER_CERT_LFDI
-from tests.data.certificates.certificate9 import TEST_CERTIFICATE_PEM as OTHER_CERT
 from tests.data.certificates.certificate9 import TEST_CERTIFICATE_SFDI as OTHER_CERT_SFDI
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
@@ -50,9 +56,11 @@ def edev_fetch_uri_format():
 @pytest.mark.parametrize(
     "site_sfdis,cert",
     [
-        ([357827241281, 4444, 2222, 1111], AGG_1_VALID_CERT),
-        ([372641169614, 3333], AGG_2_VALID_CERT),
-        ([633600933412], AGG_3_VALID_CERT),
+        ([int(AGG_1_SFDI_FROM_VALID_CERT), 4444, 2222, 1111], AGG_1_VALID_CERT),
+        ([int(AGG_2_SFDI_FROM_VALID_CERT), 3333], AGG_2_VALID_CERT),
+        ([int(AGG_3_SFDI_FROM_VALID_CERT)], AGG_3_VALID_CERT),
+        ([int(REGISTERED_CERT_SFDI)], REGISTERED_CERT_LFDI),
+        ([], UNREGISTERED_CERT_LFDI),
     ],
 )
 @pytest.mark.anyio
@@ -68,7 +76,7 @@ async def test_get_end_device_list_by_aggregator(
     body = read_response_body_string(response)
     assert len(body) > 0
     parsed_response: EndDeviceListResponse = EndDeviceListResponse.from_xml(body)
-    assert parsed_response.all_ == len(site_sfdis), f"received body:\n{body}"  # -1 for virtual site
+    assert parsed_response.all_ == len(site_sfdis), f"received body:\n{body}"
     assert parsed_response.results == len(site_sfdis), f"received body:\n{body}"
 
     # According to Sep2: "results" will always be less than or equal to “all.”
@@ -83,8 +91,8 @@ async def test_get_end_device_list_by_aggregator(
 @pytest.mark.parametrize(
     "query_string, site_sfdis, expected_total, cert",
     [
-        (build_paging_params(limit=1), [357827241281], 4, AGG_1_VALID_CERT),
-        (build_paging_params(limit=2), [357827241281, 4444], 4, AGG_1_VALID_CERT),
+        (build_paging_params(limit=1), [int(AGG_1_SFDI_FROM_VALID_CERT)], 4, AGG_1_VALID_CERT),
+        (build_paging_params(limit=2), [int(AGG_1_SFDI_FROM_VALID_CERT), 4444], 4, AGG_1_VALID_CERT),
         (build_paging_params(limit=2, start=1), [4444, 2222], 4, AGG_1_VALID_CERT),
         (build_paging_params(limit=1, start=1), [4444], 4, AGG_1_VALID_CERT),
         (build_paging_params(limit=1, start=2), [2222], 4, AGG_1_VALID_CERT),
@@ -94,7 +102,7 @@ async def test_get_end_device_list_by_aggregator(
         # This will filter down to Site 2,3,4
         (
             build_paging_params(limit=5, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc)),
-            [357827241281, 4444, 2222],
+            [int(AGG_1_SFDI_FROM_VALID_CERT), 4444, 2222],
             3,
             AGG_1_VALID_CERT,
         ),
@@ -112,7 +120,7 @@ async def test_get_end_device_list_by_aggregator(
         # Should only return the virtual site associated with the aggregator
         (
             build_paging_params(changed_after=datetime(2024, 9, 11, 0, 0, 0, tzinfo=timezone.utc)),
-            [357827241281],
+            [int(AGG_1_SFDI_FROM_VALID_CERT)],
             1,
             AGG_1_VALID_CERT,
         ),
@@ -147,50 +155,62 @@ async def test_get_end_device_list_pagination(
 
 
 @pytest.mark.anyio
-async def test_get_enddevice(client: AsyncClient, edev_fetch_uri_format: str):
+@pytest.mark.parametrize(
+    "cert,site_id, expected_status, expected_lfdi, expected_sfdi",
+    [
+        (AGG_1_VALID_CERT, 2, HTTPStatus.OK, "site2-lfdi", 2222),
+        (AGG_1_VALID_CERT, 0, HTTPStatus.OK, AGG_1_LFDI_FROM_VALID_CERT, int(AGG_1_SFDI_FROM_VALID_CERT)),
+        (REGISTERED_CERT.decode(), 6, HTTPStatus.OK, REGISTERED_CERT_LFDI, int(REGISTERED_CERT_SFDI)),
+        (
+            REGISTERED_CERT.decode(),
+            2,
+            HTTPStatus.FORBIDDEN,
+            None,
+            None,
+        ),  # Device cert trying to reach out to another EndDevice (aggregator owned)
+        (
+            REGISTERED_CERT.decode(),
+            5,
+            HTTPStatus.FORBIDDEN,
+            None,
+            None,
+        ),  # Device cert trying to reach out to another EndDevice (different device cert)
+        (AGG_1_VALID_CERT, 3, HTTPStatus.NOT_FOUND, None, None),  # Wrong Aggregator
+        (AGG_1_VALID_CERT, 9999, HTTPStatus.NOT_FOUND, None, None),  # Bad site ID
+        (AGG_1_VALID_CERT, 5, HTTPStatus.NOT_FOUND, None, None),  # Aggregator trying to reach a device cert
+    ],
+)
+async def test_get_enddevice(
+    client: AsyncClient,
+    edev_fetch_uri_format: str,
+    cert: str,
+    site_id: int,
+    expected_status: HTTPStatus,
+    expected_lfdi: Optional[str],
+    expected_sfdi: Optional[int],
+):
     """Tests that fetching named end device's works / fails in simple cases"""
 
     # check fetching within aggregator
-    uri = edev_fetch_uri_format.format(site_id=2)
-    response = await client.get(uri, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
-    assert_response_header(response, HTTPStatus.OK)
-    body = read_response_body_string(response)
-    assert len(body) > 0
-    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(body)
-    assert parsed_response.changedTime == int(datetime(2022, 2, 3, 5, 6, 7, tzinfo=timezone.utc).timestamp())
-    assert parsed_response.href == uri
-    assert parsed_response.enabled == 1
-    assert parsed_response.lFDI == "site2-lfdi"
-    assert parsed_response.sFDI == 2222
-    assert parsed_response.deviceCategory == "1"
-    assert parsed_response.FunctionSetAssignmentsListLink is not None
+    uri = edev_fetch_uri_format.format(site_id=site_id)
+    response = await client.get(uri, headers={cert_header: urllib.parse.quote(cert)})
+    assert_response_header(response, expected_status)
 
-    # check fetching outside aggregator
-    uri = edev_fetch_uri_format.format(site_id=3)  # This belongs to agg2
-    response = await client.get(uri, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
-    assert_response_header(response, HTTPStatus.NOT_FOUND)
-    assert_error_response(response)
+    if expected_status == HTTPStatus.OK:
+        body = read_response_body_string(response)
+        assert len(body) > 0
+        parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(body)
+        assert parsed_response.href == uri
+        assert parsed_response.enabled == 1
+        assert parsed_response.lFDI == expected_lfdi
+        assert parsed_response.sFDI == expected_sfdi
 
-    # check fetching an ID that does not exist
-    uri = edev_fetch_uri_format.format(site_id=9999)  # This does not exist
-    response = await client.get(uri, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
-    assert_response_header(response, HTTPStatus.NOT_FOUND)
-    assert_error_response(response)
-
-    # Check fetching virtual end device for aggregator
-    # The virtual end device always has a site_id of 0
-    uri = edev_fetch_uri_format.format(site_id=0)
-    response = await client.get(uri, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
-    assert_response_header(response, HTTPStatus.OK)
-    body = read_response_body_string(response)
-    assert len(body) > 0
-    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(body)
-    assert_nowish(parsed_response.changedTime)
-    assert parsed_response.href == uri
-    assert parsed_response.enabled == 1
-    assert parsed_response.lFDI == AGG_1_LFDI_FROM_VALID_CERT
-    assert parsed_response.sFDI == int(AGG_1_SFDI_FROM_VALID_CERT)
-    assert parsed_response.deviceCategory == f"{DeviceCategory(0):x}"
+        if site_id == 0:
+            assert parsed_response.FunctionSetAssignmentsListLink is None, "No FSA for the aggregator end device"
+        else:
+            assert parsed_response.FunctionSetAssignmentsListLink is not None, "FSA should exist for a end device"
+    else:
+        assert_error_response(response)
 
 
 @pytest.mark.anyio
@@ -310,72 +330,92 @@ async def test_create_end_device_href_prefix(client: AsyncClient, edev_base_uri:
 
 
 @pytest.mark.anyio
-async def test_update_end_device(client: AsyncClient, edev_base_uri: str):
+@pytest.mark.parametrize(
+    "site_id, cert, lfdi, sfdi, expected_status",
+    [
+        (
+            1,
+            AGG_1_VALID_CERT,
+            "site1-lfdi",
+            1111,
+            HTTPStatus.CREATED,
+        ),  # Agg cert updating aggregator
+        (
+            1,
+            AGG_2_VALID_CERT,
+            "site1-lfdi",
+            1111,
+            HTTPStatus.CONFLICT,
+        ),  # LFDI belongs to agg 1
+        (
+            6,
+            REGISTERED_CERT.decode(),
+            REGISTERED_CERT_LFDI,
+            int(REGISTERED_CERT_SFDI),
+            HTTPStatus.CREATED,
+        ),  # Device cert updating its device
+        (
+            5,
+            REGISTERED_CERT.decode(),
+            OTHER_REGISTERED_CERT_LFDI,
+            int(OTHER_REGISTERED_CERT_SFDI),
+            HTTPStatus.FORBIDDEN,
+        ),  # Device cert cant update a seperate DeviceCert
+        (
+            1,
+            REGISTERED_CERT.decode(),
+            "site1-lfdi",
+            1111,
+            HTTPStatus.FORBIDDEN,
+        ),  # Device cert cant update a seperate Aggregator device
+    ],
+)
+async def test_update_end_device(
+    client: AsyncClient,
+    pg_base_config,
+    edev_base_uri: str,
+    site_id: int,
+    cert: str,
+    lfdi: str,
+    sfdi: int,
+    expected_status: HTTPStatus,
+):
     """Test that an aggregator can update its own end_device but another aggregator cannot"""
 
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(Site).where(Site.site_id == site_id)
+        db_site = (await session.execute(stmt)).scalar_one()
+        old_device_category = db_site.device_category
+
+    UPDATED_DEVICE_CATEGORY = int(DeviceCategory.INTERIOR_LIGHTING | DeviceCategory.STRIP_HEATERS)
+
     # Fire off an update that will succeed
-    updated_device_category = "{0:x}".format(int(DeviceCategory.INTERIOR_LIGHTING))
-    update_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
-    update_request.lFDI = "site1-lfdi"
-    update_request.sFDI = 1111
-    update_request.deviceCategory = updated_device_category  # update device category
+    update_request: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest, lFDI=lfdi, sFDI=sfdi, deviceCategory="{0:x}".format(UPDATED_DEVICE_CATEGORY)
+    )
     response = await client.post(
         edev_base_uri,
-        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        headers={cert_header: urllib.parse.quote(cert)},
         content=EndDeviceRequest.to_xml(update_request),
     )
-    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
-    assert len(read_response_body_string(response)) == 0
-    inserted_href = read_location_header(response)
-    assert inserted_href.endswith("/1"), "Updating site 1"
 
-    # now lets grab the end device we just updated
-    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
-    assert_response_header(response, HTTPStatus.OK)
-    response_body = read_response_body_string(response)
-    assert len(response_body) > 0
-    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
-    assert_nowish(parsed_response.changedTime)
-    assert parsed_response.href == inserted_href
-    assert parsed_response.enabled == 1
-    assert parsed_response.lFDI == update_request.lFDI
-    assert parsed_response.sFDI == update_request.sFDI
-    assert parsed_response.deviceCategory == updated_device_category
+    if expected_status != HTTPStatus.CREATED:
+        assert_error_response(response)
+    else:
+        assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+        assert len(read_response_body_string(response)) == 0
+        inserted_href = read_location_header(response)
+        assert inserted_href.endswith(f"/{site_id}")
 
-    # now fire off a similar request that's with the wrong aggregator
-    update_request.deviceCategory = "{0:x}".format(
-        int(DeviceCategory.COMBINED_HEAT_AND_POWER)
-    )  # update device category
-    response = await client.post(
-        edev_base_uri,
-        headers={cert_header: urllib.parse.quote(AGG_2_VALID_CERT)},
-        content=EndDeviceRequest.to_xml(update_request),
-    )
-    assert_response_header(response, HTTPStatus.CONFLICT)  # conflict because the LFDI isn't unique to this agg
-    assert_error_response(response)
+    # Now validate the site in the DB
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(Site).where(Site.site_id == site_id)
+        db_site = (await session.execute(stmt)).scalar_one()
 
-    # double check the deviceCategory is left alone
-    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
-    assert_response_header(response, HTTPStatus.OK)
-    response_body = read_response_body_string(response)
-    assert len(response_body) > 0
-    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
-    assert abs(parsed_response.changedTime - int(datetime.now().timestamp())) < 20, "Expected changedTime to be nowish"
-    assert parsed_response.href == inserted_href
-    assert parsed_response.enabled == 1
-    assert parsed_response.lFDI == update_request.lFDI
-    assert parsed_response.sFDI == update_request.sFDI
-    assert parsed_response.deviceCategory == updated_device_category
-
-    # check the new end_device count for aggregator 1
-    response = await client.get(
-        edev_base_uri + build_paging_params(limit=100), headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}
-    )
-    assert_response_header(response, HTTPStatus.OK)
-    body = read_response_body_string(response)
-    assert len(body) > 0
-    parsed_response: EndDeviceListResponse = EndDeviceListResponse.from_xml(body)
-    assert parsed_response.all_ == 4, f"received body:\n{body}"
+        if expected_status != HTTPStatus.CREATED:
+            assert db_site.device_category == old_device_category
+        else:
+            assert db_site.device_category == UPDATED_DEVICE_CATEGORY
 
 
 @pytest.mark.anyio
@@ -441,8 +481,9 @@ async def test_update_end_device_bad_device_category(
         (UNREGISTERED_CERT_LFDI, REGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),
         (UNREGISTERED_CERT_LFDI, UNREGISTERED_CERT_LFDI, int(REGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),
         (UNREGISTERED_CERT_LFDI, REGISTERED_CERT_LFDI, int(REGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),
-        (UNREGISTERED_CERT_LFDI, UNREGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),
+        (REGISTERED_CERT_LFDI, UNREGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),
         (UNREGISTERED_CERT_LFDI, OTHER_CERT_LFDI, int(OTHER_CERT_SFDI), HTTPStatus.FORBIDDEN),
+        (UNREGISTERED_CERT.decode(), OTHER_CERT_LFDI, int(OTHER_CERT_SFDI), HTTPStatus.FORBIDDEN),
     ],
 )
 async def test_create_end_device_device_registration(

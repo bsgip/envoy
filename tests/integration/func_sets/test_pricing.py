@@ -163,6 +163,7 @@ async def test_get_tariffprofile_nosite(
         (2, 1, "/edev/1/tp/2", 0),
         (3, 1, "/edev/1/tp/3", 0),
         (4, 1, None, None),
+        (1, 5, None, None),
     ],
 )
 async def test_get_tariffprofile(

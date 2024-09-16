@@ -4,12 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.crud import link
 from envoy.server.mapper.sep2.device_capability import DeviceCapabilityMapper
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
-from envoy.server.request_scope import RawRequestScope
+from envoy.server.request_scope import RawRequestClaims
 
 
 class DeviceCapabilityManager:
     @staticmethod
-    async def fetch_device_capability(session: AsyncSession, scope: RawRequestScope) -> DeviceCapabilityResponse:
+    async def fetch_device_capability(session: AsyncSession, scope: RawRequestClaims) -> DeviceCapabilityResponse:
         """Noting this operates on a RawRequestScope - any client getting through the TLS termination can utilise this
         call (as is intended)"""
         agg_id = scope.aggregator_id

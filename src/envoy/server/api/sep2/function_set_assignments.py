@@ -7,7 +7,7 @@ from fastapi_async_sqlalchemy import db
 
 from envoy.server.api import query
 from envoy.server.api.error_handler import LoggedHttpException
-from envoy.server.api.request import extract_request_scope
+from envoy.server.api.request import extract_request_claims
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
 
@@ -33,7 +33,7 @@ async def get_function_set_assignments(site_id: int, fsa_id: int, request: Reque
         fastapi.Response object.
     """
     function_set_assignments = await FunctionSetAssignmentsManager.fetch_function_set_assignments_for_scope(
-        session=db.session, scope=extract_request_scope(request).to_site_request_scope(site_id), fsa_id=fsa_id
+        session=db.session, scope=extract_request_claims(request).to_site_request_scope(site_id), fsa_id=fsa_id
     )
 
     if function_set_assignments is None:
@@ -69,7 +69,7 @@ async def get_function_set_assignments_list(
 
     function_set_assignments_list = await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_scope(
         session=db.session,
-        scope=extract_request_scope(request).to_site_request_scope(site_id),
+        scope=extract_request_claims(request).to_site_request_scope(site_id),
     )
     if function_set_assignments_list is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")

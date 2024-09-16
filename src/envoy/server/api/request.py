@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import HTTPException, Request
 
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
-from envoy.server.request_scope import RawRequestScope
+from envoy.server.request_scope import RawRequestClaims
 
 MAX_LIMIT = 500
 DEFAULT_LIMIT = 1
@@ -13,8 +13,8 @@ DEFAULT_START = 0
 DEFAULT_DATETIME = datetime.min
 
 
-def extract_request_scope(request: Request) -> RawRequestScope:
-    """Fetches the RawRequestScope for the specified request..
+def extract_request_claims(request: Request) -> RawRequestClaims:
+    """Fetches the RawRequestClaims for the specified request..
 
     raises a HTTPException if the request is missing mandatory values"""
     if request.state is None:
@@ -38,7 +38,7 @@ def extract_request_scope(request: Request) -> RawRequestScope:
             detail=f"lfdi '{lfdi}' or sfdi '{sfdi}' have not been extracted correctly by Envoy middleware.",
         )
 
-    return RawRequestScope(aggregator_id=aggregator_id, site_id=site_id, lfdi=lfdi, sfdi=sfdi, href_prefix=href_prefix)
+    return RawRequestClaims(aggregator_id=aggregator_id, site_id=site_id, lfdi=lfdi, sfdi=sfdi, href_prefix=href_prefix)
 
 
 def extract_default_doe(request: Request) -> Optional[DefaultDoeConfiguration]:

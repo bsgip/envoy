@@ -27,7 +27,7 @@ from envoy.server.mapper.sep2.metering import (
 )
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_scope import RawRequestScope
+from envoy.server.request_scope import RawRequestClaims
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class MirrorMeteringManager:
     @staticmethod
     async def create_or_update_mirror_usage_point(
-        session: AsyncSession, scope: RawRequestScope, mup: MirrorUsagePoint
+        session: AsyncSession, scope: RawRequestClaims, mup: MirrorUsagePoint
     ) -> int:
         """Creates a new mup (or fetches an existing one of the same value). Returns the Id associated with the created
         or updated mup. Raises InvalidIdError if the underlying site cannot be fetched
@@ -67,7 +67,7 @@ class MirrorMeteringManager:
 
     @staticmethod
     async def fetch_mirror_usage_point(
-        session: AsyncSession, scope: RawRequestScope, site_reading_type_id: int
+        session: AsyncSession, scope: RawRequestClaims, site_reading_type_id: int
     ) -> MirrorUsagePoint:
         """Fetches a MirrorUsagePoint with the specified site_reading_type_id. Raises NotFoundError if it can't be
         located"""
@@ -94,7 +94,7 @@ class MirrorMeteringManager:
     @staticmethod
     async def add_or_update_readings(
         session: AsyncSession,
-        scope: RawRequestScope,
+        scope: RawRequestClaims,
         site_reading_type_id: int,
         mmr: MirrorMeterReading,
     ) -> None:
@@ -134,7 +134,7 @@ class MirrorMeteringManager:
 
     @staticmethod
     async def list_mirror_usage_points(
-        session: AsyncSession, scope: RawRequestScope, start: int, limit: int, changed_after: datetime
+        session: AsyncSession, scope: RawRequestClaims, start: int, limit: int, changed_after: datetime
     ) -> MirrorUsagePointListResponse:
         """Fetches a paginated set of MirrorUsagePoint accessible to the specified aggregator"""
 

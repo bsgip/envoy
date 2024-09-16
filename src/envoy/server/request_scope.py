@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
+from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 
 
 @dataclass(frozen=True)
@@ -17,8 +18,8 @@ class BaseRequestScope:
 
 
 @dataclass(frozen=True)
-class RawRequestScope(BaseRequestScope):
-    """The raw permissions scope which has been extracted from the incoming request
+class RawRequestClaims(BaseRequestScope):
+    """The raw auth claims which has been extracted from the incoming request
 
     If:
     aggregator_id is None and site_id is None:
@@ -44,12 +45,15 @@ class RawRequestScope(BaseRequestScope):
 
         requested_site_id: If None - no site_id filter, otherwise the request is scoped to this specific site_id
         """
-        if self.aggregator_id is None:
-            # Client has no auth yet (likely a device cert (non aggregator) that hasn't been registered yet)
-            raise HTTPException(
-                status_code=HTTPStatus.FORBIDDEN,
-                detail=f"Client {self.lfdi} is not scoped to access this resource (has an EndDevice been registered?)",
-            )
+        agg_id = self.aggregator_id
+        if agg_id is None:
+            if self.site_id is None:
+                # Client has no auth yet (likely a device cert (non aggregator) that hasn't been registered yet)
+                raise HTTPException(
+                    status_code=HTTPStatus.FORBIDDEN,
+                    detail=f"Client {self.lfdi} is not scoped to access this resource (has an EndDevice been registered?)",
+                )
+            agg_id = NULL_AGGREGATOR_ID
 
         if requested_site_id == VIRTUAL_END_DEVICE_SITE_ID:
             # The virtual aggregator end device is shorthand for no site scope
@@ -66,7 +70,7 @@ class RawRequestScope(BaseRequestScope):
             lfdi=self.lfdi,
             sfdi=self.sfdi,
             href_prefix=self.href_prefix,
-            aggregator_id=self.aggregator_id,
+            aggregator_id=agg_id,
             display_site_id=display_site_id,
             site_id=requested_site_id,
         )
@@ -77,12 +81,15 @@ class RawRequestScope(BaseRequestScope):
 
         requested_site_id: The request is scoped to this specific site_id
         """
-        if self.aggregator_id is None:
-            # Client has no auth yet (likely a device cert (non aggregator) that hasn't been registered yet)
-            raise HTTPException(
-                status_code=HTTPStatus.FORBIDDEN,
-                detail=f"Client {self.lfdi} is not scoped to access this resource (has an EndDevice been registered?)",
-            )
+        agg_id = self.aggregator_id
+        if agg_id is None:
+            if self.site_id is None:
+                # Client has no auth yet (likely a device cert (non aggregator) that hasn't been registered yet)
+                raise HTTPException(
+                    status_code=HTTPStatus.FORBIDDEN,
+                    detail=f"Client {self.lfdi} is not scoped to access this resource (has an EndDevice been registered?)",
+                )
+            agg_id = NULL_AGGREGATOR_ID
 
         if requested_site_id == VIRTUAL_END_DEVICE_SITE_ID:
             raise HTTPException(
@@ -100,7 +107,7 @@ class RawRequestScope(BaseRequestScope):
             lfdi=self.lfdi,
             sfdi=self.sfdi,
             href_prefix=self.href_prefix,
-            aggregator_id=self.aggregator_id,
+            aggregator_id=agg_id,
             display_site_id=requested_site_id,
             site_id=requested_site_id,
         )

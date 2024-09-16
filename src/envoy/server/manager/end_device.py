@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from secrets import token_bytes
-from typing import Optional
+from typing import Optional, Sequence
 
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
@@ -23,9 +23,37 @@ from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMa
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.site import Site
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_scope import AggregatorRequestScope, RawRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, RawRequestClaims, SiteRequestScope
 
 logger = logging.getLogger(__name__)
+
+
+async def fetch_sites_and_count_for_claims(
+    session: AsyncSession,
+    scope: RawRequestClaims,
+    start: int,
+    after: datetime,
+    limit: int,
+) -> tuple[Sequence[Site], int]:
+
+    # Are we selecting all sites for an aggregator or are we scoped to a particular site
+    site_list: Sequence[Site] = []
+    site_count: int = 0
+
+    if scope.site_id is not None:
+        site = await select_single_site_with_site_id(
+            session, scope.site_id, scope.aggregator_id if scope.aggregator_id is not None else NULL_AGGREGATOR_ID
+        )
+        if site and site.changed_time > after:
+            site_list = [site]
+            site_count = 1
+        return (site_list, site_count)
+
+    if scope.aggregator_id is not None:
+        site_list = await select_all_sites_with_aggregator_id(session, scope.aggregator_id, start, after, limit)
+        site_count = await select_aggregator_site_count(session, scope.aggregator_id, after)
+
+    return (site_list, site_count)
 
 
 class EndDeviceManager:
@@ -79,7 +107,7 @@ class EndDeviceManager:
 
     @staticmethod
     async def add_or_update_enddevice_for_scope(
-        session: AsyncSession, scope: RawRequestScope, end_device: EndDeviceRequest
+        session: AsyncSession, scope: RawRequestClaims, end_device: EndDeviceRequest
     ) -> int:
         """This will add/update the specified end_device in the database.
 
@@ -155,7 +183,7 @@ class EndDeviceListManager:
     @staticmethod
     async def fetch_enddevicelist_for_scope(
         session: AsyncSession,
-        scope: RawRequestScope,
+        scope: RawRequestClaims,
         start: int,
         after: datetime,
         limit: int,
@@ -191,18 +219,8 @@ class EndDeviceListManager:
             # Ensure a start value of either 0 or 1 will return the first site for the aggregator
             start = max(0, start - 1)
 
-        # Are we selecting
-        if scope.site_id is None:
-            site_list = await select_all_sites_with_aggregator_id(session, agg_id, start, after, limit)
-            site_count = await select_aggregator_site_count(session, agg_id, after)
-        else:
-            site = await select_single_site_with_site_id(session, scope.site_id, agg_id)
-            if site:
-                site_list = [site]
-                site_count = 0
-            else:
-                site_list = []
-                site_count = 0
+        # Are we selecting all sites for an aggregator or are we scoped to a particular site
+        (site_list, site_count) = await fetch_sites_and_count_for_claims(session, scope, start, after, limit)
 
         # site_count should include the virtual site
         if supports_virtual_site:

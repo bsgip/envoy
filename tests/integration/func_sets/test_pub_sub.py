@@ -28,6 +28,8 @@ from envoy.server.model.subscription import Subscription
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
+from tests.data.certificates.certificate6 import TEST_CERTIFICATE_FINGERPRINT as DEVICE_5_CERT
+from tests.data.certificates.certificate8 import TEST_CERTIFICATE_FINGERPRINT as UNREGISTERED_CERT
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import (
@@ -77,6 +79,11 @@ def subscribable_resource_hrefs(site_id: int, pricing_reading_type_id: int) -> l
         (AGG_3_VALID_CERT, 0, []),  # Agg3 has 0 subscriptions across all sites
         (AGG_1_VALID_CERT, 1, []),  # Nothing under site
         (AGG_1_VALID_CERT, 99, []),  # site DNE
+        (DEVICE_5_CERT, 5, []),  # device cert
+        (DEVICE_5_CERT, 6, []),  # device cert
+        (DEVICE_5_CERT, 0, []),  # device cert
+        (UNREGISTERED_CERT, 5, []),  # site DNE
+        (UNREGISTERED_CERT, 0, []),  # site DNE
     ],
 )
 @pytest.mark.anyio
@@ -526,3 +533,25 @@ async def test_der_capability_subscription(
         notification.resource,
         ignored_properties=set(["href", "type", "subscribable"]),
     )
+
+
+@pytest.mark.parametrize("use_aggregator_edev", [True, False])
+@pytest.mark.anyio
+async def test_subscription_create_unavailable_for_device_cert(
+    pg_base_config, client: AsyncClient, sub_list_uri_format: str, use_aggregator_edev: bool
+):
+    """When creating a sub check check to make sure it isn't for a device cert"""
+
+    edev_id: int = 0 if use_aggregator_edev else 5
+
+    insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
+    insert_request.encoding = SubscriptionEncoding.XML
+    insert_request.notificationURI = "https://example.com/456?foo=bar"
+    insert_request.subscribedResource = f"/edev/{edev_id}/derp/doe/derc"
+    response = await client.post(
+        sub_list_uri_format.format(site_id=edev_id),
+        headers={cert_header: urllib.parse.quote(DEVICE_5_CERT)},
+        content=Sep2Subscription.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_error_response(response)
