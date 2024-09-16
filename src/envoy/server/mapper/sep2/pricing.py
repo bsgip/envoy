@@ -32,6 +32,7 @@ from envoy_schema.server.schema.sep2.event import EventStatus
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
+from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
 from envoy.server.request_state import RequestStateParameters
 
@@ -214,7 +215,7 @@ class RateComponentMapper:
                 "href": rc_href,
                 "mRID": generate_mrid(TARIFF_PROFILE_MRID_PREFIX, tariff_id, site_id, start_timestamp, pricing_reading),
                 "description": pricing_reading.name,
-                "roleFlags": RoleFlagsType.NONE,
+                "roleFlags": to_hex_binary(RoleFlagsType.NONE),
                 "ReadingTypeLink": Link(
                     href=PricingReadingTypeMapper.pricing_reading_type_href(rs_params, pricing_reading)
                 ),
