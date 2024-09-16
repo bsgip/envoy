@@ -21,6 +21,7 @@ from envoy_schema.server.schema.sep2.types import (
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
+from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.request_state import RequestStateParameters
@@ -97,7 +98,7 @@ class MirrorUsagePointMapper:
                 "href": generate_href(uris.MirrorUsagePointUri, rs_params, mup_id=srt.site_reading_type_id),
                 "deviceLFDI": site.lfdi,
                 "postRate": None,
-                "roleFlags": RoleFlagsType.NONE,
+                "roleFlags": to_hex_binary(RoleFlagsType.NONE),
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
                 "status": 0,
                 "mRID": generate_mrid(MIRROR_USAGE_POINT_MRID_PREFIX, srt.site_reading_type_id),
