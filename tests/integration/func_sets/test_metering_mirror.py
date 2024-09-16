@@ -104,7 +104,7 @@ async def test_get_mirror_usage_point_list_pagination(
                     "mRID": "123",
                     "deviceLFDI": "site1-lfdi",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                    "roleFlags": 0,
+                    "roleFlags": "0",
                     "status": 0,
                     "mirrorMeterReadings": [
                         {
@@ -129,7 +129,7 @@ async def test_get_mirror_usage_point_list_pagination(
                     "mRID": "123",
                     "deviceLFDI": "site1-lfdi",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                    "roleFlags": 0,
+                    "roleFlags": "0",
                     "status": 0,
                     "mirrorMeterReadings": [
                         {
@@ -154,7 +154,7 @@ async def test_get_mirror_usage_point_list_pagination(
                     "mRID": "456",
                     "deviceLFDI": "site1-lfdi",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                    "roleFlags": 0,
+                    "roleFlags": "0",
                     "status": 0,
                     "mirrorMeterReadings": [
                         {
@@ -223,7 +223,7 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
                     "mRID": "123",
                     "deviceLFDI": "site1-lfdi",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                    "roleFlags": 0,
+                    "roleFlags": "0",
                     "status": 0,
                     "mirrorMeterReadings": [
                         {
@@ -248,7 +248,7 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
                     "mRID": "456",
                     "deviceLFDI": "site1-lfdi",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                    "roleFlags": 0,
+                    "roleFlags": "0",
                     "status": 0,
                     "mirrorMeterReadings": [
                         {
