@@ -179,7 +179,7 @@ class MirrorMeterReadingMapper:
 
         # we are trying to avoid concatenating a bunch of lists as we expect clients to normally only send a single
         # MirrorReadingSet per update - but that can't be guaranteed so this our compromise
-        readings: list[SiteReading] = []
+        readings: Optional[list[SiteReading]] = None
 
         # If no MirrorReadingSet specified, check for a reading value to use, else return an error
         if mrs is None:
@@ -192,11 +192,18 @@ class MirrorMeterReadingMapper:
                 raise InvalidMappingError("No MirrorReadingSet or Reading specified")
 
         for mr in mrs:
-            readings.extend(
+            new_set = [
                 MirrorMeterReadingMapper.map_reading_from_request(r, site_reading_type_id, changed_time)
-                for r in mr.readings
-            )
+                for r in mr.readings  # type: ignore [union-attr] # The if mr.readings prevent None from appearing here
+                if mr.readings is not None
+            ]
+            if readings is None:
+                readings = new_set
+            else:
+                readings = readings + new_set
 
+        if readings is None:
+            return []
         return readings
 
     @staticmethod
