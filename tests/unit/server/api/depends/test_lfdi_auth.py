@@ -236,3 +236,38 @@ async def test_lfdiauthdepends_aggregator_specific_cert(
 
     mock_select_all_client_id_details.assert_called_once()
     mock_select_single_site_with_sfdi.assert_not_called()
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.api.depends.lfdi_auth.select_single_site_with_sfdi")
+@mock.patch("envoy.server.api.depends.lfdi_auth.select_all_client_id_details")
+@mock.patch("envoy.server.api.depends.lfdi_auth.db")
+async def test_lfdiauthdepends_aggregator_specific_cert_thats_expired(
+    mock_db: mock.MagicMock,
+    mock_select_all_client_id_details: mock.MagicMock,
+    mock_select_single_site_with_sfdi: mock.MagicMock,
+):
+    """Tests that if the DB is reporting that an aggregator cert is expired that it doesn't accidently
+    get classified as a new device cert"""
+    AGG_ID = 51412
+    # Arrange
+    mock_select_all_client_id_details.return_value = [
+        ClientIdDetails("doesnotexist", 1, datetime.now(timezone.utc) + timedelta(hours=1)),
+        ClientIdDetails(TEST_CERTIFICATE_LFDI_1, AGG_ID, datetime.now(timezone.utc) - timedelta(hours=1)),
+    ]
+    mock_select_single_site_with_sfdi.return_value = None
+    req = Request(
+        {
+            "type": "http",
+            "headers": Headers({cert_header: TEST_CERTIFICATE_PEM_1.decode("utf-8")}).raw,
+        }
+    )
+
+    lfdi_dep = LFDIAuthDepends(settings.cert_header, allow_device_registration=True)
+
+    # Act
+    with pytest.raises(HTTPException):
+        await lfdi_dep(req)
+
+    mock_select_all_client_id_details.assert_called_once()
+    mock_select_single_site_with_sfdi.assert_not_called()

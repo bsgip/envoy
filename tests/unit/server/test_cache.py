@@ -58,6 +58,48 @@ async def test_initial_clear():
 
 
 @pytest.mark.anyio
+async def test_update_result_ignore_expiry_cached():
+    updated_cache = {
+        "key1": ExpiringValue(make_delta_now(timedelta(hours=5)), "val1"),
+        "key2": ExpiringValue(make_delta_now(None), "val2"),
+        "key3": ExpiringValue(make_delta_now(timedelta(hours=-1)), "val3"),  # Expired
+    }
+    update_arg = MyCustomArgument("abc123", 456)
+    mock_update_fn = mock.Mock(return_value=create_async_result(updated_cache))
+    c = AsyncCache(mock_update_fn)
+
+    # Fetching key1/key2 works fine and only updates the cache once
+    assert (await c.get_value_ignore_expiry(update_arg, "key2")) is updated_cache["key2"]
+    assert (await c.get_value_ignore_expiry(update_arg, "key1")) is updated_cache["key1"]
+    mock_update_fn.assert_called_once_with(update_arg)
+
+    # Fetching key3 causes the cache to update again (as it's expired - because it's expired it returns None)
+    assert (await c.get_value_ignore_expiry(update_arg, "key3")) is updated_cache["key3"]
+    assert mock_update_fn.call_count == 2
+    mock_update_fn.assert_called_with(update_arg)
+
+    # We can still fetch key1/key2 as they were also returned in the cache update
+    assert (await c.get_value_ignore_expiry(update_arg, "key1")) is updated_cache["key1"]
+    assert (await c.get_value_ignore_expiry(update_arg, "key2")) is updated_cache["key2"]
+    assert mock_update_fn.call_count == 2, "Call count shouldn't have changed from before"
+
+    # Fetching key4 causes the cache to update again (as it DNE)
+    assert (await c.get_value_ignore_expiry(update_arg, "key4")) is None
+    assert mock_update_fn.call_count == 3
+    mock_update_fn.assert_called_with(update_arg)
+
+    # We can still fetch key1/key2 as they were also returned in the cache update
+    assert (await c.get_value_ignore_expiry(update_arg, "key1")) is updated_cache["key1"]
+    assert (await c.get_value_ignore_expiry(update_arg, "key2")) is updated_cache["key2"]
+    assert mock_update_fn.call_count == 3, "Call count shouldn't have changed from before"
+
+    # Key 3 will continue to return but will always cause an update due to it being expired
+    assert (await c.get_value_ignore_expiry(update_arg, "key3")) is updated_cache["key3"]
+    assert mock_update_fn.call_count == 4
+    mock_update_fn.assert_called_with(update_arg)
+
+
+@pytest.mark.anyio
 async def test_update_result_cached():
     updated_cache = {
         "key1": ExpiringValue(make_delta_now(timedelta(hours=5)), "val1"),

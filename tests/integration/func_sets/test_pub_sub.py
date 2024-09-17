@@ -79,11 +79,6 @@ def subscribable_resource_hrefs(site_id: int, pricing_reading_type_id: int) -> l
         (AGG_3_VALID_CERT, 0, []),  # Agg3 has 0 subscriptions across all sites
         (AGG_1_VALID_CERT, 1, []),  # Nothing under site
         (AGG_1_VALID_CERT, 99, []),  # site DNE
-        (DEVICE_5_CERT, 5, []),  # device cert
-        (DEVICE_5_CERT, 6, []),  # device cert
-        (DEVICE_5_CERT, 0, []),  # device cert
-        (UNREGISTERED_CERT, 5, []),  # site DNE
-        (UNREGISTERED_CERT, 0, []),  # site DNE
     ],
 )
 @pytest.mark.anyio
@@ -116,6 +111,32 @@ async def test_get_subscription_list_by_aggregator(
 
         # Pull sub id from the href - hacky but will work for this test
         assert [int(ed.href[-1]) for ed in parsed_response.subscriptions] == expected_sub_ids
+
+
+@pytest.mark.parametrize(
+    "cert, site_id, expected_status",
+    [
+        (AGG_1_VALID_CERT, 1, HTTPStatus.OK),  # Control - should work fine
+        (DEVICE_5_CERT, 5, HTTPStatus.FORBIDDEN),  # device cert
+        (DEVICE_5_CERT, 6, HTTPStatus.FORBIDDEN),  # device cert
+        (DEVICE_5_CERT, 0, HTTPStatus.FORBIDDEN),  # device cert
+        (UNREGISTERED_CERT, 5, HTTPStatus.FORBIDDEN),  # site DNE
+        (UNREGISTERED_CERT, 0, HTTPStatus.FORBIDDEN),  # site DNE
+    ],
+)
+@pytest.mark.anyio
+async def test_get_subscription_list_by_aggregator_forbidden_cases(
+    client: AsyncClient, cert: str, expected_status: HTTPStatus, site_id: int, sub_list_uri_format
+):
+    """Validates that fetching subscription lists only works for aggregator certs"""
+
+    response = await client.get(
+        sub_list_uri_format.format(site_id=site_id) + build_paging_params(limit=100),
+        headers={cert_header: urllib.parse.quote(cert)},
+    )
+    assert_response_header(response, expected_status)
+    if expected_status != HTTPStatus.OK:
+        assert_error_response(response)
 
 
 @pytest.mark.parametrize(

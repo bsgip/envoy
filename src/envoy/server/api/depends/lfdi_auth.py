@@ -27,6 +27,7 @@ async def update_client_id_details_cache(_: Any) -> dict[str, ExpiringValue[Clie
     # We create a fresh session here to ensure that anything fetched from the DB does NOT pollute the
     # session used by the rest of the request - This is out of an abundance of paranoia
     async with db():
+        # This will include expired certs
         client_ids = await select_all_client_id_details(db.session)
     return {cid.lfdi: ExpiringValue(expiry=cid.expiry, value=cid) for cid in client_ids}
 
@@ -75,11 +76,18 @@ class LFDIAuthDepends:
             )
 
         # get client id details from cache, will return None if expired or never existed.
-        client_id = await self.cache.get_value(None, lfdi)
+        expirable_client_id = await self.cache.get_value_ignore_expiry(None, lfdi)
         site_id: Optional[int] = None
         aggregator_id: Optional[int] = None
-        if client_id:
-            aggregator_id = client_id.aggregator_id
+        if expirable_client_id:
+            if expirable_client_id.is_expired():
+                raise LoggedHttpException(
+                    logger,
+                    exc=None,
+                    status_code=HTTPStatus.FORBIDDEN,
+                    detail=f"Client certificate {lfdi} is marked as expired by the server.",
+                )
+            aggregator_id = expirable_client_id.value.aggregator_id
             source = CertificateType.AGGREGATOR_CERTIFICATE
         else:
             # The cert has passed our TLS termination so its signing chain is valid - the only question

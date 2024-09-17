@@ -14,7 +14,7 @@ from envoy.server.api.request import (
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
-from envoy.server.exception import BadRequestError
+from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.subscription import SubscriptionManager
 from envoy.server.mapper.common import generate_href
 
@@ -141,5 +141,7 @@ async def create_subscription(
         sub_id = await SubscriptionManager.add_subscription_for_site(db.session, scope, payload)
         location_href = generate_href(uri.SubscriptionUri, scope, site_id=site_id, subscription_id=sub_id)
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
+    except NotFoundError as exc:
+        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.NOT_FOUND)
     except BadRequestError as exc:
         raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)
