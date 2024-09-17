@@ -1,5 +1,6 @@
 import urllib.parse
-from datetime import datetime, timedelta, timezone
+
+# from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 
 import pytest
@@ -9,7 +10,7 @@ from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, En
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from httpx import AsyncClient
 
-from envoy.server.manager.time import utc_now
+# from envoy.server.manager.time import utc_now
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as AGG_1_LFDI_FROM_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_SFDI as AGG_1_SFDI_FROM_VALID_CERT
