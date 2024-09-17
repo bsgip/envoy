@@ -45,7 +45,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import AggregatorRequestScope
 
 
 def _parse_site_id_from_match(raw_site_id: str) -> Optional[int]:
@@ -55,13 +55,13 @@ def _parse_site_id_from_match(raw_site_id: str) -> Optional[int]:
 
 class SubscriptionMapper:
     @staticmethod
-    def calculate_subscription_href(sub: Subscription, scope: DeviceOrAggregatorRequestScope) -> str:
+    def calculate_subscription_href(sub: Subscription, scope: AggregatorRequestScope) -> str:
         """Calculates the href for a subscription - this will vary depending on whether the subscription
         is narrowed to a particular end_device or is unscoped"""
         return generate_href(SubscriptionUri, scope, site_id=scope.display_site_id, subscription_id=sub.subscription_id)
 
     @staticmethod
-    def calculate_resource_href(sub: Subscription, scope: DeviceOrAggregatorRequestScope) -> str:  # noqa C901
+    def calculate_resource_href(sub: Subscription, scope: AggregatorRequestScope) -> str:  # noqa C901
         """Calculates the href for a Subscription.subscribedResource based on what the subscription is tracking
 
         Some combos of resource_type/scoped_site_id/resource_id may be invalid and will raise InvalidMappingError"""
@@ -157,7 +157,7 @@ class SubscriptionMapper:
         )
 
     @staticmethod
-    def map_to_response(sub: Subscription, scope: DeviceOrAggregatorRequestScope) -> Sep2Subscription:
+    def map_to_response(sub: Subscription, scope: AggregatorRequestScope) -> Sep2Subscription:
         """Maps an internal Subscription model to the Sep2 model Equivalent"""
         condition: Optional[Sep2Condition] = None
         if sub.conditions and len(sub.conditions) > 0:
@@ -279,7 +279,7 @@ class SubscriptionMapper:
     @staticmethod
     def map_from_request(
         subscription: Sep2Subscription,
-        scope: DeviceOrAggregatorRequestScope,
+        scope: AggregatorRequestScope,
         aggregator_domains: set[str],
         changed_time: datetime,
     ) -> Subscription:
@@ -331,7 +331,7 @@ class SubscriptionMapper:
 class SubscriptionListMapper:
     @staticmethod
     def map_to_site_response(
-        scope: DeviceOrAggregatorRequestScope, sub_list: Sequence[Subscription], sub_count: int
+        scope: AggregatorRequestScope, sub_list: Sequence[Subscription], sub_count: int
     ) -> SubscriptionListResponse:
         return SubscriptionListResponse.model_validate(
             {
@@ -346,9 +346,7 @@ class SubscriptionListMapper:
 class NotificationMapper:
 
     @staticmethod
-    def map_sites_to_response(
-        sites: Sequence[Site], sub: Subscription, scope: DeviceOrAggregatorRequestScope
-    ) -> Notification:
+    def map_sites_to_response(sites: Sequence[Site], sub: Subscription, scope: AggregatorRequestScope) -> Notification:
         """Turns a list of sites into a notification"""
         return Notification.model_validate(
             {
@@ -366,7 +364,7 @@ class NotificationMapper:
 
     @staticmethod
     def map_does_to_response(
-        does: Sequence[DynamicOperatingEnvelope], sub: Subscription, scope: DeviceOrAggregatorRequestScope
+        does: Sequence[DynamicOperatingEnvelope], sub: Subscription, scope: AggregatorRequestScope
     ) -> Notification:
         """Turns a list of does into a notification"""
         doe_list_href = generate_href(
@@ -391,7 +389,7 @@ class NotificationMapper:
         site_reading_type_id: int,
         readings: Sequence[SiteReading],
         sub: Subscription,
-        scope: DeviceOrAggregatorRequestScope,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a list of does into a notification"""
         reading_list_href = generate_href(
@@ -422,7 +420,7 @@ class NotificationMapper:
         pricing_reading_type: PricingReadingType,
         rates: Sequence[TariffGeneratedRate],
         sub: Subscription,
-        scope: DeviceOrAggregatorRequestScope,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a list of dynamic prices into a notification"""
         time_tariff_interval_list_href = generate_href(
@@ -455,7 +453,7 @@ class NotificationMapper:
         der_availability: Optional[SiteDERAvailability],
         der_availability_site_id: int,
         sub: Subscription,
-        scope: DeviceOrAggregatorRequestScope,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a single SiteDERAvailability into a notification."""
         der_avail_href = generate_href(
@@ -486,7 +484,7 @@ class NotificationMapper:
         der_rating: Optional[SiteDERRating],
         der_rating_site_id: int,
         sub: Subscription,
-        scope: DeviceOrAggregatorRequestScope,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a single SiteDERRating into a notification."""
         der_rating_href = generate_href(
@@ -517,7 +515,7 @@ class NotificationMapper:
         der_setting: Optional[SiteDERSetting],
         der_setting_site_id: int,
         sub: Subscription,
-        scope: DeviceOrAggregatorRequestScope,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a single SiteDERSetting into a notification."""
         der_settings_href = generate_href(
@@ -549,7 +547,7 @@ class NotificationMapper:
         der_status: Optional[SiteDERStatus],
         der_status_site_id: int,
         sub: Subscription,
-        scope: DeviceOrAggregatorRequestScope,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a single SiteDERStatus into a notification."""
         der_status_href = generate_href(

@@ -287,7 +287,7 @@ class ConsumptionTariffIntervalMapper:
 
     @staticmethod
     def list_href(
-        scope: DeviceOrAggregatorRequestScope,
+        scope: BaseRequestScope,
         tariff_id: int,
         tariff_site_id: int,
         pricing_reading: PricingReadingType,
@@ -383,7 +383,7 @@ class TimeTariffIntervalMapper:
 
     @staticmethod
     def map_to_response(
-        scope: DeviceOrAggregatorRequestScope, rate: TariffGeneratedRate, pricing_reading: PricingReadingType
+        scope: BaseRequestScope, rate: TariffGeneratedRate, pricing_reading: PricingReadingType
     ) -> TimeTariffIntervalResponse:
         """Creates a new TimeTariffIntervalResponse for the given rate and specific price reading"""
         start_d = rate.start_time.date()

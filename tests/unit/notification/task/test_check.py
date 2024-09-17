@@ -34,7 +34,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import PRICE_DECIMAL_POWER, TariffGeneratedRate
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, DeviceOrAggregatorRequestScope
 from tests.unit.notification.mocks import (
     assert_task_kicked_n_times,
     assert_task_kicked_with_broker_and_args,
@@ -81,7 +81,7 @@ from tests.unit.notification.mocks import (
 )
 def test_scope_for_subscription(sub: Subscription, href_prefix: Optional[str], expected_display_id: int):
     result = scope_for_subscription(sub, href_prefix)
-    assert isinstance(result, DeviceOrAggregatorRequestScope)
+    assert isinstance(result, AggregatorRequestScope)
     assert result.href_prefix == href_prefix
     assert result.display_site_id == expected_display_id
     assert result.site_id == sub.scoped_site_id

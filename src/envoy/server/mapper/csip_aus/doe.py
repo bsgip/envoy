@@ -1,6 +1,6 @@
 from decimal import Decimal
 from enum import IntEnum, auto
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.der import (
@@ -20,7 +20,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, DeviceOrAggregatorRequestScope
 
 DOE_PROGRAM_MRID_PREFIX: int = int("D0E", 16)
 DOE_PROGRAM_ID: str = "doe"
@@ -44,7 +44,9 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def map_to_response(scope: DeviceOrAggregatorRequestScope, doe: DynamicOperatingEnvelope) -> DERControlResponse:
+    def map_to_response(
+        scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope], doe: DynamicOperatingEnvelope
+    ) -> DERControlResponse:
         """Creates a csip aus compliant DERControlResponse from the specific doe"""
         return DERControlResponse.model_validate(
             {
