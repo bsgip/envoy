@@ -411,7 +411,7 @@ class TimeTariffIntervalMapper:
                     {
                         "currentStatus": 0,  # Set to 'scheduled'
                         "dateTime": int(rate.changed_time.timestamp()),  # Set to when it is created
-                        "potentiallySuperseded": False,  # No idea where to get this info!
+                        "potentiallySuperseded": False,
                     }
                 ),
                 "ConsumptionTariffIntervalListLink": ListLink(href=list_href, all_=1),  # single rate
