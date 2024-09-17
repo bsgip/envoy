@@ -21,7 +21,7 @@ jobs:
           config_file: pyproject.toml
 
       - name: Security check report artifacts
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: Security report

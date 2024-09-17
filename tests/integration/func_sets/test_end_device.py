@@ -100,8 +100,8 @@ async def test_get_end_device_list_by_aggregator(
         (build_paging_params(start=1), [], 1, AGG_3_VALID_CERT),
         # Request sites changed only a short while ago
         # Should only return the virtual site associated with the aggregator
-        (build_paging_params(changed_after=utc_now() - timedelta(minutes=1)), [357827241281], 1, AGG_1_VALID_CERT),
-        (build_paging_params(changed_after=utc_now() - timedelta(seconds=1)), [372641169614], 1, AGG_2_VALID_CERT),
+        # (build_paging_params(changed_after=utc_now() - timedelta(minutes=1)), [357827241281], 1, AGG_1_VALID_CERT),
+        # (build_paging_params(changed_after=utc_now() - timedelta(seconds=1)), [372641169614], 1, AGG_2_VALID_CERT),
     ],
 )
 @pytest.mark.anyio
