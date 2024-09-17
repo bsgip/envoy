@@ -285,6 +285,7 @@ def test_MirrorMeterReadingMapper_without_MirrorReadingSet():
 
     reading_only = MirrorMeterReadingMapper.map_from_request(mmr_no_readingset, 9, 7, datetime.now())
     site = reading_only[0]
+
     assert len(reading_only) == 1
     assert site.site_reading_type_id == 7
     assert isinstance(site, SiteReading)
