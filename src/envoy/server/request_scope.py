@@ -255,7 +255,7 @@ class SiteRequestScope(DeviceOrAggregatorRequestScope):
 
 
 @dataclass(frozen=True)
-class AggregatorRequestScope(DeviceOrAggregatorRequestScope):
+class AggregatorRequestScope(BaseRequestScope):
     """Similar to DeviceOrAggregatorRequestScope but ALSO guarantees that aggregator_id will NEVER be
     NULL_AGGREGATOR_ID which eliminates any possibility of a Device certificate using this scope.
 
@@ -264,7 +264,17 @@ class AggregatorRequestScope(DeviceOrAggregatorRequestScope):
         Aggregator cert accessing a EndDevice assigned to that aggregator
     """
 
-    pass
+    source: CertificateType  # What created this certificate?
+
+    # The aggregator id that a request is scoped to (sourced from auth dependencies)
+    aggregator_id: int
+
+    # This is essentially an echo of the site_id that was queried by the client. It'll be VIRTUAL_END_DEVICE_SITE_ID
+    # if site_id is None. This should be used for generating site_id's in response hrefs
+    display_site_id: int
+
+    # If specified - What specific site_id is this request scoped to (otherwise no site scope)
+    site_id: Optional[int]
 
 
 @dataclass(frozen=True)

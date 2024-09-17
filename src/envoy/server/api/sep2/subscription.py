@@ -46,7 +46,7 @@ async def get_subscription(
     """
     sub = await SubscriptionManager.fetch_subscription_by_id(
         db.session,
-        extract_request_claims(request).to_device_or_aggregator_request_scope(site_id),
+        extract_request_claims(request).to_aggregator_request_scope(site_id),
         subscription_id=subscription_id,
     )
     if sub is None:
@@ -82,7 +82,7 @@ async def get_subscriptions_for_site(
     return XmlResponse(
         await SubscriptionManager.fetch_subscriptions_for_site(
             db.session,
-            extract_request_claims(request).to_device_or_aggregator_request_scope(site_id),
+            extract_request_claims(request).to_aggregator_request_scope(site_id),
             start=extract_start_from_paging_param(start),
             after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -112,7 +112,7 @@ async def delete_subscription(
     """
     removed = await SubscriptionManager.delete_subscription_for_site(
         db.session,
-        extract_request_claims(request).to_device_or_aggregator_request_scope(site_id),
+        extract_request_claims(request).to_aggregator_request_scope(site_id),
         subscription_id=subscription_id,
     )
     return Response(status_code=HTTPStatus.NO_CONTENT if removed else HTTPStatus.NOT_FOUND)
@@ -136,7 +136,7 @@ async def create_subscription(
         fastapi.Response object.
 
     """
-    scope = extract_request_claims(request).to_device_or_aggregator_request_scope(site_id)
+    scope = extract_request_claims(request).to_aggregator_request_scope(site_id)
     try:
         sub_id = await SubscriptionManager.add_subscription_for_site(db.session, scope, payload)
         location_href = generate_href(uri.SubscriptionUri, scope, site_id=site_id, subscription_id=sub_id)
