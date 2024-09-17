@@ -185,7 +185,7 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
     # create/update the mup
     response = await client.post(
         uris.MirrorUsagePointListUri,
-        content=MirrorUsagePointRequest.to_xml(mup, skip_empty=True),
+        content=MirrorUsagePointRequest.to_xml(mup, skip_empty=False, exclude_none=True, exclude_unset=True),
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
@@ -278,7 +278,7 @@ async def test_create_update_mup_href_prefix(client: AsyncClient, mup: MirrorUsa
     # create/update the mup
     response = await client.post(
         uris.MirrorUsagePointListUri,
-        content=MirrorUsagePointRequest.to_xml(mup, skip_empty=True),
+        content=MirrorUsagePointRequest.to_xml(mup, skip_empty=False, exclude_none=True, exclude_unset=True),
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
@@ -319,7 +319,7 @@ async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config, 
     # submit the readings
     response = await client.post(
         uris.MirrorUsagePointUri.format(mup_id=mup_id),
-        content=MirrorMeterReading.to_xml(mmr, skip_empty=True),
+        content=MirrorMeterReading.to_xml(mmr, skip_empty=False, exclude_none=True, exclude_unset=True),
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)

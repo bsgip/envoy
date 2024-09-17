@@ -463,7 +463,7 @@ async def test_submit_conditional_reading(client: AsyncClient, notifications_ena
     # submit the readings and then Subscription 5 will pickup these notifications
     response = await client.post(
         uris.MirrorUsagePointUri.format(mup_id=mup_id),
-        content=MirrorMeterReading.to_xml(mmr, skip_empty=True),
+        content=MirrorMeterReading.to_xml(mmr, skip_empty=False, exclude_none=True, exclude_unset=True),
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
@@ -505,7 +505,7 @@ async def test_der_capability_subscription(
     updated_cap.doeModesSupported = "2"
     response = await client.put(
         uris.DERCapabilityUri.format(site_id=1, der_id=PUBLIC_SITE_DER_ID),
-        content=updated_cap.to_xml(skip_empty=True),
+        content=updated_cap.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
     )
     assert_response_header(response, HTTPStatus.NO_CONTENT, expected_content_type=None)

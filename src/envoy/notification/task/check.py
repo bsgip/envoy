@@ -312,7 +312,7 @@ async def check_db_upsert(
     for n in all_notifications:
         content = entities_to_notification(
             resource, n.subscription, n.batch_key, href_prefix, n.entities, n.pricing_reading_type
-        ).to_xml(skip_empty=True)
+        ).to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
         if isinstance(content, bytes):
             content = content.decode()
 

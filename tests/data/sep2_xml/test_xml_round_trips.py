@@ -78,7 +78,7 @@ def test_xml_round_trip(
 
     # create an instance of xml_type, then convert to an ElementTree.Element
     schema_instance: TXmlSchemaType = xml_type.from_xml(buff)
-    instance_as_bytes = schema_instance.to_xml(skip_empty=True)
+    instance_as_bytes = schema_instance.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
     model_as_XML = ElementTree.fromstring(instance_as_bytes)
 
     comp: AssertionResponse
