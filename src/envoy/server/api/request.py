@@ -30,6 +30,7 @@ def extract_request_claims(request: Request) -> RawRequestClaims:
     if not href_prefix:
         href_prefix = None
 
+    source = request.state.source
     lfdi = request.state.lfdi
     sfdi = request.state.sfdi
     if not lfdi or not sfdi:  # disallow empty string and None
@@ -38,7 +39,14 @@ def extract_request_claims(request: Request) -> RawRequestClaims:
             detail=f"lfdi '{lfdi}' or sfdi '{sfdi}' have not been extracted correctly by Envoy middleware.",
         )
 
-    return RawRequestClaims(aggregator_id=aggregator_id, site_id=site_id, lfdi=lfdi, sfdi=sfdi, href_prefix=href_prefix)
+    return RawRequestClaims(
+        source=source,
+        aggregator_id_scope=aggregator_id,
+        site_id_scope=site_id,
+        lfdi=lfdi,
+        sfdi=sfdi,
+        href_prefix=href_prefix,
+    )
 
 
 def extract_default_doe(request: Request) -> Optional[DefaultDoeConfiguration]:

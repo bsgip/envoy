@@ -17,28 +17,37 @@ from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManag
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.site import Site
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_scope import AggregatorRequestScope, RawRequestClaims, SiteRequestScope
+from envoy.server.request_scope import (
+    CertificateType,
+    DeviceOrAggregatorRequestScope,
+    SiteRequestScope,
+    UnregisteredRequestScope,
+)
 
 AFTER_TIME = datetime(2024, 5, 6, 7, 8)
 
 
 @pytest.mark.anyio
-@mock.patch("envoy.server.manager.end_device.select_single_site_with_site_id")
+@mock.patch("envoy.server.manager.end_device.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.end_device.select_all_sites_with_aggregator_id")
 @mock.patch("envoy.server.manager.end_device.select_aggregator_site_count")
 @pytest.mark.parametrize(
     "scope, returned_site, returned_site_list, returned_count, expected_count, expected_sites",
     [
         (
-            generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=None),
-            Exception(),  # Single Site
+            generate_class_instance(
+                UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE, aggregator_id=NULL_AGGREGATOR_ID
+            ),
+            None,  # Single Site
             Exception(),  # Site List
             Exception(),  # Site List Count
             0,
             [],
         ),  # Device cert - not registered
         (
-            generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=111),
+            generate_class_instance(
+                UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE, aggregator_id=NULL_AGGREGATOR_ID
+            ),
             generate_class_instance(Site, seed=1234, changed_time=AFTER_TIME + timedelta(seconds=1)),  # Single Site
             Exception(),  # Site List
             Exception(),  # Site List Count
@@ -46,7 +55,9 @@ AFTER_TIME = datetime(2024, 5, 6, 7, 8)
             [generate_class_instance(Site, seed=1234, changed_time=AFTER_TIME + timedelta(seconds=1))],
         ),  # Device cert - has registered
         (
-            generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=111),
+            generate_class_instance(
+                UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE, aggregator_id=NULL_AGGREGATOR_ID
+            ),
             generate_class_instance(Site, seed=1234, changed_time=AFTER_TIME - timedelta(seconds=1)),  # Single Site
             Exception(),  # Site List
             Exception(),  # Site List Count
@@ -54,15 +65,9 @@ AFTER_TIME = datetime(2024, 5, 6, 7, 8)
             [],
         ),  # Device cert - has registered but site has changed BEFORE our after time and is thus filtered
         (
-            generate_class_instance(RawRequestClaims, aggregator_id=222, site_id=111),
-            generate_class_instance(Site, seed=1234, changed_time=AFTER_TIME + timedelta(seconds=1)),  # Single Site
-            Exception(),  # Site List
-            Exception(),  # Site List Count
-            1,
-            [generate_class_instance(Site, seed=1234, changed_time=AFTER_TIME + timedelta(seconds=1))],
-        ),  # Device cert - has registered
-        (
-            generate_class_instance(RawRequestClaims, aggregator_id=222, site_id=None),
+            generate_class_instance(
+                UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, aggregator_id=987
+            ),
             Exception(),  # Single Site
             [generate_class_instance(Site, seed=4321)],  # Site List
             789,  # Site List Count
@@ -74,8 +79,8 @@ AFTER_TIME = datetime(2024, 5, 6, 7, 8)
 async def test_fetch_sites_and_count_for_claims(
     mock_select_aggregator_site_count: mock.MagicMock,
     mock_select_all_sites_with_aggregator_id: mock.MagicMock,
-    mock_select_single_site_with_site_id: mock.MagicMock,
-    scope: RawRequestClaims,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
+    scope: UnregisteredRequestScope,
     returned_site: Union[Exception, Optional[Site]],
     returned_site_list: Union[Exception, list[Site]],
     returned_count: Union[Exception, int],
@@ -89,13 +94,9 @@ async def test_fetch_sites_and_count_for_claims(
     start = 123
     limit = 456
 
-    expected_agg_id = scope.aggregator_id
-    if expected_agg_id is None:
-        expected_agg_id = NULL_AGGREGATOR_ID
-
     # Exception is a placeholder for "this mock won't be used in this test case"
     if not isinstance(returned_site, Exception):
-        mock_select_single_site_with_site_id.return_value = returned_site
+        mock_select_single_site_with_lfdi.return_value = returned_site
     if not isinstance(returned_site_list, Exception):
         mock_select_all_sites_with_aggregator_id.return_value = returned_site_list
     if not isinstance(returned_count, Exception):
@@ -114,9 +115,9 @@ async def test_fetch_sites_and_count_for_claims(
 
     # The mocks should EITHER be called as we'd expected or NOT called at all
     if isinstance(returned_site, Exception):
-        mock_select_single_site_with_site_id.assert_not_called()
+        mock_select_single_site_with_lfdi.assert_not_called()
     else:
-        mock_select_single_site_with_site_id.assert_called_once_with(session, scope.site_id, expected_agg_id)
+        mock_select_single_site_with_lfdi.assert_called_once_with(session, scope.lfdi, scope.aggregator_id)
     if isinstance(returned_site_list, Exception):
         mock_select_all_sites_with_aggregator_id.assert_not_called()
     else:
@@ -192,7 +193,7 @@ async def test_end_device_manager_fetch_existing_device(
     mock_session = create_mock_session()
     raw_site: Site = generate_class_instance(Site)
     mapped_ed: EndDeviceResponse = generate_class_instance(EndDeviceResponse)
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
 
     # Just do a simple passthrough
     mock_select_single_site_with_site_id.return_value = raw_site
@@ -222,7 +223,7 @@ async def test_end_device_manager_fetch_enddevice_for_scope_virtual(
     mock_session = create_mock_session()
     raw_site: Site = generate_class_instance(Site)
     mapped_ed: EndDeviceResponse = generate_class_instance(EndDeviceResponse)
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=None)
 
     # Just do a simple passthrough
     mock_get_virtual_site_for_aggregator.return_value = raw_site
@@ -251,7 +252,7 @@ async def test_end_device_manager_fetch_missing_device(
 
     # Arrange
     mock_session = create_mock_session()
-    scope = generate_class_instance(AggregatorRequestScope)
+    scope = generate_class_instance(DeviceOrAggregatorRequestScope)
 
     mock_select_single_site_with_site_id.return_value = None  # database entity is missing / bad ID lookup
     mock_EndDeviceMapper.map_to_response = mock.Mock()
@@ -288,7 +289,9 @@ async def test_add_or_update_enddevice_for_scope_aggregator_with_sfdi(
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, site_id=None)
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
+    )
 
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_upsert_site_for_aggregator.return_value = 4321
@@ -332,7 +335,9 @@ async def test_add_or_update_enddevice_for_scope_aggregator_no_sfdi_with_lfdi(
     end_device.lFDI = "originallfdi"
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, site_id=None)
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
+    )
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
     mock_select_single_site_with_sfdi.return_value = None
@@ -380,7 +385,9 @@ async def test_add_or_update_enddevice_for_scope_aggregator_no_sfdi_no_lfdi(
     end_device.lFDI = missing_lfdi_value
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, site_id=None)
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
+    )
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
     mock_select_single_site_with_sfdi.return_value = None
@@ -413,7 +420,9 @@ async def test_add_or_update_enddevice_for_scope_device_missing_lfdi(
     """Checks that the enddevice update for a device cert fails if the lfdi mismatches on the incoming request"""
     # Arrange
     mock_session = create_mock_session()
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, aggregator_id=None)
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE
+    )
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     end_device.sFDI = scope.sfdi  # SFDI matches
     end_device.lFDI = missing_lfdi_value  # LFDI mismatches
@@ -434,7 +443,9 @@ async def test_add_or_update_enddevice_for_scope_device_missing_sfdi(
     """Checks that the enddevice update for a device cert fails if the sfdi mismatches on the incoming request"""
     # Arrange
     mock_session = create_mock_session()
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, aggregator_id=None)
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE
+    )
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     end_device.sFDI = missing_sfdi_value  # SFDI mismatches
     end_device.lFDI = scope.lfdi  # LFDI matches
@@ -452,17 +463,17 @@ async def test_add_or_update_enddevice_for_scope_device_missing_sfdi(
 @mock.patch("envoy.server.manager.end_device.upsert_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
 @mock.patch("envoy.server.manager.end_device.utc_now")
-@pytest.mark.parametrize("scope_site_id", [None, 123454321])
 async def test_add_or_update_enddevice_for_scope_device(
     mock_utc_now: mock.MagicMock,
     mock_EndDeviceMapper: mock.MagicMock,
     mock_upsert_site_for_aggregator: mock.MagicMock,
     mock_NotificationManager: mock.MagicMock,
-    scope_site_id: Optional[int],
 ):
     """Checks that the enddevice update just passes through to the relevant CRUD (assuming the lfdi/sfdi match scope)"""
     # Arrange
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=scope_site_id)
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE
+    )
     mock_session = create_mock_session()
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     end_device.sFDI = scope.sfdi
@@ -481,8 +492,8 @@ async def test_add_or_update_enddevice_for_scope_device(
 
     # Assert
     assert_mock_session(mock_session, committed=True)
-    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, NULL_AGGREGATOR_ID, now)
-    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, NULL_AGGREGATOR_ID, mapped_site)
+    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now)
+    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
     mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
 
@@ -506,7 +517,9 @@ async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
         generate_class_instance(Site, seed=101, optional_is_none=False),
         generate_class_instance(Site, seed=202, optional_is_none=True),
     ]
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, site_id=None)
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
+    )
 
     mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
     mock_fetch_sites_and_count_for_claims.return_value = (returned_sites, returned_site_count)
@@ -551,7 +564,9 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
         generate_class_instance(Site, seed=202, optional_is_none=True),
     ]
     returned_virtual_site = (generate_class_instance(Site, seed=303, optional_is_none=True),)
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, site_id=None)
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
+    )
 
     mock_get_virtual_site_for_aggregator.return_value = returned_virtual_site
     mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)

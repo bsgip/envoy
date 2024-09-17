@@ -19,7 +19,7 @@ from envoy.server.mapper.sep2.pricing import (
     TimeTariffIntervalMapper,
 )
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, Tariff, TariffGeneratedRate
-from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, SiteRequestScope
+from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
 @pytest.mark.parametrize(
@@ -104,7 +104,7 @@ def test_tariff_profile_mapping():
     that exceptions aren't being raised"""
     total_rates = 76543
     all_set: Tariff = generate_class_instance(Tariff, seed=101, optional_is_none=False)
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=1001)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001)
     mapped_all_set = TariffProfileMapper.map_to_response(scope, all_set, total_rates)
     assert mapped_all_set
     assert f"/{scope.display_site_id}" in mapped_all_set.href
@@ -157,7 +157,7 @@ def test_tariff_profile_list_mapping():
     ]
     tariff_rate_counts = [456, 789]
     tariff_count = 123
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=1001)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001)
 
     mapped_all_set = TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts), tariff_count)
     assert mapped_all_set
@@ -362,7 +362,7 @@ def test_time_tariff_interval_list_mapping(
     total = 632
     mock_PricingReadingTypeMapper.extract_price = mock.Mock(return_value=extracted_price)
     mock_ConsumptionTariffIntervalMapper.list_href = mock.Mock(return_value=cti_list_href)
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=1001)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001)
 
     mapped = TimeTariffIntervalMapper.map_to_list_response(scope, rates, rt, total)
     assert mapped.all_ == total
@@ -385,7 +385,7 @@ def test_mrid_uniqueness():
     tariff: Tariff = generate_class_instance(Tariff)
     rate: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate)
     tariff.tariff_id = id
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
 
     rate.tariff_generated_rate_id = id
     rate.tariff_id = id

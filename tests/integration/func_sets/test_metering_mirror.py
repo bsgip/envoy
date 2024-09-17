@@ -33,7 +33,6 @@ from tests.data.certificates.certificate6 import TEST_CERTIFICATE_FINGERPRINT as
 from tests.data.certificates.certificate6 import TEST_CERTIFICATE_LFDI as DEVICE_5_LFDI
 from tests.data.certificates.certificate7 import TEST_CERTIFICATE_FINGERPRINT as DEVICE_6_CERT
 from tests.data.certificates.certificate8 import TEST_CERTIFICATE_FINGERPRINT as UNREGISTERED_CERT
-from tests.data.certificates.certificate8 import TEST_CERTIFICATE_LFDI as UNREGISTERED_LFDI
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import (

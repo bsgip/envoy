@@ -44,7 +44,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
-from envoy.server.request_scope import AggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
 def assert_entity_hrefs_contain_entity_id_and_prefix(
@@ -72,8 +72,8 @@ def test_SubscriptionMapper_calculate_resource_href_at_least_one_supported_combo
     """Validates the various SubscriptionResource values should have at least 1 supported combo of site/resource id"""
     display_site_id = 2518761283
     hrefs: list[str] = []
-    scope: AggregatorRequestScope = generate_class_instance(
-        AggregatorRequestScope, display_site_id=display_site_id, href_prefix="/foo/bar"
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, display_site_id=display_site_id, href_prefix="/foo/bar"
     )
     for site_id, resource_id in product([1, None], [2, None]):
         sub: Subscription = generate_class_instance(Subscription)
@@ -101,7 +101,9 @@ def test_SubscriptionMapper_calculate_resource_href_all_support_site_unscoped(re
     either a specified resource id or none"""
 
     hrefs: list[str] = []
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, optional_is_none=True)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, optional_is_none=True
+    )
     for resource_id in [1, None]:
         sub: Subscription = generate_class_instance(Subscription)
         sub.resource_type = resource
@@ -128,7 +130,9 @@ def test_SubscriptionMapper_calculate_resource_href_encodes_site_id(
 ):
 
     display_site_id = VIRTUAL_END_DEVICE_SITE_ID if site_id is None else site_id
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, display_site_id=display_site_id)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, display_site_id=display_site_id
+    )
 
     sub: Subscription = generate_class_instance(Subscription)
     sub.resource_type = resource
@@ -149,7 +153,7 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
     resource: SubscriptionResource, site_id: Optional[int], resource_id: Optional[int]
 ):
     """Validates the various inputs/expected outputs apply the href_prefix"""
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, href_prefix=None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, href_prefix=None)
     sub: Subscription = generate_class_instance(Subscription)
     sub.resource_type = resource
     sub.scoped_site_id = site_id
@@ -165,7 +169,9 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
 
     # set output to None if we hit an unsupported combo of inputs
     prefix = "/my/prefix/for/tests"
-    scope_prefix: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, href_prefix=prefix)
+    scope_prefix: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, href_prefix=prefix
+    )
     href_with_prefix: Optional[str]
     try:
         href_with_prefix = SubscriptionMapper.calculate_resource_href(sub, scope_prefix)
@@ -185,7 +191,7 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
 
 
 def test_SubscriptionMapper_calculate_resource_href_bad_type():
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     sub: Subscription = generate_class_instance(Subscription)
     sub.resource_type = 9876  # invalid type
     with pytest.raises(InvalidMappingError):
@@ -209,8 +215,8 @@ def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
     for resource, site_id, resource_id in unique_combos:
 
         display_site_id = VIRTUAL_END_DEVICE_SITE_ID if site_id is None else site_id
-        scope: AggregatorRequestScope = generate_class_instance(
-            AggregatorRequestScope, display_site_id=display_site_id, site_id=site_id
+        scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+            DeviceOrAggregatorRequestScope, display_site_id=display_site_id, site_id=site_id
         )
 
         sub.resource_type = resource
@@ -271,8 +277,10 @@ def test_SubscriptionMapper_map_to_response():
     sub_with_condition.notification_uri = "http://my.example:33/foo"
     sub_with_condition.resource_type = SubscriptionResource.SITE
 
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, href_prefix=None)
-    scope_prefix: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, href_prefix="/my/prefix")
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, href_prefix=None)
+    scope_prefix: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, href_prefix="/my/prefix"
+    )
 
     # check prefix is applied
     sep2_prefix = SubscriptionMapper.map_to_response(sub_all_set, scope_prefix)
@@ -319,8 +327,8 @@ def test_SubscriptionListMapper_map_to_site_response():
     sub_list[1].resource_type = SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE
     sub_list[1].scoped_site_id = 1
     sub_count = 43
-    scope: AggregatorRequestScope = generate_class_instance(
-        AggregatorRequestScope, seed=1001, optional_is_none=True, href_prefix="/custom/prefix"
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, optional_is_none=True, href_prefix="/custom/prefix"
     )
 
     mapped = SubscriptionListMapper.map_to_site_response(scope, sub_list, sub_count)
@@ -338,8 +346,10 @@ def test_SubscriptionMapper_calculate_subscription_href():
     sub_all_set = generate_class_instance(Subscription, seed=101, optional_is_none=False)
     sub_optional = generate_class_instance(Subscription, seed=101, optional_is_none=True)
 
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, href_prefix=None)
-    scope_prefix: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, href_prefix="/my/prefix")
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, href_prefix=None)
+    scope_prefix: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, href_prefix="/my/prefix"
+    )
 
     # Subscriptions scoped to a EndDevice are different to those that are "global"
     assert SubscriptionMapper.calculate_subscription_href(
@@ -373,8 +383,8 @@ def test_SubscriptionMapper_map_from_request():
     sub_condition.condition = generate_class_instance(Sep2Condition)
     sub_condition.condition.attributeIdentifier = ConditionAttributeIdentifier.READING_VALUE
 
-    scope_prefix: AggregatorRequestScope = generate_class_instance(
-        AggregatorRequestScope, seed=1001, site_id=None, href_prefix="/prefix"
+    scope_prefix: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, site_id=None, href_prefix="/prefix"
     )
     valid_domains = set(["foo.bar", "example.com"])
     changed_time = datetime(2022, 3, 4, 5, 6, 7)
@@ -459,8 +469,8 @@ def test_NotificationMapper_map_sites_to_response():
     site2: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: AggregatorRequestScope = generate_class_instance(
-        AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
 
     notification = NotificationMapper.map_sites_to_response([site1, site2], sub, scope)
@@ -482,8 +492,8 @@ def test_NotificationMapper_map_does_to_response():
     doe2: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: AggregatorRequestScope = generate_class_instance(
-        AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
 
     notification = NotificationMapper.map_does_to_response([doe1, doe2], sub, scope)
@@ -498,9 +508,11 @@ def test_NotificationMapper_map_does_to_response():
 
     assert notification.resource.type == XSI_TYPE_DER_CONTROL_LIST
     assert_list_type(DERControlResponse, notification.resource.DERControl, count=2)
-    assert all(
-        [e.href is None for e in notification.resource.DERControl]
-    ), "If this fails - starting testing using assert_entity_hrefs_contain_entity_id_and_prefix (see other tests)"
+    assert_entity_hrefs_contain_entity_id_and_prefix(
+        [e.href for e in notification.resource.DERControl],
+        [doe1.dynamic_operating_envelope_id, doe2.dynamic_operating_envelope_id],
+        scope.href_prefix,
+    )
 
 
 def test_NotificationMapper_map_readings_to_response():
@@ -508,8 +520,8 @@ def test_NotificationMapper_map_readings_to_response():
     sr2: SiteReading = generate_class_instance(SiteReading, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: AggregatorRequestScope = generate_class_instance(
-        AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
     site_reading_type_id = 456
 
@@ -534,8 +546,8 @@ def test_NotificationMapper_map_rates_to_response():
     rate2: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: AggregatorRequestScope = generate_class_instance(
-        AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
     tariff_id = 888
     day = datetime.now().date()

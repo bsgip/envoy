@@ -36,7 +36,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
-from envoy.server.request_scope import AggregatorRequestScope
+from envoy.server.request_scope import CertificateType, DeviceOrAggregatorRequestScope
 
 logger = logging.getLogger(__name__)
 
@@ -66,15 +66,16 @@ class NotificationEntities(Generic[TResourceModel]):
 T = TypeVar("T")
 
 
-def scope_for_subscription(sub: Subscription, href_prefix: Optional[str]) -> AggregatorRequestScope:
+def scope_for_subscription(sub: Subscription, href_prefix: Optional[str]) -> DeviceOrAggregatorRequestScope:
     """Generates a request scope for use with a subscription when mapping elements"""
-    return AggregatorRequestScope(
+    return DeviceOrAggregatorRequestScope(
         aggregator_id=sub.aggregator_id,
         display_site_id=(VIRTUAL_END_DEVICE_SITE_ID if sub.scoped_site_id is None else sub.scoped_site_id),
         site_id=sub.scoped_site_id,
         sfdi=0,
         lfdi="",
         href_prefix=href_prefix,
+        source=CertificateType.AGGREGATOR_CERTIFICATE,
     )
 
 

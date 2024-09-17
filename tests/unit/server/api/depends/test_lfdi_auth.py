@@ -12,6 +12,7 @@ from envoy.server.crud.auth import ClientIdDetails
 from envoy.server.main import settings
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.site import Site
+from envoy.server.request_scope import CertificateType
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as TEST_CERTIFICATE_FINGERPRINT_1
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as TEST_CERTIFICATE_LFDI_1
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_PEM as TEST_CERTIFICATE_PEM_1
@@ -150,6 +151,7 @@ async def test_lfdiauthdepends_unregistered_cert_with_device_registration(
     # Assert
     assert req.state.aggregator_id is None
     assert req.state.site_id is None
+    assert req.state.source == CertificateType.DEVICE_CERTIFICATE
     assert req.state.lfdi == TEST_CERTIFICATE_LFDI_1
     assert req.state.sfdi == int(TEST_CERTIFICATE_SFDI_1)
 
@@ -187,6 +189,7 @@ async def test_lfdiauthdepends_site_specific_cert(
     # Assert
     assert req.state.aggregator_id is None
     assert req.state.site_id == SITE_ID
+    assert req.state.source == CertificateType.DEVICE_CERTIFICATE
     assert req.state.lfdi == TEST_CERTIFICATE_LFDI_1
     assert req.state.sfdi == int(TEST_CERTIFICATE_SFDI_1)
 
@@ -227,6 +230,7 @@ async def test_lfdiauthdepends_aggregator_specific_cert(
     # Assert
     assert req.state.aggregator_id == AGG_ID
     assert req.state.site_id is None
+    assert req.state.source == CertificateType.AGGREGATOR_CERTIFICATE
     assert req.state.lfdi == TEST_CERTIFICATE_LFDI_1
     assert req.state.sfdi == int(TEST_CERTIFICATE_SFDI_1)
 

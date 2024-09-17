@@ -58,7 +58,7 @@ async def get_mirror_usage_point_list(
     try:
         mup_list = await MirrorMeteringManager.list_mirror_usage_points(
             db.session,
-            scope=extract_request_claims(request),
+            scope=extract_request_claims(request).to_mup_request_scope(),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -89,7 +89,7 @@ async def post_mirror_usage_point_list(
         fastapi.Response object.
 
     """
-    scope = extract_request_claims(request)
+    scope = extract_request_claims(request).to_mup_request_scope()
     try:
         mup_id = await MirrorMeteringManager.create_or_update_mirror_usage_point(db.session, scope=scope, mup=payload)
     except BadRequestError as ex:
@@ -129,7 +129,7 @@ async def get_mirror_usage_point(
     try:
         mup_list = await MirrorMeteringManager.fetch_mirror_usage_point(
             db.session,
-            scope=extract_request_claims(request),
+            scope=extract_request_claims(request).to_mup_request_scope(),
             site_reading_type_id=mup_id,
         )
     except BadRequestError as ex:
@@ -167,7 +167,10 @@ async def post_mirror_usage_point(
 
     try:
         await MirrorMeteringManager.add_or_update_readings(
-            db.session, scope=extract_request_claims(request), site_reading_type_id=mup_id, mmr=payload
+            db.session,
+            scope=extract_request_claims(request).to_mup_request_scope(),
+            site_reading_type_id=mup_id,
+            mmr=payload,
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

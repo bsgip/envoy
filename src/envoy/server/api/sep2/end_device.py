@@ -42,7 +42,7 @@ async def get_enddevice(site_id: int, request: Request) -> XmlResponse:
 
     """
     end_device = await EndDeviceManager.fetch_enddevice_for_scope(
-        db.session, extract_request_claims(request).to_aggregator_request_scope(site_id)
+        db.session, extract_request_claims(request).to_device_or_aggregator_request_scope(site_id)
     )
     if end_device is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
@@ -76,7 +76,7 @@ async def get_enddevice_list(
     return XmlResponse(
         await EndDeviceListManager.fetch_enddevicelist_for_scope(
             db.session,
-            extract_request_claims(request),
+            extract_request_claims(request).to_unregistered_request_scope(),
             start=extract_start_from_paging_param(start),
             after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -101,7 +101,7 @@ async def create_end_device(
         fastapi.Response object.
 
     """
-    scope = extract_request_claims(request)
+    scope = extract_request_claims(request).to_unregistered_request_scope()
     try:
         site_id = await EndDeviceManager.add_or_update_enddevice_for_scope(db.session, scope, payload)
         location_href = generate_href(uri.EndDeviceUri, scope, site_id=site_id)

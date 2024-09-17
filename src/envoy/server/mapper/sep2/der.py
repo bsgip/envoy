@@ -19,7 +19,7 @@ from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.mapper.common import generate_href
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
-from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope
+from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
 class ValueMultiplier(Protocol):
@@ -114,7 +114,7 @@ class DERMapper:
 
     @staticmethod
     def map_to_list_response(
-        scope: AggregatorRequestScope,
+        scope: DeviceOrAggregatorRequestScope,
         poll_rate_seconds: int,
         ders_with_act_derp_id: list[tuple[SiteDER, Optional[str]]],
         der_count: int,
@@ -136,7 +136,7 @@ class DERMapper:
 class DERAvailabilityMapper:
     @staticmethod
     def map_to_response(
-        scope: AggregatorRequestScope, der_avail: SiteDERAvailability, der_avail_site_id: int
+        scope: DeviceOrAggregatorRequestScope, der_avail: SiteDERAvailability, der_avail_site_id: int
     ) -> DERAvailability:
         """der_avail_site_id: The site_id of the site that owns der_avail (normally we'd use the site_der relationship
         to infer this but due to some SQL Alchemy quirks - we're forced to specify it)"""
@@ -176,7 +176,9 @@ class DERAvailabilityMapper:
 
 class DERStatusMapper:
     @staticmethod
-    def map_to_response(scope: AggregatorRequestScope, der_status: SiteDERStatus, der_status_site_id: int) -> DERStatus:
+    def map_to_response(
+        scope: DeviceOrAggregatorRequestScope, der_status: SiteDERStatus, der_status_site_id: int
+    ) -> DERStatus:
         """der_status_site_id: The site_id of the site that owns der_status (normally we'd use the site_der relationship
         to infer this but due to some SQL Alchemy quirks - we're forced to specify it)"""
         changed_timestamp = int(der_status.changed_time.timestamp())
@@ -328,7 +330,7 @@ class DERStatusMapper:
 class DERCapabilityMapper:
     @staticmethod
     def map_to_response(
-        scope: AggregatorRequestScope, der_rating: SiteDERRating, der_rating_site_id: int
+        scope: DeviceOrAggregatorRequestScope, der_rating: SiteDERRating, der_rating_site_id: int
     ) -> DERCapability:
         """der_rating_site_id: The site_id of the site that owns der_rating (normally we'd use the site_der relationship
         to infer this but due to some SQL Alchemy quirks - we're forced to specify it)"""
@@ -449,7 +451,7 @@ class DERCapabilityMapper:
 class DERSettingMapper:
     @staticmethod
     def map_to_response(
-        scope: AggregatorRequestScope, der_setting: SiteDERSetting, der_setting_site_id: int
+        scope: DeviceOrAggregatorRequestScope, der_setting: SiteDERSetting, der_setting_site_id: int
     ) -> DERSettings:
         """der_setting_site_id: The site_id of the site that owns der_setting (normally we'd use the site_der
         relationship to infer this but due to some SQL Alchemy quirks - we're forced to specify

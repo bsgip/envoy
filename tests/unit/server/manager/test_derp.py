@@ -20,7 +20,7 @@ from envoy.server.mapper.csip_aus.doe import DERControlListSource
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
-from envoy.server.request_scope import AggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
 @pytest.mark.anyio
@@ -30,15 +30,15 @@ from envoy.server.request_scope import AggregatorRequestScope, SiteRequestScope
 @pytest.mark.parametrize(
     "scope",
     [
-        generate_class_instance(AggregatorRequestScope, site_id=123),
-        generate_class_instance(AggregatorRequestScope, site_id=None),
+        generate_class_instance(DeviceOrAggregatorRequestScope, site_id=123),
+        generate_class_instance(DeviceOrAggregatorRequestScope, site_id=None),
     ],
 )
 async def test_program_fetch_list_for_scope(
     mock_DERProgramMapper: mock.MagicMock,
     mock_count_does: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
-    scope: AggregatorRequestScope,
+    scope: DeviceOrAggregatorRequestScope,
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
@@ -83,7 +83,7 @@ async def test_program_fetch_list_scope_dne(
 
     mock_session = create_mock_session()
     mock_select_single_site_with_site_id.return_value = None
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
 
     # Act
     with pytest.raises(NotFoundError):
@@ -103,15 +103,15 @@ async def test_program_fetch_list_scope_dne(
 @pytest.mark.parametrize(
     "scope",
     [
-        generate_class_instance(AggregatorRequestScope, site_id=123),
-        generate_class_instance(AggregatorRequestScope, site_id=None),
+        generate_class_instance(DeviceOrAggregatorRequestScope, site_id=123),
+        generate_class_instance(DeviceOrAggregatorRequestScope, site_id=None),
     ],
 )
 async def test_program_fetch_for_scope(
     mock_DERProgramMapper: mock.MagicMock,
     mock_count_does: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
-    scope: AggregatorRequestScope,
+    scope: DeviceOrAggregatorRequestScope,
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
@@ -176,7 +176,7 @@ async def test_fetch_doe_control_for_scope(
     mock_select_doe_for_scope: mock.MagicMock,
     selected_doe: Optional[DynamicOperatingEnvelope],
 ):
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     doe_id = 15115
     mock_session = create_mock_session()
 
@@ -204,7 +204,7 @@ async def test_fetch_doe_controls_for_scope(
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     doe_count = 789
     start = 11
     limit = 34
@@ -308,7 +308,7 @@ async def test_fetch_active_doe_controls_for_site(
     mock_select_does_at_timestamp.return_value = returned_does
     mock_count_does_at_timestamp.return_value = returned_count
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
 
     # Act
     result = await DERControlManager.fetch_active_doe_controls_for_scope(

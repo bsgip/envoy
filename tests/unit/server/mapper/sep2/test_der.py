@@ -27,7 +27,7 @@ from envoy.server.mapper.sep2.der import (
     to_hex_binary,
 )
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
-from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope
+from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
 def test_der_mapping():
@@ -80,7 +80,7 @@ def test_der_list():
         (generate_class_instance(SiteDER, seed=404, optional_is_none=True, generate_relationships=True), "DERPID2"),
     ]
 
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=11)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=11)
     poll_rate = 99
     count = 42
 
@@ -99,8 +99,8 @@ def test_der_avail_roundtrip(optional_is_none: bool):
     expected: DERAvailability = generate_class_instance(
         DERAvailability, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
-    scope: AggregatorRequestScope = generate_class_instance(
-        AggregatorRequestScope, site_id=9876, href_prefix="/my/prefix"
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, site_id=9876, href_prefix="/my/prefix"
     )
     entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
@@ -143,8 +143,8 @@ def test_der_status_roundtrip(optional_is_none: bool):
                 ConnectStatusType.OPERATING | ConnectStatusType.FAULT_ERROR
             )
 
-    scope: AggregatorRequestScope = generate_class_instance(
-        AggregatorRequestScope, site_id=9875, href_prefix="/my/prefix"
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, site_id=9875, href_prefix="/my/prefix"
     )
     entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
@@ -176,7 +176,9 @@ def test_der_capability_roundtrip(optional_is_none: bool):
         DERCapability, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
     expected.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT | DERControlType.OP_MOD_FREQ_DROOP)
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=1991, href_prefix="/my/prefix")
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1991, href_prefix="/my/prefix"
+    )
     entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
@@ -206,7 +208,9 @@ def test_der_settings_roundtrip(optional_is_none: bool):
         DERSettings, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
     expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_HFRT_MAY_TRIP | DERControlType.OP_MOD_FREQ_DROOP)
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=9876, href_prefix="/my/prefix")
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=9876, href_prefix="/my/prefix"
+    )
     entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 4)
 

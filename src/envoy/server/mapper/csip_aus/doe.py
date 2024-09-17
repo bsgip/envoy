@@ -20,7 +20,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
-from envoy.server.request_scope import AggregatorRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope
 
 DOE_PROGRAM_MRID_PREFIX: int = int("D0E", 16)
 DOE_PROGRAM_ID: str = "doe"
@@ -44,7 +44,7 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def map_to_response(scope: AggregatorRequestScope, doe: DynamicOperatingEnvelope) -> DERControlResponse:
+    def map_to_response(scope: DeviceOrAggregatorRequestScope, doe: DynamicOperatingEnvelope) -> DERControlResponse:
         """Creates a csip aus compliant DERControlResponse from the specific doe"""
         return DERControlResponse.model_validate(
             {
@@ -90,14 +90,14 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def doe_list_href(request_scope: AggregatorRequestScope) -> str:
+    def doe_list_href(request_scope: DeviceOrAggregatorRequestScope) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
             uri.DERControlListUri, request_scope, site_id=request_scope.display_site_id, der_program_id=DOE_PROGRAM_ID
         )
 
     @staticmethod
-    def active_doe_list_href(request_scope: AggregatorRequestScope) -> str:
+    def active_doe_list_href(request_scope: DeviceOrAggregatorRequestScope) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
             uri.ActiveDERControlListUri,
@@ -107,7 +107,7 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def default_doe_href(request_scope: AggregatorRequestScope) -> str:
+    def default_doe_href(request_scope: DeviceOrAggregatorRequestScope) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
             uri.DefaultDERControlUri,
@@ -118,7 +118,7 @@ class DERControlMapper:
 
     @staticmethod
     def map_to_list_response(
-        request_scope: AggregatorRequestScope,
+        request_scope: DeviceOrAggregatorRequestScope,
         does: Sequence[DynamicOperatingEnvelope],
         total_does: int,
         source: DERControlListSource,
@@ -149,20 +149,20 @@ class DERControlMapper:
 
 class DERProgramMapper:
     @staticmethod
-    def doe_href(rq_scope: AggregatorRequestScope) -> str:
+    def doe_href(rq_scope: DeviceOrAggregatorRequestScope) -> str:
         """Returns a href for a particular site's DER Program for Dynamic Operating Envelopes"""
         return generate_href(
             uri.DERProgramUri, rq_scope, site_id=rq_scope.display_site_id, der_program_id=DOE_PROGRAM_ID
         )
 
     @staticmethod
-    def doe_list_href(rq_scope: AggregatorRequestScope) -> str:
+    def doe_list_href(rq_scope: DeviceOrAggregatorRequestScope) -> str:
         """Returns a href for a particular site's DER Program list"""
         return generate_href(uri.DERProgramListUri, rq_scope, site_id=rq_scope.display_site_id)
 
     @staticmethod
     def doe_program_response(
-        rq_scope: AggregatorRequestScope, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
+        rq_scope: DeviceOrAggregatorRequestScope, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
     ) -> DERProgramResponse:
         """Returns a static Dynamic Operating Envelope program response"""
 
@@ -199,7 +199,7 @@ class DERProgramMapper:
 
     @staticmethod
     def doe_program_list_response(
-        rq_scope: AggregatorRequestScope, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
+        rq_scope: DeviceOrAggregatorRequestScope, total_does: int, default_doe: Optional[DefaultDoeConfiguration]
     ) -> DERProgramListResponse:
         """Returns a fixed list of just the DOE Program"""
         return DERProgramListResponse.model_validate(

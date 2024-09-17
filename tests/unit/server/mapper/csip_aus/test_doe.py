@@ -13,7 +13,7 @@ from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
-from envoy.server.request_scope import AggregatorRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope
 
 
 def test_map_derc_to_response():
@@ -22,7 +22,9 @@ def test_map_derc_to_response():
     doe_opt: DynamicOperatingEnvelope = generate_class_instance(
         DynamicOperatingEnvelope, seed=202, optional_is_none=True
     )
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/foo/bar")
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/foo/bar"
+    )
 
     result_all_set = DERControlMapper.map_to_response(scope, doe)
     assert result_all_set is not None
@@ -90,7 +92,9 @@ def test_map_derc_to_list_response():
     site_count = 199
 
     all_does = [doe1, doe2, doe3, doe4]
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, display_site_id=54121)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, display_site_id=54121
+    )
 
     result = DERControlMapper.map_to_list_response(scope, all_does, site_count, DERControlListSource.DER_CONTROL_LIST)
     assert result is not None
@@ -118,7 +122,9 @@ def test_map_derp_doe_program_response_with_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj (and there is
     a default doe specified)"""
     total_does = 456
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, display_site_id=54122)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, display_site_id=54122
+    )
     default_doe = generate_class_instance(DefaultDoeConfiguration)
 
     result = DERProgramMapper.doe_program_response(scope, total_does, default_doe)
@@ -151,7 +157,9 @@ def test_map_derp_doe_program_response_no_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj (and there is NO
     default doe specified)"""
     total_does = 456
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, display_site_id=54123)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, display_site_id=54123
+    )
 
     result = DERProgramMapper.doe_program_response(scope, total_does, None)
     assert result is not None
@@ -166,7 +174,7 @@ def test_map_derp_doe_program_response_no_default_doe():
 def test_map_derp_doe_program_list_response_no_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
     total_does = 456
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
 
     result = DERProgramMapper.doe_program_list_response(scope, total_does, None)
     assert result is not None
@@ -185,7 +193,7 @@ def test_map_derp_doe_program_list_response_no_default_doe():
 def test_map_derp_doe_program_list_response_with_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
     total_does = 456
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     default_doe = generate_class_instance(DefaultDoeConfiguration)
 
     result = DERProgramMapper.doe_program_list_response(scope, total_does, default_doe)
@@ -206,8 +214,8 @@ def test_map_derp_doe_program_list_response_with_default_doe():
 def test_mrid_uniqueness():
     """Test our mrids for controls differ from programs even when the ID's are the same"""
     site_id = 1
-    scope: AggregatorRequestScope = generate_class_instance(
-        AggregatorRequestScope, site_id=site_id, display_site_id=site_id
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, site_id=site_id, display_site_id=site_id
     )
     doe: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope)
     doe.site_id = site_id

@@ -21,7 +21,7 @@ from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.pub_sub import SubscriptionListMapper, SubscriptionMapper
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_scope import AggregatorRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class SubscriptionManager:
     @staticmethod
     async def fetch_subscription_by_id(
-        session: AsyncSession, scope: AggregatorRequestScope, subscription_id: int
+        session: AsyncSession, scope: DeviceOrAggregatorRequestScope, subscription_id: int
     ) -> Optional[Subscription]:
         """Fetches a subscription for a particular request (optionally scoped to a single site_id)
 
@@ -51,7 +51,7 @@ class SubscriptionManager:
     @staticmethod
     async def fetch_subscriptions_for_site(
         session: AsyncSession,
-        scope: AggregatorRequestScope,
+        scope: DeviceOrAggregatorRequestScope,
         start: int,
         after: datetime,
         limit: int,
@@ -77,7 +77,7 @@ class SubscriptionManager:
 
     @staticmethod
     async def delete_subscription_for_site(
-        session: AsyncSession, scope: AggregatorRequestScope, subscription_id: int
+        session: AsyncSession, scope: DeviceOrAggregatorRequestScope, subscription_id: int
     ) -> bool:
         """This will delete the specified subscription with id (underneath site_id) and return True if successful and
         False otherwise"""
@@ -91,7 +91,7 @@ class SubscriptionManager:
 
     @staticmethod
     async def add_subscription_for_site(
-        session: AsyncSession, scope: AggregatorRequestScope, subscription: Subscription
+        session: AsyncSession, scope: DeviceOrAggregatorRequestScope, subscription: Subscription
     ) -> int:
         """This will add the specified subscription to the database underneath site_id. Returns the inserted
         subscription id"""

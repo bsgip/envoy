@@ -14,6 +14,7 @@ from envoy.server.crud.auth import ClientIdDetails, select_all_client_id_details
 from envoy.server.crud.common import convert_lfdi_to_sfdi
 from envoy.server.crud.end_device import select_single_site_with_sfdi
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
+from envoy.server.request_scope import CertificateType
 
 logger = logging.getLogger(__name__)
 
@@ -79,11 +80,13 @@ class LFDIAuthDepends:
         aggregator_id: Optional[int] = None
         if client_id:
             aggregator_id = client_id.aggregator_id
+            source = CertificateType.AGGREGATOR_CERTIFICATE
         else:
             # The cert has passed our TLS termination so its signing chain is valid - the only question
             # is whether this server is setup to allow single device registration or whether all requests must
             # be routed through an aggregator (and their client cert)
             if self.allow_device_registration:
+                source = CertificateType.DEVICE_CERTIFICATE
                 async with db():
                     site = await select_single_site_with_sfdi(db.session, sfdi=sfdi, aggregator_id=NULL_AGGREGATOR_ID)
                     if site is not None:
@@ -94,6 +97,7 @@ class LFDIAuthDepends:
                     logger, exc=None, status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised client certificate."
                 )
 
+        request.state.source = source
         request.state.lfdi = lfdi
         request.state.sfdi = sfdi
 

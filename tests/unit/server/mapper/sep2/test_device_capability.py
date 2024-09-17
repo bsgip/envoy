@@ -5,14 +5,14 @@ from envoy_schema.server.schema.sep2.identification import ListLink
 from envoy_schema.server.schema.uri import DeviceCapabilityUri
 
 from envoy.server.mapper.sep2.device_capability import DeviceCapabilityMapper
-from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, SiteRequestScope
+from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
 @pytest.mark.parametrize(
     "scope",
     [
-        generate_class_instance(AggregatorRequestScope, optional_is_none=True),
-        generate_class_instance(AggregatorRequestScope, optional_is_none=False),
+        generate_class_instance(DeviceOrAggregatorRequestScope, optional_is_none=True),
+        generate_class_instance(DeviceOrAggregatorRequestScope, optional_is_none=False),
         generate_class_instance(SiteRequestScope, optional_is_none=True),
         generate_class_instance(SiteRequestScope, optional_is_none=False),
     ],
@@ -40,8 +40,8 @@ def test_map_to_response(scope: BaseRequestScope):
 @pytest.mark.parametrize(
     "scope",
     [
-        generate_class_instance(AggregatorRequestScope, optional_is_none=True),
-        generate_class_instance(AggregatorRequestScope, optional_is_none=False),
+        generate_class_instance(DeviceOrAggregatorRequestScope, optional_is_none=True),
+        generate_class_instance(DeviceOrAggregatorRequestScope, optional_is_none=False),
         generate_class_instance(SiteRequestScope, optional_is_none=True),
         generate_class_instance(SiteRequestScope, optional_is_none=False),
     ],

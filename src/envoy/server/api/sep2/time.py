@@ -53,7 +53,7 @@ async def get_time_resource(request: Request) -> Response:
         now_utcoffset = datetime.timedelta()
     tz_offset = now_utcoffset.total_seconds() - dst_info.dst_offset
 
-    href = generate_href(request.url.path, extract_request_claims(request))
+    href = generate_href(request.url.path, extract_request_claims(request).to_unregistered_request_scope())
 
     return XmlResponse(
         TimeResponse(

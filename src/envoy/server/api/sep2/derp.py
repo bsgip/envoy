@@ -47,7 +47,7 @@ async def get_derprogram_list(
     try:
         derp_list = await DERProgramManager.fetch_list_for_scope(
             db.session,
-            scope=extract_request_claims(request).to_aggregator_request_scope(site_id),
+            scope=extract_request_claims(request).to_device_or_aggregator_request_scope(site_id),
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
@@ -75,7 +75,7 @@ async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str
     try:
         derp = await DERProgramManager.fetch_doe_program_for_scope(
             db.session,
-            scope=extract_request_claims(request).to_aggregator_request_scope(site_id),
+            scope=extract_request_claims(request).to_device_or_aggregator_request_scope(site_id),
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
@@ -115,7 +115,7 @@ async def get_dercontrol_list(
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_scope(
             db.session,
-            scope=extract_request_claims(request).to_aggregator_request_scope(site_id),
+            scope=extract_request_claims(request).to_device_or_aggregator_request_scope(site_id),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -147,7 +147,7 @@ async def get_der_control(request: Request, site_id: int, der_program_id: str, d
     try:
         derc = await DERControlManager.fetch_doe_control_for_scope(
             db.session,
-            scope=extract_request_claims(request).to_aggregator_request_scope(site_id),
+            scope=extract_request_claims(request).to_device_or_aggregator_request_scope(site_id),
             doe_id=derc_id,
         )
     except BadRequestError as ex:

@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.metering_mirror import (
     MirrorMeterReading,
@@ -25,9 +24,8 @@ from envoy.server.mapper.sep2.metering import (
     MirrorUsagePointListMapper,
     MirrorUsagePointMapper,
 )
-from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_scope import RawRequestClaims
+from envoy.server.request_scope import CertificateType, MUPRequestScope
 
 logger = logging.getLogger(__name__)
 
@@ -35,30 +33,30 @@ logger = logging.getLogger(__name__)
 class MirrorMeteringManager:
     @staticmethod
     async def create_or_update_mirror_usage_point(
-        session: AsyncSession, scope: RawRequestClaims, mup: MirrorUsagePoint
+        session: AsyncSession, scope: MUPRequestScope, mup: MirrorUsagePoint
     ) -> int:
         """Creates a new mup (or fetches an existing one of the same value). Returns the Id associated with the created
         or updated mup. Raises InvalidIdError if the underlying site cannot be fetched
 
         Will commit the underlying session on success"""
-        agg_id: Optional[int] = scope.aggregator_id
-        if agg_id is None:
+        if scope.source == CertificateType.DEVICE_CERTIFICATE:
             # device certs are limited to the LFDI of the device cert
             if mup.deviceLFDI != scope.lfdi:
                 raise ForbiddenError(f"deviceLFDI '{mup.deviceLFDI}' doesn't match client certificate '{scope.lfdi}'")
-            agg_id = NULL_AGGREGATOR_ID
 
-        site = await select_single_site_with_lfdi(session=session, lfdi=mup.deviceLFDI, aggregator_id=agg_id)
+        site = await select_single_site_with_lfdi(
+            session=session, lfdi=mup.deviceLFDI, aggregator_id=scope.aggregator_id
+        )
         if site is None:
             raise InvalidIdError(f"deviceLFDI {mup.deviceLFDI} doesn't match a known site.")
 
         changed_time = utc_now()
         srt = MirrorUsagePointMapper.map_from_request(
-            mup, aggregator_id=agg_id, site_id=site.site_id, changed_time=changed_time
+            mup, aggregator_id=scope.aggregator_id, site_id=site.site_id, changed_time=changed_time
         )
 
         srt_id = await upsert_site_reading_type_for_aggregator(
-            session=session, aggregator_id=agg_id, site_reading_type=srt
+            session=session, aggregator_id=scope.aggregator_id, site_reading_type=srt
         )
         await session.commit()
 
@@ -67,22 +65,14 @@ class MirrorMeteringManager:
 
     @staticmethod
     async def fetch_mirror_usage_point(
-        session: AsyncSession, scope: RawRequestClaims, site_reading_type_id: int
+        session: AsyncSession, scope: MUPRequestScope, site_reading_type_id: int
     ) -> MirrorUsagePoint:
         """Fetches a MirrorUsagePoint with the specified site_reading_type_id. Raises NotFoundError if it can't be
         located"""
-        agg_id: Optional[int] = scope.aggregator_id
-        site_id_filter: Optional[int] = None
-        if agg_id is None:
-            if scope.site_id is None:
-                raise ForbiddenError(f"Client device certificate {scope.lfdi} doesn't have a registered EndDevice")
-            site_id_filter = scope.site_id
-            agg_id = NULL_AGGREGATOR_ID
-
         srt = await fetch_site_reading_type_for_aggregator(
             session=session,
-            aggregator_id=agg_id,
-            site_id=site_id_filter,
+            aggregator_id=scope.aggregator_id,
+            site_id=scope.site_id,
             site_reading_type_id=site_reading_type_id,
             include_site_relation=True,
         )
@@ -94,25 +84,17 @@ class MirrorMeteringManager:
     @staticmethod
     async def add_or_update_readings(
         session: AsyncSession,
-        scope: RawRequestClaims,
+        scope: MUPRequestScope,
         site_reading_type_id: int,
         mmr: MirrorMeterReading,
     ) -> None:
         """Adds or updates a set of readings (updates based on start time) for a given site_reading_type (mup id)
 
         raises NotFoundError if the underlying site_reading_type_id DNE/doesn't belong to aggregator_id"""
-        agg_id: Optional[int] = scope.aggregator_id
-        site_id_filter: Optional[int] = None
-        if agg_id is None:
-            if scope.site_id is None:
-                raise ForbiddenError(f"Client device certificate {scope.lfdi} doesn't have a registered EndDevice")
-            site_id_filter = scope.site_id
-            agg_id = NULL_AGGREGATOR_ID
-
         srt = await fetch_site_reading_type_for_aggregator(
             session=session,
-            aggregator_id=agg_id,
-            site_id=site_id_filter,
+            aggregator_id=scope.aggregator_id,
+            site_id=scope.site_id,
             site_reading_type_id=site_reading_type_id,
             include_site_relation=False,
         )
@@ -122,7 +104,7 @@ class MirrorMeteringManager:
         changed_time = utc_now()
         site_readings = MirrorMeterReadingMapper.map_from_request(
             mmr,
-            aggregator_id=agg_id,
+            aggregator_id=scope.aggregator_id,
             site_reading_type_id=site_reading_type_id,
             changed_time=changed_time,
         )
@@ -134,29 +116,20 @@ class MirrorMeteringManager:
 
     @staticmethod
     async def list_mirror_usage_points(
-        session: AsyncSession, scope: RawRequestClaims, start: int, limit: int, changed_after: datetime
+        session: AsyncSession, scope: MUPRequestScope, start: int, limit: int, changed_after: datetime
     ) -> MirrorUsagePointListResponse:
         """Fetches a paginated set of MirrorUsagePoint accessible to the specified aggregator"""
-
-        agg_id: Optional[int] = scope.aggregator_id
-        site_id_filter: Optional[int] = None
-        if agg_id is None:
-            if scope.site_id is None:
-                raise ForbiddenError(f"Client device certificate {scope.lfdi} doesn't have a registered EndDevice")
-            site_id_filter = scope.site_id
-            agg_id = NULL_AGGREGATOR_ID
-
         srts = await fetch_site_reading_types_page_for_aggregator(
             session=session,
-            aggregator_id=agg_id,
-            site_id=site_id_filter,
+            aggregator_id=scope.aggregator_id,
+            site_id=scope.site_id,
             start=start,
             limit=limit,
             changed_after=changed_after,
         )
 
         count = await count_site_reading_types_for_aggregator(
-            session=session, aggregator_id=agg_id, site_id=site_id_filter, changed_after=changed_after
+            session=session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, changed_after=changed_after
         )
 
         return MirrorUsagePointListMapper.map_to_list_response(scope, srts, count)

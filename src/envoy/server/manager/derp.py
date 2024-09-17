@@ -28,14 +28,14 @@ from envoy.server.mapper.csip_aus.doe import (
     DERProgramMapper,
 )
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
-from envoy.server.request_scope import AggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
 class DERProgramManager:
     @staticmethod
     async def fetch_list_for_scope(
         session: AsyncSession,
-        scope: AggregatorRequestScope,
+        scope: DeviceOrAggregatorRequestScope,
         default_doe: Optional[DefaultDoeConfiguration],
     ) -> DERProgramListResponse:
         """Program lists are static - this will just return a single fixed Dynamic Operating Envelope Program
@@ -54,7 +54,7 @@ class DERProgramManager:
     @staticmethod
     async def fetch_doe_program_for_scope(
         session: AsyncSession,
-        scope: AggregatorRequestScope,
+        scope: DeviceOrAggregatorRequestScope,
         default_doe: Optional[DefaultDoeConfiguration],
     ) -> DERProgramResponse:
         """DOE Programs are static - this will just return a fixed Dynamic Operating Envelope Program
@@ -72,7 +72,7 @@ class DERProgramManager:
 class DERControlManager:
     @staticmethod
     async def fetch_doe_control_for_scope(
-        session: AsyncSession, scope: AggregatorRequestScope, doe_id: int
+        session: AsyncSession, scope: DeviceOrAggregatorRequestScope, doe_id: int
     ) -> Optional[DERControlResponse]:
         """DER Controls are how Dynamic Operating Envelopes are communicated. This will provide a lookup for a
         particular DOE by ID but ensuring it stays scoped to the appropriate request"""
@@ -85,7 +85,7 @@ class DERControlManager:
     @staticmethod
     async def fetch_doe_controls_for_scope(
         session: AsyncSession,
-        scope: AggregatorRequestScope,
+        scope: DeviceOrAggregatorRequestScope,
         start: int,
         changed_after: datetime,
         limit: int,
@@ -99,7 +99,7 @@ class DERControlManager:
     @staticmethod
     async def fetch_active_doe_controls_for_scope(
         session: AsyncSession,
-        scope: AggregatorRequestScope,
+        scope: DeviceOrAggregatorRequestScope,
         start: int,
         changed_after: datetime,
         limit: int,

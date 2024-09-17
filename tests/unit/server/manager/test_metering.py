@@ -1,5 +1,6 @@
 import unittest.mock as mock
 from datetime import datetime
+from itertools import product
 from typing import Optional
 
 import pytest
@@ -10,10 +11,9 @@ from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading, 
 
 from envoy.server.exception import ForbiddenError, InvalidIdError, NotFoundError
 from envoy.server.manager.metering import MirrorMeteringManager
-from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.request_scope import RawRequestClaims
+from envoy.server.request_scope import CertificateType, MUPRequestScope
 
 
 @pytest.mark.anyio
@@ -33,7 +33,7 @@ async def test_create_or_fetch_mirror_usage_point_aggregator(
     existing_site: Site = generate_class_instance(Site)
     mapped_srt: SiteReadingType = generate_class_instance(SiteReadingType)
     srt_id = 3
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, site_id=None)
+    scope: MUPRequestScope = generate_class_instance(MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE)
 
     mock_select_single_site_with_lfdi.return_value = existing_site
     mock_MirrorUsagePointMapper.map_from_request = mock.Mock(return_value=mapped_srt)
@@ -79,8 +79,8 @@ async def test_create_or_fetch_mirror_usage_point_device(
     existing_site: Site = generate_class_instance(Site)
     mapped_srt: SiteReadingType = generate_class_instance(SiteReadingType)
     srt_id = 3
-    scope: RawRequestClaims = generate_class_instance(
-        RawRequestClaims, aggregator_id=None, site_id=scope_site_id, lfdi=mup.deviceLFDI
+    scope: MUPRequestScope = generate_class_instance(
+        MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, site_id=scope_site_id, lfdi=mup.deviceLFDI
     )
 
     mock_select_single_site_with_lfdi.return_value = existing_site
@@ -94,30 +94,29 @@ async def test_create_or_fetch_mirror_usage_point_device(
     assert result == srt_id
     assert_mock_session(mock_session, committed=True)
     mock_select_single_site_with_lfdi.assert_called_once_with(
-        session=mock_session, lfdi=mup.deviceLFDI, aggregator_id=NULL_AGGREGATOR_ID
+        session=mock_session, lfdi=mup.deviceLFDI, aggregator_id=scope.aggregator_id
     )
     mock_upsert_site_reading_type_for_aggregator.assert_called_once_with(
-        session=mock_session, aggregator_id=NULL_AGGREGATOR_ID, site_reading_type=mapped_srt
+        session=mock_session, aggregator_id=scope.aggregator_id, site_reading_type=mapped_srt
     )
 
     mock_MirrorUsagePointMapper.map_from_request.assert_called_once()
     mapper_call_args = mock_MirrorUsagePointMapper.map_from_request.call_args_list[0]
-    assert mapper_call_args.kwargs["aggregator_id"] == NULL_AGGREGATOR_ID
+    assert mapper_call_args.kwargs["aggregator_id"] == scope.aggregator_id
     assert mapper_call_args.kwargs["site_id"] == existing_site.site_id
     assert_nowish(mapper_call_args.kwargs["changed_time"])
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("scope_site_id", [None, 123])
-async def test_create_or_fetch_mirror_usage_point_device_bad_lfdi(
-    scope_site_id: Optional[int],
-):
+async def test_create_or_fetch_mirror_usage_point_device_bad_lfdi():
     """Check that the manager will raise Forbidden Errors when the LFDI mismatches the client LFDI"""
 
     # Arrange
     mock_session = create_mock_session()
     mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=scope_site_id)
+    scope: MUPRequestScope = generate_class_instance(
+        MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, lfdi=mup.deviceLFDI + "diff"
+    )
 
     # Act
     with pytest.raises(ForbiddenError):
@@ -135,7 +134,7 @@ async def test_create_or_fetch_mirror_usage_point_aggregator_no_site(mock_select
     # Arrange
     mock_session = create_mock_session()
     mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims)
+    scope: MUPRequestScope = generate_class_instance(MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE)
 
     mock_select_single_site_with_lfdi.return_value = None
 
@@ -163,8 +162,8 @@ async def test_create_or_fetch_mirror_usage_point_device_no_site(
     # Arrange
     mock_session = create_mock_session()
     mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
-    scope: RawRequestClaims = generate_class_instance(
-        RawRequestClaims, aggregator_id=None, site_id=scope_site_id, lfdi=mup.deviceLFDI
+    scope: MUPRequestScope = generate_class_instance(
+        MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, lfdi=mup.deviceLFDI
     )
 
     mock_select_single_site_with_lfdi.return_value = None
@@ -178,16 +177,22 @@ async def test_create_or_fetch_mirror_usage_point_device_no_site(
     mock_select_single_site_with_lfdi.assert_called_once_with(
         session=mock_session,
         lfdi=mup.deviceLFDI,
-        aggregator_id=NULL_AGGREGATOR_ID if scope.aggregator_id is None else scope.aggregator_id,
+        aggregator_id=scope.aggregator_id,
     )
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.metering.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.metering.MirrorUsagePointMapper")
-async def test_fetch_mirror_usage_point_aggregator(
+@pytest.mark.parametrize(
+    "cert_type, scope_site_id",
+    product([CertificateType.AGGREGATOR_CERTIFICATE, CertificateType.DEVICE_CERTIFICATE], [123, None]),
+)
+async def test_fetch_mirror_usage_point(
     mock_MirrorUsagePointMapper: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+    cert_type: CertificateType,
+    scope_site_id: Optional[int],
 ):
     """Check that the manager will handle interacting with the DB and its responses (agg cert scope)"""
 
@@ -197,7 +202,7 @@ async def test_fetch_mirror_usage_point_aggregator(
     mapped_mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
     existing_srt: SiteReadingType = generate_class_instance(SiteReadingType)
     existing_srt.site = generate_class_instance(Site)
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, site_id=None)
+    scope: MUPRequestScope = generate_class_instance(MUPRequestScope, source=cert_type, site_id=scope_site_id)
 
     mock_fetch_site_reading_type_for_aggregator.return_value = existing_srt
     mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
@@ -211,42 +216,6 @@ async def test_fetch_mirror_usage_point_aggregator(
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
         session=mock_session,
         aggregator_id=scope.aggregator_id,
-        site_id=None,
-        site_reading_type_id=srt_id,
-        include_site_relation=True,
-    )
-    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(scope, existing_srt, existing_srt.site)
-
-
-@pytest.mark.anyio
-@mock.patch("envoy.server.manager.metering.fetch_site_reading_type_for_aggregator")
-@mock.patch("envoy.server.manager.metering.MirrorUsagePointMapper")
-async def test_fetch_mirror_usage_point_device(
-    mock_MirrorUsagePointMapper: mock.MagicMock,
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
-):
-    """Check that the manager will handle interacting with the DB and its responses (device cert scope)"""
-
-    # Arrange
-    mock_session = create_mock_session()
-    srt_id = 3
-    mapped_mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
-    existing_srt: SiteReadingType = generate_class_instance(SiteReadingType)
-    existing_srt.site = generate_class_instance(Site)
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=456)
-
-    mock_fetch_site_reading_type_for_aggregator.return_value = existing_srt
-    mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
-
-    # Act
-    result = await MirrorMeteringManager.fetch_mirror_usage_point(mock_session, scope, srt_id)
-
-    # Assert
-    assert result is mapped_mup
-    assert_mock_session(mock_session, committed=False)
-    mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
-        session=mock_session,
-        aggregator_id=NULL_AGGREGATOR_ID,
         site_id=scope.site_id,
         site_reading_type_id=srt_id,
         include_site_relation=True,
@@ -255,39 +224,22 @@ async def test_fetch_mirror_usage_point_device(
 
 
 @pytest.mark.anyio
-async def test_fetch_mirror_usage_point_device_no_registered_site():
-    """Check that a device cert with no linked site will raise an error"""
-
-    # Arrange
-    mock_session = create_mock_session()
-    srt_id = 3
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=None)
-
-    # Act
-    with pytest.raises(ForbiddenError):
-        await MirrorMeteringManager.fetch_mirror_usage_point(mock_session, scope, srt_id)
-
-    # Assert
-    assert_mock_session(mock_session, committed=False)
-
-
-@pytest.mark.anyio
 @mock.patch("envoy.server.manager.metering.fetch_site_reading_type_for_aggregator")
 @pytest.mark.parametrize(
     "scope",
     [
-        generate_class_instance(RawRequestClaims, aggregator_id=123, site_id=None),
-        generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=123),
+        generate_class_instance(MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, site_id=None),
+        generate_class_instance(MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, site_id=123),
+        generate_class_instance(MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, site_id=123),
     ],
 )
 async def test_fetch_mirror_usage_point_no_srt(
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock, scope: RawRequestClaims
+    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock, scope: MUPRequestScope
 ):
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
     mock_session = create_mock_session()
-    agg_id = NULL_AGGREGATOR_ID if scope.aggregator_id is None else scope.aggregator_id
     srt_id = 3
 
     mock_fetch_site_reading_type_for_aggregator.return_value = None
@@ -300,7 +252,7 @@ async def test_fetch_mirror_usage_point_no_srt(
     assert_mock_session(mock_session, committed=False)
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
         session=mock_session,
-        aggregator_id=agg_id,
+        aggregator_id=scope.aggregator_id,
         site_id=scope.site_id,
         site_reading_type_id=srt_id,
         include_site_relation=True,
@@ -314,21 +266,21 @@ async def test_fetch_mirror_usage_point_no_srt(
 @pytest.mark.parametrize(
     "scope",
     [
-        generate_class_instance(RawRequestClaims, aggregator_id=123, site_id=None),
-        generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=123),
+        generate_class_instance(MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, site_id=None),
+        generate_class_instance(MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, site_id=123),
+        generate_class_instance(MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, site_id=123),
     ],
 )
 async def test_add_or_update_readings(
     mock_MirrorMeterReadingMapper: mock.MagicMock,
     mock_upsert_site_readings: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
-    scope: RawRequestClaims,
+    scope: MUPRequestScope,
 ):
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
     mock_session = create_mock_session()
-    agg_id = NULL_AGGREGATOR_ID if scope.aggregator_id is None else scope.aggregator_id
     site_reading_type_id = 3
     mmr: MirrorMeterReading = generate_class_instance(MirrorMeterReading, seed=101)
     existing_sr: SiteReadingType = generate_class_instance(SiteReadingType, seed=202)
@@ -344,7 +296,7 @@ async def test_add_or_update_readings(
     assert_mock_session(mock_session, committed=True)
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
         session=mock_session,
-        aggregator_id=agg_id,
+        aggregator_id=scope.aggregator_id,
         site_id=scope.site_id,
         site_reading_type_id=site_reading_type_id,
         include_site_relation=False,
@@ -353,7 +305,7 @@ async def test_add_or_update_readings(
 
     mock_MirrorMeterReadingMapper.map_from_request.assert_called_once()
     mapper_call_args = mock_MirrorMeterReadingMapper.map_from_request.call_args_list[0]
-    assert mapper_call_args.kwargs["aggregator_id"] == agg_id
+    assert mapper_call_args.kwargs["aggregator_id"] == scope.aggregator_id
     assert mapper_call_args.kwargs["site_reading_type_id"] == site_reading_type_id
     assert_nowish(mapper_call_args.kwargs["changed_time"])
 
@@ -363,12 +315,13 @@ async def test_add_or_update_readings(
 @pytest.mark.parametrize(
     "scope",
     [
-        generate_class_instance(RawRequestClaims, aggregator_id=123, site_id=None),
-        generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=123),
+        generate_class_instance(MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, site_id=None),
+        generate_class_instance(MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, site_id=123),
+        generate_class_instance(MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, site_id=123),
     ],
 )
 async def test_add_or_update_readings_no_srt(
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock, scope: RawRequestClaims
+    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock, scope: MUPRequestScope
 ):
     """Check that the manager will handle the case where the site reading type DNE"""
 
@@ -387,7 +340,7 @@ async def test_add_or_update_readings_no_srt(
     assert_mock_session(mock_session, committed=False)
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
         session=mock_session,
-        aggregator_id=NULL_AGGREGATOR_ID if scope.aggregator_id is None else scope.aggregator_id,
+        aggregator_id=scope.aggregator_id,
         site_id=scope.site_id,
         site_reading_type_id=site_reading_type_id,
         include_site_relation=False,
@@ -395,31 +348,22 @@ async def test_add_or_update_readings_no_srt(
 
 
 @pytest.mark.anyio
-async def test_add_or_update_readings_device_cert_unregistered():
-    """Check that the manager will handle the case where the device cert isn't linked to a site"""
-
-    # Arrange
-    mock_session = create_mock_session()
-    site_reading_type_id = 3
-    mmr: MirrorMeterReading = generate_class_instance(MirrorMeterReading, seed=101)
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, site_id=None, aggregator_id=None)
-
-    # Act
-    with pytest.raises(ForbiddenError):
-        await MirrorMeteringManager.add_or_update_readings(mock_session, scope, site_reading_type_id, mmr)
-
-    # Assert
-    assert_mock_session(mock_session, committed=False)
-
-
-@pytest.mark.anyio
 @mock.patch("envoy.server.manager.metering.fetch_site_reading_types_page_for_aggregator")
 @mock.patch("envoy.server.manager.metering.count_site_reading_types_for_aggregator")
 @mock.patch("envoy.server.manager.metering.MirrorUsagePointListMapper")
-async def test_list_mirror_usage_points_aggregator(
+@pytest.mark.parametrize(
+    "scope",
+    [
+        generate_class_instance(MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, site_id=None),
+        generate_class_instance(MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, site_id=123),
+        generate_class_instance(MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, site_id=123),
+    ],
+)
+async def test_list_mirror_usage_points(
     mock_MirrorUsagePointListMapper: mock.MagicMock,
     mock_count_site_reading_types_for_aggregator: mock.MagicMock,
     mock_fetch_site_reading_types_page_for_aggregator: mock.MagicMock,
+    scope: MUPRequestScope,
 ):
     """Check that the manager will handle interacting with the DB and its responses (agg cert)"""
 
@@ -431,7 +375,6 @@ async def test_list_mirror_usage_points_aggregator(
     changed_after = datetime.now()
     existing_srts: list[SiteReadingType] = [generate_class_instance(SiteReadingType, seed=101)]
     mup_response: list[SiteReading] = [generate_class_instance(SiteReading, seed=202)]
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, site_id=None)
 
     mock_count_site_reading_types_for_aggregator.return_value = count
     mock_fetch_site_reading_types_page_for_aggregator.return_value = existing_srts
@@ -446,78 +389,13 @@ async def test_list_mirror_usage_points_aggregator(
     mock_fetch_site_reading_types_page_for_aggregator.assert_called_once_with(
         session=mock_session,
         aggregator_id=scope.aggregator_id,
-        site_id=None,
-        start=start,
-        limit=limit,
-        changed_after=changed_after,
-    )
-    mock_count_site_reading_types_for_aggregator.assert_called_once_with(
-        session=mock_session, aggregator_id=scope.aggregator_id, site_id=None, changed_after=changed_after
-    )
-
-    mock_MirrorUsagePointListMapper.map_to_list_response.assert_called_once_with(scope, existing_srts, count)
-
-
-@pytest.mark.anyio
-@mock.patch("envoy.server.manager.metering.fetch_site_reading_types_page_for_aggregator")
-@mock.patch("envoy.server.manager.metering.count_site_reading_types_for_aggregator")
-@mock.patch("envoy.server.manager.metering.MirrorUsagePointListMapper")
-async def test_list_mirror_usage_points_device(
-    mock_MirrorUsagePointListMapper: mock.MagicMock,
-    mock_count_site_reading_types_for_aggregator: mock.MagicMock,
-    mock_fetch_site_reading_types_page_for_aggregator: mock.MagicMock,
-):
-    """Check that the manager will handle interacting with the DB and its responses (device cert)"""
-
-    # Arrange
-    mock_session = create_mock_session()
-    count = 456
-    start = 4
-    limit = 5
-    changed_after = datetime.now()
-    existing_srts: list[SiteReadingType] = [generate_class_instance(SiteReadingType, seed=101)]
-    mup_response: list[SiteReading] = [generate_class_instance(SiteReading, seed=202)]
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=1214)
-
-    mock_count_site_reading_types_for_aggregator.return_value = count
-    mock_fetch_site_reading_types_page_for_aggregator.return_value = existing_srts
-    mock_MirrorUsagePointListMapper.map_to_list_response = mock.Mock(return_value=mup_response)
-
-    # Act
-    result = await MirrorMeteringManager.list_mirror_usage_points(mock_session, scope, start, limit, changed_after)
-    assert result is mup_response
-
-    # Assert
-    assert_mock_session(mock_session, committed=False)
-    mock_fetch_site_reading_types_page_for_aggregator.assert_called_once_with(
-        session=mock_session,
-        aggregator_id=NULL_AGGREGATOR_ID,
         site_id=scope.site_id,
         start=start,
         limit=limit,
         changed_after=changed_after,
     )
     mock_count_site_reading_types_for_aggregator.assert_called_once_with(
-        session=mock_session, aggregator_id=NULL_AGGREGATOR_ID, site_id=scope.site_id, changed_after=changed_after
+        session=mock_session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, changed_after=changed_after
     )
 
     mock_MirrorUsagePointListMapper.map_to_list_response.assert_called_once_with(scope, existing_srts, count)
-
-
-@pytest.mark.anyio
-async def test_list_mirror_usage_points_device_unregistered():
-    """That a device cert that hasnt been mapped to a site yet cannot read mups"""
-
-    # Arrange
-    mock_session = create_mock_session()
-    start = 4
-    limit = 5
-    changed_after = datetime.now()
-    scope: RawRequestClaims = generate_class_instance(RawRequestClaims, aggregator_id=None, site_id=None)
-
-    # Act
-    with pytest.raises(ForbiddenError):
-        await MirrorMeteringManager.list_mirror_usage_points(mock_session, scope, start, limit, changed_after)
-
-    # Assert
-    assert_mock_session(mock_session, committed=False)

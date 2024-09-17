@@ -15,7 +15,7 @@ from envoy.server.model.aggregator import Aggregator, AggregatorDomain
 from envoy.server.model.site_reading import SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import Tariff
-from envoy.server.request_scope import AggregatorRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope
 
 
 @pytest.mark.anyio
@@ -42,7 +42,9 @@ async def test_fetch_subscription_by_id_filtering(
     to enumerate all the various ways None can be returned (despite getting a sub returned from the DB)"""
     # Arrange
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=scoped_site_id)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, site_id=scoped_site_id
+    )
     sub_id = 87
 
     mock_sub: Subscription = generate_class_instance(Subscription, scoped_site_id=sub_site_id)
@@ -74,7 +76,7 @@ async def test_fetch_subscription_by_id_not_found(
     """Quick tests on the various ways filter options can affect the returned subscriptions"""
     # Arrange
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=None)
     sub_id = 87
     mock_select_subscription_by_id.return_value = None
 
@@ -96,15 +98,15 @@ async def test_fetch_subscription_by_id_not_found(
 @pytest.mark.parametrize(
     "scope",
     [
-        generate_class_instance(AggregatorRequestScope, aggregator_id=111, site_id=None),
-        generate_class_instance(AggregatorRequestScope, aggregator_id=111, site_id=222),
+        generate_class_instance(DeviceOrAggregatorRequestScope, aggregator_id=111, site_id=None),
+        generate_class_instance(DeviceOrAggregatorRequestScope, aggregator_id=111, site_id=222),
     ],
 )
 async def test_fetch_subscriptions_for_site(
     mock_SubscriptionListMapper: mock.MagicMock,
     mock_count_subscriptions_for_site: mock.MagicMock,
     mock_select_subscriptions_for_site: mock.MagicMock,
-    scope: AggregatorRequestScope,
+    scope: DeviceOrAggregatorRequestScope,
 ):
     """Quick tests on the various ways filter options can affect the returned subscriptions"""
     # Arrange
@@ -162,7 +164,9 @@ async def test_delete_subscription_for_site(
     """Ensures session is handled properly on delete"""
     # Arrange
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=scope_site_id)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, site_id=scope_site_id
+    )
 
     sub_id = 5213
 
@@ -197,7 +201,7 @@ async def test_add_subscription_for_site_bad_agg_lookup(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     now = datetime(2014, 4, 5, 6, 7, 8)
     sub = generate_class_instance(Sep2Subscription)
 
@@ -234,7 +238,7 @@ async def test_add_subscription_for_site_bad_site_id(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_reading_type_id = 5432
     sub = generate_class_instance(Sep2Subscription)
@@ -282,7 +286,7 @@ async def test_add_subscription_for_site_TARIFF_RATE(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     now = datetime(2014, 4, 5, 6, 7, 8)
     tariff_id = 5433
     sub = generate_class_instance(Sep2Subscription)
@@ -330,7 +334,7 @@ async def test_add_subscription_for_site_TARIFF_RATE_missing(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     now = datetime(2014, 4, 5, 6, 7, 8)
     tariff_id = 5433
     sub = generate_class_instance(Sep2Subscription)
@@ -378,7 +382,7 @@ async def test_add_subscription_for_site_READING(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_reading_type_id = 5432
     sub = generate_class_instance(Sep2Subscription)
@@ -429,7 +433,7 @@ async def test_add_subscription_for_site_READING_unscoped(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_reading_type_id = 5432
     sub = generate_class_instance(Sep2Subscription)
@@ -482,7 +486,7 @@ async def test_add_subscription_for_site_READING_missing(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_reading_type_id = 5432
     sub = generate_class_instance(Sep2Subscription)
@@ -532,7 +536,7 @@ async def test_add_subscription_for_site_SITE(
     mock_utc_now: mock.MagicMock,
 ):
     mock_session: AsyncSession = create_mock_session()
-    scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=None)
     now = datetime(2014, 4, 5, 6, 7, 8)
     sub = generate_class_instance(Sep2Subscription)
     mapped_sub = Subscription(resource_type=SubscriptionResource.SITE, scoped_site_id=scope.site_id, resource_id=None)

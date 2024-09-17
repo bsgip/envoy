@@ -91,30 +91,6 @@ async def test_get_supported_links_calls_get_formatted_links_with_supported_link
     "envoy.server.crud.link",
     get_link_field_names=mock.DEFAULT,
     check_link_supported=mock.DEFAULT,
-    get_formatted_links=mock.DEFAULT,
-    get_resource_counts=mock.DEFAULT,
-    add_resource_counts_to_links=mock.DEFAULT,
-)
-async def test_get_supported_links_awaits_get_resource_counts_with_supported_links_keys_and_aggregator_id(
-    **kwargs: mock.Mock,
-) -> None:
-    supported_links = mock.Mock()
-    session = mock.Mock()
-    scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
-
-    with mock.patch("envoy.server.crud.link.get_formatted_links", return_value=supported_links), mock.patch(
-        "envoy.server.crud.link.get_resource_counts"
-    ) as get_resource_counts:
-        await link.get_supported_links(session=session, model=mock.Mock(), scope=scope, aggregator_id=123, site_id=None)
-
-    get_resource_counts.assert_awaited_once_with(session=session, link_names=supported_links.keys(), aggregator_id=123)
-
-
-@pytest.mark.anyio
-@mock.patch.multiple(
-    "envoy.server.crud.link",
-    get_link_field_names=mock.DEFAULT,
-    check_link_supported=mock.DEFAULT,
 )
 async def test_get_supported_links_calls_add_resource_counts_to_links_with_supported_links_and_resource_counts(
     **kwargs: mock.Mock,
@@ -373,7 +349,7 @@ def test_check_function_set_supported_raise_exception(function_set_status_mappin
     ],
 )
 def test_get_formatted_links(link_names, uri_parameters, expected):
-    scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
+    scope: BaseRequestScope = generate_class_instance(BaseRequestScope, href_prefix=None)
     assert link.get_formatted_links(link_names, scope, uri_parameters) == expected
 
 
