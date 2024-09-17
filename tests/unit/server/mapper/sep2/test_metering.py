@@ -275,6 +275,24 @@ def test_MirrorMeterReadingMapper_map_from_request():
     assert all([isinstance(r, SiteReading) for r in readings_split])
 
 
+def test_MirrorMeterReadingMapper_without_MirrorReadingSet():
+    """Check that single reading values without MirrorReadingSet will return valid MirrorMeterReading"""
+    mmr_no_readingset = generate_class_instance(MirrorMeterReading, seed=123, optional_is_none=False)
+    mmr_no_readingset.mirrorReadingSets = None
+    mmr_no_readingset.reading = generate_class_instance(Reading, seed=1, optional_is_none=True)
+    mmr_no_readingset.reading.localID = "5"
+    mmr_no_readingset.reading.timePeriod = generate_class_instance(DateTimeIntervalType)
+
+    reading_only = MirrorMeterReadingMapper.map_from_request(mmr_no_readingset, 9, 7, datetime.now())
+    site = reading_only[0]
+    assert len(reading_only) == 1
+    assert site.site_reading_type_id == 7
+    assert isinstance(site, SiteReading)
+    assert site.local_id == 5
+    with pytest.raises(AttributeError):
+        _ = site.mirrorReadingSets
+
+
 def test_MirrorMeterReadingMapper_map_to_response():
     """Sanity check on map_to_response generating valid models"""
     site_reading_all_set: SiteReading = generate_class_instance(SiteReading, seed=101, optional_is_none=False)
