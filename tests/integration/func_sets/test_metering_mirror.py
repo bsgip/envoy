@@ -390,7 +390,7 @@ async def test_device_cert_mup_creation(client: AsyncClient):
             "mRID": "456",
             "deviceLFDI": DEVICE_5_LFDI,
             "serviceCategoryKind": ServiceKind.ELECTRICITY,
-            "roleFlags": 0,
+            "roleFlags": "0",
             "status": 0,
             "mirrorMeterReadings": [
                 {
