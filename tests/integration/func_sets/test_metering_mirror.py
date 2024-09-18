@@ -345,3 +345,46 @@ async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config, 
         assert all_readings[-1].time_period_seconds == 302
         assert all_readings[-1].time_period_start == datetime.fromtimestamp(1341579666, tz=timezone.utc)
         assert_nowish(all_readings[-1].changed_time)
+
+
+@pytest.mark.parametrize(
+    "min_val, max_val",
+    [
+        (9, -10),  # Normal values
+        (int("FFFFFFFFFFFF", 16), -int("FFFFFFFFFFFF", 16)),  # int48 max/min values (sep2 uses int48 value range)
+        (0, 0),  # zero values
+    ],
+)
+@pytest.mark.anyio
+async def test_submit_mirror_meter_reading_single_value(client: AsyncClient, pg_base_config, min_val, max_val):
+    """Submits a reading without a MirrorReadingSet to a mup and check the DB to see if it is created"""
+    mmr: MirrorMeterReading = MirrorMeterReading.model_validate(
+        {
+            "mRID": "1234",
+            "reading": {"value": max_val, "timePeriod": {"duration": 301, "start": 1341579365}, "localID": "123"},
+        }
+    )
+    mup_id = 1
+
+    # submit the readings
+    response = await client.post(
+        uris.MirrorUsagePointUri.format(mup_id=mup_id),
+        content=MirrorMeterReading.to_xml(mmr, skip_empty=False, exclude_none=True, exclude_unset=True),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+
+    # validate the DB directly
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(SiteReading).order_by(SiteReading.site_reading_id)
+
+        resp = await session.execute(stmt)
+        all_readings: Sequence[SiteReading] = resp.scalars().all()
+
+        assert len(all_readings) == 5, "We should have added 1 reading"
+        assert all_readings[-1].site_reading_type_id == mup_id
+        assert all_readings[-1].local_id == int("123", base=16)
+        assert all_readings[-1].value == max_val
+        assert all_readings[-1].time_period_seconds == 301
+        assert all_readings[-1].time_period_start == datetime.fromtimestamp(1341579365, tz=timezone.utc)
+        assert_nowish(all_readings[-1].changed_time)
