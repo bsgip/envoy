@@ -13,6 +13,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERListResponse,
     DERSettings,
     DERStatus,
+    DOESupportedMode,
 )
 from envoy_schema.server.schema.sep2.identification import Link
 from envoy_schema.server.schema.sep2.types import SubscribableType
@@ -391,7 +392,7 @@ class DERCapabilityMapper:
                 ),
                 "rtgVNom": get_value_multiplier(der_rating.v_nom_value, der_rating.v_nom_multiplier),
                 "type_": der_rating.der_type,
-                "doeModesSupported": der_rating.doe_modes_supported,
+                "doeModesSupported": to_hex_binary(der_rating.doe_modes_supported),
             }
         )
 
@@ -401,7 +402,7 @@ class DERCapabilityMapper:
         m = SiteDERRating(
             modes_supported=DERControlType(int(der_cap.modesSupported, 16)),
             der_type=der_cap.type_,
-            doe_modes_supported=der_cap.doeModesSupported,
+            doe_modes_supported=DOESupportedMode(int(der_cap.doeModesSupported, 16)),
             changed_time=changed_time,
             normal_category=der_cap.rtgNormalCategory,
             abnormal_category=der_cap.rtgAbnormalCategory,
@@ -501,7 +502,7 @@ class DERSettingMapper:
                 "setVRef": get_value_multiplier(der_setting.v_ref_value, der_setting.v_ref_multiplier),
                 "setVRefOfs": get_value_multiplier(der_setting.v_ref_ofs_value, der_setting.v_ref_ofs_multiplier),
                 "updatedTime": int(der_setting.changed_time.timestamp()),
-                "doeModesEnabled": der_setting.doe_modes_enabled,
+                "doeModesEnabled": to_hex_binary(der_setting.doe_modes_enabled),
             }
         )
 
@@ -510,6 +511,8 @@ class DERSettingMapper:
         modes_enabled: Optional[DERControlType] = None
         if der_setting.modesEnabled:
             modes_enabled = DERControlType(int(der_setting.modesEnabled, 16))
+        if der_setting.doeModesEnabled:
+            doe_modes_enabled = DERControlType(int(der_setting.doeModesEnabled, 16))
 
         m = SiteDERSetting(
             modes_enabled=modes_enabled,
@@ -522,7 +525,7 @@ class DERSettingMapper:
             es_random_delay=der_setting.setESRandomDelay,
             grad_w=der_setting.setGradW,
             soft_grad_w=der_setting.setSoftGradW,
-            doe_modes_enabled=der_setting.doeModesEnabled,
+            doe_modes_enabled=doe_modes_enabled,
             changed_time=changed_time,
         )
         (m.max_a_value, m.max_a_multiplier) = set_value_multiplier(der_setting.setMaxA)

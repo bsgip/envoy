@@ -27,7 +27,9 @@ def test_roundtrip_abstract_device():
 
 def test_roundtrip_csip_aus_der_control():
     """Validates the DERControlREsponse roundtrip in response to some discovered errors"""
-    initial: DERControlResponse = generate_class_instance(DERControlResponse)
+    initial: DERControlResponse = generate_class_instance(DERControlResponse, generate_relationships=True)
+    initial.responseRequired = "3C"  # Handle assertical not generating valid hexbinary8
+    initial.deviceCategory = "E2"  # Handle assertical not generating valid hexbinary8
     initial.subscribable = SubscribableType.resource_does_not_support_subscriptions
     initial.interval = DateTimeIntervalType.model_validate({"duration": 111, "start": 222})
     initial.DERControlBase_ = DERControlBase.model_validate(
@@ -38,7 +40,8 @@ def test_roundtrip_csip_aus_der_control():
             "opModLoadLimW": {"value": 3322, "multiplier": 1000},
         }
     )
-    xml = initial.to_xml(skip_empty=True)
+
+    xml = initial.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
     assert "9988" in xml.decode()
     assert "7766" in xml.decode()
     assert "5544" in xml.decode()

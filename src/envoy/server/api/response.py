@@ -16,7 +16,7 @@ class XmlResponse(Response):
     media_type = SEP_XML_MIME
 
     def render(self, content: BaseXmlModel) -> Union[str, bytes]:  # type: ignore [override] # Base is too restrictive
-        return content.to_xml(skip_empty=True)
+        return content.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
 
 
 class XmlRequest(Generic[TBaseXmlModel]):

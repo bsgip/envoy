@@ -231,7 +231,11 @@ async def test_roundtrip_upsert_der_availability(
     # Availability
     availability_uri = uri.DERAvailabilityUri.format(site_id=site_id, der_id=der_id)
     availability: DERAvailability = generate_class_instance(DERAvailability, seed=2001, generate_relationships=True)
-    response = await client.put(availability_uri, headers=valid_headers, content=availability.to_xml(skip_empty=True))
+    response = await client.put(
+        availability_uri,
+        headers=valid_headers,
+        content=availability.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+    )
     if expected_not_found:
         assert_response_header(response, HTTPStatus.NOT_FOUND)
         assert_error_response(response)
@@ -282,7 +286,12 @@ async def test_roundtrip_upsert_der_capability(
     capability_uri = uri.DERCapabilityUri.format(site_id=site_id, der_id=der_id)
     capability: DERCapability = generate_class_instance(DERCapability, seed=3001, generate_relationships=True)
     capability.modesSupported = "0"
-    response = await client.put(capability_uri, headers=valid_headers, content=capability.to_xml(skip_empty=True))
+    capability.doeModesSupported = "3"
+    response = await client.put(
+        capability_uri,
+        headers=valid_headers,
+        content=capability.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+    )
     if expected_not_found:
         assert_response_header(response, HTTPStatus.NOT_FOUND)
         assert_error_response(response)
@@ -332,7 +341,12 @@ async def test_roundtrip_upsert_der_setting(
     setting_uri = uri.DERSettingsUri.format(site_id=site_id, der_id=der_id)
     settings: DERSettings = generate_class_instance(DERSettings, seed=4001, generate_relationships=True)
     settings.modesEnabled = "0"
-    response = await client.put(setting_uri, headers=valid_headers, content=settings.to_xml(skip_empty=True))
+    settings.doeModesEnabled = "4"
+    response = await client.put(
+        setting_uri,
+        headers=valid_headers,
+        content=settings.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+    )
     if expected_not_found:
         assert_response_header(response, HTTPStatus.NOT_FOUND)
         assert_error_response(response)
@@ -386,7 +400,11 @@ async def test_roundtrip_upsert_der_status(
     status.genConnectStatus.value = "2"
     status.storConnectStatus.value = "4"
     status.manufacturerStatus.value = "sts"
-    response = await client.put(status_uri, headers=valid_headers, content=status.to_xml(skip_empty=True))
+    response = await client.put(
+        status_uri,
+        headers=valid_headers,
+        content=status.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+    )
     if expected_not_found:
         assert_response_header(response, HTTPStatus.NOT_FOUND)
         assert_error_response(response)

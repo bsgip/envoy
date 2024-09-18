@@ -17,6 +17,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERListResponse,
     DERSettings,
     DERStatus,
+    DOESupportedMode,
 )
 from sqlalchemy import func, select
 
@@ -249,6 +250,7 @@ async def test_upsert_der_capability_not_found(
     async with generate_async_session(pg_base_config) as session:
         e: DERCapability = generate_class_instance(DERCapability, generate_relationships=True)
         e.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT)
+        e.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_IMPORT_LIMIT_W)
 
         with pytest.raises(NotFoundError):
             await DERCapabilityManager.upsert_der_capability_for_site(
@@ -294,6 +296,7 @@ async def test_upsert_der_capability_roundtrip(
     expected.modesSupported = to_hex_binary(
         DERControlType.OP_MOD_HVRT_MUST_TRIP | DERControlType.OP_MOD_HVRT_MOMENTARY_CESSATION
     )
+    expected.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
     async with generate_async_session(pg_base_config) as session:
         await DERCapabilityManager.upsert_der_capability_for_site(
             session,
@@ -372,6 +375,7 @@ async def test_upsert_der_settings_not_found(
     async with generate_async_session(pg_base_config) as session:
         e: DERSettings = generate_class_instance(DERSettings, generate_relationships=True)
         e.modesEnabled = to_hex_binary(DERControlType.OP_MOD_FIXED_PF_ABSORB_W)
+        e.doeModesEnabled = to_hex_binary(DOESupportedMode.OP_MOD_IMPORT_LIMIT_W)
 
         with pytest.raises(NotFoundError):
             await DERSettingsManager.upsert_der_settings_for_site(
@@ -415,6 +419,7 @@ async def test_upsert_der_settings_roundtrip(
     # Do the upsert
     expected: DERSettings = generate_class_instance(DERSettings, seed=22, generate_relationships=True)
     expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_MAX_LIM_W | DERControlType.CHARGE_MODE)
+    expected.doeModesEnabled = to_hex_binary(DERControlType.OP_MOD_CONNECT)
     async with generate_async_session(pg_base_config) as session:
         await DERSettingsManager.upsert_der_settings_for_site(
             session,
