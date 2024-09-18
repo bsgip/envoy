@@ -190,6 +190,7 @@ class MirrorMeterReadingMapper:
         # we are trying to avoid concatenating a bunch of lists as we expect clients to normally only send a single
         # MirrorReadingSet per update - but that can't be guaranteed so this our compromise
 
+        # If a a mirrorreadingset is given, this will drop the reading value
         for mr in mrs:
             readings.extend(
                 MirrorMeterReadingMapper.map_reading_from_request(r, site_reading_type_id, changed_time)
