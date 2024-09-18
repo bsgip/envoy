@@ -44,13 +44,13 @@ class LFDIAuthDepends:
 
     cert_header: str
     allow_device_registration: bool
-    cache: AsyncCache[str, ClientIdDetails]
+    aggregator_cert_cache: AsyncCache[str, ClientIdDetails]
 
     def __init__(self, cert_header: str, allow_device_registration: bool):
         # fastapi will always return headers in lowercase form
         self.cert_header = cert_header.lower()
         self.allow_device_registration = allow_device_registration
-        self.cache = AsyncCache(update_fn=update_client_id_details_cache)
+        self.aggregator_cert_cache = AsyncCache(update_fn=update_client_id_details_cache)
 
     async def __call__(self, request: Request) -> None:
         # Try extracting the lfdi from either the PEM if we receive it directly or the fingerprint if we get that
@@ -76,10 +76,12 @@ class LFDIAuthDepends:
             )
 
         # get client id details from cache, will return None if expired or never existed.
-        expirable_client_id = await self.cache.get_value_ignore_expiry(None, lfdi)
+        expirable_client_id = await self.aggregator_cert_cache.get_value_ignore_expiry(None, lfdi)
         site_id: Optional[int] = None
         aggregator_id: Optional[int] = None
         if expirable_client_id:
+            # We have identified that this certificate lives in the certificate table and is therefore
+            # an aggregator cert (expired or not)
             if expirable_client_id.is_expired():
                 raise LoggedHttpException(
                     logger,
@@ -90,6 +92,7 @@ class LFDIAuthDepends:
             aggregator_id = expirable_client_id.value.aggregator_id
             source = CertificateType.AGGREGATOR_CERTIFICATE
         else:
+            # It's not an aggregator cert:
             # The cert has passed our TLS termination so its signing chain is valid - the only question
             # is whether this server is setup to allow single device registration or whether all requests must
             # be routed through an aggregator (and their client cert)
