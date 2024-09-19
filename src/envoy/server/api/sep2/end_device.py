@@ -11,11 +11,11 @@ from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
     extract_datetime_from_paging_param,
     extract_limit_from_paging_param,
-    extract_request_params,
+    extract_request_claims,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
-from envoy.server.exception import BadRequestError
+from envoy.server.exception import BadRequestError, ForbiddenError
 from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
 from envoy.server.mapper.common import generate_href
 
@@ -41,8 +41,8 @@ async def get_enddevice(site_id: int, request: Request) -> XmlResponse:
         fastapi.Response object.
 
     """
-    end_device = await EndDeviceManager.fetch_enddevice_with_site_id(
-        db.session, site_id, extract_request_params(request)
+    end_device = await EndDeviceManager.fetch_enddevice_for_scope(
+        db.session, extract_request_claims(request).to_device_or_aggregator_request_scope(site_id)
     )
     if end_device is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
@@ -74,9 +74,9 @@ async def get_enddevice_list(
     """
 
     return XmlResponse(
-        await EndDeviceListManager.fetch_enddevicelist_with_aggregator_id(
+        await EndDeviceListManager.fetch_enddevicelist_for_scope(
             db.session,
-            extract_request_params(request),
+            extract_request_claims(request).to_unregistered_request_scope(),
             start=extract_start_from_paging_param(start),
             after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -101,12 +101,14 @@ async def create_end_device(
         fastapi.Response object.
 
     """
-    rs_params = extract_request_params(request)
+    scope = extract_request_claims(request).to_unregistered_request_scope()
     try:
-        site_id = await EndDeviceManager.add_or_update_enddevice_for_aggregator(db.session, rs_params, payload)
-        location_href = generate_href(uri.EndDeviceUri, rs_params, site_id=site_id)
+        site_id = await EndDeviceManager.add_or_update_enddevice_for_scope(db.session, scope, payload)
+        location_href = generate_href(uri.EndDeviceUri, scope, site_id=site_id)
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
     except BadRequestError as exc:
         raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)
+    except ForbiddenError as exc:
+        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.FORBIDDEN)
     except IntegrityError as exc:
         raise LoggedHttpException(logger, exc, detail="lFDI conflict.", status_code=HTTPStatus.CONFLICT)

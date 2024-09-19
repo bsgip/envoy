@@ -61,6 +61,7 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/actderc"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/dderc"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc/1"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/dercdate/2022-05-07"),
 
     # mirror metering function set
@@ -85,13 +86,29 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
 @pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
 @pytest.mark.anyio
 async def test_get_resource_unauthorised(valid_methods: list[HTTPMethod], uri: str, client: AsyncClient):
-    """Runs through the basic unauthorised tests for all parametrized requests"""
+    """Runs through the basic unauthorised tests for all parametrized requests on a server that supports
+    unrecognised certs being registered as device certs"""
     for method in valid_methods:
         body: Optional[str] = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             body = EMPTY_XML_DOC
 
-        await run_basic_unauthorised_tests(client, uri, method=method.name, body=body)
+        await run_basic_unauthorised_tests(client, uri, method=method.name, body=body, test_unrecognised_cert=False)
+
+
+@pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
+@pytest.mark.anyio
+@pytest.mark.disable_device_registration
+async def test_get_resource_unauthorised_no_device_certs(
+    valid_methods: list[HTTPMethod], uri: str, client: AsyncClient
+):
+    """Runs through the basic unauthorised tests for all parametrized requests (but will validate unknown certs fail)"""
+    for method in valid_methods:
+        body: Optional[str] = None
+        if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
+            body = EMPTY_XML_DOC
+
+        await run_basic_unauthorised_tests(client, uri, method=method.name, body=body, test_unrecognised_cert=True)
 
 
 @pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
@@ -117,7 +134,12 @@ async def test_get_resource_unauthorised_with_azure_ad(
         # Run the default tests (but with a valid AD token) to ensure they still operate as expected
         valid_ad_token = generate_rs256_jwt()
         await run_basic_unauthorised_tests(
-            client, uri, method=method.name, body=body, base_headers={"Authorization": f"Bearer {valid_ad_token}"}
+            client,
+            uri,
+            method=method.name,
+            body=body,
+            base_headers={"Authorization": f"Bearer {valid_ad_token}"},
+            test_unrecognised_cert=False,
         )
 
         # Now do the reverse - valid cert but invalid AD tokens

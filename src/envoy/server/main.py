@@ -9,10 +9,10 @@ from pydantic_core import ValidationError
 
 from envoy.notification.handler import enable_notification_client
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
+from envoy.server.api.depends.csipaus import CSIPV11aXmlNsOptInMiddleware
 from envoy.server.api.depends.default_doe import DefaultDoeDepends
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
 from envoy.server.api.depends.path_prefix import PathPrefixDepends
-from envoy.server.api.depends.csipaus import CSIPV11aXmlNsOptInMiddleware
 from envoy.server.api.error_handler import (
     general_exception_handler,
     http_exception_handler,
@@ -32,7 +32,9 @@ logger = logging.getLogger(__name__)
 def generate_app(new_settings: AppSettings) -> FastAPI:
     """Generates a new app instance utilising the specific settings instance"""
 
-    lfdi_auth = LFDIAuthDepends(new_settings.cert_header)
+    lfdi_auth = LFDIAuthDepends(
+        cert_header=new_settings.cert_header, allow_device_registration=new_settings.allow_device_registration
+    )
     global_dependencies = [Depends(lfdi_auth)]
     lifespan_managers = []
 

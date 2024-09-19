@@ -45,7 +45,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import AggregatorRequestScope
 
 
 def _parse_site_id_from_match(raw_site_id: str) -> Optional[int]:
@@ -55,31 +55,28 @@ def _parse_site_id_from_match(raw_site_id: str) -> Optional[int]:
 
 class SubscriptionMapper:
     @staticmethod
-    def calculate_subscription_href(sub: Subscription, rs_params: RequestStateParameters) -> str:
+    def calculate_subscription_href(sub: Subscription, scope: AggregatorRequestScope) -> str:
         """Calculates the href for a subscription - this will vary depending on whether the subscription
         is narrowed to a particular end_device or is unscoped"""
-        site_id: int = sub.scoped_site_id if sub.scoped_site_id is not None else VIRTUAL_END_DEVICE_SITE_ID
-        return generate_href(SubscriptionUri, rs_params, site_id=site_id, subscription_id=sub.subscription_id)
+        return generate_href(SubscriptionUri, scope, site_id=scope.display_site_id, subscription_id=sub.subscription_id)
 
     @staticmethod
-    def calculate_resource_href(sub: Subscription, rs_params: RequestStateParameters) -> str:  # noqa C901
+    def calculate_resource_href(sub: Subscription, scope: AggregatorRequestScope) -> str:  # noqa C901
         """Calculates the href for a Subscription.subscribedResource based on what the subscription is tracking
 
         Some combos of resource_type/scoped_site_id/resource_id may be invalid and will raise InvalidMappingError"""
-
-        href_site_id: int = VIRTUAL_END_DEVICE_SITE_ID if sub.scoped_site_id is None else sub.scoped_site_id
         if sub.resource_type == SubscriptionResource.SITE:
             if sub.scoped_site_id is None:
-                return generate_href(EndDeviceListUri, rs_params)
+                return generate_href(EndDeviceListUri, scope)
             else:
-                return generate_href(EndDeviceUri, rs_params, site_id=href_site_id)
+                return generate_href(EndDeviceUri, scope, site_id=scope.display_site_id)
         elif sub.resource_type == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
             if sub.resource_id is not None:
                 raise InvalidMappingError(
                     f"Subscribing to DOEs with resource_id is unsupported on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERControlListUri, rs_params, site_id=href_site_id, der_program_id=DOE_PROGRAM_ID)
+            return generate_href(DERControlListUri, scope, site_id=scope.display_site_id, der_program_id=DOE_PROGRAM_ID)
         elif sub.resource_type == SubscriptionResource.READING:
             if sub.resource_id is None:
                 raise InvalidMappingError(
@@ -88,8 +85,8 @@ class SubscriptionMapper:
 
             return generate_href(
                 ReadingListUri,
-                rs_params,
-                site_id=href_site_id,
+                scope,
+                site_id=scope.display_site_id,
                 site_reading_type_id=sub.resource_id,
                 reading_set_id=READING_SET_ALL_ID,
             )
@@ -111,8 +108,8 @@ class SubscriptionMapper:
             # in different ways)
             return generate_href(
                 RateComponentListUri,
-                rs_params,
-                site_id=href_site_id,
+                scope,
+                site_id=scope.display_site_id,
                 tariff_id=sub.resource_id,
             )
         elif sub.resource_type == SubscriptionResource.SITE_DER_AVAILABILITY:
@@ -121,7 +118,7 @@ class SubscriptionMapper:
                     f"Subscribing to DERAvailability requires resource_id on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERAvailabilityUri, rs_params, site_id=href_site_id, der_id=sub.resource_id)
+            return generate_href(DERAvailabilityUri, scope, site_id=scope.display_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_RATING:
 
             if sub.resource_id is None:
@@ -129,7 +126,7 @@ class SubscriptionMapper:
                     f"Subscribing to DERCapability requires resource_id on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERCapabilityUri, rs_params, site_id=href_site_id, der_id=sub.resource_id)
+            return generate_href(DERCapabilityUri, scope, site_id=scope.display_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_SETTING:
 
             if sub.resource_id is None:
@@ -137,13 +134,13 @@ class SubscriptionMapper:
                     f"Subscribing to DERSettings requires resource_id on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERSettingsUri, rs_params, site_id=href_site_id, der_id=sub.resource_id)
+            return generate_href(DERSettingsUri, scope, site_id=scope.display_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_STATUS:
 
             if sub.resource_id is None:
                 raise InvalidMappingError(f"Subscribing to DERStatus requires resource_id on sub {sub.subscription_id}")
 
-            return generate_href(DERStatusUri, rs_params, site_id=href_site_id, der_id=sub.resource_id)
+            return generate_href(DERStatusUri, scope, site_id=scope.display_site_id, der_id=sub.resource_id)
         else:
             raise InvalidMappingError(
                 f"Cannot map a resource HREF for resource_type {sub.resource_type} on sub {sub.subscription_id}"
@@ -160,7 +157,7 @@ class SubscriptionMapper:
         )
 
     @staticmethod
-    def map_to_response(sub: Subscription, rs_params: RequestStateParameters) -> Sep2Subscription:
+    def map_to_response(sub: Subscription, scope: AggregatorRequestScope) -> Sep2Subscription:
         """Maps an internal Subscription model to the Sep2 model Equivalent"""
         condition: Optional[Sep2Condition] = None
         if sub.conditions and len(sub.conditions) > 0:
@@ -168,12 +165,12 @@ class SubscriptionMapper:
 
         return Sep2Subscription.model_validate(
             {
-                "href": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
+                "href": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "encoding": SubscriptionEncoding.XML,
                 "level": "+S1",
                 "limit": sub.entity_limit,
                 "notificationURI": sub.notification_uri,
-                "subscribedResource": SubscriptionMapper.calculate_resource_href(sub, rs_params),
+                "subscribedResource": SubscriptionMapper.calculate_resource_href(sub, scope),
                 "condition": condition,
             }
         )
@@ -282,7 +279,7 @@ class SubscriptionMapper:
     @staticmethod
     def map_from_request(
         subscription: Sep2Subscription,
-        rs_params: RequestStateParameters,
+        scope: AggregatorRequestScope,
         aggregator_domains: set[str],
         changed_time: datetime,
     ) -> Subscription:
@@ -293,7 +290,7 @@ class SubscriptionMapper:
         aggregator_domains: The set of FQDN's controlled by Aggregator"""
 
         # Figure out what the client wants to subscribe to
-        resource_href = remove_href_prefix(subscription.subscribedResource, rs_params)
+        resource_href = remove_href_prefix(subscription.subscribedResource, scope)
         (resource, scoped_site_id, resource_id) = SubscriptionMapper.parse_resource_href(resource_href)
 
         try:
@@ -320,7 +317,7 @@ class SubscriptionMapper:
             conditions = []
 
         return Subscription(
-            aggregator_id=rs_params.aggregator_id,
+            aggregator_id=scope.aggregator_id,
             changed_time=changed_time,
             resource_type=resource,
             resource_id=resource_id,
@@ -334,14 +331,14 @@ class SubscriptionMapper:
 class SubscriptionListMapper:
     @staticmethod
     def map_to_site_response(
-        rs_params: RequestStateParameters, site_id: int, sub_list: Sequence[Subscription], sub_count: int
+        scope: AggregatorRequestScope, sub_list: Sequence[Subscription], sub_count: int
     ) -> SubscriptionListResponse:
         return SubscriptionListResponse.model_validate(
             {
-                "href": generate_href(SubscriptionListUri, rs_params, site_id=site_id),
+                "href": generate_href(SubscriptionListUri, scope, site_id=scope.display_site_id),
                 "all_": sub_count,
                 "results": len(sub_list),
-                "subscriptions": [SubscriptionMapper.map_to_response(sub, rs_params) for sub in sub_list],
+                "subscriptions": [SubscriptionMapper.map_to_response(sub, scope) for sub in sub_list],
             }
         )
 
@@ -349,64 +346,63 @@ class SubscriptionListMapper:
 class NotificationMapper:
 
     @staticmethod
-    def map_sites_to_response(
-        sites: Sequence[Site], sub: Subscription, rs_params: RequestStateParameters
-    ) -> Notification:
+    def map_sites_to_response(sites: Sequence[Site], sub: Subscription, scope: AggregatorRequestScope) -> Notification:
         """Turns a list of sites into a notification"""
         return Notification.model_validate(
             {
-                "subscribedResource": generate_href(EndDeviceListUri, rs_params),
-                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
+                "subscribedResource": generate_href(EndDeviceListUri, scope),
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": NotificationStatus.DEFAULT,
                 "resource": {
                     "type": XSI_TYPE_END_DEVICE_LIST,
                     "all_": len(sites),
                     "results": len(sites),
-                    "EndDevice": [EndDeviceMapper.map_to_response(rs_params, s) for s in sites],
+                    "EndDevice": [EndDeviceMapper.map_to_response(scope, s) for s in sites],
                 },
             }
         )
 
     @staticmethod
     def map_does_to_response(
-        site_id: int, does: Sequence[DynamicOperatingEnvelope], sub: Subscription, rs_params: RequestStateParameters
+        does: Sequence[DynamicOperatingEnvelope], sub: Subscription, scope: AggregatorRequestScope
     ) -> Notification:
         """Turns a list of does into a notification"""
-        doe_list_href = generate_href(DERControlListUri, rs_params, site_id=site_id, der_program_id=DOE_PROGRAM_ID)
+        doe_list_href = generate_href(
+            DERControlListUri, scope, site_id=scope.display_site_id, der_program_id=DOE_PROGRAM_ID
+        )
         return Notification.model_validate(
             {
                 "subscribedResource": doe_list_href,
-                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": NotificationStatus.DEFAULT,
                 "resource": {
                     "type": XSI_TYPE_DER_CONTROL_LIST,
                     "all_": len(does),
                     "results": len(does),
-                    "DERControl": [DERControlMapper.map_to_response(d) for d in does],
+                    "DERControl": [DERControlMapper.map_to_response(scope, d) for d in does],
                 },
             }
         )
 
     @staticmethod
     def map_readings_to_response(
-        site_id: int,
         site_reading_type_id: int,
         readings: Sequence[SiteReading],
         sub: Subscription,
-        rs_params: RequestStateParameters,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a list of does into a notification"""
         reading_list_href = generate_href(
             ReadingListUri,
-            rs_params,
-            site_id=site_id,
+            scope,
+            site_id=scope.display_site_id,
             site_reading_type_id=site_reading_type_id,
             reading_set_id=READING_SET_ALL_ID,  # Can't correlate this back to anything else - all will be fine
         )
         return Notification.model_validate(
             {
                 "subscribedResource": reading_list_href,
-                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": NotificationStatus.DEFAULT,
                 "resource": {
                     "type": XSI_TYPE_READING_LIST,
@@ -419,19 +415,18 @@ class NotificationMapper:
 
     @staticmethod
     def map_rates_to_response(
-        site_id: int,
         tariff_id: int,
         day: date,
         pricing_reading_type: PricingReadingType,
         rates: Sequence[TariffGeneratedRate],
         sub: Subscription,
-        rs_params: RequestStateParameters,
+        scope: AggregatorRequestScope,
     ) -> Notification:
         """Turns a list of dynamic prices into a notification"""
         time_tariff_interval_list_href = generate_href(
             TimeTariffIntervalListUri,
-            rs_params,
-            site_id=site_id,
+            scope,
+            site_id=scope.display_site_id,
             tariff_id=tariff_id,
             rate_component_id=day.isoformat(),
             pricing_reading=int(pricing_reading_type),
@@ -439,14 +434,14 @@ class NotificationMapper:
         return Notification.model_validate(
             {
                 "subscribedResource": time_tariff_interval_list_href,
-                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": NotificationStatus.DEFAULT,
                 "resource": {
                     "type": XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
                     "all_": len(rates),
                     "results": len(rates),
                     "TimeTariffInterval": [
-                        TimeTariffIntervalMapper.map_to_response(rs_params, r, pricing_reading_type) for r in rates
+                        TimeTariffIntervalMapper.map_to_response(scope, r, pricing_reading_type) for r in rates
                     ],
                 },
             }
@@ -454,30 +449,30 @@ class NotificationMapper:
 
     @staticmethod
     def map_der_availability_to_response(
-        site_id: int,
         der_id: int,
         der_availability: Optional[SiteDERAvailability],
+        der_availability_site_id: int,
         sub: Subscription,
-        rs_params: RequestStateParameters,
+        scope: AggregatorRequestScope,
     ) -> Notification:
-        """Turns a single SiteDERAvailability into a notification"""
+        """Turns a single SiteDERAvailability into a notification."""
         der_avail_href = generate_href(
             DERAvailabilityUri,
-            rs_params,
-            site_id=site_id,
+            scope,
+            site_id=scope.display_site_id,
             der_id=der_id,
         )
 
         resource_model: Optional[dict] = None
         if der_availability is not None:
             # Easiest way to map entity to resource is via model_dump
-            resource = DERAvailabilityMapper.map_to_response(rs_params, site_id, der_availability)
+            resource = DERAvailabilityMapper.map_to_response(scope, der_availability, der_availability_site_id)
             resource.type = XSI_TYPE_DER_AVAILABILITY
             resource_model = resource.model_dump()
         return Notification.model_validate(
             {
                 "subscribedResource": der_avail_href,
-                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": NotificationStatus.DEFAULT,
                 "resource": resource_model,
             }
@@ -485,30 +480,30 @@ class NotificationMapper:
 
     @staticmethod
     def map_der_rating_to_response(
-        site_id: int,
         der_id: int,
         der_rating: Optional[SiteDERRating],
+        der_rating_site_id: int,
         sub: Subscription,
-        rs_params: RequestStateParameters,
+        scope: AggregatorRequestScope,
     ) -> Notification:
-        """Turns a single SiteDERRating into a notification"""
+        """Turns a single SiteDERRating into a notification."""
         der_rating_href = generate_href(
             DERCapabilityUri,
-            rs_params,
-            site_id=site_id,
+            scope,
+            site_id=scope.display_site_id,
             der_id=der_id,
         )
 
         resource_model: Optional[dict] = None
         if der_rating is not None:
             # Easiest way to map entity to resource is via model_dump
-            resource = DERCapabilityMapper.map_to_response(rs_params, site_id, der_rating)
+            resource = DERCapabilityMapper.map_to_response(scope, der_rating, der_rating_site_id)
             resource.type = XSI_TYPE_DER_CAPABILITY
             resource_model = resource.model_dump()
         return Notification.model_validate(
             {
                 "subscribedResource": der_rating_href,
-                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": NotificationStatus.DEFAULT,
                 "resource": resource_model,
             }
@@ -516,31 +511,31 @@ class NotificationMapper:
 
     @staticmethod
     def map_der_settings_to_response(
-        site_id: int,
         der_id: int,
         der_setting: Optional[SiteDERSetting],
+        der_setting_site_id: int,
         sub: Subscription,
-        rs_params: RequestStateParameters,
+        scope: AggregatorRequestScope,
     ) -> Notification:
-        """Turns a single SiteDERSetting into a notification"""
+        """Turns a single SiteDERSetting into a notification."""
         der_settings_href = generate_href(
             DERSettingsUri,
-            rs_params,
-            site_id=site_id,
+            scope,
+            site_id=scope.display_site_id,
             der_id=der_id,
         )
 
         resource_model: Optional[dict] = None
         if der_setting is not None:
             # Easiest way to map entity to resource is via model_dump
-            resource = DERSettingMapper.map_to_response(rs_params, site_id, der_setting)
+            resource = DERSettingMapper.map_to_response(scope, der_setting, der_setting_site_id)
             resource.type = XSI_TYPE_DER_SETTINGS
             resource_model = resource.model_dump()
 
         return Notification.model_validate(
             {
                 "subscribedResource": der_settings_href,
-                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": NotificationStatus.DEFAULT,
                 "resource": resource_model,
             }
@@ -548,31 +543,31 @@ class NotificationMapper:
 
     @staticmethod
     def map_der_status_to_response(
-        site_id: int,
         der_id: int,
         der_status: Optional[SiteDERStatus],
+        der_status_site_id: int,
         sub: Subscription,
-        rs_params: RequestStateParameters,
+        scope: AggregatorRequestScope,
     ) -> Notification:
-        """Turns a single SiteDERStatus into a notification"""
+        """Turns a single SiteDERStatus into a notification."""
         der_status_href = generate_href(
             DERStatusUri,
-            rs_params,
-            site_id=site_id,
+            scope,
+            site_id=scope.display_site_id,
             der_id=der_id,
         )
 
         resource_model: Optional[dict] = None
         if der_status is not None:
             # Easiest way to map entity to resource is via model_dump
-            resource = DERStatusMapper.map_to_response(rs_params, site_id, der_status)
+            resource = DERStatusMapper.map_to_response(scope, der_status, der_status_site_id)
             resource.type = XSI_TYPE_DER_STATUS
             resource_model = resource.model_dump()
 
         return Notification.model_validate(
             {
                 "subscribedResource": der_status_href,
-                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, rs_params),
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": NotificationStatus.DEFAULT,
                 "resource": resource_model,
             }

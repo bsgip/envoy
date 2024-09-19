@@ -20,7 +20,7 @@ from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.mapper.common import generate_href
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
 class ValueMultiplier(Protocol):
@@ -81,16 +81,12 @@ def to_hex_binary(v: Optional[int]) -> Optional[str]:
 
 class DERMapper:
     @staticmethod
-    def map_to_response(rs_params: RequestStateParameters, der: SiteDER, active_derp_id: Optional[str]) -> DER:
-        der_href = generate_href(uri.DERUri, rs_params, site_id=der.site_id, der_id=der.site_der_id)
+    def map_to_response(scope: BaseRequestScope, der: SiteDER, active_derp_id: Optional[str]) -> DER:
+        der_href = generate_href(uri.DERUri, scope, site_id=der.site_id, der_id=der.site_der_id)
         current_derp_link: Optional[Link] = None
         if active_derp_id:
             current_derp_link = Link.model_validate(
-                {
-                    "href": generate_href(
-                        uri.DERProgramUri, rs_params, site_id=der.site_id, der_program_id=active_derp_id
-                    )
-                }
+                {"href": generate_href(uri.DERProgramUri, scope, site_id=der.site_id, der_program_id=active_derp_id)}
             )
 
         return DER.model_validate(
@@ -98,31 +94,28 @@ class DERMapper:
                 "href": der_href,
                 "AssociatedDERProgramListLink": {
                     "href": generate_href(
-                        uri.AssociatedDERProgramListUri, rs_params, site_id=der.site_id, der_id=der.site_der_id
+                        uri.AssociatedDERProgramListUri, scope, site_id=der.site_id, der_id=der.site_der_id
                     )
                 },
                 "CurrentDERProgramLink": current_derp_link,
                 "DERStatusLink": {
-                    "href": generate_href(uri.DERStatusUri, rs_params, site_id=der.site_id, der_id=der.site_der_id)
+                    "href": generate_href(uri.DERStatusUri, scope, site_id=der.site_id, der_id=der.site_der_id)
                 },
                 "DERCapabilityLink": {
-                    "href": generate_href(uri.DERCapabilityUri, rs_params, site_id=der.site_id, der_id=der.site_der_id)
+                    "href": generate_href(uri.DERCapabilityUri, scope, site_id=der.site_id, der_id=der.site_der_id)
                 },
                 "DERSettingsLink": {
-                    "href": generate_href(uri.DERSettingsUri, rs_params, site_id=der.site_id, der_id=der.site_der_id)
+                    "href": generate_href(uri.DERSettingsUri, scope, site_id=der.site_id, der_id=der.site_der_id)
                 },
                 "DERAvailabilityLink": {
-                    "href": generate_href(
-                        uri.DERAvailabilityUri, rs_params, site_id=der.site_id, der_id=der.site_der_id
-                    )
+                    "href": generate_href(uri.DERAvailabilityUri, scope, site_id=der.site_id, der_id=der.site_der_id)
                 },
             }
         )
 
     @staticmethod
     def map_to_list_response(
-        rs_params: RequestStateParameters,
-        site_id: int,
+        scope: DeviceOrAggregatorRequestScope,
         poll_rate_seconds: int,
         ders_with_act_derp_id: list[tuple[SiteDER, Optional[str]]],
         der_count: int,
@@ -132,13 +125,11 @@ class DERMapper:
         ders_with_act_derp_id: SiteDER tupled with the Active DER Program ID for that SiteDER (if any)"""
         return DERListResponse.model_validate(
             {
-                "href": generate_href(uri.DERListUri, rs_params, site_id=site_id),
+                "href": generate_href(uri.DERListUri, scope, site_id=scope.display_site_id),
                 "pollRate": poll_rate_seconds,
                 "all_": der_count,
                 "results": len(ders_with_act_derp_id),
-                "DER_": [
-                    DERMapper.map_to_response(rs_params, e, act_derp_id) for e, act_derp_id in ders_with_act_derp_id
-                ],
+                "DER_": [DERMapper.map_to_response(scope, e, act_derp_id) for e, act_derp_id in ders_with_act_derp_id],
             }
         )
 
@@ -146,11 +137,15 @@ class DERMapper:
 class DERAvailabilityMapper:
     @staticmethod
     def map_to_response(
-        rs_params: RequestStateParameters, site_id: int, der_avail: SiteDERAvailability
+        scope: BaseRequestScope, der_avail: SiteDERAvailability, der_avail_site_id: int
     ) -> DERAvailability:
+        """der_avail_site_id: The site_id of the site that owns der_avail (normally we'd use the site_der relationship
+        to infer this but due to some SQL Alchemy quirks - we're forced to specify it)"""
         return DERAvailability.model_validate(
             {
-                "href": generate_href(uri.DERAvailabilityUri, rs_params, site_id=site_id, der_id=der_avail.site_der_id),
+                "href": generate_href(
+                    uri.DERAvailabilityUri, scope, site_id=der_avail_site_id, der_id=der_avail.site_der_id
+                ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "availabilityDuration": der_avail.availability_duration_sec,
                 "maxChargeDuration": der_avail.max_charge_duration_sec,
@@ -182,7 +177,9 @@ class DERAvailabilityMapper:
 
 class DERStatusMapper:
     @staticmethod
-    def map_to_response(rs_params: RequestStateParameters, site_id: int, der_status: SiteDERStatus) -> DERStatus:
+    def map_to_response(scope: BaseRequestScope, der_status: SiteDERStatus, der_status_site_id: int) -> DERStatus:
+        """der_status_site_id: The site_id of the site that owns der_status (normally we'd use the site_der relationship
+        to infer this but due to some SQL Alchemy quirks - we're forced to specify it)"""
         changed_timestamp = int(der_status.changed_time.timestamp())
 
         gen_conn_status: Optional[dict] = None
@@ -242,7 +239,9 @@ class DERStatusMapper:
             }
         return DERStatus.model_validate(
             {
-                "href": generate_href(uri.DERStatusUri, rs_params, site_id=site_id, der_id=der_status.site_der_id),
+                "href": generate_href(
+                    uri.DERStatusUri, scope, site_id=der_status_site_id, der_id=der_status.site_der_id
+                ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "alarmStatus": (
                     to_hex_binary(int(der_status.alarm_status)) if der_status.alarm_status is not None else None
@@ -329,10 +328,14 @@ class DERStatusMapper:
 
 class DERCapabilityMapper:
     @staticmethod
-    def map_to_response(rs_params: RequestStateParameters, site_id: int, der_rating: SiteDERRating) -> DERCapability:
+    def map_to_response(scope: BaseRequestScope, der_rating: SiteDERRating, der_rating_site_id: int) -> DERCapability:
+        """der_rating_site_id: The site_id of the site that owns der_rating (normally we'd use the site_der relationship
+        to infer this but due to some SQL Alchemy quirks - we're forced to specify it)"""
         return DERCapability.model_validate(
             {
-                "href": generate_href(uri.DERCapabilityUri, rs_params, site_id=site_id, der_id=der_rating.site_der_id),
+                "href": generate_href(
+                    uri.DERCapabilityUri, scope, site_id=der_rating_site_id, der_id=der_rating.site_der_id
+                ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "modesSupported": to_hex_binary(der_rating.modes_supported),
                 "rtgAbnormalCategory": der_rating.abnormal_category,
@@ -444,10 +447,15 @@ class DERCapabilityMapper:
 
 class DERSettingMapper:
     @staticmethod
-    def map_to_response(rs_params: RequestStateParameters, site_id: int, der_setting: SiteDERSetting) -> DERSettings:
+    def map_to_response(scope: BaseRequestScope, der_setting: SiteDERSetting, der_setting_site_id: int) -> DERSettings:
+        """der_setting_site_id: The site_id of the site that owns der_setting (normally we'd use the site_der
+        relationship to infer this but due to some SQL Alchemy quirks - we're forced to specify
+        it)"""
         return DERSettings.model_validate(
             {
-                "href": generate_href(uri.DERSettingsUri, rs_params, site_id=site_id, der_id=der_setting.site_der_id),
+                "href": generate_href(
+                    uri.DERSettingsUri, scope, site_id=der_setting_site_id, der_id=der_setting.site_der_id
+                ),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "modesEnabled": to_hex_binary(der_setting.modes_enabled),
                 "setESDelay": der_setting.es_delay,

@@ -11,9 +11,15 @@ from envoy.server.model.site_reading import SiteReading, SiteReadingType
 
 
 async def fetch_site_reading_type_for_aggregator(
-    session: AsyncSession, aggregator_id: int, site_reading_type_id: int, include_site_relation: bool
+    session: AsyncSession,
+    aggregator_id: int,
+    site_reading_type_id: int,
+    site_id: Optional[int],
+    include_site_relation: bool,
 ) -> Optional[SiteReadingType]:
-    """Fetches the SiteReadingType by ID (also validating aggregator_id) - returns None if it can't be found
+    """Fetches the SiteReadingType by ID (also validating aggregator_id) - returns None if it can't be found.
+
+    if site_id is specified - An additional filter on site_id will be applied to the lookup
 
     if include_site_relation is True - the site relation will also be populated (defaults to raise otherwise)
     """
@@ -21,6 +27,9 @@ async def fetch_site_reading_type_for_aggregator(
         (SiteReadingType.site_reading_type_id == site_reading_type_id)
         & (SiteReadingType.aggregator_id == aggregator_id)
     )
+
+    if site_id is not None:
+        stmt = stmt.where(SiteReadingType.site_id == site_id)
 
     if include_site_relation:
         stmt = stmt.options(selectinload(SiteReadingType.site))
@@ -33,12 +42,15 @@ async def _site_reading_types_for_aggregator(
     only_count: bool,
     session: AsyncSession,
     aggregator_id: int,
+    site_id: Optional[int],
     start: int,
     changed_after: datetime,
     limit: Optional[int],
 ) -> Union[Sequence[SiteReadingType], int]:
     """Internal utility for making site_reading_types_for_aggregator  requests that either counts the entities or
     returns a page of the entities
+
+    if site_id is specified - An additional filter on site_id will be applied to the lookup
 
     Orders by sep2 requirements on MirrorUsagePoint which is id DESC"""
 
@@ -59,6 +71,9 @@ async def _site_reading_types_for_aggregator(
         .limit(limit)
     )
 
+    if site_id is not None:
+        stmt = stmt.where(SiteReadingType.site_id == site_id)
+
     if not only_count:
         stmt = stmt.options(selectinload(SiteReadingType.site)).order_by(
             SiteReadingType.site_reading_type_id.desc(),
@@ -74,6 +89,7 @@ async def _site_reading_types_for_aggregator(
 async def fetch_site_reading_types_page_for_aggregator(
     session: AsyncSession,
     aggregator_id: int,
+    site_id: Optional[int],
     start: int,
     limit: int,
     changed_after: datetime,
@@ -81,18 +97,25 @@ async def fetch_site_reading_types_page_for_aggregator(
     """Fetches a page of SiteReadingType for a particular aggregator_id. The SiteReadingType will have the
     reference Site included"""
     return await _site_reading_types_for_aggregator(
-        False, session, aggregator_id=aggregator_id, start=start, limit=limit, changed_after=changed_after
+        False,
+        session,
+        aggregator_id=aggregator_id,
+        site_id=site_id,
+        start=start,
+        limit=limit,
+        changed_after=changed_after,
     )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
 
 
 async def count_site_reading_types_for_aggregator(
     session: AsyncSession,
     aggregator_id: int,
+    site_id: Optional[int],
     changed_after: datetime,
 ) -> int:
     """Fetches a page of SiteReadingType for a particular aggregator_id"""
     return await _site_reading_types_for_aggregator(
-        True, session, aggregator_id=aggregator_id, start=0, limit=None, changed_after=changed_after
+        True, session, aggregator_id=aggregator_id, site_id=site_id, start=0, limit=None, changed_after=changed_after
     )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
 
 

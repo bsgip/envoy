@@ -27,6 +27,16 @@ class UnauthorizedError(Exception):
         self.message = message
 
 
+class ForbiddenError(Exception):
+    """Raised whenever the incoming client request has valid authorisation credentials but is trying to access
+    a resource they don't have a scoped permissions to access"""
+
+    message: str
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+
 class NotFoundError(Exception):
     """Raised whenever the incoming request cannot find the specified resource/entity and is an
     indication that a HTTP NotFound should be returned"""

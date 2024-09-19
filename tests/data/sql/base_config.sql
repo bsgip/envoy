@@ -4,6 +4,7 @@
 SET row_security = off;
 SET timezone = 'UTC';
 
+INSERT INTO public.aggregator("aggregator_id", "name") VALUES (0, 'NULL AGGREGATOR'); -- This is supposed to be ID 0
 INSERT INTO public.aggregator("aggregator_id", "name") VALUES (1, 'Aggregator 1');
 INSERT INTO public.aggregator("aggregator_id", "name") VALUES (2, 'Aggregator 2');
 INSERT INTO public.aggregator("aggregator_id", "name") VALUES (3, 'Aggregator 3');
@@ -38,8 +39,13 @@ INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "chang
 INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "changed_time", "lfdi", "sfdi", "device_category") VALUES (2, '2222222222', 1, 'Australia/Brisbane', '2022-02-03 05:06:07.500', 'site2-lfdi', 2222, 1);
 INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "changed_time", "lfdi", "sfdi", "device_category") VALUES (3, '3333333333', 2, 'Australia/Brisbane', '2022-02-03 08:09:10.500', 'site3-lfdi', 3333, 2);
 INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "changed_time", "lfdi", "sfdi", "device_category") VALUES (4, '4444444444', 1, 'Australia/Brisbane', '2022-02-03 11:12:13.500', 'site4-lfdi', 4444, 3);
+-- Device registered site - using cert from certificate6.py
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "changed_time", "lfdi", "sfdi", "device_category") VALUES (5, '5555555555', 0, 'Australia/Brisbane', '2022-02-03 14:15:16.500', 'ec80646c5131ffa8ade49ac24be5295a7cfeb69d', 634853966776, 4); 
+-- Device registered site - using cert from certificate7.py
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "changed_time", "lfdi", "sfdi", "device_category") VALUES (6, '6666666666', 0, 'Australia/Brisbane', '2022-02-03 17:18:19.500', '93a527c16d8fca36e0f7da189fde375d5e494717', 396331899108, 5); 
 
-SELECT pg_catalog.setval('public.site_site_id_seq', 5, true);
+
+SELECT pg_catalog.setval('public.site_site_id_seq', 7, true);
 
 INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 36, '2023-01-02 11:01:02');
 INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 124, '2023-01-02 12:01:02');

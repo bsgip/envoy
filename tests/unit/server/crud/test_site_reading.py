@@ -5,13 +5,16 @@ from zoneinfo import ZoneInfo
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal
+from assertical.asserts.type import assert_iterable_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.types import QualityFlagsType
 from sqlalchemy import select
 
 from envoy.server.crud.site_reading import (
+    count_site_reading_types_for_aggregator,
     fetch_site_reading_type_for_aggregator,
+    fetch_site_reading_types_page_for_aggregator,
     upsert_site_reading_type_for_aggregator,
     upsert_site_readings,
 )
@@ -51,9 +54,29 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
 
 
 @pytest.mark.parametrize(
-    "aggregator_id, site_reading_type_id, expected",
+    "aggregator_id, site_id, site_reading_type_id, expected",
     [
         (
+            1,
+            None,
+            1,
+            SiteReadingType(
+                site_reading_type_id=1,
+                aggregator_id=1,
+                site_id=1,
+                uom=38,
+                data_qualifier=2,
+                flow_direction=1,
+                accumulation_behaviour=3,
+                kind=37,
+                phase=64,
+                power_of_ten_multiplier=3,
+                default_interval_seconds=0,
+                changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
+            ),
+        ),
+        (
+            1,
             1,
             1,
             SiteReadingType(
@@ -73,6 +96,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
         ),
         (
             3,
+            None,
             2,
             SiteReadingType(
                 site_reading_type_id=2,
@@ -89,20 +113,27 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 changed_time=datetime(2022, 5, 6, 12, 22, 33, 500000, tzinfo=timezone.utc),
             ),
         ),
-        (2, 1, None),  # Wrong aggregator
-        (1, 99, None),  # Wrong site_reading_type_id
+        (2, None, 1, None),  # Wrong aggregator
+        (1, None, 99, None),  # Wrong site_reading_type_id
+        (1, 99, 1, None),  # Wrong site_id
+        (1, 2, 1, None),  # Wrong site_id
     ],
 )
 @pytest.mark.anyio
 async def test_fetch_site_reading_type_for_aggregator(
-    pg_base_config, aggregator_id: int, site_reading_type_id: int, expected: Optional[SiteReadingType]
+    pg_base_config,
+    aggregator_id: int,
+    site_id: Optional[int],
+    site_reading_type_id: int,
+    expected: Optional[SiteReadingType],
 ):
     """Tests the contents of the returned SiteReadingType"""
-    async with generate_async_session(pg_base_config) as session:
-        actual = await fetch_site_reading_type_for_aggregator(
-            session, aggregator_id, site_reading_type_id, include_site_relation=False
-        )
-        assert_class_instance_equality(SiteReadingType, expected, actual, ignored_properties=set(["site"]))
+    for include_site_relation in [True, False]:
+        async with generate_async_session(pg_base_config) as session:
+            actual = await fetch_site_reading_type_for_aggregator(
+                session, aggregator_id, site_reading_type_id, site_id, include_site_relation=include_site_relation
+            )
+            assert_class_instance_equality(SiteReadingType, expected, actual, ignored_properties=set(["site"]))
 
 
 @pytest.mark.anyio
@@ -110,15 +141,21 @@ async def test_fetch_site_reading_type_for_aggregator_relationship(pg_base_confi
     """Tests the relationship fetching behaviour"""
     async with generate_async_session(pg_base_config) as session:
         # test with no site relation (ensure raise loading is enabled)
-        actual_no_relation = await fetch_site_reading_type_for_aggregator(session, 1, 1, include_site_relation=False)
+        actual_no_relation = await fetch_site_reading_type_for_aggregator(
+            session, 1, 1, None, include_site_relation=False
+        )
         with pytest.raises(Exception):
             actual_no_relation.site.lfdi
 
         # Test site relation can be navigated for different sites
-        actual_with_relation = await fetch_site_reading_type_for_aggregator(session, 1, 1, include_site_relation=True)
+        actual_with_relation = await fetch_site_reading_type_for_aggregator(
+            session, 1, 1, None, include_site_relation=True
+        )
         assert actual_with_relation.site.lfdi == "site1-lfdi"
 
-        actual_4_with_relation = await fetch_site_reading_type_for_aggregator(session, 1, 4, include_site_relation=True)
+        actual_4_with_relation = await fetch_site_reading_type_for_aggregator(
+            session, 1, 4, None, include_site_relation=True
+        )
         assert actual_4_with_relation.site.lfdi == "site2-lfdi"
 
 
@@ -295,3 +332,39 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
             ),
             sr_1,
         ),
+
+
+@pytest.mark.parametrize(
+    "aggregator_id, site_id, start, limit, after, expected_ids, expected_count",
+    [
+        (1, None, 0, 99, datetime.min, [1, 3, 4], 3),
+        (1, None, 1, 1, datetime.min, [3], 3),
+        (1, None, 99, 1, datetime.min, [], 3),
+        (1, 1, 0, 99, datetime.min, [1, 3], 2),
+        (1, None, 0, 99, datetime(2022, 5, 6, 12, 22, 33, tzinfo=timezone.utc), [3, 4], 2),
+        (1, 1, 0, 99, datetime(2022, 5, 6, 12, 22, 33, tzinfo=timezone.utc), [3], 1),
+        (99, None, 0, 99, datetime.min, [], 0),  # bad agg id
+        (1, 99, 0, 99, datetime.min, [], 0),  # bad site id
+        (1, None, 0, 99, datetime(2035, 11, 12), [], 0),  # bad changed after
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_site_reading_type_pages(
+    pg_base_config,
+    aggregator_id: int,
+    site_id: Optional[int],
+    start: int,
+    limit: int,
+    after: datetime,
+    expected_ids: list[int],
+    expected_count: int,
+):
+    """Tests the contents of the returned SiteReadingType"""
+    async with generate_async_session(pg_base_config) as session:
+        actual = await fetch_site_reading_types_page_for_aggregator(
+            session, aggregator_id, site_id, start, limit, after
+        )
+        assert_iterable_type(SiteReadingType, actual, count=len(expected_ids))
+
+        actual_count = await count_site_reading_types_for_aggregator(session, aggregator_id, site_id, after)
+        assert actual_count == expected_count

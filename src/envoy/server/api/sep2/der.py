@@ -11,7 +11,7 @@ from envoy.server.api.request import (
     extract_datetime_from_paging_param,
     extract_default_doe,
     extract_limit_from_paging_param,
-    extract_request_params,
+    extract_request_claims,
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import XmlRequest, XmlResponse
@@ -54,8 +54,7 @@ async def get_der_list(
     try:
         der_list = await DERManager.fetch_der_list_for_site(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             start=extract_start_from_paging_param(start),
             limit=extract_limit_from_paging_param(limit),
             after=extract_datetime_from_paging_param(after),
@@ -82,8 +81,7 @@ async def get_der(request: Request, site_id: int, der_id: int) -> Response:
     try:
         der = await DERManager.fetch_der_for_site(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             site_der_id=der_id,
         )
     except BadRequestError as ex:
@@ -108,8 +106,7 @@ async def get_der_availability(request: Request, site_id: int, der_id: int) -> R
     try:
         result = await DERAvailabilityManager.fetch_der_availability_for_site(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             site_der_id=der_id,
         )
     except BadRequestError as ex:
@@ -140,8 +137,7 @@ async def put_der_availability(
     try:
         await DERAvailabilityManager.upsert_der_availability_for_site(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             site_der_id=der_id,
             der_availability=payload,
         )
@@ -167,8 +163,7 @@ async def get_der_capability(request: Request, site_id: int, der_id: int) -> Res
     try:
         result = await DERCapabilityManager.fetch_der_capability_for_site(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             site_der_id=der_id,
         )
     except BadRequestError as ex:
@@ -199,8 +194,7 @@ async def put_der_capability(
     try:
         await DERCapabilityManager.upsert_der_capability_for_site(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             site_der_id=der_id,
             der_capability=payload,
         )
@@ -226,8 +220,7 @@ async def get_der_status(request: Request, site_id: int, der_id: int) -> Respons
     try:
         result = await DERStatusManager.fetch_der_status_for_site(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             site_der_id=der_id,
         )
     except BadRequestError as ex:
@@ -258,8 +251,7 @@ async def put_der_status(
     try:
         await DERStatusManager.upsert_der_status_for_site(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             site_der_id=der_id,
             der_status=payload,
         )
@@ -285,8 +277,7 @@ async def get_der_settings(request: Request, site_id: int, der_id: int) -> Respo
     try:
         result = await DERSettingsManager.fetch_der_settings_for_site(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             site_der_id=der_id,
         )
     except BadRequestError as ex:
@@ -317,8 +308,7 @@ async def put_der_settings(
     try:
         await DERSettingsManager.upsert_der_settings_for_site(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             site_der_id=der_id,
             der_settings=payload,
         )
@@ -355,10 +345,9 @@ async def get_derprogram_list(
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail=f"No DER with ID {der_id}")
 
     try:
-        derp_list = await DERProgramManager.fetch_list_for_site(
+        derp_list = await DERProgramManager.fetch_list_for_scope(
             db.session,
-            request_params=extract_request_params(request),
-            site_id=site_id,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:

@@ -77,6 +77,7 @@ async def run_basic_unauthorised_tests(
     method: str = "GET",
     body: Optional[Any] = None,
     base_headers: Optional[dict[str, str]] = None,
+    test_unrecognised_cert: bool = True,
 ):
     """Runs common "unauthorised" GET requests on a particular endpoint and ensures that the endpoint is properly
     secured with our LFDI auth dependency"""
@@ -94,16 +95,20 @@ async def run_basic_unauthorised_tests(
     assert_error_response(response)
 
     # check unregistered certs don't work
-    response = await client.request(
-        method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: UNKNOWN_PEM})
-    )
-    assert_response_header(response, HTTPStatus.FORBIDDEN)
-    assert_error_response(response)
-    response = await client.request(
-        method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: UNKNOWN_FINGERPRINT})
-    )
-    assert_response_header(response, HTTPStatus.FORBIDDEN)
-    assert_error_response(response)
+    if test_unrecognised_cert:
+        response = await client.request(
+            method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: UNKNOWN_PEM})
+        )
+        assert_response_header(response, HTTPStatus.FORBIDDEN)
+        assert_error_response(response)
+        response = await client.request(
+            method=method,
+            url=uri,
+            content=body,
+            headers=_apply_headers(base_headers, {cert_header: UNKNOWN_FINGERPRINT}),
+        )
+        assert_response_header(response, HTTPStatus.FORBIDDEN)
+        assert_error_response(response)
 
     # missing cert (register as 500 as the gateway should be handling this)
     response = await client.request(
@@ -119,7 +124,7 @@ async def run_basic_unauthorised_tests(
     response = await client.request(
         method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: "abc-123"})
     )
-    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_response_header(response, HTTPStatus.BAD_REQUEST)
     assert_error_response(response)
 
 

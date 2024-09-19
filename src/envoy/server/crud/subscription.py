@@ -115,16 +115,22 @@ async def count_subscriptions_for_site(
 
 
 async def delete_subscription_for_site(
-    session: AsyncSession, aggregator_id: int, site_id: int, subscription_id: int
+    session: AsyncSession, aggregator_id: int, site_id: Optional[int], subscription_id: int
 ) -> bool:
     """Deletes the specified subscription (and any linked conditions) from the database. Returns true on successful
-    delete"""
+    delete
+
+    site_id: If None - will match Subscription.scoped_site_id = None otherwise will match value for value"""
 
     stmt = delete(Subscription).where(
-        (Subscription.subscription_id == subscription_id)
-        & (Subscription.aggregator_id == aggregator_id)
-        & (Subscription.scoped_site_id == site_id)
+        (Subscription.subscription_id == subscription_id) & (Subscription.aggregator_id == aggregator_id)
     )
+
+    if site_id is None:
+        stmt = stmt.where(Subscription.scoped_site_id.is_(None))
+    else:
+        stmt = stmt.where(Subscription.scoped_site_id == site_id)
+
     resp = await session.execute(stmt)
     return resp.rowcount > 0
 

@@ -2,7 +2,7 @@ import pytest
 from assertical.fixtures.postgres import generate_async_session
 
 from envoy.server.crud.aggregator import select_aggregator
-from envoy.server.model.aggregator import Aggregator
+from envoy.server.model.aggregator import NULL_AGGREGATOR_ID, Aggregator
 
 
 @pytest.mark.anyio
@@ -23,3 +23,4 @@ async def test_select_aggregator(pg_base_config):
 
         assert (await select_aggregator(session, 4)) is None
         assert (await select_aggregator(session, -1)) is None
+        assert (await select_aggregator(session, NULL_AGGREGATOR_ID)) is None

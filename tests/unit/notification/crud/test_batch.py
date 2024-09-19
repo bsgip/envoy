@@ -31,6 +31,7 @@ from envoy.notification.crud.batch import (
 from envoy.notification.exception import NotificationError
 from envoy.server.crud.end_device import Site
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
+from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
@@ -419,8 +420,10 @@ async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
         list_entities.sort(key=lambda site: site.site_id)
 
         assert len(list_entities) == len(all_entities)
-        assert set([1, 2, 3, 4]) == set([e.site_id for e in list_entities])
-        assert set([1, 2]) == set([e.aggregator_id for e in list_entities]), "All aggregator IDs should be represented"
+        assert set([1, 2, 3, 4, 5, 6]) == set([e.site_id for e in list_entities])
+        assert set([NULL_AGGREGATOR_ID, 1, 2]) == set(
+            [e.aggregator_id for e in list_entities]
+        ), "All aggregator IDs should be represented"
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))

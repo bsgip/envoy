@@ -55,14 +55,50 @@ class AsyncCache(Generic[K, V]):
         async with self._lock:
             self._cache = {}
 
-    def _fetch_from_cache(self, key: K) -> Optional[V]:
+    def _fetch_from_cache(self, key: K) -> tuple[Optional[V], Optional[ExpiringValue[V]]]:
         """Internal use only.
         Fetches from cache (respecting expiry times). Returns None if the value DNE or has expired"""
         expiring_value = self._cache.get(key, None)
         if expiring_value and not expiring_value.is_expired():
-            return expiring_value.value
+            return (expiring_value.value, expiring_value)
         else:
-            return None
+            return (None, expiring_value)
+
+    async def get_value_ignore_expiry(self, update_arg: Any, key: K) -> Optional[ExpiringValue[V]]:
+        """Attempts to fetch the specified value by key. The internal cache will be utilised
+        first and updated if the key is not found / has expired.
+
+        This function differs from get_value in that it will return the full ExpiringValue even if it's marked
+        as expired (but will attempt to update the cache BEFORE returning the expired value).
+
+        update_arg: Will be passed to the internal update function if a cache update is required
+        key: The key to lookup a value
+
+        Returns None if the key DNE, otherwise the value (expired or not) will be returned
+
+        Exceptions raised by the internal update_fn will not be caught and will abort the cache update"""
+
+        # use cache first from outside the lock - the hope is that 99% of requests go this route
+        (value, expiring_value) = self._fetch_from_cache(key)
+        if value:
+            return expiring_value
+
+        # Otherwise acquire the async lock (it won't work with threads - only coroutines)
+        # to ensure only one coroutine is doing an update at a time
+        async with self._lock:
+            # Double check that the cache hasn't updated while we were waiting on the lock
+            (value, expiring_value) = self._fetch_from_cache(key)
+            if value:
+                return expiring_value
+
+            # Perform the cache update
+            self._cache = await self._update_fn(update_arg)
+
+            # Now it's the final attempt - either get it or raise an error
+            # we do this test from within the lock so we're sure that no other updates
+            # can occur - basically - if the ID DNE - it's 100% not in the set of valid public keys
+            (value, expiring_value) = self._fetch_from_cache(key)
+            return expiring_value
 
     async def get_value(self, update_arg: Any, key: K) -> Optional[V]:
         """Attempts to fetch the specified value by key. The internal cache will be utilised first and updated
@@ -76,25 +112,11 @@ class AsyncCache(Generic[K, V]):
         Exceptions raised by the internal update_fn will not be caught and will abort the cache update"""
 
         # use cache first from outside the lock - the hope is that 99% of requests go this route
-        value = self._fetch_from_cache(key)
-        if value:
-            return value
+        expiring_value = await self.get_value_ignore_expiry(update_arg, key)
+        if expiring_value is None or expiring_value.is_expired():
+            return None
 
-        # Otherwise acquire the async lock (it won't work with threads - only coroutines)
-        # to ensure only one coroutine is doing an update at a time
-        async with self._lock:
-            # Double check that the cache hasn't updated while we were waiting on the lock
-            value = self._fetch_from_cache(key)
-            if value:
-                return value
-
-            # Perform the cache update
-            self._cache = await self._update_fn(update_arg)
-
-            # Now it's the final attempt - either get it or raise an error
-            # we do this test from within the lock so we're sure that no other updates
-            # can occur - basically - if the ID DNE - it's 100% not in the set of valid public keys
-            return self._fetch_from_cache(key)
+        return expiring_value.value
 
     async def force_update(self, update_arg: Any) -> None:
         """Forces an update to occur - will hold the internal cache lock and repeatedly attempt
@@ -120,7 +142,7 @@ class AsyncCache(Generic[K, V]):
 
         Exceptions raised by force_update will not propagate upwards"""
 
-        value = self._fetch_from_cache(key)
+        (value, _) = self._fetch_from_cache(key)
         if value:
             return value
 

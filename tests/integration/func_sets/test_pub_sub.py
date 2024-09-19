@@ -28,6 +28,8 @@ from envoy.server.model.subscription import Subscription
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
+from tests.data.certificates.certificate6 import TEST_CERTIFICATE_FINGERPRINT as DEVICE_5_CERT
+from tests.data.certificates.certificate8 import TEST_CERTIFICATE_FINGERPRINT as UNREGISTERED_CERT
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
 from tests.integration.response import (
@@ -109,6 +111,32 @@ async def test_get_subscription_list_by_aggregator(
 
         # Pull sub id from the href - hacky but will work for this test
         assert [int(ed.href[-1]) for ed in parsed_response.subscriptions] == expected_sub_ids
+
+
+@pytest.mark.parametrize(
+    "cert, site_id, expected_status",
+    [
+        (AGG_1_VALID_CERT, 1, HTTPStatus.OK),  # Control - should work fine
+        (DEVICE_5_CERT, 5, HTTPStatus.FORBIDDEN),  # device cert
+        (DEVICE_5_CERT, 6, HTTPStatus.FORBIDDEN),  # device cert
+        (DEVICE_5_CERT, 0, HTTPStatus.FORBIDDEN),  # device cert
+        (UNREGISTERED_CERT, 5, HTTPStatus.FORBIDDEN),  # site DNE
+        (UNREGISTERED_CERT, 0, HTTPStatus.FORBIDDEN),  # site DNE
+    ],
+)
+@pytest.mark.anyio
+async def test_get_subscription_list_by_aggregator_forbidden_cases(
+    client: AsyncClient, cert: str, expected_status: HTTPStatus, site_id: int, sub_list_uri_format
+):
+    """Validates that fetching subscription lists only works for aggregator certs"""
+
+    response = await client.get(
+        sub_list_uri_format.format(site_id=site_id) + build_paging_params(limit=100),
+        headers={cert_header: urllib.parse.quote(cert)},
+    )
+    assert_response_header(response, expected_status)
+    if expected_status != HTTPStatus.OK:
+        assert_error_response(response)
 
 
 @pytest.mark.parametrize(
@@ -527,3 +555,25 @@ async def test_der_capability_subscription(
         notification.resource,
         ignored_properties=set(["href", "type", "subscribable"]),
     )
+
+
+@pytest.mark.parametrize("use_aggregator_edev", [True, False])
+@pytest.mark.anyio
+async def test_subscription_create_unavailable_for_device_cert(
+    pg_base_config, client: AsyncClient, sub_list_uri_format: str, use_aggregator_edev: bool
+):
+    """When creating a sub check check to make sure it isn't for a device cert"""
+
+    edev_id: int = 0 if use_aggregator_edev else 5
+
+    insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
+    insert_request.encoding = SubscriptionEncoding.XML
+    insert_request.notificationURI = "https://example.com/456?foo=bar"
+    insert_request.subscribedResource = f"/edev/{edev_id}/derp/doe/derc"
+    response = await client.post(
+        sub_list_uri_format.format(site_id=edev_id),
+        headers={cert_header: urllib.parse.quote(DEVICE_5_CERT)},
+        content=Sep2Subscription.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_error_response(response)

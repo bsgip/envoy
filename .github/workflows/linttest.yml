@@ -26,6 +26,7 @@ jobs:
         with:
           name: Security report
           path: output/security_report.txt
+          overwrite: true
 
   flake8_py311:
     runs-on: ubuntu-latest

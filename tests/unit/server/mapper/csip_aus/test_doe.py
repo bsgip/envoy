@@ -13,7 +13,7 @@ from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope
 
 
 def test_map_derc_to_response():
@@ -22,24 +22,31 @@ def test_map_derc_to_response():
     doe_opt: DynamicOperatingEnvelope = generate_class_instance(
         DynamicOperatingEnvelope, seed=202, optional_is_none=True
     )
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/foo/bar"
+    )
 
-    result_all_set = DERControlMapper.map_to_response(doe)
+    result_all_set = DERControlMapper.map_to_response(scope, doe)
     assert result_all_set is not None
     assert isinstance(result_all_set, DERControlResponse)
     assert result_all_set.interval.start == doe.start_time.timestamp()
     assert result_all_set.interval.duration == doe.duration_seconds
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
+    assert result_all_set.href.startswith(scope.href_prefix)
+    assert f"/{scope.display_site_id}" in result_all_set.href
     assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * DOE_DECIMAL_POWER)
     assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * DOE_DECIMAL_POWER)
 
-    result_optional = DERControlMapper.map_to_response(doe_opt)
+    result_optional = DERControlMapper.map_to_response(scope, doe_opt)
     assert result_optional is not None
     assert isinstance(result_optional, DERControlResponse)
     assert result_optional.interval.start == doe_opt.start_time.timestamp()
     assert result_optional.interval.duration == doe_opt.duration_seconds
     assert isinstance(result_optional.DERControlBase_, DERControlBase)
+    assert result_optional.href.startswith(scope.href_prefix)
+    assert f"/{scope.display_site_id}" in result_optional.href
     assert result_optional.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_optional.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_optional.DERControlBase_.opModImpLimW.value == int(
@@ -85,12 +92,11 @@ def test_map_derc_to_list_response():
     site_count = 199
 
     all_does = [doe1, doe2, doe3, doe4]
-    site_id = 54121
-    rs_params = RequestStateParameters(1, None, None)
-
-    result = DERControlMapper.map_to_list_response(
-        rs_params, all_does, site_count, site_id, DERControlListSource.DER_CONTROL_LIST
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, display_site_id=54121
     )
+
+    result = DERControlMapper.map_to_list_response(scope, all_does, site_count, DERControlListSource.DER_CONTROL_LIST)
     assert result is not None
     assert isinstance(result, DERControlListResponse)
     assert result.all_ == site_count
@@ -99,10 +105,10 @@ def test_map_derc_to_list_response():
     assert len(set([derc.mRID for derc in result.DERControl])) == len(
         all_does
     ), f"Expected {len(all_does)} unique mrid's in the children"
-    assert str(site_id) in result.href
+    assert str(scope.display_site_id) in result.href
 
     empty_result = DERControlMapper.map_to_list_response(
-        rs_params, [], site_count, site_id, DERControlListSource.ACTIVE_DER_CONTROL_LIST
+        scope, [], site_count, DERControlListSource.ACTIVE_DER_CONTROL_LIST
     )
     assert empty_result is not None
     assert isinstance(empty_result, DERControlListResponse)
@@ -115,12 +121,13 @@ def test_map_derc_to_list_response():
 def test_map_derp_doe_program_response_with_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj (and there is
     a default doe specified)"""
-    site_id = 123
     total_does = 456
-    rs_params = RequestStateParameters(1, None, None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, display_site_id=54122
+    )
     default_doe = generate_class_instance(DefaultDoeConfiguration)
 
-    result = DERProgramMapper.doe_program_response(rs_params, site_id, total_does, default_doe)
+    result = DERProgramMapper.doe_program_response(scope, total_does, default_doe)
     assert result is not None
     assert isinstance(result, DERProgramResponse)
     assert result.href
@@ -140,15 +147,21 @@ def test_map_derp_doe_program_response_with_default_doe():
 
     assert result.DefaultDERControlLink.href != result.ActiveDERControlListLink.href
 
+    assert str(scope.display_site_id) in result.href
+    assert str(scope.display_site_id) in result.DERControlListLink.href
+    assert str(scope.display_site_id) in result.DefaultDERControlLink.href
+    assert str(scope.display_site_id) in result.ActiveDERControlListLink.href
+
 
 def test_map_derp_doe_program_response_no_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj (and there is NO
     default doe specified)"""
-    site_id = 123
     total_does = 456
-    rs_params = RequestStateParameters(1, None, None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, display_site_id=54123
+    )
 
-    result = DERProgramMapper.doe_program_response(rs_params, site_id, total_does, None)
+    result = DERProgramMapper.doe_program_response(scope, total_does, None)
     assert result is not None
     assert isinstance(result, DERProgramResponse)
 
@@ -160,11 +173,10 @@ def test_map_derp_doe_program_response_no_default_doe():
 
 def test_map_derp_doe_program_list_response_no_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
-    site_id = 123
     total_does = 456
-    rs_params = RequestStateParameters(1, None, None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
 
-    result = DERProgramMapper.doe_program_list_response(rs_params, site_id, total_does, None)
+    result = DERProgramMapper.doe_program_list_response(scope, total_does, None)
     assert result is not None
     assert isinstance(result, DERProgramListResponse)
     assert result.href
@@ -180,12 +192,11 @@ def test_map_derp_doe_program_list_response_no_default_doe():
 
 def test_map_derp_doe_program_list_response_with_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
-    site_id = 123
     total_does = 456
-    rs_params = RequestStateParameters(1, None, None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     default_doe = generate_class_instance(DefaultDoeConfiguration)
 
-    result = DERProgramMapper.doe_program_list_response(rs_params, site_id, total_does, default_doe)
+    result = DERProgramMapper.doe_program_list_response(scope, total_does, default_doe)
     assert result is not None
     assert isinstance(result, DERProgramListResponse)
     assert result.href
@@ -203,11 +214,13 @@ def test_map_derp_doe_program_list_response_with_default_doe():
 def test_mrid_uniqueness():
     """Test our mrids for controls differ from programs even when the ID's are the same"""
     site_id = 1
-    rs_params = RequestStateParameters(1, None, None)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, site_id=site_id, display_site_id=site_id
+    )
     doe: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope)
     doe.site_id = site_id
     doe.dynamic_operating_envelope_id = site_id  # intentionally the same as site_id
 
-    program = DERProgramMapper.doe_program_response(rs_params, site_id, 999, None)
-    control = DERControlMapper.map_to_response(doe)
+    program = DERProgramMapper.doe_program_response(scope, 999, None)
+    control = DERControlMapper.map_to_response(scope, doe)
     assert program.mRID != control.mRID

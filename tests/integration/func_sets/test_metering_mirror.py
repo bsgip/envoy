@@ -29,9 +29,18 @@ from sqlalchemy import select
 from envoy.server.model.site_reading import SiteReading
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
+from tests.data.certificates.certificate6 import TEST_CERTIFICATE_FINGERPRINT as DEVICE_5_CERT
+from tests.data.certificates.certificate6 import TEST_CERTIFICATE_LFDI as DEVICE_5_LFDI
+from tests.data.certificates.certificate7 import TEST_CERTIFICATE_FINGERPRINT as DEVICE_6_CERT
+from tests.data.certificates.certificate8 import TEST_CERTIFICATE_FINGERPRINT as UNREGISTERED_CERT
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
-from tests.integration.response import assert_response_header, read_location_header, read_response_body_string
+from tests.integration.response import (
+    assert_error_response,
+    assert_response_header,
+    read_location_header,
+    read_response_body_string,
+)
 
 HREF_PREFIX = "/prefix"
 
@@ -61,6 +70,7 @@ HREF_PREFIX = "/prefix"
         (1, datetime(2022, 5, 6, 11, 22, 36, tzinfo=timezone.utc), 2, AGG_1_VALID_CERT, 2, ["/mup/3"]),
         # Changed cert
         (0, None, 99, AGG_2_VALID_CERT, 0, []),
+        (0, None, 99, DEVICE_5_CERT, 0, []),
     ],
 )
 @pytest.mark.anyio
@@ -92,6 +102,31 @@ async def test_get_mirror_usage_point_list_pagination(
         assert (
             parsed_response.mirrorUsagePoints is None or len(parsed_response.mirrorUsagePoints) == 0
         ), f"received body:\n{body}"
+
+
+@pytest.mark.parametrize(
+    "cert, expected_status",
+    [
+        (AGG_1_VALID_CERT, HTTPStatus.OK),
+        (DEVICE_5_CERT, HTTPStatus.OK),
+        (UNREGISTERED_CERT, HTTPStatus.FORBIDDEN),
+    ],
+)
+@pytest.mark.anyio
+async def test_get_mirror_usage_point_list_errors(
+    client: AsyncClient,
+    cert: str,
+    expected_status: HTTPStatus,
+):
+    """Tests the known ways fetching mup lists should fail"""
+    response = await client.get(
+        uris.MirrorUsagePointListUri,
+        headers={cert_header: urllib.parse.quote(cert)},
+    )
+    assert_response_header(response, expected_status)
+
+    if expected_status != HTTPStatus.OK:
+        assert_error_response(response)
 
 
 @pytest.mark.parametrize(
@@ -388,3 +423,63 @@ async def test_submit_mirror_meter_reading_single_value(client: AsyncClient, pg_
         assert all_readings[-1].time_period_seconds == 301
         assert all_readings[-1].time_period_start == datetime.fromtimestamp(1341579365, tz=timezone.utc)
         assert_nowish(all_readings[-1].changed_time)
+
+
+@pytest.mark.anyio
+async def test_device_cert_mup_creation(client: AsyncClient):
+    """Tests running through the MUP create/fetch flow with a device cert"""
+    mup = MirrorUsagePointRequest.model_validate(
+        {
+            "mRID": "456",
+            "deviceLFDI": DEVICE_5_LFDI,
+            "serviceCategoryKind": ServiceKind.ELECTRICITY,
+            "roleFlags": "0",
+            "status": 0,
+            "mirrorMeterReadings": [
+                {
+                    "mRID": "456abc",
+                    "readingType": {
+                        "powerOfTenMultiplier": 3,
+                        "kind": KindType.POWER,
+                        "uom": UomType.REAL_POWER_WATT,
+                        "phase": PhaseCode.PHASE_B,
+                        "flowDirection": FlowDirectionType.FORWARD,
+                        "dataQualifier": DataQualifierType.AVERAGE,
+                        "accumulationBehaviour": AccumulationBehaviourType.CUMULATIVE,
+                        "intervalLength": None,
+                    },
+                }
+            ],
+        }
+    )
+
+    # create/update the mup
+    response = await client.post(
+        uris.MirrorUsagePointListUri,
+        content=MirrorUsagePointRequest.to_xml(mup, skip_empty=True),
+        headers={cert_header: urllib.parse.quote(DEVICE_5_CERT)},
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    mup_href = read_location_header(response)
+
+    # see if we can fetch the mup directly
+    response = await client.get(mup_href, headers={cert_header: urllib.parse.quote(DEVICE_5_CERT)})
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+    parsed_response: MirrorUsagePoint = MirrorUsagePoint.from_xml(body)
+    assert parsed_response.href == mup_href
+    assert_class_instance_equality(MirrorUsagePoint, mup, parsed_response, ignored_properties=set(["href", "mRID"]))
+
+    # Ensure other certs can't access it
+    response = await client.get(mup_href, headers={cert_header: urllib.parse.quote(DEVICE_6_CERT)})
+    assert_response_header(response, HTTPStatus.NOT_FOUND)
+    assert_error_response(response)
+
+    response = await client.get(mup_href, headers={cert_header: urllib.parse.quote(UNREGISTERED_CERT)})
+    assert_response_header(response, HTTPStatus.FORBIDDEN)
+    assert_error_response(response)
+
+    response = await client.get(mup_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.NOT_FOUND)
+    assert_error_response(response)

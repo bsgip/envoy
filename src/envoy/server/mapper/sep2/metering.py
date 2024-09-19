@@ -24,7 +24,7 @@ from envoy.server.mapper.common import generate_href, generate_mrid
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import BaseRequestScope
 
 MIRROR_USAGE_POINT_MRID_PREFIX: int = int("f051", 16)
 MIRROR_METER_READING_MRID_PREFIX: int = int("4ead", 16)
@@ -90,12 +90,12 @@ class MirrorUsagePointMapper:
         )
 
     @staticmethod
-    def map_to_response(rs_params: RequestStateParameters, srt: SiteReadingType, site: Site) -> MirrorUsagePoint:
+    def map_to_response(scope: BaseRequestScope, srt: SiteReadingType, site: Site) -> MirrorUsagePoint:
         """Maps a SiteReadingType and associated Site into a MirrorUsagePoint"""
 
         return MirrorUsagePoint.model_validate(
             {
-                "href": generate_href(uris.MirrorUsagePointUri, rs_params, mup_id=srt.site_reading_type_id),
+                "href": generate_href(uris.MirrorUsagePointUri, scope, mup_id=srt.site_reading_type_id),
                 "deviceLFDI": site.lfdi,
                 "postRate": None,
                 "roleFlags": to_hex_binary(RoleFlagsType.NONE),
@@ -126,16 +126,16 @@ class MirrorUsagePointMapper:
 class MirrorUsagePointListMapper:
     @staticmethod
     def map_to_list_response(
-        rs_params: RequestStateParameters, srts: Sequence[SiteReadingType], srt_count: int
+        scope: BaseRequestScope, srts: Sequence[SiteReadingType], srt_count: int
     ) -> MirrorUsagePointListResponse:
         """Maps a set of SiteReadingType (requires the associated site relationship being populated for each
         SiteReadingType)"""
         return MirrorUsagePointListResponse.model_validate(
             {
-                "href": generate_href(uris.MirrorUsagePointListUri, rs_params),
+                "href": generate_href(uris.MirrorUsagePointListUri, scope),
                 "all_": srt_count,
                 "results": len(srts),
-                "mirrorUsagePoints": [MirrorUsagePointMapper.map_to_response(rs_params, srt, srt.site) for srt in srts],
+                "mirrorUsagePoints": [MirrorUsagePointMapper.map_to_response(scope, srt, srt.site) for srt in srts],
             }
         )
 

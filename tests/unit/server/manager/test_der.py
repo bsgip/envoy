@@ -35,7 +35,7 @@ from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import SiteRequestScope
 
 
 @mock.patch("envoy.server.manager.der.select_site_der_for_site")
@@ -127,8 +127,7 @@ async def test_fetch_der_for_site_der_exists(
     mock_DERMapper: mock.MagicMock,
 ):
     """Fetch when site_der_for_site returns an instance"""
-    site_id = 123
-    rs_params = RequestStateParameters(456, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mock_session = create_mock_session()
 
     site_der: SiteDER = generate_class_instance(SiteDER, seed=101)
@@ -136,12 +135,14 @@ async def test_fetch_der_for_site_der_exists(
     mock_map = mock.Mock()
     mock_DERMapper.map_to_response = mock.Mock(return_value=mock_map)
 
-    result = await DERManager.fetch_der_for_site(mock_session, site_id, PUBLIC_SITE_DER_ID, rs_params)
+    result = await DERManager.fetch_der_for_site(mock_session, scope, PUBLIC_SITE_DER_ID)
     assert result is mock_map
 
     assert site_der.site_der_id == PUBLIC_SITE_DER_ID, "This should've been set during the fetch"
-    mock_DERMapper.map_to_response.assert_called_once_with(rs_params, site_der, DOE_PROGRAM_ID)
-    mock_site_der_for_site.assert_called_once_with(mock_session, aggregator_id=rs_params.aggregator_id, site_id=site_id)
+    mock_DERMapper.map_to_response.assert_called_once_with(scope, site_der, DOE_PROGRAM_ID)
+    mock_site_der_for_site.assert_called_once_with(
+        mock_session, aggregator_id=scope.aggregator_id, site_id=scope.site_id
+    )
     assert_mock_session(mock_session)
 
 
@@ -153,12 +154,11 @@ async def test_fetch_der_for_site_bad_der_id(
     mock_DERMapper: mock.MagicMock,
 ):
     """Fetch when DER ID is incorrect"""
-    site_id = 123
-    rs_params = RequestStateParameters(456, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mock_session = create_mock_session()
 
     with pytest.raises(NotFoundError):
-        await DERManager.fetch_der_for_site(mock_session, site_id, PUBLIC_SITE_DER_ID + 1, rs_params)
+        await DERManager.fetch_der_for_site(mock_session, scope, PUBLIC_SITE_DER_ID + 1)
 
     mock_DERMapper.assert_not_called()
     mock_site_der_for_site.assert_not_called()
@@ -183,19 +183,20 @@ async def test_fetch_der_list_for_site_pagination(
     mock_site_der_for_site: mock.MagicMock, start: int, limit: int, after: datetime, expected_count: int
 ):
     """Fetch when site_der_for_site returns an instance"""
-    site_id = 123
-    rs_params = RequestStateParameters(456, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mock_session = create_mock_session()
 
     site_der: SiteDER = generate_class_instance(SiteDER, seed=101)
     site_der.changed_time = AFTER_EPOCH
     mock_site_der_for_site.return_value = site_der
 
-    result = await DERManager.fetch_der_list_for_site(mock_session, site_id, rs_params, start, limit, after)
+    result = await DERManager.fetch_der_list_for_site(mock_session, scope, start, limit, after)
     assert isinstance(result, DERListResponse)
 
     assert len(result.DER_) == expected_count
-    mock_site_der_for_site.assert_called_once_with(mock_session, aggregator_id=rs_params.aggregator_id, site_id=site_id)
+    mock_site_der_for_site.assert_called_once_with(
+        mock_session, aggregator_id=scope.aggregator_id, site_id=scope.site_id
+    )
     assert_mock_session(mock_session)
 
 
@@ -213,15 +214,14 @@ async def test_fetch_der_list_for_site_pagination(
 @pytest.mark.anyio
 async def test_fetch_der_capability_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
             await DERCapabilityManager.fetch_der_capability_for_site(
                 session,
-                site_id,
                 der_id,
-                rs_params,
+                scope,
             )
 
 
@@ -240,7 +240,7 @@ async def test_upsert_der_capability_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -255,9 +255,8 @@ async def test_upsert_der_capability_not_found(
         with pytest.raises(NotFoundError):
             await DERCapabilityManager.upsert_der_capability_for_site(
                 session,
-                site_id,
                 der_id,
-                rs_params,
+                scope,
                 e,
             )
 
@@ -284,8 +283,9 @@ async def test_upsert_der_capability_roundtrip(
     mock_utc_now: mock.MagicMock, mock_NotificationManager: mock.MagicMock, pg_base_config, site_id: int
 ):
     """Tests the various success paths through updating"""
-    agg_id = 1
-    rs_params = RequestStateParameters(agg_id, None, "/custom/prefix")
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=1, site_id=site_id, href_prefix="/foo/bar"
+    )
     now = datetime(2023, 5, 6, 7, 8, 11)
 
     mock_utc_now.return_value = now
@@ -300,17 +300,14 @@ async def test_upsert_der_capability_roundtrip(
     async with generate_async_session(pg_base_config) as session:
         await DERCapabilityManager.upsert_der_capability_for_site(
             session,
-            site_id,
             PUBLIC_SITE_DER_ID,
-            rs_params,
+            scope,
             clone_class_instance(expected),
         )
 
     # Use a new session to query everything back
     async with generate_async_session(pg_base_config) as session:
-        actual = await DERCapabilityManager.fetch_der_capability_for_site(
-            session, site_id, PUBLIC_SITE_DER_ID, rs_params
-        )
+        actual = await DERCapabilityManager.fetch_der_capability_for_site(session, PUBLIC_SITE_DER_ID, scope)
 
         assert_class_instance_equality(
             DERCapability,
@@ -318,7 +315,7 @@ async def test_upsert_der_capability_roundtrip(
             actual,
             ignored_properties=set(["href", "subscribable", "type"]),
         )
-        assert actual.href.startswith(rs_params.href_prefix)
+        assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
 
     mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE_DER_RATING, now)
@@ -338,15 +335,16 @@ async def test_upsert_der_capability_roundtrip(
 @pytest.mark.anyio
 async def test_fetch_der_settings_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
             await DERSettingsManager.fetch_der_settings_for_site(
                 session,
-                site_id,
                 der_id,
-                rs_params,
+                scope,
             )
 
 
@@ -365,7 +363,9 @@ async def test_upsert_der_settings_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -380,9 +380,8 @@ async def test_upsert_der_settings_not_found(
         with pytest.raises(NotFoundError):
             await DERSettingsManager.upsert_der_settings_for_site(
                 session,
-                site_id,
                 der_id,
-                rs_params,
+                scope,
                 e,
             )
 
@@ -409,8 +408,9 @@ async def test_upsert_der_settings_roundtrip(
     mock_utc_now: mock.MagicMock, mock_NotificationManager: mock.MagicMock, pg_base_config, site_id: int
 ):
     """Tests the various success paths through updating"""
-    agg_id = 1
-    rs_params = RequestStateParameters(agg_id, None, "/custom/pfx")
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=1, site_id=site_id, href_prefix="/foo/bar"
+    )
     now = datetime(2023, 5, 2, 7, 8, 9)
 
     mock_utc_now.return_value = now
@@ -423,15 +423,14 @@ async def test_upsert_der_settings_roundtrip(
     async with generate_async_session(pg_base_config) as session:
         await DERSettingsManager.upsert_der_settings_for_site(
             session,
-            site_id,
             PUBLIC_SITE_DER_ID,
-            rs_params,
+            scope,
             clone_class_instance(expected),
         )
 
     # Use a new session to query everything back
     async with generate_async_session(pg_base_config) as session:
-        actual = await DERSettingsManager.fetch_der_settings_for_site(session, site_id, PUBLIC_SITE_DER_ID, rs_params)
+        actual = await DERSettingsManager.fetch_der_settings_for_site(session, PUBLIC_SITE_DER_ID, scope)
 
         assert_class_instance_equality(
             DERSettings,
@@ -439,7 +438,7 @@ async def test_upsert_der_settings_roundtrip(
             actual,
             ignored_properties=set(["href", "subscribable", "type", "updatedTime"]),
         )
-        assert actual.href.startswith(rs_params.href_prefix)
+        assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.updatedTime)  # Should be set to server time
 
@@ -462,15 +461,16 @@ async def test_upsert_der_settings_roundtrip(
 @pytest.mark.anyio
 async def test_fetch_der_availability_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
             await DERAvailabilityManager.fetch_der_availability_for_site(
                 session,
-                site_id,
                 der_id,
-                rs_params,
+                scope,
             )
 
 
@@ -489,7 +489,9 @@ async def test_upsert_der_availability_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -502,9 +504,8 @@ async def test_upsert_der_availability_not_found(
         with pytest.raises(NotFoundError):
             await DERAvailabilityManager.upsert_der_availability_for_site(
                 session,
-                site_id,
                 der_id,
-                rs_params,
+                scope,
                 e,
             )
 
@@ -531,8 +532,9 @@ async def test_upsert_der_availability_roundtrip(
     mock_utc_now: mock.MagicMock, mock_NotificationManager: mock.MagicMock, pg_base_config, site_id: int
 ):
     """Tests the various success paths through updating"""
-    agg_id = 1
-    rs_params = RequestStateParameters(agg_id, None, "/custom/pfx")
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=1, site_id=site_id, href_prefix="/foo/bar"
+    )
     now = datetime(2024, 5, 6, 7, 8, 9)
 
     mock_utc_now.return_value = now
@@ -543,17 +545,14 @@ async def test_upsert_der_availability_roundtrip(
     async with generate_async_session(pg_base_config) as session:
         await DERAvailabilityManager.upsert_der_availability_for_site(
             session,
-            site_id,
             PUBLIC_SITE_DER_ID,
-            rs_params,
+            scope,
             clone_class_instance(expected),
         )
 
     # Use a new session to query everything back
     async with generate_async_session(pg_base_config) as session:
-        actual = await DERAvailabilityManager.fetch_der_availability_for_site(
-            session, site_id, PUBLIC_SITE_DER_ID, rs_params
-        )
+        actual = await DERAvailabilityManager.fetch_der_availability_for_site(session, PUBLIC_SITE_DER_ID, scope)
 
         assert_class_instance_equality(
             DERAvailability,
@@ -561,7 +560,7 @@ async def test_upsert_der_availability_roundtrip(
             actual,
             ignored_properties=set(["href", "subscribable", "type", "readingTime"]),
         )
-        assert actual.href.startswith(rs_params.href_prefix)
+        assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.readingTime)  # Should be set to server time
 
@@ -584,15 +583,16 @@ async def test_upsert_der_availability_roundtrip(
 @pytest.mark.anyio
 async def test_fetch_der_status_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
             await DERStatusManager.fetch_der_status_for_site(
                 session,
-                site_id,
                 der_id,
-                rs_params,
+                scope,
             )
 
 
@@ -611,7 +611,9 @@ async def test_upsert_der_status_not_found(
     mock_NotificationManager: mock.MagicMock, pg_base_config, agg_id: int, site_id: int, der_id: int
 ):
     """Tests the various ways a NotFoundError can be raised"""
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
@@ -627,9 +629,8 @@ async def test_upsert_der_status_not_found(
         with pytest.raises(NotFoundError):
             await DERStatusManager.upsert_der_status_for_site(
                 session,
-                site_id,
                 der_id,
-                rs_params,
+                scope,
                 e,
             )
 
@@ -657,7 +658,9 @@ async def test_upsert_der_status_roundtrip(
 ):
     """Tests the various success paths through updating"""
     agg_id = 1
-    rs_params = RequestStateParameters(agg_id, None, "/custom/pfx")
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id, href_prefix="/foo/bar"
+    )
     now = datetime(2023, 5, 6, 7, 8, 9)
 
     mock_utc_now.return_value = now
@@ -674,15 +677,14 @@ async def test_upsert_der_status_roundtrip(
     async with generate_async_session(pg_base_config) as session:
         await DERStatusManager.upsert_der_status_for_site(
             session,
-            site_id,
             PUBLIC_SITE_DER_ID,
-            rs_params,
+            scope,
             clone_class_instance(expected),
         )
 
     # Use a new session to query everything back
     async with generate_async_session(pg_base_config) as session:
-        actual = await DERStatusManager.fetch_der_status_for_site(session, site_id, PUBLIC_SITE_DER_ID, rs_params)
+        actual = await DERStatusManager.fetch_der_status_for_site(session, PUBLIC_SITE_DER_ID, scope)
 
         assert_class_instance_equality(
             DERStatus,
@@ -690,7 +692,7 @@ async def test_upsert_der_status_roundtrip(
             actual,
             ignored_properties=set(["href", "subscribable", "type", "readingTime"]),
         )
-        assert actual.href.startswith(rs_params.href_prefix)
+        assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.readingTime)  # Should be set to server time
 

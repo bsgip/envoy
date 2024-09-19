@@ -15,6 +15,7 @@ markers = [
     "azure_ad_db_refresh_secs: marks tests to set the config value azure_ad_db_refresh_secs (requires azure_ad_db)",
     "csipv11a_xmlns_optin_middleware: mark tests to install the csip-aus v11a xml namespace opt-in middleware",
     "admin_ro_user: marks tests that install the admin server 'Read Only' user/passwords",
+    "disable_device_registration: marks tests that disable NULL Aggregator and disable unrecognised devices from registering (equivalent to allow_device_registration = False)",
 ]
 
 [tool.bandit]

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.crud import end_device, site_reading
 from envoy.server.function_set import FUNCTION_SET_STATUS, FunctionSet, FunctionSetStatus
 from envoy.server.mapper.common import generate_href
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import BaseRequestScope
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,9 @@ SEP2_LINK_MAP = {
 async def get_supported_links(
     session: AsyncSession,
     model: type[pydantic_xml.BaseXmlModel],
-    rs_params: RequestStateParameters,
+    aggregator_id: int,
+    site_id: Optional[int],
+    scope: BaseRequestScope,
     uri_parameters: Optional[dict] = None,
 ) -> dict[str, dict[str, str]]:
     """
@@ -212,18 +214,18 @@ async def get_supported_links(
     """
     link_names = get_link_field_names(model)
     supported_links_names = filter(check_link_supported, link_names)
-    supported_links = get_formatted_links(
-        rs_params=rs_params, link_names=supported_links_names, uri_parameters=uri_parameters
-    )
+    supported_links = get_formatted_links(scope=scope, link_names=supported_links_names, uri_parameters=uri_parameters)
     resource_counts = await get_resource_counts(
-        session=session, link_names=supported_links.keys(), aggregator_id=rs_params.aggregator_id
+        session=session, link_names=supported_links.keys(), aggregator_id=aggregator_id, site_id=site_id
     )
     updated_supported_links = add_resource_counts_to_links(links=supported_links, resource_counts=resource_counts)
 
     return updated_supported_links
 
 
-async def get_resource_counts(session: AsyncSession, link_names: Iterable[str], aggregator_id: int) -> dict[str, int]:
+async def get_resource_counts(
+    session: AsyncSession, link_names: Iterable[str], aggregator_id: int, site_id: Optional[int]
+) -> dict[str, int]:
     """
     Returns the resource counts for all the ListLinks in list.
 
@@ -240,14 +242,18 @@ async def get_resource_counts(session: AsyncSession, link_names: Iterable[str], 
     for link_name in link_names:
         if link_name.endswith("ListLink"):
             try:
-                count = await get_resource_count(session=session, list_link_name=link_name, aggregator_id=aggregator_id)
+                count = await get_resource_count(
+                    session=session, list_link_name=link_name, aggregator_id=aggregator_id, site_id=site_id
+                )
                 resource_counts[link_name] = count
             except NotImplementedError as e:
                 logger.debug(e)
     return resource_counts
 
 
-async def get_resource_count(session: AsyncSession, list_link_name: str, aggregator_id: int) -> int:
+async def get_resource_count(
+    session: AsyncSession, list_link_name: str, aggregator_id: int, site_id: Optional[int]
+) -> int:
     """
     Returns the resource count for given ListLink.
 
@@ -257,6 +263,7 @@ async def get_resource_count(session: AsyncSession, list_link_name: str, aggrega
     Args:
         list_link_name: The name of the ListLink e.g. "EndDeviceListLink"
         aggregator_id: The id of the aggregator (determines which resources are accessible)
+        site_id: The (optional) site_id filter to be used in conjunction with aggregator_id
 
     Returns:
         The resource count.
@@ -265,12 +272,21 @@ async def get_resource_count(session: AsyncSession, list_link_name: str, aggrega
         NotImplementedError: Raised when a ListLink doesn't have a resource count lookup method.
     """
     if list_link_name == "EndDeviceListLink":
+
+        # If we are selecting a single site, we can avoid counting and just see if it exists and return 1 or 0
+        if site_id is not None:
+            site = await end_device.select_single_site_with_site_id(
+                session=session, site_id=site_id, aggregator_id=aggregator_id
+            )
+            return 1 if site is not None else 0
+
+        # Otherwise do a proper site count
         return await end_device.select_aggregator_site_count(
             session=session, aggregator_id=aggregator_id, after=datetime.min
         )
     elif list_link_name == "MirrorUsagePointListLink":
         return await site_reading.count_site_reading_types_for_aggregator(
-            session=session, aggregator_id=aggregator_id, changed_after=datetime.min
+            session=session, aggregator_id=aggregator_id, site_id=site_id, changed_after=datetime.min
         )
     else:
         raise NotImplementedError(f"No resource count implemented for '{list_link_name}'")
@@ -348,7 +364,7 @@ def check_function_set_supported(function_set: FunctionSet, function_set_status:
 
 def get_formatted_links(
     link_names: Iterable[str],
-    rs_params: RequestStateParameters,
+    scope: BaseRequestScope,
     uri_parameters: Optional[dict] = None,
     link_map: dict[str, LinkParameters] = SEP2_LINK_MAP,
 ) -> dict[str, dict[str, str]]:
@@ -361,7 +377,7 @@ def get_formatted_links(
 
     Args:
         link_names: A list of link-names.
-        rs_params: Request state parameters that might influence the links being generated
+        scope: Request scope that might influence the links being generated
         uri_parameters: The parameters to be inserted into the link URI
         link_map: Maps link-names to URIs. Defaults to using SEP2_LINK_MAP.
 
@@ -379,7 +395,7 @@ def get_formatted_links(
         if link_name in link_map:
             uri = link_map[link_name].uri
             try:
-                formatted_uri = generate_href(uri, rs_params, **uri_parameters)
+                formatted_uri = generate_href(uri, scope, **uri_parameters)
             except KeyError as ex:
                 raise MissingUriParameterError(f"KeyError for params {uri_parameters} error {ex}.")
             links[link_name] = {"href": formatted_uri}

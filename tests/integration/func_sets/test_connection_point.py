@@ -3,13 +3,17 @@ from http import HTTPStatus
 from typing import Optional
 
 import pytest
+from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointRequest, ConnectionPointResponse
 from httpx import AsyncClient
 from psycopg import Connection
+from sqlalchemy import select
 
+from envoy.server.model.site import Site
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
+from tests.data.certificates.certificate7 import TEST_CERTIFICATE_FINGERPRINT as REGISTERED_DEVICE_CERT
 from tests.integration.integration_server import cert_header
 from tests.integration.response import (
     assert_error_response,
@@ -31,6 +35,10 @@ def connection_point_uri_format():
         (2, "2222222222", AGG_1_VALID_CERT, HTTPStatus.OK),
         (3, "3333333333", AGG_2_VALID_CERT, HTTPStatus.OK),
         (4, "4444444444", AGG_1_VALID_CERT, HTTPStatus.OK),
+        (6, "6666666666", REGISTERED_DEVICE_CERT, HTTPStatus.OK),
+        (6, None, AGG_1_VALID_CERT, HTTPStatus.NOT_FOUND),  # Agg1 cant reach device cert registered EndDevices
+        (1, None, REGISTERED_DEVICE_CERT, HTTPStatus.FORBIDDEN),  # Device cert cant reach aggregator EndDevices
+        (5, None, REGISTERED_DEVICE_CERT, HTTPStatus.FORBIDDEN),  # Device cert cant reach OTHER device cert EndDevices
         (1, None, AGG_2_VALID_CERT, HTTPStatus.NOT_FOUND),  # Agg 2 can't access site 1
         (3, None, AGG_3_VALID_CERT, HTTPStatus.NOT_FOUND),  # Agg 3 can't access site 3
         (99, None, AGG_1_VALID_CERT, HTTPStatus.NOT_FOUND),  # Site 99 does not exist
@@ -38,7 +46,7 @@ def connection_point_uri_format():
             0,
             None,
             AGG_1_VALID_CERT,
-            HTTPStatus.NOT_FOUND,
+            HTTPStatus.FORBIDDEN,
         ),  # Virtual EndDevice doesn't exist for the purpose of creating a CP
     ],
 )
@@ -86,28 +94,52 @@ async def test_get_connectionpoint_none_nmi(
     assert parsed_response.id is None or parsed_response.id == "", "Expected empty id"
 
 
+@pytest.mark.parametrize(
+    "site_id, cert, update_nmi_value, expected_result, expected_nmi",
+    [
+        (1, AGG_1_VALID_CERT, "1212121212", HTTPStatus.CREATED, "1212121212"),
+        (6, REGISTERED_DEVICE_CERT, "1212121212", HTTPStatus.CREATED, "1212121212"),
+        (5, REGISTERED_DEVICE_CERT, "1212121212", HTTPStatus.FORBIDDEN, "5555555555"),  # Wrong device for device cert
+        (1, REGISTERED_DEVICE_CERT, "1212121212", HTTPStatus.FORBIDDEN, "1111111111"),  # Wrong device for device cert
+        (3, AGG_1_VALID_CERT, "1212121212", HTTPStatus.NOT_FOUND, "3333333333"),  # No update - wrong agg
+        (6, AGG_1_VALID_CERT, "1212121212", HTTPStatus.NOT_FOUND, "6666666666"),  # No update - wrong agg
+    ],
+)
 @pytest.mark.anyio
-async def test_connectionpoint_update_and_fetch(client: AsyncClient, connection_point_uri_format: str):
+async def test_connectionpoint_update(
+    client: AsyncClient,
+    pg_base_config,
+    connection_point_uri_format: str,
+    site_id: int,
+    cert: str,
+    update_nmi_value: str,
+    expected_result: HTTPStatus,
+    expected_nmi: Optional[str],
+):
     """Tests that connection points can be updated / fetched"""
 
-    # fire off our first update
-    href = connection_point_uri_format.format(site_id=1)
-    new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id="1212121212")
+    # fire off our update
+    href = connection_point_uri_format.format(site_id=site_id)
+    new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id=update_nmi_value)
     response = await client.post(
-        url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
+        url=href, headers={cert_header: urllib.parse.quote(cert)}, content=new_cp_specified.to_xml()
     )
-    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
-    body = read_response_body_string(response)
-    assert read_location_header(response) == href
-    assert len(body) == 0
 
-    # check it updated
-    response = await client.get(href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
-    assert_response_header(response, HTTPStatus.OK)
-    body = read_response_body_string(response)
-    assert len(body) > 0
-    parsed_response: ConnectionPointResponse = ConnectionPointResponse.from_xml(body)
-    assert parsed_response.id == new_cp_specified.id
+    # Validate response
+    if expected_result == HTTPStatus.CREATED:
+        assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+        body = read_response_body_string(response)
+        assert read_location_header(response) == href
+        assert len(body) == 0
+    else:
+        assert_response_header(response, expected_result)
+        assert_error_response(response)
+
+    # check whether it updated (or not) in the DB
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(Site).where(Site.site_id == site_id)
+        site = (await session.execute(stmt)).scalar_one()
+        assert site.nmi == expected_nmi
 
 
 @pytest.mark.anyio
@@ -173,7 +205,7 @@ async def test_connectionpoint_update_bad_xml(client: AsyncClient, connection_po
 
 
 @pytest.mark.anyio
-async def test_connectionpoint_update_aggregator_edev_returns_404(
+async def test_connectionpoint_update_aggregator_edev_returns_403(
     client: AsyncClient, connection_point_uri_format: str
 ):
     """Tests that an aggregator can't update the connection point of an aggregator end device"""
@@ -183,4 +215,4 @@ async def test_connectionpoint_update_aggregator_edev_returns_404(
     response = await client.post(
         url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
     )
-    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.status_code == HTTPStatus.FORBIDDEN

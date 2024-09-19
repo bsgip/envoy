@@ -1,14 +1,22 @@
 import base64
 import hashlib
-from typing import Any
+import logging
 import urllib.parse
 from http import HTTPStatus
+from typing import Any, Optional
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from fastapi_async_sqlalchemy import db
 
-from envoy.server.crud.auth import ClientIdDetails, select_all_client_id_details
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.cache import AsyncCache, ExpiringValue
+from envoy.server.crud.auth import ClientIdDetails, select_all_client_id_details
+from envoy.server.crud.common import convert_lfdi_to_sfdi
+from envoy.server.crud.end_device import select_single_site_with_sfdi
+from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
+from envoy.server.request_scope import CertificateType
+
+logger = logging.getLogger(__name__)
 
 
 async def update_client_id_details_cache(_: Any) -> dict[str, ExpiringValue[ClientIdDetails]]:
@@ -19,6 +27,7 @@ async def update_client_id_details_cache(_: Any) -> dict[str, ExpiringValue[Clie
     # We create a fresh session here to ensure that anything fetched from the DB does NOT pollute the
     # session used by the rest of the request - This is out of an abundance of paranoia
     async with db():
+        # This will include expired certs
         client_ids = await select_all_client_id_details(db.session)
     return {cid.lfdi: ExpiringValue(expiry=cid.expiry, value=cid) for cid in client_ids}
 
@@ -34,18 +43,22 @@ class LFDIAuthDepends:
     """
 
     cert_header: str
-    cache: AsyncCache[str, ClientIdDetails]
+    allow_device_registration: bool
+    aggregator_cert_cache: AsyncCache[str, ClientIdDetails]
 
-    def __init__(self, cert_header: str):
+    def __init__(self, cert_header: str, allow_device_registration: bool):
         # fastapi will always return headers in lowercase form
         self.cert_header = cert_header.lower()
-        self.cache = AsyncCache(update_fn=update_client_id_details_cache)
+        self.allow_device_registration = allow_device_registration
+        self.aggregator_cert_cache = AsyncCache(update_fn=update_client_id_details_cache)
 
     async def __call__(self, request: Request) -> None:
         # Try extracting the lfdi from either the PEM if we receive it directly or the fingerprint if we get that
         cert_header_val = request.headers.get(self.cert_header, None)
         if not cert_header_val:
-            raise HTTPException(
+            raise LoggedHttpException(
+                logger,
+                exc=None,
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail="Missing certificate PEM header/fingerprint from gateway.",
             )
@@ -55,14 +68,52 @@ class LFDIAuthDepends:
         else:
             lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_header_val)
 
+        try:
+            sfdi = convert_lfdi_to_sfdi(lfdi)
+        except Exception as exc:
+            raise LoggedHttpException(
+                logger, exc=exc, status_code=HTTPStatus.BAD_REQUEST, detail="Unrecognised client certificate."
+            )
+
         # get client id details from cache, will return None if expired or never existed.
+        expirable_client_id = await self.aggregator_cert_cache.get_value_ignore_expiry(None, lfdi)
+        site_id: Optional[int] = None
+        aggregator_id: Optional[int] = None
+        if expirable_client_id:
+            # We have identified that this certificate lives in the certificate table and is therefore
+            # an aggregator cert (expired or not)
+            if expirable_client_id.is_expired():
+                raise LoggedHttpException(
+                    logger,
+                    exc=None,
+                    status_code=HTTPStatus.FORBIDDEN,
+                    detail=f"Client certificate {lfdi} is marked as expired by the server.",
+                )
+            aggregator_id = expirable_client_id.value.aggregator_id
+            source = CertificateType.AGGREGATOR_CERTIFICATE
+        else:
+            # It's not an aggregator cert:
+            # The cert has passed our TLS termination so its signing chain is valid - the only question
+            # is whether this server is setup to allow single device registration or whether all requests must
+            # be routed through an aggregator (and their client cert)
+            if self.allow_device_registration:
+                source = CertificateType.DEVICE_CERTIFICATE
+                async with db():
+                    site = await select_single_site_with_sfdi(db.session, sfdi=sfdi, aggregator_id=NULL_AGGREGATOR_ID)
+                    if site is not None:
+                        site_id = site.site_id
+            else:
+                # Reject the attempted device cert request
+                raise LoggedHttpException(
+                    logger, exc=None, status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised client certificate."
+                )
 
-        client_id = await self.cache.get_value(None, lfdi)
-        if not client_id:
-            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Unrecognised certificate ID.")
+        request.state.source = source
+        request.state.lfdi = lfdi
+        request.state.sfdi = sfdi
 
-        request.state.aggregator_lfdi = lfdi
-        request.state.aggregator_id = client_id.aggregator_id
+        request.state.aggregator_id = aggregator_id
+        request.state.site_id = site_id
 
     @staticmethod
     def generate_lfdi_from_pem(cert_pem: str) -> str:

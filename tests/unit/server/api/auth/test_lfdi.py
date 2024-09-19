@@ -4,6 +4,7 @@ from datetime import datetime
 import pytest
 from assertical.asserts.type import assert_dict_type
 from assertical.fake.asyncio import create_async_result
+from assertical.fake.generator import generate_class_instance
 from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
 
 from envoy.server.api.depends.lfdi_auth import update_client_id_details_cache
@@ -16,7 +17,7 @@ def dt(seed) -> datetime:
 
 
 def cid(seed: int) -> ClientIdDetails:
-    return ClientIdDetails(str(seed), seed * 37, dt(seed))
+    return generate_class_instance(ClientIdDetails, seed=seed, lfdi=str(seed), expiry=dt(seed))
 
 
 @pytest.mark.anyio

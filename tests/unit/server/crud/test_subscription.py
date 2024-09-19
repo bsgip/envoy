@@ -8,7 +8,7 @@ from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import clone_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from envoy.server.crud.subscription import (
     count_subscriptions_for_aggregator,
@@ -336,6 +336,43 @@ async def test_insert_subscription_with_condition(pg_base_config):
             new_sub.conditions[0],
             ignored_properties=set(["subscription_condition_id", "subscription_id"]),
         )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "agg_id, site_id, sub_id, expected_deletion",
+    [
+        (1, None, 1, True),
+        (1, 2, 2, True),
+        (2, 3, 3, True),
+        (2, None, 1, False),  # Bad Aggregator ID
+        (99, None, 1, False),  # Bad Aggregator ID
+        (2, 2, 2, False),  # Bad Aggregator ID
+        (99, 2, 2, False),  # Bad Aggregator ID
+        (1, 1, 1, False),  # Site ID is wrong
+        (1, None, 2, False),  # Site ID missing
+        (1, None, 99, False),  # Sub ID is wrong
+    ],
+)
+async def test_delete_subscription_for_site_filter_values(
+    pg_base_config, agg_id: int, site_id: Optional[int], sub_id: int, expected_deletion: bool
+):
+    """Tests the various ways we can filter down the deletion of a subscription"""
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(func.count()).select_from(Subscription)
+        count_before = (await session.execute(stmt)).scalar_one()
+        result = await delete_subscription_for_site(session, agg_id, site_id, sub_id)
+        assert result == expected_deletion
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(func.count()).select_from(Subscription)
+        count_after = (await session.execute(stmt)).scalar_one()
+
+        if expected_deletion:
+            assert count_before == count_after + 1
+        else:
+            assert count_before == count_after
 
 
 @pytest.mark.anyio

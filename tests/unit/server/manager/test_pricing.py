@@ -29,7 +29,7 @@ from envoy.server.manager.pricing import (
 from envoy.server.mapper.sep2.pricing import TOTAL_PRICING_READING_TYPES, PricingReadingType
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import BaseRequestScope, SiteRequestScope
 
 
 @pytest.mark.parametrize(
@@ -99,7 +99,7 @@ async def test_fetch_tariff_profile_list_no_site(
     changed = datetime.now()
     limit = 222
     count = 33
-    rs_params = RequestStateParameters(435, None, None)
+    scope: BaseRequestScope = generate_class_instance(BaseRequestScope, seed=1001)
     tariffs = [generate_class_instance(Tariff)]
     mapped_tariffs = generate_class_instance(TariffProfileListResponse)
 
@@ -107,14 +107,12 @@ async def test_fetch_tariff_profile_list_no_site(
     mock_select_tariff_count.return_value = count
     mock_TariffProfileMapper.map_to_list_nosite_response = mock.Mock(return_value=mapped_tariffs)
 
-    response = await TariffProfileManager.fetch_tariff_profile_list_no_site(
-        mock_session, rs_params, start, changed, limit
-    )
+    response = await TariffProfileManager.fetch_tariff_profile_list_no_site(mock_session, scope, start, changed, limit)
     assert response is mapped_tariffs
 
     mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit)
     mock_select_tariff_count.assert_called_once_with(mock_session, changed)
-    mock_TariffProfileMapper.map_to_list_nosite_response.assert_called_once_with(rs_params, tariffs, count)
+    mock_TariffProfileMapper.map_to_list_nosite_response.assert_called_once_with(scope, tariffs, count)
     assert_mock_session(mock_session)
 
 
@@ -135,8 +133,6 @@ async def test_fetch_tariff_profile_list(
     start = 111
     changed = datetime.now()
     limit = 222
-    agg_id = 543
-    site_id = 987
     tariff_count = 33
     tariff_1: Tariff = generate_class_instance(Tariff, seed=101)
     tariff_2: Tariff = generate_class_instance(Tariff, seed=202)
@@ -144,10 +140,10 @@ async def test_fetch_tariff_profile_list(
     tariff_2_rate_count = 4521
     tariffs = [tariff_1, tariff_2]
     mapped_tariffs = generate_class_instance(TariffProfileListResponse)
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, aggregator_id=665, site_id=776)
 
     def count_unique_rate_days_handler(
-        session, request_params: RequestStateParameters, tariff_id: int, site_id: int, changed_after: datetime
+        session, scope: SiteRequestScope, tariff_id: int, site_id: int, changed_after: datetime
     ) -> int:
         if tariff_id == tariff_1.tariff_id:
             return tariff_1_rate_count
@@ -162,9 +158,7 @@ async def test_fetch_tariff_profile_list(
     mock_count_unique_rate_days.side_effect = count_unique_rate_days_handler
 
     # Act
-    response = await TariffProfileManager.fetch_tariff_profile_list(
-        mock_session, rs_params, site_id, start, changed, limit
-    )
+    response = await TariffProfileManager.fetch_tariff_profile_list(mock_session, scope, start, changed, limit)
 
     # Assert
     assert response is mapped_tariffs
@@ -175,20 +169,19 @@ async def test_fetch_tariff_profile_list(
     # We called count_unique_rate_days for each tariff returned
     all_mock_count_args = [c.args for c in mock_count_unique_rate_days.call_args_list]
     assert mock_count_unique_rate_days.call_count == 2
-    assert (mock_session, agg_id, tariff_1.tariff_id, site_id, changed) in all_mock_count_args
-    assert (mock_session, agg_id, tariff_2.tariff_id, site_id, changed) in all_mock_count_args
+    assert (mock_session, scope.aggregator_id, tariff_1.tariff_id, scope.site_id, changed) in all_mock_count_args
+    assert (mock_session, scope.aggregator_id, tariff_2.tariff_id, scope.site_id, changed) in all_mock_count_args
 
     # make sure we properly bundled up the resulting tariff + rate count tuples and passed it along to the mapper
     mock_TariffProfileMapper.map_to_list_response.assert_called_once()
     call_args = mock_TariffProfileMapper.map_to_list_response.call_args_list[0].args
-    (rspps, tariffs_with_rates, total_tariffs, called_site_id) = call_args
+    (passed_scope, tariffs_with_rates, total_tariffs) = call_args
     assert list(tariffs_with_rates) == [
         (tariff_1, tariff_1_rate_count * TOTAL_PRICING_READING_TYPES),
         (tariff_2, tariff_2_rate_count * TOTAL_PRICING_READING_TYPES),
     ]
     assert total_tariffs == tariff_count
-    assert called_site_id == site_id
-    assert rspps is rs_params
+    assert passed_scope is scope
 
 
 @pytest.mark.anyio
@@ -200,18 +193,18 @@ async def test_fetch_tariff_profile_nosite(
     """Simple test to ensure dependencies are called correctly"""
     mock_session = create_mock_session()
     tariff_id = 111
-    rs_params = RequestStateParameters(435, None, None)
+    scope: BaseRequestScope = generate_class_instance(BaseRequestScope, seed=1001)
     tariff = generate_class_instance(Tariff)
     mapped_tp = generate_class_instance(TariffProfileResponse)
 
     mock_select_single_tariff.return_value = tariff
     mock_TariffProfileMapper.map_to_nosite_response = mock.Mock(return_value=mapped_tp)
 
-    response = await TariffProfileManager.fetch_tariff_profile_no_site(mock_session, rs_params, tariff_id)
+    response = await TariffProfileManager.fetch_tariff_profile_no_site(mock_session, scope, tariff_id)
     assert response is mapped_tp
 
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
-    mock_TariffProfileMapper.map_to_nosite_response.assert_called_once_with(rs_params, tariff)
+    mock_TariffProfileMapper.map_to_nosite_response.assert_called_once_with(scope, tariff)
     assert_mock_session(mock_session)
 
 
@@ -221,10 +214,10 @@ async def test_fetch_tariff_profile_nosite_missing(mock_select_single_tariff: mo
     """Simple test to ensure dependencies are called correctly"""
     mock_session = create_mock_session()
     tariff_id = 111
-    rs_params = RequestStateParameters(444, None, None)
+    scope: BaseRequestScope = generate_class_instance(BaseRequestScope, seed=1001)
     mock_select_single_tariff.return_value = None
 
-    response = await TariffProfileManager.fetch_tariff_profile_no_site(mock_session, rs_params, tariff_id)
+    response = await TariffProfileManager.fetch_tariff_profile_no_site(mock_session, scope, tariff_id)
     assert response is None
 
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
@@ -242,11 +235,9 @@ async def test_fetch_tariff_profile(
 ):
     """Simple test to ensure dependencies are called correctly"""
     mock_session = create_mock_session()
-    agg_id = 111
     tariff_id = 222
-    site_id = 333
     rates = 444
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     tariff = generate_class_instance(Tariff)
     mapped_tp = generate_class_instance(TariffProfileResponse)
@@ -255,12 +246,12 @@ async def test_fetch_tariff_profile(
     mock_count_unique_rate_days.return_value = rates
     mock_TariffProfileMapper.map_to_response = mock.Mock(return_value=mapped_tp)
 
-    response = await TariffProfileManager.fetch_tariff_profile(mock_session, rs_params, tariff_id, site_id)
+    response = await TariffProfileManager.fetch_tariff_profile(mock_session, scope, tariff_id)
     assert response is mapped_tp
 
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
     expected_count = rates * TOTAL_PRICING_READING_TYPES
-    mock_TariffProfileMapper.map_to_response.assert_called_once_with(rs_params, tariff, site_id, expected_count)
+    mock_TariffProfileMapper.map_to_response.assert_called_once_with(scope, tariff, expected_count)
     assert_mock_session(mock_session)
 
 
@@ -269,14 +260,12 @@ async def test_fetch_tariff_profile(
 async def test_fetch_tariff_profile_missing(mock_select_single_tariff: mock.MagicMock):
     """Simple test to ensure dependencies are called correctly"""
     mock_session = create_mock_session()
-    agg_id = 111
     tariff_id = 222
-    site_id = 333
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     mock_select_single_tariff.return_value = None
 
-    response = await TariffProfileManager.fetch_tariff_profile(mock_session, rs_params, tariff_id, site_id)
+    response = await TariffProfileManager.fetch_tariff_profile(mock_session, scope, tariff_id)
     assert response is None
 
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
@@ -292,27 +281,23 @@ async def test_fetch_rate_component(
     """Simple test to ensure dependencies are called correctly"""
     mock_session = create_mock_session()
     tariff_id = 111
-    agg_id = 222
-    site_id = 333
     count = 444
     rc_id = "2012-02-03"
     mapped_rc = generate_class_instance(RateComponentResponse)
     pricing_type = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     mock_count_tariff_rates_for_day.return_value = count
     mock_RateComponentMapper.map_to_response = mock.Mock(return_value=mapped_rc)
 
-    response = await RateComponentManager.fetch_rate_component(
-        mock_session, rs_params, tariff_id, site_id, rc_id, pricing_type
-    )
+    response = await RateComponentManager.fetch_rate_component(mock_session, scope, tariff_id, rc_id, pricing_type)
     assert response is mapped_rc
 
     mock_count_tariff_rates_for_day.assert_called_once_with(
-        mock_session, agg_id, tariff_id, site_id, date(2012, 2, 3), datetime.min
+        mock_session, scope.aggregator_id, tariff_id, scope.site_id, date(2012, 2, 3), datetime.min
     )
     mock_RateComponentMapper.map_to_response.assert_called_once_with(
-        rs_params, count, tariff_id, site_id, pricing_type, date(2012, 2, 3)
+        scope, count, tariff_id, pricing_type, date(2012, 2, 3)
     )
     assert_mock_session(mock_session)
 
@@ -326,14 +311,12 @@ async def test_fetch_rate_component_list(
     """Tests usage of basic dependencies in a simple case"""
     mock_session = create_mock_session()
     tariff_id = 111
-    agg_id = 222
-    site_id = 333
     changed_after = datetime.now()
     input_date_counts = [(date(2012, 1, 2), 5)]
     total_distinct_dates = 62
     start = 4
     limit = 8
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mapped_list = generate_class_instance(RateComponentListResponse)
     rate_stats = TariffGeneratedRateDailyStats(
         single_date_counts=input_date_counts, total_distinct_dates=total_distinct_dates
@@ -343,17 +326,15 @@ async def test_fetch_rate_component_list(
     mock_RateComponentMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
 
     list_response = await RateComponentManager.fetch_rate_component_list(
-        mock_session, rs_params, tariff_id, site_id, start, changed_after, limit
+        mock_session, scope, tariff_id, start, changed_after, limit
     )
     assert list_response is mapped_list
 
     # check mock assumptions
     mock_select_rate_daily_stats.assert_called_once_with(
-        mock_session, agg_id, tariff_id, site_id, 1, changed_after, 2  # adjusted start
+        mock_session, scope.aggregator_id, tariff_id, scope.site_id, 1, changed_after, 2  # adjusted start
     )  # adjusted limit
-    mock_RateComponentMapper.map_to_list_response.assert_called_once_with(
-        rs_params, rate_stats, 0, 0, tariff_id, site_id
-    )
+    mock_RateComponentMapper.map_to_list_response.assert_called_once_with(scope, rate_stats, 0, 0, tariff_id)
     assert_mock_session(mock_session)
 
 
@@ -428,17 +409,15 @@ async def test_fetch_rate_component_list_pagination(mock_select_rate_daily_stats
 
     mock_session = create_mock_session()
     tariff_id = 111
-    agg_id = 222
-    site_id = 333
     changed_after = datetime.now()
-    rs_params = RequestStateParameters(agg_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     mock_select_rate_daily_stats.return_value = TariffGeneratedRateDailyStats(
         single_date_counts=input_date_counts, total_distinct_dates=42
     )
 
     list_response = await RateComponentManager.fetch_rate_component_list(
-        mock_session, rs_params, tariff_id, site_id, start, changed_after, limit
+        mock_session, scope, tariff_id, start, changed_after, limit
     )
     assert list_response.all_ == 42 * TOTAL_PRICING_READING_TYPES
     assert list_response.results == expected_count
@@ -493,10 +472,11 @@ async def test_fetch_rate_component_list_full_db(pg_base_config, page_data):
         (last_date, last_count, last_price_type),
         expected_count,
     ) = page_data
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, aggregator_id=1, site_id=1)
 
     async with generate_async_session(pg_base_config) as session:
         list_response = await RateComponentManager.fetch_rate_component_list(
-            session, RequestStateParameters(1, None, "345"), 1, 1, start, datetime.min, limit
+            session, scope, 1, start, datetime.min, limit
         )
 
         assert (
@@ -529,13 +509,11 @@ async def test_fetch_consumption_tariff_interval_list(
     mock_TimeTariffIntervalManager: mock.MagicMock,
 ):
     tariff_id = 54321
-    site_id = 11223344
-    aggregator_id = 44322
     rate_component_id = "2022-02-01"
     time_tariff_interval = "13:37"
     price = 12345
     pricing_type = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
-    rs_params = RequestStateParameters(aggregator_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mapped_cti_list = generate_class_instance(ConsumptionTariffIntervalListResponse)
     mock_session = create_mock_session()
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=date(2022, 1, 2))
@@ -545,9 +523,8 @@ async def test_fetch_consumption_tariff_interval_list(
 
     result = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval_list(
         mock_session,
-        rs_params,
+        scope,
         tariff_id,
-        site_id,
         rate_component_id,
         pricing_type,
         time_tariff_interval,
@@ -559,10 +536,10 @@ async def test_fetch_consumption_tariff_interval_list(
     mock_RateComponentManager.parse_rate_component_id.assert_called_once_with(rate_component_id)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id.assert_called_once_with(time_tariff_interval)
     mock_select_single_site_with_site_id.assert_called_once_with(
-        mock_session, site_id=site_id, aggregator_id=aggregator_id
+        mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
     )
     mock_ConsumptionTariffIntervalMapper.map_to_list_response.assert_called_once_with(
-        rs_params, tariff_id, site_id, pricing_type, date(2022, 1, 2), time(1, 2), Decimal("1.2345")
+        scope, tariff_id, pricing_type, date(2022, 1, 2), time(1, 2), Decimal("1.2345")
     )  # converted price
     assert_mock_session(mock_session)
 
@@ -579,14 +556,12 @@ async def test_fetch_consumption_tariff_interval(
     mock_TimeTariffIntervalManager: mock.MagicMock,
 ):
     tariff_id = 665544
-    site_id = 11223344
-    aggregator_id = 44322
     rate_component_id = "2023-02-01"
     time_tariff_interval = "09:08"
     price = -14567
     pricing_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
     mapped_cti = generate_class_instance(ConsumptionTariffIntervalResponse)
-    rs_params = RequestStateParameters(aggregator_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mock_session = create_mock_session()
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=date(2022, 1, 2))
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=time(1, 2))
@@ -595,9 +570,8 @@ async def test_fetch_consumption_tariff_interval(
 
     cti = await ConsumptionTariffIntervalManager.fetch_consumption_tariff_interval(
         mock_session,
-        rs_params,
+        scope,
         tariff_id,
-        site_id,
         rate_component_id,
         pricing_type,
         time_tariff_interval,
@@ -609,10 +583,10 @@ async def test_fetch_consumption_tariff_interval(
     mock_RateComponentManager.parse_rate_component_id.assert_called_once_with(rate_component_id)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id.assert_called_once_with(time_tariff_interval)
     mock_select_single_site_with_site_id.assert_called_once_with(
-        mock_session, site_id=site_id, aggregator_id=aggregator_id
+        mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
     )
     mock_ConsumptionTariffIntervalMapper.map_to_response.assert_called_once_with(
-        rs_params, tariff_id, site_id, pricing_type, date(2022, 1, 2), time(1, 2), Decimal("-1.4567")
+        scope, tariff_id, pricing_type, date(2022, 1, 2), time(1, 2), Decimal("-1.4567")
     )  # converted price
     assert_mock_session(mock_session)
 
@@ -630,8 +604,6 @@ async def test_fetch_time_tariff_interval_existing(
 ):
     """Tests the manager correctly interacts with dependencies"""
     tariff_id = 665544
-    site_id = 11223344
-    aggregator_id = 44322
     rate_component_id = "2023-02-01"
     time_tariff_interval = "09:08"
     pricing_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
@@ -640,7 +612,7 @@ async def test_fetch_time_tariff_interval_existing(
     mock_session = create_mock_session()
     parsed_date = date(2022, 1, 2)
     parsed_time = time(3, 4)
-    rs_params = RequestStateParameters(aggregator_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=parsed_date)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=parsed_time)
@@ -650,9 +622,8 @@ async def test_fetch_time_tariff_interval_existing(
     # Act
     result = await TimeTariffIntervalManager.fetch_time_tariff_interval(
         mock_session,
-        rs_params,
+        scope,
         tariff_id,
-        site_id,
         rate_component_id,
         time_tariff_interval,
         pricing_type,
@@ -663,9 +634,9 @@ async def test_fetch_time_tariff_interval_existing(
     mock_RateComponentManager.parse_rate_component_id.assert_called_once_with(rate_component_id)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id.assert_called_once_with(time_tariff_interval)
     mock_select_tariff_rate_for_day_time.assert_called_once_with(
-        mock_session, aggregator_id, tariff_id, site_id, parsed_date, parsed_time
+        mock_session, scope.aggregator_id, tariff_id, scope.site_id, parsed_date, parsed_time
     )
-    mock_TimeTariffIntervalMapper.map_to_response.assert_called_once_with(rs_params, existing_rate, pricing_type)
+    mock_TimeTariffIntervalMapper.map_to_response.assert_called_once_with(scope, existing_rate, pricing_type)
     assert_mock_session(mock_session)
 
 
@@ -680,15 +651,13 @@ async def test_fetch_time_tariff_interval_missing(
 ):
     """Tests the manager correctly interacts with dependencies when there is no rate"""
     tariff_id = 665544
-    site_id = 11223344
-    aggregator_id = 44322
     rate_component_id = "2023-02-01"
     time_tariff_interval = "09:08"
     pricing_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
     mock_session = create_mock_session()
     parsed_date = date(2022, 1, 2)
     parsed_time = time(3, 4)
-    rs_params = RequestStateParameters(aggregator_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=parsed_date)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id = mock.Mock(return_value=parsed_time)
@@ -697,9 +666,8 @@ async def test_fetch_time_tariff_interval_missing(
     # Act
     result = await TimeTariffIntervalManager.fetch_time_tariff_interval(
         mock_session,
-        rs_params,
+        scope,
         tariff_id,
-        site_id,
         rate_component_id,
         time_tariff_interval,
         pricing_type,
@@ -710,7 +678,7 @@ async def test_fetch_time_tariff_interval_missing(
     mock_RateComponentManager.parse_rate_component_id.assert_called_once_with(rate_component_id)
     mock_TimeTariffIntervalManager.parse_time_tariff_interval_id.assert_called_once_with(time_tariff_interval)
     mock_select_tariff_rate_for_day_time.assert_called_once_with(
-        mock_session, aggregator_id, tariff_id, site_id, parsed_date, parsed_time
+        mock_session, scope.aggregator_id, tariff_id, scope.site_id, parsed_date, parsed_time
     )
     assert_mock_session(mock_session)
 
@@ -728,8 +696,6 @@ async def test_fetch_time_tariff_interval_list(
 ):
     """Tests the manager correctly interacts with dependencies"""
     tariff_id = 665544
-    site_id = 11223344
-    aggregator_id = 44322
     rate_component_id = "2023-02-01"
     pricing_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
     existing_rates: list[TariffGeneratedRate] = [generate_class_instance(TariffGeneratedRate)]
@@ -740,7 +706,7 @@ async def test_fetch_time_tariff_interval_list(
     start = 2
     after = datetime(2023, 1, 2, 3, 4)
     limit = 5
-    rs_params = RequestStateParameters(aggregator_id, None, None)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
     mock_RateComponentManager.parse_rate_component_id = mock.Mock(return_value=parsed_date)
     mock_select_tariff_rates_for_day.return_value = existing_rates
@@ -750,9 +716,8 @@ async def test_fetch_time_tariff_interval_list(
     # Act
     result = await TimeTariffIntervalManager.fetch_time_tariff_interval_list(
         mock_session,
-        rs_params,
+        scope,
         tariff_id,
-        site_id,
         rate_component_id,
         pricing_type,
         start,
@@ -764,12 +729,12 @@ async def test_fetch_time_tariff_interval_list(
     assert result is mapped_list_response
     mock_RateComponentManager.parse_rate_component_id.assert_called_once_with(rate_component_id)
     mock_select_tariff_rates_for_day.assert_called_once_with(
-        mock_session, aggregator_id, tariff_id, site_id, parsed_date, start, after, limit
+        mock_session, scope.aggregator_id, tariff_id, scope.site_id, parsed_date, start, after, limit
     )
     mock_count_tariff_rates_for_day.assert_called_once_with(
-        mock_session, aggregator_id, tariff_id, site_id, parsed_date, after
+        mock_session, scope.aggregator_id, tariff_id, scope.site_id, parsed_date, after
     )
     mock_TimeTariffIntervalMapper.map_to_list_response.assert_called_once_with(
-        rs_params, existing_rates, pricing_type, total_rate_count
+        scope, existing_rates, pricing_type, total_rate_count
     )
     assert_mock_session(mock_session)

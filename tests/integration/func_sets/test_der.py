@@ -26,8 +26,6 @@ from envoy.server.model.site import SiteDERAvailability, SiteDERRating, SiteDERS
 from tests.integration.request import build_paging_params
 from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
 
-# 2024-03-14 05:55:44.500
-
 
 @pytest.mark.parametrize(
     "start, limit, after, expected_sub_ids",

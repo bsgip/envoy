@@ -28,17 +28,17 @@ from envoy.server.mapper.sep2.der import (
     to_hex_binary,
 )
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
-from envoy.server.request_state import RequestStateParameters
+from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
 def test_der_mapping():
     all_set: SiteDER = generate_class_instance(SiteDER, seed=101, optional_is_none=False, generate_relationships=True)
     with_none: SiteDER = generate_class_instance(SiteDER, seed=202, optional_is_none=True, generate_relationships=True)
 
-    rs_params = RequestStateParameters(111, None, "/my/prefix")
+    scope = BaseRequestScope("lfdi", 111, "/my/prefix")
     derp_id = "my_derp_id"
 
-    mapped_all_set = DERMapper.map_to_response(rs_params, all_set, derp_id)
+    mapped_all_set = DERMapper.map_to_response(scope, all_set, derp_id)
     assert isinstance(mapped_all_set, DER)
 
     assert mapped_all_set.href.startswith("/my/prefix")
@@ -53,13 +53,13 @@ def test_der_mapping():
     assert str(all_set.site_id) in mapped_all_set.CurrentDERProgramLink.href
 
     # Test with NO active der program id
-    mapped_all_set_no_actderp = DERMapper.map_to_response(rs_params, all_set, None)
+    mapped_all_set_no_actderp = DERMapper.map_to_response(scope, all_set, None)
     assert isinstance(mapped_all_set_no_actderp, DER)
     assert mapped_all_set_no_actderp.href.startswith("/my/prefix")
     assert str(all_set.site_id) in mapped_all_set_no_actderp.href
     assert mapped_all_set_no_actderp.CurrentDERProgramLink is None
 
-    mapped_with_none = DERMapper.map_to_response(rs_params, with_none, derp_id)
+    mapped_with_none = DERMapper.map_to_response(scope, with_none, derp_id)
     assert isinstance(mapped_with_none, DER)
     assert mapped_with_none.href.startswith("/my/prefix")
     assert str(with_none.site_id) in mapped_with_none.href
@@ -81,12 +81,11 @@ def test_der_list():
         (generate_class_instance(SiteDER, seed=404, optional_is_none=True, generate_relationships=True), "DERPID2"),
     ]
 
-    rs_params = RequestStateParameters(111, None, "/my/prefix")
-    site_id = 11
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=11)
     poll_rate = 99
     count = 42
 
-    mapped = DERMapper.map_to_list_response(rs_params, site_id, poll_rate, ders, count)
+    mapped = DERMapper.map_to_list_response(scope, poll_rate, ders, count)
     assert isinstance(mapped, DERListResponse)
     assert mapped.results == 4
     assert mapped.all_ == count
@@ -101,15 +100,17 @@ def test_der_avail_roundtrip(optional_is_none: bool):
     expected: DERAvailability = generate_class_instance(
         DERAvailability, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
-    site_id = 9876
-    rs_params = RequestStateParameters(111, None, "/my/prefix")
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, site_id=9876, href_prefix="/my/prefix"
+    )
+    entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERAvailabilityMapper.map_from_request(changed_time, expected)
     assert isinstance(mapped, SiteDERAvailability)
     assert mapped.changed_time == changed_time
 
-    actual = DERAvailabilityMapper.map_to_response(rs_params, site_id, mapped)
+    actual = DERAvailabilityMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERAvailability)
 
     assert_class_instance_equality(
@@ -119,7 +120,9 @@ def test_der_avail_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "readingTime", "subscribable", "type"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(site_id) in actual.href
+    assert f"/{entity_site_id}" in actual.href
+    assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
+    assert f"/{scope.site_id}" not in actual.href, "Should be using the entity site ID in the href"
     assert_datetime_equal(changed_time, actual.readingTime)
 
 
@@ -141,15 +144,17 @@ def test_der_status_roundtrip(optional_is_none: bool):
                 ConnectStatusType.OPERATING | ConnectStatusType.FAULT_ERROR
             )
 
-    site_id = 9876
-    rs_params = RequestStateParameters(111, None, "/my/prefix")
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, site_id=9875, href_prefix="/my/prefix"
+    )
+    entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERStatusMapper.map_from_request(changed_time, expected)
     assert isinstance(mapped, SiteDERStatus)
     assert mapped.changed_time == changed_time
 
-    actual = DERStatusMapper.map_to_response(rs_params, site_id, mapped)
+    actual = DERStatusMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERStatus)
 
     assert_class_instance_equality(
@@ -159,7 +164,9 @@ def test_der_status_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "readingTime", "subscribable", "type"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(site_id) in actual.href
+    assert f"/{entity_site_id}" in actual.href
+    assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
+    assert f"/{scope.site_id}" not in actual.href, "Should be using the entity site ID in the href"
     assert_datetime_equal(changed_time, actual.readingTime)
 
 
@@ -171,15 +178,17 @@ def test_der_capability_roundtrip(optional_is_none: bool):
     )
     expected.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT | DERControlType.OP_MOD_FREQ_DROOP)
     expected.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
-    site_id = 9876
-    rs_params = RequestStateParameters(111, None, "/my/prefix")
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1991, href_prefix="/my/prefix"
+    )
+    entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
     mapped = DERCapabilityMapper.map_from_request(changed_time, expected)
     assert isinstance(mapped, SiteDERRating)
     assert mapped.changed_time == changed_time
 
-    actual = DERCapabilityMapper.map_to_response(rs_params, site_id, mapped)
+    actual = DERCapabilityMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERCapability)
 
     assert_class_instance_equality(
@@ -189,7 +198,9 @@ def test_der_capability_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "subscribable", "type"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(site_id) in actual.href
+    assert f"/{entity_site_id}" in actual.href
+    assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
+    assert f"/{scope.site_id}" not in actual.href, "Should be using the entity site ID in the href"
 
 
 @pytest.mark.parametrize("optional_is_none", [True, False])
@@ -200,15 +211,17 @@ def test_der_settings_roundtrip(optional_is_none: bool):
     )
     expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_HFRT_MAY_TRIP | DERControlType.OP_MOD_FREQ_DROOP)
     expected.doeModesEnabled = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
-    site_id = 9876
-    rs_params = RequestStateParameters(111, None, "/my/prefix")
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=9876, href_prefix="/my/prefix"
+    )
+    entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 4)
 
     mapped = DERSettingMapper.map_from_request(changed_time, expected)
     assert isinstance(mapped, SiteDERSetting)
     assert mapped.changed_time == changed_time
 
-    actual = DERSettingMapper.map_to_response(rs_params, site_id, mapped)
+    actual = DERSettingMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERSettings)
 
     assert_class_instance_equality(
@@ -218,5 +231,7 @@ def test_der_settings_roundtrip(optional_is_none: bool):
         ignored_properties=set(["href", "subscribable", "type", "updatedTime"]),
     )
     assert actual.href.startswith("/my/prefix")
-    assert str(site_id) in actual.href
+    assert f"/{entity_site_id}" in actual.href
+    assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
+    assert f"/{scope.site_id}" not in actual.href, "Should be using the entity site ID in the href"
     assert_datetime_equal(changed_time, actual.updatedTime)

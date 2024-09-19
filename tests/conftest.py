@@ -84,6 +84,11 @@ def pg_empty_config(
         os.environ["READ_ONLY_USER"] = READONLY_USER_NAME
         os.environ["READ_ONLY_KEYS"] = f'["{READONLY_USER_KEY_1}", "{READONLY_USER_KEY_2}"]'
 
+    if request.node.get_closest_marker("disable_device_registration"):
+        os.environ["ALLOW_DEVICE_REGISTRATION"] = "False"
+    else:
+        os.environ["ALLOW_DEVICE_REGISTRATION"] = "True"
+
     # we want alembic to run from the server directory but to revert back afterwards
     cwd = os.getcwd()
     try:
@@ -113,16 +118,23 @@ def pg_empty_config(
     yield postgresql
 
 
+def execute_sql_file_for_connection(cfg: Connection, path_to_sql_file: str) -> None:
+    with open(path_to_sql_file) as f:
+        sql = f.read()
+    with cfg.cursor() as cursor:
+        cursor.execute(sql)
+        cfg.commit()
+
+
 @pytest.fixture
-def pg_base_config(pg_empty_config: Connection) -> Generator[Connection, None, None]:
+def pg_base_config(pg_empty_config: Connection, request: pytest.FixtureRequest) -> Generator[Connection, None, None]:
     """Sets up the testing DB, applies alembic migrations and deploys the "base_config" sql file"""
 
-    with open("tests/data/sql/base_config.sql") as f:
-        base_config_sql = f.read()
+    execute_sql_file_for_connection(pg_empty_config, "tests/data/sql/base_config.sql")
 
-    with pg_empty_config.cursor() as cursor:
-        cursor.execute(base_config_sql)
-        pg_empty_config.commit()
+    if request.node.get_closest_marker("disable_device_registration"):
+        # If we are disabling_device_registration - run the "cleanup" script
+        execute_sql_file_for_connection(pg_empty_config, "tests/data/sql/remove_device_registrations.sql")
 
     yield pg_empty_config
 
@@ -131,12 +143,7 @@ def pg_base_config(pg_empty_config: Connection) -> Generator[Connection, None, N
 def pg_la_timezone(pg_base_config) -> Generator[Connection, None, None]:
     """Mutates pg_base_config to set all site timezones to Los Angeles time"""
 
-    with open("tests/data/sql/la_timezone.sql") as f:
-        base_config_sql = f.read()
-
-    with pg_base_config.cursor() as cursor:
-        cursor.execute(base_config_sql)
-        pg_base_config.commit()
+    execute_sql_file_for_connection(pg_base_config, "tests/data/sql/la_timezone.sql")
 
     yield pg_base_config
 
@@ -145,12 +152,7 @@ def pg_la_timezone(pg_base_config) -> Generator[Connection, None, None]:
 def pg_additional_does(pg_base_config: Connection) -> Generator[Connection, None, None]:
     """Mutates pg_base_config to include additional DOEs"""
 
-    with open("tests/data/sql/additional_does.sql") as f:
-        base_config_sql = f.read()
-
-    with pg_base_config.cursor() as cursor:
-        cursor.execute(base_config_sql)
-        pg_base_config.commit()
+    execute_sql_file_for_connection(pg_base_config, "tests/data/sql/additional_does.sql")
 
     yield pg_base_config
 
@@ -159,12 +161,7 @@ def pg_additional_does(pg_base_config: Connection) -> Generator[Connection, None
 def pg_billing_data(pg_base_config: Connection) -> Generator[Connection, None, None]:
     """Mutates pg_base_config to include additional billing specific data"""
 
-    with open("tests/data/sql/billing_data.sql") as f:
-        billing_data_sql = f.read()
-
-    with pg_base_config.cursor() as cursor:
-        cursor.execute(billing_data_sql)
-        pg_base_config.commit()
+    execute_sql_file_for_connection(pg_base_config, "tests/data/sql/billing_data.sql")
 
     yield pg_base_config
 
