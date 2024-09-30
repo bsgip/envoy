@@ -466,3 +466,38 @@ async def test_get_associated_derprogram_list(
         assert parsed_response.all_ == 1
         assert parsed_response.results == 1
         assert parsed_response.DERProgram[0].DERControlListLink.all_ == expected_doe_count
+
+
+@pytest.mark.anyio
+async def test_upsert_der_setting_reposit_discovered_issue(
+    client: AsyncClient,
+    valid_headers: dict,
+):
+    """To reproduce an issue that reposit reported with trying to update DERSettings. This raised a HTTP 500
+    but it should've been raising a BadRequest instead."""
+
+    der_id = PUBLIC_SITE_DER_ID
+    site_id = 1
+
+    # The issue is that the doeModesEnabled isn't correctly referencing the csip-aus namespace
+    post_body = """
+<DERSettings xmlns="urn:ieee:std:2030.5:ns">
+  <updatedTime>1727445375</updatedTime>
+  <setGradW>0</setGradW>
+  <setMaxW>
+    <value>8000</value>
+    <multiplier>1</multiplier>
+  </setMaxW>
+  <doeModesEnabled>1</doeModesEnabled>
+</DERSettings>"""
+
+    # Setting
+    setting_uri = uri.DERSettingsUri.format(site_id=site_id, der_id=der_id)
+    response = await client.put(
+        setting_uri,
+        headers=valid_headers,
+        content=post_body,
+    )
+
+    assert_response_header(response, HTTPStatus.BAD_REQUEST)  # This should be a BAD REQUEST - NOT a HTTP 500
+    assert_error_response(response)
