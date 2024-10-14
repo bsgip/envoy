@@ -62,7 +62,7 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/dderc"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc/1"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/dercdate/2022-05-07"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc/2022-05-07"),
 
     # mirror metering function set
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/mup"),

@@ -12,10 +12,10 @@ from envoy_schema.server.schema.sep2.der import (
     DERProgramListResponse,
     DERProgramResponse,
 )
+from envoy_schema.server.schema.sep2.event import EventStatus
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.pricing import PrimacyType
 from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
-from envoy_schema.server.schema.sep2.event import EventStatus
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
@@ -52,11 +52,11 @@ class DERControlMapper:
         return DERControlResponse.model_validate(
             {
                 "href": generate_href(
-                    uri.DERControlUri,
+                    uri.DERControlAndListByDateUri,
                     scope,
                     site_id=scope.display_site_id,
                     der_program_id=DOE_PROGRAM_ID,
-                    derc_id=doe.dynamic_operating_envelope_id,
+                    derc_id_or_date=doe.dynamic_operating_envelope_id,
                 ),
                 "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, doe.site_id, doe.dynamic_operating_envelope_id),
                 "version": 1,

@@ -52,8 +52,8 @@ def uri_derp_doe_format():
 
 
 @pytest.fixture
-def uri_derc_format():
-    return uri.DERControlUri
+def uri_derc_and_list_by_date_format():
+    return uri.DERControlAndListByDateUri
 
 
 @pytest.fixture
@@ -69,11 +69,6 @@ def uri_derc_active_control_list_format():
 @pytest.fixture
 def uri_derc_list_format():
     return uri.DERControlListUri
-
-
-@pytest.fixture
-def uri_derc_day_list_format():
-    return uri.DERControlListByDateUri
 
 
 BRISBANE_TZ = ZoneInfo("Australia/Brisbane")
@@ -469,7 +464,7 @@ async def test_get_dercontrol_list(
 )
 async def test_get_dercontrol_list_day(
     client: AsyncClient,
-    uri_derc_day_list_format: str,
+    uri_derc_and_list_by_date_format: str,
     cert: str,
     site_id: int,
     start: Optional[int],
@@ -481,8 +476,8 @@ async def test_get_dercontrol_list_day(
     day: date,
 ):
     """Tests that the list pagination works correctly for various combinations of start/limit/changed_after"""
-    path = uri_derc_day_list_format.format(
-        site_id=site_id, der_program_id="doe", date=day.isoformat()
+    path = uri_derc_and_list_by_date_format.format(
+        site_id=site_id, der_program_id="doe", derc_id_or_date=day.isoformat()
     ) + build_paging_params(start, limit, changed_after)
     response = await client.get(path, headers=generate_headers(cert))
     assert_response_header(response, expected_status)
@@ -672,7 +667,7 @@ async def test_get_active_doe_for_aggregator(
     ],
 )
 async def test_get_doe(
-    uri_derc_format,
+    uri_derc_and_list_by_date_format,
     client: AsyncClient,
     pg_additional_does,
     site_id: int,
@@ -684,7 +679,7 @@ async def test_get_doe(
     """Tests getting DERPrograms for various sites and validates access constraints"""
 
     # Test a known site
-    path = uri_derc_format.format(site_id=site_id, der_program_id=program, derc_id=doe_id)
+    path = uri_derc_and_list_by_date_format.format(site_id=site_id, der_program_id=program, derc_id_or_date=doe_id)
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, expected)
