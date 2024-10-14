@@ -51,6 +51,7 @@ class AzureADToken:
 _TOKEN_URI_FORMAT = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource={resource}&client_id={client_id}"  # noqa e501 # nosec
 _PUBLIC_KEY_URI_FORMAT = "https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
 TOKEN_EXPIRY_BUFFER_SECONDS = 120  # Tokens will have their expiry reduced by this many seconds (to act as a buffer)
+REQUEST_TIMEOUT_SECONDS = 60
 
 
 def parse_from_jwks_json(keys: Iterable[dict[str, str]]) -> dict[str, ExpiringValue[JWK]]:
@@ -99,7 +100,7 @@ async def update_jwk_cache(cfg: AzureADManagedIdentityConfig) -> dict[str, Expir
 
     uri = _PUBLIC_KEY_URI_FORMAT.format(tenant_id=quote(cfg.tenant_id))
     logger.info(f"Updating jwk cache via uri {uri}")
-    async with AsyncClient() as client:
+    async with AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
         try:
             response = await client.get(uri)
         except Exception as ex:
@@ -160,7 +161,7 @@ async def request_azure_ad_token(cfg: AzureADResourceTokenConfig) -> AzureADToke
     raises UnableToContactAzureServicesError on error"""
 
     uri = _TOKEN_URI_FORMAT.format(resource=quote(cfg.resource_id), client_id=quote(cfg.client_id))
-    async with AsyncClient() as client:
+    async with AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
         try:
             response = await client.get(uri, headers={"Metadata": "true"})
         except Exception as ex:

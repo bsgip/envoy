@@ -13,7 +13,7 @@ HEADER_NOTIFICATION_ID = "x-envoy-notification-id"
 
 logger = logging.getLogger(__name__)
 
-
+TRANSMIT_TIMEOUT_SECONDS = 30
 RETRY_DELAYS = [timedelta(seconds=10), timedelta(seconds=100), timedelta(seconds=300), timedelta(minutes=30)]
 
 
@@ -63,7 +63,7 @@ async def do_transmit_notification(
     # is the fact that CSIP recommends the use of mutual TLS which basically requires us to share our server
     # cert with the listener. This is all handled out of band and will be noted in the client docs
     # but I've put this message here for devs who read this code and get terrified. Good job on your keen security eye!
-    async with AsyncClient() as client:
+    async with AsyncClient(timeout=TRANSMIT_TIMEOUT_SECONDS) as client:
         logger.debug(
             "Attempting to send notification %s of size %d to %s (attempt %d)",
             notification_id,
