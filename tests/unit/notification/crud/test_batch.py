@@ -441,6 +441,7 @@ async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
                     tariff_generated_rate_id=1,
                     tariff_id=1,
                     site_id=1,
+                    calculation_log_id=2,
                     changed_time=datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=timezone.utc),
                     start_time=datetime(2022, 3, 5, 1, 2, 0, 0, tzinfo=timezone(timedelta(hours=10))),
                     duration_seconds=11,
@@ -523,6 +524,7 @@ async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
                 DynamicOperatingEnvelope(
                     dynamic_operating_envelope_id=1,
                     site_id=1,
+                    calculation_log_id=2,
                     changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
                     start_time=datetime(2022, 5, 7, 1, 2, 0, 0, tzinfo=timezone(timedelta(hours=10))),
                     duration_seconds=11,
