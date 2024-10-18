@@ -1,149 +1,93 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DECIMAL, INTEGER, VARCHAR, DateTime, ForeignKey
+from sqlalchemy import DOUBLE_PRECISION, INTEGER, VARCHAR, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
 
 
-class PowerForecastLog(Base):
-    """Represents a power forecast (either for a site known to utility server or something else) for a specific
-    timestamp that was used to inform a parent CalculationLog"""
+class CalculationLogVariableValue(Base):
+    """Represents a single time series observation for a calculation log. The observation is differentiated
+    by the variable id, the site_id that it applies to (if any) and the moment in time it references"""
 
-    __tablename__ = "power_forecast_log"
+    __tablename__ = "calculation_log_variable_value"
 
-    power_forecast_log_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
-    interval_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When is this forecast specifically for?
-    interval_duration_seconds: Mapped[int] = mapped_column(INTEGER)
-    external_device_id: Mapped[Optional[str]] = mapped_column(
-        VARCHAR(length=64), nullable=True
-    )  # External unique reference to the device (if any) that this target is for
-    site_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("site.site_id"), nullable=True
-    )  # A reference to an internal site (if applicable) that this target is for
-
-    active_power_watts: Mapped[Optional[int]] = mapped_column(
-        INTEGER, nullable=True
-    )  # The forecast active power in watts (+ import, - export)
-    reactive_power_var: Mapped[Optional[int]] = mapped_column(
-        INTEGER, nullable=True
-    )  # The forecast reactive power in var
-
+    # Id of the parent calculation log that owns this value
     calculation_log_id: Mapped[int] = mapped_column(
-        ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE")
-    )
-    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="power_forecast_logs", lazy="raise")
-
-
-class PowerTargetLog(Base):
-    """Represents a power target (either for a site known to utility server or something else) for a specific
-    timestamp that was the result of a CalculationLog"""
-
-    __tablename__ = "power_target_log"
-
-    power_target_log_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
-    interval_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When is this forecast specifically for?
-    interval_duration_seconds: Mapped[int] = mapped_column(INTEGER)
-    external_device_id: Mapped[Optional[str]] = mapped_column(
-        VARCHAR(length=64), nullable=True
-    )  # External unique reference to the device (if any) that this target is for
-    site_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("site.site_id"), nullable=True
-    )  # A reference to an internal site (if applicable) that this target is for
-
-    target_active_power_watts: Mapped[Optional[int]] = mapped_column(
-        INTEGER, nullable=True
-    )  # Target active power in watts (+import -export)
-    target_reactive_power_var: Mapped[Optional[int]] = mapped_column(
-        INTEGER, nullable=True
-    )  # Target reactive power in var (+import -export)
-
-    calculation_log_id: Mapped[int] = mapped_column(
-        ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE")
-    )
-    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="power_target_logs", lazy="raise")
-
-
-class PowerFlowLog(Base):
-    """Represents a log of a power flow calculation (either for a site known to utility server or something else) for
-    a specific timestamp that was run at some point during the calculation process"""
-
-    __tablename__ = "power_flow_log"
-
-    power_flow_log_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
-    interval_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When is this forecast specifically for?
-    interval_duration_seconds: Mapped[int] = mapped_column(INTEGER)
-    external_device_id: Mapped[Optional[str]] = mapped_column(
-        VARCHAR(length=64), nullable=True
-    )  # External unique reference to the device (if any) that this target is for
-    site_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("site.site_id"), nullable=True
-    )  # A reference to an internal site (if applicable) that this target is for
-    solve_name: Mapped[Optional[str]] = mapped_column(
-        VARCHAR(length=16), nullable=True
-    )  # Identifier of this solve - for distinguishing multiple power flow solves (eg: PRE / POST calculation solves)
-
-    pu_voltage_min: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 6))  # Constraint lower bound of pu_voltage
-    pu_voltage_max: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 6))  # Constraint upper bound of pu_voltage
-    pu_voltage: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 6))  # per unit voltage (1.0 being nominal)
-    thermal_max_percent: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 4))  # percent of thermal rating
-
-    calculation_log_id: Mapped[int] = mapped_column(
-        ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE")
-    )
-    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="power_flow_logs", lazy="raise")
-
-
-class WeatherForecastLog(Base):
-    """Represents a weather forecast for a specific timestamp that was used to inform a parent CalculationLog"""
-
-    __tablename__ = "weather_forecast_log"
-
-    weather_forecast_log_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
-    interval_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When is this forecast specifically for?
-    interval_duration_seconds: Mapped[int] = mapped_column(INTEGER)
-
-    air_temperature_degrees_c: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(5, 2), nullable=True)
-    apparent_temperature_degrees_c: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(5, 2), nullable=True)
-    dew_point_degrees_c: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(5, 2), nullable=True)
-    humidity_percent: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(5, 2), nullable=True)
-    cloud_cover_percent: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(5, 2), nullable=True)
-    rain_probability_percent: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(5, 2), nullable=True)
-    rain_mm: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 2), nullable=True)
-    rain_rate_mm: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 2), nullable=True)
-    global_horizontal_irradiance_watts_m2: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 2), nullable=True)
-    wind_speed_50m_km_h: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(8, 2), nullable=True
-    )  # wind speed at 50m elevation in kilometres per hour
-
-    calculation_log_id: Mapped[int] = mapped_column(
-        ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE")
+        ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE"), primary_key=True
     )
 
-    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="weather_forecast_logs", lazy="raise")
+    # ID defined by the client that disambiguate one set of time-series from another data from another. eg: a value of 1
+    # might represent weather forecast temperature, a value of 2 might represent forecast load etc. The actual
+    # definitions are completely opaque to utility server.
+    variable_id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
+
+    # This is DELIBERATELY not a foreign key relationship as we want to track a moment in time correlation of
+    # site ID. This is for the client managing this log to ensure correctness. If the site is deleted in the future
+    # we want this to remain as is.
+    #
+    # What site does this value apply to (0 corresponds to a value of None in the public model)
+    site_id_snapshot: Mapped[int] = mapped_column(INTEGER, primary_key=True)
+
+    # When does this time series observation occur? Defines the numbered "interval" relative to the parent
+    # CalculationLog.calculation_range_start. A value of N uses the following formula for calculating datetime:
+    # CalculationLog.calculation_range_start + N * CalculationLog.interval_width_seconds
+    interval_period: Mapped[int] = mapped_column(INTEGER, primary_key=True)
+
+    # The actual time series value associated with the linked variable_id, site_id and interval_period
+    value: Mapped[float] = mapped_column(DOUBLE_PRECISION)
+
+    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="variable_values", lazy="raise")
+
+
+class CalculationLogVariableMetadata(Base):
+    """Human readable metadata for describing a variable with an ID associated with a CalculationLog"""
+
+    __tablename__ = "calculation_log_variable_metadata"
+
+    # The parent calculation log ID
+    calculation_log_id: Mapped[int] = mapped_column(
+        ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE"), primary_key=True
+    )
+
+    # ID defined by the client that disambiguate one set of time-series from another data from another. eg: a value of 1
+    # might represent weather forecast temperature, a value of 2 might represent forecast load etc. The actual
+    # definitions are completely opaque to utility server.
+    variable_id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
+    name: Mapped[str] = mapped_column(VARCHAR(length=64))  # Human readable name of variable
+    description: Mapped[str] = mapped_column(VARCHAR(length=512))  # Human readable description of variable
+
+    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="variable_metadata", lazy="raise")
 
 
 class CalculationLog(Base):
     """Represents the top level entity describing a single audit log of a historical calculation run.
 
-    Calculation runs typically represent running powerflow / other model for some network based on forecast
-    power/weather data (usually over multiple time steps) that may propose certain changes in DER behavior
-    in order to satisfy certain network constraints"""
+    Calculation runs typically represent running powerflow / other model for some network. A calculation log represents
+    a (mostly) opaque log of values defined by an external calculation engine. Any given calculation log has the
+    following assumptions:
+        * A calculation log represents a defined "range" of time for which the output calculations apply for
+           eg: A single log might represent a 24 hour period of time - typically this range is in advance of when the
+               calculations are being made.
+        * A calculation log is divided into fixed width intervals of a known size, eg 5 minutes. All input data/outputs
+          are aligned with these intervals. Eg - A 24 hour period is broken down into intervals of length 1 hour.
+        * A calculation log has logged "variable" data representing input/intermediate/output data. This data is opaque
+          to the utility server but it WILL align with intervals."""
 
     __tablename__ = "calculation_log"
 
     calculation_log_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    calculation_interval_start: Mapped[datetime] = mapped_column(
+    calculation_range_start: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), index=True
-    )  # What is the time period under calculation (start time - inclusive)
-    calculation_interval_duration_seconds: Mapped[int] = mapped_column(INTEGER)
+    )  # The start time of the first interval within this calculation log.
+
+    # Number of seconds that define the width of this entire calculation log
+    calculation_range_duration_seconds: Mapped[int] = mapped_column(INTEGER)
+
+    # Number of seconds for the fixed width intervals that comprise this calculation log
+    interval_width_seconds: Mapped[int] = mapped_column(INTEGER)
 
     topology_id: Mapped[Optional[str]] = mapped_column(
         VARCHAR(length=64), nullable=True
@@ -155,6 +99,11 @@ class CalculationLog(Base):
     power_forecast_creation_time: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )  # When was the power forecast made (not when it's for)
+
+    # When was the last (most recent) historical lag. The time between this and the calculation_range_start
+    # represents how stale the lag data was.
+    power_forecast_basis_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     weather_forecast_creation_time: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )  # When was the weather forecast made (not when it's for)
@@ -162,27 +111,21 @@ class CalculationLog(Base):
         VARCHAR(length=128), nullable=True
     )  # External unique identifier for the location that the weather forecast was drawn from
 
-    power_forecast_logs: Mapped[list["PowerForecastLog"]] = relationship(
+    variable_values: Mapped[list["CalculationLogVariableValue"]] = relationship(
         back_populates="calculation_log",
         lazy="raise",
         cascade="all, delete",
         passive_deletes=True,
-    )  # What weather forecast logs reference this calculation log
-    power_target_logs: Mapped[list["PowerTargetLog"]] = relationship(
+        order_by=[
+            CalculationLogVariableValue.calculation_log_id,
+            CalculationLogVariableValue.variable_id,
+            CalculationLogVariableValue.site_id_snapshot,
+            CalculationLogVariableValue.interval_period,
+        ],
+    )  # What variable values reference this calculation log
+    variable_metadata: Mapped[list["CalculationLogVariableMetadata"]] = relationship(
         back_populates="calculation_log",
         lazy="raise",
         cascade="all, delete",
         passive_deletes=True,
-    )  # What power target logs reference this calculation log
-    power_flow_logs: Mapped[list["PowerFlowLog"]] = relationship(
-        back_populates="calculation_log",
-        lazy="raise",
-        cascade="all, delete",
-        passive_deletes=True,
-    )  # What power flow logs reference this calculation log
-    weather_forecast_logs: Mapped[list["WeatherForecastLog"]] = relationship(
-        back_populates="calculation_log",
-        lazy="raise",
-        cascade="all, delete",
-        passive_deletes=True,
-    )  # What weather forecast logs reference this calculation log
+    )  # What variable metadata reference this calculation log

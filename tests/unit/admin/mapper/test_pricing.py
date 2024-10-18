@@ -3,6 +3,7 @@
 
 from datetime import datetime
 
+import pytest
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
 
@@ -31,13 +32,17 @@ def test_tariff_mapper_to_response():
     assert resp.tariff_id
 
 
-def test_tariff_genrate_mapper_from_request():
-    req = generate_class_instance(TariffGeneratedRateRequest)
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_tariff_genrate_mapper_from_request(optional_is_none: bool):
+    req: TariffGeneratedRateRequest = generate_class_instance(
+        TariffGeneratedRateRequest, optional_is_none=optional_is_none
+    )
     changed_time = datetime(2022, 4, 5, 6, 7, 8, 9)
     mdl = TariffGeneratedRateListMapper.map_from_request(changed_time, [req]).pop()
 
     assert isinstance(mdl, TariffGeneratedRate)
     assert mdl.changed_time == changed_time
     assert mdl.tariff_generated_rate_id == None  # noqa
-    assert mdl.tariff_id
-    assert mdl.site_id
+    assert mdl.tariff_id == req.tariff_id
+    assert mdl.site_id == req.site_id
+    assert mdl.calculation_log_id == req.calculation_log_id

@@ -18,6 +18,7 @@ class DoeListMapper:
         return [
             DynamicOperatingEnvelope(
                 site_id=doe.site_id,
+                calculation_log_id=doe.calculation_log_id,
                 changed_time=changed_time,
                 start_time=doe.start_time,
                 duration_seconds=doe.duration_seconds,
@@ -33,6 +34,7 @@ class DoeListMapper:
             dynamic_operating_envelope_id=doe.dynamic_operating_envelope_id,
             changed_time=doe.changed_time,
             site_id=doe.site_id,
+            calculation_log_id=doe.calculation_log_id,
             duration_seconds=doe.duration_seconds,
             import_limit_active_watts=doe.import_limit_active_watts,
             export_limit_watts=doe.export_limit_watts,

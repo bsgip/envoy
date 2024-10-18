@@ -84,17 +84,18 @@ async def test_create_does_with_active_subscription(
 
         await session.commit()
 
-    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, seed=101)
-    doe_1.site_id = 1
-
-    doe_2: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, seed=202)
-    doe_2.site_id = 1
-
-    doe_3: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, seed=303)
-    doe_3.site_id = 2
-
-    doe_4: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, seed=404)
-    doe_4.site_id = 3
+    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest, seed=101, site_id=1, calculation_log_id=None
+    )
+    doe_2: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest, seed=202, site_id=1, calculation_log_id=1
+    )
+    doe_3: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest, seed=303, site_id=2, calculation_log_id=1
+    )
+    doe_4: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest, seed=404, site_id=3, calculation_log_id=None
+    )
 
     content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
     resp = await admin_client_auth.post(
@@ -190,17 +191,18 @@ async def test_create_does_with_paginated_notifications(
 
         await session.commit()
 
-    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, seed=101)
-    doe_1.site_id = 1
-
-    doe_2: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, seed=202)
-    doe_2.site_id = 1
-
-    doe_3: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, seed=303)
-    doe_3.site_id = 1
-
-    doe_4: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, seed=404)
-    doe_4.site_id = 3
+    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest, seed=101, site_id=1, calculation_log_id=None
+    )
+    doe_2: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest, seed=202, site_id=1, calculation_log_id=None
+    )
+    doe_3: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest, seed=303, site_id=1, calculation_log_id=None
+    )
+    doe_4: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest, seed=404, site_id=3, calculation_log_id=None
+    )
 
     content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
     resp = await admin_client_auth.post(
@@ -270,25 +272,41 @@ async def test_create_rates_with_active_subscription(
 
         await session.commit()
 
-    rate_1: TariffGeneratedRateRequest = generate_class_instance(TariffGeneratedRateRequest, seed=101)
-    rate_1.site_id = 1
-    rate_1.tariff_id = 1
-    rate_1.start_time = datetime(2022, 3, 4, 14, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane"))
+    rate_1: TariffGeneratedRateRequest = generate_class_instance(
+        TariffGeneratedRateRequest,
+        seed=101,
+        site_id=1,
+        tariff_id=1,
+        start_time=datetime(2022, 3, 4, 14, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        calculation_log_id=1,
+    )
 
-    rate_2: TariffGeneratedRateRequest = generate_class_instance(TariffGeneratedRateRequest, seed=202)
-    rate_2.site_id = 1
-    rate_2.tariff_id = 1
-    rate_2.start_time = datetime(2022, 3, 4, 14, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane"))
+    rate_2: TariffGeneratedRateRequest = generate_class_instance(
+        TariffGeneratedRateRequest,
+        seed=202,
+        site_id=1,
+        tariff_id=1,
+        start_time=datetime(2022, 3, 4, 14, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        calculation_log_id=None,
+    )
 
-    rate_3: TariffGeneratedRateRequest = generate_class_instance(TariffGeneratedRateRequest, seed=303)
-    rate_3.site_id = 1
-    rate_3.tariff_id = 1
-    rate_3.start_time = datetime(2022, 3, 4, 14, 10, 0, tzinfo=ZoneInfo("Australia/Brisbane"))
+    rate_3: TariffGeneratedRateRequest = generate_class_instance(
+        TariffGeneratedRateRequest,
+        seed=303,
+        site_id=1,
+        tariff_id=1,
+        start_time=datetime(2022, 3, 4, 14, 10, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        calculation_log_id=None,
+    )
 
-    rate_4: TariffGeneratedRateRequest = generate_class_instance(TariffGeneratedRateRequest, seed=404)
-    rate_4.site_id = 3
-    rate_4.tariff_id = 1
-    rate_4.start_time = datetime(2022, 3, 4, 14, 15, 0, tzinfo=ZoneInfo("Australia/Brisbane"))
+    rate_4: TariffGeneratedRateRequest = generate_class_instance(
+        TariffGeneratedRateRequest,
+        seed=404,
+        site_id=3,
+        tariff_id=1,
+        start_time=datetime(2022, 3, 4, 14, 15, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        calculation_log_id=None,
+    )
 
     content = ",".join([d.model_dump_json() for d in [rate_1, rate_2, rate_3, rate_4]])
     resp = await admin_client_auth.post(

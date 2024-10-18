@@ -6,15 +6,14 @@ from typing import Optional
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal, assert_nowish
+from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.log import (
     CalculationLogListResponse,
+    CalculationLogMetadata,
     CalculationLogRequest,
     CalculationLogResponse,
-    PowerFlowLog,
-    PowerForecastLog,
-    PowerTargetLog,
-    WeatherForecastLog,
+    CalculationLogVariableValues,
 )
 from envoy_schema.admin.schema.uri import CalculationLogCreateUri, CalculationLogsForPeriod, CalculationLogUri
 from httpx import AsyncClient
@@ -25,20 +24,16 @@ from envoy.server.api.response import LOCATION_HEADER_NAME
 def assert_calc_log_2(calc_log_2: CalculationLogResponse) -> None:
     assert calc_log_2 is not None and isinstance(calc_log_2, CalculationLogResponse)
     assert calc_log_2.external_id == "external-id-2"
-    assert_datetime_equal(calc_log_2.calculation_interval_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc))
-    assert calc_log_2.calculation_interval_duration_seconds == 86402
-    assert len(calc_log_2.weather_forecast_logs) == 1
-    assert len(calc_log_2.power_flow_logs) == 2
-    assert len(calc_log_2.power_target_logs) == 2
-    assert len(calc_log_2.power_forecast_logs) == 2
-    assert all(isinstance(e, WeatherForecastLog) for e in calc_log_2.weather_forecast_logs)
-    assert all(isinstance(e, PowerFlowLog) for e in calc_log_2.power_flow_logs)
-    assert all(isinstance(e, PowerTargetLog) for e in calc_log_2.power_target_logs)
-    assert all(isinstance(e, PowerForecastLog) for e in calc_log_2.power_forecast_logs)
-    assert [e.air_temperature_degrees_c for e in calc_log_2.weather_forecast_logs] == [11.5]
-    assert [e.solve_name for e in calc_log_2.power_flow_logs] == ["solve-1", "solve-2"]
-    assert [e.target_active_power_watts for e in calc_log_2.power_target_logs] == [11, 21]
-    assert [e.active_power_watts for e in calc_log_2.power_forecast_logs] == [111, 211]
+    assert_datetime_equal(calc_log_2.calculation_range_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc))
+    assert calc_log_2.calculation_range_duration_seconds == 86402
+
+    assert_list_type(CalculationLogMetadata, calc_log_2.variable_metadata, count=3)
+    assert isinstance(calc_log_2.variable_values, CalculationLogVariableValues)
+
+    assert calc_log_2.variable_values.variable_ids == [1, 1, 1, 2, 3, 3]
+    assert calc_log_2.variable_values.site_ids == [None, None, None, 2, 1, 1]
+    assert calc_log_2.variable_values.interval_periods == [0, 1, 2, 0, 0, 1]
+    assert calc_log_2.variable_values.values == [3.3, 2.2, 4.4, -5.5, 0, 1.1]
 
 
 @pytest.mark.anyio
@@ -62,17 +57,13 @@ async def test_calculation_log_roundtrip_with_children(
     admin_client_auth: AsyncClient, optional_is_none: bool, include_children: bool
 ):
     """Creates a calculation log - sends it off, pulls it back and ensures the contents is all still the same"""
-    wf_log = generate_class_instance(WeatherForecastLog, optional_is_none=optional_is_none)
-    pflow_log = generate_class_instance(PowerFlowLog, optional_is_none=optional_is_none)
-    pt_log = generate_class_instance(PowerTargetLog, optional_is_none=optional_is_none)
-    pfore_log = generate_class_instance(PowerForecastLog, optional_is_none=optional_is_none)
+    var_mds = [generate_class_instance(CalculationLogMetadata, optional_is_none=optional_is_none)]
+    var_vals = generate_class_instance(CalculationLogVariableValues, optional_is_none=optional_is_none)
 
     calc_log: CalculationLogRequest = generate_class_instance(CalculationLogRequest, optional_is_none=optional_is_none)
     if include_children:
-        calc_log.weather_forecast_logs = [wf_log]
-        calc_log.power_flow_logs = [pflow_log]
-        calc_log.power_forecast_logs = [pfore_log]
-        calc_log.power_target_logs = [pt_log]
+        calc_log.variable_metadata = var_mds
+        calc_log.variable_values = var_vals
 
     # Upload the log
     resp = await admin_client_auth.post(CalculationLogCreateUri, content=calc_log.model_dump_json())
@@ -89,20 +80,17 @@ async def test_calculation_log_roundtrip_with_children(
     assert_class_instance_equality(CalculationLogRequest, calc_log, returned_log)
     assert_nowish(returned_log.created_time)
     if include_children:
-        assert len(returned_log.weather_forecast_logs) == 1
-        assert len(returned_log.power_flow_logs) == 1
-        assert len(returned_log.power_forecast_logs) == 1
-        assert len(returned_log.power_target_logs) == 1
+        assert len(returned_log.variable_metadata) == len(var_mds)
+        assert_class_instance_equality(CalculationLogMetadata, var_mds[0], returned_log.variable_metadata[0])
 
-        assert_class_instance_equality(WeatherForecastLog, wf_log, returned_log.weather_forecast_logs[0])
-        assert_class_instance_equality(PowerFlowLog, pflow_log, returned_log.power_flow_logs[0])
-        assert_class_instance_equality(PowerTargetLog, pt_log, returned_log.power_target_logs[0])
-        assert_class_instance_equality(PowerForecastLog, pfore_log, returned_log.power_forecast_logs[0])
+        assert_class_instance_equality(CalculationLogVariableValues, var_vals, returned_log.variable_values)
     else:
-        assert len(returned_log.weather_forecast_logs) == 0
-        assert len(returned_log.power_flow_logs) == 0
-        assert len(returned_log.power_forecast_logs) == 0
-        assert len(returned_log.power_target_logs) == 0
+        assert len(returned_log.variable_metadata) == 0
+
+        assert len(returned_log.variable_values.variable_ids) == 0
+        assert len(returned_log.variable_values.site_ids) == 0
+        assert len(returned_log.variable_values.interval_periods) == 0
+        assert len(returned_log.variable_values.values) == 0
 
 
 @pytest.mark.parametrize(
@@ -166,9 +154,6 @@ async def test_get_calculation_logs_for_period(
     assert log_list.start == (start if start is not None else 0)
     assert log_list.limit == (limit if limit is not None else 100)
     assert all([isinstance(cl, CalculationLogResponse) for cl in log_list.calculation_logs])
-    assert all([cl.power_flow_logs == [] for cl in log_list.calculation_logs]), "No child logs in list endpoint"
-    assert all([cl.power_forecast_logs == [] for cl in log_list.calculation_logs]), "No child logs in list endpoint"
-    assert all([cl.power_target_logs == [] for cl in log_list.calculation_logs]), "No child logs in list endpoint"
-    assert all([cl.weather_forecast_logs == [] for cl in log_list.calculation_logs]), "No child logs in list endpoint"
-
+    assert all([cl.variable_metadata == [] for cl in log_list.calculation_logs]), "No child logs in list endpoint"
+    assert all([cl.variable_values is None for cl in log_list.calculation_logs]), "No child logs in list endpoint"
     assert [cl.calculation_log_id for cl in log_list.calculation_logs] == expected_ids

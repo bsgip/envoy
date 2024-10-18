@@ -112,84 +112,107 @@ async def fetch_calculation_log_billing_data(
 
     All results will be ordered by site_id (ASC) then time (ASC)"""
 
-    period_start = calculation_log.calculation_interval_start
-    period_end = period_start + timedelta(seconds=calculation_log.calculation_interval_duration_seconds)
+    period_start = calculation_log.calculation_range_start
+    period_end = period_start + timedelta(seconds=calculation_log.calculation_range_duration_seconds)
+
+    tariffs_result = (
+        (
+            await session.execute(
+                select(TariffGeneratedRate)
+                .where(
+                    (TariffGeneratedRate.tariff_id == tariff_id)
+                    & (TariffGeneratedRate.calculation_log_id == calculation_log.calculation_log_id)
+                )
+                .order_by(TariffGeneratedRate.site_id, TariffGeneratedRate.start_time)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    does_result = (
+        (
+            await session.execute(
+                select(DynamicOperatingEnvelope)
+                .where((DynamicOperatingEnvelope.calculation_log_id == calculation_log.calculation_log_id))
+                .order_by(DynamicOperatingEnvelope.site_id, DynamicOperatingEnvelope.start_time)
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     # Find any and all site_id's referenced in any child objects
     referenced_site_ids: set[int] = set(
         chain(
-            (pf_log.site_id for pf_log in calculation_log.power_flow_logs if pf_log.site_id is not None),
-            (pf_log.site_id for pf_log in calculation_log.power_forecast_logs if pf_log.site_id is not None),
-            (pt_log.site_id for pt_log in calculation_log.power_target_logs if pt_log.site_id is not None),
+            (e.site_id for e in tariffs_result),
+            (e.site_id for e in does_result),
         )
     )
 
-    tariffs_result = await session.execute(
-        select(TariffGeneratedRate)
-        .where(
-            (TariffGeneratedRate.tariff_id == tariff_id)
-            & (TariffGeneratedRate.site_id.in_(referenced_site_ids))
-            & (TariffGeneratedRate.start_time >= period_start)
-            & (TariffGeneratedRate.start_time < period_end)
+    wh_result = (
+        (
+            await session.execute(
+                select(SiteReading)
+                .join(SiteReadingType)
+                .where(
+                    (SiteReadingType.site_id.in_(referenced_site_ids))
+                    & (SiteReading.time_period_start >= period_start)
+                    & (SiteReading.time_period_start < period_end)
+                    & (SiteReadingType.uom == UomType.REAL_ENERGY_WATT_HOURS)
+                )
+                .options(joinedload(SiteReading.site_reading_type))
+                .order_by(SiteReadingType.site_id, SiteReading.time_period_start)
+            )
         )
-        .order_by(TariffGeneratedRate.site_id, TariffGeneratedRate.start_time)
+        .scalars()
+        .all()
     )
 
-    does_result = await session.execute(
-        select(DynamicOperatingEnvelope)
-        .where(
-            (DynamicOperatingEnvelope.site_id.in_(referenced_site_ids))
-            & (DynamicOperatingEnvelope.start_time >= period_start)
-            & (DynamicOperatingEnvelope.start_time < period_end)
+    watt_result = (
+        (
+            await session.execute(
+                select(SiteReading)
+                .join(SiteReadingType)
+                .where(
+                    (SiteReadingType.site_id.in_(referenced_site_ids))
+                    & (SiteReading.time_period_start >= period_start)
+                    & (SiteReading.time_period_start < period_end)
+                    & (SiteReadingType.uom == UomType.REAL_POWER_WATT)
+                )
+                .options(joinedload(SiteReading.site_reading_type))
+                .order_by(SiteReadingType.site_id, SiteReading.time_period_start)
+            )
         )
-        .order_by(DynamicOperatingEnvelope.site_id, DynamicOperatingEnvelope.start_time)
+        .scalars()
+        .all()
     )
 
-    wh_result = await session.execute(
-        select(SiteReading)
-        .join(SiteReadingType)
-        .where(
-            (SiteReadingType.site_id.in_(referenced_site_ids))
-            & (SiteReading.time_period_start >= period_start)
-            & (SiteReading.time_period_start < period_end)
-            & (SiteReadingType.uom == UomType.REAL_ENERGY_WATT_HOURS)
+    varh_result = (
+        (
+            await session.execute(
+                select(SiteReading)
+                .join(SiteReadingType)
+                .where(
+                    (SiteReadingType.site_id.in_(referenced_site_ids))
+                    & (SiteReading.time_period_start >= period_start)
+                    & (SiteReading.time_period_start < period_end)
+                    & (SiteReadingType.uom == UomType.REACTIVE_ENERGY_VARH)
+                )
+                .options(joinedload(SiteReading.site_reading_type))
+                .order_by(SiteReadingType.site_id, SiteReading.time_period_start)
+            )
         )
-        .options(joinedload(SiteReading.site_reading_type))
-        .order_by(SiteReadingType.site_id, SiteReading.time_period_start)
-    )
-
-    watt_result = await session.execute(
-        select(SiteReading)
-        .join(SiteReadingType)
-        .where(
-            (SiteReadingType.site_id.in_(referenced_site_ids))
-            & (SiteReading.time_period_start >= period_start)
-            & (SiteReading.time_period_start < period_end)
-            & (SiteReadingType.uom == UomType.REAL_POWER_WATT)
-        )
-        .options(joinedload(SiteReading.site_reading_type))
-        .order_by(SiteReadingType.site_id, SiteReading.time_period_start)
-    )
-
-    varh_result = await session.execute(
-        select(SiteReading)
-        .join(SiteReadingType)
-        .where(
-            (SiteReadingType.site_id.in_(referenced_site_ids))
-            & (SiteReading.time_period_start >= period_start)
-            & (SiteReading.time_period_start < period_end)
-            & (SiteReadingType.uom == UomType.REACTIVE_ENERGY_VARH)
-        )
-        .options(joinedload(SiteReading.site_reading_type))
-        .order_by(SiteReadingType.site_id, SiteReading.time_period_start)
+        .scalars()
+        .all()
     )
 
     return BillingData(
-        active_tariffs=tariffs_result.scalars().all(),
-        active_does=does_result.scalars().all(),
-        wh_readings=wh_result.scalars().all(),
-        varh_readings=varh_result.scalars().all(),
-        watt_readings=watt_result.scalars().all(),
+        active_tariffs=tariffs_result,
+        active_does=does_result,
+        wh_readings=wh_result,
+        varh_readings=varh_result,
+        watt_readings=watt_result,
     )
 
 

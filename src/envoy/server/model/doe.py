@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
 
 from sqlalchemy import DECIMAL, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -17,6 +18,9 @@ class DynamicOperatingEnvelope(Base):
     __tablename__ = "dynamic_operating_envelope"
     dynamic_operating_envelope_id: Mapped[int] = mapped_column(primary_key=True)
     site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id"))  # The site that this doe applies to
+    calculation_log_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("calculation_log.calculation_log_id"), nullable=True, index=True
+    )  # The calculation log that resulted in this DOE or None if there is no such link
 
     changed_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), index=True

@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
@@ -13,8 +14,11 @@ from envoy.admin.mapper.doe import DoeListMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 
 
-def test_doe_mapper_from_request():
-    req: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest)
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_doe_mapper_from_request(optional_is_none: bool):
+    req: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest, optional_is_none=optional_is_none
+    )
 
     changed_time = datetime(2021, 5, 6, 7, 8, 9)
     mdl = DoeListMapper.map_from_request(changed_time, [req])[0]
@@ -22,6 +26,7 @@ def test_doe_mapper_from_request():
     assert isinstance(mdl, DynamicOperatingEnvelope)
 
     assert mdl.site_id == req.site_id
+    assert mdl.calculation_log_id == req.calculation_log_id
     assert mdl.duration_seconds == req.duration_seconds
     assert mdl.import_limit_active_watts == req.import_limit_active_watts
     assert mdl.export_limit_watts == req.export_limit_watts

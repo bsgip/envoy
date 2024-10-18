@@ -44,8 +44,31 @@ INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "chang
 -- Device registered site - using cert from certificate7.py
 INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "changed_time", "lfdi", "sfdi", "device_category") VALUES (6, '6666666666', 0, 'Australia/Brisbane', '2022-02-03 17:18:19.500', '93a527c16d8fca36e0f7da189fde375d5e494717', 396331899108, 5); 
 
-
 SELECT pg_catalog.setval('public.site_site_id_seq', 7, true);
+
+
+-- Calculation log 1/2 have the same interval but calculation log 2 has a more recent created time
+-- Only calculation log 2 will have child entities
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_range_start", "calculation_range_duration_seconds", "interval_width_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "power_forecast_basis_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+VALUES (1, '2024-01-21 01:22:33.500', '2024-01-31 01:02:03', 86401, 301, 'topo-id-1', 'external-id-1', 'description-1', '2024-01-20 01:11:00.500', '2024-01-19 01:22:00.500', '2024-01-20 01:11:11.500', 'weather-location-1');
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_range_start", "calculation_range_duration_seconds", "interval_width_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "power_forecast_basis_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+VALUES (2, '2024-01-21 02:22:33.500', '2024-01-31 01:02:03', 86402, 302, 'topo-id-2', 'external-id-2', 'description-2', '2024-01-20 02:11:00.500', '2024-01-19 02:22:00.500', '2024-02-20 01:11:11.500', 'weather-location-2');
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_range_start", "calculation_range_duration_seconds", "interval_width_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "power_forecast_basis_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+VALUES (3, '2024-01-21 03:22:33.500', '2024-01-31 02:02:03', 86403, 303, 'topo-id-3', 'external-id-3', 'description-3', '2024-01-20 03:11:00.500', '2024-01-19 03:22:00.500', '2024-03-20 01:11:11.500', 'weather-location-3');
+SELECT pg_catalog.setval('public.calculation_log_calculation_log_id_seq', 4, true);
+
+INSERT INTO public.calculation_log_variable_metadata("calculation_log_id", "variable_id", "name", "description") VALUES (2, 1, 'Var-1', 'Var-1-Desc');
+INSERT INTO public.calculation_log_variable_metadata("calculation_log_id", "variable_id", "name", "description") VALUES (2, 2, 'Var-2', 'Var-2-Desc');
+INSERT INTO public.calculation_log_variable_metadata("calculation_log_id", "variable_id", "name", "description") VALUES (2, 3, 'Var-3', 'Var-3-Desc');
+
+INSERT INTO public.calculation_log_variable_value("calculation_log_id", "variable_id", "site_id_snapshot", "interval_period", "value") VALUES (2, 3, 1, 0, 0);
+INSERT INTO public.calculation_log_variable_value("calculation_log_id", "variable_id", "site_id_snapshot", "interval_period", "value") VALUES (2, 3, 1, 1, 1.1);
+INSERT INTO public.calculation_log_variable_value("calculation_log_id", "variable_id", "site_id_snapshot", "interval_period", "value") VALUES (2, 1, 0, 1, 2.2);
+INSERT INTO public.calculation_log_variable_value("calculation_log_id", "variable_id", "site_id_snapshot", "interval_period", "value") VALUES (2, 1, 0, 0, 3.3);
+INSERT INTO public.calculation_log_variable_value("calculation_log_id", "variable_id", "site_id_snapshot", "interval_period", "value") VALUES (2, 1, 0, 2, 4.4);
+INSERT INTO public.calculation_log_variable_value("calculation_log_id", "variable_id", "site_id_snapshot", "interval_period", "value") VALUES (2, 2, 2, 0, -5.5);
+
+
 
 INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 36, '2023-01-02 11:01:02');
 INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 124, '2023-01-02 12:01:02');
@@ -53,25 +76,25 @@ INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "ch
 
 SELECT pg_catalog.setval('public.tariff_tariff_id_seq', 4, true);
 
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (1, 1, 1, '2022-03-04 11:22:33.500', '2022-03-05 01:02+10', 11, 1.1, -1.22, 1.333, -1.4444);
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (2, 1, 1, '2022-03-04 12:22:33.500', '2022-03-05 03:04+10', 12, 2.1, -2.22, 2.333, -2.4444);
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (3, 1, 2, '2022-03-04 13:22:33.500', '2022-03-05 01:02+10', 13, 3.1, -3.22, 3.333, -3.4444);
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (4, 1, 1, '2022-03-04 14:22:33.500', '2022-03-06 01:02+10', 14, 4.1, -4.22, 4.333, -4.4444);
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (1, 1, 1, 2, '2022-03-04 11:22:33.500', '2022-03-05 01:02+10', 11, 1.1, -1.22, 1.333, -1.4444);
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (2, 1, 1, 2, '2022-03-04 12:22:33.500', '2022-03-05 03:04+10', 12, 2.1, -2.22, 2.333, -2.4444);
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (3, 1, 2, 2, '2022-03-04 13:22:33.500', '2022-03-05 01:02+10', 13, 3.1, -3.22, 3.333, -3.4444);
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (4, 1, 1, NULL, '2022-03-04 14:22:33.500', '2022-03-06 01:02+10', 14, 4.1, -4.22, 4.333, -4.4444);
 
 SELECT pg_catalog.setval('public.tariff_generated_rate_tariff_generated_rate_id_seq', 5, true);
 
-INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 1, '2022-05-06 11:22:33.500', '2022-05-07 01:02+10', 11, 1.11, -1.22);
-INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (2, 1, '2022-05-06 12:22:33.500', '2022-05-07 03:04+10', 22, 2.11, -2.22);
-INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (3, 2, '2022-05-06 13:22:33.500', '2022-05-07 01:02+10', 33, 3.11, -3.22);
-INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (4, 1, '2022-05-06 14:22:33.500', '2022-05-08 01:02+10', 44, 4.11, -4.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 1, 2, '2022-05-06 11:22:33.500', '2022-05-07 01:02+10', 11, 1.11, -1.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (2, 1, 2, '2022-05-06 12:22:33.500', '2022-05-07 03:04+10', 22, 2.11, -2.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (3, 2, 2, '2022-05-06 13:22:33.500', '2022-05-07 01:02+10', 33, 3.11, -3.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (4, 1, NULL, '2022-05-06 14:22:33.500', '2022-05-08 01:02+10', 44, 4.11, -4.22);
 
 SELECT pg_catalog.setval('public.dynamic_operating_envelope_dynamic_operating_envelope_id_seq', 5, true);
 
@@ -294,43 +317,3 @@ INSERT INTO public.site_der_status (site_der_status_id, site_der_id, changed_tim
 VALUES (1, 2, '2022-11-01 11:05:04.500', 64, 1, '2010-11-03 11:05:06+11', 10, '2010-11-05 11:05:08+11', 1, '2010-11-07 11:05:10+11', 'mnstat', '2010-11-09 11:05:12+11', 1, '2010-11-11 11:05:14+11', NULL, '2016-05-06 10:38:37+10', 1, '2016-05-10 10:38:41+10', 8, '2016-05-08 10:38:39+10');
 SELECT pg_catalog.setval('public.site_der_status_site_der_status_id_seq', 2, true);
 
-
--- Calculation log 1/2 have the same interval but calculation log 2 has a more recent created time
--- Only calculation log 2 will have child entities
-INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_interval_start", "calculation_interval_duration_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
-VALUES (1, '2024-01-21 01:22:33.500', '2024-01-31 01:02:03', 86401, 'topo-id-1', 'external-id-1', 'description-1', '2024-01-20 01:11:00.500', '2024-01-20 01:11:11.500', 'weather-location-1');
-INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_interval_start", "calculation_interval_duration_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
-VALUES (2, '2024-01-21 02:22:33.500', '2024-01-31 01:02:03', 86402, 'topo-id-2', 'external-id-2', 'description-2', '2024-01-20 02:11:00.500', '2024-02-20 01:11:11.500', 'weather-location-2');
-INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_interval_start", "calculation_interval_duration_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
-VALUES (3, '2024-01-21 03:22:33.500', '2024-01-31 02:02:03', 86403, 'topo-id-3', 'external-id-3', 'description-3', '2024-01-20 03:11:00.500', '2024-03-20 01:11:11.500', 'weather-location-3');
-SELECT pg_catalog.setval('public.calculation_log_calculation_log_id_seq', 4, true);
-
-INSERT INTO public.weather_forecast_log("weather_forecast_log_id", "interval_start", "interval_duration_seconds", "air_temperature_degrees_c", "apparent_temperature_degrees_c", "dew_point_degrees_c", "humidity_percent", "cloud_cover_percent", "rain_probability_percent", "rain_mm", "rain_rate_mm", "global_horizontal_irradiance_watts_m2", "wind_speed_50m_km_h", "calculation_log_id") 
-VALUES (1, '2024-02-01 00:01:05', 111, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 2);
-INSERT INTO public.weather_forecast_log("weather_forecast_log_id", "interval_start", "interval_duration_seconds", "air_temperature_degrees_c", "apparent_temperature_degrees_c", "dew_point_degrees_c", "humidity_percent", "cloud_cover_percent", "rain_probability_percent", "rain_mm", "rain_rate_mm", "global_horizontal_irradiance_watts_m2", "wind_speed_50m_km_h", "calculation_log_id") 
-VALUES (2, '2024-02-01 00:01:05', 112, 21.5, 22.5, 23.5, 24.5, 25.5, 26.5, 27.5, 28.5, 29.5, 22.5, 3);
-SELECT pg_catalog.setval('public.weather_forecast_log_weather_forecast_log_id_seq', 3, true);
-
-INSERT INTO public.power_flow_log("power_flow_log_id", "interval_start", "interval_duration_seconds", "site_id", "solve_name", "pu_voltage_min", "pu_voltage_max", "pu_voltage", "thermal_max_percent", "calculation_log_id") 
-VALUES (1, '2024-02-01 00:00:05', 112, 1, 'solve-1', 1.01, 1.02, 1.03, 1.04, 2);
-INSERT INTO public.power_flow_log("power_flow_log_id", "interval_start", "interval_duration_seconds", "site_id", "solve_name", "pu_voltage_min", "pu_voltage_max", "pu_voltage", "thermal_max_percent", "calculation_log_id") 
-VALUES (2, '2024-02-01 00:00:10', 113, NULL, 'solve-2', 2.02, 2.03, 2.04, 2.05, 2);
-INSERT INTO public.power_flow_log("power_flow_log_id", "interval_start", "interval_duration_seconds", "site_id", "solve_name", "pu_voltage_min", "pu_voltage_max", "pu_voltage", "thermal_max_percent", "calculation_log_id") 
-VALUES (3, '2024-02-01 00:00:10', 114, NULL, 'solve-3', 3.02, 3.03, 3.04, 3.05, 3);
-SELECT pg_catalog.setval('public.power_flow_log_power_flow_log_id_seq', 4, true);
-
-INSERT INTO public.power_target_log("power_target_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "target_active_power_watts", "target_reactive_power_var", "calculation_log_id") 
-VALUES (1, '2024-02-01 00:00:05', 114, 'device-id-1', 1, 11, 12, 2);
-INSERT INTO public.power_target_log("power_target_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "target_active_power_watts", "target_reactive_power_var", "calculation_log_id") 
-VALUES (2, '2024-02-01 00:00:10', 115, 'device-id-2', NULL, 21, 22, 2);
-INSERT INTO public.power_target_log("power_target_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "target_active_power_watts", "target_reactive_power_var", "calculation_log_id") 
-VALUES (3, '2024-02-01 00:00:10', 116, 'device-id-3', NULL, 31, 33, 3);
-SELECT pg_catalog.setval('public.power_target_log_power_target_log_id_seq', 4, true);
-
-INSERT INTO public.power_forecast_log("power_forecast_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "active_power_watts", "reactive_power_var", "calculation_log_id") 
-VALUES (1, '2024-02-01 01:00:05', 115, 'device-id-1', 1, 111, 112, 2);
-INSERT INTO public.power_forecast_log("power_forecast_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "active_power_watts", "reactive_power_var", "calculation_log_id") 
-VALUES (2, '2024-02-01 01:00:10', 116, 'device-id-2', NULL, 211, 212, 2);
-INSERT INTO public.power_forecast_log("power_forecast_log_id", "interval_start", "interval_duration_seconds", "external_device_id", "site_id", "active_power_watts", "reactive_power_var", "calculation_log_id") 
-VALUES (3, '2024-02-01 01:00:10', 117, 'device-id-3', NULL, 311, 312, 3);
-SELECT pg_catalog.setval('public.power_forecast_log_power_forecast_log_id_seq', 4, true);

@@ -3,6 +3,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from assertical.asserts.time import assert_datetime_equal
+from assertical.asserts.type import assert_iterable_type
 from assertical.fixtures.postgres import generate_async_session
 
 from envoy.admin.crud.log import (
@@ -10,7 +11,7 @@ from envoy.admin.crud.log import (
     select_calculation_log_by_id,
     select_calculation_logs_for_period,
 )
-from envoy.server.model.log import CalculationLog, PowerFlowLog, PowerForecastLog, PowerTargetLog, WeatherForecastLog
+from envoy.server.model.log import CalculationLog, CalculationLogVariableMetadata, CalculationLogVariableValue
 
 
 @pytest.mark.parametrize("id", [0, -1, 4])
@@ -30,35 +31,23 @@ async def test_select_calculation_log_by_id(pg_base_config):
         calc_log_1 = await select_calculation_log_by_id(session, 1)
         assert calc_log_1 is not None and isinstance(calc_log_1, CalculationLog)
         assert calc_log_1.external_id == "external-id-1"
-        assert_datetime_equal(
-            calc_log_1.calculation_interval_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc)
-        )
-        assert calc_log_1.calculation_interval_duration_seconds == 86401
-        assert len(calc_log_1.weather_forecast_logs) == 0
-        assert len(calc_log_1.power_flow_logs) == 0
-        assert len(calc_log_1.power_target_logs) == 0
-        assert len(calc_log_1.power_forecast_logs) == 0
+        assert_datetime_equal(calc_log_1.calculation_range_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc))
+        assert calc_log_1.calculation_range_duration_seconds == 86401
+        assert len(calc_log_1.variable_metadata) == 0
+        assert len(calc_log_1.variable_values) == 0
 
         # Calculation log 2 has children - sanity check the contents
         calc_log_2 = await select_calculation_log_by_id(session, 2)
         assert calc_log_2 is not None and isinstance(calc_log_2, CalculationLog)
         assert calc_log_2.external_id == "external-id-2"
-        assert_datetime_equal(
-            calc_log_2.calculation_interval_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc)
-        )
-        assert calc_log_2.calculation_interval_duration_seconds == 86402
-        assert len(calc_log_2.weather_forecast_logs) == 1
-        assert len(calc_log_2.power_flow_logs) == 2
-        assert len(calc_log_2.power_target_logs) == 2
-        assert len(calc_log_2.power_forecast_logs) == 2
-        assert all(isinstance(e, WeatherForecastLog) for e in calc_log_2.weather_forecast_logs)
-        assert all(isinstance(e, PowerFlowLog) for e in calc_log_2.power_flow_logs)
-        assert all(isinstance(e, PowerTargetLog) for e in calc_log_2.power_target_logs)
-        assert all(isinstance(e, PowerForecastLog) for e in calc_log_2.power_forecast_logs)
-        assert [e.weather_forecast_log_id for e in calc_log_2.weather_forecast_logs] == [1]
-        assert [e.power_flow_log_id for e in calc_log_2.power_flow_logs] == [1, 2]
-        assert [e.power_target_log_id for e in calc_log_2.power_target_logs] == [1, 2]
-        assert [e.power_forecast_log_id for e in calc_log_2.power_forecast_logs] == [1, 2]
+        assert_datetime_equal(calc_log_2.calculation_range_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc))
+        assert calc_log_2.calculation_range_duration_seconds == 86402
+        assert_iterable_type(CalculationLogVariableMetadata, calc_log_2.variable_metadata, count=3)
+        assert_iterable_type(CalculationLogVariableValue, calc_log_2.variable_values, count=6)
+
+        # There should be a defined order on the returned calculation log variable values
+        # ON CalculationLogID -> Variable ID -> Site ID -> Interval Period
+        assert [3.3, 2.2, 4.4, -5.5, 0, 1.1] == [e.value for e in calc_log_2.variable_values]
 
 
 AEST = ZoneInfo("Australia/Brisbane")

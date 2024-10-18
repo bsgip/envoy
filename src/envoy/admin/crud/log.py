@@ -14,10 +14,8 @@ async def select_calculation_log_by_id(session: AsyncSession, calculation_log_id
         select(CalculationLog)
         .where((CalculationLog.calculation_log_id == calculation_log_id))
         .options(
-            selectinload(CalculationLog.weather_forecast_logs),
-            selectinload(CalculationLog.power_flow_logs),
-            selectinload(CalculationLog.power_target_logs),
-            selectinload(CalculationLog.power_forecast_logs),
+            selectinload(CalculationLog.variable_metadata),
+            selectinload(CalculationLog.variable_values),
         )
     )
 
@@ -43,11 +41,11 @@ async def _calculation_logs_for_period(
     stmt = (
         select_clause.where(
             ~(
-                (CalculationLog.calculation_interval_start >= period_end)
+                (CalculationLog.calculation_range_start >= period_end)
                 | (
                     (
-                        CalculationLog.calculation_interval_start
-                        + func.make_interval(0, 0, 0, 0, 0, 0, CalculationLog.calculation_interval_duration_seconds)
+                        CalculationLog.calculation_range_start
+                        + func.make_interval(0, 0, 0, 0, 0, 0, CalculationLog.calculation_range_duration_seconds)
                     )
                     <= period_start
                 )

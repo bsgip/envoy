@@ -36,6 +36,7 @@ class TariffGeneratedRateListMapper:
             TariffGeneratedRate(
                 tariff_id=tariff_genrate.tariff_id,
                 site_id=tariff_genrate.site_id,
+                calculation_log_id=tariff_genrate.calculation_log_id,
                 changed_time=changed_time,
                 start_time=tariff_genrate.start_time,
                 duration_seconds=tariff_genrate.duration_seconds,

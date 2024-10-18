@@ -101,22 +101,17 @@ async def test_fetch_calculation_log_billing_data_timezone(pg_billing_data, admi
         (t.site_id, t.import_active_price, t.export_active_price, t.import_reactive_price, t.export_reactive_price)
         for t in body.active_tariffs
     ] == [
-        (1, Decimal("1.1"), Decimal("-1.2"), Decimal("1.3"), Decimal("-1.4")),
         (1, Decimal("2.1"), Decimal("-2.2"), Decimal("2.3"), Decimal("-2.4")),
         (1, Decimal("3.1"), Decimal("-3.2"), Decimal("3.3"), Decimal("-3.4")),
-        (3, Decimal("7.1"), Decimal("-7.2"), Decimal("7.3"), Decimal("-7.4")),
     ]
 
     assert [(d.site_id, d.import_limit_active_watts, d.export_limit_watts) for d in body.active_does] == [
-        (1, Decimal("1.11"), Decimal("-1.22")),
         (1, Decimal("2.11"), Decimal("-2.22")),
-        (3, Decimal("6.11"), Decimal("-6.22")),
     ]
 
     assert [(r.site_id, r.value) for r in body.wh_readings] == [
         (1, Decimal("110")),
         (1, Decimal("220")),
-        (3, Decimal("880")),
     ]
 
     assert [(r.site_id, r.value) for r in body.varh_readings] == [

@@ -183,20 +183,15 @@ async def test_fetch_aggregator_billing_data(
             4,  # calculation_log_id
             1,  # tariff_id
             [  # expected_tariff_imports
-                Decimal("1.1"),
                 Decimal("2.1"),
                 Decimal("3.1"),
-                Decimal("7.1"),
             ],
             [  # expected_doe_imports
-                Decimal("1.11"),
                 Decimal("2.11"),
-                Decimal("6.11"),
             ],
             [  # expected_wh_readings
                 (1, 72, 11),
                 (1, 72, 22),
-                (3, 72, 88),
             ],
             [  # expected_var_readings
                 (1, 73, 55),
@@ -206,21 +201,35 @@ async def test_fetch_aggregator_billing_data(
         (
             5,  # calculation_log_id
             1,  # tariff_id
-            [],  # expected_tariff_imports
-            [],  # expected_doe_imports
-            [],  # expected_wh_readings
-            [],  # expected_var_readings
-            [],  # expected_watt_readings
+            [
+                Decimal("4.1"),
+                Decimal("5.1"),
+                Decimal("6.1"),
+                Decimal("7.1"),
+            ],  # expected_tariff_imports
+            [
+                Decimal("3.11"),
+                Decimal("5.11"),
+                Decimal("6.11"),
+            ],  # expected_doe_imports
+            [
+                (1, 72, 11),
+                (1, 72, 22),
+                (2, 72, 77),
+                (3, 72, 88),
+            ],  # expected_wh_readings
+            [
+                (1, 73, 55),
+            ],  # expected_var_readings
+            [(1, 38, 99), (1, 38, 1010)],  # expected_watt_readings
         ),
         (
             6,  # calculation_log_id
             1,  # tariff_id
-            [  # expected_tariff_imports
-                Decimal("1.1"),
-            ],
-            [  # expected_doe_imports
-                Decimal("1.11"),
-            ],
+            [],  # expected_tariff_imports
+            [
+                Decimal("4.11"),
+            ],  # expected_doe_imports
             [  # expected_wh_readings
                 (1, 72, 11),
             ],
@@ -243,14 +252,11 @@ async def test_fetch_aggregator_billing_data(
             99,  # tariff_id
             [],  # expected_tariff_imports
             [  # expected_doe_imports
-                Decimal("1.11"),
                 Decimal("2.11"),
-                Decimal("6.11"),
             ],
             [  # expected_wh_readings
                 (1, 72, 11),
                 (1, 72, 22),
-                (3, 72, 88),
             ],
             [  # expected_var_readings
                 (1, 73, 55),
@@ -270,7 +276,10 @@ async def test_fetch_calculation_log_billing_data(
     expected_varh_readings: Optional[list],
     expected_watt_readings: Optional[list],
 ):
-    """Assert fetch billing data fetches the correct data given a pg_billing_data database"""
+    """Assert fetch billing data fetches the correct data given a pg_billing_data database
+
+    NOTE - DOEs/Rates get selected by the calculation log ID. Readings get selected by the time range on the
+    parent calculation log"""
 
     async with generate_async_session(pg_billing_data) as session:
         calculation_log = await select_calculation_log_by_id(session, calculation_log_id)
