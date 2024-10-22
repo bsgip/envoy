@@ -2,8 +2,10 @@ import json
 from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import pytest
+from assertical.asserts.time import assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
@@ -14,24 +16,68 @@ from envoy_schema.admin.schema.doe import (
 )
 from envoy_schema.admin.schema.uri import DoeUri
 from httpx import AsyncClient
+from sqlalchemy import func, select
 
 from envoy.admin.crud.doe import count_all_does
 from envoy.server.api.request import MAX_LIMIT
+from envoy.server.model.doe import DynamicOperatingEnvelope
 from tests.integration.admin.test_site import _build_query_string
 from tests.integration.response import read_response_body_string
 
 
 @pytest.mark.anyio
 async def test_create_does(admin_client_auth: AsyncClient):
-    doe = generate_class_instance(DynamicOperatingEnvelopeRequest)
-    doe.site_id = 1
-
-    doe_1 = generate_class_instance(DynamicOperatingEnvelopeRequest)
-    doe_1.site_id = 2
+    doe: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, site_id=1)
+    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, site_id=2)
 
     resp = await admin_client_auth.post(DoeUri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
 
     assert resp.status_code == HTTPStatus.CREATED
+
+
+@pytest.mark.anyio
+async def test_update_doe(pg_base_config, admin_client_auth: AsyncClient):
+    """Checks that updating a price will update in place and not insert a new record"""
+    # Check the DB
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(func.count()).select_from(DynamicOperatingEnvelope)
+        resp = await session.execute(stmt)
+        initial_count = resp.scalar_one()
+
+    # This should be updating tariff_generated_rate_id 1
+    updated_rate = DynamicOperatingEnvelopeRequest(
+        site_id=1,
+        start_time=datetime(2022, 5, 7, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
+        duration_seconds=11131,
+        calculation_log_id=3,
+        export_limit_watts=44,
+        import_limit_active_watts=55,
+    )
+
+    resp = await admin_client_auth.post(
+        DoeUri,
+        content=f"[{updated_rate.model_dump_json()}]",
+    )
+
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Check the DB
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(func.count()).select_from(DynamicOperatingEnvelope)
+        resp = await session.execute(stmt)
+        after_count = resp.scalar_one()
+
+        assert initial_count == after_count, "This should've been an update, not an insert"
+
+        stmt = select(DynamicOperatingEnvelope).where(DynamicOperatingEnvelope.calculation_log_id == 3)
+        db_doe = (await session.execute(stmt)).scalar_one()
+
+        assert db_doe.calculation_log_id == updated_rate.calculation_log_id
+        assert db_doe.start_time == updated_rate.start_time
+        assert db_doe.duration_seconds == updated_rate.duration_seconds
+        assert_nowish(db_doe.changed_time)
+        assert db_doe.import_limit_active_watts == updated_rate.import_limit_active_watts
+        assert db_doe.export_limit_watts == updated_rate.export_limit_watts
 
 
 @pytest.mark.parametrize(
