@@ -33,38 +33,38 @@ INSERT INTO public.calculation_log_variable_value("calculation_log_id", "variabl
 
 
 
-INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (1, 1, NULL, '2023-09-01 11:22:33', '2023-09-10 00:00+10', 300, 1.1, -1.2, 1.3, -1.4);
-INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (1, 1, 4, '2023-09-01 11:22:33', '2023-09-10 00:05+10', 300, 2.1, -2.2, 2.3, -2.4);
-INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (1, 1, 4, '2023-09-01 11:22:33', '2023-09-10 00:10+10', 300, 3.1, -3.2, 3.3, -3.4);
-INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (1, 1, 5, '2023-09-01 11:22:33', '2023-09-11 00:00+10', 300, 4.1, -4.2, 4.3, -4.4);
-INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (1, 1, 5, '2023-09-01 11:22:33', '2023-09-11 00:05+10', 300, 5.1, -5.2, 5.3, -5.4);
-INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (1, 2, 5, '2023-09-01 11:22:33', '2023-09-10 00:00+10', 300, 6.1, -6.2, 6.3, -6.4);
-INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (1, 3, 5, '2023-09-01 11:22:33', '2023-09-10 00:00+10', 300, 7.1, -7.2, 7.3, -7.4);
+INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (1, 1, NULL, '2000-01-01 00:00:00Z', '2023-09-01 11:22:33', '2023-09-10 00:00+10', 300, 1.1, -1.2, 1.3, -1.4);
+INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (1, 1, 4, '2000-01-01 00:00:00Z', '2023-09-01 11:22:33', '2023-09-10 00:05+10', 300, 2.1, -2.2, 2.3, -2.4);
+INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (1, 1, 4, '2000-01-01 00:00:00Z', '2023-09-01 11:22:33', '2023-09-10 00:10+10', 300, 3.1, -3.2, 3.3, -3.4);
+INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (1, 1, 5, '2000-01-01 00:00:00Z', '2023-09-01 11:22:33', '2023-09-11 00:00+10', 300, 4.1, -4.2, 4.3, -4.4);
+INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (1, 1, 5, '2000-01-01 00:00:00Z', '2023-09-01 11:22:33', '2023-09-11 00:05+10', 300, 5.1, -5.2, 5.3, -5.4);
+INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (1, 2, 5, '2000-01-01 00:00:00Z', '2023-09-01 11:22:33', '2023-09-10 00:00+10', 300, 6.1, -6.2, 6.3, -6.4);
+INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (1, 3, 5, '2000-01-01 00:00:00Z', '2023-09-01 11:22:33', '2023-09-10 00:00+10', 300, 7.1, -7.2, 7.3, -7.4);
 
 
-INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, NULL, '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, 1.11, -1.22);
-INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 4, '2022-05-06 11:22:33', '2023-09-10 00:05+10', 300, 2.11, -2.22);
-INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 5, '2022-05-06 11:22:33', '2023-09-11 00:00+10', 300, 3.11, -3.22);
-INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 6, '2022-05-06 11:22:33', '2023-09-11 00:05+10', 300, 4.11, -4.22);
-INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (2, 5, '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, 5.11, -5.22);
-INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (3, 5, '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, 6.11, -6.22);
+INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, NULL, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, 1.11, -1.22);
+INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 4, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:05+10', 300, 2.11, -2.22);
+INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 5, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-11 00:00+10', 300, 3.11, -3.22);
+INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 6, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-11 00:05+10', 300, 4.11, -4.22);
+INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (2, 5, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, 5.11, -5.22);
+INSERT INTO public.dynamic_operating_envelope("site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
+VALUES (3, 5, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, 6.11, -6.22);
 
 
 -- Real Energy - site 1
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "created_time", "changed_time")
 VALUES (1006, -- site_reading_type_id
     1, -- aggregator_id
     1, -- site_id
@@ -76,11 +76,12 @@ VALUES (1006, -- site_reading_type_id
     64, -- phase
     1, -- power_of_ten_multiplier
     0, -- default_interval_seconds
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-05-06 11:22:33' -- changed_time
     );
 
 -- Reactive Energy - site 1
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "created_time", "changed_time")
 VALUES (1007, -- site_reading_type_id
     1, -- aggregator_id
     1, -- site_id
@@ -92,11 +93,12 @@ VALUES (1007, -- site_reading_type_id
     64, -- phase
     1, -- power_of_ten_multiplier
     0, -- default_interval_seconds
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-05-06 11:22:33' -- changed_time
     );
 
 -- Real Watt Power - site 1
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "created_time", "changed_time")
 VALUES (1008, -- site_reading_type_id
     1, -- aggregator_id
     1, -- site_id
@@ -108,11 +110,12 @@ VALUES (1008, -- site_reading_type_id
     64, -- phase
     1, -- power_of_ten_multiplier
     0, -- default_interval_seconds
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-05-06 11:22:33.500' -- changed_time
     );
 
 -- Real Energy - site 2
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "created_time", "changed_time")
 VALUES (1009, -- site_reading_type_id
     1, -- aggregator_id
     2, -- site_id
@@ -124,11 +127,12 @@ VALUES (1009, -- site_reading_type_id
     64, -- phase
     1, -- power_of_ten_multiplier
     0, -- default_interval_seconds
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-05-06 11:22:33' -- changed_time
     );
 
 -- Real Energy - site 3
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "created_time", "changed_time")
 VALUES (1010, -- site_reading_type_id
     2, -- aggregator_id
     3, -- site_id
@@ -140,6 +144,7 @@ VALUES (1010, -- site_reading_type_id
     64, -- phase
     1, -- power_of_ten_multiplier
     0, -- default_interval_seconds
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-05-06 11:22:33' -- changed_time
     );
 
@@ -147,9 +152,10 @@ VALUES (1010, -- site_reading_type_id
 SELECT pg_catalog.setval('public.site_reading_type_site_reading_type_id_seq', 1011, true);
 
 
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1006, -- site_reading_type_id
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -157,9 +163,10 @@ VALUES (
     300, -- time_period_seconds
     11 -- value
     );
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1006, -- site_reading_type_id
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -167,9 +174,10 @@ VALUES (
     300, -- time_period_seconds
     22 -- value
     );
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1006, -- site_reading_type_id
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -177,9 +185,10 @@ VALUES (
     300, -- time_period_seconds
     33 -- value
     );
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1006, -- site_reading_type_id
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -187,9 +196,10 @@ VALUES (
     300, -- time_period_seconds
     44 -- value
     );
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1007, -- site_reading_type_id
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -197,9 +207,10 @@ VALUES (
     300, -- time_period_seconds
     55 -- value
     );
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1007, -- site_reading_type_id
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -207,9 +218,10 @@ VALUES (
     300, -- time_period_seconds
     66 -- value
     );
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1008, -- site_reading_type_id 
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -217,9 +229,10 @@ VALUES (
     300, -- time_period_seconds
     99 -- value
     );
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1008, -- site_reading_type_id 
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -227,9 +240,10 @@ VALUES (
     300, -- time_period_seconds
     1010 -- value
     );
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1008, -- site_reading_type_id 
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -237,9 +251,10 @@ VALUES (
     300, -- time_period_seconds
     1111 -- value
     );
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1009, -- site_reading_type_id
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags
@@ -247,9 +262,10 @@ VALUES (
     300, -- time_period_seconds
     77 -- value
     );
-INSERT INTO public.site_reading("site_reading_type_id", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
+INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (
     1010, -- site_reading_type_id
+    '2000-01-01 00:00:00Z', -- created_time
     '2022-06-07 11:22:33', -- changed_time
     1, -- local_id
     1, -- quality_flags

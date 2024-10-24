@@ -10,7 +10,7 @@ from envoy_schema.server.schema.sep2.types import (
     QualityFlagsType,
     UomType,
 )
-from sqlalchemy import INTEGER, BigInteger, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import INTEGER, BigInteger, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base, Site
@@ -42,6 +42,9 @@ class SiteReadingType(Base):
     )  # If a batch of readings is received without an interval - this length will be used to describe the batch length
 
     # These are the properties that can change via upsert
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the reading set was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading set was last altered
 
     site: Mapped["Site"] = relationship(lazy="raise")
@@ -73,6 +76,9 @@ class SiteReading(Base):
 
     site_reading_id: Mapped[int] = mapped_column(primary_key=True)
     site_reading_type_id: Mapped[int] = mapped_column(ForeignKey("site_reading_type.site_reading_type_id"))
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the reading was created
     changed_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), index=True
     )  # When the reading was last altered

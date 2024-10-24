@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Optional
 
 from envoy_schema.server.schema.sep2.types import CurrencyCode
-from sqlalchemy import DECIMAL, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import DECIMAL, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
@@ -22,6 +22,9 @@ class Tariff(Base):
     name: Mapped[str] = mapped_column(String(64))  # descriptive name of the tariff
     dnsp_code: Mapped[str] = mapped_column(String(20))  # code assigned by the DNSP for their own internal processes
     currency_code: Mapped[CurrencyCode] = mapped_column(Integer)  # ISO 4217 numerical currency code - eg AUD = 36
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the tariff was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the tariff was created/changed
 
     generated_rates: Mapped[list["TariffGeneratedRate"]] = relationship(back_populates="tariff", lazy="raise")
@@ -40,6 +43,9 @@ class TariffGeneratedRate(Base):
         ForeignKey("calculation_log.calculation_log_id"), nullable=True, index=True
     )  # The calculation log that resulted in this rate or None if there is no such link
 
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the rate was created
     changed_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), index=True
     )  # When the rate was created/changed

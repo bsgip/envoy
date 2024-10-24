@@ -17,7 +17,7 @@ from envoy_schema.server.schema.sep2.der import (
     StorageModeStatusType,
 )
 from envoy_schema.server.schema.sep2.types import DeviceCategory
-from sqlalchemy import DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
@@ -34,7 +34,10 @@ class Site(Base):
     aggregator_id: Mapped[int] = mapped_column(ForeignKey("aggregator.aggregator_id"), nullable=False)
 
     timezone_id: Mapped[str] = mapped_column(VARCHAR(length=64), nullable=False)  # tz_id name of the local timezone
-    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the site was created
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)  # When the site was updated
     lfdi: Mapped[str] = mapped_column(VARCHAR(length=42), nullable=False, unique=True)
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
@@ -68,6 +71,9 @@ class SiteGroup(Base):
     site_group_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     name: Mapped[str] = mapped_column(VARCHAR(length=128))  # Name/Title of this group - must be unique
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the site group was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     assignments: Mapped[list["SiteGroupAssignment"]] = relationship(
@@ -87,6 +93,7 @@ class SiteGroupAssignment(Base):
 
     site_group_assignment_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
+    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id", ondelete="CASCADE"))
     site_group_id: Mapped[int] = mapped_column(ForeignKey("site_group.site_group_id", ondelete="CASCADE"))
@@ -107,6 +114,9 @@ class SiteDER(Base):
     site_der_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id", ondelete="CASCADE"))
 
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the site DER was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
     site: Mapped["Site"] = relationship(back_populates="site_ders", lazy="raise")
@@ -133,6 +143,9 @@ class SiteDERRating(Base):
 
     site_der_rating_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     site_der_id: Mapped[int] = mapped_column(ForeignKey("site_der.site_der_id", ondelete="CASCADE"))
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the site DERRating was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
     # These values correspond to a flattened version of sep2 DERCapability
@@ -196,6 +209,9 @@ class SiteDERSetting(Base):
 
     site_der_setting_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     site_der_id: Mapped[int] = mapped_column(ForeignKey("site_der.site_der_id", ondelete="CASCADE"))
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the site DERSetting was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
     # These values correspond to a flattened version of sep2 DERSettings
@@ -259,6 +275,9 @@ class SiteDERAvailability(Base):
 
     site_der_availability_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     site_der_id: Mapped[int] = mapped_column(ForeignKey("site_der.site_der_id", ondelete="CASCADE"))
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the SiteDERAvailability was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
     # These values correspond to a flattened version of sep2 DERAvailability
@@ -287,6 +306,9 @@ class SiteDERStatus(Base):
 
     site_der_status_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     site_der_id: Mapped[int] = mapped_column(ForeignKey("site_der.site_der_id", ondelete="CASCADE"))
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the site DERStatus was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
     # These values correspond to a flattened version of sep2 DERStatus

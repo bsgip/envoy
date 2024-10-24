@@ -54,6 +54,7 @@ def assert_doe_for_id(
             assert actual_doe.start_time.tzname() == tz.tzname(
                 actual_doe.start_time
             ), "Start time should be returned in local time"
+            assert_datetime_equal(actual_doe.created_time, datetime(2000, 1, 1, 0, 0, 0, 0, tzinfo=timezone.utc))
 
 
 @pytest.mark.parametrize(

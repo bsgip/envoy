@@ -4,6 +4,7 @@
 from datetime import datetime
 
 import pytest
+from assertical.asserts.generator import assert_class_instance_equality
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
 
@@ -28,8 +29,7 @@ def test_tariff_mapper_to_response():
     resp = TariffMapper.map_to_response(mdl)
 
     assert isinstance(resp, TariffResponse)
-    assert resp.changed_time
-    assert resp.tariff_id
+    assert_class_instance_equality(TariffResponse, mdl, resp)
 
 
 @pytest.mark.parametrize("optional_is_none", [True, False])
@@ -41,8 +41,14 @@ def test_tariff_genrate_mapper_from_request(optional_is_none: bool):
     mdl = TariffGeneratedRateListMapper.map_from_request(changed_time, [req]).pop()
 
     assert isinstance(mdl, TariffGeneratedRate)
+
+    assert_class_instance_equality(
+        TariffGeneratedRate,
+        mdl,
+        req,
+        ignored_properties=set(["tariff_generated_rate_id", "created_time", "changed_time"]),
+    )
+
     assert mdl.changed_time == changed_time
     assert mdl.tariff_generated_rate_id == None  # noqa
-    assert mdl.tariff_id == req.tariff_id
-    assert mdl.site_id == req.site_id
-    assert mdl.calculation_log_id == req.calculation_log_id
+    assert mdl.created_time == None, "This should be set in the DB"  # noqa

@@ -42,6 +42,7 @@ class SiteMapper:
             return None
 
         return DERStatus(
+            created_time=status.created_time,
             changed_time=status.changed_time,
             alarm_status=status.alarm_status,
             generator_connect_status=status.generator_connect_status,
@@ -62,6 +63,7 @@ class SiteMapper:
             return None
 
         return DERAvailability(
+            created_time=availability.created_time,
             changed_time=availability.changed_time,
             availability_duration_sec=availability.availability_duration_sec,
             max_charge_duration_sec=availability.max_charge_duration_sec,
@@ -83,19 +85,22 @@ class SiteMapper:
         will be preferenced over values from rating"""
 
         changed_time: Optional[datetime] = None
+        created_time: Optional[datetime] = None
         modes_supported: Optional[DERControlType] = None
 
         if rating:
+            created_time = rating.created_time
             changed_time = rating.changed_time
             if rating.modes_supported is not None:
                 modes_supported = rating.modes_supported
 
         if setting:
+            created_time = setting.created_time
             changed_time = setting.changed_time
             if setting.modes_enabled is not None:
                 modes_supported = setting.modes_enabled
 
-        if changed_time is None:
+        if changed_time is None or created_time is None:
             # If setting and rating aren't set - just return None
             return None
 
@@ -115,6 +120,7 @@ class SiteMapper:
 
         return DERConfiguration(
             # Mandatory
+            created_time=created_time,
             changed_time=changed_time,
             modes_supported=modes_supported,
             type=rating.der_type if rating else DERType.NOT_APPLICABLE,
@@ -154,7 +160,10 @@ class SiteMapper:
         if site.assignments:
             site_groups = [
                 AdminSiteGroup(
-                    site_group_id=a.group.site_group_id, name=a.group.name, changed_time=a.group.changed_time
+                    site_group_id=a.group.site_group_id,
+                    name=a.group.name,
+                    created_time=a.group.created_time,
+                    changed_time=a.group.changed_time,
                 )
                 for a in site.assignments
                 if a.group
@@ -179,6 +188,7 @@ class SiteMapper:
             site_id=site.site_id,
             nmi=site.nmi,
             timezone_id=site.timezone_id,
+            created_time=site.created_time,
             changed_time=site.changed_time,
             lfdi=site.lfdi,
             sfdi=site.sfdi,
@@ -209,7 +219,11 @@ class SiteGroupMapper:
     def map_to_site_group_response(group: SiteGroup, site_count: int) -> SiteGroupResponse:
         """Maps our internal SiteGroup model to an equivalent SiteResponse"""
         return SiteGroupResponse(
-            site_group_id=group.site_group_id, name=group.name, changed_time=group.changed_time, total_sites=site_count
+            site_group_id=group.site_group_id,
+            name=group.name,
+            created_time=group.created_time,
+            changed_time=group.changed_time,
+            total_sites=site_count,
         )
 
     @staticmethod

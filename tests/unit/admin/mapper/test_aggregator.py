@@ -2,6 +2,7 @@ from itertools import product
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
+from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.aggregator import AggregatorDomain as AggregatorDomainResponse
 from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorResponse
@@ -25,7 +26,7 @@ def test_aggregator_to_response(optional_is_none: bool, has_domains: bool):
     if has_domains:
         assert len(agg.domains) > 0
         assert len(mdl.domains) == len(agg.domains)
-        assert all([isinstance(d, AggregatorDomainResponse) for d in mdl.domains])
+        assert_list_type(AggregatorDomainResponse, mdl.domains)
         for e, a in zip(agg.domains, mdl.domains):
             assert_class_instance_equality(AggregatorDomainResponse, e, a)
     else:

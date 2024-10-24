@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DOUBLE_PRECISION, INTEGER, VARCHAR, DateTime, ForeignKey
+from sqlalchemy import DOUBLE_PRECISION, INTEGER, VARCHAR, DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
@@ -78,7 +78,7 @@ class CalculationLog(Base):
     __tablename__ = "calculation_log"
 
     calculation_log_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     calculation_range_start: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), index=True
     )  # The start time of the first interval within this calculation log.

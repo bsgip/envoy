@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DECIMAL, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import DECIMAL, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model.base import Base
@@ -22,6 +22,9 @@ class DynamicOperatingEnvelope(Base):
         ForeignKey("calculation_log.calculation_log_id"), nullable=True, index=True
     )  # The calculation log that resulted in this DOE or None if there is no such link
 
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the doe was created
     changed_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), index=True
     )  # When the doe was created/changed

@@ -149,7 +149,7 @@ async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, 
         raise ValueError(f"Specified aggregator_id {aggregator_id} mismatches site.aggregator_id {site.aggregator_id}")
 
     table = Site.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns)]  # type: ignore [attr-defined]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined]
     stmt = psql_insert(Site).values(**{k: getattr(site, k) for k in update_cols})
     resp = await session.execute(
         stmt.on_conflict_do_update(

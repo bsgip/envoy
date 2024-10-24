@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import VARCHAR, DateTime, ForeignKey
+from sqlalchemy import VARCHAR, DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
@@ -16,6 +16,11 @@ class Aggregator(Base):
 
     aggregator_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str]
+
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the aggregator was created
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the aggregator was last changed
 
     domains: Mapped[list["AggregatorDomain"]] = relationship(
         back_populates="aggregator",
@@ -42,6 +47,9 @@ class AggregatorDomain(Base):
     aggregator_domain_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     aggregator_id: Mapped[int] = mapped_column(ForeignKey("aggregator.aggregator_id", ondelete="CASCADE"))
 
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the domain was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the domain was created/changed
     domain: Mapped[str] = mapped_column(VARCHAR(length=512), nullable=False)  # The whitelisted FQ domain name
 

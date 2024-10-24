@@ -32,6 +32,7 @@ def test_doe_mapper_from_request(optional_is_none: bool):
     assert mdl.export_limit_watts == req.export_limit_watts
     assert mdl.start_time == req.start_time
     assert mdl.changed_time == changed_time
+    assert mdl.created_time is None, "This should be left to the DB to populate"
 
     assert not mdl.site
     assert not mdl.dynamic_operating_envelope_id

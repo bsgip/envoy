@@ -1,8 +1,8 @@
 from typing import List
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
@@ -27,7 +27,7 @@ async def upsert_many_tariff_genrate(session: AsyncSession, tariff_generates: Li
     """Inserts multiple tariff generated rate entries into the DB. Returns None"""
 
     table = TariffGeneratedRate.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns)]  # type: ignore [attr-defined]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined]
     stmt = psql_insert(TariffGeneratedRate).values(
         [{k: getattr(tr, k) for k in update_cols} for tr in tariff_generates]
     )

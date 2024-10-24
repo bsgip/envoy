@@ -3,7 +3,7 @@ from enum import IntEnum, auto
 from typing import Optional
 
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
-from sqlalchemy import INTEGER, VARCHAR, DateTime, ForeignKey, Index
+from sqlalchemy import INTEGER, VARCHAR, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base, Site
@@ -32,6 +32,9 @@ class Subscription(Base):
 
     subscription_id: Mapped[int] = mapped_column(primary_key=True)
     aggregator_id: Mapped[int] = mapped_column(ForeignKey("aggregator.aggregator_id"))  # Aggregator that owns this sub
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the subscription was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the subscription was last altered
 
     resource_type: Mapped[SubscriptionResource] = mapped_column(INTEGER)  # What resource type is being subscribed to

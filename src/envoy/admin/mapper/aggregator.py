@@ -17,7 +17,10 @@ class AggregatorMapper:
         return AggregatorResponse(
             aggregator_id=aggregator.aggregator_id,
             name=aggregator.name,
-            domains=[AggregatorDomain(domain=d.domain, changed_time=d.changed_time) for d in domains],
+            domains=[
+                AggregatorDomain(domain=d.domain, changed_time=d.changed_time, created_time=d.created_time)
+                for d in domains
+            ],
         )
 
     @staticmethod

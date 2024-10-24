@@ -17,30 +17,38 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 
 def test_map_to_der_availability_response():
     """Mainly a quick sanity check"""
-    with_optionals = generate_class_instance(SiteDERAvailability, seed=101, optional_is_none=True)
-    all_set = generate_class_instance(SiteDERAvailability, seed=202, optional_is_none=False)
+    with_optionals: SiteDERAvailability = generate_class_instance(SiteDERAvailability, seed=101, optional_is_none=True)
+    all_set: SiteDERAvailability = generate_class_instance(SiteDERAvailability, seed=202, optional_is_none=False)
 
     assert SiteMapper.map_to_der_availability_response(None) is None
 
     mapped_optionals = SiteMapper.map_to_der_availability_response(with_optionals)
     assert isinstance(mapped_optionals, DERAvailability)
+    assert mapped_optionals.changed_time == with_optionals.changed_time
+    assert mapped_optionals.created_time == with_optionals.created_time
 
     mapped_all_set = SiteMapper.map_to_der_availability_response(all_set)
     assert isinstance(mapped_all_set, DERAvailability)
+    assert mapped_all_set.changed_time == all_set.changed_time
+    assert mapped_all_set.created_time == all_set.created_time
 
 
 def test_map_to_der_status_response():
     """Mainly a quick sanity check"""
-    with_optionals = generate_class_instance(SiteDERStatus, seed=101, optional_is_none=True)
-    all_set = generate_class_instance(SiteDERStatus, seed=202, optional_is_none=False)
+    with_optionals: SiteDERStatus = generate_class_instance(SiteDERStatus, seed=101, optional_is_none=True)
+    all_set: SiteDERStatus = generate_class_instance(SiteDERStatus, seed=202, optional_is_none=False)
 
     assert SiteMapper.map_to_der_status_response(None) is None
 
     mapped_optionals = SiteMapper.map_to_der_status_response(with_optionals)
     assert isinstance(mapped_optionals, DERStatus)
+    assert mapped_optionals.changed_time == with_optionals.changed_time
+    assert mapped_optionals.created_time == with_optionals.created_time
 
     mapped_all_set = SiteMapper.map_to_der_status_response(all_set)
     assert isinstance(mapped_all_set, DERStatus)
+    assert mapped_all_set.changed_time == all_set.changed_time
+    assert mapped_all_set.created_time == all_set.created_time
 
 
 @pytest.mark.parametrize(
@@ -68,6 +76,13 @@ def test_map_to_der_config_response_no_bad_combinations(
         assert cfg is None
     else:
         assert isinstance(cfg, DERConfiguration)
+
+        if setting is not None:
+            assert cfg.changed_time == setting.changed_time
+            assert cfg.created_time == setting.created_time
+        elif rating is not None:
+            assert cfg.changed_time == rating.changed_time
+            assert cfg.created_time == rating.created_time
 
 
 def get_attrs_for_type(base_type: type) -> list[tuple[str, type]]:

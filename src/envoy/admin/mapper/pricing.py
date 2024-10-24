@@ -20,6 +20,7 @@ class TariffMapper:
     def map_to_response(tariff: Tariff) -> TariffResponse:
         return TariffResponse(
             tariff_id=tariff.tariff_id,
+            created_time=tariff.created_time,
             changed_time=tariff.changed_time,
             dnsp_code=tariff.dnsp_code,
             currency_code=tariff.currency_code,
