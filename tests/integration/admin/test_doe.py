@@ -5,7 +5,7 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
-from assertical.asserts.time import assert_nowish
+from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
@@ -76,6 +76,7 @@ async def test_update_doe(pg_base_config, admin_client_auth: AsyncClient):
         assert db_doe.start_time == updated_rate.start_time
         assert db_doe.duration_seconds == updated_rate.duration_seconds
         assert_nowish(db_doe.changed_time)
+        assert_datetime_equal(db_doe.created_time, datetime(2000, 1, 1, tzinfo=timezone.utc))
         assert db_doe.import_limit_active_watts == updated_rate.import_limit_active_watts
         assert db_doe.export_limit_watts == updated_rate.export_limit_watts
 

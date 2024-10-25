@@ -135,7 +135,7 @@ async def upsert_site_reading_type_for_aggregator(
         )
 
     table = SiteReadingType.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     stmt = psql_insert(SiteReadingType).values(**{k: getattr(site_reading_type, k) for k in update_cols})
 
     resp = await session.execute(
@@ -165,7 +165,7 @@ async def upsert_site_readings(session: AsyncSession, site_readings: Iterable[Si
     Relying on postgresql dialect for upsert capability. Unfortunately this breaks the typical ORM insert pattern."""
 
     table = SiteReading.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     stmt = psql_insert(SiteReading).values([{k: getattr(sr, k) for k in update_cols} for sr in site_readings])
     stmt = stmt.on_conflict_do_update(
         index_elements=[

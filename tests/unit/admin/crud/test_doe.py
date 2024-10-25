@@ -64,27 +64,33 @@ async def test_upsert_many_doe_update(pg_base_config):
 
     async with generate_async_session(pg_base_config) as session:
         original_doe = await _select_latest_dynamic_operating_envelope(session)
+        original_id = original_doe.dynamic_operating_envelope_id
+        original_created_time = original_doe.created_time
 
         # clean up generated instance to ensure it doesn't clash with base_config
         doe_to_update: DynamicOperatingEnvelope = clone_class_instance(
             original_doe, ignored_properties={"dynamic_operating_envelope_id", "created_time", "site"}
         )
-        doe_to_update.export_limit_watts += Decimal("4.32")
-        doe_to_update.import_limit_active_watts += Decimal("5.627")
+        doe_to_update.export_limit_watts += Decimal("99.1")
+        doe_to_update.import_limit_active_watts += Decimal("98.2")
+        doe_to_update.changed_time = datetime(2026, 1, 3, tzinfo=timezone.utc)
+        doe_to_update.created_time = datetime(2027, 1, 3, tzinfo=timezone.utc)  # This shouldn't do anything
 
         await upsert_many_doe(session, [doe_to_update])
-        await session.flush()
+        await session.commit()
 
+    async with generate_async_session(pg_base_config) as session:
         doe_after_update = await _select_latest_dynamic_operating_envelope(session)
 
         # Created time stays the same. changed_time updates
+        assert original_id == doe_after_update.dynamic_operating_envelope_id
         assert_class_instance_equality(
             DynamicOperatingEnvelope,
             doe_to_update,
             doe_after_update,
-            ignored_properties={"created_time", "changed_time", "site"},
+            ignored_properties={"dynamic_operating_envelope_id", "created_time", "site"},
         )
-        assert_nowish(doe_after_update.changed_time)
+        assert_datetime_equal(original_created_time, doe_after_update.created_time)
 
 
 @pytest.mark.parametrize(

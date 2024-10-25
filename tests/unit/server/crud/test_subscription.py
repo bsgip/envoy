@@ -3,7 +3,7 @@ from typing import Optional
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
-from assertical.asserts.time import assert_datetime_equal
+from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import clone_class_instance
 from assertical.fixtures.postgres import generate_async_session
@@ -297,7 +297,10 @@ async def test_insert_subscription(pg_base_config):
 
     async with generate_async_session(pg_base_config) as session:
         new_sub = await select_subscription_by_id(session, 1, sub_id)
-        assert_class_instance_equality(Subscription, sub, new_sub, ignored_properties=set(["subscription_id"]))
+        assert_class_instance_equality(
+            Subscription, sub, new_sub, ignored_properties=set(["subscription_id", "created_time"])
+        )
+        assert_nowish(new_sub.created_time)
 
 
 @pytest.mark.anyio
@@ -309,6 +312,7 @@ async def test_insert_subscription_with_condition(pg_base_config):
     sub = Subscription(
         aggregator_id=1,
         changed_time=datetime.now(tz=timezone.utc),
+        created_time=datetime(2013, 4, 5, 8, 6, 5, tzinfo=timezone.utc),  # won't be persisted
         resource_type=SubscriptionResource.SITE,
         scoped_site_id=1,
         resource_id=None,
@@ -329,13 +333,16 @@ async def test_insert_subscription_with_condition(pg_base_config):
 
     async with generate_async_session(pg_base_config) as session:
         new_sub = await select_subscription_by_id(session, 1, sub_id)
-        assert_class_instance_equality(Subscription, sub, new_sub, ignored_properties=set(["subscription_id"]))
+        assert_class_instance_equality(
+            Subscription, sub, new_sub, ignored_properties=set(["subscription_id", "created_time"])
+        )
         assert_class_instance_equality(
             SubscriptionCondition,
             condition,
             new_sub.conditions[0],
             ignored_properties=set(["subscription_condition_id", "subscription_id"]),
         )
+        assert_nowish(new_sub.created_time)
 
 
 @pytest.mark.anyio

@@ -139,6 +139,8 @@ async def insert_subscription(session: AsyncSession, subscription: Subscription)
     """Inserts the specified subscription (and any linked conditions) into the database - wont persist until
     session is committed. Returns the new subscription_id"""
 
+    if subscription.created_time:
+        del subscription.created_time  # let the DB generate this
     session.add(subscription)
     await session.flush()
     return subscription.subscription_id

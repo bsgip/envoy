@@ -102,6 +102,7 @@ async def get_virtual_site_for_aggregator(
         lfdi=aggregator_lfdi,
         sfdi=aggregator_sfdi,
         changed_time=changed_time,
+        created_time=changed_time,
         aggregator_id=aggregator_id,
         device_category=device_category,
         timezone_id=timezone_id,
@@ -149,7 +150,7 @@ async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, 
         raise ValueError(f"Specified aggregator_id {aggregator_id} mismatches site.aggregator_id {site.aggregator_id}")
 
     table = Site.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     stmt = psql_insert(Site).values(**{k: getattr(site, k) for k in update_cols})
     resp = await session.execute(
         stmt.on_conflict_do_update(

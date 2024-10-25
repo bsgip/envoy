@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
-from assertical.asserts.time import assert_datetime_equal
+from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.asserts.type import assert_iterable_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
@@ -186,8 +186,9 @@ async def test_upsert_site_reading_type_for_aggregator_insert(pg_base_config):
 
         actual_srt = found_srts[-1]  # should be the highest ID
         assert_class_instance_equality(
-            SiteReadingType, new_srt, actual_srt, ignored_properties=set(["site_reading_type_id"])
+            SiteReadingType, new_srt, actual_srt, ignored_properties={"site_reading_type_id", "created_time"}
         )
+        assert_nowish(actual_srt.created_time)
 
 
 @pytest.mark.parametrize("srt_id_to_update, aggregator_id", [(3, 1), (1, 1)])
@@ -226,7 +227,12 @@ async def test_upsert_site_reading_type_for_aggregator_non_indexed(
     async with generate_async_session(pg_base_config) as session:
         # check it exists
         actual_srt = await fetch_site_reading_type(session, aggregator_id, srt_id_to_update)
-        assert_class_instance_equality(SiteReadingType, srt_to_upsert, actual_srt, set(["site_reading_type_id"]))
+        assert_class_instance_equality(
+            SiteReadingType, srt_to_upsert, actual_srt, {"site_reading_type_id", "created_time"}
+        )
+        assert_datetime_equal(
+            datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc), actual_srt.created_time
+        )  # created_time doesn't update
 
         # Sanity check the count
         assert len(await fetch_site_reading_types(session, aggregator_id)) == 3
@@ -267,6 +273,7 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         SiteReading(
             site_reading_type_id=1,
             changed_time=datetime(2022, 1, 2, 3, 4, 5, 500000, tzinfo=timezone.utc),
+            created_time=datetime(2023, 11, 1, 4, 5, tzinfo=timezone.utc),  # This won't get stored
             local_id=1234,
             quality_flags=QualityFlagsType.VALID,
             time_period_start=datetime(2022, 8, 9, 4, 5, 6, tzinfo=timezone.utc),
@@ -277,6 +284,7 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         SiteReading(
             site_reading_type_id=1,  # Index col to match existing
             changed_time=datetime(2022, 6, 7, 8, 9, 10, 500000, tzinfo=timezone.utc),
+            created_time=datetime(2023, 11, 1, 4, 5, tzinfo=timezone.utc),  # This won't get stored
             local_id=4567,
             quality_flags=QualityFlagsType.VALID,
             time_period_start=datetime(2022, 6, 7, 2, 0, 0, tzinfo=aest),  # Index col to match existing
@@ -287,6 +295,7 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         SiteReading(
             site_reading_type_id=3,  # Won't match existing reading
             changed_time=datetime(2022, 10, 11, 12, 13, 14, 500000, tzinfo=timezone.utc),
+            created_time=datetime(2023, 11, 1, 4, 5, tzinfo=timezone.utc),  # This won't get stored
             local_id=111,
             quality_flags=QualityFlagsType.FORECAST,
             time_period_start=datetime(2022, 6, 7, 2, 0, 0, tzinfo=aest),  # Will match existing reading
@@ -307,14 +316,23 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
 
         # assert the inserts of the DB
         sr_5 = all_db_readings[-2]
-        assert_class_instance_equality(SiteReading, site_readings[0], sr_5, ignored_properties=set(["site_reading_id"]))
+        assert_class_instance_equality(
+            SiteReading, site_readings[0], sr_5, ignored_properties={"site_reading_id", "created_time"}
+        )
+        assert_nowish(sr_5.created_time)
 
         sr_6 = all_db_readings[-1]
-        assert_class_instance_equality(SiteReading, site_readings[2], sr_6, ignored_properties=set(["site_reading_id"]))
+        assert_class_instance_equality(
+            SiteReading, site_readings[2], sr_6, ignored_properties={"site_reading_id", "created_time"}
+        )
+        assert_nowish(sr_6.created_time)
 
         # assert the update
         sr_2 = all_db_readings[1]
-        assert_class_instance_equality(SiteReading, site_readings[1], sr_2, ignored_properties=set(["site_reading_id"]))
+        assert_class_instance_equality(
+            SiteReading, site_readings[1], sr_2, ignored_properties={"site_reading_id", "created_time"}
+        )
+        assert_datetime_equal(datetime(2000, 1, 1, tzinfo=timezone.utc), sr_2.created_time)  # created_time wont update
 
         # Assert other fields are untouched
         sr_1 = all_db_readings[0]
@@ -323,6 +341,7 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
             SiteReading(
                 site_reading_id=1,
                 site_reading_type_id=1,
+                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
                 changed_time=datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=timezone.utc),
                 local_id=11111,
                 quality_flags=QualityFlagsType.VALID,

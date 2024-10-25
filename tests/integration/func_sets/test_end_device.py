@@ -4,7 +4,7 @@ from http import HTTPStatus
 from typing import Optional
 
 import pytest
-from assertical.asserts.time import assert_nowish
+from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
@@ -386,6 +386,8 @@ async def test_update_end_device(
         stmt = select(Site).where(Site.site_id == site_id)
         db_site = (await session.execute(stmt)).scalar_one()
         old_device_category = db_site.device_category
+        old_changed_time = db_site.changed_time
+        old_created_time = db_site.created_time
 
     UPDATED_DEVICE_CATEGORY = int(DeviceCategory.INTERIOR_LIGHTING | DeviceCategory.STRIP_HEATERS)
 
@@ -414,8 +416,12 @@ async def test_update_end_device(
 
         if expected_status != HTTPStatus.CREATED:
             assert db_site.device_category == old_device_category
+            assert_datetime_equal(old_created_time, db_site.created_time)
+            assert_datetime_equal(old_changed_time, db_site.changed_time)
         else:
             assert db_site.device_category == UPDATED_DEVICE_CATEGORY
+            assert_datetime_equal(old_created_time, db_site.created_time)
+            assert_nowish(db_site.changed_time)
 
 
 @pytest.mark.anyio

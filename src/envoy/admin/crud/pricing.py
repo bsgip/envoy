@@ -9,6 +9,8 @@ from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 async def insert_single_tariff(session: AsyncSession, tariff: Tariff) -> None:
     """Inserts a single tariff entry into the DB. Returns None"""
+    if tariff.created_time:
+        del tariff.created_time
     session.add(tariff)
 
 
@@ -27,7 +29,7 @@ async def upsert_many_tariff_genrate(session: AsyncSession, tariff_generates: Li
     """Inserts multiple tariff generated rate entries into the DB. Returns None"""
 
     table = TariffGeneratedRate.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     stmt = psql_insert(TariffGeneratedRate).values(
         [{k: getattr(tr, k) for k in update_cols} for tr in tariff_generates]
     )

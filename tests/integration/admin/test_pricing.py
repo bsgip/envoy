@@ -1,10 +1,10 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from http import HTTPStatus
 from zoneinfo import ZoneInfo
 
 import pytest
-from assertical.asserts.time import assert_nowish
+from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
@@ -107,6 +107,7 @@ async def test_update_tariff_genrate_calculation_log(pg_base_config, admin_clien
         assert db_rate.start_time == updated_rate.start_time
         assert db_rate.duration_seconds == updated_rate.duration_seconds
         assert_nowish(db_rate.changed_time)
+        assert_datetime_equal(db_rate.created_time, datetime(2000, 1, 1, tzinfo=timezone.utc))
         assert db_rate.import_active_price == updated_rate.import_active_price
         assert db_rate.export_active_price == updated_rate.export_active_price
         assert db_rate.import_reactive_price == updated_rate.import_reactive_price

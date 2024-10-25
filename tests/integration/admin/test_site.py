@@ -173,6 +173,7 @@ async def test_get_all_sites(
         )
         for s in site_page.sites
     ] == expected_der_changed_times
+    assert all((s.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc) for s in site_page.sites))
 
 
 @pytest.mark.parametrize(

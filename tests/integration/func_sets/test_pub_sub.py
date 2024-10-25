@@ -302,6 +302,8 @@ async def test_create_doe_subscription(
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(Subscription).order_by(Subscription.subscription_id.desc()).limit(1))
         created_sub = resp.scalars().first()
+        assert_nowish(created_sub.changed_time)
+        assert_nowish(created_sub.created_time)
         if use_aggregator_edev:
             assert created_sub.scoped_site_id is None, "Aggregator scoped requests are site unscoped"
         else:

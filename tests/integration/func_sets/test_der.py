@@ -4,7 +4,7 @@ from typing import Optional
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
-from assertical.asserts.time import assert_nowish
+from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema import uri
@@ -22,7 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.manager.der import PUBLIC_SITE_DER_ID
-from envoy.server.model.site import SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from tests.integration.request import build_paging_params
 from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
 
@@ -190,17 +190,44 @@ async def snapshot_sub_entity_count(session: AsyncSession, sub_entity_type: type
     return (await session.execute(select(func.count()).select_from(sub_entity_type))).scalar_one()
 
 
+async def snapshot_sub_entity_changed_created_changed_time(
+    session: AsyncSession, sub_entity_type: type, site_id: int
+) -> tuple[datetime, datetime]:
+    """Fetches the created/changed times for the subentity associated with site_id"""
+    stmt = (
+        select(sub_entity_type.created_time, sub_entity_type.changed_time)
+        .join(SiteDER)
+        .where(SiteDER.site_id == site_id)
+    )
+    return (await session.execute(stmt)).one()
+
+
 async def assert_sub_entity_count(
-    session: AsyncSession, sub_entity_type: type, before_count: int, expected_not_found: bool, expected_update: bool
+    session: AsyncSession,
+    site_id: int,
+    sub_entity_type: type,
+    before_count: int,
+    expected_not_found: bool,
+    expected_update: bool,
 ):
     after_count = await snapshot_sub_entity_count(session, sub_entity_type)
 
     if expected_not_found:
         assert before_count == after_count
-    elif expected_update:
+        return
+
+    # If there is a sub entity - fetch the changed/created dates to also validate
+    created_time, changed_time = await snapshot_sub_entity_changed_created_changed_time(
+        session, sub_entity_type, site_id
+    )
+    if expected_update:
         assert before_count == after_count
+        assert_nowish(changed_time)
+        assert_datetime_equal(created_time, datetime(2000, 1, 1, tzinfo=timezone.utc))  # unchanged
     else:
         assert (before_count + 1) == after_count
+        assert_nowish(changed_time)
+        assert_nowish(created_time)
 
 
 @pytest.mark.parametrize(
@@ -254,7 +281,9 @@ async def test_roundtrip_upsert_der_availability(
         assert_nowish(actual_availability.readingTime)  # Should be set to server time
 
     async with generate_async_session(pg_base_config) as session:
-        await assert_sub_entity_count(session, SiteDERAvailability, before_count, expected_not_found, expected_update)
+        await assert_sub_entity_count(
+            session, site_id, SiteDERAvailability, before_count, expected_not_found, expected_update
+        )
 
 
 @pytest.mark.parametrize(
@@ -309,7 +338,9 @@ async def test_roundtrip_upsert_der_capability(
         )
 
     async with generate_async_session(pg_base_config) as session:
-        await assert_sub_entity_count(session, SiteDERRating, before_count, expected_not_found, expected_update)
+        await assert_sub_entity_count(
+            session, site_id, SiteDERRating, before_count, expected_not_found, expected_update
+        )
 
 
 @pytest.mark.parametrize(
@@ -365,7 +396,9 @@ async def test_roundtrip_upsert_der_setting(
         assert_nowish(actual_settings.updatedTime)  # Should be set to server time
 
     async with generate_async_session(pg_base_config) as session:
-        await assert_sub_entity_count(session, SiteDERSetting, before_count, expected_not_found, expected_update)
+        await assert_sub_entity_count(
+            session, site_id, SiteDERSetting, before_count, expected_not_found, expected_update
+        )
 
 
 @pytest.mark.parametrize(
@@ -423,7 +456,9 @@ async def test_roundtrip_upsert_der_status(
         assert_nowish(actual_status.readingTime)  # Should be set to server time
 
     async with generate_async_session(pg_base_config) as session:
-        await assert_sub_entity_count(session, SiteDERStatus, before_count, expected_not_found, expected_update)
+        await assert_sub_entity_count(
+            session, site_id, SiteDERStatus, before_count, expected_not_found, expected_update
+        )
 
 
 @pytest.mark.anyio

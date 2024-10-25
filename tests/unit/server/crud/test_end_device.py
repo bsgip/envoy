@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import pytest
+from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
@@ -392,12 +393,8 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
         # check it exists
         inserted_site = await select_single_site_with_site_id(session, inserted_id, 1)
         assert inserted_site
-        assert inserted_site.nmi == new_site.nmi
-        assert inserted_site.aggregator_id == new_site.aggregator_id
-        assert inserted_site.changed_time.timestamp() == new_site.changed_time.timestamp()
-        assert inserted_site.lfdi == new_site.lfdi
-        assert inserted_site.sfdi == new_site.sfdi
-        assert inserted_site.device_category == new_site.device_category
+        assert_nowish(inserted_site.created_time)  # This should be set by the DB
+        assert_class_instance_equality(Site, new_site, inserted_site, ignored_properties={"site_id", "created_time"})
 
         # Sanity check another site in the same aggregator
         site_1 = await select_single_site_with_site_id(session, 1, 1)
@@ -445,14 +442,9 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # check it exists
         site_db = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
-        assert site_db
-        assert site_db.nmi == site_to_upsert.nmi
-        assert site_db.aggregator_id == site_to_upsert.aggregator_id
-        assert_datetime_equal(site_db.changed_time, site_to_upsert.changed_time)
-        assert site_db.lfdi == site_to_upsert.lfdi
-        assert site_db.sfdi == site_to_upsert.sfdi
-        assert site_db.device_category == site_to_upsert.device_category
-        assert site_db.timezone_id == site_to_upsert.timezone_id
+
+        assert_class_instance_equality(Site, site_to_upsert, site_db, ignored_properties={"site_id", "created_time"})
+        assert_datetime_equal(site_db.created_time, datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc))  # Not updated
 
         # Sanity check another site in the same aggregator
         site_2 = await select_single_site_with_site_id(session, 2, aggregator_id)
