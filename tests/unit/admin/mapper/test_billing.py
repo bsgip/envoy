@@ -95,24 +95,28 @@ SRT_PRIMACY_HIGHEST: SiteReadingType = generate_class_instance(
     SiteReadingType,
     data_qualifier=DataQualifierType.AVERAGE,
     accumulation_behaviour=AccumulationBehaviourType.SUMMATION,
+    flow_direction=FlowDirectionType.FORWARD,
 )
 
 SRT_PRIMACY_HIGH: SiteReadingType = generate_class_instance(
     SiteReadingType,
     data_qualifier=DataQualifierType.AVERAGE,
     accumulation_behaviour=AccumulationBehaviourType.NOT_APPLICABLE,
+    flow_direction=FlowDirectionType.FORWARD,
 )
 
 SRT_PRIMACY_LOW: SiteReadingType = generate_class_instance(
     SiteReadingType,
     data_qualifier=DataQualifierType.MINIMUM,
     accumulation_behaviour=AccumulationBehaviourType.INSTANTANEOUS,
+    flow_direction=FlowDirectionType.FORWARD,
 )
 
 SRT_PRIMACY_LOWEST: SiteReadingType = generate_class_instance(
     SiteReadingType,
     data_qualifier=DataQualifierType.NOT_APPLICABLE,
     accumulation_behaviour=AccumulationBehaviourType.NOT_APPLICABLE,
+    flow_direction=FlowDirectionType.FORWARD,
 )
 
 
