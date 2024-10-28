@@ -73,6 +73,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 power_of_ten_multiplier=3,
                 default_interval_seconds=0,
                 changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
+                created_time=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
             ),
         ),
         (
@@ -92,6 +93,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 power_of_ten_multiplier=3,
                 default_interval_seconds=0,
                 changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
+                created_time=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
             ),
         ),
         (
@@ -111,6 +113,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 power_of_ten_multiplier=0,
                 default_interval_seconds=0,
                 changed_time=datetime(2022, 5, 6, 12, 22, 33, 500000, tzinfo=timezone.utc),
+                created_time=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
             ),
         ),
         (2, None, 1, None),  # Wrong aggregator
