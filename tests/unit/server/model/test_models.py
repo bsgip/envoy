@@ -6,10 +6,12 @@ from assertical.fake.generator import (
     BASE_CLASS_PUBLIC_MEMBERS,
     CLASS_MEMBER_FETCHERS,
     get_generatable_class_base,
+    is_generatable_type,
     is_member_public,
     is_optional_type,
+    remove_passthrough_type,
 )
-from sqlalchemy.orm import MappedColumn
+from sqlalchemy.orm import ColumnProperty, MappedColumn
 
 import envoy.server.model as all_models
 from envoy.server.model import Base
@@ -38,6 +40,17 @@ def test_validate_model_definitions(model_type: type):
 
         member_type = type_hints[member_name]
 
+        # Check the type is "simple" and that we haven't accidentally typed it with some complex type
+        if isinstance(mapped_column_details.property, ColumnProperty):
+            # We have a "simple type" that sqlalchemy has mapped into a column
+            if not is_generatable_type(member_type):
+                # And then the typehint doesn't appear to be simple. Is the type hint appropriate?
+                errors.append(
+                    f"'{member_name}' has type hint '{member_type}' that appears incorrect. "
+                    + "The type appears to be a non primitive type but the property is NOT a ORM relationship"
+                )
+
+        # Check nullability
         type_hint_optional = is_optional_type(member_type)
         sql_orm_nullable = getattr(mapped_column_details, "nullable", None)
         if sql_orm_nullable is not None and type_hint_optional != sql_orm_nullable:
