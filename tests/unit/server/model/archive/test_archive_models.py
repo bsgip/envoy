@@ -142,7 +142,7 @@ def test_find_paired_archive_classes():
 
 
 @pytest.mark.parametrize("model_type, archive_type", find_paired_archive_classes())
-def test_archive_models_match_originals(model_type: type, archive_type: type):
+def test_archive_models_match_originals(model_type: type, archive_type: type):  # noqa C901
     """Compares every model with its corresponding archive model. Ensures that the schema on the archive version
     aligns perfectly with the original model.
 
@@ -220,7 +220,17 @@ def test_archive_models_match_originals(model_type: type, archive_type: type):
             errors.append(f"Property '{col_name}' has unique set in the archive version.")
             continue
 
+        if hasattr(archive_db.property, "order_by"):
+            if archive_db.property.order_by:
+                errors.append(f"Property '{col_name}' has an order by set in the archive version.")
+                continue
+
+        if model_db.nullable != archive_db.nullable:
+            errors.append(f"Property '{col_name}' has a mismatch on nullable between the archive and model versions.")
+            continue
+
         # Now compare DB types, unfortunately we can't just ==
+        # This method will spit out something like VARCHAR(16) which should be good enough to go
         if hasattr(model_db, "type"):
             if str(model_db.type) != str(archive_db.type):
                 errors.append(f"Property '{col_name}' has mismatching DB types. {model_db.type} != {archive_db.type}")

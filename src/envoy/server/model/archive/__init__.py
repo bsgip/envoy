@@ -1,5 +1,6 @@
-"""The model refers to the internal DB model that is not exposed externally. Its purpose is to be compatible with
-the various implemented schemas """
+"""The archive model refers to archiving versions of the original database models"""
 
 from .base import *  # noqa  # isort:skip
 from .site import *  # noqa  # isort:skip
+from .doe import *  # noqa  # isort:skip
+from .site_reading import *  # noqa  # isort:skip

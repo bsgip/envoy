@@ -74,7 +74,7 @@ class SiteReading(Base):
 
     __tablename__ = "site_reading"
 
-    site_reading_id: Mapped[int] = mapped_column(primary_key=True)
+    site_reading_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     site_reading_type_id: Mapped[int] = mapped_column(ForeignKey("site_reading_type.site_reading_type_id"))
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

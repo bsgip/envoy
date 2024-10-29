@@ -13,7 +13,6 @@ from envoy_schema.server.schema.sep2.der import (
     LocalControlModeStatusType,
     NormalCategoryType,
     OperationalModeStatusType,
-    StateOfChargeStatusValue,
     StorageModeStatusType,
 )
 from envoy_schema.server.schema.sep2.types import DeviceCategory

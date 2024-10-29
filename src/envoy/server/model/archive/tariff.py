@@ -1,0 +1,45 @@
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from envoy_schema.server.schema.sep2.types import CurrencyCode
+from sqlalchemy import DECIMAL, INTEGER, BigInteger, DateTime, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
+
+import envoy.server.model as original_models
+from envoy.server.model.archive.base import ArchiveBase
+
+
+class Tariff(ArchiveBase):
+    __tablename__ = original_models.tariff.Tariff.__tablename__
+    tariff_id: Mapped[int] = mapped_column(INTEGER, index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    dnsp_code: Mapped[str] = mapped_column(String(20))
+    currency_code: Mapped[CurrencyCode] = mapped_column(Integer)
+    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class TariffGeneratedRate(ArchiveBase):
+    __tablename__ = original_models.tariff.TariffGeneratedRate.__tablename__
+    tariff_generated_rate_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    tariff_id: Mapped[int] = mapped_column(INTEGER)
+    site_id: Mapped[int] = mapped_column(INTEGER)
+    calculation_log_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+
+    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the tariff comes into effect
+    duration_seconds: Mapped[int] = mapped_column(INTEGER)
+    import_active_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES)
+    )  # calculated rate for importing active power - price is dollars per kw/h
+    export_active_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES)
+    )  # calculated rate for exporting active power - price is dollars per kw/h
+    import_reactive_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES)
+    )  # calculated rate for importing reactive power - price is dollars per kvar/h
+    export_reactive_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES)
+    )  # calculated rate for exporting reactive power - price is dollars per kvar/h

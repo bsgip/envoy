@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import BOOLEAN, DateTime, func
+from sqlalchemy import DateTime, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -21,7 +21,12 @@ class ArchiveBase(DeclarativeBase):
     archive_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     # When the archived row was copied into the archived table
+    # This is NOT guaranteed to align with the changed_time (for notification server lookups)
+    # it's purely an auditing value for when the row archived
     archive_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    # If true, this will be the last archived value for the original source row (as it is now deleted)
-    is_deleted: Mapped[bool] = mapped_column(BOOLEAN, server_default="FALSE")
+    # If set, this will be when the row in the original table was deleted (meaning this should be the archived row).
+    # This WILL align with the changed_times shared with the notification server.
+    deleted_time: Mapped[bool] = mapped_column(
+        DateTime(timezone=True), server_default="NULL", nullable=True, index=True
+    )
