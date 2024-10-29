@@ -2,10 +2,18 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import DateTime, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
+
+from envoy.server.model.base import Base
+
+# All of our archive table names will have this prefix
+ARCHIVE_TABLE_PREFIX = "archive_"
+
+# All of our archive classes/types will have this prefix
+ARCHIVE_TYPE_PREFIX = "Archive"
 
 
-class ArchiveBase(DeclarativeBase):
+class ArchiveBase(Base):
     """An archive table is a (mostly non indexed) copy of historical rows from certain key tables. Each row will
     represent a moment in time snapshot of a single row from that table. That original row might have multiple
     archived copies, each showing historical values at the moment they updated.
@@ -15,7 +23,7 @@ class ArchiveBase(DeclarativeBase):
 
     ForeignKeys are NOT maintained in archive tables. Neither are relationships or anything else requiring a join"""
 
-    __table_args__ = {"schema": "archive"}
+    __abstract__ = True
 
     # The PK for uniquely identifying any archived row
     archive_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -27,6 +35,4 @@ class ArchiveBase(DeclarativeBase):
 
     # If set, this will be when the row in the original table was deleted (meaning this should be the archived row).
     # This WILL align with the changed_times shared with the notification server.
-    deleted_time: Mapped[bool] = mapped_column(
-        DateTime(timezone=True), server_default="NULL", nullable=True, index=True
-    )
+    deleted_time: Mapped[bool] = mapped_column(DateTime(timezone=True), server_default=None, nullable=True, index=True)

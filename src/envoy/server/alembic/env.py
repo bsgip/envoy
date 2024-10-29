@@ -7,7 +7,6 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from envoy.server import model  # noqa
-from envoy.server.model import archive  # noqa
 from envoy.server.settings import generate_settings
 
 # this is the Alembic Config object, which provides

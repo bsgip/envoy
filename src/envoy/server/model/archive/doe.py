@@ -6,13 +6,13 @@ from sqlalchemy import DECIMAL, INTEGER, BigInteger, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
-from envoy.server.model.archive.base import ArchiveBase
+from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX, ArchiveBase
 
 
-class DynamicOperatingEnvelope(ArchiveBase):
+class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     """Represents a dynamic operating envelope for a site at a particular time interval"""
 
-    __tablename__ = original_models.doe.DynamicOperatingEnvelope.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.DynamicOperatingEnvelope.__tablename__
     dynamic_operating_envelope_id: Mapped[int] = mapped_column(BigInteger, index=True)
     site_id: Mapped[int] = mapped_column(INTEGER)
     calculation_log_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)

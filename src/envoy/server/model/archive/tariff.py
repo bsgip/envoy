@@ -7,11 +7,11 @@ from sqlalchemy import DECIMAL, INTEGER, BigInteger, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
-from envoy.server.model.archive.base import ArchiveBase
+from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX, ArchiveBase
 
 
-class Tariff(ArchiveBase):
-    __tablename__ = original_models.tariff.Tariff.__tablename__
+class ArchiveTariff(ArchiveBase):
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.tariff.Tariff.__tablename__
     tariff_id: Mapped[int] = mapped_column(INTEGER, index=True)
     name: Mapped[str] = mapped_column(String(64))
     dnsp_code: Mapped[str] = mapped_column(String(20))
@@ -20,8 +20,8 @@ class Tariff(ArchiveBase):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
-class TariffGeneratedRate(ArchiveBase):
-    __tablename__ = original_models.tariff.TariffGeneratedRate.__tablename__
+class ArchiveTariffGeneratedRate(ArchiveBase):
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.tariff.TariffGeneratedRate.__tablename__
     tariff_generated_rate_id: Mapped[int] = mapped_column(BigInteger, index=True)
     tariff_id: Mapped[int] = mapped_column(INTEGER)
     site_id: Mapped[int] = mapped_column(INTEGER)

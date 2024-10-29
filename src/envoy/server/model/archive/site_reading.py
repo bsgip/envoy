@@ -15,10 +15,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
 from envoy.server.model.archive import ArchiveBase
+from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX
 
 
-class SiteReadingType(ArchiveBase):
-    __tablename__ = original_models.site_reading.SiteReadingType.__tablename__
+class ArchiveSiteReadingType(ArchiveBase):
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site_reading.SiteReadingType.__tablename__
 
     site_reading_type_id: Mapped[int] = mapped_column(INTEGER, index=True)
     aggregator_id: Mapped[int] = mapped_column(INTEGER)
@@ -36,8 +37,8 @@ class SiteReadingType(ArchiveBase):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading set was last altered
 
 
-class SiteReading(ArchiveBase):
-    __tablename__ = original_models.site_reading.SiteReading.__tablename__
+class ArchiveSiteReading(ArchiveBase):
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site_reading.SiteReading.__tablename__
 
     site_reading_id: Mapped[int] = mapped_column(BigInteger, index=True)
     site_reading_type_id: Mapped[int] = mapped_column(INTEGER)

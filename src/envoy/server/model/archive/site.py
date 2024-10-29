@@ -21,10 +21,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
 from envoy.server.model.archive import ArchiveBase
+from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX
 
 
-class Site(ArchiveBase):
-    __tablename__ = original_models.Site.__tablename__
+class ArchiveSite(ArchiveBase):
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.Site.__tablename__
 
     site_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
     nmi: Mapped[Optional[str]] = mapped_column(VARCHAR(length=11), nullable=True)
@@ -38,8 +39,8 @@ class Site(ArchiveBase):
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
 
 
-class SiteDER(ArchiveBase):
-    __tablename__ = original_models.SiteDER.__tablename__
+class ArchiveSiteDER(ArchiveBase):
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDER.__tablename__
 
     site_der_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
     site_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
@@ -48,8 +49,8 @@ class SiteDER(ArchiveBase):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
-class SiteDERRating(ArchiveBase):
-    __tablename__ = original_models.SiteDERRating.__tablename__
+class ArchiveSiteDERRating(ArchiveBase):
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERRating.__tablename__
 
     site_der_rating_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
     site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
@@ -105,8 +106,8 @@ class SiteDERRating(ArchiveBase):
     doe_modes_supported: Mapped[Optional[DOESupportedMode]] = mapped_column(INTEGER, nullable=True)
 
 
-class SiteDERSetting(ArchiveBase):
-    __tablename__ = original_models.SiteDERSetting.__tablename__
+class ArchiveSiteDERSetting(ArchiveBase):
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERSetting.__tablename__
 
     site_der_setting_id: Mapped[int] = mapped_column(INTEGER, index=True)  # This is the original PK
     site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
@@ -162,8 +163,8 @@ class SiteDERSetting(ArchiveBase):
     doe_modes_enabled: Mapped[Optional[DOESupportedMode]] = mapped_column(INTEGER, nullable=True)
 
 
-class SiteDERAvailability(ArchiveBase):
-    __tablename__ = original_models.SiteDERAvailability.__tablename__
+class ArchiveSiteDERAvailability(ArchiveBase):
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERAvailability.__tablename__
 
     site_der_availability_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
     site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
@@ -184,8 +185,8 @@ class SiteDERAvailability(ArchiveBase):
     estimated_w_avail_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
 
 
-class SiteDERStatus(ArchiveBase):
-    __tablename__ = original_models.SiteDERStatus.__tablename__
+class ArchiveSiteDERStatus(ArchiveBase):
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERStatus.__tablename__
 
     site_der_status_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
     site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK

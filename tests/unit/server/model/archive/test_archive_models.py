@@ -8,7 +8,7 @@ import pytest
 from assertical.fake.generator import enumerate_class_properties, get_enum_type
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
-from envoy.server.model.archive.base import ArchiveBase
+from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX, ARCHIVE_TYPE_PREFIX, ArchiveBase
 from envoy.server.model.base import Base
 
 MODELS_PACKAGE = "envoy.server.model"
@@ -69,7 +69,9 @@ def find_paired_archive_modules() -> list[tuple[str, str]]:
 
 def find_paired_unpaired_archive_classes() -> set[Optional[type], Optional[type]]:
     """Enumerates submodules from find_paired_archive_modules and identifies classes from
-    each pairing that have the same name. Returns the paired types (or None if unpaired)"""
+    each pairing that have the same name. Returns the paired types (or None if unpaired)
+
+    Noting that a model class like Site will be prefixed on the archive side as ArchiveSite"""
     pairings: set[Optional[type], Optional[type]] = set()
     for m, a in find_paired_archive_modules():
 
@@ -84,14 +86,16 @@ def find_paired_unpaired_archive_classes() -> set[Optional[type], Optional[type]
             if t.__module__ == a
         )
 
-        for name, mt in model_types_by_name.items():
-            if name in archive_types_by_name:
-                pairings.add((mt, archive_types_by_name[name]))
+        for model_name, mt in model_types_by_name.items():
+            archive_name = ARCHIVE_TYPE_PREFIX + model_name
+            if archive_name in archive_types_by_name:
+                pairings.add((mt, archive_types_by_name[archive_name]))
             else:
                 pairings.add((mt, None))
 
-        for name, at in archive_types_by_name.items():
-            if name not in model_types_by_name:
+        for archive_name, at in archive_types_by_name.items():
+            model_name = archive_name[len(ARCHIVE_TYPE_PREFIX) :]
+            if model_name not in model_types_by_name:
                 pairings.add((None, at))
 
     return pairings
@@ -150,10 +154,14 @@ def test_archive_models_match_originals(model_type: type, archive_type: type):  
 
     # Check correct subclassing
     assert issubclass(model_type, Base)
+    assert not issubclass(model_type, ArchiveBase)
     assert issubclass(archive_type, ArchiveBase)
 
-    # Check tablename is the same
-    assert model_type.__tablename__ and model_type.__tablename__ == archive_type.__tablename__
+    # Check tablename is the same (minus the ARCHIVE_TABLE_PREFIX)
+    assert archive_type.__tablename__.startswith(ARCHIVE_TABLE_PREFIX)
+    assert (
+        model_type.__tablename__ and model_type.__tablename__ == archive_type.__tablename__[len(ARCHIVE_TABLE_PREFIX) :]
+    )
 
     errors: list[str] = []
 

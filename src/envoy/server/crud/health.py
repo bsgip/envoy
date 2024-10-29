@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
-from envoy.server.model.archive.site import Site as ArchiveSite
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.tariff import TariffGeneratedRate
 
@@ -46,13 +45,6 @@ async def check_database(session: AsyncSession, check: HealthCheck) -> None:
         resp = await session.execute(stmt)
 
         check.database_has_data = resp.scalar_one() > 0
-
-        # check the archive tables have access too - they exist in a different schema
-        # We just check if we can pull a row
-        stmt_archive = select(ArchiveSite).limit(1)
-        resp = await session.execute(stmt_archive)
-        resp.scalar_one_or_none()
-
         check.database_connectivity = True
     except Exception as ex:
         check.database_connectivity = False
