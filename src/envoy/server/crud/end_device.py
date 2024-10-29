@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, Sequence
 
 from envoy_schema.server.schema.sep2.types import DeviceCategory
-from sqlalchemy import func, select
+from sqlalchemy import func, insert, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,8 @@ from envoy.server.crud import common
 from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
+from envoy.server.model.archive.base import ARCHIVE_BASE_COLUMNS
+from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.site import Site
 from envoy.server.settings import settings
 
@@ -144,11 +146,22 @@ async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, 
     Inserts/Updates will be based on matches on the agg_id / sfdi index. Attempts to mutate agg_id/sfdi will result
     in inserting a new record.
 
-    Relying on postgresql dialect for upsert capability. Unfortunately this breaks the typical ORM insert pattern."""
+    The current value (if any) for the site will be archived"""
 
     if aggregator_id != site.aggregator_id:
         raise ValueError(f"Specified aggregator_id {aggregator_id} mismatches site.aggregator_id {site.aggregator_id}")
 
+    # "Save" any existing sites with the same data to the archive table
+    archive_cols = [column.name for column in ArchiveSite.__table__.columns if column.name not in ARCHIVE_BASE_COLUMNS]
+    archive_stmt = insert(ArchiveSite).from_select(
+        archive_cols,
+        select(*[getattr(Site, column) for column in archive_cols]).where(
+            (Site.aggregator_id == aggregator_id) & (Site.sfdi == site.sfdi)
+        ),
+    )
+    await session.execute(archive_stmt)
+
+    # Perform the upsert
     table = Site.__table__
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     stmt = psql_insert(Site).values(**{k: getattr(site, k) for k in update_cols})

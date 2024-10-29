@@ -8,6 +8,7 @@ from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.types import DeviceCategory
+from sqlalchemy import func, select
 
 from envoy.server.crud.end_device import (
     get_virtual_site_for_aggregator,
@@ -19,6 +20,7 @@ from envoy.server.crud.end_device import (
     select_single_site_with_site_id,
     upsert_site_for_aggregator,
 )
+from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.site import Site
 
 
@@ -412,6 +414,9 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
         assert await select_aggregator_site_count(session, 2, datetime.min) == 1
         assert await select_aggregator_site_count(session, 3, datetime.min) == 0
 
+        # This is a new row - therefore nothing should be copied to the archive
+        assert (await session.execute(select(func.count()).select_from(ArchiveSite))).scalar_one() == 0
+
 
 @pytest.mark.anyio
 async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
@@ -461,6 +466,29 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         assert await select_aggregator_site_count(session, 1, datetime.min) == 3
         assert await select_aggregator_site_count(session, 2, datetime.min) == 1
         assert await select_aggregator_site_count(session, 3, datetime.min) == 0
+
+        # This is an updated row - therefore we should have a new archived site containing the original data
+        assert (await session.execute(select(func.count()).select_from(ArchiveSite))).scalar_one() == 1
+        archive_data = (await session.execute(select(ArchiveSite))).scalar_one()
+
+        # INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category") VALUES (1, '1111111111', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 04:05:06.500', 'site1-lfdi', 1111, 0);
+        assert_class_instance_equality(
+            Site,
+            Site(
+                site_id=1,
+                nmi="1111111111",
+                aggregator_id=1,
+                timezone_id="Australia/Brisbane",
+                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
+                changed_time=datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc),
+                lfdi="site1-lfdi",
+                sfdi=1111,
+                device_category=0,
+            ),
+            archive_data,
+        )
+        assert_nowish(archive_data.archive_time)
+        assert archive_data.deleted_time is None
 
 
 @pytest.mark.anyio

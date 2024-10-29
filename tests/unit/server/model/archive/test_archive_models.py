@@ -5,10 +5,11 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
+from assertical.asserts.type import assert_set_type
 from assertical.fake.generator import enumerate_class_properties, get_enum_type
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
-from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX, ARCHIVE_TYPE_PREFIX, ArchiveBase
+from envoy.server.model.archive.base import ARCHIVE_BASE_COLUMNS, ARCHIVE_TABLE_PREFIX, ARCHIVE_TYPE_PREFIX, ArchiveBase
 from envoy.server.model.base import Base
 
 MODELS_PACKAGE = "envoy.server.model"
@@ -115,6 +116,13 @@ def find_paired_archive_classes() -> list[tuple[type, type]]:
             continue
         pairings.append((m, a))
     return pairings
+
+
+def test_archive_base_columns():
+    assert_set_type(str, ARCHIVE_BASE_COLUMNS)
+    assert len(ARCHIVE_BASE_COLUMNS) > 0
+    for c in ARCHIVE_BASE_COLUMNS:
+        assert hasattr(ArchiveBase, c)
 
 
 def test_find_paired_archive_modules():
