@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DECIMAL, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import DECIMAL, BigInteger, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model.base import Base
@@ -16,7 +16,7 @@ class DynamicOperatingEnvelope(Base):
     """Represents a dynamic operating envelope for a site at a particular time interval"""
 
     __tablename__ = "dynamic_operating_envelope"
-    dynamic_operating_envelope_id: Mapped[int] = mapped_column(primary_key=True)
+    dynamic_operating_envelope_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id"))  # The site that this doe applies to
     calculation_log_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("calculation_log.calculation_log_id"), nullable=True, index=True

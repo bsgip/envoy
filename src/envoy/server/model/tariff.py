@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Optional
 
 from envoy_schema.server.schema.sep2.types import CurrencyCode
-from sqlalchemy import DECIMAL, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import DECIMAL, BigInteger, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
@@ -35,7 +35,7 @@ class TariffGeneratedRate(Base):
     the 'default' rate for a particular time slice"""
 
     __tablename__ = "tariff_generated_rate"
-    tariff_generated_rate_id: Mapped[int] = mapped_column(primary_key=True)
+    tariff_generated_rate_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     tariff_id: Mapped[int] = mapped_column(ForeignKey("tariff.tariff_id"))  # The tariff
     site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id"))  # The site that this rate applies to
 
