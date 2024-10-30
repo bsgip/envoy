@@ -1,8 +1,10 @@
 from datetime import datetime
+from itertools import chain
 from typing import Any, Callable
 
 from sqlalchemy import Delete, Select, delete, insert, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.dml import ReturningDelete
 
 from envoy.server.model.archive.base import ARCHIVE_BASE_COLUMNS, ArchiveBase
 from envoy.server.model.base import Base
@@ -23,6 +25,8 @@ async def copy_rows_into_archive(
 
     where_clause_decorator should be used to scope the archive operation to specific rows. Do this by:
         where_clause_decorator=lambda q: q.where(MyTable.column_name == 123)
+
+    NOTE - this will not populate/affect any models in the session, all operations occur on the DB directly
     """
 
     # "Save" any existing sites with the same data to the archive table
@@ -50,6 +54,8 @@ async def delete_rows_into_archive(
 
     where_clause_decorator should be used to scope the delete operation to specific rows. Do this by:
         where_clause_decorator=lambda q: q.where(MyTable.column_name == 123)
+
+    NOTE - this will not populate/affect any models in the session, all operations occur on the DB directly
     """
 
     # We will be writing a query like:
@@ -58,17 +64,16 @@ async def delete_rows_into_archive(
     #      WHERE ...
     #      RETURNING (col1, col2...)
     #     )
-    cols_to_archive = [
-        column.name for column in archive_table.__table__.columns if column.name not in ARCHIVE_BASE_COLUMNS
-    ]
 
     # The deleted_time is going to be a constant that we specify
-    delete_cte = where_clause_decorator(delete(source_table)).returning(
-        *cols_to_archive, literal(deleted_time).label(ArchiveBase.deleted_time.name)
+    delete_cte = (
+        where_clause_decorator(delete(source_table))
+        .returning(*source_table.__table__.columns, literal(deleted_time).label(ArchiveBase.deleted_time.name))
+        .cte("deleted_rows")
     )
-    returned_cols = cols_to_archive + [ArchiveBase.deleted_time]
+    returned_cols = [c.name for c in chain(source_table.__table__.columns, archive_table.deleted_time.property.columns)]
 
     # Define the insert statement, selecting from the CTE
-    insert_from_delete_stmt = insert(archive_table).from_select(returned_cols, select(delete_cte))
+    insert_from_delete_stmt = insert(archive_table).from_select(returned_cols, delete_cte)
 
     await session.execute(insert_from_delete_stmt)

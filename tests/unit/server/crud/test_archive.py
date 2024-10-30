@@ -10,10 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
 from envoy.server.model.archive.base import ARCHIVE_BASE_COLUMNS
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import ArchiveSite
+from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
+from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
-from envoy.server.model.site_reading import SiteReadingType
-from envoy.server.model.tariff import Tariff
+from envoy.server.model.site_reading import SiteReading, SiteReadingType
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 from tests.unit.server.model.archive.test_archive_models import find_paired_archive_classes
 
 
@@ -126,7 +130,6 @@ async def test_copy_rows_into_archive_multiple_times(pg_base_config, original_ty
         assert all((v is None for v in deleted_time_vals)), "Nothing should be marked as deleted"
         for archive_time in await fetch_single_column(session, archive_type, "archive_time"):
             assert_nowish(archive_time)
-        assert all((v is None for v in deleted_time_vals))
 
 
 @pytest.mark.anyio
@@ -160,7 +163,6 @@ async def test_copy_rows_into_archive_complex_filter(pg_base_config):
         assert all((v is None for v in deleted_time_vals)), "Nothing should be marked as deleted"
         for archive_time in await fetch_single_column(session, ArchiveSite, "archive_time"):
             assert_nowish(archive_time)
-        assert all((v is None for v in deleted_time_vals))
 
 
 @pytest.mark.parametrize(
@@ -176,6 +178,7 @@ async def test_delete_rows_into_archive_no_matches(pg_base_config, original_type
     async with generate_async_session(pg_base_config) as session:
         count_before = (await session.execute(select(func.count()).select_from(original_type))).scalar_one()
         assert count_before > 0, "This isn't testing anything if this fails"
+        original_values = await fetch_all_values_as_tuples(session, original_type)
 
         await delete_rows_into_archive(session, original_type, archive_type, deleted_time, lambda q: q.where(False))
         await session.commit()
@@ -184,12 +187,229 @@ async def test_delete_rows_into_archive_no_matches(pg_base_config, original_type
         # Ensure nothing is copied / deleted
         assert (await session.execute(select(func.count()).select_from(archive_type))).scalar_one() == 0
         assert count_before == (await session.execute(select(func.count()).select_from(original_type))).scalar_one()
+        assert original_values == (await fetch_all_values_as_tuples(session, original_type)), "No changes"
 
 
 @pytest.mark.parametrize(
-    "original_type, archive_type",
-    [(o, a) for (o, a) in find_paired_archive_classes() if o not in {Site, Tariff, SiteReadingType}],
+    "original_type, archive_type, commit",
+    [
+        (ot, at, c)
+        for (ot, at), c in product(
+            ((ot, at) for ot, at in find_paired_archive_classes() if ot not in {Site, Tariff, SiteReadingType}),
+            [True, False],
+        )
+    ],
 )
 @pytest.mark.anyio
-async def test_delete_rows_into_archive_all_matches(pg_base_config, original_type: type, archive_type: type):
-    pass
+async def test_delete_rows_into_archive_all_matches(
+    pg_base_config, original_type: type, archive_type: type, commit: bool
+):
+    """Check that delete_rows_into_archive can delete everything if the where clause matches everything
+
+    NOTE - this test won't cover types that have FK dependencies"""
+
+    deleted_time = datetime(2021, 5, 6, 7, 8, 9, 1234, tzinfo=timezone.utc)
+
+    async with generate_async_session(pg_base_config) as session:
+        original_count_before = (await session.execute(select(func.count()).select_from(original_type))).scalar_one()
+        assert original_count_before > 0, "This isn't testing anything if this fails"
+        original_values = await fetch_all_values_as_tuples(session, original_type)
+
+        await delete_rows_into_archive(session, original_type, archive_type, deleted_time, lambda q: q.where(True))
+
+        if commit:
+            await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        original_count_after = (await session.execute(select(func.count()).select_from(original_type))).scalar_one()
+        archive_count_after = (await session.execute(select(func.count()).select_from(archive_type))).scalar_one()
+
+        if commit:
+            assert original_count_after == 0
+            assert archive_count_after == original_count_before
+            assert original_values == await fetch_all_values_as_tuples(
+                session, archive_type, ignore_columns=ARCHIVE_BASE_COLUMNS
+            )
+
+            # Validate the archive specific metadata
+            deleted_time_vals = await fetch_single_column(session, ArchiveSite, "deleted_time")
+            assert all((v == deleted_time for v in deleted_time_vals)), "Should match supplied datetime"
+            for archive_time in await fetch_single_column(session, ArchiveSite, "archive_time"):
+                assert_nowish(archive_time)
+        else:
+            assert original_count_after == original_count_before
+            assert archive_count_after == 0
+            assert original_values == await fetch_all_values_as_tuples(session, original_type)
+
+
+@pytest.mark.anyio
+async def test_delete_rows_into_archive_complex_filter(pg_base_config):
+    """Check that delete_rows_into_archive can handle a complex filter.
+
+    The filter will delete The first and last TariffGeneratedRate"""
+
+    deleted_time = datetime(2022, 1, 2, 3, 8, 9, 1234, tzinfo=timezone.utc)
+
+    async with generate_async_session(pg_base_config) as session:
+        original_count_before = (
+            await session.execute(select(func.count()).select_from(TariffGeneratedRate))
+        ).scalar_one()
+        original_values = await fetch_all_values_as_tuples(session, TariffGeneratedRate)
+
+        await delete_rows_into_archive(
+            session,
+            TariffGeneratedRate,
+            ArchiveTariffGeneratedRate,
+            deleted_time,
+            lambda q: q.where(
+                or_(TariffGeneratedRate.tariff_generated_rate_id == 1, TariffGeneratedRate.duration_seconds == 14)
+            ),
+        )
+
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        original_count_after = (
+            await session.execute(select(func.count()).select_from(TariffGeneratedRate))
+        ).scalar_one()
+        archive_count_after = (
+            await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))
+        ).scalar_one()
+
+        assert original_count_after == (original_count_before - 2), "Only two rates should've been archived"
+        assert archive_count_after == 2, "Only two rates should've been archived"
+        original_values_after = await fetch_all_values_as_tuples(session, TariffGeneratedRate)
+        archive_values_after = await fetch_all_values_as_tuples(
+            session, ArchiveTariffGeneratedRate, ignore_columns=ARCHIVE_BASE_COLUMNS
+        )
+
+        assert original_values[1:3] == original_values_after, "The second and third rates should be left in place"
+        assert [original_values[0], original_values[3]] == archive_values_after, "First and fourth rates should archive"
+
+        # Validate the archive specific metadata
+        deleted_time_vals = await fetch_single_column(session, ArchiveSite, "deleted_time")
+        assert all((v == deleted_time for v in deleted_time_vals)), "Should match supplied datetime"
+        for archive_time in await fetch_single_column(session, ArchiveSite, "archive_time"):
+            assert_nowish(archive_time)
+
+
+@pytest.mark.anyio
+async def test_delete_rows_into_archive_cascade_deletes(pg_base_config):
+    """Check we can us delete_rows_into_archive to cascade deletes over multiple queries."""
+
+    deleted_time = datetime(2021, 9, 2, 3, 8, 9, 12345, tzinfo=timezone.utc)
+
+    async with generate_async_session(pg_base_config) as session:
+        # We can't do joins via this method, instead we hardcode all the SiteReadingType IDs that belong to site 1
+        await delete_rows_into_archive(
+            session,
+            SiteReading,
+            ArchiveSiteReading,
+            deleted_time,
+            lambda q: q.where(SiteReading.site_reading_type_id.in_([1, 2, 3])),
+        )
+
+        await delete_rows_into_archive(
+            session,
+            SiteReadingType,
+            ArchiveSiteReadingType,
+            deleted_time,
+            lambda q: q.where(SiteReadingType.site_id == 1),
+        )
+
+        await delete_rows_into_archive(
+            session,
+            DynamicOperatingEnvelope,
+            ArchiveDynamicOperatingEnvelope,
+            deleted_time,
+            lambda q: q.where(DynamicOperatingEnvelope.site_id == 1),
+        )
+
+        await delete_rows_into_archive(
+            session,
+            TariffGeneratedRate,
+            ArchiveTariffGeneratedRate,
+            deleted_time,
+            lambda q: q.where(TariffGeneratedRate.site_id == 1),
+        )
+
+        await delete_rows_into_archive(
+            session,
+            Site,
+            ArchiveSite,
+            deleted_time,
+            lambda q: q.where(Site.site_id == 1),
+        )
+
+        await session.commit()
+
+    # Now do some top level validation
+    async with generate_async_session(pg_base_config) as session:
+        assert 5 == (await session.execute(select(func.count()).select_from(Site))).scalar_one()
+        assert 1 == (await session.execute(select(func.count()).select_from(ArchiveSite))).scalar_one()
+
+        assert 1 == (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
+        assert 3 == (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one()
+
+        assert 1 == (await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))).scalar_one()
+        assert (
+            3 == (await session.execute(select(func.count()).select_from(ArchiveDynamicOperatingEnvelope))).scalar_one()
+        )
+
+        assert 1 == (await session.execute(select(func.count()).select_from(SiteReadingType))).scalar_one()
+        assert 3 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
+
+        assert 1 == (await session.execute(select(func.count()).select_from(SiteReading))).scalar_one()
+        assert 3 == (await session.execute(select(func.count()).select_from(ArchiveSiteReading))).scalar_one()
+
+
+@pytest.mark.anyio
+async def test_delete_after_copy(pg_base_config):
+    """Check that delete_rows_into_archive can run after copy_rows_into_archive"""
+
+    deleted_time = datetime(2024, 1, 2, 3, 8, 9, 1234, tzinfo=timezone.utc)
+
+    async with generate_async_session(pg_base_config) as session:
+        original_count_before = (
+            await session.execute(select(func.count()).select_from(TariffGeneratedRate))
+        ).scalar_one()
+        original_values = await fetch_all_values_as_tuples(session, TariffGeneratedRate)
+
+        await copy_rows_into_archive(
+            session,
+            TariffGeneratedRate,
+            ArchiveTariffGeneratedRate,
+            lambda q: q.where(TariffGeneratedRate.tariff_generated_rate_id == 1),
+        )
+
+        await delete_rows_into_archive(
+            session,
+            TariffGeneratedRate,
+            ArchiveTariffGeneratedRate,
+            deleted_time,
+            lambda q: q.where(TariffGeneratedRate.tariff_generated_rate_id == 1),
+        )
+
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        original_count_after = (
+            await session.execute(select(func.count()).select_from(TariffGeneratedRate))
+        ).scalar_one()
+        archive_count_after = (
+            await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))
+        ).scalar_one()
+
+        assert original_count_after == (original_count_before - 1), "Only one rate was deleted"
+        assert archive_count_after == 2, "But it was archived twice. Once for copy, Once for delete"
+        archive_values_after = await fetch_all_values_as_tuples(
+            session, ArchiveTariffGeneratedRate, ignore_columns=ARCHIVE_BASE_COLUMNS
+        )
+
+        assert original_values[0:1] * 2 == archive_values_after, "The same row was archived twice"
+
+        # Validate the archive specific metadata
+        deleted_time_vals = await fetch_single_column(session, ArchiveTariffGeneratedRate, "deleted_time")
+        assert [None, deleted_time] == deleted_time_vals
+        for archive_time in await fetch_single_column(session, ArchiveTariffGeneratedRate, "archive_time"):
+            assert_nowish(archive_time)
