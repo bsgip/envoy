@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud import common
 from envoy.server.crud.aggregator import select_aggregator
+from envoy.server.crud.archive import copy_rows_into_archive
 from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.archive.base import ARCHIVE_BASE_COLUMNS
@@ -152,14 +153,9 @@ async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, 
         raise ValueError(f"Specified aggregator_id {aggregator_id} mismatches site.aggregator_id {site.aggregator_id}")
 
     # "Save" any existing sites with the same data to the archive table
-    archive_cols = [column.name for column in ArchiveSite.__table__.columns if column.name not in ARCHIVE_BASE_COLUMNS]
-    archive_stmt = insert(ArchiveSite).from_select(
-        archive_cols,
-        select(*[getattr(Site, column) for column in archive_cols]).where(
-            (Site.aggregator_id == aggregator_id) & (Site.sfdi == site.sfdi)
-        ),
+    await copy_rows_into_archive(
+        session, Site, ArchiveSite, lambda q: q.where((Site.aggregator_id == aggregator_id) & (Site.sfdi == site.sfdi))
     )
-    await session.execute(archive_stmt)
 
     # Perform the upsert
     table = Site.__table__

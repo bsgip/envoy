@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
-from assertical.asserts.time import assert_datetime_equal
+from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.fake.asyncio import create_async_result
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
@@ -33,6 +33,12 @@ from envoy.server.manager.der import (
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.der import to_hex_binary
+from envoy.server.model.archive.site import (
+    ArchiveSiteDERAvailability,
+    ArchiveSiteDERRating,
+    ArchiveSiteDERSetting,
+    ArchiveSiteDERStatus,
+)
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import SiteRequestScope
@@ -292,7 +298,7 @@ async def test_upsert_der_capability_roundtrip(
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
-    expected: DERCapability = generate_class_instance(DERCapability, seed=22, generate_relationships=True)
+    expected: DERCapability = generate_class_instance(DERCapability, seed=5001, generate_relationships=True)
     expected.modesSupported = to_hex_binary(
         DERControlType.OP_MOD_HVRT_MUST_TRIP | DERControlType.OP_MOD_HVRT_MOMENTARY_CESSATION
     )
@@ -317,6 +323,17 @@ async def test_upsert_der_capability_roundtrip(
         )
         assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
+
+        # Archive records will be written on updates, otherwise they won't be touched
+        archive_records = (await session.execute(select(ArchiveSiteDERRating))).scalars().all()
+        if site_id == 1:
+            # site_id 1 is the test case that will update an existing record
+            assert len(archive_records) == 1
+            assert archive_records[0].max_a_value == 106, "This is the original value from the DB"
+            assert archive_records[0].deleted_time is None
+            assert_nowish(archive_records[0].archive_time)
+        else:
+            assert len(archive_records) == 0
 
     mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE_DER_RATING, now)
 
@@ -417,7 +434,7 @@ async def test_upsert_der_settings_roundtrip(
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
-    expected: DERSettings = generate_class_instance(DERSettings, seed=22, generate_relationships=True)
+    expected: DERSettings = generate_class_instance(DERSettings, seed=5001, generate_relationships=True)
     expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_MAX_LIM_W | DERControlType.CHARGE_MODE)
     expected.doeModesEnabled = to_hex_binary(DERControlType.OP_MOD_CONNECT)
     async with generate_async_session(pg_base_config) as session:
@@ -441,6 +458,17 @@ async def test_upsert_der_settings_roundtrip(
         assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.updatedTime)  # Should be set to server time
+
+        # Archive records will be written on updates, otherwise they won't be touched
+        archive_records = (await session.execute(select(ArchiveSiteDERSetting))).scalars().all()
+        if site_id == 1:
+            # site_id 1 is the test case that will update an existing record
+            assert len(archive_records) == 1
+            assert archive_records[0].es_delay == 406, "This is the original value from the DB"
+            assert archive_records[0].deleted_time is None
+            assert_nowish(archive_records[0].archive_time)
+        else:
+            assert len(archive_records) == 0
 
     mock_NotificationManager.notify_upserted_entities.assert_called_once_with(
         SubscriptionResource.SITE_DER_SETTING, now
@@ -541,7 +569,7 @@ async def test_upsert_der_availability_roundtrip(
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
-    expected: DERAvailability = generate_class_instance(DERAvailability, seed=22, generate_relationships=True)
+    expected: DERAvailability = generate_class_instance(DERAvailability, seed=5001, generate_relationships=True)
     async with generate_async_session(pg_base_config) as session:
         await DERAvailabilityManager.upsert_der_availability_for_site(
             session,
@@ -563,6 +591,17 @@ async def test_upsert_der_availability_roundtrip(
         assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.readingTime)  # Should be set to server time
+
+        # Archive records will be written on updates, otherwise they won't be touched
+        archive_records = (await session.execute(select(ArchiveSiteDERAvailability))).scalars().all()
+        if site_id == 1:
+            # site_id 1 is the test case that will update an existing record
+            assert len(archive_records) == 1
+            assert archive_records[0].availability_duration_sec == 202, "This is the original value from the DB"
+            assert archive_records[0].deleted_time is None
+            assert_nowish(archive_records[0].archive_time)
+        else:
+            assert len(archive_records) == 0
 
     mock_NotificationManager.notify_upserted_entities.assert_called_once_with(
         SubscriptionResource.SITE_DER_AVAILABILITY, now
@@ -667,7 +706,7 @@ async def test_upsert_der_status_roundtrip(
     mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
-    expected: DERStatus = generate_class_instance(DERStatus, seed=22, generate_relationships=True)
+    expected: DERStatus = generate_class_instance(DERStatus, seed=5001, generate_relationships=True)
     expected.alarmStatus = to_hex_binary(
         AlarmStatusType.DER_FAULT_OVER_FREQUENCY | AlarmStatusType.DER_FAULT_VOLTAGE_IMBALANCE
     )
@@ -695,5 +734,16 @@ async def test_upsert_der_status_roundtrip(
         assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.readingTime)  # Should be set to server time
+
+        # Archive records will be written on updates, otherwise they won't be touched
+        archive_records = (await session.execute(select(ArchiveSiteDERStatus))).scalars().all()
+        if site_id == 1:
+            # site_id 1 is the test case that will update an existing record
+            assert len(archive_records) == 1
+            assert archive_records[0].manufacturer_status == "mnstat", "This is the original value from the DB"
+            assert archive_records[0].deleted_time is None
+            assert_nowish(archive_records[0].archive_time)
+        else:
+            assert len(archive_records) == 0
 
     mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE_DER_STATUS, now)

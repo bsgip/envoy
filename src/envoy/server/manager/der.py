@@ -13,6 +13,7 @@ from envoy_schema.server.schema.sep2.der import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.notification.manager.notification import NotificationManager
+from envoy.server.crud.archive import copy_rows_into_archive
 from envoy.server.crud.der import generate_default_site_der, select_site_der_for_site
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
@@ -26,7 +27,13 @@ from envoy.server.mapper.sep2.der import (
     DERSettingMapper,
     DERStatusMapper,
 )
-from envoy.server.model.site import SiteDER
+from envoy.server.model.archive.site import (
+    ArchiveSiteDERAvailability,
+    ArchiveSiteDERRating,
+    ArchiveSiteDERSetting,
+    ArchiveSiteDERStatus,
+)
+from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import SiteRequestScope
 
@@ -148,6 +155,13 @@ class DERCapabilityManager:
             site_der.site_der_rating = new_der_rating
         else:
             # we are updating an existing rating
+            site_der_rating_id = site_der.site_der_rating.site_der_rating_id
+            await copy_rows_into_archive(
+                session,
+                SiteDERRating,
+                ArchiveSiteDERRating,
+                lambda q: q.where(SiteDERRating.site_der_rating_id == site_der_rating_id),
+            )
             new_der_rating.site_der_id = site_der.site_der_id
             new_der_rating.site_der_rating_id = site_der.site_der_rating.site_der_rating_id
             await session.merge(new_der_rating)
@@ -207,6 +221,14 @@ class DERSettingsManager:
             site_der.site_der_setting = new_der_setting
         else:
             # we are updating an existing setting
+            site_der_setting_id = site_der.site_der_setting.site_der_setting_id
+            await copy_rows_into_archive(
+                session,
+                SiteDERSetting,
+                ArchiveSiteDERSetting,
+                lambda q: q.where(SiteDERSetting.site_der_setting_id == site_der_setting_id),
+            )
+
             new_der_setting.site_der_id = site_der.site_der_id
             new_der_setting.site_der_setting_id = site_der.site_der_setting.site_der_setting_id
             await session.merge(new_der_setting)
@@ -266,6 +288,14 @@ class DERAvailabilityManager:
             site_der.site_der_availability = new_der_availability
         else:
             # we are updating an existing availability
+            site_der_avail_id = site_der.site_der_availability.site_der_availability_id
+            await copy_rows_into_archive(
+                session,
+                SiteDERAvailability,
+                ArchiveSiteDERAvailability,
+                lambda q: q.where(SiteDERAvailability.site_der_availability_id == site_der_avail_id),
+            )
+
             new_der_availability.site_der_id = site_der.site_der_id
             new_der_availability.site_der_availability_id = site_der.site_der_availability.site_der_availability_id
             await session.merge(new_der_availability)
@@ -325,6 +355,14 @@ class DERStatusManager:
             site_der.site_der_status = new_der_status
         else:
             # we are updating an existing status
+            site_der_status_id = site_der.site_der_status.site_der_status_id
+            await copy_rows_into_archive(
+                session,
+                SiteDERStatus,
+                ArchiveSiteDERStatus,
+                lambda q: q.where(SiteDERStatus.site_der_status_id == site_der_status_id),
+            )
+
             new_der_status.site_der_id = site_der.site_der_id
             new_der_status.site_der_status_id = site_der.site_der_status.site_der_status_id
             await session.merge(new_der_status)

@@ -4,7 +4,6 @@ from typing import Any, Callable
 
 from sqlalchemy import Delete, Select, delete, insert, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.dml import ReturningDelete
 
 from envoy.server.model.archive.base import ARCHIVE_BASE_COLUMNS, ArchiveBase
 from envoy.server.model.base import Base
