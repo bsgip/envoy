@@ -18,6 +18,7 @@ from envoy.server.crud.site_reading import (
     upsert_site_reading_type_for_aggregator,
     upsert_site_readings,
 )
+from envoy.server.model.archive.site_reading import ArchiveSiteReading
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 
 
@@ -271,6 +272,7 @@ async def test_upsert_site_reading_type_for_aggregator_cant_change_agg_id(pg_bas
 async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
     """Tests an upsert on site_readings with a mix of inserts/updates"""
     aest = ZoneInfo("Australia/Brisbane")
+    deleted_time = datetime(2004, 5, 7, 1, 3, 4, 53151, tzinfo=timezone.utc)
     site_readings: list[SiteReading] = [
         # Insert
         SiteReading(
@@ -309,7 +311,7 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
 
     # Perform the upsert
     async with generate_async_session(pg_base_config) as session:
-        await upsert_site_readings(session, site_readings)
+        await upsert_site_readings(session, deleted_time, site_readings)
         await session.commit()
 
     # Check the data persisted
@@ -318,24 +320,24 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         assert len(all_db_readings) == 6, "Two readings inserted - one updated"
 
         # assert the inserts of the DB
-        sr_5 = all_db_readings[-2]
+        sr_insert_1 = [sr for sr in all_db_readings if sr.value == 789][0]
         assert_class_instance_equality(
-            SiteReading, site_readings[0], sr_5, ignored_properties={"site_reading_id", "created_time"}
+            SiteReading, site_readings[0], sr_insert_1, ignored_properties={"site_reading_id", "created_time"}
         )
-        assert_nowish(sr_5.created_time)
+        assert_nowish(sr_insert_1.created_time)
 
-        sr_6 = all_db_readings[-1]
+        sr_insert_2 = [sr for sr in all_db_readings if sr.value == 123][0]
         assert_class_instance_equality(
-            SiteReading, site_readings[2], sr_6, ignored_properties={"site_reading_id", "created_time"}
+            SiteReading, site_readings[2], sr_insert_2, ignored_properties={"site_reading_id", "created_time"}
         )
-        assert_nowish(sr_6.created_time)
+        assert_nowish(sr_insert_2.created_time)
 
         # assert the update
-        sr_2 = all_db_readings[1]
+        sr_updated = [sr for sr in all_db_readings if sr.value == -45][0]
         assert_class_instance_equality(
-            SiteReading, site_readings[1], sr_2, ignored_properties={"site_reading_id", "created_time"}
+            SiteReading, site_readings[1], sr_updated, ignored_properties={"site_reading_id", "created_time"}
         )
-        assert_datetime_equal(datetime(2000, 1, 1, tzinfo=timezone.utc), sr_2.created_time)  # created_time wont update
+        assert_nowish(sr_updated.created_time)
 
         # Assert other fields are untouched
         sr_1 = all_db_readings[0]
@@ -354,6 +356,17 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
             ),
             sr_1,
         ),
+
+        # Check the archive - should've archived the updated record
+        archive_records = (await session.execute(select(ArchiveSiteReading))).scalars().all()
+        assert len(archive_records) == 1, "Only a single record should've archived"
+        assert archive_records[0].site_reading_id == 2, "This is the original value from the DB"
+        assert archive_records[0].site_reading_type_id == 1, "This is the original value from the DB"
+        assert archive_records[0].local_id == 22222, "This is the original value from the DB"
+        assert archive_records[0].time_period_seconds == 300, "This is the original value from the DB"
+        assert archive_records[0].deleted_time == deleted_time
+        assert_datetime_equal(datetime(2000, 1, 1, tzinfo=timezone.utc), archive_records[0].created_time)
+        assert_nowish(archive_records[0].archive_time)
 
 
 @pytest.mark.parametrize(
