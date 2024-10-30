@@ -37,7 +37,7 @@ async def site_der_for_site(session: AsyncSession, aggregator_id: int, site_id: 
     """Utility for fetching the SiteDER for the specified site. If nothing is in the database, returns the
     default site der.
 
-    Will include
+    Will include downstream ratings/settings/availability/status if available
 
     Raises NotFoundError if site_id is missing / not accessible"""
     site_der = await select_site_der_for_site(session, site_id=site_id, aggregator_id=aggregator_id)

@@ -29,17 +29,9 @@ class ArchiveTariffGeneratedRate(ArchiveBase):
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the tariff comes into effect
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     duration_seconds: Mapped[int] = mapped_column(INTEGER)
-    import_active_price: Mapped[Decimal] = mapped_column(
-        DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES)
-    )  # calculated rate for importing active power - price is dollars per kw/h
-    export_active_price: Mapped[Decimal] = mapped_column(
-        DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES)
-    )  # calculated rate for exporting active power - price is dollars per kw/h
-    import_reactive_price: Mapped[Decimal] = mapped_column(
-        DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES)
-    )  # calculated rate for importing reactive power - price is dollars per kvar/h
-    export_reactive_price: Mapped[Decimal] = mapped_column(
-        DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES)
-    )  # calculated rate for exporting reactive power - price is dollars per kvar/h
+    import_active_price: Mapped[Decimal] = mapped_column(DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES))
+    export_active_price: Mapped[Decimal] = mapped_column(DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES))
+    import_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES))
+    export_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES))
