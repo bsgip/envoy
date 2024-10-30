@@ -324,7 +324,8 @@ async def test_upsert_der_capability_roundtrip(
         assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
 
-        # Archive records will be written on updates, otherwise they won't be touched
+    # Archive records will be written on updates, otherwise they won't be touched
+    async with generate_async_session(pg_base_config) as session:
         archive_records = (await session.execute(select(ArchiveSiteDERRating))).scalars().all()
         if site_id == 1:
             # site_id 1 is the test case that will update an existing record
@@ -459,7 +460,8 @@ async def test_upsert_der_settings_roundtrip(
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.updatedTime)  # Should be set to server time
 
-        # Archive records will be written on updates, otherwise they won't be touched
+    # Archive records will be written on updates, otherwise they won't be touched
+    async with generate_async_session(pg_base_config) as session:
         archive_records = (await session.execute(select(ArchiveSiteDERSetting))).scalars().all()
         if site_id == 1:
             # site_id 1 is the test case that will update an existing record
@@ -592,7 +594,8 @@ async def test_upsert_der_availability_roundtrip(
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.readingTime)  # Should be set to server time
 
-        # Archive records will be written on updates, otherwise they won't be touched
+    # Archive records will be written on updates, otherwise they won't be touched
+    async with generate_async_session(pg_base_config) as session:
         archive_records = (await session.execute(select(ArchiveSiteDERAvailability))).scalars().all()
         if site_id == 1:
             # site_id 1 is the test case that will update an existing record
@@ -735,7 +738,8 @@ async def test_upsert_der_status_roundtrip(
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.readingTime)  # Should be set to server time
 
-        # Archive records will be written on updates, otherwise they won't be touched
+    # Archive records will be written on updates, otherwise they won't be touched
+    async with generate_async_session(pg_base_config) as session:
         archive_records = (await session.execute(select(ArchiveSiteDERStatus))).scalars().all()
         if site_id == 1:
             # site_id 1 is the test case that will update an existing record
