@@ -109,7 +109,7 @@ class MirrorMeteringManager:
             changed_time=changed_time,
         )
 
-        await upsert_site_readings(session, site_readings)
+        await upsert_site_readings(session, changed_time, site_readings)
         await session.commit()
         await NotificationManager.notify_upserted_entities(SubscriptionResource.READING, changed_time)
         return

@@ -263,6 +263,7 @@ async def test_fetch_mirror_usage_point_no_srt(
 @mock.patch("envoy.server.manager.metering.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.metering.upsert_site_readings")
 @mock.patch("envoy.server.manager.metering.MirrorMeterReadingMapper")
+@mock.patch("envoy.server.manager.metering.utc_now")
 @pytest.mark.parametrize(
     "scope",
     [
@@ -272,6 +273,7 @@ async def test_fetch_mirror_usage_point_no_srt(
     ],
 )
 async def test_add_or_update_readings(
+    mock_utc_now: mock.MagicMock,
     mock_MirrorMeterReadingMapper: mock.MagicMock,
     mock_upsert_site_readings: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
@@ -280,6 +282,8 @@ async def test_add_or_update_readings(
     """Check that the manager will handle interacting with the DB and its responses"""
 
     # Arrange
+    now = datetime(2022, 11, 10, 1, 2, 3)
+    mock_utc_now.return_value = now
     mock_session = create_mock_session()
     site_reading_type_id = 3
     mmr: MirrorMeterReading = generate_class_instance(MirrorMeterReading, seed=101)
@@ -301,13 +305,13 @@ async def test_add_or_update_readings(
         site_reading_type_id=site_reading_type_id,
         include_site_relation=False,
     )
-    mock_upsert_site_readings.assert_called_once_with(mock_session, mapped_readings)
+    mock_upsert_site_readings.assert_called_once_with(mock_session, now, mapped_readings)
 
     mock_MirrorMeterReadingMapper.map_from_request.assert_called_once()
     mapper_call_args = mock_MirrorMeterReadingMapper.map_from_request.call_args_list[0]
     assert mapper_call_args.kwargs["aggregator_id"] == scope.aggregator_id
     assert mapper_call_args.kwargs["site_reading_type_id"] == site_reading_type_id
-    assert_nowish(mapper_call_args.kwargs["changed_time"])
+    assert mapper_call_args.kwargs["changed_time"] == now
 
 
 @pytest.mark.anyio

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Iterable, Optional, Sequence, Union
+from typing import Optional, Sequence, Union
 
 from sqlalchemy import Select, and_, func, insert, or_, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert

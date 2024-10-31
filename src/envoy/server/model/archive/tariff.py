@@ -11,7 +11,7 @@ from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX, ArchiveBase
 
 
 class ArchiveTariff(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.tariff.Tariff.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.Tariff.__tablename__  # type: ignore
     tariff_id: Mapped[int] = mapped_column(INTEGER, index=True)
     name: Mapped[str] = mapped_column(String(64))
     dnsp_code: Mapped[str] = mapped_column(String(20))
@@ -21,7 +21,7 @@ class ArchiveTariff(ArchiveBase):
 
 
 class ArchiveTariffGeneratedRate(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.tariff.TariffGeneratedRate.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.TariffGeneratedRate.__tablename__  # type: ignore
     tariff_generated_rate_id: Mapped[int] = mapped_column(BigInteger, index=True)
     tariff_id: Mapped[int] = mapped_column(INTEGER)
     site_id: Mapped[int] = mapped_column(INTEGER)

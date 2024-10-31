@@ -95,7 +95,7 @@ def find_paired_unpaired_archive_classes() -> set[Optional[type], Optional[type]
                 pairings.add((mt, None))
 
         for archive_name, at in archive_types_by_name.items():
-            model_name = archive_name[len(ARCHIVE_TYPE_PREFIX) :]
+            model_name = archive_name[len(ARCHIVE_TYPE_PREFIX) :]  # noqa: E203
             if model_name not in model_types_by_name:
                 pairings.add((None, at))
 
@@ -168,7 +168,8 @@ def test_archive_models_match_originals(model_type: type, archive_type: type):  
     # Check tablename is the same (minus the ARCHIVE_TABLE_PREFIX)
     assert archive_type.__tablename__.startswith(ARCHIVE_TABLE_PREFIX)
     assert (
-        model_type.__tablename__ and model_type.__tablename__ == archive_type.__tablename__[len(ARCHIVE_TABLE_PREFIX) :]
+        model_type.__tablename__
+        and model_type.__tablename__ == archive_type.__tablename__[len(ARCHIVE_TABLE_PREFIX) :]  # noqa: E203
     )
 
     errors: list[str] = []

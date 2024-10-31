@@ -9,7 +9,6 @@ from assertical.fake.generator import (
     is_generatable_type,
     is_member_public,
     is_optional_type,
-    remove_passthrough_type,
 )
 from sqlalchemy.orm import ColumnProperty, MappedColumn
 

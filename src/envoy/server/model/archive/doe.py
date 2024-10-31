@@ -12,7 +12,7 @@ from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX, ArchiveBase
 class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     """Represents a dynamic operating envelope for a site at a particular time interval"""
 
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.DynamicOperatingEnvelope.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.DynamicOperatingEnvelope.__tablename__  # type: ignore
     dynamic_operating_envelope_id: Mapped[int] = mapped_column(BigInteger, index=True)
     site_id: Mapped[int] = mapped_column(INTEGER)
     calculation_log_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
