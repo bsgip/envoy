@@ -18,7 +18,7 @@ class DoeListManager:
 
         changed_time = utc_now()
         doe_models = DoeListMapper.map_from_request(changed_time, doe_list)
-        await upsert_many_doe(session, doe_models)
+        await upsert_many_doe(session, doe_models, changed_time)
         await session.commit()
 
         await NotificationManager.notify_upserted_entities(

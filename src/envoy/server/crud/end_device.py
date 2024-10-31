@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, Sequence
 
 from envoy_schema.server.schema.sep2.types import DeviceCategory
-from sqlalchemy import func, insert, select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +11,6 @@ from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.crud.archive import copy_rows_into_archive
 from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
-from envoy.server.model.archive.base import ARCHIVE_BASE_COLUMNS
 from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.site import Site
 from envoy.server.settings import settings

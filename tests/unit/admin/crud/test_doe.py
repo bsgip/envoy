@@ -8,9 +8,10 @@ from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from envoy.admin.crud.doe import count_all_does, select_all_does, upsert_many_doe
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope
 
 
@@ -27,7 +28,7 @@ async def _select_latest_dynamic_operating_envelope(session) -> DynamicOperating
 @pytest.mark.anyio
 async def test_upsert_many_doe_inserts(pg_base_config):
     """Assert that we are able to successfully insert a valid DOERequest into a db"""
-
+    deleted_time = datetime(2022, 11, 4, 7, 4, 2, tzinfo=timezone.utc)
     async with generate_async_session(pg_base_config) as session:
         doe_in: DynamicOperatingEnvelope = generate_class_instance(
             DynamicOperatingEnvelope, generate_relationships=False, site_id=1
@@ -35,9 +36,13 @@ async def test_upsert_many_doe_inserts(pg_base_config):
         # clean up generated instance to ensure it doesn't clash with base_config
         del doe_in.dynamic_operating_envelope_id
 
-        await upsert_many_doe(session, [doe_in])
-        await session.flush()
+        await upsert_many_doe(session, [doe_in], deleted_time)
+        await session.commit()
 
+    async with generate_async_session(pg_base_config) as session:
+        assert (
+            await session.execute(select(func.count()).select_from(ArchiveDynamicOperatingEnvelope))
+        ).scalar_one() == 0, "Nothing is archived on insert"
         doe_out = await _select_latest_dynamic_operating_envelope(session)
 
         assert_class_instance_equality(
@@ -55,17 +60,23 @@ async def test_upsert_many_doe_inserts(pg_base_config):
             DynamicOperatingEnvelope, site_id=1, start_time=doe_in.start_time + timedelta(seconds=1)
         )
 
-        await upsert_many_doe(session, [doe_in, doe_in_1])
+        # See if any errors get raised
+        await upsert_many_doe(session, [doe_in, doe_in_1], deleted_time)
+
+        # Because the scond upsert included_doe_in again, it will archive the old version
+        assert (
+            await session.execute(select(func.count()).select_from(ArchiveDynamicOperatingEnvelope))
+        ).scalar_one() == 1
 
 
 @pytest.mark.anyio
 async def test_upsert_many_doe_update(pg_base_config):
     """Assert that we are able to successfully update a valid DOERequest in the db"""
-
+    deleted_time = datetime(2022, 11, 4, 7, 4, 2, tzinfo=timezone.utc)
+    original_doe_copy: DynamicOperatingEnvelope
     async with generate_async_session(pg_base_config) as session:
         original_doe = await _select_latest_dynamic_operating_envelope(session)
-        original_id = original_doe.dynamic_operating_envelope_id
-        original_created_time = original_doe.created_time
+        original_doe_copy = clone_class_instance(original_doe, ignored_properties={"site"})
 
         # clean up generated instance to ensure it doesn't clash with base_config
         doe_to_update: DynamicOperatingEnvelope = clone_class_instance(
@@ -74,23 +85,32 @@ async def test_upsert_many_doe_update(pg_base_config):
         doe_to_update.export_limit_watts += Decimal("99.1")
         doe_to_update.import_limit_active_watts += Decimal("98.2")
         doe_to_update.changed_time = datetime(2026, 1, 3, tzinfo=timezone.utc)
-        doe_to_update.created_time = datetime(2027, 1, 3, tzinfo=timezone.utc)  # This shouldn't do anything
+        doe_to_update.created_time = datetime(2027, 1, 3, tzinfo=timezone.utc)
 
-        await upsert_many_doe(session, [doe_to_update])
+        await upsert_many_doe(session, [doe_to_update], deleted_time)
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
         doe_after_update = await _select_latest_dynamic_operating_envelope(session)
 
-        # Created time stays the same. changed_time updates
-        assert original_id == doe_after_update.dynamic_operating_envelope_id
+        # This is a "new" DOE as it's replacing the old one.
         assert_class_instance_equality(
             DynamicOperatingEnvelope,
             doe_to_update,
             doe_after_update,
             ignored_properties={"dynamic_operating_envelope_id", "created_time", "site"},
         )
-        assert_datetime_equal(original_created_time, doe_after_update.created_time)
+        assert_nowish(doe_after_update.created_time)
+
+        # Archive is filled with the DOE that was updated
+        archive_data = (await session.execute(select(ArchiveDynamicOperatingEnvelope))).scalar_one()
+        assert_class_instance_equality(
+            DynamicOperatingEnvelope,
+            original_doe_copy,
+            archive_data,
+        )
+        assert_nowish(archive_data.archive_time)
+        assert archive_data.deleted_time == deleted_time
 
 
 @pytest.mark.parametrize(
