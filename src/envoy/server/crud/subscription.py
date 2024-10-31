@@ -5,7 +5,9 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from envoy.server.model.subscription import Subscription
+from envoy.server.crud.archive import delete_rows_into_archive
+from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
+from envoy.server.model.subscription import Subscription, SubscriptionCondition
 
 
 async def select_subscription_by_id(
@@ -115,24 +117,48 @@ async def count_subscriptions_for_site(
 
 
 async def delete_subscription_for_site(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], subscription_id: int
+    session: AsyncSession, aggregator_id: int, site_id: Optional[int], subscription_id: int, deleted_time: datetime
 ) -> bool:
     """Deletes the specified subscription (and any linked conditions) from the database. Returns true on successful
     delete
 
-    site_id: If None - will match Subscription.scoped_site_id = None otherwise will match value for value"""
+    site_id: If None - will match Subscription.scoped_site_id = None otherwise will match value for value
 
-    stmt = delete(Subscription).where(
-        (Subscription.subscription_id == subscription_id) & (Subscription.aggregator_id == aggregator_id)
+    Existing subscriptions details will be archived"""
+
+    # We can't just roll in and delete the SubscriptionConditions without validating that the parent subscription
+    # belongs to aggregator/site_id (otherwise we could allow indiscriminate deletions of SubscriptionConditions)
+    fetch_count_stmt = (
+        select(func.count())
+        .select_from(Subscription)
+        .where((Subscription.subscription_id == subscription_id) & (Subscription.aggregator_id == aggregator_id))
+    )
+    if site_id is None:
+        fetch_count_stmt = fetch_count_stmt.where(Subscription.scoped_site_id.is_(None))
+    else:
+        fetch_count_stmt = fetch_count_stmt.where(Subscription.scoped_site_id == site_id)
+    if (await session.execute(fetch_count_stmt)).scalar_one() != 1:
+        return False
+
+    # At this point we're certain that the subscription exists AND belongs to the aggregator/site
+    # We're free to start deleting/archiving the parts
+
+    await delete_rows_into_archive(
+        session,
+        SubscriptionCondition,
+        ArchiveSubscriptionCondition,
+        deleted_time,
+        lambda q: q.where(SubscriptionCondition.subscription_id == subscription_id),
+    )
+    await delete_rows_into_archive(
+        session,
+        Subscription,
+        ArchiveSubscription,
+        deleted_time,
+        lambda q: q.where(Subscription.subscription_id == subscription_id),
     )
 
-    if site_id is None:
-        stmt = stmt.where(Subscription.scoped_site_id.is_(None))
-    else:
-        stmt = stmt.where(Subscription.scoped_site_id == site_id)
-
-    resp = await session.execute(stmt)
-    return resp.rowcount > 0
+    return True
 
 
 async def insert_subscription(session: AsyncSession, subscription: Subscription) -> int:

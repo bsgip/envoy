@@ -471,7 +471,6 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         assert (await session.execute(select(func.count()).select_from(ArchiveSite))).scalar_one() == 1
         archive_data = (await session.execute(select(ArchiveSite))).scalar_one()
 
-        # INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category") VALUES (1, '1111111111', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 04:05:06.500', 'site1-lfdi', 1111, 0);
         assert_class_instance_equality(
             Site,
             Site(

@@ -81,8 +81,13 @@ class SubscriptionManager:
     ) -> bool:
         """This will delete the specified subscription with id (underneath site_id) and return True if successful and
         False otherwise"""
+        now = utc_now()
         removed = await delete_subscription_for_site(
-            session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, subscription_id=subscription_id
+            session,
+            aggregator_id=scope.aggregator_id,
+            site_id=scope.site_id,
+            subscription_id=subscription_id,
+            deleted_time=now,
         )
         await session.commit()
 

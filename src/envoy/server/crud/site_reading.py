@@ -6,8 +6,8 @@ from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from envoy.server.crud.archive import delete_rows_into_archive
-from envoy.server.model.archive.site_reading import ArchiveSiteReading
+from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
+from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 
@@ -127,7 +127,7 @@ async def upsert_site_reading_type_for_aggregator(
     """Creates or updates the specified site reading type. If site's aggregator_id doesn't match aggregator_id then
     this will raise an error without modifying the DB. Returns the site_reading_type_id of the inserted/existing site
 
-    Relying on postgresql dialect for upsert capability. Unfortunately this breaks the typical ORM insert pattern.
+    The current value (if any) for the SiteReadingType will be archived
 
     Returns the site_reading_type_id of the created/updated SiteReadingType"""
 
@@ -136,6 +136,26 @@ async def upsert_site_reading_type_for_aggregator(
             f"Specified aggregator_id {aggregator_id} mismatches site.aggregator_id {site_reading_type.aggregator_id}"
         )
 
+    # "Save" any existing records with the same data to the archive table
+    await copy_rows_into_archive(
+        session,
+        SiteReadingType,
+        ArchiveSiteReadingType,
+        lambda q: q.where(
+            (SiteReadingType.aggregator_id == aggregator_id)
+            & (SiteReadingType.site_id == site_reading_type.site_id)
+            & (SiteReadingType.uom == site_reading_type.uom)
+            & (SiteReadingType.data_qualifier == site_reading_type.data_qualifier)
+            & (SiteReadingType.flow_direction == site_reading_type.flow_direction)
+            & (SiteReadingType.accumulation_behaviour == site_reading_type.accumulation_behaviour)
+            & (SiteReadingType.kind == site_reading_type.kind)
+            & (SiteReadingType.phase == site_reading_type.phase)
+            & (SiteReadingType.power_of_ten_multiplier == site_reading_type.power_of_ten_multiplier)
+            & (SiteReadingType.default_interval_seconds == site_reading_type.default_interval_seconds)
+        ),
+    )
+
+    # Perform the upsert
     table = SiteReadingType.__table__
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     stmt = psql_insert(SiteReadingType).values(**{k: getattr(site_reading_type, k) for k in update_cols})

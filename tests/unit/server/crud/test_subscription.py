@@ -19,6 +19,7 @@ from envoy.server.crud.subscription import (
     select_subscriptions_for_aggregator,
     select_subscriptions_for_site,
 )
+from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 
 
@@ -347,47 +348,74 @@ async def test_insert_subscription_with_condition(pg_base_config):
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "agg_id, site_id, sub_id, expected_deletion",
+    "agg_id, site_id, sub_id, expected_deletion, condition_count",
     [
-        (1, None, 1, True),
-        (1, 2, 2, True),
-        (2, 3, 3, True),
-        (2, None, 1, False),  # Bad Aggregator ID
-        (99, None, 1, False),  # Bad Aggregator ID
-        (2, 2, 2, False),  # Bad Aggregator ID
-        (99, 2, 2, False),  # Bad Aggregator ID
-        (1, 1, 1, False),  # Site ID is wrong
-        (1, None, 2, False),  # Site ID missing
-        (1, None, 99, False),  # Sub ID is wrong
+        (1, None, 1, True, 0),
+        (1, None, 5, True, 2),
+        (1, 2, 2, True, 0),
+        (2, 3, 3, True, 0),
+        (2, None, 1, False, 0),  # Bad Aggregator ID
+        (99, None, 1, False, 0),  # Bad Aggregator ID
+        (2, 2, 2, False, 0),  # Bad Aggregator ID
+        (99, 2, 2, False, 0),  # Bad Aggregator ID
+        (1, 1, 1, False, 0),  # Site ID is wrong
+        (1, None, 2, False, 0),  # Site ID missing
+        (1, None, 99, False, 0),  # Sub ID is wrong
+        (1, 1, 5, False, 2),  # Site ID is wrong (but also has child conditions)
+        (2, None, 5, False, 2),  # Agg ID is wrong (but also has child conditions)
     ],
 )
 async def test_delete_subscription_for_site_filter_values(
-    pg_base_config, agg_id: int, site_id: Optional[int], sub_id: int, expected_deletion: bool
+    pg_base_config, agg_id: int, site_id: Optional[int], sub_id: int, expected_deletion: bool, condition_count: int
 ):
     """Tests the various ways we can filter down the deletion of a subscription"""
+    deleted_time = datetime(2005, 6, 2, 1, 2, 3, tzinfo=timezone.utc)
     async with generate_async_session(pg_base_config) as session:
-        stmt = select(func.count()).select_from(Subscription)
-        count_before = (await session.execute(stmt)).scalar_one()
-        result = await delete_subscription_for_site(session, agg_id, site_id, sub_id)
+        count_before = (await session.execute(select(func.count()).select_from(Subscription))).scalar_one()
+        condition_count_before = (
+            await session.execute(select(func.count()).select_from(SubscriptionCondition))
+        ).scalar_one()
+        result = await delete_subscription_for_site(session, agg_id, site_id, sub_id, deleted_time)
         assert result == expected_deletion
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
-        stmt = select(func.count()).select_from(Subscription)
-        count_after = (await session.execute(stmt)).scalar_one()
+        count_after = (await session.execute(select(func.count()).select_from(Subscription))).scalar_one()
+        condition_count_after = (
+            await session.execute(select(func.count()).select_from(SubscriptionCondition))
+        ).scalar_one()
+        archive_count_after = (
+            await session.execute(select(func.count()).select_from(ArchiveSubscription))
+        ).scalar_one()
+        archive_cond_count_after = (
+            await session.execute(select(func.count()).select_from(ArchiveSubscriptionCondition))
+        ).scalar_one()
 
         if expected_deletion:
             assert count_before == count_after + 1
+            assert condition_count_before == condition_count_after + condition_count
+            assert archive_count_after == 1
+            assert archive_cond_count_after == condition_count
+
+            archived_subs = (await session.execute(select(ArchiveSubscription))).scalars().all()
+            assert all((e.deleted_time == deleted_time for e in archived_subs))
+            archived_conds = (await session.execute(select(ArchiveSubscriptionCondition))).scalars().all()
+            assert all((e.deleted_time == deleted_time for e in archived_conds))
         else:
             assert count_before == count_after
+            assert condition_count_before == condition_count_after
+            assert archive_count_after == 0
+            assert archive_cond_count_after == 0
 
 
 @pytest.mark.anyio
 async def test_delete_subscription_for_site(pg_base_config):
+
+    deleted_time = datetime(2017, 5, 2, 1, 2, 3, tzinfo=timezone.utc)
     async with generate_async_session(pg_base_config) as session:
-        assert await delete_subscription_for_site(session, 1, 4, 4)
-        assert not await delete_subscription_for_site(session, 1, 4, 5)  # not scoped to site_id 4
-        assert not await delete_subscription_for_site(session, 2, 2, 2)  # not scoped to agg 2
+        assert await delete_subscription_for_site(session, 1, 4, 4, deleted_time)
+        assert not await delete_subscription_for_site(session, 1, 4, 5, deleted_time)  # not scoped to site_id 4
+        assert not await delete_subscription_for_site(session, 2, 2, 2, deleted_time)  # not scoped to agg 2
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
@@ -416,6 +444,27 @@ async def test_delete_subscription_for_site(pg_base_config):
             is not None
         )
 
+        # Archived records get populated from the source row
+        archived_subs = (await session.execute(select(ArchiveSubscription))).scalars().all()
+        assert all((e.deleted_time == deleted_time for e in archived_subs))
+        assert len(archived_subs) == 1
+        assert_class_instance_equality(
+            Subscription,
+            Subscription(
+                subscription_id=4,
+                aggregator_id=1,
+                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
+                changed_time=datetime(2024, 1, 2, 14, 22, 33, 500000, tzinfo=timezone.utc),
+                resource_type=1,
+                resource_id=4,
+                scoped_site_id=4,
+                notification_uri="https://example.com:44/path/",
+                entity_limit=44,
+            ),
+            archived_subs[0],
+        )
+        assert_nowish(archived_subs[0].archive_time)
+
 
 @pytest.mark.anyio
 async def test_delete_subscription_for_site_with_conditions(pg_base_config):
@@ -428,8 +477,9 @@ async def test_delete_subscription_for_site_with_conditions(pg_base_config):
         assert len(resp.scalars().all()) == 2
         await session.commit()
 
+    deleted_time = datetime(2017, 5, 2, 1, 2, 3, tzinfo=timezone.utc)
     async with generate_async_session(pg_base_config) as session:
-        assert await delete_subscription_for_site(session, 1, 4, 5)  # not scoped to site_id 4
+        assert await delete_subscription_for_site(session, 1, 4, 5, deleted_time)  # not scoped to site_id 4
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
@@ -442,7 +492,34 @@ async def test_delete_subscription_for_site_with_conditions(pg_base_config):
             is None
         ), "Was deleted"
 
-    # Validate conditions got cascade deleted
+    # Validate conditions got deleted
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(SubscriptionCondition))
         assert len(resp.scalars().all()) == 0
+
+        # Validate archival of SubscriptionCondition
+        archived_conds = (await session.execute(select(ArchiveSubscriptionCondition))).scalars().all()
+        assert all((e.deleted_time == deleted_time for e in archived_conds))
+        assert len(archived_conds) == 2
+        assert_class_instance_equality(
+            SubscriptionCondition,
+            SubscriptionCondition(
+                subscription_condition_id=1,
+                subscription_id=5,
+                attribute=0,
+                lower_threshold=1,
+                upper_threshold=11,
+            ),
+            archived_conds[0],
+        )
+        assert_class_instance_equality(
+            SubscriptionCondition,
+            SubscriptionCondition(
+                subscription_condition_id=2,
+                subscription_id=5,
+                attribute=0,
+                lower_threshold=2,
+                upper_threshold=12,
+            ),
+            archived_conds[1],
+        )

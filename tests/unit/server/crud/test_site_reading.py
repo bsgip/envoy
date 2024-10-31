@@ -9,7 +9,7 @@ from assertical.asserts.type import assert_iterable_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.types import QualityFlagsType
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from envoy.server.crud.site_reading import (
     count_site_reading_types_for_aggregator,
@@ -18,7 +18,7 @@ from envoy.server.crud.site_reading import (
     upsert_site_reading_type_for_aggregator,
     upsert_site_readings,
 )
-from envoy.server.model.archive.site_reading import ArchiveSiteReading
+from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 
 
@@ -194,6 +194,9 @@ async def test_upsert_site_reading_type_for_aggregator_insert(pg_base_config):
         )
         assert_nowish(actual_srt.created_time)
 
+        # This is an inserted row - nothing should be added to the archive
+        assert (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one() == 0
+
 
 @pytest.mark.parametrize("srt_id_to_update, aggregator_id", [(3, 1), (1, 1)])
 @pytest.mark.anyio
@@ -241,6 +244,54 @@ async def test_upsert_site_reading_type_for_aggregator_non_indexed(
         # Sanity check the count
         assert len(await fetch_site_reading_types(session, aggregator_id)) == 3
 
+        # This is an updated row - therefore we should have a new archived record containing the original data
+        assert (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one() == 1
+        archive_data = (await session.execute(select(ArchiveSiteReadingType))).scalar_one()
+
+        # This is comparing the archive data against what was originally in the DB
+        if srt_id_to_update == 1:
+            assert_class_instance_equality(
+                SiteReadingType,
+                SiteReadingType(
+                    site_reading_type_id=1,
+                    aggregator_id=1,
+                    site_id=1,
+                    uom=38,
+                    data_qualifier=2,
+                    flow_direction=1,
+                    accumulation_behaviour=3,
+                    kind=37,
+                    phase=64,
+                    power_of_ten_multiplier=3,
+                    default_interval_seconds=0,
+                    created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
+                    changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
+                ),
+                archive_data,
+            )
+        elif srt_id_to_update == 3:
+            assert_class_instance_equality(
+                SiteReadingType,
+                SiteReadingType(
+                    site_reading_type_id=3,
+                    aggregator_id=1,
+                    site_id=1,
+                    uom=38,
+                    data_qualifier=8,
+                    flow_direction=1,
+                    accumulation_behaviour=3,
+                    kind=37,
+                    phase=64,
+                    power_of_ten_multiplier=0,
+                    default_interval_seconds=3600,
+                    created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
+                    changed_time=datetime(2022, 5, 6, 13, 22, 33, 500000, tzinfo=timezone.utc),
+                ),
+                archive_data,
+            )
+        assert_nowish(archive_data.archive_time)
+        assert archive_data.deleted_time is None
+
 
 @pytest.mark.anyio
 async def test_upsert_site_reading_type_for_aggregator_cant_change_agg_id(pg_base_config):
@@ -266,6 +317,7 @@ async def test_upsert_site_reading_type_for_aggregator_cant_change_agg_id(pg_bas
         db_srt = await fetch_site_reading_type(session, aggregator_id, site_id_to_update)
         assert db_srt
         assert_datetime_equal(db_srt.changed_time, datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc))
+        assert (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one() == 0
 
 
 @pytest.mark.anyio
