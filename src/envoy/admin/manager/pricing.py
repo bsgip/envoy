@@ -66,7 +66,7 @@ class TariffGeneratedRateListManager:
 
         changed_time = utc_now()
         tariff_genrate_models = TariffGeneratedRateListMapper.map_from_request(changed_time, tariff_genrates)
-        await upsert_many_tariff_genrate(session, tariff_genrate_models)
+        await upsert_many_tariff_genrate(session, tariff_genrate_models, changed_time)
         await session.commit()
 
         await NotificationManager.notify_upserted_entities(SubscriptionResource.TARIFF_GENERATED_RATE, changed_time)
