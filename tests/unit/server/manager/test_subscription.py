@@ -156,11 +156,17 @@ async def test_fetch_subscriptions_for_site(
     zip([True, False], [111, None]),
 )
 @mock.patch("envoy.server.manager.subscription.delete_subscription_for_site")
+@mock.patch("envoy.server.manager.subscription.utc_now")
 async def test_delete_subscription_for_site(
-    mock_delete_subscription_for_site: mock.MagicMock, retval: bool, scope_site_id: Optional[int]
+    mock_utc_now: mock.MagicMock,
+    mock_delete_subscription_for_site: mock.MagicMock,
+    retval: bool,
+    scope_site_id: Optional[int],
 ):
     """Ensures session is handled properly on delete"""
     # Arrange
+    deleted_time = datetime(2011, 4, 6)
+    mock_utc_now.return_value = deleted_time
     mock_session: AsyncSession = create_mock_session()
     scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=scope_site_id)
 
@@ -175,7 +181,11 @@ async def test_delete_subscription_for_site(
     assert actual_result == retval
 
     mock_delete_subscription_for_site.assert_called_once_with(
-        mock_session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, subscription_id=sub_id
+        mock_session,
+        aggregator_id=scope.aggregator_id,
+        site_id=scope.site_id,
+        subscription_id=sub_id,
+        deleted_time=deleted_time,
     )
 
     assert_mock_session(mock_session, committed=True)
