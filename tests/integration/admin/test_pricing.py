@@ -1,10 +1,10 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from http import HTTPStatus
 from zoneinfo import ZoneInfo
 
 import pytest
-from assertical.asserts.time import assert_datetime_equal, assert_nowish
+from assertical.asserts.time import assert_nowish
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
@@ -12,6 +12,7 @@ from envoy_schema.admin.schema.uri import TariffCreateUri, TariffGeneratedRateCr
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import TariffGeneratedRate
 
 
@@ -107,8 +108,12 @@ async def test_update_tariff_genrate_calculation_log(pg_base_config, admin_clien
         assert db_rate.start_time == updated_rate.start_time
         assert db_rate.duration_seconds == updated_rate.duration_seconds
         assert_nowish(db_rate.changed_time)
-        assert_datetime_equal(db_rate.created_time, datetime(2000, 1, 1, tzinfo=timezone.utc))
+        assert_nowish(db_rate.created_time)  # Updated record was archived. This is a newly inserted record
         assert db_rate.import_active_price == updated_rate.import_active_price
         assert db_rate.export_active_price == updated_rate.export_active_price
         assert db_rate.import_reactive_price == updated_rate.import_reactive_price
         assert db_rate.export_reactive_price == updated_rate.export_reactive_price
+
+        assert (
+            await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))
+        ).scalar_one() == 1, "The old updated record should be archived. Unit tests will test this in more detail"

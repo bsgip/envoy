@@ -5,7 +5,7 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
-from assertical.asserts.time import assert_datetime_equal, assert_nowish
+from assertical.asserts.time import assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
@@ -20,6 +20,7 @@ from sqlalchemy import func, select
 
 from envoy.admin.crud.doe import count_all_does
 from envoy.server.api.request import MAX_LIMIT
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from tests.integration.admin.test_site import _build_query_string
 from tests.integration.response import read_response_body_string
@@ -44,7 +45,7 @@ async def test_update_doe(pg_base_config, admin_client_auth: AsyncClient):
         resp = await session.execute(stmt)
         initial_count = resp.scalar_one()
 
-    # This should be updating tariff_generated_rate_id 1
+    # This should be updating doe 1
     updated_rate = DynamicOperatingEnvelopeRequest(
         site_id=1,
         start_time=datetime(2022, 5, 7, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
@@ -76,9 +77,13 @@ async def test_update_doe(pg_base_config, admin_client_auth: AsyncClient):
         assert db_doe.start_time == updated_rate.start_time
         assert db_doe.duration_seconds == updated_rate.duration_seconds
         assert_nowish(db_doe.changed_time)
-        assert_datetime_equal(db_doe.created_time, datetime(2000, 1, 1, tzinfo=timezone.utc))
+        assert_nowish(db_doe.created_time)  # The update deletes the old and inserts a new record
         assert db_doe.import_limit_active_watts == updated_rate.import_limit_active_watts
         assert db_doe.export_limit_watts == updated_rate.export_limit_watts
+
+        assert (
+            await session.execute(select(func.count()).select_from(ArchiveDynamicOperatingEnvelope))
+        ).scalar_one() == 1, "The old updated record should be archived. Unit tests will test this in more detail"
 
 
 @pytest.mark.parametrize(
