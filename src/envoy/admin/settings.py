@@ -1,3 +1,4 @@
+import importlib.metadata
 from typing import Any, Dict
 
 from envoy.settings import CommonSettings
@@ -12,7 +13,7 @@ class AppSettings(CommonSettings):
     openapi_url: str = "/openapi.json"
     redoc_url: str = "/redoc"
     title: str = "envoy-admin"
-    version: str = "0.0.0"
+    version: str = importlib.metadata.version("envoy")
 
     admin_username: str
     admin_password: str

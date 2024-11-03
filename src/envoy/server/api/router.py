@@ -11,6 +11,7 @@ from envoy.server.api.sep2.pricing import router as price_router
 from envoy.server.api.sep2.subscription import router as sub_router
 from envoy.server.api.sep2.time import router as tm_router
 from envoy.server.api.unsecured.health import router as health_router
+from envoy.server.api.unsecured.version import router as version_router
 
 __all__ = ["routers"]
 
@@ -27,4 +28,4 @@ routers = [
     tm_router,
 ]
 
-unsecured_routers = [health_router]
+unsecured_routers = [health_router, version_router]
