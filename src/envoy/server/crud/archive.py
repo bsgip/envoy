@@ -28,7 +28,7 @@ async def copy_rows_into_archive(
     NOTE - this will not populate/affect any models in the session, all operations occur on the DB directly
     """
 
-    # "Save" any existing sites with the same data to the archive table
+    # We only want to save the columns NOT found in the archive table (i.e. they only exist in the source table)
     archive_cols = [
         column.name for column in archive_table.__table__.columns if column.name not in ARCHIVE_BASE_COLUMNS
     ]

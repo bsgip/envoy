@@ -46,7 +46,7 @@ def test_validate_model_definitions(model_type: type):
                 # And then the typehint doesn't appear to be simple. Is the type hint appropriate?
                 errors.append(
                     f"'{member_name}' has type hint '{member_type}' that appears incorrect. "
-                    + "The type appears to be a non primitive type but the property is NOT a ORM relationship"
+                    + "The type appears to be a non primitive type but the property is NOT an ORM relationship"
                 )
 
         # Check nullability
