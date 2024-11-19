@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Callable, Optional, Union
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -8,9 +9,11 @@ from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.types import DeviceCategory
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.end_device import (
+    delete_site_for_aggregator,
     get_virtual_site_for_aggregator,
     select_aggregator_site_count,
     select_all_sites_with_aggregator_id,
@@ -20,8 +23,27 @@ from envoy.server.crud.end_device import (
     select_single_site_with_site_id,
     upsert_site_for_aggregator,
 )
-from envoy.server.model.archive.site import ArchiveSite
-from envoy.server.model.site import Site
+from envoy.server.manager.time import utc_now
+from envoy.server.model.aggregator import Aggregator
+from envoy.server.model.archive.base import ArchiveBase
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.archive.site import (
+    ArchiveSite,
+    ArchiveSiteDER,
+    ArchiveSiteDERAvailability,
+    ArchiveSiteDERRating,
+    ArchiveSiteDERSetting,
+    ArchiveSiteDERStatus,
+)
+from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
+from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
+from envoy.server.model.base import Base
+from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site_reading import SiteReading, SiteReadingType
+from envoy.server.model.subscription import Subscription, SubscriptionCondition
+from envoy.server.model.tariff import TariffGeneratedRate
 
 
 @pytest.mark.parametrize(
@@ -520,3 +542,229 @@ async def test_upsert_site_for_aggregator_cant_change_agg_id(pg_base_config):
         assert await select_aggregator_site_count(session, 1, datetime.min) == 3
         assert await select_aggregator_site_count(session, 2, datetime.min) == 1
         assert await select_aggregator_site_count(session, 3, datetime.min) == 0
+
+
+@dataclass
+class SnapshotTableCount:
+    """Moment in time snapshot of rows in table/archive"""
+
+    t: type[Base]  # The table type
+    archive_t: type[ArchiveBase]  # the archive table type
+    total_count: int  # Total rows in the table
+    filtered_count: int  # Totals rows in the table (that pass the site/aggregator filter)
+    archive_count: int  # Total rows in the equivalent table archive
+
+
+async def count_table_rows(
+    session: AsyncSession,
+    t: type[Base],
+    join_t: Optional[Union[type[Base], list[type[Base]]]],
+    archive_t: type[ArchiveBase],
+    where_clause: Callable[[Select[int]], Select[int]],
+) -> SnapshotTableCount:
+    """Counts the number of rows in the specified source table for t. Also counts again, but with the where_clause
+    applied to the query.
+
+    if join_t is not None, there count queries will be joined to this type (allowing filtering against this table). This
+    can be a list of a singular type
+
+    Returns (total_count, filtered_count)"""
+    q = select(func.count()).select_from(t)
+
+    if join_t is not None:
+        if isinstance(join_t, list):
+            for jt in join_t:
+                q = q.join(jt)
+        else:
+            q = q.join(join_t)
+
+    total_count = (await session.execute(q)).scalar_one()
+    filtered_count = (await session.execute(where_clause(q))).scalar_one()
+    archive_count = (await session.execute(select(func.count()).select_from(archive_t))).scalar_one()
+
+    return SnapshotTableCount(
+        t, archive_t, total_count=total_count, filtered_count=filtered_count, archive_count=archive_count
+    )
+
+
+async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: int) -> list[SnapshotTableCount]:
+    """Snapshots the site table and all downstream child tables"""
+    snapshot: list[SnapshotTableCount] = []
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            Site,
+            None,
+            ArchiveSite,
+            lambda q: q.where(Site.site_id == site_id).where(Site.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            SiteReadingType,
+            None,
+            ArchiveSiteReadingType,
+            lambda q: q.where(SiteReadingType.site_id == site_id).where(SiteReadingType.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            SiteReading,
+            SiteReadingType,
+            ArchiveSiteReading,
+            lambda q: q.where(SiteReadingType.site_id == site_id).where(SiteReadingType.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            Subscription,
+            None,
+            ArchiveSubscription,
+            lambda q: q.where(Subscription.scoped_site_id == site_id).where(Subscription.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            SubscriptionCondition,
+            Subscription,
+            ArchiveSubscriptionCondition,
+            lambda q: q.where(Subscription.scoped_site_id == site_id).where(Subscription.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            SiteDER,
+            Site,
+            ArchiveSiteDER,
+            lambda q: q.where(SiteDER.site_id == site_id).where(Site.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            SiteDERAvailability,
+            [SiteDER, Site],
+            ArchiveSiteDERAvailability,
+            lambda q: q.where(SiteDER.site_id == site_id).where(Site.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            SiteDERRating,
+            [SiteDER, Site],
+            ArchiveSiteDERRating,
+            lambda q: q.where(SiteDER.site_id == site_id).where(Site.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            SiteDERSetting,
+            [SiteDER, Site],
+            ArchiveSiteDERSetting,
+            lambda q: q.where(SiteDER.site_id == site_id).where(Site.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            SiteDERStatus,
+            [SiteDER, Site],
+            ArchiveSiteDERStatus,
+            lambda q: q.where(SiteDER.site_id == site_id).where(Site.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            DynamicOperatingEnvelope,
+            Site,
+            ArchiveDynamicOperatingEnvelope,
+            lambda q: q.where(DynamicOperatingEnvelope.site_id == site_id).where(Site.aggregator_id == agg_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            TariffGeneratedRate,
+            Site,
+            ArchiveTariffGeneratedRate,
+            lambda q: q.where(TariffGeneratedRate.site_id == site_id).where(Site.aggregator_id == agg_id),
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "site_id, agg_id, commit, expected_delete",
+    [(1, 1, True, True), (1, 1, False, True), (1, 2, True, False), (1, 2, False, False)],
+)
+@pytest.mark.anyio
+async def test_delete_site_for_aggregator(
+    pg_base_config, site_id: int, agg_id: int, commit: bool, expected_delete: int
+):
+    """Tests that deleting an entire site cleans up  and archives all data"""
+
+    # Count everything before the delete
+    async with generate_async_session(pg_base_config) as session:
+        snapshot_before = await snapshot_all_site_tables(session, agg_id=agg_id, site_id=site_id)
+
+    # Perform the delete
+    now = utc_now()
+    deleted_time = datetime(2014, 11, 15, 2, 4, 5, 755, tzinfo=timezone.utc)
+    async with generate_async_session(pg_base_config) as session:
+        actual = await delete_site_for_aggregator(session, agg_id, site_id, deleted_time)
+        assert expected_delete == actual
+
+        if commit:
+            await session.commit()
+            delete_occured = actual
+        else:
+            delete_occured = False
+
+    # Now check the DB / Archive to ensure everything moved as expected
+    async with generate_async_session(pg_base_config) as session:
+        snapshot_after = await snapshot_all_site_tables(session, agg_id=agg_id, site_id=site_id)
+
+    # Compare our before/after snapshots based on whether a delete occurred (or didn't)
+    for before, after in zip(snapshot_before, snapshot_after):
+        assert before.t == after.t, "This is a sanity check on snapshot_all_site_tables doing a consistent order"
+        assert before.archive_t == after.archive_t, "This is a sanity check on snapshot_all_site_tables"
+        assert before.archive_count == 0, f"{before.t}: Archive should've been empty at the start"
+
+        if delete_occured:
+            # Check the counts migrated as expected
+            assert after.archive_count == before.filtered_count, f"{before.t} All matched records should archive"
+            assert after.filtered_count == 0, f"{before.t} All matched records should archive and be removed"
+            assert (
+                after.total_count == before.total_count - before.filtered_count
+            ), f"{before.t} Other records left alone"
+
+            # Check the archive records
+            async with generate_async_session(pg_base_config) as session:
+                archives: list[ArchiveBase] = (await session.execute(select(after.archive_t))).scalars().all()
+                assert all((a.deleted_time == deleted_time for a in archives)), f"{before.t} deleted time is wrong"
+                assert all(
+                    (abs((a.archive_time - now).seconds) < 20 for a in archives)
+                ), f"{before.t} archive time should be nowish"
+        else:
+            assert after.archive_count == 0, f"{before.t} Nothing should've persisted/deleted"
+            assert after.filtered_count == before.filtered_count, f"{before.t} Nothing should've persisted/deleted"
+            assert after.total_count == before.total_count, f"{before.t} Nothing should've persisted/deleted"
