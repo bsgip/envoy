@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from itertools import product
 from typing import Callable, Optional, Union
 
 import pytest
@@ -24,7 +25,6 @@ from envoy.server.crud.end_device import (
     upsert_site_for_aggregator,
 )
 from envoy.server.manager.time import utc_now
-from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (

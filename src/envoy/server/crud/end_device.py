@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.crud import common
 from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
-from envoy.server.crud.site_reading import fetch_site_reading_types_page_for_aggregator
 from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
@@ -32,7 +31,6 @@ from envoy.server.model.site import (
     SiteDERRating,
     SiteDERSetting,
     SiteDERStatus,
-    SiteGroup,
     SiteGroupAssignment,
 )
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
