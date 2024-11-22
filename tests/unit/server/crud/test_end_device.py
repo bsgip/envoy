@@ -182,7 +182,7 @@ async def test_get_virtual_site_for_aggregator(
 
         assert virtual_site.site_id == 0  # Virtual sites always have a site_id of 0
         assert virtual_site.aggregator_id == aggregator_id
-        assert_nowish(virtual_site.changed_time)  # Vitual sites have a changed time set to when they are requested
+        assert_nowish(virtual_site.changed_time)  # Virtual sites have a changed time set to when they are requested
 
         # Virtual sites inherit these values from the first site under the aggregator
         assert virtual_site.lfdi == aggregator_lfdi
@@ -565,7 +565,7 @@ async def count_table_rows(
     """Counts the number of rows in the specified source table for t. Also counts again, but with the where_clause
     applied to the query.
 
-    if join_t is not None, there count queries will be joined to this type (allowing filtering against this table). This
+    if join_t is not None, the count queries will be joined to this type (allowing filtering against this table). This
     can be a list of a singular type
 
     Returns (total_count, filtered_count)"""
