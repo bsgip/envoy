@@ -24,8 +24,9 @@ from envoy_schema.server.schema.sep2.types import (
     UomType,
 )
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 
+from envoy.server.model.archive.site_reading import ArchiveSiteReadingType
 from envoy.server.model.site_reading import SiteReading
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
@@ -483,3 +484,50 @@ async def test_device_cert_mup_creation(client: AsyncClient):
     response = await client.get(mup_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
     assert_response_header(response, HTTPStatus.NOT_FOUND)
     assert_error_response(response)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "cert, mup_id, expected_status",
+    [
+        (AGG_1_VALID_CERT, 1, HTTPStatus.NO_CONTENT),
+        (AGG_1_VALID_CERT, 3, HTTPStatus.NO_CONTENT),
+        (AGG_1_VALID_CERT, 0, HTTPStatus.NOT_FOUND),  # mup DNE
+        (AGG_1_VALID_CERT, 99, HTTPStatus.NOT_FOUND),  # mup DNE
+        (AGG_1_VALID_CERT, 2, HTTPStatus.NOT_FOUND),  # Wrong Aggregator
+        (AGG_2_VALID_CERT, 1, HTTPStatus.NOT_FOUND),  # Wrong Aggregator
+    ],
+)
+async def test_delete_mup(
+    pg_base_config,
+    client: AsyncClient,
+    cert: str,
+    mup_id: int,
+    expected_status: HTTPStatus,
+):
+    """Tests that deleting named end device's works / fails in simple cases"""
+
+    uri = uris.MirrorUsagePointUri.format(mup_id=mup_id)
+    response = await client.delete(uri, headers={cert_header: urllib.parse.quote(cert)})
+    assert_response_header(response, expected_status, expected_content_type=None)
+
+    if response.status_code == HTTPStatus.NO_CONTENT:
+        # If the delete succeeded - fire off a get to the same resource to see if it now 404's
+        response = await client.get(uri, headers={cert_header: urllib.parse.quote(cert)})
+        assert_response_header(response, HTTPStatus.NOT_FOUND)
+
+        # Won't exhaustively check archive use - but sanity check that the archive is receiving records
+        async with generate_async_session(pg_base_config) as session:
+            site_archive_count = (
+                await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))
+            ).scalar_one()
+            assert site_archive_count == 1, "Validate that the archive functionality was utilised"
+    else:
+        assert response.status_code in [HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN]
+
+        # Won't exhaustively check archive use - but sanity check that the archive is NOT receiving records
+        async with generate_async_session(pg_base_config) as session:
+            site_archive_count = (
+                await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))
+            ).scalar_one()
+            assert site_archive_count == 0, "Nothing should be archived"

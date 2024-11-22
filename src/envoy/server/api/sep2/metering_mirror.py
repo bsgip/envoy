@@ -142,6 +142,34 @@ async def get_mirror_usage_point(
     return XmlResponse(mup_list)
 
 
+# DELETE /mup/{mup_id}
+@router.delete(
+    uri.MirrorUsagePointUri,
+    status_code=HTTPStatus.NO_CONTENT,
+)
+async def delete_mirror_usage_point(
+    request: Request,
+    mup_id: int,
+) -> Response:
+    """Deletes the specified MUP resource. The delete will also delete all linked readings. While data will be archived,
+    it will remain inaccessible to the client via the csip-aus API.
+
+    Will return 404 if the MUP doesn't exist / inaccessible, otherwise a 204 will be returned on success
+
+    Args:
+        mup_id: The MirrorUsagePoint id to delete
+
+    Returns:
+        fastapi.Response object.
+    """
+    removed = await MirrorMeteringManager.delete_mirror_usage_point(
+        db.session,
+        scope=extract_request_claims(request).to_mup_request_scope(),
+        site_reading_type_id=mup_id,
+    )
+    return Response(status_code=HTTPStatus.NO_CONTENT if removed else HTTPStatus.NOT_FOUND)
+
+
 # POST /mup/{mup_id}
 @router.post(uri.MirrorUsagePointUri, status_code=HTTPStatus.CREATED)
 async def post_mirror_usage_point(
@@ -180,12 +208,3 @@ async def post_mirror_usage_point(
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
 
     return Response(status_code=HTTPStatus.CREATED)
-
-
-# DELETE /mup/{mup_id}
-@router.delete(uri.MirrorUsagePointUri, status_code=HTTPStatus.OK)
-async def delete_mirror_usage_point(request: Request, mup_id: int) -> Response:
-    """This isn't fully supported as MirrorUsagePoints are tied to the underlying readings. This will always return
-    HTTP 200"""
-
-    return Response(status_code=HTTPStatus.OK)

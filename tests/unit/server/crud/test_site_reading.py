@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from itertools import product
 from typing import Optional, Sequence
 from zoneinfo import ZoneInfo
 
@@ -9,17 +10,22 @@ from assertical.asserts.type import assert_iterable_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.types import QualityFlagsType
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.site_reading import (
     count_site_reading_types_for_aggregator,
+    delete_site_reading_type_for_aggregator,
     fetch_site_reading_type_for_aggregator,
     fetch_site_reading_types_page_for_aggregator,
     upsert_site_reading_type_for_aggregator,
     upsert_site_readings,
 )
+from envoy.server.manager.time import utc_now
+from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
+from tests.unit.server.crud.test_end_device import SnapshotTableCount, count_table_rows
 
 
 async def fetch_site_reading_types(session, aggregator_id: int) -> Sequence[SiteReadingType]:
@@ -455,3 +461,138 @@ async def test_fetch_site_reading_type_pages(
 
         actual_count = await count_site_reading_types_for_aggregator(session, aggregator_id, site_id, after)
         assert actual_count == expected_count
+
+
+async def snapshot_all_srt_tables(
+    session: AsyncSession, agg_id: int, site_id: Optional[int], srt_id: int
+) -> list[SnapshotTableCount]:
+    """Snapshots the site reading type table and all downstream child tables"""
+    snapshot: list[SnapshotTableCount] = []
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            SiteReadingType,
+            None,
+            ArchiveSiteReadingType,
+            lambda q: q.where(SiteReadingType.aggregator_id == agg_id)
+            .where(or_(site_id is None, SiteReadingType.site_id == site_id))
+            .where(SiteReadingType.site_reading_type_id == srt_id),
+        )
+    )
+
+    snapshot.append(
+        await count_table_rows(
+            session,
+            SiteReading,
+            None,
+            ArchiveSiteReading,
+            lambda q: q.where(SiteReading.site_reading_type_id == srt_id),
+        )
+    )
+
+    return snapshot
+
+
+@pytest.mark.parametrize(
+    "agg_id, site_id, srt_id, expected_delete, commit",
+    [
+        (a, s, i, d, c)
+        for (a, s, i, d), c in product(
+            [
+                (1, 1, 1, True),  # Delete site reading type 1
+                (1, None, 1, True),  # Delete site reading type 1
+                (3, 1, 2, True),  # Delete site reading type 2
+                (3, None, 2, True),  # Delete site reading type 2
+                (1, 1, 3, True),  # Delete site reading type 3
+                (1, None, 3, True),  # Delete site reading type 3
+                (1, 2, 4, True),  # Delete site reading type 4
+                (1, None, 4, True),  # Delete site reading type 4
+                (0, 1, 1, False),  # Wrong aggregator ID
+                (0, None, 1, False),  # Wrong aggregator ID
+                (2, 1, 1, False),  # Wrong aggregator ID
+                (3, 1, 1, False),  # Wrong aggregator ID
+                (99, 1, 1, False),  # Wrong aggregator ID
+                (99, None, 1, False),  # Wrong aggregator ID
+                (1, 2, 1, False),  # Wrong site ID
+                (1, 99, 1, False),  # Wrong site ID
+                (1, 1, 99, False),  # Wrong site reading type id
+                (1, None, 99, False),  # Wrong site reading type id
+            ],
+            [True, False],  # Run every test case with a commit = True and commit = False
+        )
+    ],
+)
+@pytest.mark.anyio
+async def test_delete_site_reading_type_for_site(
+    pg_base_config, agg_id: int, site_id: Optional[int], srt_id: int, commit: bool, expected_delete: int
+):
+    """Tests that deleting an entire site reading type cleans up and archives all associated data correctly. Also tests
+    that the operation correctly runs inside a session transaction and can be wound back (if required)
+
+    There is an assumption that the underlying archive functions are used - this is just making sure that
+    the removal:
+        1) Removes the correct records
+        2) Archives the correct records
+        3) Doesn't delete anything else it shouldn't
+    """
+
+    # Count everything before the delete
+    async with generate_async_session(pg_base_config) as session:
+        snapshot_before = await snapshot_all_srt_tables(session, agg_id=agg_id, site_id=site_id, srt_id=srt_id)
+
+    # Perform the delete
+    now = utc_now()
+    deleted_time = datetime(2014, 11, 15, 2, 4, 5, 755, tzinfo=timezone.utc)
+    async with generate_async_session(pg_base_config) as session:
+        actual = await delete_site_reading_type_for_aggregator(session, agg_id, site_id, srt_id, deleted_time)
+        assert expected_delete == actual
+
+        if commit:
+            await session.commit()
+            delete_occurred = actual
+        else:
+            delete_occurred = False
+
+    # Now check the DB / Archive to ensure everything moved as expected
+    async with generate_async_session(pg_base_config) as session:
+        snapshot_after = await snapshot_all_srt_tables(session, agg_id=agg_id, site_id=site_id, srt_id=srt_id)
+
+    # Compare our before/after snapshots based on whether a delete occurred (or didn't)
+    for before, after in zip(snapshot_before, snapshot_after):
+        assert before.t == after.t, "This is a sanity check on snapshot_all_srt_tables doing a consistent order"
+        assert before.archive_t == after.archive_t, "This is a sanity check on snapshot_all_srt_tables"
+        assert before.archive_count == 0, f"{before.t}: Archive should've been empty at the start"
+
+        if delete_occurred:
+            # Check the counts migrated as expected
+            assert after.archive_count == before.filtered_count, f"{before.t} All matched records should archive"
+            assert after.filtered_count == 0, f"{before.t} All matched records should archive and be removed"
+            assert (
+                after.total_count == before.total_count - before.filtered_count
+            ), f"{before.t} Other records left alone"
+
+            # Check the archive records
+            async with generate_async_session(pg_base_config) as session:
+                archives: list[ArchiveBase] = (await session.execute(select(after.archive_t))).scalars().all()
+                assert all((a.deleted_time == deleted_time for a in archives)), f"{before.t} deleted time is wrong"
+                assert all(
+                    (abs((a.archive_time - now).seconds) < 20 for a in archives)
+                ), f"{before.t} archive time should be nowish"
+        else:
+            assert after.archive_count == 0, f"{before.t} Nothing should've persisted/deleted"
+            assert after.filtered_count == before.filtered_count, f"{before.t} Nothing should've persisted/deleted"
+            assert after.total_count == before.total_count, f"{before.t} Nothing should've persisted/deleted"
+
+    async with generate_async_session(pg_base_config) as session:
+        srt = await fetch_site_reading_type_for_aggregator(
+            session, site_id=site_id, aggregator_id=agg_id, site_reading_type_id=srt_id, include_site_relation=False
+        )
+        if commit:
+            assert srt is None, "SiteReadingType should NOT be fetchable if the deleted was committed"
+        elif expected_delete:
+            assert srt is not None, "If the delete was NOT committed - the SiteReadingType should still exist"
+        else:
+            assert (
+                srt is None
+            ), "If the delete was NOT committed but the SiteReadingType DNE - it should continue to not exist"

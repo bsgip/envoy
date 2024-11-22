@@ -270,6 +270,36 @@ async def test_end_device_manager_fetch_missing_device(
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("return_value", [True, False])
+@mock.patch("envoy.server.manager.end_device.delete_site_for_aggregator")
+@mock.patch("envoy.server.manager.end_device.utc_now")
+async def test_delete_enddevice_for_scope(
+    mock_utc_now: mock.MagicMock, mock_delete_site_for_aggregator: mock.MagicMock, return_value: bool
+):
+    """Check that the manager will handle interacting with the crud layer / managing the session transaction"""
+
+    # Arrange
+    mock_session = create_mock_session()
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
+    delete_time = datetime(2021, 5, 6, 7, 8, 9)
+
+    # Just do a simple passthrough
+    mock_utc_now.return_value = delete_time
+    mock_delete_site_for_aggregator.return_value = return_value
+
+    # Act
+    result = await EndDeviceManager.delete_enddevice_for_scope(mock_session, scope)
+
+    # Assert
+    assert result == return_value
+    assert_mock_session(mock_session, committed=True)  # The session WILL be committed
+    mock_delete_site_for_aggregator.assert_called_once_with(
+        mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id, deleted_time=delete_time
+    )
+    mock_utc_now.assert_called_once()
+
+
+@pytest.mark.anyio
 @mock.patch("envoy.server.manager.end_device.NotificationManager")
 @mock.patch("envoy.server.manager.end_device.upsert_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")

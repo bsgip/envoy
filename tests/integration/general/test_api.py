@@ -33,7 +33,7 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/dcap"),
 
     # edev function set
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.DELETE], "/edev/1"),
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/edev"),
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST, HTTPMethod.PUT], "/edev/1/cp"),
 

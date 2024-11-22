@@ -260,6 +260,44 @@ async def test_fetch_mirror_usage_point_no_srt(
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("return_value, site_id", product([True, False], [99987, None]))
+@mock.patch("envoy.server.manager.metering.delete_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.metering.utc_now")
+async def test_delete_mirror_usage_point(
+    mock_utc_now: mock.MagicMock,
+    mock_delete_site_reading_type_for_aggregator: mock.MagicMock,
+    return_value: bool,
+    site_id: Optional[int],
+):
+    """Check that the manager will handle interacting with the crud layer / managing the session transaction"""
+
+    # Arrange
+    mock_session = create_mock_session()
+    scope: MUPRequestScope = generate_class_instance(MUPRequestScope, site_id=site_id)
+    delete_time = datetime(2021, 5, 6, 7, 8, 9)
+    srt_id = 151512
+
+    # Just do a simple passthrough
+    mock_utc_now.return_value = delete_time
+    mock_delete_site_reading_type_for_aggregator.return_value = return_value
+
+    # Act
+    result = await MirrorMeteringManager.delete_mirror_usage_point(mock_session, scope, srt_id)
+
+    # Assert
+    assert result == return_value
+    assert_mock_session(mock_session, committed=True)  # The session WILL be committed
+    mock_delete_site_reading_type_for_aggregator.assert_called_once_with(
+        mock_session,
+        site_id=scope.site_id,
+        site_reading_type_id=srt_id,
+        aggregator_id=scope.aggregator_id,
+        deleted_time=delete_time,
+    )
+    mock_utc_now.assert_called_once()
+
+
+@pytest.mark.anyio
 @mock.patch("envoy.server.manager.metering.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.metering.upsert_site_readings")
 @mock.patch("envoy.server.manager.metering.MirrorMeterReadingMapper")

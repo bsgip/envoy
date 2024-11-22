@@ -49,6 +49,30 @@ async def get_enddevice(site_id: int, request: Request) -> XmlResponse:
     return XmlResponse(end_device)
 
 
+@router.delete(
+    uri.EndDeviceUri,
+    status_code=HTTPStatus.NO_CONTENT,
+)
+async def delete_enddevice(site_id: int, request: Request) -> Response:
+    """Deletes the specified EndDevice resource. The delete will also delete all linked subscriptions/mirror
+    usage points. While data will be archived, it will remain inaccessible to the client via the csip-aus API.
+
+    Will return 404 if the site doesn't exist / inaccessible, otherwise a 204 will be returned on success
+
+    Args:
+        site_id: Path parameter, the target EndDevice's internal registration number.
+        request: FastAPI request object.
+
+    Returns:
+        fastapi.Response object.
+
+    """
+    removed = await EndDeviceManager.delete_enddevice_for_scope(
+        db.session, extract_request_claims(request).to_site_request_scope(site_id)
+    )
+    return Response(status_code=HTTPStatus.NO_CONTENT if removed else HTTPStatus.NOT_FOUND)
+
+
 @router.head(uri.EndDeviceListUri)
 @router.get(
     uri.EndDeviceListUri,

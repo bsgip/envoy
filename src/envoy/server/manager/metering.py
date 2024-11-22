@@ -12,6 +12,7 @@ from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.end_device import select_single_site_with_lfdi
 from envoy.server.crud.site_reading import (
     count_site_reading_types_for_aggregator,
+    delete_site_reading_type_for_aggregator,
     fetch_site_reading_type_for_aggregator,
     fetch_site_reading_types_page_for_aggregator,
     upsert_site_reading_type_for_aggregator,
@@ -80,6 +81,27 @@ class MirrorMeteringManager:
             raise NotFoundError(f"MirrorUsagePoint with id {site_reading_type_id} doesn't exist or is inaccessible")
 
         return MirrorUsagePointMapper.map_to_response(scope, srt, srt.site)
+
+    @staticmethod
+    async def delete_mirror_usage_point(
+        session: AsyncSession, scope: MUPRequestScope, site_reading_type_id: int
+    ) -> bool:
+        """Deletes the specified MUP (site reading type) and all child dependencies. Deleted records will be archived
+        as necessary. Returns True if the delete removed something, False if the site DNE / is inaccessible.
+
+        This will commit the transaction in session"""
+
+        delete_time = utc_now()
+        result = await delete_site_reading_type_for_aggregator(
+            session,
+            aggregator_id=scope.aggregator_id,
+            site_id=scope.site_id,
+            site_reading_type_id=site_reading_type_id,
+            deleted_time=delete_time,
+        )
+        await session.commit()
+
+        return result
 
     @staticmethod
     async def add_or_update_readings(

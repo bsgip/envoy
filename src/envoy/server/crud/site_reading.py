@@ -206,3 +206,46 @@ async def upsert_site_readings(session: AsyncSession, now: datetime, site_readin
     await session.execute(
         insert(SiteReading).values(([{k: getattr(sr, k) for k in update_cols} for sr in site_readings]))
     )
+
+
+async def delete_site_reading_type_for_aggregator(
+    session: AsyncSession, aggregator_id: int, site_id: Optional[int], site_reading_type_id: int, deleted_time: datetime
+) -> bool:
+    """Delete the specified site reading type (belonging to aggregator_id/site_id) and all descendent FK references. All
+    deleted rows will be archived
+
+    aggregator_id: The aggregator ID that this request is scoped to
+    site_id: If None - no filtering will be made, otherwise this site_id will be used to check for SRT existence
+    site_reading_type_id: The ID of the SRT to delete
+    deleted_time: The deleted time that will be included in archive records
+
+    Returns True if the site reading type was removed, False otherwise"""
+
+    # Cleanest way of deleting is to validate the site reading type exists for this site and then going wild removing
+    # everything related to that record. Not every child record will have access to aggregator_id without a join
+    srt = await fetch_site_reading_type_for_aggregator(
+        session,
+        site_id=site_id,
+        aggregator_id=aggregator_id,
+        site_reading_type_id=site_reading_type_id,
+        include_site_relation=False,
+    )
+    if srt is None:
+        return False
+
+    await delete_rows_into_archive(
+        session,
+        SiteReading,
+        ArchiveSiteReading,
+        deleted_time,
+        lambda q: q.where(SiteReading.site_reading_type_id == site_reading_type_id),
+    )
+    await delete_rows_into_archive(
+        session,
+        SiteReadingType,
+        ArchiveSiteReadingType,
+        deleted_time,
+        lambda q: q.where(SiteReadingType.site_reading_type_id == site_reading_type_id),
+    )
+
+    return True

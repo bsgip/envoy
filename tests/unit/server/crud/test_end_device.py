@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from itertools import product
 from typing import Callable, Optional, Union
 
 import pytest
@@ -24,7 +25,6 @@ from envoy.server.crud.end_device import (
     upsert_site_for_aggregator,
 )
 from envoy.server.manager.time import utc_now
-from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (
@@ -607,7 +607,7 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
             SiteReadingType,
             None,
             ArchiveSiteReadingType,
-            lambda q: q.where(SiteReadingType.site_id == site_id).where(SiteReadingType.aggregator_id == agg_id),
+            lambda q: q.where(SiteReadingType.site_id == site_id),
         )
     )
 
@@ -617,7 +617,7 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
             SiteReading,
             SiteReadingType,
             ArchiveSiteReading,
-            lambda q: q.where(SiteReadingType.site_id == site_id).where(SiteReadingType.aggregator_id == agg_id),
+            lambda q: q.where(SiteReadingType.site_id == site_id),
         )
     )
 
@@ -627,7 +627,7 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
             Subscription,
             None,
             ArchiveSubscription,
-            lambda q: q.where(Subscription.scoped_site_id == site_id).where(Subscription.aggregator_id == agg_id),
+            lambda q: q.where(Subscription.scoped_site_id == site_id),
         )
     )
 
@@ -637,7 +637,7 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
             SubscriptionCondition,
             Subscription,
             ArchiveSubscriptionCondition,
-            lambda q: q.where(Subscription.scoped_site_id == site_id).where(Subscription.aggregator_id == agg_id),
+            lambda q: q.where(Subscription.scoped_site_id == site_id),
         )
     )
 
@@ -647,7 +647,7 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
             SiteDER,
             Site,
             ArchiveSiteDER,
-            lambda q: q.where(SiteDER.site_id == site_id).where(Site.aggregator_id == agg_id),
+            lambda q: q.where(SiteDER.site_id == site_id),
         )
     )
 
@@ -655,9 +655,9 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         await count_table_rows(
             session,
             SiteDERAvailability,
-            [SiteDER, Site],
+            SiteDER,
             ArchiveSiteDERAvailability,
-            lambda q: q.where(SiteDER.site_id == site_id).where(Site.aggregator_id == agg_id),
+            lambda q: q.where(SiteDER.site_id == site_id),
         )
     )
 
@@ -665,9 +665,9 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         await count_table_rows(
             session,
             SiteDERRating,
-            [SiteDER, Site],
+            SiteDER,
             ArchiveSiteDERRating,
-            lambda q: q.where(SiteDER.site_id == site_id).where(Site.aggregator_id == agg_id),
+            lambda q: q.where(SiteDER.site_id == site_id),
         )
     )
 
@@ -675,9 +675,9 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         await count_table_rows(
             session,
             SiteDERSetting,
-            [SiteDER, Site],
+            SiteDER,
             ArchiveSiteDERSetting,
-            lambda q: q.where(SiteDER.site_id == site_id).where(Site.aggregator_id == agg_id),
+            lambda q: q.where(SiteDER.site_id == site_id),
         )
     )
 
@@ -685,9 +685,9 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         await count_table_rows(
             session,
             SiteDERStatus,
-            [SiteDER, Site],
+            SiteDER,
             ArchiveSiteDERStatus,
-            lambda q: q.where(SiteDER.site_id == site_id).where(Site.aggregator_id == agg_id),
+            lambda q: q.where(SiteDER.site_id == site_id),
         )
     )
 
@@ -695,9 +695,9 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         await count_table_rows(
             session,
             DynamicOperatingEnvelope,
-            Site,
+            None,
             ArchiveDynamicOperatingEnvelope,
-            lambda q: q.where(DynamicOperatingEnvelope.site_id == site_id).where(Site.aggregator_id == agg_id),
+            lambda q: q.where(DynamicOperatingEnvelope.site_id == site_id),
         )
     )
 
@@ -705,22 +705,50 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         await count_table_rows(
             session,
             TariffGeneratedRate,
-            Site,
+            None,
             ArchiveTariffGeneratedRate,
-            lambda q: q.where(TariffGeneratedRate.site_id == site_id).where(Site.aggregator_id == agg_id),
+            lambda q: q.where(TariffGeneratedRate.site_id == site_id),
         )
     )
 
+    return snapshot
+
 
 @pytest.mark.parametrize(
-    "site_id, agg_id, commit, expected_delete",
-    [(1, 1, True, True), (1, 1, False, True), (1, 2, True, False), (1, 2, False, False)],
+    "site_id, agg_id, expected_delete, commit",
+    [
+        (s, a, d, c)
+        for (s, a, d), c in product(
+            [
+                (1, 1, True),  # Delete site 1
+                (2, 1, True),  # Delete site 2
+                (3, 2, True),  # Delete site 3 (different aggregator)
+                (4, 1, True),  # Delete site 4 (has no data)
+                (5, 0, True),  # Delete site 5 (Null aggregator)
+                (6, 0, True),  # Delete site 6 (Null aggregator)
+                (1, 0, False),  # Wrong aggregator ID
+                (1, 2, False),  # Wrong aggregator ID
+                (1, 3, False),  # Wrong aggregator ID
+                (1, 99, False),  # Wrong aggregator ID
+                (99, 1, False),  # Wrong site ID
+            ],
+            [True, False],  # Run every test case with a commit = True and commit = False
+        )
+    ],
 )
 @pytest.mark.anyio
 async def test_delete_site_for_aggregator(
     pg_base_config, site_id: int, agg_id: int, commit: bool, expected_delete: int
 ):
-    """Tests that deleting an entire site cleans up  and archives all data"""
+    """Tests that deleting an entire site cleans up and archives all associated data correctly. Also tests
+    that the operation correctly runs inside a session transaction and can be wound back (if required)
+
+    There is an assumption that the underlying archive functions are used - this is just making sure that
+    the removal:
+        1) Removes the correct records
+        2) Archives the correct records
+        3) Doesn't delete anything else it shouldn't
+    """
 
     # Count everything before the delete
     async with generate_async_session(pg_base_config) as session:
@@ -735,9 +763,9 @@ async def test_delete_site_for_aggregator(
 
         if commit:
             await session.commit()
-            delete_occured = actual
+            delete_occurred = actual
         else:
-            delete_occured = False
+            delete_occurred = False
 
     # Now check the DB / Archive to ensure everything moved as expected
     async with generate_async_session(pg_base_config) as session:
@@ -749,7 +777,7 @@ async def test_delete_site_for_aggregator(
         assert before.archive_t == after.archive_t, "This is a sanity check on snapshot_all_site_tables"
         assert before.archive_count == 0, f"{before.t}: Archive should've been empty at the start"
 
-        if delete_occured:
+        if delete_occurred:
             # Check the counts migrated as expected
             assert after.archive_count == before.filtered_count, f"{before.t} All matched records should archive"
             assert after.filtered_count == 0, f"{before.t} All matched records should archive and be removed"
@@ -768,3 +796,12 @@ async def test_delete_site_for_aggregator(
             assert after.archive_count == 0, f"{before.t} Nothing should've persisted/deleted"
             assert after.filtered_count == before.filtered_count, f"{before.t} Nothing should've persisted/deleted"
             assert after.total_count == before.total_count, f"{before.t} Nothing should've persisted/deleted"
+
+    async with generate_async_session(pg_base_config) as session:
+        site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=agg_id)
+        if commit:
+            assert site is None, "Site should NOT be fetchable if the deleted was committed"
+        elif expected_delete:
+            assert site is not None, "If the delete was NOT committed - the site should still exist"
+        else:
+            assert site is None, "If the delete was NOT committed but the site DNE - it should continue to not exist"

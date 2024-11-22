@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.crud import common
 from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
-from envoy.server.crud.site_reading import fetch_site_reading_types_page_for_aggregator
 from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
@@ -32,7 +31,6 @@ from envoy.server.model.site import (
     SiteDERRating,
     SiteDERSetting,
     SiteDERStatus,
-    SiteGroup,
     SiteGroupAssignment,
 )
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
@@ -213,11 +211,7 @@ async def delete_site_for_aggregator(
     # Assumption - We shouldn't normally have more than 10-20 MUPs per site - if this gets us into trouble,
     #              we can always paginate this step
     mup_id_resp = await session.execute(
-        (
-            select(SiteReadingType.site_reading_type_id).where(
-                (SiteReadingType.aggregator_id == aggregator_id) & (SiteReadingType.site_id == site_id)
-            )
-        )
+        (select(SiteReadingType.site_reading_type_id).where(SiteReadingType.site_id == site_id))
     )
     mup_ids_to_delete = mup_id_resp.scalars().all()
     await delete_rows_into_archive(
@@ -237,11 +231,7 @@ async def delete_site_for_aggregator(
 
     # Subscriptions are similar to MUPs - need to discover all sub IDs to delete all sub conditions
     sub_id_resp = await session.execute(
-        (
-            select(Subscription.subscription_id).where(
-                (Subscription.aggregator_id == aggregator_id) & (Subscription.scoped_site_id == site_id)
-            )
-        )
+        select(Subscription.subscription_id).where(Subscription.scoped_site_id == site_id)
     )
     sub_ids_to_delete = sub_id_resp.scalars().all()
     await delete_rows_into_archive(
@@ -325,6 +315,6 @@ async def delete_site_for_aggregator(
         Site,
         ArchiveSite,
         deleted_time,
-        lambda q: q.where(Site.site_id == site_id).where(Site.aggregator_id == aggregator_id),
+        lambda q: q.where(Site.site_id == site_id),
     )
     return True

@@ -10,9 +10,10 @@ from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from envoy.admin.crud.site import count_all_sites
+from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.site import Site
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as AGG_1_LFDI_FROM_VALID_CERT
@@ -211,6 +212,68 @@ async def test_get_enddevice(
             assert parsed_response.FunctionSetAssignmentsListLink is not None, "FSA should exist for a end device"
     else:
         assert_error_response(response)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "cert,site_id, is_device_cert, expected_status",
+    [
+        (AGG_1_VALID_CERT, 2, False, HTTPStatus.NO_CONTENT),
+        (AGG_1_VALID_CERT, 0, False, HTTPStatus.FORBIDDEN),  # Can't delete the aggregator end device
+        (REGISTERED_CERT.decode(), 6, True, HTTPStatus.NO_CONTENT),
+        (
+            REGISTERED_CERT.decode(),
+            2,
+            True,
+            HTTPStatus.FORBIDDEN,
+        ),  # Device cert trying to reach out to another EndDevice (aggregator owned)
+        (
+            REGISTERED_CERT.decode(),
+            5,
+            True,
+            HTTPStatus.FORBIDDEN,
+        ),  # Device cert trying to reach out to another EndDevice (different device cert)
+        (AGG_1_VALID_CERT, 3, False, HTTPStatus.NOT_FOUND),  # Wrong Aggregator
+        (AGG_1_VALID_CERT, 9999, False, HTTPStatus.NOT_FOUND),  # Bad site ID
+        (AGG_1_VALID_CERT, 5, False, HTTPStatus.NOT_FOUND),  # Aggregator trying to reach a device cert
+    ],
+)
+async def test_delete_enddevice(
+    pg_base_config,
+    client: AsyncClient,
+    edev_fetch_uri_format: str,
+    cert: str,
+    site_id: int,
+    is_device_cert: bool,
+    expected_status: HTTPStatus,
+):
+    """Tests that deleting named end device's works / fails in simple cases"""
+
+    uri = edev_fetch_uri_format.format(site_id=site_id)
+    response = await client.delete(uri, headers={cert_header: urllib.parse.quote(cert)})
+    assert_response_header(response, expected_status, expected_content_type=None)
+
+    if response.status_code == HTTPStatus.NO_CONTENT:
+        # If the delete succeeded - fire off a get to the same resource to see if it now 404's
+        response = await client.get(uri, headers={cert_header: urllib.parse.quote(cert)})
+
+        # Device certs fetching a "missing" EndDevice behave slightly differently
+        if is_device_cert:
+            assert_response_header(response, HTTPStatus.FORBIDDEN)
+        else:
+            assert_response_header(response, HTTPStatus.NOT_FOUND)
+
+        # Won't exhaustively check archive use - but sanity check that the archive is receiving records
+        async with generate_async_session(pg_base_config) as session:
+            site_archive_count = (await session.execute(select(func.count()).select_from(ArchiveSite))).scalar_one()
+            assert site_archive_count == 1, "Validate that the archive functionality was utilised"
+    else:
+        assert response.status_code in [HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN]
+
+        # Won't exhaustively check archive use - but sanity check that the archive is NOT receiving records
+        async with generate_async_session(pg_base_config) as session:
+            site_archive_count = (await session.execute(select(func.count()).select_from(ArchiveSite))).scalar_one()
+            assert site_archive_count == 0, "Nothing should be archived"
 
 
 @pytest.mark.anyio

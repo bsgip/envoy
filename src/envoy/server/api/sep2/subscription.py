@@ -92,7 +92,7 @@ async def get_subscriptions_for_site(
 
 @router.delete(
     uri.SubscriptionUri,
-    status_code=HTTPStatus.OK,
+    status_code=HTTPStatus.NO_CONTENT,
 )
 async def delete_subscription(
     request: Request,

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.end_device import (
+    delete_site_for_aggregator,
     get_virtual_site_for_aggregator,
     select_aggregator_site_count,
     select_all_sites_with_aggregator_id,
@@ -84,6 +85,21 @@ class EndDeviceManager:
             if site is None:
                 return None
             return EndDeviceMapper.map_to_response(scope, site)
+
+    @staticmethod
+    async def delete_enddevice_for_scope(session: AsyncSession, scope: SiteRequestScope) -> bool:
+        """Deletes the specified site and all child dependencies of that site. Deleted records will be archived
+        as necessary. Returns True if the delete removed something, False if the site DNE / is inaccessible.
+
+        This will commit the transaction in session"""
+
+        delete_time = utc_now()
+        result = await delete_site_for_aggregator(
+            session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, deleted_time=delete_time
+        )
+        await session.commit()
+
+        return result
 
     @staticmethod
     async def generate_unique_device_id(session: AsyncSession, aggregator_id: int) -> tuple[int, str]:
