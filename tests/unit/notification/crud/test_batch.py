@@ -14,7 +14,6 @@ from sqlalchemy import select
 
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
-    TResourceModel,
     fetch_der_availability_by_changed_at,
     fetch_der_rating_by_changed_at,
     fetch_der_setting_by_changed_at,
@@ -28,6 +27,7 @@ from envoy.notification.crud.batch import (
     get_subscription_filter_id,
     select_subscriptions_for_resource,
 )
+from envoy.notification.crud.common import TResourceModel
 from envoy.notification.exception import NotificationError
 from envoy.server.crud.end_device import Site
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
@@ -47,7 +47,7 @@ def test_AggregatorBatchedEntities_empty(resource: SubscriptionResource):
 
     assert b.timestamp == ts
     assert len(b.models_by_batch_key) == 0
-    assert b.total_entities == 0
+    assert b.total_changed_entities == 0
 
 
 @mock.patch("envoy.notification.crud.batch.get_batch_key")
@@ -67,7 +67,7 @@ def test_AggregatorBatchedEntities_single_batch(mock_get_batch_key: mock.MagicMo
     b = AggregatorBatchedEntities(ts, resource, [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4])
 
     assert b.timestamp == ts
-    assert b.total_entities == 4
+    assert b.total_changed_entities == 4
     assert len(b.models_by_batch_key) == 1, "Expecting a single unique key"
     assert b.models_by_batch_key[(1, 2)] == [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4]
 
@@ -91,7 +91,7 @@ def test_AggregatorBatchedEntities_multi_batch(mock_get_batch_key: mock.MagicMoc
     b = AggregatorBatchedEntities(ts, resource, [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4])
 
     assert b.timestamp == ts
-    assert b.total_entities == 4
+    assert b.total_changed_entities == 4
     assert len(b.models_by_batch_key) == 3
     assert b.models_by_batch_key[(1, 2)] == [fake_entity_1, fake_entity_3]
     assert b.models_by_batch_key[(1, 3)] == [fake_entity_2]
@@ -389,7 +389,7 @@ async def test_fetch_sites_by_timestamp(pg_base_config, timestamp: datetime, exp
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_sites_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(expected_sites)
+        assert batch.total_changed_entities == len(expected_sites)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda site: site.site_id)
 
@@ -416,7 +416,7 @@ async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_sites_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(all_entities)
+        assert batch.total_changed_entities == len(all_entities)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda site: site.site_id)
 
@@ -428,7 +428,7 @@ async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert empty_batch.total_entities == 0
+        assert empty_batch.total_changed_entities == 0
         assert len(empty_batch.models_by_batch_key) == 0
 
 
@@ -466,7 +466,7 @@ async def test_fetch_rates_by_timestamp(pg_base_config, timestamp: datetime, exp
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_rates_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(expected_rates)
+        assert batch.total_changed_entities == len(expected_rates)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda rate: rate.tariff_generated_rate_id)
 
@@ -501,7 +501,7 @@ async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_rates_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(all_entities)
+        assert batch.total_changed_entities == len(all_entities)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda rate: rate.tariff_generated_rate_id)
 
@@ -513,7 +513,7 @@ async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_rates_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert empty_batch.total_entities == 0
+        assert empty_batch.total_changed_entities == 0
         assert len(empty_batch.models_by_batch_key) == 0
 
 
@@ -550,7 +550,7 @@ async def test_fetch_does_by_timestamp(
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_does_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(expected_does)
+        assert batch.total_changed_entities == len(expected_does)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda doe: doe.dynamic_operating_envelope_id)
 
@@ -585,7 +585,7 @@ async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_does_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(all_entities)
+        assert batch.total_changed_entities == len(all_entities)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda rate: rate.dynamic_operating_envelope_id)
 
@@ -597,7 +597,7 @@ async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_does_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert empty_batch.total_entities == 0
+        assert empty_batch.total_changed_entities == 0
         assert len(empty_batch.models_by_batch_key) == 0
 
 
@@ -632,7 +632,7 @@ async def test_fetch_readings_by_timestamp(pg_base_config, timestamp: datetime, 
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_readings_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(expected_readings)
+        assert batch.total_changed_entities == len(expected_readings)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda reading: reading.site_reading_id)
 
@@ -667,7 +667,7 @@ async def test_fetch_readings_by_timestamp_multiple_aggs(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_readings_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(all_entities)
+        assert batch.total_changed_entities == len(all_entities)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda reading: reading.site_reading_id)
 
@@ -679,7 +679,7 @@ async def test_fetch_readings_by_timestamp_multiple_aggs(pg_base_config):
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_readings_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert empty_batch.total_entities == 0
+        assert empty_batch.total_changed_entities == 0
         assert len(empty_batch.models_by_batch_key) == 0
 
 
@@ -702,7 +702,7 @@ async def test_fetch_der_availability_by_timestamp(pg_base_config, timestamp: da
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_der_availability_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(expected_ids)
+        assert batch.total_changed_entities == len(expected_ids)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda doe: doe.site_der_availability_id)
 
@@ -733,7 +733,7 @@ async def test_fetch_der_rating_by_timestamp(pg_base_config, timestamp: datetime
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_der_rating_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(expected_ids)
+        assert batch.total_changed_entities == len(expected_ids)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda doe: doe.site_der_rating_id)
 
@@ -764,7 +764,7 @@ async def test_fetch_der_setting_by_timestamp(pg_base_config, timestamp: datetim
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_der_setting_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(expected_ids)
+        assert batch.total_changed_entities == len(expected_ids)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda doe: doe.site_der_setting_id)
 
@@ -795,7 +795,7 @@ async def test_fetch_der_status_by_timestamp(pg_base_config, timestamp: datetime
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_der_status_by_changed_at(session, timestamp)
-        assert batch.total_entities == len(expected_ids)
+        assert batch.total_changed_entities == len(expected_ids)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda doe: doe.site_der_status_id)
 
