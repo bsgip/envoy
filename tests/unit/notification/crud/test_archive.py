@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
+from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 
@@ -11,19 +12,19 @@ from envoy.server.model.site import Site, SiteDER
 
 
 @pytest.mark.parametrize(
-    "requested_pk_ids, expected_pk_ids",
+    "requested_pk_ids, expected_source_pk_ids, expected_archive_pk_ids",
     [
-        (set(), []),
-        ({1, 6, 9, 11, 12, 13, 14, 15}, [1, 6, 11, 12]),
-        ({1, 3}, [1, 3]),
-        ({9}, []),
-        ({11, 14}, [11]),
-        ({11}, [11]),
+        (set(), [], []),
+        ({1, 6, 9, 11, 12, 13, 14, 15}, [1, 6], [11, 12]),
+        ({1, 3}, [1, 3], []),
+        ({9}, [], []),
+        ({11, 14}, [], [11]),
+        ({11}, [], [11]),
     ],
 )
 @pytest.mark.anyio
 async def test_fetch_relationship_with_archive_site(
-    pg_base_config, requested_pk_ids: set[int], expected_pk_ids: list[int]
+    pg_base_config, requested_pk_ids: set[int], expected_source_pk_ids: list[int], expected_archive_pk_ids: list[int]
 ):
     """Tests fetch_relationship_with_archive can differentiate archive records from normal records and can
     correctly source entities from the archive table if the main table is empty"""
@@ -84,36 +85,37 @@ async def test_fetch_relationship_with_archive_site(
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
-        entities = await fetch_relationship_with_archive(session, Site, ArchiveSite, requested_pk_ids)
+        source_entities, archive_entities = await fetch_relationship_with_archive(
+            session, Site, ArchiveSite, requested_pk_ids
+        )
 
-        # Ensure we get the expected entities
-        assert len(entities) == len(expected_pk_ids), [e.site_id for e in entities]
-        assert sorted([e.site_id for e in entities]) == sorted(expected_pk_ids)
+        # Ensure we get the expected entities and IDs
+        assert_list_type(Site, source_entities, count=len(expected_source_pk_ids))
+        assert_list_type(ArchiveSite, archive_entities, count=len(expected_archive_pk_ids))
+        assert sorted([e.site_id for e in source_entities]) == sorted(expected_source_pk_ids)
+        assert sorted([e.site_id for e in archive_entities]) == sorted(expected_archive_pk_ids)
 
         # Ensure we get the expected values too
-        for e in entities:
-            if isinstance(e, Site):
-                assert e.nmi == str(e.site_id) * 10, "This is just the convention for pg_base_config"
-            elif isinstance(e, ArchiveSite):
-                assert e.nmi == f"archive_{e.site_id}", "This is just a convention for this test thats setup above"
-            else:
-                raise Exception(f"Unexpected type returned {e} {type(e)}")
+        for e in source_entities:
+            assert e.nmi == str(e.site_id) * 10, "This is just the convention for pg_base_config"
+        for e in archive_entities:
+            assert e.nmi == f"archive_{e.site_id}", "This is just a convention for this test thats setup above"
 
 
 @pytest.mark.parametrize(
-    "requested_pk_ids, expected_pk_ids",
+    "requested_pk_ids, expected_source_pk_ids, expected_archive_pk_ids",
     [
-        (set(), []),
-        ({1, 2, 9, 11, 12, 13, 14, 15}, [1, 2, 11, 12]),
-        ({1, 3}, [1]),
-        ({9}, []),
-        ({11, 14}, [11]),
-        ({11}, [11]),
+        (set(), [], []),
+        ({1, 2, 9, 11, 12, 13, 14, 15}, [1, 2], [11, 12]),
+        ({1, 3}, [1], []),
+        ({9}, [], []),
+        ({11, 14}, [], [11]),
+        ({11}, [], [11]),
     ],
 )
 @pytest.mark.anyio
 async def test_fetch_relationship_with_archive_site_der(
-    pg_base_config, requested_pk_ids: set[int], expected_pk_ids: list[int]
+    pg_base_config, requested_pk_ids: set[int], expected_source_pk_ids: list[int], expected_archive_pk_ids: list[int]
 ):
     """Tests fetch_relationship_with_archive can differentiate archive records from normal records and can
     correctly source entities from the archive table if the main table is empty"""
@@ -187,19 +189,20 @@ async def test_fetch_relationship_with_archive_site_der(
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
-        entities = await fetch_relationship_with_archive(session, SiteDER, ArchiveSiteDER, requested_pk_ids)
+        source_entities, archive_entities = await fetch_relationship_with_archive(
+            session, SiteDER, ArchiveSiteDER, requested_pk_ids
+        )
 
-        # Ensure we get the expected entities
-        assert len(entities) == len(expected_pk_ids), [e.site_der_id for e in entities]
-        assert sorted([e.site_der_id for e in entities]) == sorted(expected_pk_ids)
+        # Ensure we get the expected entities and IDs
+        assert_list_type(SiteDER, source_entities, count=len(expected_source_pk_ids))
+        assert_list_type(ArchiveSiteDER, archive_entities, count=len(expected_archive_pk_ids))
+        assert sorted([e.site_der_id for e in source_entities]) == sorted(expected_source_pk_ids)
+        assert sorted([e.site_der_id for e in archive_entities]) == sorted(expected_archive_pk_ids)
 
         # Ensure we get the expected values too
-        for e in entities:
-            if isinstance(e, SiteDER):
-                assert e.changed_time == datetime(
-                    2024, 3, 14, 3 + e.site_der_id, 55, 44, 500000, tzinfo=timezone.utc
-                ), "This is just the convention for pg_base_config"
-            elif isinstance(e, ArchiveSiteDER):
-                assert e.changed_time == expected_changed_time, "This is just a convention for this test (setup above)"
-            else:
-                raise Exception(f"Unexpected type returned {e} {type(e)}")
+        for e in source_entities:
+            assert e.changed_time == datetime(
+                2024, 3, 14, 3 + e.site_der_id, 55, 44, 500000, tzinfo=timezone.utc
+            ), "This is just the convention for pg_base_config"
+        for e in archive_entities:
+            assert e.changed_time == expected_changed_time, "This is just a convention for this test (setup above)"

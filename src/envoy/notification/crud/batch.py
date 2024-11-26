@@ -5,6 +5,7 @@ from sqlalchemy import Column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from envoy.notification.crud.archive import fetch_relationship_with_archive
 from envoy.notification.crud.common import TResourceModel
 from envoy.notification.exception import NotificationError
 from envoy.server.crud.common import localize_start_time
