@@ -35,7 +35,9 @@ class ArchiveBase(Base):
 
     # If set, this will be when the row in the original table was deleted (meaning this should be the archived row).
     # This WILL align with the changed_times shared with the notification server.
-    deleted_time: Mapped[bool] = mapped_column(DateTime(timezone=True), server_default=None, nullable=True, index=True)
+    deleted_time: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=None, nullable=True, index=True
+    )
 
 
 ARCHIVE_BASE_COLUMNS: set[str] = {"archive_id", "archive_time", "deleted_time"}
