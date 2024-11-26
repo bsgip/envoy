@@ -12,7 +12,6 @@ from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
 
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
-    TResourceModel,
     fetch_der_availability_by_changed_at,
     fetch_der_rating_by_changed_at,
     fetch_der_setting_by_changed_at,
@@ -25,6 +24,7 @@ from envoy.notification.crud.batch import (
     get_subscription_filter_id,
     select_subscriptions_for_resource,
 )
+from envoy.notification.crud.common import TResourceModel
 from envoy.notification.exception import NotificationError
 from envoy.notification.handler import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification

@@ -1,32 +1,23 @@
 from datetime import datetime
 from typing import Generic, Sequence, TypeVar, Union, cast
 
-from sqlalchemy import select
+from sqlalchemy import Column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from envoy.notification.crud.common import TResourceModel
 from envoy.notification.exception import NotificationError
 from envoy.server.crud.common import localize_start_time
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
+from envoy.server.model.archive.base import ArchiveBase
+from envoy.server.model.archive.site import ArchiveSite
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
+from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
-
-TResourceModel = TypeVar(
-    "TResourceModel",
-    bound=Union[
-        Site,
-        DynamicOperatingEnvelope,
-        TariffGeneratedRate,
-        SiteReading,
-        SiteDERAvailability,
-        SiteDERRating,
-        SiteDERSetting,
-        SiteDERStatus,
-    ],
-)
 
 
 class AggregatorBatchedEntities(Generic[TResourceModel]):
@@ -34,17 +25,24 @@ class AggregatorBatchedEntities(Generic[TResourceModel]):
 
     timestamp: datetime
     models_by_batch_key: dict[tuple, list[TResourceModel]]  # First element of batch key will be aggregator_id
-    total_entities: int
 
-    def __init__(self, timestamp: datetime, resource: SubscriptionResource, models: Sequence[TResourceModel]) -> None:
+    # The ID's of any records that were deleted (with their full batch key)
+    # First element of batch key will be aggregator_id
+    deleted_batch_keys: list[tuple]
+
+    def __init__(
+        self,
+        timestamp: datetime,
+        resource: SubscriptionResource,
+        models: Sequence[TResourceModel],
+        deleted_models: Sequence[TResourceModel],
+    ) -> None:
         super().__init__()
 
         self.timestamp = timestamp
 
         self.models_by_batch_key = {}
-        self.total_entities = 0
         for m in models:
-            self.total_entities = self.total_entities + 1
             batch_key = get_batch_key(resource, m)
 
             model_list = self.models_by_batch_key.get(batch_key, None)
@@ -52,6 +50,8 @@ class AggregatorBatchedEntities(Generic[TResourceModel]):
                 self.models_by_batch_key[batch_key] = [m]
             else:
                 model_list.append(m)
+
+        self.deleted_batch_keys = [get_batch_key(resource, d) for d in deleted_models]
 
 
 def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tuple:
@@ -179,9 +179,12 @@ async def select_subscriptions_for_resource(
 async def fetch_sites_by_changed_at(session: AsyncSession, timestamp: datetime) -> AggregatorBatchedEntities[Site]:
     """Fetches all sites matching the specified changed_at and returns them keyed by their aggregator/site id"""
 
-    stmt = select(Site).where(Site.changed_time == timestamp)
-    resp = await session.execute(stmt)
-    return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE, resp.scalars().all())
+    active_sites = (await session.execute(select(Site).where(Site.changed_time == timestamp))).scalars().all()
+    deleted_sites = (
+        (await session.execute(select(ArchiveSite).where(ArchiveSite.deleted_time == timestamp))).scalars().all()
+    )
+
+    return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE, active_sites, deleted_sites)
 
 
 async def fetch_rates_by_changed_at(
@@ -191,17 +194,30 @@ async def fetch_rates_by_changed_at(
 
     Will include the TariffGeneratedRate.site relationship"""
 
-    stmt = (
-        select(TariffGeneratedRate, Site.timezone_id)
-        .join(TariffGeneratedRate.site)
-        .where(TariffGeneratedRate.changed_time == timestamp)
-        .options(selectinload(TariffGeneratedRate.site))
+    active_rates_resp = await session.execute(
+        (
+            select(TariffGeneratedRate, Site.timezone_id)
+            .join(TariffGeneratedRate.site)
+            .where(TariffGeneratedRate.changed_time == timestamp)
+            .options(selectinload(TariffGeneratedRate.site))
+        )
     )
-    resp = await session.execute(stmt)
+    archived_rates = (
+        (
+            await session.execute(
+                (select(ArchiveTariffGeneratedRate).where(ArchiveTariffGeneratedRate.deleted_time == timestamp))
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # Populate each ArchiveRate with the "site" relationship such that it's pointing to either the site/archivesite value
+
     return AggregatorBatchedEntities(
         timestamp,
         SubscriptionResource.TARIFF_GENERATED_RATE,
-        [localize_start_time(rate_and_tz) for rate_and_tz in resp.all()],
+        [localize_start_time(rate_and_tz) for rate_and_tz in active_rates_resp.all()],
     )
 
 

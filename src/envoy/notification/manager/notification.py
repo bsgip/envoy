@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 class NotificationManager:
     @staticmethod
     async def notify_upserted_entities(resource: SubscriptionResource, timestamp: datetime) -> bool:
-        """If notifications are enabled - enqueues a task that will look for changes in the specified entities
+        """If notifications are enabled - enqueues a task that will look for changes (insert/update) in the specified
+        entities and deletes in the archive tables associated with resource
 
         The work will NOT occur on this process - it's purely enqueuing it to run elsewhere"""
         enabled_broker = get_enabled_broker()
