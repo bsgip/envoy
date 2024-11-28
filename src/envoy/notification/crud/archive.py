@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Sequence, Union, cast
+from typing import Sequence, cast
 
 from sqlalchemy import Column, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -104,13 +104,13 @@ async def fetch_entities_with_archive_by_datetime(
 
     (_, archive_pk_col) = extract_source_archive_pk_columns(source_type, archive_type)
 
-    # Lookup the source table
+    # Lookup the source table (using changed_time)
     source_entities: Sequence[TResourceModel] = cast(
         Sequence[TResourceModel],
         (await session.execute(select(source_type).where(source_changed_time == cd_time))).scalars().all(),
     )
 
-    # Lookup the archive tables
+    # Lookup the archive tables (using deleted_time)
     archive_entities: Sequence[TArchiveResourceModel] = cast(
         Sequence[TArchiveResourceModel],
         (
