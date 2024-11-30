@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Sequence, cast
+from typing import Callable, Sequence, Union, cast
 
 from sqlalchemy import Column, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,3 +128,7 @@ async def fetch_entities_with_archive_by_datetime(
     )
 
     return (source_entities, archive_entities)
+
+
+def orm_relationship_map_entities(source_entities: Sequence[TResourceModel], Sequence[TArchiveResourceModel], get_pk: Callable[[Union[TResourceModel, TArchiveResourceModel]], int]) -> None:
+    """Mutates source_entities"""
