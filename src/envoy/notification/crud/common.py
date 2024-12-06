@@ -1,4 +1,4 @@
-from typing import TypeVar, Union
+from typing import Protocol, TypeVar, Union
 
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (
@@ -17,28 +17,24 @@ from envoy.server.model.tariff import TariffGeneratedRate
 
 TResourceModel = TypeVar(
     "TResourceModel",
-    bound=Union[
-        Site,
-        DynamicOperatingEnvelope,
-        TariffGeneratedRate,
-        SiteReading,
-        SiteDERAvailability,
-        SiteDERRating,
-        SiteDERSetting,
-        SiteDERStatus,
-    ],
+    Site,
+    DynamicOperatingEnvelope,
+    TariffGeneratedRate,
+    SiteReading,
+    SiteDERAvailability,
+    SiteDERRating,
+    SiteDERSetting,
+    SiteDERStatus,
 )
 
 TArchiveResourceModel = TypeVar(
     "TArchiveResourceModel",
-    bound=Union[
-        ArchiveSite,
-        ArchiveDynamicOperatingEnvelope,
-        ArchiveTariffGeneratedRate,
-        ArchiveSiteReading,
-        ArchiveSiteDERAvailability,
-        ArchiveSiteDERRating,
-        ArchiveSiteDERSetting,
-        ArchiveSiteDERStatus,
-    ],
+    ArchiveSite,
+    ArchiveDynamicOperatingEnvelope,
+    ArchiveTariffGeneratedRate,
+    ArchiveSiteReading,
+    ArchiveSiteDERAvailability,
+    ArchiveSiteDERRating,
+    ArchiveSiteDERSetting,
+    ArchiveSiteDERStatus,
 )

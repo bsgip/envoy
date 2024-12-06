@@ -32,11 +32,19 @@ from envoy.notification.exception import NotificationError
 from envoy.server.crud.end_device import Site
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.archive.site import ArchiveSite
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
+
+
+def count_batched_models(batch: AggregatorBatchedEntities) -> int:
+    """Counts the number of all models stored under models_by_batch_key"""
+    return sum(len(v) for v in batch.models_by_batch_key.values())
 
 
 @pytest.mark.parametrize("resource", [(r) for r in SubscriptionResource])
@@ -47,7 +55,7 @@ def test_AggregatorBatchedEntities_empty(resource: SubscriptionResource):
 
     assert b.timestamp == ts
     assert len(b.models_by_batch_key) == 0
-    assert b.total_changed_entities == 0
+    assert count_batched_models(b) == 0
 
 
 @mock.patch("envoy.notification.crud.batch.get_batch_key")
@@ -67,7 +75,7 @@ def test_AggregatorBatchedEntities_single_batch(mock_get_batch_key: mock.MagicMo
     b = AggregatorBatchedEntities(ts, resource, [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4])
 
     assert b.timestamp == ts
-    assert b.total_changed_entities == 4
+    assert count_batched_models(b) == 4
     assert len(b.models_by_batch_key) == 1, "Expecting a single unique key"
     assert b.models_by_batch_key[(1, 2)] == [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4]
 
@@ -91,7 +99,7 @@ def test_AggregatorBatchedEntities_multi_batch(mock_get_batch_key: mock.MagicMoc
     b = AggregatorBatchedEntities(ts, resource, [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4])
 
     assert b.timestamp == ts
-    assert b.total_changed_entities == 4
+    assert count_batched_models(b) == 4
     assert len(b.models_by_batch_key) == 3
     assert b.models_by_batch_key[(1, 2)] == [fake_entity_1, fake_entity_3]
     assert b.models_by_batch_key[(1, 3)] == [fake_entity_2]
@@ -384,12 +392,13 @@ async def test_select_subscriptions_for_resource_conditions(
     ],
 )
 @pytest.mark.anyio
-async def test_fetch_sites_by_timestamp(pg_base_config, timestamp: datetime, expected_sites: list[Site]):
+async def test_fetch_sites_by_timestamp_no_archive(pg_base_config, timestamp: datetime, expected_sites: list[Site]):
     """Tests that entities are filtered/returned correctly"""
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_sites_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(expected_sites)
+        assert count_batched_models(batch) == len(expected_sites)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda site: site.site_id)
 
@@ -416,7 +425,8 @@ async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_sites_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(all_entities)
+        assert count_batched_models(batch) == len(all_entities)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda site: site.site_id)
 
@@ -428,8 +438,63 @@ async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert empty_batch.total_changed_entities == 0
+        assert count_batched_models(empty_batch) == 0
         assert len(empty_batch.models_by_batch_key) == 0
+        assert len(empty_batch.deleted_by_batch_key) == 0
+
+
+@pytest.mark.anyio
+async def test_fetch_sites_by_timestamp_with_archive(pg_base_config):
+    """Tests that entities are filtered/returned correctly and include archive data"""
+
+    # This matches the changed_time on site 1
+    timestamp = datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc)
+    expected_active_site_ids = [1]
+    expected_active_nmis = ["1111111111"]
+    expected_deleted_site_ids = [70, 72]
+    assert len(expected_active_site_ids) == len(expected_active_nmis), "Keep these in sync"
+
+    # inject a bunch of archival data
+    async with generate_async_session(pg_base_config) as session:
+
+        # One of these will be picked up
+        session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
+        session.add(generate_class_instance(ArchiveSite, seed=22, aggregator_id=1, site_id=70, deleted_time=timestamp))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, seed=33, aggregator_id=1, site_id=70, deleted_time=timestamp + timedelta(seconds=5)
+            )
+        )
+
+        # No deleted time so ignored
+        session.add(generate_class_instance(ArchiveSite, seed=44, aggregator_id=1, site_id=71))
+
+        # This will be picked up
+        session.add(generate_class_instance(ArchiveSite, seed=66, aggregator_id=2, site_id=72, deleted_time=timestamp))
+        await session.commit()
+
+    # Now see if the fetch grabs everything
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_sites_by_changed_at(session, timestamp)
+        assert count_batched_models(batch) == len(expected_active_site_ids)
+        active_list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        active_list_entities.sort(key=lambda site: site.site_id)
+        assert all([isinstance(e, Site) for e in active_list_entities])
+
+        deleted_list_entities = [e for _, entities in batch.deleted_by_batch_key.items() for e in entities]
+        deleted_list_entities.sort(key=lambda site: site.site_id)
+        assert all([isinstance(e, ArchiveSite) for e in deleted_list_entities])
+
+        assert set(expected_active_site_ids) == set([e.site_id for e in active_list_entities])
+        assert set(expected_active_nmis) == set([e.nmi for e in active_list_entities])
+        assert set(expected_deleted_site_ids) == set([e.site_id for e in deleted_list_entities]])
+
+        # Sanity check that a different timestamp yields nothing
+        empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
+        assert count_batched_models(empty_batch) == 0
+        assert len(empty_batch.models_by_batch_key) == 0
+        assert len(empty_batch.deleted_by_batch_key) == 0
 
 
 @pytest.mark.parametrize(
@@ -466,7 +531,8 @@ async def test_fetch_rates_by_timestamp(pg_base_config, timestamp: datetime, exp
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_rates_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(expected_rates)
+        assert count_batched_models(batch) == len(expected_rates)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda rate: rate.tariff_generated_rate_id)
 
@@ -501,7 +567,8 @@ async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_rates_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(all_entities)
+        assert count_batched_models(batch) == len(all_entities)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda rate: rate.tariff_generated_rate_id)
 
@@ -513,8 +580,144 @@ async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_rates_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert empty_batch.total_changed_entities == 0
+        assert count_batched_models(empty_batch) == 0
         assert len(empty_batch.models_by_batch_key) == 0
+        assert len(empty_batch.deleted_by_batch_key) == 0
+
+
+@pytest.mark.anyio
+async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
+    """Tests that entities are filtered/returned correctly and include archive data"""
+
+    # This matches the changed_time on tariff_generated_rate 1
+    timestamp = datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=timezone.utc)
+    expected_active_rate_ids = [1]
+    expected_deleted_by_batch_key = [
+        (1, 91, 70, date(2011, 11, 1)),
+        (1, 92, 2, date(2011, 11, 2)),
+        (2, 93, 3, date(2011, 11, 3)),
+    ]
+
+    # inject a bunch of archival data
+    async with generate_async_session(pg_base_config) as session:
+
+        # Inject a parent "archive" site that was deleted - the "newest" deleted value will be used
+        session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
+        session.add(
+            generate_class_instance(
+                ArchiveSite,
+                seed=22,
+                aggregator_id=1,
+                site_id=70,
+                deleted_time=timestamp - timedelta(seconds=10),
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveSite,
+                seed=33,
+                aggregator_id=1,
+                site_id=70,
+                deleted_time=timestamp - timedelta(seconds=5),  # Doesn't need to match the timestamp
+                nmi="deleted70",
+                timezone_id="Australia/Brisbane",
+            )
+        )
+
+        # This deleted site will be ignored in favour of the version in the active table
+        session.add(
+            generate_class_instance(
+                ArchiveSite,
+                seed=44,
+                aggregator_id=1,
+                site_id=1,
+                deleted_time=timestamp,
+            )
+        )
+
+        # Inject archive rates (only most recent is used)
+        session.add(
+            generate_class_instance(ArchiveTariffGeneratedRate, seed=55, site_id=1, tariff_generated_rate_id=21)
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveTariffGeneratedRate,
+                seed=66,
+                site_id=1,
+                tariff_generated_rate_id=21,
+                deleted_time=timestamp - timedelta(seconds=5),
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveTariffGeneratedRate,
+                seed=77,
+                site_id=70,
+                tariff_generated_rate_id=21,
+                tariff_id=91,
+                start_time=datetime(2011, 11, 1, 12, 0, 0, tzinfo=timezone.utc),
+                deleted_time=timestamp,
+            )
+        )
+
+        # No deleted time so ignored
+        session.add(
+            generate_class_instance(ArchiveTariffGeneratedRate, seed=88, site_id=1, tariff_generated_rate_id=22)
+        )
+
+        # Wrong deleted time so ignored
+        session.add(
+            generate_class_instance(
+                ArchiveTariffGeneratedRate,
+                seed=99,
+                site_id=1,
+                tariff_generated_rate_id=23,
+                deleted_time=timestamp - timedelta(seconds=5),
+            )
+        )
+
+        # These will be picked up
+        session.add(
+            generate_class_instance(
+                ArchiveTariffGeneratedRate,
+                seed=1010,
+                site_id=2,
+                tariff_generated_rate_id=24,
+                tariff_id=92,
+                start_time=datetime(2011, 11, 2, 12, 0, 0, tzinfo=timezone.utc),
+                deleted_time=timestamp,
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveTariffGeneratedRate,
+                seed=1111,
+                site_id=3,
+                tariff_generated_rate_id=25,
+                tariff_id=93,
+                start_time=datetime(2011, 11, 3, 12, 0, 0, tzinfo=timezone.utc),
+                deleted_time=timestamp,
+            )
+        )
+        await session.commit()
+
+    # Now see if the fetch grabs everything
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_rates_by_changed_at(session, timestamp)
+        assert count_batched_models(batch) == len(expected_active_rate_ids)
+        active_list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        active_list_entities.sort(key=lambda site: site.tariff_generated_rate_id)
+        assert all([isinstance(e, TariffGeneratedRate) for e in active_list_entities])
+
+        assert set(expected_active_rate_ids) == set([e.tariff_generated_rate_id for e in active_list_entities])
+        assert set(expected_deleted_by_batch_key) == set(batch.deleted_by_batch_key)
+
+        # Sanity check that a different timestamp yields nothing
+        empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
+        assert count_batched_models(empty_batch) == 0
+        assert len(empty_batch.models_by_batch_key) == 0
+        assert len(empty_batch.deleted_by_batch_key) == 0
 
 
 @pytest.mark.parametrize(
@@ -550,7 +753,8 @@ async def test_fetch_does_by_timestamp(
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_does_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(expected_does)
+        assert count_batched_models(batch) == len(expected_does)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda doe: doe.dynamic_operating_envelope_id)
 
@@ -585,7 +789,8 @@ async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_does_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(all_entities)
+        assert count_batched_models(batch) == len(all_entities)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda rate: rate.dynamic_operating_envelope_id)
 
@@ -597,8 +802,142 @@ async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_does_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert empty_batch.total_changed_entities == 0
+        assert count_batched_models(empty_batch) == 0
         assert len(empty_batch.models_by_batch_key) == 0
+        assert len(empty_batch.deleted_by_batch_key) == 0
+
+
+@pytest.mark.anyio
+async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
+    """Tests that entities are filtered/returned correctly and include archive data"""
+
+    # This matches the changed_time on doe 1 2022-05-06 11:22:33.500
+    timestamp = datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc)
+    expected_active_doe_ids = [1]
+    expected_deleted_by_batch_key = [
+        (1, 70),
+        (1, 2),
+        (2, 3),
+    ]
+
+    # inject a bunch of archival data
+    async with generate_async_session(pg_base_config) as session:
+
+        # Inject a parent "archive" site that was deleted - the "newest" deleted value will be used
+        session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
+        session.add(
+            generate_class_instance(
+                ArchiveSite,
+                seed=22,
+                aggregator_id=1,
+                site_id=70,
+                deleted_time=timestamp - timedelta(seconds=10),
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveSite,
+                seed=33,
+                aggregator_id=1,
+                site_id=70,
+                deleted_time=timestamp - timedelta(seconds=5),  # Doesn't need to match the timestamp
+                nmi="deleted70",
+                timezone_id="Australia/Brisbane",
+            )
+        )
+
+        # This deleted site will be ignored in favour of the version in the active table
+        session.add(
+            generate_class_instance(
+                ArchiveSite,
+                seed=44,
+                aggregator_id=1,
+                site_id=1,
+                deleted_time=timestamp,
+            )
+        )
+
+        # Inject archive rates (only most recent is used)
+        session.add(
+            generate_class_instance(
+                ArchiveDynamicOperatingEnvelope, seed=55, site_id=1, dynamic_operating_envelope_id=21
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveDynamicOperatingEnvelope,
+                seed=66,
+                site_id=1,
+                dynamic_operating_envelope_id=21,
+                deleted_time=timestamp - timedelta(seconds=5),
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveDynamicOperatingEnvelope,
+                seed=77,
+                site_id=70,
+                dynamic_operating_envelope_id=21,
+                deleted_time=timestamp,
+            )
+        )
+
+        # No deleted time so ignored
+        session.add(
+            generate_class_instance(
+                ArchiveDynamicOperatingEnvelope, seed=88, site_id=1, dynamic_operating_envelope_id=22
+            )
+        )
+
+        # Wrong deleted time so ignored
+        session.add(
+            generate_class_instance(
+                ArchiveDynamicOperatingEnvelope,
+                seed=99,
+                site_id=1,
+                dynamic_operating_envelope_id=23,
+                deleted_time=timestamp - timedelta(seconds=5),
+            )
+        )
+
+        # These will be picked up
+        session.add(
+            generate_class_instance(
+                ArchiveDynamicOperatingEnvelope,
+                seed=1010,
+                site_id=2,
+                dynamic_operating_envelope_id=24,
+                deleted_time=timestamp,
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveDynamicOperatingEnvelope,
+                seed=1111,
+                site_id=3,
+                dynamic_operating_envelope_id=25,
+                deleted_time=timestamp,
+            )
+        )
+        await session.commit()
+
+    # Now see if the fetch grabs everything
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_does_by_changed_at(session, timestamp)
+        assert count_batched_models(batch) == len(expected_active_doe_ids)
+        active_list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        active_list_entities.sort(key=lambda site: site.dynamic_operating_envelope_id)
+        assert all([isinstance(e, DynamicOperatingEnvelope) for e in active_list_entities])
+
+        assert set(expected_active_doe_ids) == set([e.dynamic_operating_envelope_id for e in active_list_entities])
+        assert set(expected_deleted_by_batch_key) == set(batch.deleted_by_batch_key)
+
+        # Sanity check that a different timestamp yields nothing
+        empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
+        assert count_batched_models(empty_batch) == 0
+        assert len(empty_batch.models_by_batch_key) == 0
+        assert len(empty_batch.deleted_by_batch_key) == 0
 
 
 @pytest.mark.parametrize(
@@ -632,7 +971,8 @@ async def test_fetch_readings_by_timestamp(pg_base_config, timestamp: datetime, 
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_readings_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(expected_readings)
+        assert count_batched_models(batch) == len(expected_readings)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda reading: reading.site_reading_id)
 
@@ -667,7 +1007,8 @@ async def test_fetch_readings_by_timestamp_multiple_aggs(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_readings_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(all_entities)
+        assert count_batched_models(batch) == len(all_entities)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda reading: reading.site_reading_id)
 
@@ -679,8 +1020,9 @@ async def test_fetch_readings_by_timestamp_multiple_aggs(pg_base_config):
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_readings_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert empty_batch.total_changed_entities == 0
+        assert count_batched_models(empty_batch) == 0
         assert len(empty_batch.models_by_batch_key) == 0
+        assert len(empty_batch.deleted_by_batch_key) == 0
 
 
 @pytest.mark.parametrize(
@@ -702,7 +1044,8 @@ async def test_fetch_der_availability_by_timestamp(pg_base_config, timestamp: da
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_der_availability_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(expected_ids)
+        assert count_batched_models(batch) == len(expected_ids)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda doe: doe.site_der_availability_id)
 
@@ -733,7 +1076,8 @@ async def test_fetch_der_rating_by_timestamp(pg_base_config, timestamp: datetime
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_der_rating_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(expected_ids)
+        assert count_batched_models(batch) == len(expected_ids)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda doe: doe.site_der_rating_id)
 
@@ -764,7 +1108,8 @@ async def test_fetch_der_setting_by_timestamp(pg_base_config, timestamp: datetim
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_der_setting_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(expected_ids)
+        assert len(batch.deleted_by_batch_key) == 0
+        assert count_batched_models(batch) == len(expected_ids)
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda doe: doe.site_der_setting_id)
 
@@ -795,7 +1140,8 @@ async def test_fetch_der_status_by_timestamp(pg_base_config, timestamp: datetime
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_der_status_by_changed_at(session, timestamp)
-        assert batch.total_changed_entities == len(expected_ids)
+        assert count_batched_models(batch) == len(expected_ids)
+        assert len(batch.deleted_by_batch_key) == 0
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda doe: doe.site_der_status_id)
 

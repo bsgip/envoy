@@ -1,16 +1,22 @@
 from datetime import datetime
-from typing import Generic, Sequence, TypeVar, Union, cast
+from itertools import chain
+from typing import Any, Generic, Iterable, Sequence, TypeVar, Union, cast
 
 from sqlalchemy import Column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from envoy.notification.crud.archive import fetch_entities_with_archive_by_id
-from envoy.notification.crud.common import TResourceModel
+from envoy.notification.crud.archive import (
+    fetch_entities_with_archive_by_datetime,
+    fetch_entities_with_archive_by_id,
+    orm_relationship_map_parent_entities,
+)
+from envoy.notification.crud.common import TArchiveResourceModel, TResourceModel
 from envoy.notification.exception import NotificationError
-from envoy.server.crud.common import localize_start_time
+from envoy.server.crud.common import localize_start_time, localize_start_time_for_entity
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.archive.base import ArchiveBase
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
@@ -21,38 +27,43 @@ from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
 
 
-class AggregatorBatchedEntities(Generic[TResourceModel]):
-    """A set of TResourceModel entities keyed by their aggregator ID and then site id"""
+class AggregatorBatchedEntities(Generic[TResourceModel, TArchiveResourceModel]):
+    """A set of TResourceModel and TArchiveResourceModel entities keyed by their aggregator ID and then site id. They
+    represent all of the entities that have changed/deleted in a single batch (identified by timestamp)."""
 
     timestamp: datetime
-    models_by_batch_key: dict[tuple, list[TResourceModel]]  # First element of batch key will be aggregator_id
 
-    # The ID's of any records that were deleted (with their full batch key)
-    # First element of batch key will be aggregator_id
-    deleted_batch_keys: list[tuple]
+    # All of the models that were changed at timestamp. First element of batch key will be aggregator_id
+    models_by_batch_key: dict[tuple, list[TResourceModel]]
+
+    # The archive records that were deleted at timestamp. First element of batch key will be aggregator id
+    deleted_by_batch_key: dict[tuple, list[TArchiveResourceModel]]
+
+    @staticmethod
+    def _generate_batch_dict(resource: SubscriptionResource, models: Iterable[Any]) -> dict[tuple, list[Any]]:
+        batch_dict: dict[tuple, list[Any]] = {}
+        for m in models:
+            batch_key = get_batch_key(resource, m)
+
+            model_list = batch_dict.get(batch_key, None)
+            if model_list is None:
+                batch_dict[batch_key] = [m]
+            else:
+                model_list.append(m)
+        return batch_dict
 
     def __init__(
         self,
         timestamp: datetime,
         resource: SubscriptionResource,
         models: Sequence[TResourceModel],
-        deleted_models: Sequence[TResourceModel],
+        deleted_models: Sequence[TArchiveResourceModel],
     ) -> None:
         super().__init__()
 
         self.timestamp = timestamp
-
-        self.models_by_batch_key = {}
-        for m in models:
-            batch_key = get_batch_key(resource, m)
-
-            model_list = self.models_by_batch_key.get(batch_key, None)
-            if model_list is None:
-                self.models_by_batch_key[batch_key] = [m]
-            else:
-                model_list.append(m)
-
-        self.deleted_batch_keys = [get_batch_key(resource, d) for d in deleted_models]
+        self.models_by_batch_key = AggregatorBatchedEntities._generate_batch_dict(resource, models)
+        self.deleted_by_batch_key = AggregatorBatchedEntities._generate_batch_dict(resource, deleted_models)
 
 
 def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tuple:
@@ -177,70 +188,97 @@ async def select_subscriptions_for_resource(
     return resp.scalars().all()
 
 
-async def fetch_sites_by_changed_at(session: AsyncSession, timestamp: datetime) -> AggregatorBatchedEntities[Site]:
-    """Fetches all sites matching the specified changed_at and returns them keyed by their aggregator/site id"""
+async def fetch_sites_by_changed_at(
+    session: AsyncSession, timestamp: datetime
+) -> AggregatorBatchedEntities[Site, ArchiveSite]:
+    """Fetches all sites matching the specified changed_at and returns them keyed by their aggregator/site id
 
-    active_sites = (await session.execute(select(Site).where(Site.changed_time == timestamp))).scalars().all()
-    deleted_sites = (
-        (await session.execute(select(ArchiveSite).where(ArchiveSite.deleted_time == timestamp))).scalars().all()
-    )
+    Also fetches any site from the archive that was deleted at the specified timestamp"""
+
+    active_sites, deleted_sites = await fetch_entities_with_archive_by_datetime(session, Site, ArchiveSite, timestamp)
 
     return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE, active_sites, deleted_sites)
 
 
 async def fetch_rates_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[TariffGeneratedRate]:
+) -> AggregatorBatchedEntities[TariffGeneratedRate, ArchiveTariffGeneratedRate]:
     """Fetches all rates matching the specified changed_at and returns them keyed by their aggregator/site id
 
-    Will include the TariffGeneratedRate.site relationship"""
+    Will include the TariffGeneratedRate.site relationship
 
-    active_rates_resp = await session.execute(
-        (
-            select(TariffGeneratedRate, Site.timezone_id)
-            .join(TariffGeneratedRate.site)
-            .where(TariffGeneratedRate.changed_time == timestamp)
-            .options(selectinload(TariffGeneratedRate.site))
+    Also fetches any site from the archive that was deleted at the specified timestamp"""
+
+    active_rates, deleted_rates = await fetch_entities_with_archive_by_datetime(
+        session, TariffGeneratedRate, ArchiveTariffGeneratedRate, timestamp
+    )
+
+    referenced_site_ids = {
+        e.site_id
+        for e in cast(
+            Iterable[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]], chain(active_rates, deleted_rates)
         )
-    )
-    archived_rates = (
-        (
-            await session.execute(
-                (select(ArchiveTariffGeneratedRate).where(ArchiveTariffGeneratedRate.deleted_time == timestamp))
-            )
-        )
-        .scalars()
-        .all()
+    }
+
+    active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
+        session, Site, ArchiveSite, referenced_site_ids
     )
 
-    # Populate each ArchiveRate with the "site" relationship such that it's pointing to either the site/archivesite value
-
-    return AggregatorBatchedEntities(
-        timestamp,
-        SubscriptionResource.TARIFF_GENERATED_RATE,
-        [localize_start_time(rate_and_tz) for rate_and_tz in active_rates_resp.all()],
+    # Map the "site" relationship
+    orm_relationship_map_parent_entities(
+        cast(Iterable[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]], chain(active_rates, deleted_rates)),
+        lambda e: e.site_id,
+        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        "site",
     )
+
+    # localize start times using the new "site" relationship
+    for e in cast(Iterable[TariffGeneratedRate], chain(active_rates, deleted_rates)):
+        localize_start_time_for_entity(e, e.site.timezone_id)
+
+    return AggregatorBatchedEntities(timestamp, SubscriptionResource.TARIFF_GENERATED_RATE, active_rates, deleted_rates)
 
 
 async def fetch_does_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[DynamicOperatingEnvelope]:
+) -> AggregatorBatchedEntities[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]:
     """Fetches all DOEs matching the specified changed_at and returns them keyed by their aggregator/site id
 
-    Will include the DynamicOperatingEnvelope.site relationship"""
+    Will include the DynamicOperatingEnvelope.site relationship
 
-    stmt = (
-        select(DynamicOperatingEnvelope, Site.timezone_id)
-        .join(DynamicOperatingEnvelope.site)
-        .where(DynamicOperatingEnvelope.changed_time == timestamp)
-        .options(selectinload(DynamicOperatingEnvelope.site))
+    Also fetches any site from the archive that was deleted at the specified timestamp"""
+
+    active_does, deleted_does = await fetch_entities_with_archive_by_datetime(
+        session, DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope, timestamp
     )
-    resp = await session.execute(stmt)
+
+    referenced_site_ids = {
+        e.site_id
+        for e in cast(
+            Iterable[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]], chain(active_does, deleted_does)
+        )
+    }
+
+    active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
+        session, Site, ArchiveSite, referenced_site_ids
+    )
+
+    # Map the "site" relationship
+    orm_relationship_map_parent_entities(
+        cast(
+            Iterable[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]], chain(active_does, deleted_does)
+        ),
+        lambda e: e.site_id,
+        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        "site",
+    )
+
+    # localize start times using the new "site" relationship
+    for e in cast(Iterable[DynamicOperatingEnvelope], chain(active_does, deleted_does)):
+        localize_start_time_for_entity(e, e.site.timezone_id)
 
     return AggregatorBatchedEntities(
-        timestamp,
-        SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
-        [localize_start_time(doe_and_tz) for doe_and_tz in resp.all()],
+        timestamp, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, active_does, deleted_does
     )
 
 

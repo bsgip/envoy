@@ -29,6 +29,7 @@ from tests.unit.server.model.archive.test_archive_models import find_paired_arch
         ({9}, [], []),
         ({11, 14}, [], [11]),
         ({11}, [], [11]),
+        ({12}, [], [12]),
     ],
 )
 @pytest.mark.anyio
