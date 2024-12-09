@@ -25,12 +25,8 @@ jobs:
           pip install .[dev,test]
 
       - name: Coverage (source branch)
-        env:
-          DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"
-          ADMIN_USERNAME: "testadmin"
-          ADMIN_PASSWORD: "testpassword"
         run: |
-          coverage run --data-file=.coverage-source -m pytest 
+          coverage run --data-file=.coverage-source -m pytest
           {
             echo 'SOURCE_RAW<<EOF'
             coverage report --data-file=.coverage-source --omit='tests/**'
@@ -50,10 +46,6 @@ jobs:
           pip install .[dev,test]
 
       - name: Coverage (target branch)
-        env:
-          DATABASE_URL: "postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred"
-          ADMIN_USERNAME: "testadmin"
-          ADMIN_PASSWORD: "testpassword"
         run: |
           coverage run --data-file=.coverage-target -m pytest
           {
