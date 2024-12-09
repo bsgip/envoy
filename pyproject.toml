@@ -92,6 +92,7 @@ test = [
     "defusedxml",
     "asgi_lifespan",
     "assertical",
+    "pytest-env",
 ]
 
 [tool.setuptools.package-data]
