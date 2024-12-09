@@ -17,12 +17,20 @@ from envoy.server.crud.common import localize_start_time, localize_start_time_fo
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.archive.site import ArchiveSite
+from envoy.server.model.archive.site import (
+    ArchiveSite,
+    ArchiveSiteDER,
+    ArchiveSiteDERAvailability,
+    ArchiveSiteDERRating,
+    ArchiveSiteDERSetting,
+    ArchiveSiteDERStatus,
+)
+from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
-from envoy.server.model.site_reading import SiteReading
+from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
 
@@ -284,84 +292,302 @@ async def fetch_does_by_changed_at(
 
 async def fetch_readings_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[SiteReading]:
+) -> AggregatorBatchedEntities[SiteReading, ArchiveSiteReading]:
     """Fetches all site readings matching the specified changed_at and returns them keyed by their aggregator/site id
 
     Will include the SiteReading.site_reading_type relationship"""
 
-    stmt = (
-        select(SiteReading)
-        .join(SiteReading.site_reading_type)
-        .where(SiteReading.changed_time == timestamp)
-        .options(selectinload(SiteReading.site_reading_type))
+    active_readings, deleted_readings = await fetch_entities_with_archive_by_datetime(
+        session, SiteReading, ArchiveSiteReading, timestamp
     )
-    resp = await session.execute(stmt)
-    return AggregatorBatchedEntities(timestamp, SubscriptionResource.READING, resp.scalars().all())
+
+    referenced_site_reading_type_ids = {
+        e.site_reading_type_id
+        for e in cast(
+            Iterable[Union[SiteReading, ArchiveSiteReading]],
+            chain(active_readings, deleted_readings),
+        )
+    }
+
+    active_site_reading_types, deleted_site_reading_types = await fetch_entities_with_archive_by_id(
+        session, SiteReadingType, ArchiveSiteReadingType, referenced_site_reading_type_ids
+    )
+
+    # Map the "site_reading_type" relationship
+    orm_relationship_map_parent_entities(
+        cast(
+            Iterable[Union[SiteReading, ArchiveSiteReading]],
+            chain(active_readings, deleted_readings),
+        ),
+        lambda e: e.site_reading_type_id,
+        {
+            e.site_reading_type_id: e
+            for e in cast(
+                Iterable[Union[SiteReadingType, ArchiveSiteReadingType]],
+                chain(active_site_reading_types, deleted_site_reading_types),
+            )
+        },
+        "site_reading_type",
+    )
+
+    return AggregatorBatchedEntities(timestamp, SubscriptionResource.READING, active_readings, deleted_readings)
 
 
 async def fetch_der_availability_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[SiteDERAvailability]:
+) -> AggregatorBatchedEntities[SiteDERAvailability, ArchiveSiteDERAvailability]:
     """Fetches all der availabilities matching the specified changed_at and returns them keyed by their
     aggregator/site id
 
     Will include the SiteDERAvailability.site_der relationship and SiteDER.site relationship"""
 
-    stmt = (
-        select(SiteDERAvailability)
-        .where(SiteDERAvailability.changed_time == timestamp)
-        .options(selectinload(SiteDERAvailability.site_der).selectinload(SiteDER.site))
+    active_der_avails, deleted_der_avails = await fetch_entities_with_archive_by_datetime(
+        session, SiteDERAvailability, ArchiveSiteDERAvailability, timestamp
     )
-    resp = await session.execute(stmt)
-    return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE_DER_AVAILABILITY, resp.scalars().all())
+
+    referenced_site_der_ids = {
+        e.site_der_id
+        for e in cast(
+            Iterable[Union[SiteDERAvailability, ArchiveSiteDERAvailability]],
+            chain(active_der_avails, deleted_der_avails),
+        )
+    }
+
+    active_site_ders, deleted_site_ders = await fetch_entities_with_archive_by_id(
+        session, SiteDER, ArchiveSiteDER, referenced_site_der_ids
+    )
+
+    # Map the "site_der" relationship
+    orm_relationship_map_parent_entities(
+        cast(
+            Iterable[Union[SiteDERAvailability, ArchiveSiteDERAvailability]],
+            chain(active_der_avails, deleted_der_avails),
+        ),
+        lambda e: e.site_der_id,
+        {
+            e.site_der_id: e
+            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+        },
+        "site_der",
+    )
+
+    # Now repeat again but for the site relationships on the site_der
+    referenced_site_ids = {
+        e.site_id
+        for e in cast(
+            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            chain(active_site_ders, deleted_site_ders),
+        )
+    }
+
+    active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
+        session, Site, ArchiveSite, referenced_site_ids
+    )
+
+    # Map the "site" relationship for every site_der
+    all_site_ders = (cast(SiteDERAvailability, e).site_der for e in chain(active_der_avails, deleted_der_avails))
+    orm_relationship_map_parent_entities(
+        all_site_ders,
+        lambda e: e.site_id,
+        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        "site",
+    )
+
+    return AggregatorBatchedEntities(
+        timestamp, SubscriptionResource.SITE_DER_AVAILABILITY, active_der_avails, deleted_der_avails
+    )
 
 
 async def fetch_der_rating_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[SiteDERRating]:
+) -> AggregatorBatchedEntities[SiteDERRating, ArchiveSiteDERRating]:
     """Fetches all der ratings matching the specified changed_at and returns them keyed by their
     aggregator/site id
 
     Will include the SiteDERRating.site_der relationship and SiteDER.site relationship"""
 
-    stmt = (
-        select(SiteDERRating)
-        .where(SiteDERRating.changed_time == timestamp)
-        .options(selectinload(SiteDERRating.site_der).selectinload(SiteDER.site))
+    active_der_ratings, deleted_der_ratings = await fetch_entities_with_archive_by_datetime(
+        session, SiteDERRating, ArchiveSiteDERRating, timestamp
     )
-    resp = await session.execute(stmt)
-    return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE_DER_RATING, resp.scalars().all())
+
+    referenced_site_der_ids = {
+        e.site_der_id
+        for e in cast(
+            Iterable[Union[SiteDERRating, ArchiveSiteDERRating]],
+            chain(active_der_ratings, deleted_der_ratings),
+        )
+    }
+
+    active_site_ders, deleted_site_ders = await fetch_entities_with_archive_by_id(
+        session, SiteDER, ArchiveSiteDER, referenced_site_der_ids
+    )
+
+    # Map the "site_der" relationship
+    orm_relationship_map_parent_entities(
+        cast(
+            Iterable[Union[SiteDERRating, ArchiveSiteDERRating]],
+            chain(active_der_ratings, deleted_der_ratings),
+        ),
+        lambda e: e.site_der_id,
+        {
+            e.site_der_id: e
+            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+        },
+        "site_der",
+    )
+
+    # Now repeat again but for the site relationships on the site_der
+    referenced_site_ids = {
+        e.site_id
+        for e in cast(
+            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            chain(active_site_ders, deleted_site_ders),
+        )
+    }
+
+    active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
+        session, Site, ArchiveSite, referenced_site_ids
+    )
+
+    # Map the "site" relationship for every site_der
+    all_site_ders = (cast(SiteDERRating, e).site_der for e in chain(active_der_ratings, deleted_der_ratings))
+    orm_relationship_map_parent_entities(
+        all_site_ders,
+        lambda e: e.site_id,
+        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        "site",
+    )
+
+    return AggregatorBatchedEntities(
+        timestamp, SubscriptionResource.SITE_DER_RATING, active_der_ratings, deleted_der_ratings
+    )
 
 
 async def fetch_der_setting_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[SiteDERSetting]:
+) -> AggregatorBatchedEntities[SiteDERSetting, ArchiveSiteDERSetting]:
     """Fetches all der settings matching the specified changed_at and returns them keyed by their
     aggregator/site id
 
     Will include the SiteDERSetting.site_der relationship and SiteDER.site relationship"""
 
-    stmt = (
-        select(SiteDERSetting)
-        .where(SiteDERSetting.changed_time == timestamp)
-        .options(selectinload(SiteDERSetting.site_der).selectinload(SiteDER.site))
+    active_der_settings, deleted_der_settings = await fetch_entities_with_archive_by_datetime(
+        session, SiteDERSetting, ArchiveSiteDERSetting, timestamp
     )
-    resp = await session.execute(stmt)
-    return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE_DER_SETTING, resp.scalars().all())
+
+    referenced_site_der_ids = {
+        e.site_der_id
+        for e in cast(
+            Iterable[Union[SiteDERSetting, ArchiveSiteDERSetting]],
+            chain(active_der_settings, deleted_der_settings),
+        )
+    }
+
+    active_site_ders, deleted_site_ders = await fetch_entities_with_archive_by_id(
+        session, SiteDER, ArchiveSiteDER, referenced_site_der_ids
+    )
+
+    # Map the "site_der" relationship
+    orm_relationship_map_parent_entities(
+        cast(
+            Iterable[Union[SiteDERSetting, ArchiveSiteDERSetting]],
+            chain(active_der_settings, deleted_der_settings),
+        ),
+        lambda e: e.site_der_id,
+        {
+            e.site_der_id: e
+            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+        },
+        "site_der",
+    )
+
+    # Now repeat again but for the site relationships on the site_der
+    referenced_site_ids = {
+        e.site_id
+        for e in cast(
+            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            chain(active_site_ders, deleted_site_ders),
+        )
+    }
+
+    active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
+        session, Site, ArchiveSite, referenced_site_ids
+    )
+
+    # Map the "site" relationship for every site_der
+    all_site_ders = (cast(SiteDERSetting, e).site_der for e in chain(active_der_settings, deleted_der_settings))
+    orm_relationship_map_parent_entities(
+        all_site_ders,
+        lambda e: e.site_id,
+        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        "site",
+    )
+
+    return AggregatorBatchedEntities(
+        timestamp, SubscriptionResource.SITE_DER_SETTING, active_der_settings, deleted_der_settings
+    )
 
 
 async def fetch_der_status_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[SiteDERStatus]:
+) -> AggregatorBatchedEntities[SiteDERStatus, ArchiveSiteDERStatus]:
     """Fetches all der status matching the specified changed_at and returns them keyed by their
     aggregator/site id
 
     Will include the SiteDERStatus.site_der relationship and SiteDER.site relationship"""
 
-    stmt = (
-        select(SiteDERStatus)
-        .where(SiteDERStatus.changed_time == timestamp)
-        .options(selectinload(SiteDERStatus.site_der).selectinload(SiteDER.site))
+    active_der_statuses, deleted_der_statuses = await fetch_entities_with_archive_by_datetime(
+        session, SiteDERStatus, ArchiveSiteDERStatus, timestamp
     )
-    resp = await session.execute(stmt)
-    return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE_DER_STATUS, resp.scalars().all())
+
+    referenced_site_der_ids = {
+        e.site_der_id
+        for e in cast(
+            Iterable[Union[SiteDERStatus, ArchiveSiteDERStatus]],
+            chain(active_der_statuses, deleted_der_statuses),
+        )
+    }
+
+    active_site_ders, deleted_site_ders = await fetch_entities_with_archive_by_id(
+        session, SiteDER, ArchiveSiteDER, referenced_site_der_ids
+    )
+
+    # Map the "site_der" relationship
+    orm_relationship_map_parent_entities(
+        cast(
+            Iterable[Union[SiteDERStatus, ArchiveSiteDERStatus]],
+            chain(active_der_statuses, deleted_der_statuses),
+        ),
+        lambda e: e.site_der_id,
+        {
+            e.site_der_id: e
+            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+        },
+        "site_der",
+    )
+
+    # Now repeat again but for the site relationships on the site_der
+    referenced_site_ids = {
+        e.site_id
+        for e in cast(
+            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            chain(active_site_ders, deleted_site_ders),
+        )
+    }
+
+    active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
+        session, Site, ArchiveSite, referenced_site_ids
+    )
+
+    # Map the "site" relationship for every site_der
+    all_site_ders = (cast(SiteDERStatus, e).site_der for e in chain(active_der_statuses, deleted_der_statuses))
+    orm_relationship_map_parent_entities(
+        all_site_ders,
+        lambda e: e.site_id,
+        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        "site",
+    )
+
+    return AggregatorBatchedEntities(
+        timestamp, SubscriptionResource.SITE_DER_STATUS, active_der_statuses, deleted_der_statuses
+    )

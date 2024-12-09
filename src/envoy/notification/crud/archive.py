@@ -157,4 +157,9 @@ def orm_relationship_map_parent_entities(
         if parent is None:
             raise ValueError(f"Entity {src} has parent with ID {parent_pk} that couldn't be matched")
 
-        setattr(src, source_relationship_prop_name, parent)
+        # We can't use setattr - some models struggle with our lazy=raise definition and pushing in a value
+        # It feels like a SQL alchemy oddity with relationships that are "single_parent=True" but I'm not 100% sure
+        # This method will be fine for the purposes we need for it - it might become problematic if this function
+        # starts getting wider use
+        src.__dict__[source_relationship_prop_name] = parent
+        # setattr(src, source_relationship_prop_name, parent)
