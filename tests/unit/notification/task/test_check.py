@@ -10,6 +10,7 @@ from envoy_schema.server.schema.sep2.pub_sub import (
     ConditionAttributeIdentifier,
     Notification,
     NotificationResourceCombined,
+    NotificationStatus,
 )
 
 from envoy.notification.crud.batch import AggregatorBatchedEntities, get_batch_key
@@ -28,7 +29,7 @@ from envoy.notification.task.check import (
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.mapper.sep2.pricing import PricingReadingType
-from envoy.server.mapper.sep2.pub_sub import SubscriptionMapper
+from envoy.server.mapper.sep2.pub_sub import NotificationType, SubscriptionMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
@@ -443,7 +444,9 @@ def test_entities_serviced_by_subscription(
 def test_entities_to_notification_unknown_resource():
     """We catch bad SubscriptionResource with our own error"""
     with pytest.raises(NotificationError):
-        entities_to_notification(9999, Subscription(resource_type=9999), (1, 2, 3), None, [], None)
+        entities_to_notification(
+            9999, Subscription(resource_type=9999), (1, 2, 3), None, NotificationType.ENTITY_CHANGED, [], None
+        )
 
 
 def assert_hex_binary_enum_matches(expected: Optional[str], actual: Optional[int]):
@@ -494,65 +497,72 @@ def test_entities_to_notification_sites(  # noqa: C901
 
     # Try for various lengths (empty, singular, many)
     for entity_length in [0, 1, 3]:
-        entities = []
-        for i in range(entity_length):
-            # Generate test instances - tweaking them if the generated values fall foul of pydantic range validation
-            e = generate_class_instance(entity_class, seed=i, generate_relationships=True)
-            if isinstance(e, SiteDERStatus):
-                cast(SiteDERStatus, e).state_of_charge_status = i
-            entities.append(e)
+        for notification_type in [NotificationType.ENTITY_CHANGED, NotificationType.ENTITY_DELETED]:
+            entities = []
+            for i in range(entity_length):
+                # Generate test instances - tweaking them if the generated values fall foul of pydantic range validation
+                e = generate_class_instance(entity_class, seed=i, generate_relationships=True)
+                if isinstance(e, SiteDERStatus):
+                    cast(SiteDERStatus, e).state_of_charge_status = i
+                entities.append(e)
 
-        notification = entities_to_notification(resource, sub, batch_key, href_prefix, entities, pricing_reading_type)
-        assert isinstance(notification, Notification)
-        assert notification.subscribedResource.startswith(href_prefix)
-        assert notification.subscriptionURI.startswith(href_prefix)
-        assert "{" not in notification.subscribedResource, "Trying to catch format variables not being replaced"
-        assert "{" not in notification.subscriptionURI, "Trying to catch format variables not being replaced"
+            notification = entities_to_notification(
+                resource, sub, batch_key, href_prefix, notification_type, entities, pricing_reading_type
+            )
+            assert isinstance(notification, Notification)
+            assert notification.subscribedResource.startswith(href_prefix)
+            assert notification.subscriptionURI.startswith(href_prefix)
+            if notification_type == NotificationType.ENTITY_DELETED:
+                assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+            else:
+                assert notification.status == NotificationStatus.DEFAULT
+            assert "{" not in notification.subscribedResource, "Trying to catch format variables not being replaced"
+            assert "{" not in notification.subscriptionURI, "Trying to catch format variables not being replaced"
 
-        # DER resources are NOT list enabled and either set resource with the first element or leave it None
-        if resource in DER_RESOURCES:
-            if entity_length > 0:
+            # DER resources are NOT list enabled and either set resource with the first element or leave it None
+            if resource in DER_RESOURCES:
+                if entity_length > 0:
+                    assert isinstance(notification.resource, NotificationResourceCombined)
+                    assert notification.resource.all_ is None
+                    assert notification.resource.results is None
+                else:
+                    assert notification.resource is None
+            else:
+                assert notification.resource.all_ == len(entities)
+                assert notification.resource.results == len(entities)
                 assert isinstance(notification.resource, NotificationResourceCombined)
-                assert notification.resource.all_ is None
-                assert notification.resource.results is None
-            else:
-                assert notification.resource is None
-        else:
-            assert notification.resource.all_ == len(entities)
-            assert notification.resource.results == len(entities)
-            assert isinstance(notification.resource, NotificationResourceCombined)
 
-        # The underlying sub site scope should dictate how the top level object encodes site id in the hrefs
-        expected_sub_resource_href_snippet: Optional[str] = None
-        if notification.resource is not None:
-            if sub_site_id_scope is None:
-                expected_sub_resource_href_snippet = f"/{VIRTUAL_END_DEVICE_SITE_ID}"
-            else:
-                expected_sub_resource_href_snippet = f"/{sub_site_id_scope}"
+            # The underlying sub site scope should dictate how the top level object encodes site id in the hrefs
+            expected_sub_resource_href_snippet: Optional[str] = None
+            if notification.resource is not None:
+                if sub_site_id_scope is None:
+                    expected_sub_resource_href_snippet = f"/{VIRTUAL_END_DEVICE_SITE_ID}"
+                else:
+                    expected_sub_resource_href_snippet = f"/{sub_site_id_scope}"
 
-        if resource == SubscriptionResource.SITE:
-            assert len(notification.resource.EndDevice) == len(entities)
-        elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-            assert len(notification.resource.DERControl) == len(entities)
-            assert expected_sub_resource_href_snippet in notification.subscribedResource
-        elif resource == SubscriptionResource.READING:
-            assert len(notification.resource.Readings) == len(entities)
-            assert expected_sub_resource_href_snippet in notification.subscribedResource
-        elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-            assert len(notification.resource.TimeTariffInterval) == len(entities)
-            assert expected_sub_resource_href_snippet in notification.subscribedResource
-        elif resource == SubscriptionResource.SITE_DER_AVAILABILITY and entity_length:
-            assert notification.resource.statWAvail.value == entities[0].estimated_w_avail_value
-            assert expected_sub_resource_href_snippet in notification.subscribedResource
-        elif resource == SubscriptionResource.SITE_DER_RATING and entity_length:
-            assert_hex_binary_enum_matches(notification.resource.doeModesSupported, entities[0].doe_modes_supported)
-            assert expected_sub_resource_href_snippet in notification.subscribedResource
-        elif resource == SubscriptionResource.SITE_DER_SETTING and entity_length:
-            assert_hex_binary_enum_matches(notification.resource.doeModesEnabled, entities[0].doe_modes_enabled)
-            assert expected_sub_resource_href_snippet in notification.subscribedResource
-        elif resource == SubscriptionResource.SITE_DER_STATUS and entity_length:
-            assert notification.resource.inverterStatus.value == entities[0].inverter_status
-            assert expected_sub_resource_href_snippet in notification.subscribedResource
+            if resource == SubscriptionResource.SITE:
+                assert len(notification.resource.EndDevice) == len(entities)
+            elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
+                assert len(notification.resource.DERControl) == len(entities)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.READING:
+                assert len(notification.resource.Readings) == len(entities)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
+                assert len(notification.resource.TimeTariffInterval) == len(entities)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.SITE_DER_AVAILABILITY and entity_length:
+                assert notification.resource.statWAvail.value == entities[0].estimated_w_avail_value
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.SITE_DER_RATING and entity_length:
+                assert_hex_binary_enum_matches(notification.resource.doeModesSupported, entities[0].doe_modes_supported)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.SITE_DER_SETTING and entity_length:
+                assert_hex_binary_enum_matches(notification.resource.doeModesEnabled, entities[0].doe_modes_enabled)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.SITE_DER_STATUS and entity_length:
+                assert notification.resource.inverterStatus.value == entities[0].inverter_status
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
 
 
 @pytest.mark.anyio

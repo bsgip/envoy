@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from enum import IntEnum
 from typing import Optional, Sequence
 from urllib.parse import urlparse
 
@@ -46,6 +47,22 @@ from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope
+
+
+class NotificationType(IntEnum):
+    """Why is a notification being raised for an entity?"""
+
+    ENTITY_CHANGED = 1  # Raised when an entity has changed in place (same mrid/href)
+    ENTITY_DELETED = 2  # Raised when an entity has deleted entirely (old mrid/href no longer exists)
+
+
+def _map_to_notification_status(nt: NotificationType) -> NotificationStatus:
+    if nt == NotificationType.ENTITY_CHANGED:
+        return NotificationStatus.DEFAULT
+    elif nt == NotificationType.ENTITY_DELETED:
+        return NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        raise ValueError(f"NotificationType {nt} is not supported")
 
 
 def _parse_site_id_from_match(raw_site_id: str) -> Optional[int]:
@@ -346,13 +363,15 @@ class SubscriptionListMapper:
 class NotificationMapper:
 
     @staticmethod
-    def map_sites_to_response(sites: Sequence[Site], sub: Subscription, scope: AggregatorRequestScope) -> Notification:
+    def map_sites_to_response(
+        sites: Sequence[Site], sub: Subscription, scope: AggregatorRequestScope, notification_type: NotificationType
+    ) -> Notification:
         """Turns a list of sites into a notification"""
         return Notification.model_validate(
             {
                 "subscribedResource": generate_href(EndDeviceListUri, scope),
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
-                "status": NotificationStatus.DEFAULT,
+                "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_END_DEVICE_LIST,
                     "all_": len(sites),
@@ -364,7 +383,10 @@ class NotificationMapper:
 
     @staticmethod
     def map_does_to_response(
-        does: Sequence[DynamicOperatingEnvelope], sub: Subscription, scope: AggregatorRequestScope
+        does: Sequence[DynamicOperatingEnvelope],
+        sub: Subscription,
+        scope: AggregatorRequestScope,
+        notification_type: NotificationType,
     ) -> Notification:
         """Turns a list of does into a notification"""
         doe_list_href = generate_href(
@@ -374,7 +396,7 @@ class NotificationMapper:
             {
                 "subscribedResource": doe_list_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
-                "status": NotificationStatus.DEFAULT,
+                "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_DER_CONTROL_LIST,
                     "all_": len(does),
@@ -390,6 +412,7 @@ class NotificationMapper:
         readings: Sequence[SiteReading],
         sub: Subscription,
         scope: AggregatorRequestScope,
+        notification_type: NotificationType,
     ) -> Notification:
         """Turns a list of does into a notification"""
         reading_list_href = generate_href(
@@ -403,7 +426,7 @@ class NotificationMapper:
             {
                 "subscribedResource": reading_list_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
-                "status": NotificationStatus.DEFAULT,
+                "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_READING_LIST,
                     "all_": len(readings),
@@ -421,6 +444,7 @@ class NotificationMapper:
         rates: Sequence[TariffGeneratedRate],
         sub: Subscription,
         scope: AggregatorRequestScope,
+        notification_type: NotificationType,
     ) -> Notification:
         """Turns a list of dynamic prices into a notification"""
         time_tariff_interval_list_href = generate_href(
@@ -435,7 +459,7 @@ class NotificationMapper:
             {
                 "subscribedResource": time_tariff_interval_list_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
-                "status": NotificationStatus.DEFAULT,
+                "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
                     "all_": len(rates),
@@ -454,6 +478,7 @@ class NotificationMapper:
         der_availability_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
+        notification_type: NotificationType,
     ) -> Notification:
         """Turns a single SiteDERAvailability into a notification."""
         der_avail_href = generate_href(
@@ -473,7 +498,7 @@ class NotificationMapper:
             {
                 "subscribedResource": der_avail_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
-                "status": NotificationStatus.DEFAULT,
+                "status": _map_to_notification_status(notification_type),
                 "resource": resource_model,
             }
         )
@@ -485,6 +510,7 @@ class NotificationMapper:
         der_rating_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
+        notification_type: NotificationType,
     ) -> Notification:
         """Turns a single SiteDERRating into a notification."""
         der_rating_href = generate_href(
@@ -504,7 +530,7 @@ class NotificationMapper:
             {
                 "subscribedResource": der_rating_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
-                "status": NotificationStatus.DEFAULT,
+                "status": _map_to_notification_status(notification_type),
                 "resource": resource_model,
             }
         )
@@ -516,6 +542,7 @@ class NotificationMapper:
         der_setting_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
+        notification_type: NotificationType,
     ) -> Notification:
         """Turns a single SiteDERSetting into a notification."""
         der_settings_href = generate_href(
@@ -536,7 +563,7 @@ class NotificationMapper:
             {
                 "subscribedResource": der_settings_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
-                "status": NotificationStatus.DEFAULT,
+                "status": _map_to_notification_status(notification_type),
                 "resource": resource_model,
             }
         )
@@ -548,6 +575,7 @@ class NotificationMapper:
         der_status_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
+        notification_type: NotificationType,
     ) -> Notification:
         """Turns a single SiteDERStatus into a notification."""
         der_status_href = generate_href(
@@ -568,7 +596,7 @@ class NotificationMapper:
             {
                 "subscribedResource": der_status_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
-                "status": NotificationStatus.DEFAULT,
+                "status": _map_to_notification_status(notification_type),
                 "resource": resource_model,
             }
         )

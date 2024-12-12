@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import IntEnum
 from itertools import islice
 from typing import Annotated, Generator, Generic, Iterable, Optional, Sequence, TypeVar, cast
 from uuid import UUID, uuid4
@@ -30,7 +31,7 @@ from envoy.notification.handler import broker_dependency, href_prefix_dependency
 from envoy.notification.task.transmit import transmit_notification
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.mapper.sep2.pricing import PricingReadingType
-from envoy.server.mapper.sep2.pub_sub import NotificationMapper, SubscriptionMapper
+from envoy.server.mapper.sep2.pub_sub import NotificationMapper, NotificationType, SubscriptionMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
@@ -183,13 +184,14 @@ def entities_to_notification(
     sub: Subscription,
     batch_key: tuple,
     href_prefix: Optional[str],
+    notification_type: NotificationType,
     entities: Sequence[TResourceModel],
     pricing_reading_type: Optional[PricingReadingType],
 ) -> Sep2Notification:
     """Givens a subscription and associated entities - generate the notification content that will be sent out"""
     scope = scope_for_subscription(sub, href_prefix)
     if resource == SubscriptionResource.SITE:
-        return NotificationMapper.map_sites_to_response(cast(Sequence[Site], entities), sub, scope)
+        return NotificationMapper.map_sites_to_response(cast(Sequence[Site], entities), sub, scope, notification_type)
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         if pricing_reading_type is None:
             raise NotificationError("SubscriptionResource.TARIFF_GENERATED_RATE requires pricing_reading_type")
@@ -200,46 +202,47 @@ def entities_to_notification(
             tariff_id=tariff_id,
             day=day,
             pricing_reading_type=pricing_reading_type,
-            rates=cast(Sequence[TariffGeneratedRate], entities),
+            rates=cast(Sequence[TariffGeneratedRate], entities),  # type: ignore # mypy quirk
             sub=sub,
             scope=scope,
+            notification_type=notification_type,
         )
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
-        return NotificationMapper.map_does_to_response(cast(Sequence[DynamicOperatingEnvelope], entities), sub, scope)
+        return NotificationMapper.map_does_to_response(cast(Sequence[DynamicOperatingEnvelope], entities), sub, scope, notification_type)  # type: ignore # mypy quirk
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
         (_, _, site_reading_type_id) = batch_key
         return NotificationMapper.map_readings_to_response(
-            site_reading_type_id, cast(Sequence[SiteReading], entities), sub, scope
+            site_reading_type_id, cast(Sequence[SiteReading], entities), sub, scope, notification_type  # type: ignore # mypy quirk
         )
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
         (_, site_id, site_der_id) = batch_key
-        availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None
+        availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
         return NotificationMapper.map_der_availability_to_response(
-            site_der_id, availability, site_id, sub, scope
+            site_der_id, availability, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_RATING:
         # SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
         (_, site_id, site_der_id) = batch_key
-        rating = cast(SiteDERRating, entities[0]) if len(entities) > 0 else None
+        rating = cast(SiteDERRating, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
         return NotificationMapper.map_der_rating_to_response(
-            site_der_id, rating, site_id, sub, scope
+            site_der_id, rating, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_SETTING:
         # SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
         (_, site_id, site_der_id) = batch_key
-        settings = cast(SiteDERSetting, entities[0]) if len(entities) > 0 else None
+        settings = cast(SiteDERSetting, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
         return NotificationMapper.map_der_settings_to_response(
-            site_der_id, settings, site_id, sub, scope
+            site_der_id, settings, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         # SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
         (_, site_id, site_der_id) = batch_key
-        status = cast(SiteDERStatus, entities[0]) if len(entities) > 0 else None
+        status = cast(SiteDERStatus, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
         return NotificationMapper.map_der_status_to_response(
-            site_der_id, status, site_id, sub, scope
+            site_der_id, status, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify way to map entities")
