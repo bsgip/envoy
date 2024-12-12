@@ -694,6 +694,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
                 tariff_id=91,
                 start_time=datetime(2011, 11, 1, 12, 0, 0, tzinfo=timezone.utc),
                 deleted_time=timestamp,
+                duration_seconds=21,  # for identifying this record later
             )
         )
 
@@ -723,6 +724,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
                 tariff_id=92,
                 start_time=datetime(2011, 11, 2, 12, 0, 0, tzinfo=timezone.utc),
                 deleted_time=timestamp,
+                duration_seconds=24,  # for identifying this record later
             )
         )
         session.add(
@@ -734,6 +736,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
                 tariff_id=93,
                 start_time=datetime(2011, 11, 3, 12, 0, 0, tzinfo=timezone.utc),
                 deleted_time=timestamp,
+                duration_seconds=25,  # for identifying this record later
             )
         )
         await session.commit()
@@ -763,6 +766,16 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
         assert all(
             [
                 hasattr(e, "site") and (isinstance(e.site, Site) or isinstance(e.site, ArchiveSite))
+                for v_list in batch.deleted_by_batch_key.values()
+                for e in v_list
+            ]
+        )
+
+        # Validate the deleted entities are the ones we expect (lean on the fact we setup a property on the
+        # archive type in a particular way for the expected matches)
+        assert all(
+            [
+                e.duration_seconds == e.tariff_generated_rate_id
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -908,7 +921,10 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
         # Inject archive rates (only most recent is used)
         session.add(
             generate_class_instance(
-                ArchiveDynamicOperatingEnvelope, seed=55, site_id=1, dynamic_operating_envelope_id=21
+                ArchiveDynamicOperatingEnvelope,
+                seed=55,
+                site_id=1,
+                dynamic_operating_envelope_id=21,
             )
         )
         session.add(
@@ -927,6 +943,7 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
                 site_id=70,
                 dynamic_operating_envelope_id=21,
                 deleted_time=timestamp,
+                duration_seconds=21,  # for identifying this record later
             )
         )
 
@@ -956,6 +973,7 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
                 site_id=2,
                 dynamic_operating_envelope_id=24,
                 deleted_time=timestamp,
+                duration_seconds=24,  # for identifying this record later
             )
         )
         session.add(
@@ -965,6 +983,7 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
                 site_id=3,
                 dynamic_operating_envelope_id=25,
                 deleted_time=timestamp,
+                duration_seconds=25,  # for identifying this record later
             )
         )
         await session.commit()
@@ -994,6 +1013,16 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
         assert all(
             [
                 hasattr(e, "site") and (isinstance(e.site, Site) or isinstance(e.site, ArchiveSite))
+                for v_list in batch.deleted_by_batch_key.values()
+                for e in v_list
+            ]
+        )
+
+        # Validate the deleted entities are the ones we expect (lean on the fact we setup a property on the
+        # archive type in a particular way for the expected matches)
+        assert all(
+            [
+                e.duration_seconds == e.dynamic_operating_envelope_id
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -1152,6 +1181,7 @@ async def test_fetch_readings_by_timestamp_with_archive(pg_base_config):
                 site_reading_type_id=70,
                 site_reading_id=21,
                 deleted_time=timestamp,
+                value=21,  # for identifying this record later
             )
         )
 
@@ -1177,6 +1207,7 @@ async def test_fetch_readings_by_timestamp_with_archive(pg_base_config):
                 site_reading_type_id=2,
                 site_reading_id=24,
                 deleted_time=timestamp,
+                value=24,  # for identifying this record later
             )
         )
         session.add(
@@ -1186,6 +1217,7 @@ async def test_fetch_readings_by_timestamp_with_archive(pg_base_config):
                 site_reading_type_id=3,
                 site_reading_id=25,
                 deleted_time=timestamp,
+                value=25,  # for identifying this record later
             )
         )
         await session.commit()
@@ -1229,6 +1261,10 @@ async def test_fetch_readings_by_timestamp_with_archive(pg_base_config):
                 for e in v_list
             ]
         )
+
+        # Validate the deleted entities are the ones we expect (lean on the fact we setup a property on the
+        # archive type in a particular way for the expected matches)
+        assert all([e.value == e.site_reading_id for v_list in batch.deleted_by_batch_key.values() for e in v_list])
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
@@ -1362,7 +1398,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
                 seed=1010,
                 site_der_id=1,
                 site_der_availability_id=21,
-                max_charge_duration_sec=1010,
+                max_charge_duration_sec=21,  # for identifying this record later
                 deleted_time=timestamp,
             )
         )
@@ -1390,6 +1426,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
                 seed=1313,
                 site_der_id=2,
                 site_der_availability_id=24,
+                max_charge_duration_sec=24,  # for identifying this record later
                 deleted_time=timestamp,
             )
         )
@@ -1399,6 +1436,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
                 seed=1414,
                 site_der_id=80,
                 site_der_availability_id=25,
+                max_charge_duration_sec=25,  # for identifying this record later
                 deleted_time=timestamp,
             )
         )
@@ -1437,6 +1475,16 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
                 hasattr(e, "site_der")
                 and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
                 and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))
+                for v_list in batch.deleted_by_batch_key.values()
+                for e in v_list
+            ]
+        )
+
+        # Validate the deleted entities are the ones we expect (lean on the fact we setup a property on the
+        # archive type in a particular way for the expected matches)
+        assert all(
+            [
+                e.max_charge_duration_sec == e.site_der_availability_id
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -1572,7 +1620,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
                 seed=1010,
                 site_der_id=1,
                 site_der_rating_id=21,
-                max_charge_duration_sec=1010,
+                max_w_value=21,  # For identifying this record later
                 deleted_time=timestamp,
             )
         )
@@ -1598,6 +1646,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
                 seed=1313,
                 site_der_id=2,
                 site_der_rating_id=24,
+                max_w_value=24,  # For identifying this record later
                 deleted_time=timestamp,
             )
         )
@@ -1607,6 +1656,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
                 seed=1414,
                 site_der_id=80,
                 site_der_rating_id=25,
+                max_w_value=25,  # For identifying this record later
                 deleted_time=timestamp,
             )
         )
@@ -1648,6 +1698,12 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
+        )
+
+        # Validate the deleted entities are the ones we expect (lean on the fact we setup a property on the
+        # archive type in a particular way for the expected matches)
+        assert all(
+            [e.max_w_value == e.site_der_rating_id for v_list in batch.deleted_by_batch_key.values() for e in v_list]
         )
 
         # Sanity check that a different timestamp yields nothing
@@ -1764,13 +1820,13 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
         )
 
         # Inject archive der rating (only most recent is used)
-        session.add(generate_class_instance(ArchiveSiteDERSetting, seed=88, site_der_id=1, site_der_rating_id=21))
+        session.add(generate_class_instance(ArchiveSiteDERSetting, seed=88, site_der_id=1, site_der_setting_id=21))
         session.add(
             generate_class_instance(
                 ArchiveSiteDERSetting,
                 seed=99,
                 site_der_id=1,
-                site_der_rating_id=21,
+                site_der_setting_id=21,
                 deleted_time=timestamp - timedelta(seconds=5),
             )
         )
@@ -1779,8 +1835,8 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
                 ArchiveSiteDERSetting,
                 seed=1010,
                 site_der_id=1,
-                site_der_rating_id=21,
-                max_charge_duration_sec=1010,
+                site_der_setting_id=21,
+                max_w_value=21,  # For identifying this record later
                 deleted_time=timestamp,
             )
         )
@@ -1806,6 +1862,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
                 seed=1313,
                 site_der_id=2,
                 site_der_setting_id=24,
+                max_w_value=24,  # For identifying this record later
                 deleted_time=timestamp,
             )
         )
@@ -1815,6 +1872,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
                 seed=1414,
                 site_der_id=80,
                 site_der_setting_id=25,
+                max_w_value=25,  # For identifying this record later
                 deleted_time=timestamp,
             )
         )
@@ -1856,6 +1914,12 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
+        )
+
+        # Validate the deleted entities are the ones we expect (lean on the fact we setup a property on the
+        # archive type in a particular way for the expected matches)
+        assert all(
+            [e.max_w_value == e.site_der_setting_id for v_list in batch.deleted_by_batch_key.values() for e in v_list]
         )
 
         # Sanity check that a different timestamp yields nothing
@@ -1973,7 +2037,11 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
         )
 
         # Inject archive der rating (only most recent is used)
-        session.add(generate_class_instance(ArchiveSiteDERStatus, seed=88, site_der_id=1, site_der_status_id=21))
+        session.add(
+            generate_class_instance(
+                ArchiveSiteDERStatus, seed=88, site_der_id=1, site_der_status_id=21, manufacturer_status="n/a"
+            )
+        )
         session.add(
             generate_class_instance(
                 ArchiveSiteDERStatus,
@@ -1981,6 +2049,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
                 site_der_id=1,
                 site_der_status_id=21,
                 deleted_time=timestamp - timedelta(seconds=5),
+                manufacturer_status="n/a",
             )
         )
         session.add(
@@ -1989,13 +2058,17 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
                 seed=1010,
                 site_der_id=1,
                 site_der_status_id=21,
-                max_charge_duration_sec=1010,
                 deleted_time=timestamp,
+                manufacturer_status="ms21",  # For identifying this record later
             )
         )
 
         # No deleted time so ignored
-        session.add(generate_class_instance(ArchiveSiteDERStatus, seed=1111, site_der_id=1, site_der_status_id=22))
+        session.add(
+            generate_class_instance(
+                ArchiveSiteDERStatus, seed=1111, site_der_id=1, site_der_status_id=22, manufacturer_status="n/a"
+            )
+        )
 
         # Wrong deleted time so ignored
         session.add(
@@ -2005,6 +2078,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
                 site_der_id=1,
                 site_der_status_id=23,
                 deleted_time=timestamp - timedelta(seconds=5),
+                manufacturer_status="n/a",
             )
         )
 
@@ -2016,6 +2090,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
                 site_der_id=2,
                 site_der_status_id=24,
                 deleted_time=timestamp,
+                manufacturer_status="ms24",  # For identifying this record later
             )
         )
         session.add(
@@ -2025,6 +2100,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
                 site_der_id=80,
                 site_der_status_id=25,
                 deleted_time=timestamp,
+                manufacturer_status="ms25",  # For identifying this record later
             )
         )
         await session.commit()
@@ -2032,7 +2108,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
     # Now see if the fetch grabs everything
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
-        batch = await fetch_der_setting_by_changed_at(session, timestamp)
+        batch = await fetch_der_status_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
             SiteDERStatus,
@@ -2041,13 +2117,13 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
             len(expected_deleted_status_ids),
         )
         active_list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
-        active_list_entities.sort(key=lambda e: e.site_der_setting_id)
+        active_list_entities.sort(key=lambda e: e.site_der_status_id)
 
         deleted_list_entities = [e for _, entities in batch.deleted_by_batch_key.items() for e in entities]
-        deleted_list_entities.sort(key=lambda e: e.site_der_setting_id)
+        deleted_list_entities.sort(key=lambda e: e.site_der_status_id)
 
-        assert set(expected_active_status_ids) == set([e.site_der_setting_id for e in active_list_entities])
-        assert set(expected_deleted_status_ids) == set([e.site_der_setting_id for e in deleted_list_entities])
+        assert set(expected_active_status_ids) == set([e.site_der_status_id for e in active_list_entities])
+        assert set(expected_deleted_status_ids) == set([e.site_der_status_id for e in deleted_list_entities])
 
         # Ensure the parent ORM relationship is populated for deleted/active instances
         assert all(
@@ -2062,6 +2138,16 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
                 hasattr(e, "site_der")
                 and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
                 and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))
+                for v_list in batch.deleted_by_batch_key.values()
+                for e in v_list
+            ]
+        )
+
+        # Validate the deleted entities are the ones we expect (lean on the fact we setup a property on the
+        # archive type in a particular way for the expected matches)
+        assert all(
+            [
+                e.manufacturer_status == f"ms{e.site_der_status_id}"
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]

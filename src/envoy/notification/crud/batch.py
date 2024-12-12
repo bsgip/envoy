@@ -1,8 +1,8 @@
 from datetime import datetime
 from itertools import chain
-from typing import Any, Generic, Iterable, Sequence, TypeVar, Union, cast
+from typing import Any, Generic, Iterable, Sequence, Union, cast
 
-from sqlalchemy import Column, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -13,9 +13,8 @@ from envoy.notification.crud.archive import (
 )
 from envoy.notification.crud.common import TArchiveResourceModel, TResourceModel
 from envoy.notification.exception import NotificationError
-from envoy.server.crud.common import localize_start_time, localize_start_time_for_entity
+from envoy.server.crud.common import localize_start_time_for_entity
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
-from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (
     ArchiveSite,
@@ -27,7 +26,6 @@ from envoy.server.model.archive.site import (
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
-from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
@@ -94,32 +92,32 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
     SubscriptionResource.SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
     """
     if resource == SubscriptionResource.SITE:
-        site = cast(Site, entity)
+        site: Site = cast(Site, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (site.aggregator_id, site.site_id)
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        doe = cast(DynamicOperatingEnvelope, entity)
+        doe = cast(DynamicOperatingEnvelope, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (doe.site.aggregator_id, doe.site_id)
     elif resource == SubscriptionResource.READING:
-        reading = cast(SiteReading, entity)
+        reading = cast(SiteReading, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (
             reading.site_reading_type.aggregator_id,
             reading.site_reading_type.site_id,
             reading.site_reading_type.site_reading_type_id,
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        rate = cast(TariffGeneratedRate, entity)
+        rate = cast(TariffGeneratedRate, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (rate.site.aggregator_id, rate.tariff_id, rate.site_id, rate.start_time.date())
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
-        availability = cast(SiteDERAvailability, entity)
+        availability = cast(SiteDERAvailability, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (availability.site_der.site.aggregator_id, availability.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_RATING:
-        rating = cast(SiteDERRating, entity)
+        rating = cast(SiteDERRating, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (rating.site_der.site.aggregator_id, rating.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_SETTING:
-        setting = cast(SiteDERSetting, entity)
+        setting = cast(SiteDERSetting, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (setting.site_der.site.aggregator_id, setting.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_STATUS:
-        status = cast(SiteDERStatus, entity)
+        status = cast(SiteDERStatus, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (status.site_der.site.aggregator_id, status.site_der.site_id, PUBLIC_SITE_DER_ID)
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate batch key")
@@ -131,16 +129,16 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
     to apply to only a subset of entities"""
     if resource == SubscriptionResource.SITE:
         # Site lists subscriptions can be scoped to a single site
-        return cast(Site, entity).site_id
+        return cast(Site, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DOE subscriptions can be scoped to a single DOE (doesn't make a lot of sense in practice but it can be done)
-        return cast(DynamicOperatingEnvelope, entity).dynamic_operating_envelope_id
+        return cast(DynamicOperatingEnvelope, entity).dynamic_operating_envelope_id  # type: ignore # mypy quirk
     elif resource == SubscriptionResource.READING:
         # Reading subscriptions can be scoped to the overarching type
-        return cast(SiteReading, entity).site_reading_type_id
+        return cast(SiteReading, entity).site_reading_type_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         # rate subscriptions can be scoped to a single tariff
-        return cast(TariffGeneratedRate, entity).tariff_id
+        return cast(TariffGeneratedRate, entity).tariff_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # der entities get scoped to the parent der
         return PUBLIC_SITE_DER_ID  # There is only a single site DER per EndDevice - it has a static id
@@ -160,21 +158,21 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
 def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
     """Means of disambiguating the site id for TResourceModel"""
     if resource == SubscriptionResource.SITE:
-        return cast(Site, entity).site_id
+        return cast(Site, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        return cast(DynamicOperatingEnvelope, entity).site_id
+        return cast(DynamicOperatingEnvelope, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.READING:
-        return cast(SiteReading, entity).site_reading_type.site_id
+        return cast(SiteReading, entity).site_reading_type.site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        return cast(TariffGeneratedRate, entity).site_id
+        return cast(TariffGeneratedRate, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
-        return cast(SiteDERAvailability, entity).site_der.site_id
+        return cast(SiteDERAvailability, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.SITE_DER_RATING:
-        return cast(SiteDERRating, entity).site_der.site_id
+        return cast(SiteDERRating, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.SITE_DER_SETTING:
-        return cast(SiteDERSetting, entity).site_der.site_id
+        return cast(SiteDERSetting, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.SITE_DER_STATUS:
-        return cast(SiteDERStatus, entity).site_der.site_id
+        return cast(SiteDERStatus, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate site id")
 
