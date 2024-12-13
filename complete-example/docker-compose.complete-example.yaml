@@ -1,0 +1,143 @@
+x-envoy-common:
+  environment: &common-env
+    DATABASE_URL: "postgresql+asyncpg://test_user:test_pwd@envoy-db/test_db"
+    CERT_HEADER: x-forwarded-client-cert
+    ENABLE_NOTIFICATIONS: "True"
+    RABBIT_MQ_BROKER_URL: "amqp://guest:guest@rabbit-mq:5672"
+
+services:
+  rabbit-mq:
+    image: rabbitmq:3-management
+    ports:
+      - 127.0.0.1:5672:5672
+      - 127.0.0.1:15672:15672
+    hostname: rabbit-mq
+    restart: unless-stopped
+    networks:
+      - envoy-net
+    healthcheck:
+      test: rabbitmq-diagnostics -q check_running && rabbitmq-diagnostics -q check_local_alarms
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 20s
+
+  taskiq-worker:
+    image: envoy:latest
+    #build:
+    #context: ../
+    #dockerfile: Dockerfile.server
+    environment:
+      <<: *common-env
+    command: taskiq worker envoy.notification.main:broker envoy.notification.task
+    restart: unless-stopped
+    networks:
+      - envoy-net
+    depends_on:
+      rabbit-mq:
+        condition: service_healthy
+
+  tls-termination:
+    build:
+      context: ./tls-termination/
+      args:
+        HOST_UID: "${HOST_UID}"
+        HOST_GID: "${HOST_GID}"
+        TEST_CA_PASSPHRASE: "testcapassphrase"
+        TEST_CLIENT_PASSPHRASE: "testclientphrase"
+    ports:
+      - 127.0.0.1:8443:443
+    networks:
+      - envoy-net
+    volumes:
+      - certificates:/test_certs/
+    depends_on:
+      - envoy
+      - envoy-admin
+
+  envoy:
+    image: envoy:latest
+    #build:
+    #  context: ../
+    #  dockerfile: Dockerfile.server
+    ports:
+      - 127.0.0.1:8000:8000
+    restart: unless-stopped
+    networks:
+      - envoy-net
+    environment:
+      <<: *common-env
+      PORT: 8000
+      APP_MODULE: envoy.server.main:app
+    depends_on:
+      envoy-db:
+        condition: service_started
+      rabbit-mq:
+        condition: service_healthy
+
+  envoy-admin:
+    #build:
+    # context: ../
+    # dockerfile: Dockerfile.server
+    image: envoy:latest
+    ports:
+      - 127.0.0.1:8001:8001
+    restart: unless-stopped
+    networks:
+      - envoy-net
+    environment:
+      <<: *common-env
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: password
+      PORT: 8001
+      APP_MODULE: envoy.admin.main:app
+    depends_on:
+      envoy-db:
+        condition: service_started
+      rabbit-mq:
+        condition: service_healthy
+
+  envoy-db:
+    image: timescale/timescaledb:latest-pg10
+    ports:
+      - 127.0.0.1:8003:5432
+        #volumes:
+        #- postgres_data:/var/lib/postgresql/data/
+    networks:
+      - envoy-net
+    environment:
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_pwd
+      - POSTGRES_DB=test_db
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  envoy-db_init:
+    build:
+      context: ./db-init/
+    working_dir: /app/src/envoy/server/
+    environment:
+      <<: *common-env
+    volumes:
+      - certificates:/test_certs/
+    networks:
+      - envoy-net
+    depends_on:
+      envoy-db:
+        condition: service_healthy
+
+networks:
+  envoy-net:
+
+
+volumes:
+  certificates:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./tls-termination/test_certs/
+      o: bind
