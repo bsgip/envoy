@@ -5,6 +5,7 @@ from typing import Optional
 
 import pytest
 from assertical.asserts.time import assert_nowish
+from assertical.fake.asyncio import create_async_result
 from assertical.fake.generator import generate_class_instance
 from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
 from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint
@@ -13,6 +14,7 @@ from envoy.server.exception import ForbiddenError, InvalidIdError, NotFoundError
 from envoy.server.manager.metering import MirrorMeteringManager
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
+from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import CertificateType, MUPRequestScope
 
 
@@ -263,7 +265,9 @@ async def test_fetch_mirror_usage_point_no_srt(
 @pytest.mark.parametrize("return_value, site_id", product([True, False], [99987, None]))
 @mock.patch("envoy.server.manager.metering.delete_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.metering.utc_now")
+@mock.patch("envoy.server.manager.metering.NotificationManager")
 async def test_delete_mirror_usage_point(
+    mock_NotificationManager: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
     mock_delete_site_reading_type_for_aggregator: mock.MagicMock,
     return_value: bool,
@@ -276,6 +280,7 @@ async def test_delete_mirror_usage_point(
     scope: MUPRequestScope = generate_class_instance(MUPRequestScope, site_id=site_id)
     delete_time = datetime(2021, 5, 6, 7, 8, 9)
     srt_id = 151512
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Just do a simple passthrough
     mock_utc_now.return_value = delete_time
@@ -295,6 +300,9 @@ async def test_delete_mirror_usage_point(
         deleted_time=delete_time,
     )
     mock_utc_now.assert_called_once()
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
+        SubscriptionResource.READING, delete_time
+    )
 
 
 @pytest.mark.anyio

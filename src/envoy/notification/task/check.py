@@ -1,7 +1,6 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from enum import IntEnum
 from itertools import islice
 from typing import Annotated, Generator, Generic, Iterable, Optional, Sequence, TypeVar, cast
 from uuid import UUID, uuid4
@@ -25,7 +24,7 @@ from envoy.notification.crud.batch import (
     get_subscription_filter_id,
     select_subscriptions_for_resource,
 )
-from envoy.notification.crud.common import TResourceModel
+from envoy.notification.crud.common import TArchiveResourceModel, TResourceModel
 from envoy.notification.exception import NotificationError
 from envoy.notification.handler import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification
@@ -60,6 +59,7 @@ class NotificationEntities(Generic[TResourceModel]):
     entities: Sequence[TResourceModel]  # The entities to send
     subscription: Subscription  # The subscription being serviced
     notification_id: UUID  # Unique ID for this notification (to detect retries)
+    notification_type: NotificationType  # Is this notification for a change in or deletion of these entities
     batch_key: tuple  # The batch key representing this particular batch of entities (see get_batch_key())
     pricing_reading_type: Optional[PricingReadingType]
 
@@ -99,6 +99,7 @@ def get_entity_pages(
     batch_key: tuple,
     page_size: int,
     entities: Iterable[TResourceModel],
+    notification_type: NotificationType,
 ) -> Generator[NotificationEntities, None, None]:
     """Breaks a set of entities into pages that are represented by NotificationEntities."""
     if resource == SubscriptionResource.TARIFF_GENERATED_RATE:
@@ -116,6 +117,7 @@ def get_entity_pages(
                     entities=entity_page,
                     subscription=sub,
                     notification_id=uuid4(),
+                    notification_type=notification_type,
                     batch_key=batch_key,
                     pricing_reading_type=price_type,
                 )
@@ -126,6 +128,7 @@ def get_entity_pages(
                 entities=[entity],
                 subscription=sub,
                 notification_id=uuid4(),
+                notification_type=notification_type,
                 batch_key=batch_key,
                 pricing_reading_type=None,
             )
@@ -135,6 +138,7 @@ def get_entity_pages(
                 entities=entity_page,
                 subscription=sub,
                 notification_id=uuid4(),
+                notification_type=notification_type,
                 batch_key=batch_key,
                 pricing_reading_type=None,
             )
@@ -164,7 +168,7 @@ def entities_serviced_by_subscription(
                 if c.attribute == ConditionAttributeIdentifier.READING_VALUE:
                     # If the reading is within the condition thresholds - don't include it
                     # (we only want values out of range)
-                    reading_value = cast(SiteReading, e).value
+                    reading_value = cast(SiteReading, e).value  # type: ignore # mypy quirk
                     low_range = c.lower_threshold is None or reading_value < c.lower_threshold
                     high_range = c.upper_threshold is None or reading_value > c.upper_threshold
 
@@ -179,6 +183,31 @@ def entities_serviced_by_subscription(
         yield e
 
 
+def all_entity_batches(
+    changed_batches: dict[tuple, list[TResourceModel]],
+    deleted_batches: dict[tuple, list[TArchiveResourceModel]],
+) -> Generator[tuple[tuple, int, list[TResourceModel], NotificationType], None, None]:
+    """Enumerates every batch of entities in batch. Each batch will be returned with the batch key and whether
+    it's a delete or change batch
+
+    returns a tuple in the form:
+      (batch_key: tuple, aggregator_id: int, entities: list[TResourceModel], notification_type: NotificationType)
+
+    NOTE: The returned entities will be duck typed into TResourceModel but can also include equivalent the duck typed
+    equivalent TArchiveResourceModel (eg - ArchiveSite will be typed as Site)
+    """
+    for batch_key, changed_entities in changed_batches.items():
+        agg_id: int = batch_key[0]  # The aggregator_id is ALWAYS first in the batch key by definition
+        yield (batch_key, agg_id, changed_entities, NotificationType.ENTITY_CHANGED)
+
+    for batch_key, deleted_entities in deleted_batches.items():
+        agg_id = batch_key[0]  # The aggregator_id is ALWAYS first in the batch key by definition
+
+        # This is duck typing the archive model to the "source" model. We have unit tests elsewhere that enforce
+        # that these type definitions stay in sync
+        yield (batch_key, agg_id, cast(list[TResourceModel], deleted_entities), NotificationType.ENTITY_DELETED)
+
+
 def entities_to_notification(
     resource: SubscriptionResource,
     sub: Subscription,
@@ -191,7 +220,9 @@ def entities_to_notification(
     """Givens a subscription and associated entities - generate the notification content that will be sent out"""
     scope = scope_for_subscription(sub, href_prefix)
     if resource == SubscriptionResource.SITE:
-        return NotificationMapper.map_sites_to_response(cast(Sequence[Site], entities), sub, scope, notification_type)
+        return NotificationMapper.map_sites_to_response(
+            cast(Sequence[Site], entities), sub, scope, notification_type  # type: ignore # mypy quirk
+        )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         if pricing_reading_type is None:
             raise NotificationError("SubscriptionResource.TARIFF_GENERATED_RATE requires pricing_reading_type")
@@ -209,17 +240,19 @@ def entities_to_notification(
         )
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
-        return NotificationMapper.map_does_to_response(cast(Sequence[DynamicOperatingEnvelope], entities), sub, scope, notification_type)  # type: ignore # mypy quirk
+        return NotificationMapper.map_does_to_response(
+            cast(Sequence[DynamicOperatingEnvelope], entities), sub, scope, notification_type  # type: ignore
+        )
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
         (_, _, site_reading_type_id) = batch_key
         return NotificationMapper.map_readings_to_response(
-            site_reading_type_id, cast(Sequence[SiteReading], entities), sub, scope, notification_type  # type: ignore # mypy quirk
+            site_reading_type_id, cast(Sequence[SiteReading], entities), sub, scope, notification_type  # type: ignore
         )
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
         (_, site_id, site_der_id) = batch_key
-        availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
+        availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None  # type: ignore
         return NotificationMapper.map_der_availability_to_response(
             site_der_id, availability, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
@@ -273,7 +306,7 @@ async def fetch_batched_entities(
 
 
 @async_shared_broker.task()
-async def check_db_upsert(
+async def check_db_change_or_delete(
     resource: SubscriptionResource,
     timestamp_epoch: float,
     href_prefix: Annotated[Optional[str], TaskiqDepends(href_prefix_dependency)] = TaskiqDepends(),
@@ -281,22 +314,25 @@ async def check_db_upsert(
     broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)] = TaskiqDepends(),
 ) -> None:
     """Call this to notify that a particular timestamp within a particular named resource
-    has had a batch of inserts/updates such that requesting all records with that changed_at timestamp
+    has had a batch of inserts/updates/deletes such that requesting all records with that changed_at timestamp
     will yield all resources to be inspected for potentially notifying subscribers
+
+    For deletions - the deleted_time in the archive table will be used
 
     resource_name: The name of the resource that is being checked for changes
     timestamp: The datetime.timestamp() that will be used for finding resources (must be exact match)"""
 
     timestamp = datetime.fromtimestamp(timestamp_epoch, tz=timezone.utc)
-    logger.debug("check_db_upsert for resource %s at timestamp %s", resource, timestamp)
+    logger.debug("check_db_change_or_delete for resource %s at timestamp %s", resource, timestamp)
 
     batched_entities = await fetch_batched_entities(session, resource, timestamp)
 
     # Now generate subscription notifications
     all_notifications: list[NotificationEntities] = []
     aggregator_subs_cache: dict[int, Sequence[Subscription]] = {}  # keyed by aggregator_id
-    for batch_key, entities in batched_entities.models_by_batch_key.items():
-        agg_id: int = batch_key[0]  # The aggregator_id is ALWAYS first in the batch key by definition
+    for batch_key, agg_id, entities, notification_type in all_entity_batches(
+        batched_entities.models_by_batch_key, batched_entities.deleted_by_batch_key
+    ):
 
         # We enumerate by aggregator ID at the top level (as a way of minimising the size of entities)
         # We also cache the per aggregator subscriptions to minimise round trips to the db
@@ -313,18 +349,20 @@ async def check_db_upsert(
                 entity_limit = MAX_NOTIFICATION_PAGE_SIZE
 
             entities_to_notify = entities_serviced_by_subscription(sub, resource, entities)
-            all_notifications.extend(get_entity_pages(resource, sub, batch_key, entity_limit, entities_to_notify))
+            all_notifications.extend(
+                get_entity_pages(resource, sub, batch_key, entity_limit, entities_to_notify, notification_type)
+            )
 
     # Finally time to enqueue the outgoing notifications
     logger.info(
-        "check_db_upsert for resource %s at timestamp %s generated %d notifications",
+        "check_db_change_or_delete for resource %s at timestamp %s generated %d notifications",
         resource,
         timestamp,
         len(all_notifications),
     )
     for n in all_notifications:
         content = entities_to_notification(
-            resource, n.subscription, n.batch_key, href_prefix, n.entities, n.pricing_reading_type
+            resource, n.subscription, n.batch_key, href_prefix, n.notification_type, n.entities, n.pricing_reading_type
         ).to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
         if isinstance(content, bytes):
             content = content.decode()

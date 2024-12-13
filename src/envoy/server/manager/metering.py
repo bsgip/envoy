@@ -101,6 +101,8 @@ class MirrorMeteringManager:
         )
         await session.commit()
 
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.READING, delete_time)
+
         return result
 
     @staticmethod
@@ -133,7 +135,7 @@ class MirrorMeteringManager:
 
         await upsert_site_readings(session, changed_time, site_readings)
         await session.commit()
-        await NotificationManager.notify_upserted_entities(SubscriptionResource.READING, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.READING, changed_time)
         return
 
     @staticmethod

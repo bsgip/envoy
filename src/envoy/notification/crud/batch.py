@@ -90,6 +90,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
     SubscriptionResource.SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
     SubscriptionResource.SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
     SubscriptionResource.SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
+    SubscriptionResource.SUBSCRIPTION: (aggregator_id: int, subscription_id: int)
     """
     if resource == SubscriptionResource.SITE:
         site: Site = cast(Site, entity)  # type: ignore # Pretty sure this is a mypy quirk

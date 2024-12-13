@@ -99,6 +99,9 @@ class EndDeviceManager:
         )
         await session.commit()
 
+        # We only notify the top level site deletion - all the child entities will be overwhelming
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, delete_time)
+
         return result
 
     @staticmethod
@@ -162,7 +165,7 @@ class EndDeviceManager:
         result = await upsert_site_for_aggregator(session, scope.aggregator_id, site)
         await session.commit()
 
-        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, changed_time)
 
         return result
 
@@ -194,7 +197,7 @@ class EndDeviceManager:
         site.changed_time = changed_time
         await session.commit()
 
-        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, changed_time)
 
         return True
 

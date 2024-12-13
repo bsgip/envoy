@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Callable, Iterable, NewType, Sequence, TypeVar, Union, cast
+from typing import Any, Callable, Iterable, Sequence, Union, cast
 
 from sqlalchemy import Column, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -78,7 +78,7 @@ async def fetch_entities_with_archive_by_id(
                 select(archive_type)
                 .distinct(archive_pk_col)
                 .order_by(archive_pk_col, archive_type.deleted_time.desc(), archive_type.archive_time.desc())
-                .where(archive_type.deleted_time != None)
+                .where(archive_type.deleted_time != None)  # noqa: E711 # The is not None doesn't parse with SQLAlchemy
                 .where(archive_pk_col.in_(ids_not_in_source_table))
             )
         )
@@ -86,7 +86,7 @@ async def fetch_entities_with_archive_by_id(
         .all()
     )
 
-    return (source_entities, cast(Sequence[TArchiveResourceModel], archive_entities))
+    return (source_entities, cast(Sequence[TArchiveResourceModel], archive_entities))  # type: ignore # mypy quirk
 
 
 async def fetch_entities_with_archive_by_datetime(
