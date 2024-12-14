@@ -1,54 +1,18 @@
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime
 from http import HTTPStatus
-from typing import Optional
-from zoneinfo import ZoneInfo
 
 import pytest
-from assertical.asserts.time import assert_datetime_equal, assert_nowish
-from assertical.fake.generator import generate_class_instance
 from assertical.fake.http import HTTPMethod, MockedAsyncClient
 from assertical.fixtures.postgres import generate_async_session
-from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
-from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
-from envoy_schema.admin.schema.uri import DoeUri, TariffGeneratedRateCreateUri
-from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
-from envoy_schema.server.schema.sep2.types import DeviceCategory
 from envoy_schema.server.schema.uri import EndDeviceUri, MirrorUsagePointUri
 from httpx import AsyncClient
-from sqlalchemy import delete, func, insert, select
+from sqlalchemy import delete, insert
 
-from envoy.admin.crud.site import count_all_sites
 from envoy.notification.task.transmit import HEADER_NOTIFICATION_ID
-from envoy.server.model.archive.site import ArchiveSite
-from envoy.server.model.site import Site
 from envoy.server.model.subscription import Subscription, SubscriptionResource
-from envoy.server.model.tariff import PRICE_DECIMAL_POWER
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
-from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as AGG_1_LFDI_FROM_VALID_CERT
-from tests.data.certificates.certificate1 import TEST_CERTIFICATE_SFDI as AGG_1_SFDI_FROM_VALID_CERT
-from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
-from tests.data.certificates.certificate4 import TEST_CERTIFICATE_SFDI as AGG_2_SFDI_FROM_VALID_CERT
-from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
-from tests.data.certificates.certificate5 import TEST_CERTIFICATE_SFDI as AGG_3_SFDI_FROM_VALID_CERT
-from tests.data.certificates.certificate6 import TEST_CERTIFICATE_LFDI as OTHER_REGISTERED_CERT_LFDI
-from tests.data.certificates.certificate6 import TEST_CERTIFICATE_SFDI as OTHER_REGISTERED_CERT_SFDI
-from tests.data.certificates.certificate7 import TEST_CERTIFICATE_LFDI as REGISTERED_CERT_LFDI
-from tests.data.certificates.certificate7 import TEST_CERTIFICATE_PEM as REGISTERED_CERT
-from tests.data.certificates.certificate7 import TEST_CERTIFICATE_SFDI as REGISTERED_CERT_SFDI
-from tests.data.certificates.certificate8 import TEST_CERTIFICATE_LFDI as UNREGISTERED_CERT_LFDI
-from tests.data.certificates.certificate8 import TEST_CERTIFICATE_PEM as UNREGISTERED_CERT
-from tests.data.certificates.certificate8 import TEST_CERTIFICATE_SFDI as UNREGISTERED_CERT_SFDI
-from tests.data.certificates.certificate9 import TEST_CERTIFICATE_LFDI as OTHER_CERT_LFDI
-from tests.data.certificates.certificate9 import TEST_CERTIFICATE_SFDI as OTHER_CERT_SFDI
 from tests.integration.integration_server import cert_header
-from tests.integration.request import build_paging_params
-from tests.integration.response import (
-    assert_error_response,
-    assert_response_header,
-    read_location_header,
-    read_response_body_string,
-)
 
 
 @pytest.mark.anyio
