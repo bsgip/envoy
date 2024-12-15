@@ -44,7 +44,7 @@ services:
         HOST_UID: "${HOST_UID}"
         HOST_GID: "${HOST_GID}"
         TEST_CA_PASSPHRASE: "testcapassphrase"
-        TEST_CLIENT_PASSPHRASE: "testclientphrase"
+        TEST_CLIENT_PASSPHRASE: "testclientpassphrase"
     ports:
       - 127.0.0.1:8443:443
     networks:
