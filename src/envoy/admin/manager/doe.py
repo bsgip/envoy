@@ -21,7 +21,7 @@ class DoeListManager:
         await upsert_many_doe(session, doe_models, changed_time)
         await session.commit()
 
-        await NotificationManager.notify_upserted_entities(
+        await NotificationManager.notify_changed_deleted_entities(
             SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, changed_time
         )
 

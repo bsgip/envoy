@@ -18,6 +18,15 @@ markers = [
     "disable_device_registration: marks tests that disable NULL Aggregator and disable unrecognised devices from registering (equivalent to allow_device_registration = False)",
 ]
 
+# (for pytests only) Using pytest-env to set placeholder values for required settings.
+# D: implies default, with environment variables taking precedence.
+env = [
+    "D:DATABASE_URL=postgresql+asyncpg://faketestcred:faketestcred@faketestcred/faketestcred",
+    "D:ADMIN_USERNAME=testadmin",
+    "D:ADMIN_PASSWORD=testpassword",
+]
+
+
 [tool.bandit]
 exclude_dirs = ["tests"]
 
@@ -83,6 +92,7 @@ test = [
     "defusedxml",
     "asgi_lifespan",
     "assertical",
+    "pytest-env",
 ]
 
 [tool.setuptools.package-data]

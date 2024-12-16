@@ -9,18 +9,24 @@ from envoy.server.model.tariff import TariffGeneratedRate
 EntityWithStartTime = TypeVar("EntityWithStartTime", bound=Union[TariffGeneratedRate, DynamicOperatingEnvelope])
 
 
-def localize_start_time(rate_and_tz: Optional[Row[tuple[EntityWithStartTime, str]]]) -> EntityWithStartTime:
+def localize_start_time_for_entity(entity: EntityWithStartTime, tz_name: str) -> EntityWithStartTime:
+    """Localizes a entity.start_time to be in the local timezone passed in as the second
+    element in the tuple. Returns the Entity (it will be modified in place)"""
+    tz = ZoneInfo(tz_name)
+    entity.start_time = entity.start_time.astimezone(tz)
+    return entity
+
+
+def localize_start_time(entity_and_tz: Optional[Row[tuple[EntityWithStartTime, str]]]) -> EntityWithStartTime:
     """Localizes a Entity.start_time to be in the local timezone passed in as the second
     element in the tuple. Returns the Entity (it will be modified in place)"""
-    if rate_and_tz is None:
+    if entity_and_tz is None:
         raise ValueError("row is None")
 
     entity: EntityWithStartTime
     tz_name: str
-    (entity, tz_name) = rate_and_tz
-    tz = ZoneInfo(tz_name)
-    entity.start_time = entity.start_time.astimezone(tz)
-    return entity
+    (entity, tz_name) = entity_and_tz
+    return localize_start_time_for_entity(entity, tz_name)
 
 
 def sum_digits(n: int) -> int:

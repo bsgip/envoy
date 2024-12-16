@@ -85,16 +85,16 @@ async def test_create_does_with_active_subscription(
         await session.commit()
 
     doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=101, site_id=1, calculation_log_id=None
+        DynamicOperatingEnvelopeRequest, seed=10001, site_id=1, calculation_log_id=None
     )
     doe_2: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=202, site_id=1, calculation_log_id=1
+        DynamicOperatingEnvelopeRequest, seed=20002, site_id=1, calculation_log_id=1
     )
     doe_3: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=303, site_id=2, calculation_log_id=1
+        DynamicOperatingEnvelopeRequest, seed=30003, site_id=2, calculation_log_id=1
     )
     doe_4: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=404, site_id=3, calculation_log_id=None
+        DynamicOperatingEnvelopeRequest, seed=40004, site_id=3, calculation_log_id=None
     )
 
     content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
@@ -166,6 +166,89 @@ async def test_create_does_with_active_subscription(
         )
         == 1
     ), "Only one notification (for sub2) should have the doe3 batch"
+
+
+@pytest.mark.anyio
+async def test_replace_doe_with_active_subscription(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests replacing a DOEs with an active subscription generates notifications for the deleted and inserted entity"""
+    # Create a subscription to actually pickup these changes
+    subscription1_uri = "http://my.example:542/uri"
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # this is unscoped
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
+                resource_id=None,
+                scoped_site_id=None,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    # This will replace DOE 1 and generate a delete for the original and an insert for the new value
+    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest,
+        seed=10001,
+        site_id=1,
+        calculation_log_id=None,
+        start_time=datetime(2022, 5, 7, 1, 2, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+    )
+
+    content = ",".join([d.model_dump_json() for d in [doe_1]])
+    resp = await admin_client_auth.post(
+        DoeUri,
+        content=f"[{content}]",
+    )
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 2
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+
+    # Do a really simple content check on the outgoing XML to ensure the notifications contain the expected
+    # entities for each subscription
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription1_uri
+                and f"{doe_1.export_limit_watts}" in r.content
+                and "<status>0</status>" in r.content
+            ]
+        )
+        == 1
+    ), "Only one notification for the insertion"
+
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription1_uri
+                and "<value>111</value>" in r.content
+                and "<status>4</status>" in r.content
+            ]
+        )
+        == 1
+    ), "Only one notification for the deletion"
 
 
 @pytest.mark.anyio
@@ -359,3 +442,101 @@ async def test_create_rates_with_active_subscription(
         )
         == 1
     ), "Only one notification should have the import prices"
+
+
+@pytest.mark.anyio
+async def test_replace_rate_with_active_subscription(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests replacing rates with an active subscription generates notifications for the deleted and inserted entity"""
+    # Create a subscription to actually pickup these changes
+    subscription1_uri = "http://my.example:542/uri"
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # this is unscoped
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                resource_id=None,
+                scoped_site_id=None,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    # This will replace DOE 1 and generate a delete for the original and an insert for the new value
+    rate_1 = generate_class_instance(
+        TariffGeneratedRateRequest,
+        seed=10001,
+        site_id=1,
+        tariff_id=1,
+        calculation_log_id=None,
+        start_time=datetime(2022, 3, 5, 1, 2, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        import_active_price=91234,
+        export_active_price=91235,
+        import_reactive_price=91236,
+        export_reactive_price=91237,
+    )
+
+    content = ",".join([d.model_dump_json() for d in [rate_1]])
+    resp = await admin_client_auth.post(
+        TariffGeneratedRateCreateUri,
+        content=f"[{content}]",
+    )
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=8, timeout_seconds=30)
+
+    # We get two notifications - but because these are prices, they get further split into import/export active/reactive
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 8  # One delete, One Changed, multiplied by 4
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 8
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+
+    # Do a really simple content check on the outgoing XML to ensure the notifications contain the expected
+    # entities for each subscription
+    for new_price in [
+        rate_1.import_active_price,
+        rate_1.export_active_price,
+        rate_1.import_reactive_price,
+        rate_1.export_reactive_price,
+    ]:
+        assert (
+            len(
+                [
+                    r
+                    for r in notifications_enabled.logged_requests
+                    if r.uri == subscription1_uri and f"{new_price}" in r.content and "<status>0</status>" in r.content
+                ]
+            )
+            == 1
+        ), "Only one notification for the insertion"
+
+    # prices from the original tariff_generated_rate that got deleted
+    for original_price in [
+        "cti/11",
+        "cti/-122",
+        "cti/1333",
+        "cti/-14444",
+    ]:
+        assert (
+            len(
+                [
+                    r
+                    for r in notifications_enabled.logged_requests
+                    if r.uri == subscription1_uri and original_price in r.content and "<status>4</status>" in r.content
+                ]
+            )
+            == 1
+        ), "Only one notification for the deletion"

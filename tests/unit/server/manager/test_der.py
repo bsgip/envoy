@@ -248,7 +248,7 @@ async def test_upsert_der_capability_not_found(
     """Tests the various ways a NotFoundError can be raised"""
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     async with generate_async_session(pg_base_config) as session:
         initial_count = (await session.execute(select(func.count()).select_from(SiteDERRating))).scalar_one()
@@ -271,7 +271,7 @@ async def test_upsert_der_capability_not_found(
         resp = await session.execute(select(func.count()).select_from(SiteDERRating))
         assert resp.scalar_one() == initial_count
 
-    mock_NotificationManager.notify_upserted_entities.assert_not_called()
+    mock_NotificationManager.notify_changed_deleted_entities.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.der.NotificationManager")
@@ -295,7 +295,7 @@ async def test_upsert_der_capability_roundtrip(
     now = datetime(2023, 5, 6, 7, 8, 11)
 
     mock_utc_now.return_value = now
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
     expected: DERCapability = generate_class_instance(DERCapability, seed=5001, generate_relationships=True)
@@ -336,7 +336,9 @@ async def test_upsert_der_capability_roundtrip(
         else:
             assert len(archive_records) == 0
 
-    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE_DER_RATING, now)
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
+        SubscriptionResource.SITE_DER_RATING, now
+    )
 
 
 @pytest.mark.parametrize(
@@ -385,7 +387,7 @@ async def test_upsert_der_settings_not_found(
         SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
     )
 
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     async with generate_async_session(pg_base_config) as session:
         initial_count = (await session.execute(select(func.count()).select_from(SiteDERSetting))).scalar_one()
@@ -408,7 +410,7 @@ async def test_upsert_der_settings_not_found(
         resp = await session.execute(select(func.count()).select_from(SiteDERSetting))
         assert resp.scalar_one() == initial_count
 
-    mock_NotificationManager.notify_upserted_entities.assert_not_called()
+    mock_NotificationManager.notify_changed_deleted_entities.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.der.NotificationManager")
@@ -432,7 +434,7 @@ async def test_upsert_der_settings_roundtrip(
     now = datetime(2023, 5, 2, 7, 8, 9)
 
     mock_utc_now.return_value = now
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
     expected: DERSettings = generate_class_instance(DERSettings, seed=5001, generate_relationships=True)
@@ -472,7 +474,7 @@ async def test_upsert_der_settings_roundtrip(
         else:
             assert len(archive_records) == 0
 
-    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
         SubscriptionResource.SITE_DER_SETTING, now
     )
 
@@ -523,7 +525,7 @@ async def test_upsert_der_availability_not_found(
         SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
     )
 
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     async with generate_async_session(pg_base_config) as session:
         initial_count = (await session.execute(select(func.count()).select_from(SiteDERAvailability))).scalar_one()
@@ -544,7 +546,7 @@ async def test_upsert_der_availability_not_found(
         resp = await session.execute(select(func.count()).select_from(SiteDERAvailability))
         assert resp.scalar_one() == initial_count
 
-    mock_NotificationManager.notify_upserted_entities.assert_not_called()
+    mock_NotificationManager.notify_changed_deleted_entities.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.der.NotificationManager")
@@ -568,7 +570,7 @@ async def test_upsert_der_availability_roundtrip(
     now = datetime(2024, 5, 6, 7, 8, 9)
 
     mock_utc_now.return_value = now
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
     expected: DERAvailability = generate_class_instance(DERAvailability, seed=5001, generate_relationships=True)
@@ -606,7 +608,7 @@ async def test_upsert_der_availability_roundtrip(
         else:
             assert len(archive_records) == 0
 
-    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
         SubscriptionResource.SITE_DER_AVAILABILITY, now
     )
 
@@ -657,7 +659,7 @@ async def test_upsert_der_status_not_found(
         SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
     )
 
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     async with generate_async_session(pg_base_config) as session:
         initial_count = (await session.execute(select(func.count()).select_from(SiteDERStatus))).scalar_one()
@@ -681,7 +683,7 @@ async def test_upsert_der_status_not_found(
         resp = await session.execute(select(func.count()).select_from(SiteDERStatus))
         assert resp.scalar_one() == initial_count
 
-    mock_NotificationManager.notify_upserted_entities.assert_not_called()
+    mock_NotificationManager.notify_changed_deleted_entities.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.der.NotificationManager")
@@ -706,7 +708,7 @@ async def test_upsert_der_status_roundtrip(
     now = datetime(2023, 5, 6, 7, 8, 9)
 
     mock_utc_now.return_value = now
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Do the upsert
     expected: DERStatus = generate_class_instance(DERStatus, seed=5001, generate_relationships=True)
@@ -750,4 +752,6 @@ async def test_upsert_der_status_roundtrip(
         else:
             assert len(archive_records) == 0
 
-    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE_DER_STATUS, now)
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
+        SubscriptionResource.SITE_DER_STATUS, now
+    )

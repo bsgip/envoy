@@ -20,7 +20,7 @@ from envoy_schema.server.schema.sep2.pub_sub import (
     XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
 )
 from envoy_schema.server.schema.sep2.pub_sub import Condition as Sep2Condition
-from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier, Notification
+from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier, Notification, NotificationStatus
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
 from envoy_schema.server.schema.sep2.pub_sub import SubscriptionListResponse
 from envoy_schema.server.schema.uri import (
@@ -38,7 +38,13 @@ from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.pricing import PricingReadingType
-from envoy.server.mapper.sep2.pub_sub import NotificationMapper, SubscriptionListMapper, SubscriptionMapper
+from envoy.server.mapper.sep2.pub_sub import (
+    NotificationMapper,
+    NotificationType,
+    SubscriptionListMapper,
+    SubscriptionMapper,
+    _map_to_notification_status,
+)
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
@@ -65,6 +71,25 @@ def assert_entity_hrefs_contain_entity_id_and_prefix(
     for href, expected_site_id in zip(hrefs, expected_site_ids):
         assert f"/{expected_site_id}" in href
         assert href.startswith(expected_prefix)
+
+
+@pytest.mark.parametrize(
+    "input, expected",
+    [
+        (NotificationType.ENTITY_CHANGED, NotificationStatus.DEFAULT),
+        (NotificationType.ENTITY_DELETED, NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED),
+        (99, ValueError),
+    ],
+)
+def test_map_to_notification_status(input, expected):
+
+    if isinstance(expected, type):
+        with pytest.raises(expected):
+            _map_to_notification_status(input)
+    else:
+        actual = _map_to_notification_status(input)
+        assert isinstance(actual, NotificationStatus)
+        assert actual == expected
 
 
 @pytest.mark.parametrize("resource", list(SubscriptionResource))
@@ -464,7 +489,8 @@ def test_SubscriptionMapper_parse_resource_href(href: str, expected: Union[tuple
             SubscriptionMapper.parse_resource_href(href)
 
 
-def test_NotificationMapper_map_sites_to_response():
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_sites_to_response(notification_type: NotificationType):
     site1: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
     site2: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
 
@@ -473,12 +499,16 @@ def test_NotificationMapper_map_sites_to_response():
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
 
-    notification = NotificationMapper.map_sites_to_response([site1, site2], sub, scope)
+    notification = NotificationMapper.map_sites_to_response([site1, site2], sub, scope, notification_type)
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
     assert EndDeviceListUri in notification.subscribedResource
     assert notification.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification.subscriptionURI
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification.status == NotificationStatus.DEFAULT
 
     assert notification.resource.type == XSI_TYPE_END_DEVICE_LIST
     assert_list_type(EndDeviceResponse, notification.resource.EndDevice, count=2)
@@ -487,7 +517,8 @@ def test_NotificationMapper_map_sites_to_response():
     )
 
 
-def test_NotificationMapper_map_does_to_response():
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_does_to_response(notification_type: NotificationType):
     doe1: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=101, optional_is_none=False)
     doe2: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True)
 
@@ -496,7 +527,7 @@ def test_NotificationMapper_map_does_to_response():
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
 
-    notification = NotificationMapper.map_does_to_response([doe1, doe2], sub, scope)
+    notification = NotificationMapper.map_does_to_response([doe1, doe2], sub, scope, notification_type)
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -505,6 +536,10 @@ def test_NotificationMapper_map_does_to_response():
     )
     assert notification.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification.subscriptionURI
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification.status == NotificationStatus.DEFAULT
 
     assert notification.resource.type == XSI_TYPE_DER_CONTROL_LIST
     assert_list_type(DERControlResponse, notification.resource.DERControl, count=2)
@@ -515,7 +550,8 @@ def test_NotificationMapper_map_does_to_response():
     )
 
 
-def test_NotificationMapper_map_readings_to_response():
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_readings_to_response(notification_type: NotificationType):
     sr1: SiteReading = generate_class_instance(SiteReading, seed=101, optional_is_none=False)
     sr2: SiteReading = generate_class_instance(SiteReading, seed=202, optional_is_none=True)
 
@@ -525,7 +561,9 @@ def test_NotificationMapper_map_readings_to_response():
     )
     site_reading_type_id = 456
 
-    notification = NotificationMapper.map_readings_to_response(site_reading_type_id, [sr1, sr2], sub, scope)
+    notification = NotificationMapper.map_readings_to_response(
+        site_reading_type_id, [sr1, sr2], sub, scope, notification_type
+    )
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
     assert "/upt/" in notification.subscribedResource, "A UsagePoint URI should be utilised"
@@ -533,6 +571,10 @@ def test_NotificationMapper_map_readings_to_response():
     assert f"/{site_reading_type_id}" in notification.subscribedResource
     assert notification.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification.subscriptionURI
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification.status == NotificationStatus.DEFAULT
 
     assert notification.resource.type == XSI_TYPE_READING_LIST
     assert_list_type(Reading, notification.resource.Readings, count=2)
@@ -541,7 +583,8 @@ def test_NotificationMapper_map_readings_to_response():
     ), "If this fails - starting testing using assert_entity_hrefs_contain_entity_id_and_prefix (see other tests)"
 
 
-def test_NotificationMapper_map_rates_to_response():
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_rates_to_response(notification_type: NotificationType):
     rate1: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=101, optional_is_none=False)
     rate2: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=True)
 
@@ -554,7 +597,7 @@ def test_NotificationMapper_map_rates_to_response():
     pricing_reading_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
 
     notification = NotificationMapper.map_rates_to_response(
-        tariff_id, day, pricing_reading_type, [rate1, rate2], sub, scope
+        tariff_id, day, pricing_reading_type, [rate1, rate2], sub, scope, notification_type
     )
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
@@ -564,6 +607,10 @@ def test_NotificationMapper_map_rates_to_response():
     assert "/tti" in notification.subscribedResource, "This should be a time tariff interval list href"
     assert notification.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification.subscriptionURI
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification.status == NotificationStatus.DEFAULT
 
     assert notification.resource.type == XSI_TYPE_TIME_TARIFF_INTERVAL_LIST
     assert_list_type(TimeTariffIntervalResponse, notification.resource.TimeTariffInterval, count=2)
@@ -578,7 +625,9 @@ def test_NotificationMapper_map_der_availability_to_response_missing():
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
-    notification_all_set = NotificationMapper.map_der_availability_to_response(der_id, None, 99, sub, scope)
+    notification_all_set = NotificationMapper.map_der_availability_to_response(
+        der_id, None, 99, sub, scope, NotificationType.ENTITY_CHANGED
+    )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -591,7 +640,8 @@ def test_NotificationMapper_map_der_availability_to_response_missing():
     assert notification_all_set.resource is None
 
 
-def test_NotificationMapper_map_der_availability_to_response():
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_der_availability_to_response(notification_type: NotificationType):
     all_set: SiteDERAvailability = generate_class_instance(SiteDERAvailability, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
@@ -599,7 +649,9 @@ def test_NotificationMapper_map_der_availability_to_response():
     der_id = 456
     site_id = 789
 
-    notification_all_set = NotificationMapper.map_der_availability_to_response(der_id, all_set, site_id, sub, scope)
+    notification_all_set = NotificationMapper.map_der_availability_to_response(
+        der_id, all_set, site_id, sub, scope, notification_type
+    )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -610,6 +662,10 @@ def test_NotificationMapper_map_der_availability_to_response():
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
     assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification_all_set.status == NotificationStatus.DEFAULT
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
@@ -619,12 +675,15 @@ def test_NotificationMapper_map_der_availability_to_response():
     assert notification_all_set.resource.reservePercent == int(all_set.reserved_deliver_percent * 100)
 
 
-def test_NotificationMapper_map_der_rating_to_response_missing():
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_der_rating_to_response_missing(notification_type: NotificationType):
     sub = generate_class_instance(Subscription, seed=303)
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
-    notification_all_set = NotificationMapper.map_der_rating_to_response(der_id, None, 999, sub, scope)
+    notification_all_set = NotificationMapper.map_der_rating_to_response(
+        der_id, None, 999, sub, scope, notification_type
+    )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -632,11 +691,16 @@ def test_NotificationMapper_map_der_rating_to_response_missing():
     )
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification_all_set.status == NotificationStatus.DEFAULT
 
     assert notification_all_set.resource is None
 
 
-def test_NotificationMapper_map_der_rating_to_response():
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_der_rating_to_response(notification_type: NotificationType):
     all_set: SiteDERRating = generate_class_instance(SiteDERRating, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
@@ -644,7 +708,9 @@ def test_NotificationMapper_map_der_rating_to_response():
     der_id = 456
     site_id = 789
 
-    notification_all_set = NotificationMapper.map_der_rating_to_response(der_id, all_set, site_id, sub, scope)
+    notification_all_set = NotificationMapper.map_der_rating_to_response(
+        der_id, all_set, site_id, sub, scope, notification_type
+    )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -654,6 +720,10 @@ def test_NotificationMapper_map_der_rating_to_response():
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
     assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification_all_set.status == NotificationStatus.DEFAULT
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
@@ -668,7 +738,9 @@ def test_NotificationMapper_map_der_settings_to_response_missing():
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
-    notification_all_set = NotificationMapper.map_der_settings_to_response(der_id, None, 999, sub, scope)
+    notification_all_set = NotificationMapper.map_der_settings_to_response(
+        der_id, None, 999, sub, scope, NotificationType.ENTITY_CHANGED
+    )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -680,7 +752,8 @@ def test_NotificationMapper_map_der_settings_to_response_missing():
     assert notification_all_set.resource is None
 
 
-def test_NotificationMapper_map_der_settings_to_response():
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_der_settings_to_response(notification_type: NotificationType):
     all_set: SiteDERSetting = generate_class_instance(SiteDERSetting, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
@@ -688,7 +761,9 @@ def test_NotificationMapper_map_der_settings_to_response():
     der_id = 456
     site_id = 789
 
-    notification_all_set = NotificationMapper.map_der_settings_to_response(der_id, all_set, site_id, sub, scope)
+    notification_all_set = NotificationMapper.map_der_settings_to_response(
+        der_id, all_set, site_id, sub, scope, notification_type
+    )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert (
@@ -698,6 +773,10 @@ def test_NotificationMapper_map_der_settings_to_response():
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
     assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification_all_set.status == NotificationStatus.DEFAULT
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
@@ -713,7 +792,9 @@ def test_NotificationMapper_map_der_status_to_response_missing():
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
-    notification_all_set = NotificationMapper.map_der_status_to_response(der_id, None, 998, sub, scope)
+    notification_all_set = NotificationMapper.map_der_status_to_response(
+        der_id, None, 998, sub, scope, NotificationType.ENTITY_CHANGED
+    )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert DERStatusUri.format(site_id=scope.display_site_id, der_id=der_id) in notification_all_set.subscribedResource
@@ -722,7 +803,8 @@ def test_NotificationMapper_map_der_status_to_response_missing():
     assert notification_all_set.resource is None
 
 
-def test_NotificationMapper_map_der_status_to_response():
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_der_status_to_response(notification_type: NotificationType):
     all_set: SiteDERStatus = generate_class_instance(SiteDERStatus, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
@@ -730,7 +812,9 @@ def test_NotificationMapper_map_der_status_to_response():
     der_id = 456
     site_id = 789
 
-    notification_all_set = NotificationMapper.map_der_status_to_response(der_id, all_set, site_id, sub, scope)
+    notification_all_set = NotificationMapper.map_der_status_to_response(
+        der_id, all_set, site_id, sub, scope, notification_type
+    )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
     assert DERStatusUri.format(site_id=scope.display_site_id, der_id=der_id) in notification_all_set.subscribedResource
@@ -738,6 +822,10 @@ def test_NotificationMapper_map_der_status_to_response():
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
     assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification_all_set.status == NotificationStatus.DEFAULT
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests

@@ -69,4 +69,6 @@ class TariffGeneratedRateListManager:
         await upsert_many_tariff_genrate(session, tariff_genrate_models, changed_time)
         await session.commit()
 
-        await NotificationManager.notify_upserted_entities(SubscriptionResource.TARIFF_GENERATED_RATE, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(
+            SubscriptionResource.TARIFF_GENERATED_RATE, changed_time
+        )

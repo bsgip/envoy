@@ -168,7 +168,7 @@ class DERCapabilityManager:
 
         await session.commit()
 
-        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE_DER_RATING, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_DER_RATING, changed_time)
 
 
 class DERSettingsManager:
@@ -235,7 +235,7 @@ class DERSettingsManager:
 
         await session.commit()
 
-        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE_DER_SETTING, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_DER_SETTING, changed_time)
 
 
 class DERAvailabilityManager:
@@ -302,7 +302,9 @@ class DERAvailabilityManager:
 
         await session.commit()
 
-        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE_DER_AVAILABILITY, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(
+            SubscriptionResource.SITE_DER_AVAILABILITY, changed_time
+        )
 
 
 class DERStatusManager:
@@ -369,4 +371,4 @@ class DERStatusManager:
 
         await session.commit()
 
-        await NotificationManager.notify_upserted_entities(SubscriptionResource.SITE_DER_STATUS, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_DER_STATUS, changed_time)

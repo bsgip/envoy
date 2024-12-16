@@ -273,8 +273,12 @@ async def test_end_device_manager_fetch_missing_device(
 @pytest.mark.parametrize("return_value", [True, False])
 @mock.patch("envoy.server.manager.end_device.delete_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.utc_now")
+@mock.patch("envoy.server.manager.end_device.NotificationManager")
 async def test_delete_enddevice_for_scope(
-    mock_utc_now: mock.MagicMock, mock_delete_site_for_aggregator: mock.MagicMock, return_value: bool
+    mock_NotificationManager: mock.MagicMock,
+    mock_utc_now: mock.MagicMock,
+    mock_delete_site_for_aggregator: mock.MagicMock,
+    return_value: bool,
 ):
     """Check that the manager will handle interacting with the crud layer / managing the session transaction"""
 
@@ -282,6 +286,7 @@ async def test_delete_enddevice_for_scope(
     mock_session = create_mock_session()
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
     delete_time = datetime(2021, 5, 6, 7, 8, 9)
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Just do a simple passthrough
     mock_utc_now.return_value = delete_time
@@ -297,6 +302,9 @@ async def test_delete_enddevice_for_scope(
         mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id, deleted_time=delete_time
     )
     mock_utc_now.assert_called_once()
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
+        SubscriptionResource.SITE, delete_time
+    )
 
 
 @pytest.mark.anyio
@@ -326,7 +334,7 @@ async def test_add_or_update_enddevice_for_scope_aggregator_with_sfdi(
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_upsert_site_for_aggregator.return_value = 4321
     mock_utc_now.return_value = now
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
 
     # Act
     returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_scope(mock_session, scope, end_device)
@@ -338,7 +346,7 @@ async def test_add_or_update_enddevice_for_scope_aggregator_with_sfdi(
     mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_not_called()
-    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
 
 
 @pytest.mark.anyio
@@ -369,7 +377,7 @@ async def test_add_or_update_enddevice_for_scope_aggregator_no_sfdi_with_lfdi(
         UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
     )
 
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
     mock_select_single_site_with_sfdi.return_value = None
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_upsert_site_for_aggregator.return_value = 4321
@@ -387,7 +395,7 @@ async def test_add_or_update_enddevice_for_scope_aggregator_no_sfdi_with_lfdi(
     mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_called_once()
-    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
 
 
 @pytest.mark.anyio
@@ -419,7 +427,7 @@ async def test_add_or_update_enddevice_for_scope_aggregator_no_sfdi_no_lfdi(
         UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
     )
 
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
     mock_select_single_site_with_sfdi.return_value = None
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_upsert_site_for_aggregator.return_value = 4321
@@ -439,7 +447,7 @@ async def test_add_or_update_enddevice_for_scope_aggregator_no_sfdi_no_lfdi(
     mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_called_once()
-    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
 
 
 @pytest.mark.anyio
@@ -511,7 +519,7 @@ async def test_add_or_update_enddevice_for_scope_device(
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
 
-    mock_NotificationManager.notify_upserted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_upsert_site_for_aggregator.return_value = 4321
     mock_utc_now.return_value = now
@@ -525,7 +533,7 @@ async def test_add_or_update_enddevice_for_scope_device(
     mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now)
     mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
-    mock_NotificationManager.notify_upserted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
 
 
 @pytest.mark.anyio

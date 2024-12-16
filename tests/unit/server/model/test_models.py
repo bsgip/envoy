@@ -13,12 +13,19 @@ from assertical.fake.generator import (
 from sqlalchemy.orm import ColumnProperty, MappedColumn
 
 import envoy.server.model as all_models
+import envoy.server.model.archive as all_archive_models
 from envoy.server.model import Base
+from envoy.server.model.archive.base import ArchiveBase
+
+BASE_MODELS = [t for (name, t) in inspect.getmembers(all_models, inspect.isclass) if issubclass(t, Base)]
+ARCHIVE_MODELS = [
+    t
+    for (name, t) in inspect.getmembers(all_archive_models, inspect.isclass)
+    if issubclass(t, ArchiveBase) and t != ArchiveBase
+]
 
 
-@pytest.mark.parametrize(
-    "model_type", [t for (name, t) in inspect.getmembers(all_models, inspect.isclass) if issubclass(t, Base)]
-)
+@pytest.mark.parametrize("model_type", BASE_MODELS + ARCHIVE_MODELS)
 def test_validate_model_definitions(model_type: type):
     """Runs some high level reflection checks on all model types to look for things that are "off" """
     base = get_generatable_class_base(model_type)
