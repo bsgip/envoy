@@ -1,6 +1,6 @@
 # envoy
 
-A fully open source CSIP-Aus compliant utility server initially developed by the [Battery Storage and Grid Integration Program](https://bsgip.com/)
+A fully open source, CSIP-Aus compliant utility server initially developed by the [Battery Storage and Grid Integration Program](https://bsgip.com/)
 
 * [2030.5: Smart Energy Profile (2030.5-2018)](https://standards.ieee.org/ieee/2030.5/5897/)
 * [CSIP: Common Smart Inverter Profile](https://sunspec.org/2030-5-csip/)
@@ -8,11 +8,9 @@ A fully open source CSIP-Aus compliant utility server initially developed by the
 
 It's a docker containerised fastapi server, backed by postgresql for interacting with "smart devices" implementing the CSIP-AUS standard.
 
-
 # Demo server (example)
 
 envoy has a full demo server for quickly evaluating its capabilities. See the [demo/](demo/README.md) directory for more info
-
 
 # Development
 
@@ -134,11 +132,13 @@ postgres=# ALTER DATABASE envoydb TO OWNER envoyuser;
 
 3. Create `.env` file
 
-Envoy is is dependent on a number of environment variables listed in the table below.
+Envoy is is dependent on a number of environment variables (see the section on settings above). For a minimal local installation, you'll want to set the following:
 
 | Environment Variable | Description |
 | --- | --- |
 | `DATABASE_URL` | The postgres database connection string eg: `postgresql+asyncpg://envoyuser:mypass@localhost:5432/envoydb` (NOTE - `asyncpg` is required for fastapi) |
+| `ADMIN_USERNAME` | Username for HTTP BASIC auth on the admin server eg: `testuser` |
+| `ADMIN_PASSWORD` | Password for HTTP BASIC auth on the admin server eg: `testpassword` |
 
 We recommend adding these to a `.env` file in the root directory so that they are accessible by both fastapi and docker.
 
