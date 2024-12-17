@@ -1,11 +1,41 @@
 # envoy
-2030.5 / CSIP-AUS utility server implementation
+
+A fully open source CSIP-Aus compliant utility server initially developed by the [Battery Storage and Grid Integration Program](https://bsgip.com/)
+
+* [2030.5: Smart Energy Profile (2030.5-2018)](https://standards.ieee.org/ieee/2030.5/5897/)
+* [CSIP: Common Smart Inverter Profile](https://sunspec.org/2030-5-csip/)
+* [CSIP-Aus: Common Smart Inverter Profile (Australia)](https://csipaus.org/)
+
+It's a docker containerised fastapi server, backed by postgresql for interacting with "smart devices" implementing the CSIP-AUS standard.
+
+
+# Demo server (example)
+
+envoy has a full demo server for quickly evaluating its capabilities. See the [demo/](demo/README.md) directory for more info
+
+
+# Development
+
+To install envoy for local development, clone this repository and then run:
+
+`pip install -e .[dev, test]`
+
+To ensure everything is setup correctly, tests can be run with:
+
+`pytest`
+
+envoy uses the following linting/formatting tools:
+* [bandit](https://pypi.org/project/black/)
+* [flake8](https://pypi.org/project/flake8/)
+* [mypy](https://pypi.org/project/mypy/)
+
+Contributions via a pull request are welcome but will be validated using the above tools.
 
 ## Project structure
 
-Top level directories define fastapi apps that use a common auth model
+Top level directories define multiple apps that use a common codebase/shared models.
 
-* `requirements/`: holds requirement files for specific environments
+* `demo/`: A fully containerised demonstration of all services in this project
 * `src/envoy/`: root package directory
 * `src/envoy/admin/`: Used for internal API endpoints for administering the server/injecting calculated entities
 * `src/envoy/server/`: primary implementation of the public API's - eg 2030.5 etc 
@@ -62,28 +92,6 @@ Enabling this auth will ensure that all incoming requests must include an `Autho
 
 To enable - set the config for `azure_ad_tenant_id`/`azure_ad_client_id`/`azure_ad_valid_issuer`
 
-## Dependencies/Requirements
-
-`pip install .` will install the basic dependencies to run Envoy
-
-`pip install .[dev]` will install the optional development dependencies (eg code linters)
-
-`pip install .[test]` will install the optional testing dependencies (eg pytest)
-
-## Contributing
-
-The following linters/checkers are run on every PR. It's highly recommended to have these running as part of your development setup. `vscode` has plugins to make this easy or run the below manually
-
-`pip install .[dev]`
-
-| **Tool** | **Running** | **Purpose** |
-| -------- | ----------- | ----------- |
-| `bandit` | `bandit .` | checking for common security issues |
-| `black` | `black --check .` | validating code style/formatting |
-| `mypy` | `mypy src/` | enforce type hints and other associated linting - excluding tests |
-| `pytest` | `pytest` | Runs all tests (more info below) |
-
-
 ## Updating database schema
 
 If updating any of the crud models - you will need to update the alembic migrations:
@@ -107,17 +115,9 @@ To run Envoy locally as a development environment you'll need to setup a local p
 
 1. Install dependencies for main server + tests
 
-`pip install .[test]`
+`pip install -e .[test, dev]`
 
-2. (optional) Install development requirements
-
-`pip install .[dev]`
-
-3. Double check tests are running
-
-`pytest`
-
-4. Create an "envoy" database
+2. Create an "envoy" database
 
 ```
 sudo -u postgres psql
@@ -132,7 +132,7 @@ To enable table creation with the envoyuser, grant ownership of the database (lo
 postgres=# ALTER DATABASE envoydb TO OWNER envoyuser;
 ```
 
-5. Create `.env` file
+3. Create `.env` file
 
 Envoy is is dependent on a number of environment variables listed in the table below.
 
@@ -142,136 +142,27 @@ Envoy is is dependent on a number of environment variables listed in the table b
 
 We recommend adding these to a `.env` file in the root directory so that they are accessible by both fastapi and docker.
 
-6. Install local copy
+4. Apply alembic migrations to the database schema
 
-`pip install -e .`
+```
+cd src/envoy/server/
+alembic upgrade head
+```
 
-7. Apply alembic migrations to the database schema
-
-`cd src/envoy/server/`
-
-If there are no migrations in `server/alembic/versions` - first run `alembic revision --autogenerate -m "Init"`
-
-`alembic upgrade head`
-
-8. You may want to put some aggregators along with their associated lFDIs into the database created in Step 3. We can use the base config from the testing environment for this purpose:
+5. You may want to put some aggregators along with their associated lFDIs into the database created in Step 3. We can use the base config from the testing environment for this purpose:
 
 `sudo -u postgres psql -d envoydb -a -f tests/data/sql/base_config.sql`
 
-The Postman collection in postman/envoy.postman_collection.json uses certificate 1 (`tests/data/certificates/certificate1.py`)
- to make it requests and will require the database to be populated with this base config.
+The Postman collection in postman/envoy.postman_collection.json uses certificate 1 (`tests/data/certificates/certificate1.py`) to make its requests and will require the database to be populated with this base config.
 
-9. Start notification server worker
+6. (Optional) Start notification server worker
 
 The notification server will require workers to handle executing the async tasks. This is handled by taskiq and a worker
 can be initialised with: 
 
 `taskiq worker envoy.notification.main:broker envoy.notification.task`
 
-10. Start server
+7. Start server
 
-`python server/main.py`
-
-### Docker Hosted
-
-TODO: Depending on Dockerfile
-
-### Docker Hosted - Running envoy
-
-#### Setup
-
-1. Create this `docker-compose.yaml` file in the project root:
-
-```yaml
-```
-
-You may need to check whether the directory `/var/lib/postgresql/data/` which is where the database is persisted.
-
-2. Bring up the database server
-
-```shell
-docker compose up -d
-```
-
-3. Connect to the server
-
-```shell
-docker exec -it envoy-timescaledb-1 psql -U postgres
-```
-
-You will probably need to replace the name of the container (use `docker ps -a` to find the name of your running container).
-
-4. At the psql prompt running the following commands to set up the database.
-
-```
-create database envoydb;
-create user envoyuser with encrypted password 'mypass';
-grant all privileges on database envoydb to envoyuser;
-exit
-```
-
-5. Update the `DATABASE_URL` in the `.env` to use this database (**note** the use of port 5433 to prevent a clash with any locally installed postgres server)
-
-DATABASE_URL=postgresql+asyncpg://envoyuser:mypass@localhost:5433/envoydb
-
-6. Generate and apply the migrations
-
-```
-cd src/envoy/server
-ln -s ../../../.env
-alembic revision --autogenerate -m "Init"
-alembic upgrade head
-```
-
-
-### Docker Hosted - Database only set up to allow running the test suite
-
-#### Setup
-
-1. Create this `docker-compose.testing.yaml` file in the project root:
-
-```yaml
-version: '3'
-
-services:
-  testdb:
-    image: timescale/timescaledb:latest-pg14
-    environment:
-      # 'POSTGRES_PASSWORD' needs to match the password used in tests/conftest.py
-      - POSTGRES_PASSWORD=adminpass
-      # If the mapping of the /etc/localtime fails (see volumes section) then comment out that line and
-      # uncomment the following two lines (making sure to set the timezone to the same as your host system).
-      # - TZ=Australia/Brisbane
-      # - PGTZ=Australia/Brisbane
-    ports:
-      # Expose postgresql on port 5433 to prevent a clash with any local installation of postgresql server (default=5432).
-      - 5433:5432
-    volumes:
-      # Map in the localtime. This results in the timezone of postgresql being set to the same as host system.
-      - "/etc/localtime:/etc/localtime:ro"
-
-# Create a new network separate than the one created for docker.compose.yaml
-networks:
-  default:
-    name: envoy-testing
-```
-
-Since the test suite brings up the database each time there is no docker volume for persisting the database.
-
-#### Running the tests
-
-1. Bring up the database server to make sure it available to the test suite
-
-```shell
-docker compose -f docker-compose.testing.yaml up -d
-```
-
-2. Run the test suite
-
-```
-TEST_WITH_DOCKER=1 pytest
-```
-
-The environment variable `TEST_WITH_DOCKER` forces the pytest to use postgresql server in the docker container rather
-than any local postgresql server.
-
+`uvicorn envoy.server.main:app --host 0.0.0.0 --reload`
+            
