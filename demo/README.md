@@ -1,12 +1,12 @@
-# envoy "full" example
+# envoy demo server
 
-This example is designed to allow you to quickly evaluate the envoy server in a local development environment. It is not a "production grade" docker compose file. It's purely a way to quickly startup and evaluate the csip-aus implementation.
+This demo is designed to allow you to quickly evaluate the envoy server in a local development environment. It is not a "production grade" docker compose file. It's purely a way to quickly startup and evaluate the csip-aus implementation.
 
-## Starting the example
+## Starting the demo
 
-You will need [Docker](https://www.docker.com/) to run this example
+You will need [Docker](https://www.docker.com/) to run this demo
 
-**To start the example:**
+**To start the demo:**
 
 You will need to build an image called `envoy:latest` and then up the compose file:
 
