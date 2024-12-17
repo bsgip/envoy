@@ -1,12 +1,14 @@
 # envoy
 
-A fully open source, CSIP-Aus compliant utility server initially developed by the [Battery Storage and Grid Integration Program](https://bsgip.com/)
+A fully open source, CSIP-Aus compliant utility server initially developed by the [Battery Storage and Grid Integration Program](https://bsgip.com/) at the [Australian National University](https://www.anu.edu.au/). Implements the following standards:
 
 * [2030.5: Smart Energy Profile (2030.5-2018)](https://standards.ieee.org/ieee/2030.5/5897/)
 * [CSIP: Common Smart Inverter Profile](https://sunspec.org/2030-5-csip/)
 * [CSIP-Aus: Common Smart Inverter Profile (Australia)](https://csipaus.org/)
 
 It's a docker containerised fastapi server, backed by postgresql for interacting with "smart devices" implementing the CSIP-AUS standard.
+
+All client model definitions for this server can be found in [envoy-schema](https://github.com/bsgip/envoy-schema) project (a dependency of envoy)
 
 # Demo server (example)
 
