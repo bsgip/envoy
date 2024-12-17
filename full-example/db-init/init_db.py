@@ -5,9 +5,8 @@ from zoneinfo import ZoneInfo
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import func, insert, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
 from envoy.server.model.aggregator import Aggregator, AggregatorCertificateAssignment
@@ -23,43 +22,33 @@ with open(CERT_PATH, "r") as cert_file:
 # Generate LFDI
 lfdi = LFDIAuthDepends.generate_lfdi_from_pem(cert_pem)
 
-# Initialize data objects
-now = datetime.now(tz=ZoneInfo("UTC"))
-client_cert = Certificate(lfdi=lfdi, created=now, expiry=cert_expiry)
-agg_null_aggregator = Aggregator(name="NULL AGGREGATOR", created_time=now, changed_time=now, aggregator_id=0)
-agg_client_test = Aggregator(name="test", created_time=now, changed_time=now)
-
 
 # Set up database engine and session maker
 engine = create_async_engine(os.environ["DATABASE_URL"])
-session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
+# Run init code within a session
 async def main() -> None:
     async with session_maker() as session:
-        new_entries = False
+        # If the aggregator table is empty - there is nothing in the DB - time to populate it
+        agg_count = (await session.execute(select(func.count()).select_from(Aggregator))).scalar_one()
+        if agg_count == 0:
+            now = datetime.now(tz=ZoneInfo("UTC"))
 
-        agg_count = session.select(func.count()).select_from(Aggregator)
-
-        session.select()
-
-        # Add certificate if it doesn't already exist
-        if client_cert.certificate_id is None:
-            session.add(client_cert)
-            new_entries = True
-
-        # Add aggregator if it doesn't already exist
-        if agg_client_test.aggregator_id is None:
-            session.add(agg_client_test)
-            new_entries = True
-
-        # Commit new entries and create assignment
-        if new_entries:
-            await session.commit()
-            assignment = AggregatorCertificateAssignment(
-                certificate_id=client_cert.certificate_id, aggregator_id=agg_client_test.aggregator_id
+            # Add our client aggregator and special "NULL" aggregator
+            # NOTE - this will not increment the underlying sequences - should be fine for this demo example
+            # but will cause issues if any code attempts to insert a new agg/certificate
+            await session.execute(
+                insert(Aggregator).values(name="NULL AGGREGATOR", created_time=now, changed_time=now, aggregator_id=0)
             )
-            session.add(assignment)
+            await session.execute(
+                insert(Aggregator).values(name="Test", created_time=now, changed_time=now, aggregator_id=1)
+            )
+            await session.execute(
+                insert(Certificate).values(lfdi=lfdi, created=now, expiry=cert_expiry, certificate_id=1)
+            )
+            await session.execute(insert(AggregatorCertificateAssignment).values(certificate_id=1, aggregator_id=1))
             await session.commit()
 
 

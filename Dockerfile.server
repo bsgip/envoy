@@ -1,28 +1,12 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11-slim
 
-# System dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ssh
-
-# Trust github key
-RUN mkdir -m 700 ~/.ssh; \
-    touch -m 600 ~/.ssh/known_hosts; \
-    ssh-keyscan github.com > ~/.ssh/known_hosts
-
-# Ensure github PAT are used instead of SSH
-# PAT to be used instead of ssh, so we can pull git repos in the requirements.txt
-# use --secret id=github_pat,src=./github.pat to the image.
-RUN --mount=type=secret,id=github_pat,uid=50000 git config --global url."https://ssh:$(cat /run/secrets/github_pat)@github.com/".insteadOf "ssh://git@github.com/"
-RUN --mount=type=secret,id=github_pat,uid=50000 git config --global url."https://git:$(cat /run/secrets/github_pat)@github.com/".insteadOf "git@github.com:"
-
 # Copy app + dependencies
 COPY ./src /app/src
 COPY ./pyproject.toml /app/pyproject.toml
 COPY ./setup.cfg /app/setup.cfg
 
 # Install app / dependencies
-RUN --mount=type=ssh pip install --no-cache-dir --upgrade pip\
-    && pip install --no-cache-dir -e /app
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -e /app
 
 # Setup execution environment
 ENV DATABASE_URL="postgresql+asyncpg://envoyuser:envoyuser@localhost:5432/envoy"

@@ -4,6 +4,7 @@ x-envoy-common:
     CERT_HEADER: x-forwarded-client-cert
     ENABLE_NOTIFICATIONS: "True"
     RABBIT_MQ_BROKER_URL: "amqp://guest:guest@rabbit-mq:5672"
+    ALLOW_DEVICE_REGISTRATION: "True"
 
 services:
   rabbit-mq:
@@ -24,9 +25,6 @@ services:
 
   taskiq-worker:
     image: envoy:latest
-    #build:
-    #context: ../
-    #dockerfile: Dockerfile.server
     environment:
       <<: *common-env
     command: taskiq worker envoy.notification.main:broker envoy.notification.task
@@ -57,9 +55,6 @@ services:
 
   envoy:
     image: envoy:latest
-    #build:
-    #  context: ../
-    #  dockerfile: Dockerfile.server
     ports:
       - 127.0.0.1:8000:8000
     restart: unless-stopped
@@ -76,9 +71,6 @@ services:
         condition: service_healthy
 
   envoy-admin:
-    #build:
-    # context: ../
-    # dockerfile: Dockerfile.server
     image: envoy:latest
     ports:
       - 127.0.0.1:8001:8001
@@ -101,8 +93,8 @@ services:
     image: timescale/timescaledb:latest-pg10
     ports:
       - 127.0.0.1:8003:5432
-        #volumes:
-        #- postgres_data:/var/lib/postgresql/data/
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
     networks:
       - envoy-net
     environment:
@@ -135,6 +127,7 @@ networks:
 
 
 volumes:
+  postgres_data:
   certificates:
     driver: local
     driver_opts:
