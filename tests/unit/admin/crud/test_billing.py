@@ -282,7 +282,7 @@ async def test_fetch_calculation_log_billing_data(
     parent calculation log"""
 
     async with generate_async_session(pg_billing_data) as session:
-        calculation_log = await select_calculation_log_by_id(session, calculation_log_id)
+        calculation_log = await select_calculation_log_by_id(session, calculation_log_id, False, False)
         if calculation_log is None:
             assert (
                 expected_tariff_imports is None

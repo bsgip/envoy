@@ -3,21 +3,49 @@ from typing import Optional, Sequence, Union, cast
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import noload, selectinload
 
 from envoy.server.model.log import CalculationLog
 
 
-async def select_calculation_log_by_id(session: AsyncSession, calculation_log_id: int) -> Optional[CalculationLog]:
-    """Admin fetching of a calculation log by ID - returns the log with all child entities included"""
-    stmt = (
-        select(CalculationLog)
-        .where((CalculationLog.calculation_log_id == calculation_log_id))
-        .options(
+async def select_calculation_log_by_id(
+    session: AsyncSession, calculation_log_id: int, include_variables: bool, include_labels: bool
+) -> Optional[CalculationLog]:
+    """Admin fetching of a calculation log by ID - returns the log with (optionally) child entities included
+
+    include_variables - If set, variable_metadata and variable_values will be populated. Otherwise will be set to []
+    include_labels - If set, label_metadata and label_values will be populated. Otherwise will be set to []
+    """
+    stmt = select(CalculationLog).where((CalculationLog.calculation_log_id == calculation_log_id))
+
+    if include_variables and include_labels:
+        stmt = stmt.options(
             selectinload(CalculationLog.variable_metadata),
             selectinload(CalculationLog.variable_values),
+            selectinload(CalculationLog.label_metadata),
+            selectinload(CalculationLog.label_values),
         )
-    )
+    elif include_variables:
+        stmt = stmt.options(
+            selectinload(CalculationLog.variable_metadata),
+            selectinload(CalculationLog.variable_values),
+            noload(CalculationLog.label_metadata),
+            noload(CalculationLog.label_values),
+        )
+    elif include_labels:
+        stmt = stmt.options(
+            noload(CalculationLog.variable_metadata),
+            noload(CalculationLog.variable_values),
+            selectinload(CalculationLog.label_metadata),
+            selectinload(CalculationLog.label_values),
+        )
+    else:
+        stmt = stmt.options(
+            noload(CalculationLog.variable_metadata),
+            noload(CalculationLog.variable_values),
+            noload(CalculationLog.label_metadata),
+            noload(CalculationLog.label_values),
+        )
 
     resp = await session.execute(stmt)
     return resp.scalars().one_or_none()

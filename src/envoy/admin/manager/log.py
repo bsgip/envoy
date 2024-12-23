@@ -16,10 +16,13 @@ from envoy.server.manager.time import utc_now
 class CalculationLogManager:
     @staticmethod
     async def get_calculation_log_by_id(
-        session: AsyncSession, calculation_log_id: int
+        session: AsyncSession, calculation_log_id: int, include_variables: bool, include_labels: bool
     ) -> Optional[CalculationLogResponse]:
-        """Fetches a specific calculation log with a specific ID"""
-        log = await select_calculation_log_by_id(session, calculation_log_id)
+        """Fetches a specific calculation log with a specific ID. Allows the fine grained choice to include
+        child variable/label data too."""
+        log = await select_calculation_log_by_id(
+            session, calculation_log_id, include_variables=include_variables, include_labels=include_labels
+        )
         if log is None:
             return log
         return CalculationLogMapper.map_to_response(log)

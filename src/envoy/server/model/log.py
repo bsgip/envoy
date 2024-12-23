@@ -18,7 +18,7 @@ class CalculationLogVariableValue(Base):
         ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE"), primary_key=True
     )
 
-    # ID defined by the client that disambiguate one set of time-series from another data from another. eg: a value of 1
+    # ID defined by the client that disambiguate one set of time-series data from another. eg: a value of 1
     # might represent weather forecast temperature, a value of 2 might represent forecast load etc. The actual
     # definitions are completely opaque to utility server.
     variable_id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
@@ -51,7 +51,7 @@ class CalculationLogVariableMetadata(Base):
         ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE"), primary_key=True
     )
 
-    # ID defined by the client that disambiguate one set of time-series from another data from another. eg: a value of 1
+    # ID defined by the client that disambiguate one set of time-series data from another. eg: a value of 1
     # might represent weather forecast temperature, a value of 2 might represent forecast load etc. The actual
     # definitions are completely opaque to utility server.
     variable_id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
@@ -59,6 +59,60 @@ class CalculationLogVariableMetadata(Base):
     description: Mapped[str] = mapped_column(VARCHAR(length=512))  # Human readable description of variable
 
     calculation_log: Mapped["CalculationLog"] = relationship(back_populates="variable_metadata", lazy="raise")
+
+
+class CalculationLogLabelValue(Base):
+    """Represents a free text label descriptor for a calculation log. Labels can be specific to a single site or global.
+
+    Label types can be differentiated by an opaque label_id
+
+    Each label is differentiated by the label id and the site_id that it applies to (if any)"""
+
+    __tablename__ = "calculation_log_label_value"
+
+    # Id of the parent calculation log that owns this label value
+    calculation_log_id: Mapped[int] = mapped_column(
+        ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE"), primary_key=True
+    )
+
+    # ID defined by the client that disambiguate one set of labels from another. eg: a value of 1
+    # might represent an upstream transformer ID and a value of 2 might represent the name of a cohort that
+    # dictates how the site was treated during this calculation run.
+    # The actual definitions are completely opaque to utility server.
+    label_id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
+
+    # This is DELIBERATELY not a foreign key relationship as we want to track a moment in time correlation of
+    # site ID. This is for the client managing this log to ensure correctness. If the site is deleted in the future
+    # we want this to remain as is.
+    #
+    # What site does this value apply to (0 corresponds to a value of None in the public model)
+    site_id_snapshot: Mapped[int] = mapped_column(INTEGER, primary_key=True)
+
+    # The actual label value associated with the linked label_id and site_id
+    label: Mapped[str] = mapped_column(VARCHAR(length=64))
+
+    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="label_values", lazy="raise")
+
+
+class CalculationLogLabelMetadata(Base):
+    """Human readable metadata for describing a label with an ID associated with a CalculationLog"""
+
+    __tablename__ = "calculation_log_label_metadata"
+
+    # The parent calculation log ID
+    calculation_log_id: Mapped[int] = mapped_column(
+        ForeignKey("calculation_log.calculation_log_id", ondelete="CASCADE"), primary_key=True
+    )
+
+    # ID defined by the client that disambiguate one set of labels from another. eg: a value of 1
+    # might represent an upstream transformer ID and a value of 2 might represent the name of a cohort that
+    # dictates how the site was treated during this calculation run.
+    # The actual definitions are completely opaque to utility server.
+    label_id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
+    name: Mapped[str] = mapped_column(VARCHAR(length=64))  # Human readable name of the label
+    description: Mapped[str] = mapped_column(VARCHAR(length=512))  # Human readable description of the label
+
+    calculation_log: Mapped["CalculationLog"] = relationship(back_populates="label_metadata", lazy="raise")
 
 
 class CalculationLog(Base):
@@ -73,7 +127,10 @@ class CalculationLog(Base):
         * A calculation log is divided into fixed width intervals of a known size, eg 5 minutes. All input data/outputs
           are aligned with these intervals. Eg - A 24 hour period is broken down into intervals of length 1 hour.
         * A calculation log has logged "variable" data representing input/intermediate/output data. This data is opaque
-          to the utility server but it WILL align with intervals."""
+          to the utility server but it WILL align with intervals.
+        * A calculation log has free-text "label" data associated with sites. This data is opaque to the utility server
+          and is NOT time varying.
+    """
 
     __tablename__ = "calculation_log"
 
@@ -122,8 +179,28 @@ class CalculationLog(Base):
             CalculationLogVariableValue.site_id_snapshot,
             CalculationLogVariableValue.interval_period,
         ],
-    )  # What variable values reference this calculation log
+    )  # What variable values have been set in this calculation log
+
+    label_values: Mapped[list["CalculationLogLabelValue"]] = relationship(
+        back_populates="calculation_log",
+        lazy="raise",
+        cascade="all, delete",
+        passive_deletes=True,
+        order_by=[
+            CalculationLogLabelValue.calculation_log_id,
+            CalculationLogLabelValue.label_id,
+            CalculationLogLabelValue.site_id_snapshot,
+        ],
+    )  # What label values have been set in this calculation log
+
     variable_metadata: Mapped[list["CalculationLogVariableMetadata"]] = relationship(
+        back_populates="calculation_log",
+        lazy="raise",
+        cascade="all, delete",
+        passive_deletes=True,
+    )  # What variable metadata reference this calculation log
+
+    label_metadata: Mapped[list["CalculationLogLabelMetadata"]] = relationship(
         back_populates="calculation_log",
         lazy="raise",
         cascade="all, delete",

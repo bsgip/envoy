@@ -58,7 +58,7 @@ class BillingManager:
         """Generates billing report data for a specific calculation log. Raises NotFoundError if calculation log
         isn't registered in the system"""
 
-        calculation_log = await select_calculation_log_by_id(session, calculation_log_id)
+        calculation_log = await select_calculation_log_by_id(session, calculation_log_id, False, False)
         if calculation_log is None:
             raise NotFoundError(f"CalculationLog ID {calculation_log_id} couldn't be found")
 

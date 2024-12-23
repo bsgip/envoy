@@ -68,6 +68,13 @@ INSERT INTO public.calculation_log_variable_value("calculation_log_id", "variabl
 INSERT INTO public.calculation_log_variable_value("calculation_log_id", "variable_id", "site_id_snapshot", "interval_period", "value") VALUES (2, 1, 0, 2, 4.4);
 INSERT INTO public.calculation_log_variable_value("calculation_log_id", "variable_id", "site_id_snapshot", "interval_period", "value") VALUES (2, 2, 2, 0, -5.5);
 
+INSERT INTO public.calculation_log_label_metadata("calculation_log_id", "label_id", "name", "description") VALUES (2, 2, 'Label-2', 'Label-2-Desc');
+INSERT INTO public.calculation_log_label_metadata("calculation_log_id", "label_id", "name", "description") VALUES (2, 3, 'Label-3', 'Label-3-Desc');
+
+INSERT INTO public.calculation_log_label_value("calculation_log_id", "label_id", "site_id_snapshot", "label") VALUES (2, 3, 0, 'label-2-3-0');
+INSERT INTO public.calculation_log_label_value("calculation_log_id", "label_id", "site_id_snapshot", "label") VALUES (2, 3, 1, 'label-2-3-1');
+INSERT INTO public.calculation_log_label_value("calculation_log_id", "label_id", "site_id_snapshot", "label") VALUES (2, 1, 2, 'label-2-1-2');
+
 
 
 INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "created_time", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 36, '2000-01-01 00:00:00Z', '2023-01-02 11:01:02');
