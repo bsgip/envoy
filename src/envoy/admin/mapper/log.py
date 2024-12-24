@@ -95,11 +95,11 @@ class CalculationLogMapper:
         variable_site_ids: list[Optional[int]] = []
         variable_interval_periods: list[int] = []
         variable_values: list[float] = []
-        for v in calculation_log.variable_values:
-            variable_ids.append(v.variable_id)
-            variable_site_ids.append(None if v.site_id_snapshot == 0 else v.site_id_snapshot)
-            variable_interval_periods.append(v.interval_period)
-            variable_values.append(v.value)
+        for variable_val in calculation_log.variable_values:
+            variable_ids.append(variable_val.variable_id)
+            variable_site_ids.append(None if variable_val.site_id_snapshot == 0 else variable_val.site_id_snapshot)
+            variable_interval_periods.append(variable_val.interval_period)
+            variable_values.append(variable_val.value)
 
         variable_values_flat = PublicVariableValues(
             variable_ids=variable_ids,
@@ -117,10 +117,10 @@ class CalculationLogMapper:
         label_ids: list[int] = []
         label_site_ids: list[Optional[int]] = []
         label_values: list[str] = []
-        for l in calculation_log.label_values:
-            label_ids.append(l.label_id)
-            label_site_ids.append(None if l.site_id_snapshot == 0 else l.site_id_snapshot)
-            label_values.append(l.label)
+        for label_val in calculation_log.label_values:
+            label_ids.append(label_val.label_id)
+            label_site_ids.append(None if label_val.site_id_snapshot == 0 else label_val.site_id_snapshot)
+            label_values.append(label_val.label)
 
         label_values_flat = PublicLabelValues(label_ids=label_ids, site_ids=label_site_ids, values=label_values)
 
