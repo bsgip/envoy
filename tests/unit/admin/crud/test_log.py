@@ -183,5 +183,9 @@ async def test_select_calculation_logs_for_period(
         calc_logs = await select_calculation_logs_for_period(session, period_start, period_end, start, limit)
         assert all([isinstance(log, CalculationLog) for log in calc_logs])
         assert [log.calculation_log_id for log in calc_logs] == expected_ids
+        assert all([len(log.variable_values) == 0 for log in calc_logs])
+        assert all([len(log.variable_metadata) == 0 for log in calc_logs])
+        assert all([len(log.label_values) == 0 for log in calc_logs])
+        assert all([len(log.label_metadata) == 0 for log in calc_logs])
 
         assert await count_calculation_logs_for_period(session, period_start, period_end) == expected_count

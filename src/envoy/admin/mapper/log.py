@@ -101,12 +101,15 @@ class CalculationLogMapper:
             variable_interval_periods.append(variable_val.interval_period)
             variable_values.append(variable_val.value)
 
-        variable_values_flat = PublicVariableValues(
-            variable_ids=variable_ids,
-            site_ids=variable_site_ids,
-            interval_periods=variable_interval_periods,
-            values=variable_values,
-        )
+        if len(variable_ids) == 0:
+            variable_values_flat = None
+        else:
+            variable_values_flat = PublicVariableValues(
+                variable_ids=variable_ids,
+                site_ids=variable_site_ids,
+                interval_periods=variable_interval_periods,
+                values=variable_values,
+            )
 
         # generate label data
         label_metadata = [
@@ -122,7 +125,10 @@ class CalculationLogMapper:
             label_site_ids.append(None if label_val.site_id_snapshot == 0 else label_val.site_id_snapshot)
             label_values.append(label_val.label)
 
-        label_values_flat = PublicLabelValues(label_ids=label_ids, site_ids=label_site_ids, values=label_values)
+        if len(label_ids) == 0:
+            label_values_flat = None
+        else:
+            label_values_flat = PublicLabelValues(label_ids=label_ids, site_ids=label_site_ids, values=label_values)
 
         return CalculationLogResponse(
             calculation_log_id=calculation_log.calculation_log_id,

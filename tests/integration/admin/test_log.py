@@ -37,10 +37,19 @@ def assert_calc_log_2(calc_log_2: CalculationLogResponse) -> None:
     assert calc_log_2.variable_values.interval_periods == [0, 1, 2, 0, 0, 1]
     assert calc_log_2.variable_values.values == [3.3, 2.2, 4.4, -5.5, 0, 1.1]
 
+    assert_list_type(CalculationLogLabelMetadata, calc_log_2.label_metadata, count=2)
+    assert isinstance(calc_log_2.label_values, CalculationLogLabelValues)
+
+    assert calc_log_2.label_values.label_ids == [1, 3, 3]
+    assert calc_log_2.label_values.site_ids == [2, None, 1]
+    assert calc_log_2.label_values.values == ["label-2-1-2", "label-2-3-0", "label-2-3-1"]
+
 
 @pytest.mark.anyio
 async def test_get_calculation_log_by_id(admin_client_auth: AsyncClient):
-    resp = await admin_client_auth.get(CalculationLogUri.format(calculation_log_id=2))
+    resp = await admin_client_auth.get(
+        CalculationLogUri.format(calculation_log_id=2) + "?include_variables=True&include_labels=True"
+    )
     assert resp.status_code == HTTPStatus.OK
 
     calc_log_2 = CalculationLogResponse.model_validate_json(resp.content)
@@ -98,14 +107,8 @@ async def test_calculation_log_roundtrip_with_children(
         assert len(returned_log.variable_metadata) == 0
         assert len(returned_log.label_metadata) == 0
 
-        assert len(returned_log.variable_values.variable_ids) == 0
-        assert len(returned_log.variable_values.site_ids) == 0
-        assert len(returned_log.variable_values.interval_periods) == 0
-        assert len(returned_log.variable_values.values) == 0
-
-        assert len(returned_log.label_values.label_ids) == 0
-        assert len(returned_log.label_values.site_ids) == 0
-        assert len(returned_log.label_values.values) == 0
+        assert returned_log.variable_values is None
+        assert returned_log.label_values is None
 
 
 @pytest.mark.parametrize("true_value, false_value", product(["true", "True", "1"], ["false", "False", None, "0"]))
@@ -138,7 +141,7 @@ async def test_calculation_log_get_with_includes(
             assert len(returned_log.label_values.values) == 3, f"labels={include_labels}, variables={include_variables}"
         else:
             assert len(returned_log.label_metadata) == 0, f"labels={include_labels}, variables={include_variables}"
-            assert len(returned_log.label_values.values) == 0, f"labels={include_labels}, variables={include_variables}"
+            assert returned_log.label_values is None, f"labels={include_labels}, variables={include_variables}"
 
         if include_variables:
             assert len(returned_log.variable_metadata) == 3, f"labels={include_labels}, variables={include_variables}"
@@ -147,9 +150,7 @@ async def test_calculation_log_get_with_includes(
             ), f"labels={include_labels}, variables={include_variables}"
         else:
             assert len(returned_log.variable_metadata) == 0, f"labels={include_labels}, variables={include_variables}"
-            assert (
-                len(returned_log.variable_values.values) == 0
-            ), f"labels={include_labels}, variables={include_variables}"
+            assert returned_log.variable_values is None, f"labels={include_labels}, variables={include_variables}"
 
 
 @pytest.mark.parametrize(

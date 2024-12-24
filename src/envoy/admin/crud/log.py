@@ -84,7 +84,12 @@ async def _calculation_logs_for_period(
     )
 
     if not is_counting:
-        stmt = stmt.order_by(CalculationLog.calculation_log_id)
+        stmt = stmt.order_by(CalculationLog.calculation_log_id).options(
+            noload(CalculationLog.variable_metadata),
+            noload(CalculationLog.variable_values),
+            noload(CalculationLog.label_metadata),
+            noload(CalculationLog.label_values),
+        )
 
     resp = await session.execute(stmt)
     if is_counting:
