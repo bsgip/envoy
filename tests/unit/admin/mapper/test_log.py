@@ -4,11 +4,18 @@ import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
+from envoy_schema.admin.schema.log import CalculationLogLabelValues as PublicLabelValues
 from envoy_schema.admin.schema.log import CalculationLogRequest, CalculationLogResponse
 from envoy_schema.admin.schema.log import CalculationLogVariableValues as PublicVariableValues
 
 from envoy.admin.mapper.log import CalculationLogMapper
-from envoy.server.model.log import CalculationLog, CalculationLogVariableMetadata, CalculationLogVariableValue
+from envoy.server.model.log import (
+    CalculationLog,
+    CalculationLogLabelMetadata,
+    CalculationLogLabelValue,
+    CalculationLogVariableMetadata,
+    CalculationLogVariableValue,
+)
 
 
 def test_map_to_response_handles_zero_to_none():
@@ -18,8 +25,14 @@ def test_map_to_response_handles_zero_to_none():
         generate_class_instance(CalculationLogVariableValue, seed=3003, site_id_snapshot=10),
     ]
 
-    response: CalculationLogResponse = CalculationLogMapper.map_to_response(log, True)
+    log.label_values = [
+        generate_class_instance(CalculationLogLabelValue, seed=4004, site_id_snapshot=0),
+        generate_class_instance(CalculationLogLabelValue, seed=5005, site_id_snapshot=11),
+    ]
+
+    response: CalculationLogResponse = CalculationLogMapper.map_to_response(log)
     assert response.variable_values.site_ids == [None, 10]
+    assert response.label_values.site_ids == [None, 11]
 
 
 def test_map_from_request_handles_none_to_zero():
@@ -27,10 +40,12 @@ def test_map_from_request_handles_none_to_zero():
     request.variable_values = PublicVariableValues(
         variable_ids=[1, 2], site_ids=[None, 3], interval_periods=[4, 5], values=[6.6, 7.7]
     )
+    request.label_values = PublicLabelValues(label_ids=[3, 4], site_ids=[None, 5], values=["aa", "bb"])
 
     log: CalculationLog = CalculationLogMapper.map_from_request(datetime.now(), request)
     assert_list_type(CalculationLogVariableValue, log.variable_values, count=len(request.variable_values.site_ids))
     assert [0, 3] == [e.site_id_snapshot for e in log.variable_values]
+    assert [0, 5] == [e.site_id_snapshot for e in log.label_values]
 
 
 @pytest.mark.parametrize("optional_as_none", [True, False])
@@ -52,18 +67,35 @@ def test_log_mapper_roundtrip(optional_as_none: bool):
     )
     assert actual.created_time == changed_time
 
-    # Assert Metadata
+    # Assert Variable Metadata
     assert len(actual.variable_metadata) == len(original.variable_metadata)
     for actual_md, original_md in zip(actual.variable_metadata, original.variable_metadata):
         assert_class_instance_equality(
             CalculationLogVariableMetadata, original_md, actual_md, ignored_properties=set(["calculation_log_id"])
         )
 
-    # Assert Values
+    # Assert Variable Values
     assert len(actual.variable_values) == len(original.variable_values)
     for actual_val, original_val in zip(actual.variable_values, original.variable_values):
         assert_class_instance_equality(
             CalculationLogVariableValue,
+            original_val,
+            actual_val,
+            ignored_properties=set(["calculation_log_id"]),
+        )
+
+    # Assert Label Metadata
+    assert len(actual.label_metadata) == len(original.label_metadata)
+    for actual_md, original_md in zip(actual.label_metadata, original.label_metadata):
+        assert_class_instance_equality(
+            CalculationLogLabelMetadata, original_md, actual_md, ignored_properties=set(["calculation_log_id"])
+        )
+
+    # Assert Label Values
+    assert len(actual.label_values) == len(original.label_values)
+    for actual_val, original_val in zip(actual.label_values, original.label_values):
+        assert_class_instance_equality(
+            CalculationLogLabelValue,
             original_val,
             actual_val,
             ignored_properties=set(["calculation_log_id"]),

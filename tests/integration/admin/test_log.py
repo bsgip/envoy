@@ -9,10 +9,12 @@ from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.log import (
+    CalculationLogLabelMetadata,
+    CalculationLogLabelValues,
     CalculationLogListResponse,
-    CalculationLogMetadata,
     CalculationLogRequest,
     CalculationLogResponse,
+    CalculationLogVariableMetadata,
     CalculationLogVariableValues,
 )
 from envoy_schema.admin.schema.uri import CalculationLogCreateUri, CalculationLogsForPeriod, CalculationLogUri
@@ -27,7 +29,7 @@ def assert_calc_log_2(calc_log_2: CalculationLogResponse) -> None:
     assert_datetime_equal(calc_log_2.calculation_range_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc))
     assert calc_log_2.calculation_range_duration_seconds == 86402
 
-    assert_list_type(CalculationLogMetadata, calc_log_2.variable_metadata, count=3)
+    assert_list_type(CalculationLogVariableMetadata, calc_log_2.variable_metadata, count=3)
     assert isinstance(calc_log_2.variable_values, CalculationLogVariableValues)
 
     assert calc_log_2.variable_values.variable_ids == [1, 1, 1, 2, 3, 3]
@@ -57,13 +59,18 @@ async def test_calculation_log_roundtrip_with_children(
     admin_client_auth: AsyncClient, optional_is_none: bool, include_children: bool
 ):
     """Creates a calculation log - sends it off, pulls it back and ensures the contents is all still the same"""
-    var_mds = [generate_class_instance(CalculationLogMetadata, optional_is_none=optional_is_none)]
+    var_mds = [generate_class_instance(CalculationLogVariableMetadata, optional_is_none=optional_is_none)]
     var_vals = generate_class_instance(CalculationLogVariableValues, optional_is_none=optional_is_none)
+
+    label_mds = [generate_class_instance(CalculationLogLabelMetadata, optional_is_none=optional_is_none)]
+    label_vals = generate_class_instance(CalculationLogLabelValues, optional_is_none=optional_is_none)
 
     calc_log: CalculationLogRequest = generate_class_instance(CalculationLogRequest, optional_is_none=optional_is_none)
     if include_children:
         calc_log.variable_metadata = var_mds
         calc_log.variable_values = var_vals
+        calc_log.label_metadata = label_mds
+        calc_log.label_values = label_vals
 
     # Upload the log
     resp = await admin_client_auth.post(CalculationLogCreateUri, content=calc_log.model_dump_json())
@@ -72,7 +79,7 @@ async def test_calculation_log_roundtrip_with_children(
     assert uri
 
     # download the log
-    resp = await admin_client_auth.get(uri)
+    resp = await admin_client_auth.get(uri + "?include_variables=true&include_labels=true")
     assert resp.status_code == HTTPStatus.OK
 
     # Validate the response
@@ -81,16 +88,68 @@ async def test_calculation_log_roundtrip_with_children(
     assert_nowish(returned_log.created_time)
     if include_children:
         assert len(returned_log.variable_metadata) == len(var_mds)
-        assert_class_instance_equality(CalculationLogMetadata, var_mds[0], returned_log.variable_metadata[0])
-
+        assert_class_instance_equality(CalculationLogVariableMetadata, var_mds[0], returned_log.variable_metadata[0])
         assert_class_instance_equality(CalculationLogVariableValues, var_vals, returned_log.variable_values)
+
+        assert len(returned_log.label_metadata) == len(label_mds)
+        assert_class_instance_equality(CalculationLogLabelMetadata, label_mds[0], returned_log.label_metadata[0])
+        assert_class_instance_equality(CalculationLogLabelValues, label_vals, returned_log.label_values)
     else:
         assert len(returned_log.variable_metadata) == 0
+        assert len(returned_log.label_metadata) == 0
 
         assert len(returned_log.variable_values.variable_ids) == 0
         assert len(returned_log.variable_values.site_ids) == 0
         assert len(returned_log.variable_values.interval_periods) == 0
         assert len(returned_log.variable_values.values) == 0
+
+        assert len(returned_log.label_values.label_ids) == 0
+        assert len(returned_log.label_values.site_ids) == 0
+        assert len(returned_log.label_values.values) == 0
+
+
+@pytest.mark.parametrize("true_value, false_value", product(["true", "True", "1"], ["false", "False", None, "0"]))
+@pytest.mark.anyio
+async def test_calculation_log_get_with_includes(
+    admin_client_auth: AsyncClient, true_value: str, false_value: Optional[str]
+):
+    """Fetches calc log 2 with variations on the includes to ensure they are parsed correctly"""
+
+    for include_labels, include_variables in product([True, False], [True, False]):
+        query_string = "?"
+        if include_labels:
+            query_string += f"include_labels={true_value}&"
+        elif false_value is not None:
+            query_string += f"include_labels={false_value}&"
+
+        if include_variables:
+            query_string += f"include_variables={true_value}&"
+        elif false_value is not None:
+            query_string += f"include_variables={false_value}&"
+
+        resp = await admin_client_auth.get(CalculationLogUri.format(calculation_log_id=2) + query_string)
+        assert resp.status_code == HTTPStatus.OK
+
+        # Validate the response contains the appropriate included children
+        returned_log = CalculationLogResponse.model_validate_json(resp.content)
+
+        if include_labels:
+            assert len(returned_log.label_metadata) == 2, f"labels={include_labels}, variables={include_variables}"
+            assert len(returned_log.label_values.values) == 3, f"labels={include_labels}, variables={include_variables}"
+        else:
+            assert len(returned_log.label_metadata) == 0, f"labels={include_labels}, variables={include_variables}"
+            assert len(returned_log.label_values.values) == 0, f"labels={include_labels}, variables={include_variables}"
+
+        if include_variables:
+            assert len(returned_log.variable_metadata) == 3, f"labels={include_labels}, variables={include_variables}"
+            assert (
+                len(returned_log.variable_values.values) == 6
+            ), f"labels={include_labels}, variables={include_variables}"
+        else:
+            assert len(returned_log.variable_metadata) == 0, f"labels={include_labels}, variables={include_variables}"
+            assert (
+                len(returned_log.variable_values.values) == 0
+            ), f"labels={include_labels}, variables={include_variables}"
 
 
 @pytest.mark.parametrize(

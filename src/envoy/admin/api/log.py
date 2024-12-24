@@ -65,8 +65,14 @@ async def create_calculation_log(calculation_log: CalculationLogRequest) -> Resp
 @router.get(CalculationLogUri, status_code=HTTPStatus.OK, response_model=CalculationLogResponse)
 async def get_calculation_log_by_id(
     calculation_log_id: int,
+    include_variables: bool = Query(False, alias="include_variables"),
+    include_labels: bool = Query(False, alias="include_labels"),
 ) -> CalculationLogResponse:
     """Endpoint fetching a CalculationLogResponse for a known calculation log ID
+
+    Optionally allows for the response to include child variables / labels via query parameters:
+        include_variables: Set to true/True to have the response include variable values/metadata (defaults False)
+        include_labels: Set to true/True to have the response include label values/metadata (defaults False)
 
     Returns:
         CalculationLogResponse
@@ -76,6 +82,8 @@ async def get_calculation_log_by_id(
     log = await CalculationLogManager.get_calculation_log_by_id(
         session=db.session,
         calculation_log_id=calculation_log_id,
+        include_variables=include_variables,
+        include_labels=include_labels,
     )
 
     if log is None:
