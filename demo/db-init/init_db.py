@@ -12,15 +12,21 @@ from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
 from envoy.server.model.aggregator import Aggregator, AggregatorCertificateAssignment
 from envoy.server.model.base import Certificate
 
-# Load certificate and extract expiry
-CERT_PATH = "/test_certs/testclient.crt"
-with open(CERT_PATH, "r") as cert_file:
-    cert_pem = cert_file.read()
-    cert = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
-    cert_expiry = cert.not_valid_after
 
-# Generate LFDI
-lfdi = LFDIAuthDepends.generate_lfdi_from_pem(cert_pem)
+# There are two types of clients: aggregators and devices
+AGG_CERT_PATH = "/test_certs/testaggregator.crt"  # Aggregator Client
+DEVICE_CERT_PATH = "/test_certs/testdevice.crt"  # Device/Non-aggregator Client
+
+
+def generate_cert(cert_path: str, now: datetime) -> Certificate:
+    """Load certs, extract expiry and lfdi"""
+    with open(cert_path, "r") as cert_file:
+        cert_pem = cert_file.read()
+        cert = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
+        cert_expiry = cert.not_valid_after_utc
+    # Generate LFDI
+    lfdi = LFDIAuthDepends.generate_lfdi_from_pem(cert_pem)
+    return Certificate(lfdi=lfdi, created=now, expiry=cert_expiry)
 
 
 # Set up database engine and session maker
@@ -36,19 +42,27 @@ async def main() -> None:
         if agg_count == 0:
             now = datetime.now(tz=ZoneInfo("UTC"))
 
-            # Add our client aggregator and special "NULL" aggregator
-            # NOTE - this will not increment the underlying sequences - should be fine for this demo example
-            # but will cause issues if any code attempts to insert a new agg/certificate
+            # load certs
+            agg_cert = generate_cert(AGG_CERT_PATH, now)
+            device_cert = generate_cert(DEVICE_CERT_PATH, now)
+            agg = Aggregator(name="Test", created_time=now, changed_time=now)
+
+            # Add our client aggregator and special "NULL" aggregator (used for device clients)
+            session.add(agg)
+            session.add(agg_cert)
+
             await session.execute(
                 insert(Aggregator).values(name="NULL AGGREGATOR", created_time=now, changed_time=now, aggregator_id=0)
             )
-            await session.execute(
-                insert(Aggregator).values(name="Test", created_time=now, changed_time=now, aggregator_id=1)
+            session.add(device_cert)
+
+            await session.flush()
+
+            session.add(
+                AggregatorCertificateAssignment(certificate_id=agg_cert.certificate_id, aggregator_id=agg.aggregator_id)
             )
-            await session.execute(
-                insert(Certificate).values(lfdi=lfdi, created=now, expiry=cert_expiry, certificate_id=1)
-            )
-            await session.execute(insert(AggregatorCertificateAssignment).values(certificate_id=1, aggregator_id=1))
+            session.add(AggregatorCertificateAssignment(certificate_id=device_cert.certificate_id, aggregator_id=0))
+
             await session.commit()
 
 

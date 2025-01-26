@@ -1,29 +1,57 @@
 #!/bin/bash
 set -e
 
-
-# setup CA
-cd /
-if ! [ -d "/tmp/certs" ];
-then
-    mkdir /tmp/certs && \
-    chown -R $(stat -c "%u:%g" /tmp/certs) /tmp/certs;
+# Setup certificate dir
+CERTS_DIR="/tmp/certs"
+if ! [ -d "$CERTS_DIR" ]; then
+    mkdir -p "$CERTS_DIR"
+    chown -R $(stat -c "%u:%g" "$CERTS_DIR") "$CERTS_DIR"
 fi
 
-cd /tmp/certs
+cd "$CERTS_DIR"
 
-if ! [ -f "/tmp/certs/testca.crt" ] ||  ! [ -f "/tmp/certs/testclient.key" ] || ! [ -f "/tmp/certs/testca.crt" ] || ! [ -f "/tmp/certs/testrproxy.crt" ];
-then
-    openssl genrsa -des3 -out ./testca.key -passout env:TEST_CA_PASSPHRASE 4096 && \
-    openssl req -new -x509 -days 365 -key ./testca.key -out ./testca.crt -passout env:TEST_CA_PASSPHRASE -passin env:TEST_CA_PASSPHRASE -subj "/C=AU/ST=ACT/L=CBR/O=TEST_ORG_0/CN=TEST_CA" && \
-    # setup test client keypair
-    openssl genrsa -des3 -out testclient.key -passout env:TEST_CLIENT_PASSPHRASE 2048 && \
-    openssl req -new -key testclient.key -out testclient.csr -passin env:TEST_CLIENT_PASSPHRASE -subj "/C=AU/ST=ACT/L=CBR/O=TEST_ORG_1/CN=TEST_CLIENT" && \
-    openssl x509 -req -days 365 -in testclient.csr -CA testca.crt -CAkey testca.key -set_serial 01 -out testclient.crt -passin env:TEST_CA_PASSPHRASE && \
-    openssl pkcs12 -export -in testclient.crt -inkey testclient.key -out testclient.p12 -passin env:TEST_CLIENT_PASSPHRASE -passout env:TEST_CLIENT_PASSPHRASE;
+# Check if CA and client certificates exist, generate if not
+if ! [ -f "$CERTS_DIR/testca.crt" ] || ! [ -f "$CERTS_DIR/testaggregator.key" ] || ! [ -f "$CERTS_DIR/testaggregator.crt" ] || ! [ -f "$CERTS_DIR/testdevice.key" ] || ! [ -f "$CERTS_DIR/testdevice.crt" ]; then
+    # Generate test CA
+    openssl genrsa -des3 -out "$CERTS_DIR/testca.key" -passout env:TEST_CA_PASSPHRASE 4096
+    openssl req -new -x509 -days 365 -key "$CERTS_DIR/testca.key" -out "$CERTS_DIR/testca.crt" \
+        -passout env:TEST_CA_PASSPHRASE -passin env:TEST_CA_PASSPHRASE \
+        -subj "/C=AU/ST=ACT/L=CBR/O=TEST_ORG_0/CN=TEST_CA"
 
-    # Nginx setup
-    openssl req -new -nodes -keyout testrproxy.key -out ./testrproxy.csr -config /san.conf
-    openssl x509 -req -days 365 -in ./testrproxy.csr -CA /tmp/certs/testca.crt -CAkey /tmp/certs/testca.key -set_serial 01 -out ./testrproxy.crt -passin env:TEST_CA_PASSPHRASE -extfile /san.conf -extensions v3_req
+    # Setup test aggregator keypair
+    openssl genrsa -des3 -out "$CERTS_DIR/testaggregator.key" -passout env:TEST_CLIENT_PASSPHRASE 2048
+    openssl req -new -key "$CERTS_DIR/testaggregator.key" -out "$CERTS_DIR/testaggregator.csr" \
+        -passin env:TEST_CLIENT_PASSPHRASE -subj "/C=AU/ST=ACT/L=CBR/O=TEST_ORG_1/CN=TEST_CLIENT"
+    openssl x509 -req -days 365 -in "$CERTS_DIR/testaggregator.csr" -CA "$CERTS_DIR/testca.crt" \
+        -CAkey "$CERTS_DIR/testca.key" -set_serial 01 -out "$CERTS_DIR/testaggregator.crt" \
+        -passin env:TEST_CA_PASSPHRASE
+    openssl pkcs12 -export -in "$CERTS_DIR/testaggregator.crt" -inkey "$CERTS_DIR/testaggregator.key" \
+        -out "$CERTS_DIR/testaggregator.p12" -passin env:TEST_CLIENT_PASSPHRASE -passout env:TEST_CLIENT_PASSPHRASE
+    rm "$CERTS_DIR/testaggregator.csr"
+
+    # Setup test device (non-aggregator) keypair
+    openssl genrsa -des3 -out "$CERTS_DIR/testdevice.key" -passout env:TEST_CLIENT_PASSPHRASE 2048
+    openssl req -new -key "$CERTS_DIR/testdevice.key" -out "$CERTS_DIR/testdevice.csr" \
+        -passin env:TEST_CLIENT_PASSPHRASE -subj "/C=AU/ST=ACT/L=CBR/O=TEST_ORG_1/CN=TEST_CLIENT"
+    openssl x509 -req -days 365 -in "$CERTS_DIR/testdevice.csr" -CA "$CERTS_DIR/testca.crt" \
+        -CAkey "$CERTS_DIR/testca.key" -set_serial 01 -out "$CERTS_DIR/testdevice.crt" \
+        -passin env:TEST_CA_PASSPHRASE
+    openssl pkcs12 -export -in "$CERTS_DIR/testdevice.crt" -inkey "$CERTS_DIR/testdevice.key" \
+        -out "$CERTS_DIR/testdevice.p12" -passin env:TEST_CLIENT_PASSPHRASE -passout env:TEST_CLIENT_PASSPHRASE
+    rm "$CERTS_DIR/testdevice.csr"
 fi
 
+# Setup dir for Nginx rproxy certs - no need to expose
+RPROXY_CERTS_DIR="/tmp/rproxy_certs"
+if ! [ -d "$RPROXY_CERTS_DIR" ]; then
+    mkdir -p "$RPROXY_CERTS_DIR"
+    chown -R $(stat -c "%u:%g" "$RPROXY_CERTS_DIR") "$RPROXY_CERTS_DIR"
+fi
+
+# Check if rproxy certs exist, generate if not
+if ! [ -f "$RPROXY_CERTS_DIR/testrproxy.crt" ]; then
+    openssl req -new -nodes -keyout "$RPROXY_CERTS_DIR/testrproxy.key" -out "$RPROXY_CERTS_DIR/testrproxy.csr" -config /san.conf
+    openssl x509 -req -days 365 -in "$RPROXY_CERTS_DIR/testrproxy.csr" -CA "$CERTS_DIR/testca.crt" \
+        -CAkey "$CERTS_DIR/testca.key" -set_serial 01 -out "$RPROXY_CERTS_DIR/testrproxy.crt" \
+        -passin env:TEST_CA_PASSPHRASE -extfile /san.conf -extensions v3_req
+fi

@@ -52,6 +52,13 @@ services:
     depends_on:
       - envoy
       - envoy-admin
+    healthcheck:
+      test: service nginx status || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 
   envoy:
     image: envoy:latest
@@ -102,11 +109,11 @@ services:
       - POSTGRES_PASSWORD=test_pwd
       - POSTGRES_DB=test_db
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      test: [ "CMD", "pg_isready", "-U", "test_user", "-d", "test_db" ]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 20s
 
   envoy-db_init:
     build:
@@ -121,6 +128,9 @@ services:
     depends_on:
       envoy-db:
         condition: service_healthy
+      tls-termination:
+        condition: service_healthy
+
 
 networks:
   envoy-net:
