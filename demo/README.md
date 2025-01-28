@@ -22,7 +22,7 @@ HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up
 ```
 
 This will start the following services:
-* [nginx](https://nginx.org/): for providing TLS validation/termination 
+* [nginx](https://nginx.org/): for providing TLS validation/termination
     * testing client certificates and keys will generate in `./tls-termination/test_certs/`
     * Will expose and listen on port `8443`
     * Will only accept TLS connections with a client cert that has been signed by the "test CA" (see below)
@@ -37,7 +37,7 @@ This will start the following services:
 
 ## Client Certificates
 
-The underlying IEEE 2030.5 standard requires specially signed certificates to identify clients. When this example is first executed, it will create the following files in the directory: 
+The underlying IEEE 2030.5 standard requires specially signed certificates to identify clients. When this example is first executed, it will create the following files in the directory:
 
 `tls-termination/test_certs/`
 
@@ -54,7 +54,7 @@ The underlying IEEE 2030.5 standard requires specially signed certificates to id
 
 The client certificates described in the table above are signed by the test CA and can be used against the nginx instance exposed on port 8443.
 
-You are welcome to sign additional certificates using the "test ca", but please note that authorising the certificate will require it to be registered in the `envoy-db` database. To do this, the certificate must be first registered to `public.certificate` (using its lFDI) and linked to `public.aggregator` via the linking table `public.aggregator_certificate_assignment`. A more detailed procedure will be provided in future documentation.
+You are welcome to sign additional certificates using the "test ca", but please note that authorising the certificate as an 'aggregator' will require it to be registered in the `envoy-db` database. To do this, the certificate must be first registered to `public.certificate` (using its lFDI) and linked to `public.aggregator` via the linking table `public.aggregator_certificate_assignment`. A more detailed procedure will be provided in future documentation.
 
 ## Making your first request
 
@@ -69,7 +69,7 @@ curl --cacert ./tls-termination/test_certs/testca.crt --cert ./tls-termination/t
 
 ## Connecting with Postman
 
-In the root repository directory under `postman/` you'll find Postman collections for both envoy and envoy-admin. 
+In the root repository directory under `postman/` you'll find Postman collections for both envoy and envoy-admin.
 
 You'll need to import them and then do the following:
 1. File -> Settings -> Certificates -> Client Certificates -> Add Certificate

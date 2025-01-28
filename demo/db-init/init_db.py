@@ -14,11 +14,13 @@ from envoy.server.model.base import Certificate
 
 
 # There are two types of clients: aggregators and devices
+# Aggregators have their certificates recorded in public.certificate
+# while devices do not - envoy does not keep a record of non-aggregator
+# device certificates.
 AGG_CERT_PATH = "/test_certs/testaggregator.crt"  # Aggregator Client
-DEVICE_CERT_PATH = "/test_certs/testdevice.crt"  # Device/Non-aggregator Client
 
 
-def generate_cert(cert_path: str, now: datetime) -> Certificate:
+def load_cert(cert_path: str, now: datetime) -> Certificate:
     """Load certs, extract expiry and lfdi"""
     with open(cert_path, "r") as cert_file:
         cert_pem = cert_file.read()
@@ -42,27 +44,23 @@ async def main() -> None:
         if agg_count == 0:
             now = datetime.now(tz=ZoneInfo("UTC"))
 
-            # load certs
-            agg_cert = generate_cert(AGG_CERT_PATH, now)
-            device_cert = generate_cert(DEVICE_CERT_PATH, now)
+            # load aggregator cert only
+            agg_cert = load_cert(AGG_CERT_PATH, now)
             agg = Aggregator(name="Test", created_time=now, changed_time=now)
 
-            # Add our client aggregator and special "NULL" aggregator (used for device clients)
+            # Add our client aggregator and special "NULL" aggregator (used for device clients) - the NULL aggregator
+            # should not be linked to any certificates.
             session.add(agg)
             session.add(agg_cert)
 
             await session.execute(
                 insert(Aggregator).values(name="NULL AGGREGATOR", created_time=now, changed_time=now, aggregator_id=0)
             )
-            session.add(device_cert)
-
             await session.flush()
 
             session.add(
                 AggregatorCertificateAssignment(certificate_id=agg_cert.certificate_id, aggregator_id=agg.aggregator_id)
             )
-            session.add(AggregatorCertificateAssignment(certificate_id=device_cert.certificate_id, aggregator_id=0))
-
             await session.commit()
 
 
