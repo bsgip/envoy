@@ -52,7 +52,13 @@ async def fetch_sites_and_count_for_claims(
             scope.aggregator_id,
         )
         if site and site.changed_time > after:
-            return ([site], 1)
+            if start == 0 and limit > 0:
+                return ([site], 1)  # We will honour the pagination directives
+            else:
+                return (
+                    [],
+                    1,
+                )  # pagination isn't fetching the first element in the list, return empty but list total
         else:
             return ([], 0)
     elif scope.source == CertificateType.AGGREGATOR_CERTIFICATE:

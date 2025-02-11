@@ -32,13 +32,15 @@ AFTER_TIME = datetime(2024, 5, 6, 7, 8)
 @mock.patch("envoy.server.manager.end_device.select_all_sites_with_aggregator_id")
 @mock.patch("envoy.server.manager.end_device.select_aggregator_site_count")
 @pytest.mark.parametrize(
-    "scope, returned_site, returned_site_list, returned_count, expected_count, expected_sites",
+    "scope, returned_site, start, limit, returned_site_list, returned_count, expected_count, expected_sites",
     [
         (
             generate_class_instance(
                 UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE, aggregator_id=NULL_AGGREGATOR_ID
             ),
             None,  # Single Site
+            0,  # Start
+            456,  # Limit
             Exception(),  # Site List
             Exception(),  # Site List Count
             0,
@@ -49,6 +51,8 @@ AFTER_TIME = datetime(2024, 5, 6, 7, 8)
                 UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE, aggregator_id=NULL_AGGREGATOR_ID
             ),
             generate_class_instance(Site, seed=1234, changed_time=AFTER_TIME + timedelta(seconds=1)),  # Single Site
+            0,  # Start
+            456,  # Limit
             Exception(),  # Site List
             Exception(),  # Site List Count
             1,
@@ -58,7 +62,45 @@ AFTER_TIME = datetime(2024, 5, 6, 7, 8)
             generate_class_instance(
                 UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE, aggregator_id=NULL_AGGREGATOR_ID
             ),
+            generate_class_instance(Site, seed=1234, changed_time=AFTER_TIME + timedelta(seconds=1)),  # Single Site
+            1,  # Start
+            456,  # Limit
+            Exception(),  # Site List
+            Exception(),  # Site List Count
+            1,
+            [],
+        ),  # Device cert - has registered but skipped through pagination
+        (
+            generate_class_instance(
+                UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE, aggregator_id=NULL_AGGREGATOR_ID
+            ),
+            generate_class_instance(Site, seed=1234, changed_time=AFTER_TIME + timedelta(seconds=1)),  # Single Site
+            0,  # Start
+            0,  # Limit
+            Exception(),  # Site List
+            Exception(),  # Site List Count
+            1,
+            [],
+        ),  # Device cert - has registered but skipped through limit
+        (
+            generate_class_instance(
+                UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE, aggregator_id=NULL_AGGREGATOR_ID
+            ),
+            generate_class_instance(Site, seed=1234, changed_time=AFTER_TIME + timedelta(seconds=1)),  # Single Site
+            1,  # Start
+            0,  # Limit
+            Exception(),  # Site List
+            Exception(),  # Site List Count
+            1,
+            [],
+        ),  # Device cert - has registered but skipped through limit and start
+        (
+            generate_class_instance(
+                UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE, aggregator_id=NULL_AGGREGATOR_ID
+            ),
             generate_class_instance(Site, seed=1234, changed_time=AFTER_TIME - timedelta(seconds=1)),  # Single Site
+            123,  # Start
+            456,  # Limit
             Exception(),  # Site List
             Exception(),  # Site List Count
             0,
@@ -69,6 +111,8 @@ AFTER_TIME = datetime(2024, 5, 6, 7, 8)
                 UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, aggregator_id=987
             ),
             Exception(),  # Single Site
+            123,  # Start
+            456,  # Limit
             [generate_class_instance(Site, seed=4321)],  # Site List
             789,  # Site List Count
             789,
@@ -81,6 +125,8 @@ async def test_fetch_sites_and_count_for_claims(
     mock_select_all_sites_with_aggregator_id: mock.MagicMock,
     mock_select_single_site_with_lfdi: mock.MagicMock,
     scope: UnregisteredRequestScope,
+    start: int,
+    limit: int,
     returned_site: Union[Exception, Optional[Site]],
     returned_site_list: Union[Exception, list[Site]],
     returned_count: Union[Exception, int],
@@ -91,8 +137,6 @@ async def test_fetch_sites_and_count_for_claims(
     all of the various edge cases"""
 
     session = create_mock_session()
-    start = 123
-    limit = 456
 
     # Exception is a placeholder for "this mock won't be used in this test case"
     if not isinstance(returned_site, Exception):
