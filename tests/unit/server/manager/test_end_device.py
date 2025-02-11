@@ -580,6 +580,10 @@ async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
     mock_fetch_sites_and_count_for_claims.assert_called_once_with(mock_session, scope, start - 1, after, limit)
 
 
+@pytest.mark.parametrize(
+    "input_limit, expected_query_limit, includes_virtual_edev",
+    [(0, 0, False), (1, 0, True), (5, 4, True), (9999, 9998, True), (-1, 0, False)],
+)
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.end_device.fetch_sites_and_count_for_claims")
 @mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
@@ -588,13 +592,16 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
     mock_get_virtual_site_for_aggregator: mock.MagicMock,
     mock_EndDeviceListMapper: mock.MagicMock,
     mock_fetch_sites_and_count_for_claims: mock.MagicMock,
+    input_limit: int,
+    expected_query_limit: int,
+    includes_virtual_edev: bool,
 ):
-    """Checks that fetching the enddevice list just passes through to the relevant CRUD"""
+    """Checks that fetching the enddevice list just passes through to the relevant CRUD. Also validates that the virtual
+    end device behaves when limit is 0 or below"""
     # Arrange
     mock_session = create_mock_session()
     start = 0
     after = datetime.now()
-    limit = 5
     mapped_ed_list: EndDeviceListResponse = generate_class_instance(EndDeviceListResponse)
     returned_site_count = 123
     returned_sites: list[Site] = [
@@ -611,25 +618,32 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
     mock_fetch_sites_and_count_for_claims.return_value = (returned_sites, returned_site_count)
     # Act
     result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_for_scope(
-        mock_session, scope, start, after, limit
+        mock_session, scope, start, after, input_limit
     )
 
     # Assert
     assert result is mapped_ed_list
     assert_mock_session(mock_session, committed=False)
 
+    expected_virtual_site = returned_virtual_site if includes_virtual_edev else None
     mock_EndDeviceListMapper.map_to_response.assert_called_once_with(
         scope=scope,
         site_list=returned_sites,
         site_count=returned_site_count + 1,
-        virtual_site=returned_virtual_site,
+        virtual_site=expected_virtual_site,
     )
-    mock_fetch_sites_and_count_for_claims.assert_called_once_with(mock_session, scope, start, after, limit - 1)
-    mock_get_virtual_site_for_aggregator.assert_called_once_with(
-        session=mock_session,
-        aggregator_id=scope.aggregator_id,
-        aggregator_lfdi=scope.lfdi,
+    mock_fetch_sites_and_count_for_claims.assert_called_once_with(
+        mock_session, scope, start, after, expected_query_limit
     )
+
+    if includes_virtual_edev:
+        mock_get_virtual_site_for_aggregator.assert_called_once_with(
+            session=mock_session,
+            aggregator_id=scope.aggregator_id,
+            aggregator_lfdi=scope.lfdi,
+        )
+    else:
+        mock_get_virtual_site_for_aggregator.assert_not_called()
 
 
 @pytest.mark.anyio

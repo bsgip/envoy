@@ -224,15 +224,16 @@ class EndDeviceListManager:
         # Include the aggregator virtual site?
         if includes_virtual_site:
             if start == 0:
-                # Get the virtual site associated with the aggregator
-                virtual_site = await get_virtual_site_for_aggregator(
-                    session=session,
-                    aggregator_id=scope.aggregator_id,
-                    aggregator_lfdi=scope.lfdi,
-                )
+                if limit > 0:
+                    # Get the virtual site associated with the aggregator
+                    virtual_site = await get_virtual_site_for_aggregator(
+                        session=session,
+                        aggregator_id=scope.aggregator_id,
+                        aggregator_lfdi=scope.lfdi,
+                    )
 
                 # Adjust limit to account for the virtual site
-                limit -= 1
+                limit = max(0, limit - 1)
 
             # Ensure a start value of either 0 or 1 will return the first site for the aggregator
             start = max(0, start - 1)

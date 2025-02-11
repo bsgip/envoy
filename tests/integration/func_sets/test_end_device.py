@@ -131,6 +131,10 @@ async def test_get_end_device_list_by_aggregator(
             1,
             AGG_2_VALID_CERT,
         ),
+        # Validating edge cases where a zero/negative limit caused issues
+        (build_paging_params(limit=-1), [], 4, AGG_1_VALID_CERT),
+        (build_paging_params(limit=0), [], 4, AGG_1_VALID_CERT),
+        (build_paging_params(limit=0.123), [], 4, AGG_1_VALID_CERT),
     ],
 )
 @pytest.mark.anyio
