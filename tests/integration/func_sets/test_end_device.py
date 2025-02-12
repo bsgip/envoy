@@ -90,6 +90,25 @@ async def test_get_end_device_list_by_aggregator(
 
 
 @pytest.mark.parametrize(
+    "query_string, cert",
+    [
+        (build_paging_params(limit=-1), AGG_1_VALID_CERT),
+        (build_paging_params(limit=-1), REGISTERED_CERT),
+        (build_paging_params(start=-1), AGG_1_VALID_CERT),
+        (build_paging_params(start=-1), REGISTERED_CERT),
+    ],
+)
+@pytest.mark.anyio
+async def test_get_end_device_list_invalid_pagination(
+    client: AsyncClient, edev_base_uri: str, query_string: str, cert: str
+):
+    """Tests that invalid pagination variables on the list endpoint return bad requests"""
+    response = await client.get(edev_base_uri + query_string, headers={cert_header: urllib.parse.quote(cert)})
+    assert_response_header(response, HTTPStatus.BAD_REQUEST)
+    assert_error_response(response)
+
+
+@pytest.mark.parametrize(
     "query_string, site_sfdis, expected_total, cert",
     [
         (build_paging_params(limit=1), [int(AGG_1_SFDI_FROM_VALID_CERT)], 4, AGG_1_VALID_CERT),

@@ -1,7 +1,8 @@
 from datetime import date, datetime, timezone
-from typing import Optional
+from typing import Optional, Union
 
 import pytest
+from fastapi import HTTPException
 
 from envoy.server.api.request import (
     DEFAULT_DATETIME,
@@ -25,10 +26,16 @@ from envoy.server.api.request import (
         ([4, 5, 6], 4),
         (None, DEFAULT_LIMIT),
         ([], DEFAULT_LIMIT),
+        ([-1], HTTPException),
+        ([-99], HTTPException),
     ],
 )
-def test_extract_limit_from_paging_param(query_val: Optional[list[int]], expected_output: int):
-    assert extract_limit_from_paging_param(query_val) == expected_output
+def test_extract_limit_from_paging_param(query_val: Optional[list[int]], expected_output: Union[int, type]):
+    if isinstance(expected_output, type):
+        with pytest.raises(expected_output):
+            extract_limit_from_paging_param(query_val)
+    else:
+        assert extract_limit_from_paging_param(query_val) == expected_output
 
 
 @pytest.mark.parametrize(
@@ -41,10 +48,17 @@ def test_extract_limit_from_paging_param(query_val: Optional[list[int]], expecte
         ([4, 5, 6], 4),
         (None, DEFAULT_START),
         ([], DEFAULT_START),
+        ([-1], HTTPException),
+        ([-99], HTTPException),
     ],
 )
-def test_extract_start_from_paging_param(query_val: Optional[list[int]], expected_output: int):
-    assert extract_start_from_paging_param(query_val) == expected_output
+def test_extract_start_from_paging_param(query_val: Optional[list[int]], expected_output: Union[int, type]):
+
+    if isinstance(expected_output, type):
+        with pytest.raises(expected_output):
+            extract_start_from_paging_param(query_val)
+    else:
+        assert extract_start_from_paging_param(query_val) == expected_output
 
 
 @pytest.mark.parametrize(

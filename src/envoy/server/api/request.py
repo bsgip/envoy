@@ -60,7 +60,7 @@ def extract_default_doe(request: Request) -> Optional[DefaultDoeConfiguration]:
 
 def extract_limit_from_paging_param(limit: Optional[list[int]] = None) -> int:
     """Given a sep2 paging parameter called limit (as an int) - return the value, defaulting to DEFAULT_LIMIT if
-    not specified"""
+    not specified.  Can raise HTTPException for invalid values"""
     if limit is None or len(limit) == 0:
         return DEFAULT_LIMIT
 
@@ -68,16 +68,23 @@ def extract_limit_from_paging_param(limit: Optional[list[int]] = None) -> int:
     if limit_val > MAX_LIMIT:
         return MAX_LIMIT
 
+    if limit_val < 0:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "l parameters must be >= 0")
+
     return limit_val
 
 
 def extract_start_from_paging_param(start: Optional[list[int]] = None) -> int:
     """Given a sep2 paging parameter called start (as an int) - return the value, defaulting to DEFAULT_START if
-    not specified"""
+    not specified. Can raise HTTPException for invalid values"""
     if start is None or len(start) == 0:
         return DEFAULT_START
 
-    return start[0]
+    start_val = start[0]
+    if start_val < 0:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "s parameters must be >= 0")
+
+    return start_val
 
 
 def extract_datetime_from_paging_param(after: Optional[list[int]] = None) -> datetime:

@@ -51,15 +51,18 @@ async def fetch_sites_and_count_for_claims(
             scope.lfdi,
             scope.aggregator_id,
         )
+
         if site and site.changed_time > after:
+            # We have a site (and it's not filtered out) - now apply our "virtual" pagination
             if start == 0 and limit > 0:
-                return ([site], 1)  # We will honour the pagination directives
+                return ([site], 1)  # If pagination allows the first record through - send it
             else:
                 return (
                     [],
                     1,
                 )  # pagination isn't fetching the first element in the list, return empty but list total
         else:
+            # If we are here - there either isn't a registered site OR it's been filtered by the query. Return empty
             return ([], 0)
     elif scope.source == CertificateType.AGGREGATOR_CERTIFICATE:
         site_list = await select_all_sites_with_aggregator_id(session, scope.aggregator_id, start, after, limit)
