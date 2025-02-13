@@ -21,13 +21,13 @@ class DeviceCapabilityManager:
         if scope.source == CertificateType.DEVICE_CERTIFICATE:
             existing_device_site = await select_single_site_with_lfdi(session, scope.lfdi, scope.aggregator_id)
             if existing_device_site is None:
-                return DeviceCapabilityMapper.map_to_unregistered_response(href_prefix=scope.href_prefix)
+                return DeviceCapabilityMapper.map_to_unregistered_response(scope=scope)
             else:
                 site_id_scope = existing_device_site.site_id
 
-        # Get all counts needed to form the 'Link's and 'ListLink's in a device capability response
+        # Get all counts needed to form the 'Link's and 'ListLink's in a device capability response (registered)
         edev_cnt = await select_aggregator_site_count(session, scope.aggregator_id, datetime.min)
         mup_cnt = await count_site_reading_types_for_aggregator(
             session, scope.aggregator_id, site_id_scope, datetime.min
         )
-        return DeviceCapabilityMapper.map_to_response(href_prefix=scope.href_prefix, edev_cnt=edev_cnt, mup_cnt=mup_cnt)
+        return DeviceCapabilityMapper.map_to_response(scope=scope, edev_cnt=edev_cnt, mup_cnt=mup_cnt)

@@ -5,6 +5,7 @@ from typing import Any, Optional, Union
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
 from envoy.server.exception import InvalidMappingError
+from envoy.server.request_scope import BaseRequestScope
 
 
 def generate_mrid(*args: Union[int, float]) -> str:
@@ -16,13 +17,13 @@ def generate_mrid(*args: Union[int, float]) -> str:
     return "".join([f"{abs(a):04x}" for a in args])
 
 
-def generate_href(uri_format: str, href_prefix: str, *args: Any, **kwargs: Any) -> str:
+def generate_href(uri_format: str, request_scope: BaseRequestScope, *args: Any, **kwargs: Any) -> str:
     """Generates a href from a format string and an optional static prefix. Any args/kwargs will be forwarded to
     str.format (being applied to uri_format).
 
     If a prefix is applied - the state of the leading slash will mirror uri_format"""
     uri = uri_format.format(*args, **kwargs)
-    prefix = href_prefix
+    prefix = request_scope.href_prefix
     if prefix is None:
         return uri
 
@@ -41,18 +42,18 @@ def generate_href(uri_format: str, href_prefix: str, *args: Any, **kwargs: Any) 
             return joined
 
 
-def remove_href_prefix(href: str, href_prefix: Optional[str]) -> str:
+def remove_href_prefix(href: str, request_scope: BaseRequestScope) -> str:
     """Reverses the href_prefix applied during generate_href (if any).
     Returns X such that generate_href(X, request_state_params) == uri"""
-    if not href_prefix:
+    if not request_scope.href_prefix:
         return href
 
     # Safety check
-    if not href.startswith(href_prefix):
+    if not href.startswith(request_scope.href_prefix):
         return href
 
     # Initial strip
-    href = href[len(href_prefix) :]  # noqa: E203
+    href = href[len(request_scope.href_prefix) :]  # noqa: E203
 
     # Cleanup
     if href.startswith("/"):
