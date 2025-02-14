@@ -33,4 +33,8 @@ class DeviceCapabilityMapper:
             EndDeviceListLink=ListLink(
                 href=generate_href(uri.EndDeviceListUri, scope), all_=0
             ),  # Unregistered so 0 edevs in list
+            MirrorUsagePointListLink=ListLink(
+                href=generate_href(uri.MirrorUsagePointListUri, scope),
+                all_=0,  # mup requires edev (referenced via non-optional deviceLFDI), so must be 0 here
+            ),
         )
