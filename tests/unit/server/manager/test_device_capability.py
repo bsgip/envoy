@@ -4,7 +4,6 @@ import unittest.mock as mock
 import pytest
 from assertical.fake.generator import generate_class_instance
 from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
-from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 
 from envoy.server.manager.device_capability import DeviceCapabilityManager
 from envoy.server.model.site import Site
