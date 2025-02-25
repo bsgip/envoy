@@ -19,7 +19,7 @@ from envoy_schema.server.schema.sep2.pub_sub import SubscriptionEncoding, Subscr
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from envoy_schema.server.schema.uri import EndDeviceListUri
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.subscription import select_subscription_by_id
@@ -308,6 +308,97 @@ async def test_create_doe_subscription(
             assert created_sub.scoped_site_id is None, "Aggregator scoped requests are site unscoped"
         else:
             assert created_sub.scoped_site_id == edev_id, "Regular requests are site scoped"
+
+
+async def do_test_renewal(
+    pg_base_config,
+    client: AsyncClient,
+    site_id: int,
+    subscribed_href: str,
+    notification_uri: str,
+    limit: int,
+    expected_subscription_count: int,
+):
+    # Create initial subscription request
+    request: Sep2Subscription = generate_class_instance(Sep2Subscription)
+    request.encoding = SubscriptionEncoding.XML
+    request.notificationURI = notification_uri
+    request.subscribedResource = subscribed_href
+    request.limit = limit
+    response = await client.post(
+        f"/edev/{site_id}/sub",
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=Sep2Subscription.to_xml(request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    assert len(read_response_body_string(response)) == 0
+
+    # Validate the DB record is properly scoped
+    async with generate_async_session(pg_base_config) as session:
+        sub_count_after = (await session.execute(select(func.count()).select_from(Subscription))).scalar_one()
+        resp = await session.execute(select(Subscription).order_by(Subscription.subscription_id.desc()).limit(1))
+        created_sub = resp.scalars().first()
+        assert_nowish(created_sub.changed_time)
+        assert_nowish(created_sub.created_time)
+        assert created_sub.notification_uri == request.notificationURI
+        assert created_sub.entity_limit == request.limit
+
+        if site_id == 0:
+            assert created_sub.scoped_site_id is None, "Aggregator scoped requests are site unscoped"
+        else:
+            assert created_sub.scoped_site_id == site_id, "Regular requests are site scoped"
+
+        assert sub_count_after == expected_subscription_count, "This is a renewal - there should be no NEW subs"
+
+
+@pytest.mark.parametrize(
+    "site_id, subscribed_resource_href",
+    [(site_id, href) for site_id in [0, 1] for href in subscribable_resource_hrefs(site_id, 1)],
+)
+@pytest.mark.anyio
+async def test_subscription_renewal(pg_base_config, client: AsyncClient, site_id: int, subscribed_resource_href: str):
+    """When creating a sub check to see if it renews (and doesn't duplicate the DB entry)"""
+
+    async with generate_async_session(pg_base_config) as session:
+        # Clear out subs before - we want all of our first subscriptions to be inserts
+        (await session.execute(delete(Subscription)))
+        initial_sub_count = 0
+        await session.commit()
+
+    expected_sub_count = initial_sub_count + 1
+
+    # Fire off the sub creation
+    await do_test_renewal(
+        pg_base_config,
+        client,
+        site_id,
+        subscribed_resource_href,
+        "https://example.com/456?foo=bar",
+        11,
+        expected_sub_count,
+    )
+
+    # Update it with no changes
+    await do_test_renewal(
+        pg_base_config,
+        client,
+        site_id,
+        subscribed_resource_href,
+        "https://example.com/456?foo=bar",
+        11,
+        expected_sub_count,
+    )
+
+    # Update the limit and notification URI
+    await do_test_renewal(
+        pg_base_config,
+        client,
+        site_id,
+        subscribed_resource_href,
+        "https://example.com/456?foo=updated",
+        22,
+        expected_sub_count,
+    )
 
 
 @pytest.mark.parametrize(

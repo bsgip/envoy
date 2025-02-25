@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from itertools import product
 from typing import Optional
 
 import pytest
@@ -14,10 +15,10 @@ from envoy.server.crud.subscription import (
     count_subscriptions_for_aggregator,
     count_subscriptions_for_site,
     delete_subscription_for_site,
-    insert_subscription,
     select_subscription_by_id,
     select_subscriptions_for_aggregator,
     select_subscriptions_for_site,
+    upsert_subscription,
 )
 from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
@@ -276,74 +277,273 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
         assert sub_5.conditions[1].upper_threshold == 12
 
 
+@pytest.mark.parametrize(
+    "sub, has_conditions",
+    product(
+        [
+            Subscription(
+                aggregator_id=3,
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.SITE,
+                scoped_site_id=1,
+                resource_id=None,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Different aggregator_id
+            Subscription(
+                aggregator_id=1,
+                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.SITE_DER_AVAILABILITY,
+                scoped_site_id=1,
+                resource_id=None,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Different resource_type
+            Subscription(
+                aggregator_id=1,
+                changed_time=datetime(2023, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.SITE,
+                scoped_site_id=1,
+                resource_id=3,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Different resource_id (the db value is NULL)
+            Subscription(
+                aggregator_id=2,
+                changed_time=datetime(2024, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                scoped_site_id=None,
+                resource_id=None,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Different resource_id (the db value is 3)
+            Subscription(
+                aggregator_id=2,
+                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                scoped_site_id=None,
+                resource_id=4,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Different resource_id (the db value is 3)
+            Subscription(
+                aggregator_id=1,
+                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.SITE,
+                scoped_site_id=3,  # Changed to an int from a NULL value
+                resource_id=None,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Different scoped_site_id (the db value is NULL)
+            Subscription(
+                aggregator_id=2,
+                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                scoped_site_id=None,  # Changed to None from an existing int
+                resource_id=3,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Different scoped_site_id (the db value is 3)
+            Subscription(
+                aggregator_id=2,
+                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                scoped_site_id=4,  # Changed to a different int
+                resource_id=3,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Different scoped_site_id (the db value is 3)
+        ],
+        [True, False],
+    ),
+)
 @pytest.mark.anyio
-async def test_insert_subscription(pg_base_config):
-    """Checks that sub inserting works as expected"""
-    sub = Subscription(
-        aggregator_id=1,
-        changed_time=datetime.now(tz=timezone.utc),
-        resource_type=SubscriptionResource.SITE,
-        scoped_site_id=1,
-        resource_id=None,
-        notification_uri="http://test.insert/",
-        entity_limit=555,
-    )
+async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscription, has_conditions: bool):
+    """Checks that sub inserting works as expected with a variety of "near misses" on existing subscriptions"""
+
+    if has_conditions:
+        sub = clone_class_instance(sub)  # The subs are shared - if we are writing to it, clone first
+        sub.conditions = [
+            SubscriptionCondition(
+                attribute=ConditionAttributeIdentifier.READING_VALUE,
+                lower_threshold=1,
+                upper_threshold=2,
+            )
+        ]
+        cond_count = len(sub.conditions)
+    else:
+        cond_count = 0
+
+    # Check counts before the test starts
+    async with generate_async_session(pg_base_config) as session:
+        sub_count_before = (await session.execute(select(func.count()).select_from(Subscription))).scalar_one()
+        cond_count_before = (
+            await session.execute(select(func.count()).select_from(SubscriptionCondition))
+        ).scalar_one()
+
     async with generate_async_session(pg_base_config) as session:
         # Clone so we dont end up with something tied to session
-        sub_id = await insert_subscription(
-            session, clone_class_instance(sub, ignored_properties=set(["aggregator", "conditions", "scoped_site"]))
+        sub_id = await upsert_subscription(
+            session, clone_class_instance(sub, ignored_properties=set(["aggregator", "scoped_site"]))
         )
         assert sub_id > 0
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
-        new_sub = await select_subscription_by_id(session, 1, sub_id)
+        sub_count_after = (await session.execute(select(func.count()).select_from(Subscription))).scalar_one()
+        cond_count_after = (await session.execute(select(func.count()).select_from(SubscriptionCondition))).scalar_one()
+
+        assert sub_count_before + 1 == sub_count_after, "There should be a new subscription in the table"
+        assert cond_count_before + cond_count == cond_count_after, "There should be new condition(s) in the table"
+
+        new_sub = await select_subscription_by_id(session, sub.aggregator_id, sub_id)
         assert_class_instance_equality(
             Subscription, sub, new_sub, ignored_properties=set(["subscription_id", "created_time"])
         )
         assert_nowish(new_sub.created_time)
 
+        assert (
+            await session.execute(select(func.count()).select_from(ArchiveSubscription))
+        ).scalar_one() == 0, "Nothing archived on insert"
+        assert (
+            await session.execute(select(func.count()).select_from(ArchiveSubscriptionCondition))
+        ).scalar_one() == 0, "Nothing archived on insert"
 
+
+@pytest.mark.parametrize(
+    "sub, has_conditions",
+    product(
+        [
+            Subscription(
+                subscription_id=1,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
+                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),  # Test metadata, won't be sent to the DB
+                aggregator_id=1,
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.SITE,
+                scoped_site_id=None,
+                resource_id=None,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Will rewrite sub 1
+            Subscription(
+                subscription_id=2,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
+                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),  # Test metadata, won't be sent to the DB
+                aggregator_id=1,
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
+                scoped_site_id=2,
+                resource_id=None,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Will rewrite sub 2
+            Subscription(
+                subscription_id=3,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
+                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),  # Test metadata, won't be sent to the DB
+                aggregator_id=2,
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                scoped_site_id=3,
+                resource_id=3,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Will rewrite sub 3
+            Subscription(
+                subscription_id=4,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
+                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),  # Test metadata, won't be sent to the DB
+                aggregator_id=1,
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.SITE,
+                scoped_site_id=4,
+                resource_id=4,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Will rewrite sub 4
+            Subscription(
+                subscription_id=5,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
+                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),  # Test metadata, won't be sent to the DB
+                aggregator_id=1,
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                resource_type=SubscriptionResource.READING,
+                scoped_site_id=None,
+                resource_id=1,
+                notification_uri="http://test.insert/",
+                entity_limit=555,
+            ),  # Will rewrite sub 5
+        ],
+        [True, False],
+    ),
+)
 @pytest.mark.anyio
-async def test_insert_subscription_with_condition(pg_base_config):
-    """Checks that sub inserting works as expected"""
-    condition = SubscriptionCondition(
-        attribute=ConditionAttributeIdentifier.READING_VALUE, lower_threshold=22, upper_threshold=33
-    )
-    sub = Subscription(
-        aggregator_id=1,
-        changed_time=datetime.now(tz=timezone.utc),
-        created_time=datetime(2013, 4, 5, 8, 6, 5, tzinfo=timezone.utc),  # won't be persisted
-        resource_type=SubscriptionResource.SITE,
-        scoped_site_id=1,
-        resource_id=None,
-        notification_uri="http://test.insert/",
-        entity_limit=555,
-        conditions=[condition],
-    )
+async def test_upsert_subscription_update_subscription(pg_base_config, sub: Subscription, has_conditions: bool):
+    """Checks that sub updating works as expected, especially ensuring that the ID doesn't change and the archive is
+    updated with the old values"""
+
+    # We have some test metadata decorating sub - extract it and then remove it for the actual test
+    sub = clone_class_instance(sub)  # The subs are shared - if we are writing to it, clone first
+    expected_sub_id = sub.subscription_id
+    expected_created_time = sub.created_time
+    del sub.subscription_id
+    del sub.created_time
+
+    if has_conditions:
+        sub.conditions = [
+            SubscriptionCondition(
+                attribute=ConditionAttributeIdentifier.READING_VALUE,
+                lower_threshold=1,
+                upper_threshold=2,
+            )
+        ]
+        cond_count_to_add = len(sub.conditions)
+    else:
+        cond_count_to_add = 0
+
+    # Check counts before the test starts
+    async with generate_async_session(pg_base_config) as session:
+        sub_count_before = (await session.execute(select(func.count()).select_from(Subscription))).scalar_one()
+        cond_count_before = (
+            await session.execute(select(func.count()).select_from(SubscriptionCondition))
+        ).scalar_one()
+        cond_count_for_sub_before = (
+            await session.execute(
+                select(func.count())
+                .select_from(SubscriptionCondition)
+                .where(SubscriptionCondition.subscription_id == expected_sub_id)
+            )
+        ).scalar_one()
 
     async with generate_async_session(pg_base_config) as session:
         # Clone so we dont end up with something tied to session
-        cloned_sub: Subscription = clone_class_instance(
-            sub, ignored_properties=set(["aggregator", "conditions", "scoped_site"])
+        sub_id = await upsert_subscription(
+            session, clone_class_instance(sub, ignored_properties=set(["aggregator", "scoped_site"]))
         )
-        cloned_sub.conditions = [clone_class_instance(condition, ignored_properties=set(["subscription"]))]
-        sub_id = await insert_subscription(session, cloned_sub)
-        assert sub_id > 0
+        assert sub_id == expected_sub_id, "This should NOT be changing as this is an update"
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
-        new_sub = await select_subscription_by_id(session, 1, sub_id)
+        sub_count_after = (await session.execute(select(func.count()).select_from(Subscription))).scalar_one()
+        cond_count_after = (await session.execute(select(func.count()).select_from(SubscriptionCondition))).scalar_one()
+
+        assert sub_count_before == sub_count_after, "There should be NO new subscription in the table"
+        assert (
+            cond_count_before + cond_count_to_add - cond_count_for_sub_before == cond_count_after
+        ), "Conditions count only change if the new set of conditions are bigger/smaller"
+
+        new_sub = await select_subscription_by_id(session, sub.aggregator_id, sub_id)
+        assert new_sub.subscription_id == expected_sub_id
         assert_class_instance_equality(
             Subscription, sub, new_sub, ignored_properties=set(["subscription_id", "created_time"])
         )
-        assert_class_instance_equality(
-            SubscriptionCondition,
-            condition,
-            new_sub.conditions[0],
-            ignored_properties=set(["subscription_condition_id", "subscription_id"]),
-        )
-        assert_nowish(new_sub.created_time)
+        assert new_sub.created_time == expected_created_time, "This should NOT be changed during update"
+
+        # Check the archive
+        archive_subs = (await session.execute(select(ArchiveSubscription))).scalars().all()
+        archive_conds = (await session.execute(select(ArchiveSubscriptionCondition))).scalars().all()
+
+        assert len(archive_subs) == 1, "old Subscription should be archived"
+        assert len(archive_conds) == cond_count_for_sub_before, "old Subscription Conditions should be archived"
+
+        assert all([a.subscription_id == expected_sub_id for a in archive_subs])
+        assert all([a.subscription_id == expected_sub_id for a in archive_conds])
 
 
 @pytest.mark.anyio

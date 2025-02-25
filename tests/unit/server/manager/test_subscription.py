@@ -197,9 +197,9 @@ async def test_delete_subscription_for_site(
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
 @mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
-@mock.patch("envoy.server.manager.subscription.insert_subscription")
+@mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_bad_agg_lookup(
-    mock_insert_subscription: mock.MagicMock,
+    mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
@@ -213,7 +213,7 @@ async def test_add_subscription_for_site_bad_agg_lookup(
 
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = None
-    mock_insert_subscription.return_value = 98765
+    mock_upsert_subscription.return_value = 98765
 
     # Act
     with pytest.raises(NotFoundError):
@@ -225,7 +225,7 @@ async def test_add_subscription_for_site_bad_agg_lookup(
     mock_SubscriptionMapper.map_from_request.assert_not_called()
     mock_select_single_tariff.assert_not_called()
     mock_fetch_site_reading_type_for_aggregator.assert_not_called()
-    mock_insert_subscription.assert_not_called()
+    mock_upsert_subscription.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -234,9 +234,9 @@ async def test_add_subscription_for_site_bad_agg_lookup(
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
 @mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
-@mock.patch("envoy.server.manager.subscription.insert_subscription")
+@mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_bad_site_id(
-    mock_insert_subscription: mock.MagicMock,
+    mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
@@ -255,7 +255,7 @@ async def test_add_subscription_for_site_bad_site_id(
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
-    mock_insert_subscription.return_value = 98765
+    mock_upsert_subscription.return_value = 98765
     mock_fetch_site_reading_type_for_aggregator.return_value = SiteReadingType(site_id=scope.site_id)
 
     # Act
@@ -273,7 +273,7 @@ async def test_add_subscription_for_site_bad_site_id(
     )
     mock_select_single_tariff.assert_not_called()
     mock_fetch_site_reading_type_for_aggregator.assert_not_called()
-    mock_insert_subscription.assert_not_called()
+    mock_upsert_subscription.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -282,9 +282,9 @@ async def test_add_subscription_for_site_bad_site_id(
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
 @mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
-@mock.patch("envoy.server.manager.subscription.insert_subscription")
+@mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_TARIFF_RATE(
-    mock_insert_subscription: mock.MagicMock,
+    mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
@@ -303,13 +303,13 @@ async def test_add_subscription_for_site_TARIFF_RATE(
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
-    mock_insert_subscription.return_value = 98765
+    mock_upsert_subscription.return_value = 98765
     mock_select_single_tariff.return_value = Tariff()
 
     # Act
     actual_result = await SubscriptionManager.add_subscription_for_site(mock_session, scope, sub)
 
-    assert actual_result == mock_insert_subscription.return_value
+    assert actual_result == mock_upsert_subscription.return_value
     assert_mock_session(mock_session, committed=True)
     mock_utc_now.assert_called_once()
     mock_select_aggregator.assert_called_once_with(mock_session, scope.aggregator_id)
@@ -321,7 +321,7 @@ async def test_add_subscription_for_site_TARIFF_RATE(
     )
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
     mock_fetch_site_reading_type_for_aggregator.assert_not_called()
-    mock_insert_subscription.assert_called_once_with(mock_session, mapped_sub)
+    mock_upsert_subscription.assert_called_once_with(mock_session, mapped_sub)
 
 
 @pytest.mark.anyio
@@ -330,9 +330,9 @@ async def test_add_subscription_for_site_TARIFF_RATE(
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
 @mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
-@mock.patch("envoy.server.manager.subscription.insert_subscription")
+@mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_TARIFF_RATE_missing(
-    mock_insert_subscription: mock.MagicMock,
+    mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
@@ -351,7 +351,7 @@ async def test_add_subscription_for_site_TARIFF_RATE_missing(
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
-    mock_insert_subscription.return_value = 98765
+    mock_upsert_subscription.return_value = 98765
     mock_select_single_tariff.return_value = None
 
     # Act
@@ -369,7 +369,7 @@ async def test_add_subscription_for_site_TARIFF_RATE_missing(
     )
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
     mock_fetch_site_reading_type_for_aggregator.assert_not_called()
-    mock_insert_subscription.assert_not_called()
+    mock_upsert_subscription.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -378,9 +378,9 @@ async def test_add_subscription_for_site_TARIFF_RATE_missing(
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
 @mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
-@mock.patch("envoy.server.manager.subscription.insert_subscription")
+@mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_READING(
-    mock_insert_subscription: mock.MagicMock,
+    mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
@@ -399,13 +399,13 @@ async def test_add_subscription_for_site_READING(
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
-    mock_insert_subscription.return_value = 98765
+    mock_upsert_subscription.return_value = 98765
     mock_fetch_site_reading_type_for_aggregator.return_value = SiteReadingType(site_id=scope.site_id)
 
     # Act
     actual_result = await SubscriptionManager.add_subscription_for_site(mock_session, scope, sub)
 
-    assert actual_result == mock_insert_subscription.return_value
+    assert actual_result == mock_upsert_subscription.return_value
     assert_mock_session(mock_session, committed=True)
     mock_utc_now.assert_called_once()
     mock_select_aggregator.assert_called_once_with(mock_session, scope.aggregator_id)
@@ -419,7 +419,7 @@ async def test_add_subscription_for_site_READING(
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
         mock_session, scope.aggregator_id, site_reading_type_id, scope.site_id, include_site_relation=False
     )
-    mock_insert_subscription.assert_called_once_with(mock_session, mapped_sub)
+    mock_upsert_subscription.assert_called_once_with(mock_session, mapped_sub)
     assert mapped_sub.scoped_site_id == scope.site_id, "Site scope should be left alone"
 
 
@@ -429,9 +429,9 @@ async def test_add_subscription_for_site_READING(
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
 @mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
-@mock.patch("envoy.server.manager.subscription.insert_subscription")
+@mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_READING_unscoped(
-    mock_insert_subscription: mock.MagicMock,
+    mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
@@ -450,7 +450,7 @@ async def test_add_subscription_for_site_READING_unscoped(
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
-    mock_insert_subscription.return_value = 98765
+    mock_upsert_subscription.return_value = 98765
     mock_fetch_site_reading_type_for_aggregator.return_value = SiteReadingType(
         site_id=1234321
     )  # Ensure this differs from scope
@@ -458,7 +458,7 @@ async def test_add_subscription_for_site_READING_unscoped(
     # Act
     actual_result = await SubscriptionManager.add_subscription_for_site(mock_session, scope, sub)
 
-    assert actual_result == mock_insert_subscription.return_value
+    assert actual_result == mock_upsert_subscription.return_value
     assert_mock_session(mock_session, committed=True)
     mock_utc_now.assert_called_once()
     mock_select_aggregator.assert_called_once_with(mock_session, scope.aggregator_id)
@@ -472,7 +472,7 @@ async def test_add_subscription_for_site_READING_unscoped(
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
         mock_session, scope.aggregator_id, site_reading_type_id, scope.site_id, include_site_relation=False
     )
-    mock_insert_subscription.assert_called_once_with(mock_session, mapped_sub)
+    mock_upsert_subscription.assert_called_once_with(mock_session, mapped_sub)
     assert mapped_sub.scoped_site_id is None, "Site scope should've been removed"
 
 
@@ -482,9 +482,9 @@ async def test_add_subscription_for_site_READING_unscoped(
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
 @mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
-@mock.patch("envoy.server.manager.subscription.insert_subscription")
+@mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_READING_missing(
-    mock_insert_subscription: mock.MagicMock,
+    mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
@@ -503,7 +503,7 @@ async def test_add_subscription_for_site_READING_missing(
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
-    mock_insert_subscription.return_value = 98765
+    mock_upsert_subscription.return_value = 98765
     mock_fetch_site_reading_type_for_aggregator.return_value = None
 
     # Act
@@ -523,7 +523,7 @@ async def test_add_subscription_for_site_READING_missing(
     mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
         mock_session, scope.aggregator_id, site_reading_type_id, scope.site_id, include_site_relation=False
     )
-    mock_insert_subscription.assert_not_called()
+    mock_upsert_subscription.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -532,9 +532,9 @@ async def test_add_subscription_for_site_READING_missing(
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
 @mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
-@mock.patch("envoy.server.manager.subscription.insert_subscription")
+@mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_SITE(
-    mock_insert_subscription: mock.MagicMock,
+    mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
@@ -552,12 +552,12 @@ async def test_add_subscription_for_site_SITE(
         domains=[AggregatorDomain(domain="domain.value1"), AggregatorDomain(domain="domain.value2")]
     )
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
-    mock_insert_subscription.return_value = 98765
+    mock_upsert_subscription.return_value = 98765
 
     # Act
     actual_result = await SubscriptionManager.add_subscription_for_site(mock_session, scope, sub)
 
-    assert actual_result == mock_insert_subscription.return_value
+    assert actual_result == mock_upsert_subscription.return_value
     assert_mock_session(mock_session, committed=True)
     mock_utc_now.assert_called_once()
     mock_select_aggregator.assert_called_once_with(mock_session, scope.aggregator_id)
@@ -569,4 +569,4 @@ async def test_add_subscription_for_site_SITE(
     )
     mock_select_single_tariff.assert_not_called()
     mock_fetch_site_reading_type_for_aggregator.assert_not_called()
-    mock_insert_subscription.assert_called_once_with(mock_session, mapped_sub)
+    mock_upsert_subscription.assert_called_once_with(mock_session, mapped_sub)
