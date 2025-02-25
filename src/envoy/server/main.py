@@ -16,6 +16,7 @@ from envoy.server.api.depends.path_prefix import PathPrefixDepends
 from envoy.server.api.error_handler import (
     general_exception_handler,
     http_exception_handler,
+    not_found_handler,
     validation_exception_handler,
     xml_exception_handler,
 )
@@ -95,10 +96,13 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
         new_app.include_router(router, dependencies=global_dependencies)
     for router in unsecured_routers:
         new_app.include_router(router)
+
     new_app.add_exception_handler(HTTPException, http_exception_handler)
     new_app.add_exception_handler(ValidationError, validation_exception_handler)
     new_app.add_exception_handler(XMLSyntaxError, xml_exception_handler)
     new_app.add_exception_handler(Exception, general_exception_handler)
+    new_app.add_exception_handler(404, not_found_handler)
+
     return new_app
 
 

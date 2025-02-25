@@ -12,6 +12,7 @@ from httpx import AsyncClient, Response
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from tests.integration.http import HTTPMethod
 from tests.integration.response import (
+    assert_error_response,
     assert_response_header,
     read_response_body_string,
     run_azure_ad_unauthorised_tests,
@@ -289,3 +290,12 @@ async def test_crawl_hrefs_with_prefix(pg_base_config, client: AsyncClient, vali
 
     visited_uris = await _do_crawl(client, valid_headers, TEST_HREF_PREFIX_VALUE)
     assert len(visited_uris) > len(ALL_ENDPOINTS_WITH_SUPPORTED_METHODS), "Sanity check to ensure we are finding uris"
+
+
+@pytest.mark.anyio
+async def test_404_returns_error_response(client: AsyncClient, valid_headers: dict):
+    """Tests that a generic 404 response comes back as a sep2 error message"""
+    response = await client.get("/not/a/implemented/uri", headers=valid_headers)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert_response_header(response, HTTPStatus.NOT_FOUND)
+    assert_error_response(response)

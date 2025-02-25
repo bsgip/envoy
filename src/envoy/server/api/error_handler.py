@@ -86,6 +86,14 @@ def general_exception_handler(request: Request, exc: Exception) -> Response:
     return generate_error_response(HTTPStatus.INTERNAL_SERVER_ERROR, message=None)
 
 
+def not_found_handler(request: Request, exc: Exception) -> Response:
+    """Handles general purpose NotFound errors that haven't been handled through another means"""
+
+    logger.exception(f"{request.url} generated 404 NOT_FOUND. {exc}")
+
+    return generate_error_response(HTTPStatus.NOT_FOUND, message=f"{request.url} is not found")
+
+
 class LoggedHttpException(HTTPException):
     """This is for all intents and purposes a HTTPException - it will just also utilise the specified
     logger to log the exception too.
