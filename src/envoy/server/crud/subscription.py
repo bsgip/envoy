@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Sequence, cast
+from typing import Optional, Sequence
 
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -185,62 +185,65 @@ async def upsert_subscription(session: AsyncSession, subscription: Subscription)
     # Step 1 - Identify if we have a "clash". If we do, then this is a "renewal" rather than a whole new subscription
     # Getting this into a unique constraint in the DB is tricky due to the nullability of the resource_id
     # So we just manage this directly - it should be efficient "enough" with existing indexes
-    existing_sub_response = (
-        (
-            await session.execute(
-                select(Subscription.subscription_id, Subscription.created_time)
-                .where(
-                    and_(
-                        Subscription.aggregator_id == subscription.aggregator_id,
-                        Subscription.resource_type == subscription.resource_type,
-                        scoped_site_id_clause,
-                        resource_id_clause,
-                    )
+    existing_sub = (
+        await session.execute(
+            select(Subscription)
+            .where(
+                and_(
+                    Subscription.aggregator_id == subscription.aggregator_id,
+                    Subscription.resource_type == subscription.resource_type,
+                    scoped_site_id_clause,
+                    resource_id_clause,
                 )
-                .order_by(Subscription.subscription_id.desc())
-                .limit(1)
             )
+            .order_by(Subscription.subscription_id.desc())
+            .limit(1)
         )
-        .tuples()
-        .one_or_none()
-    )
-    existing_sub_id: Optional[int] = None
-    existing_sub_creation: Optional[datetime] = None
-    if existing_sub_response is not None:
-        existing_sub_id = existing_sub_response[0]
-        existing_sub_creation = existing_sub_response[1]
+    ).scalar_one_or_none()
 
     # Step 2 [Optional] - If we have an existing subscription ID, we'll need to archive it in its current state and
     # also delete any conditions (they'll be replaced)
-    if existing_sub_id is not None:
+    if existing_sub is not None:
         await copy_rows_into_archive(
             session,
             Subscription,
             ArchiveSubscription,
-            lambda q: q.where(Subscription.subscription_id == existing_sub_id),
+            lambda q: q.where(Subscription.subscription_id == existing_sub.subscription_id),
         )
         await copy_rows_into_archive(
             session,
             SubscriptionCondition,
             ArchiveSubscriptionCondition,
-            lambda q: q.where(SubscriptionCondition.subscription_id == existing_sub_id),
+            lambda q: q.where(SubscriptionCondition.subscription_id == existing_sub.subscription_id),
         )
-        # Clear out any existing subscriptions + conditions (we're about to reinsert them as if they were updated)
-        await session.execute(delete(Subscription).where(Subscription.subscription_id == existing_sub_id))
+        # Clear out any existing conditions (we're about to reinsert them as if they were updated)
+        await session.execute(
+            delete(SubscriptionCondition).where(SubscriptionCondition.subscription_id == existing_sub.subscription_id)
+        )
 
     # Step 3 - massage our entity to be a "new" insert or an update to an existing record
-    if existing_sub_id is None:
+    if existing_sub is None:
         # This is a brand new subscription - clear out the created_time so the DB can generate it
         if subscription.created_time:
             del subscription.created_time
         if subscription.subscription_id:
             del subscription.subscription_id
-    else:
-        # This is just replacing the Subscription we just deleted with an updated copy
-        subscription.created_time = cast(datetime, existing_sub_creation)
-        subscription.subscription_id = existing_sub_id
 
-    # Now we can just insert as per normal
-    session.add(subscription)
-    await session.flush()
-    return subscription.subscription_id
+        # Insert Subscription (and any child conditions)
+        session.add(subscription)
+
+        await session.flush()
+        return subscription.subscription_id
+    else:
+        # Update subscription (and insert new child conditions)
+        existing_sub.changed_time = subscription.changed_time
+        existing_sub.entity_limit = subscription.entity_limit
+        existing_sub.notification_uri = subscription.notification_uri
+
+        if subscription.conditions is not None:
+            for c in subscription.conditions:
+                c.subscription = existing_sub
+                session.add(c)
+
+        await session.flush()
+        return existing_sub.subscription_id
