@@ -12,9 +12,9 @@ from envoy.server.crud.site_reading import fetch_site_reading_type_for_aggregato
 from envoy.server.crud.subscription import (
     count_subscriptions_for_site,
     delete_subscription_for_site,
-    insert_subscription,
     select_subscription_by_id,
     select_subscriptions_for_site,
+    upsert_subscription,
 )
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
@@ -151,7 +151,7 @@ class SubscriptionManager:
                 raise BadRequestError("sub.resource_id is improperly set. Check subscribedResource is valid.")
 
         # Insert the subscription
-        new_sub_id = await insert_subscription(session, sub)
+        new_sub_id = await upsert_subscription(session, sub)
         await session.commit()
 
         logger.info(f"add_subscription_for_site: site {scope.site_id} new_sub_id {new_sub_id} type {sub.resource_type}")
