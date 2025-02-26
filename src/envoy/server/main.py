@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 from lxml.etree import XMLSyntaxError  # type: ignore # nosec: This will need to be addressed with pydantic-xml
 from pydantic_core import ValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from envoy.notification.handler import enable_notification_client
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
@@ -16,7 +17,6 @@ from envoy.server.api.depends.path_prefix import PathPrefixDepends
 from envoy.server.api.error_handler import (
     general_exception_handler,
     http_exception_handler,
-    not_found_handler,
     validation_exception_handler,
     xml_exception_handler,
 )
@@ -101,7 +101,7 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     new_app.add_exception_handler(ValidationError, validation_exception_handler)
     new_app.add_exception_handler(XMLSyntaxError, xml_exception_handler)
     new_app.add_exception_handler(Exception, general_exception_handler)
-    new_app.add_exception_handler(404, not_found_handler)
+    new_app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 
     return new_app
 

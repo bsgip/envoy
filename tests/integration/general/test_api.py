@@ -299,3 +299,12 @@ async def test_404_returns_error_response(client: AsyncClient, valid_headers: di
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert_response_header(response, HTTPStatus.NOT_FOUND)
     assert_error_response(response)
+
+
+@pytest.mark.anyio
+async def test_405_returns_error_response(client: AsyncClient, valid_headers: dict):
+    """Tests that a generic 405 response comes back as a sep2 error message"""
+    response = await client.patch("/edev", headers=valid_headers)  # This isn't allowed on this endpoint
+    assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
+    assert_response_header(response, HTTPStatus.METHOD_NOT_ALLOWED)
+    assert_error_response(response)

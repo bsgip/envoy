@@ -7,6 +7,7 @@ from envoy_schema.server.schema.sep2.types import ReasonCodeType
 from fastapi import HTTPException, Request, Response
 from lxml.etree import XMLSyntaxError  # type: ignore # nosec: This will need to be addressed with pydantic-xml
 from pydantic_core import ValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from envoy.server.api.response import XmlResponse
 
@@ -34,9 +35,9 @@ def generate_error_response(
     )
 
 
-def http_exception_handler(request: Request, exc: Union[HTTPException, Exception]) -> Response:
+def http_exception_handler(request: Request, exc: Union[HTTPException, StarletteHTTPException, Exception]) -> Response:
     """Handles specific HTTP exceptions"""
-    if isinstance(exc, HTTPException):
+    if isinstance(exc, HTTPException) or isinstance(exc, StarletteHTTPException):
         status_code = exc.status_code
         detail = exc.detail
     else:
@@ -84,14 +85,6 @@ def general_exception_handler(request: Request, exc: Exception) -> Response:
 
     # don't leak any internal information about a 500
     return generate_error_response(HTTPStatus.INTERNAL_SERVER_ERROR, message=None)
-
-
-def not_found_handler(request: Request, exc: Exception) -> Response:
-    """Handles general purpose NotFound errors that haven't been handled through another means"""
-
-    logger.exception(f"{request.url} generated 404 NOT_FOUND. {exc}")
-
-    return generate_error_response(HTTPStatus.NOT_FOUND, message=f"{request.url} is not found")
 
 
 class LoggedHttpException(HTTPException):
