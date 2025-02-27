@@ -52,6 +52,7 @@ class VirtualEndDeviceMapper:
     @staticmethod
     def map_to_response(scope: BaseRequestScope, site: Site) -> EndDeviceResponse:
         edev_href = generate_href(uri.EndDeviceUri, scope, site_id=site.site_id)
+        pubsub_href = generate_href(uri.SubscriptionListUri, scope, site_id=site.site_id)
         return EndDeviceResponse.model_validate(
             {
                 "href": edev_href,
@@ -61,6 +62,7 @@ class VirtualEndDeviceMapper:
                 "deviceCategory": f"{site.device_category:x}",  # deviceCategory is a hex string
                 "changedTime": int(site.changed_time.timestamp()),
                 "enabled": True,
+                "SubscriptionListLink": ListLink(href=pubsub_href),
             }
         )
 

@@ -109,8 +109,7 @@ async def test_device_capability_manager_registered_device_scope(
     mock_session = create_mock_session()
     existing_site: Site = generate_class_instance(Site, seed=1001)
     mock_select_single_site_with_lfdi.return_value = existing_site
-    mock_select_aggregator_site_count.return_value = 1
-    mock_count_site_reading_types_for_aggregator.return_value = 0
+    mock_count_site_reading_types_for_aggregator.return_value = 99
     mock_map_to_response.return_value = mock.Mock()
     scope: UnregisteredRequestScope = generate_class_instance(
         UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE
@@ -125,8 +124,10 @@ async def test_device_capability_manager_registered_device_scope(
     assert_mock_session(mock_session, committed=False)
     mock_map_to_unregistered_response.assert_not_called()
     mock_select_single_site_with_lfdi.assert_called_once_with(mock_session, scope.lfdi, scope.aggregator_id)
-    mock_select_aggregator_site_count.assert_called_once_with(mock_session, scope.aggregator_id, datetime.min)
+    mock_select_aggregator_site_count.assert_not_called()  # We don't count - just having the edev means we have 1 site
     mock_count_site_reading_types_for_aggregator.assert_called_once_with(
         mock_session, scope.aggregator_id, existing_site.site_id, datetime.min
     )
-    mock_map_to_response.assert_called_once_with(scope=scope, edev_cnt=1, mup_cnt=0)
+    mock_map_to_response.assert_called_once_with(
+        scope=scope, edev_cnt=1, mup_cnt=99
+    )  # 2 edevs, one for the returned edev and one for the virtual aggregator edev
