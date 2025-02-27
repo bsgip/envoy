@@ -1,5 +1,5 @@
-from datetime import datetime
 import unittest.mock as mock
+from datetime import datetime
 
 import pytest
 from assertical.fake.generator import generate_class_instance
@@ -23,7 +23,7 @@ async def test_device_capability_manager_aggregator_scope(
     mock_map_to_unregistered_response: mock.Mock,
     mock_map_to_response: mock.Mock,
 ):
-    """Tests that device cert that is registered returns properly offloads to the full response"""
+    """Tests that device cert that is registered as an aggregator properly offloads to the full response"""
 
     # Arrange
     mock_session = create_mock_session()
@@ -31,8 +31,8 @@ async def test_device_capability_manager_aggregator_scope(
     scope: UnregisteredRequestScope = generate_class_instance(
         UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
     )
-    mock_select_aggregator_site_count.return_value = 0
-    mock_count_site_reading_types_for_aggregator.return_value = 0
+    mock_select_aggregator_site_count.return_value = 11
+    mock_count_site_reading_types_for_aggregator.return_value = 22
 
     # Act
     assert (
@@ -48,7 +48,9 @@ async def test_device_capability_manager_aggregator_scope(
     mock_count_site_reading_types_for_aggregator.assert_called_once_with(
         mock_session, scope.aggregator_id, None, datetime.min
     )
-    mock_map_to_response.assert_called_once_with(scope=scope, edev_cnt=0, mup_cnt=0)
+    mock_map_to_response.assert_called_once_with(
+        scope=scope, edev_cnt=12, mup_cnt=22
+    )  # The edev count must also include aggregator end device
 
 
 @pytest.mark.anyio
