@@ -1,6 +1,7 @@
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
-from envoy_schema.server.schema.sep2.identification import ListLink, Link
+from envoy_schema.server.schema.sep2.identification import Link, ListLink
+
 from envoy.server.mapper.common import generate_href
 from envoy.server.request_scope import BaseRequestScope
 
@@ -37,4 +38,5 @@ class DeviceCapabilityMapper:
                 href=generate_href(uri.MirrorUsagePointListUri, scope),
                 all_=0,  # mup requires edev (referenced via non-optional deviceLFDI), so must be 0 here
             ),
+            TimeLink=Link(href=generate_href(uri.TimeUri, scope)),
         )
