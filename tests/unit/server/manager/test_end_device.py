@@ -13,7 +13,12 @@ from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, En
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.exception import ForbiddenError, UnableToGenerateIdError
-from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager, fetch_sites_and_count_for_claims
+from envoy.server.manager.end_device import (
+    MAX_REGISTRATION_PIN,
+    EndDeviceListManager,
+    EndDeviceManager,
+    fetch_sites_and_count_for_claims,
+)
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.site import Site
 from envoy.server.model.subscription import SubscriptionResource
@@ -172,6 +177,27 @@ async def test_fetch_sites_and_count_for_claims(
         mock_select_aggregator_site_count.assert_not_called()
     else:
         mock_select_aggregator_site_count.assert_called_once_with(session, scope.aggregator_id, AFTER_TIME)
+
+
+def test_generate_registration_pin():
+    """Tests that the results of generate_registration_pin look random enough"""
+    values_attempt_1 = []
+    for _ in range(100):
+        values_attempt_1.append(EndDeviceManager.generate_registration_pin())
+    assert all((v <= MAX_REGISTRATION_PIN and v >= 0 for v in values_attempt_1)), "All values should be in range"
+    distinct_values = set(values_attempt_1)
+    assert len(distinct_values) > 5, "If this is failing, either you're incredible unlucky or something is wrong"
+
+    values_attempt_2 = []
+    for _ in range(len(values_attempt_1)):
+        values_attempt_2.append(EndDeviceManager.generate_registration_pin())
+    assert all((v <= MAX_REGISTRATION_PIN and v >= 0 for v in values_attempt_2)), "All values should be in range"
+    distinct_values = set(values_attempt_2)
+    assert len(distinct_values) > 5, "If this is failing, either you're incredible unlucky or something is wrong"
+
+    assert sorted(values_attempt_1) != sorted(
+        values_attempt_2
+    ), "If this is failing, either you're incredible unlucky or something is wrong"
 
 
 @pytest.mark.anyio

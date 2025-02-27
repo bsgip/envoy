@@ -37,6 +37,7 @@ class ArchiveSite(ArchiveBase):
     lfdi: Mapped[str] = mapped_column(VARCHAR(length=42), nullable=False)
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
+    registration_pin: Mapped[int] = mapped_column(INTEGER, nullable=False)
 
 
 class ArchiveSiteDER(ArchiveBase):

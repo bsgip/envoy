@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from secrets import token_bytes
+from secrets import randbelow, token_bytes
 from typing import Optional, Sequence
 
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
@@ -30,6 +30,8 @@ from envoy.server.request_scope import (
     SiteRequestScope,
     UnregisteredRequestScope,
 )
+
+MAX_REGISTRATION_PIN = 99999
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +116,12 @@ class EndDeviceManager:
         return result
 
     @staticmethod
+    def generate_registration_pin() -> int:
+        """Generates a random integer from 0 -> 99999 (5 digits) that can be used as a end device registration PIN.
+        No guarantees about uniqueness are made"""
+        return randbelow(MAX_REGISTRATION_PIN + 1)  # The upper bound is exclusive so +1 allows us to generate 99999
+
+    @staticmethod
     async def generate_unique_device_id(session: AsyncSession, aggregator_id: int) -> tuple[int, str]:
         """Generates a unique sfdi/lfdi combination for the particular aggregator.
 
@@ -170,7 +178,8 @@ class EndDeviceManager:
             f"add_or_update_enddevice_for_aggregator: upserting sfdi {end_device.sFDI} and lfdi {end_device.lFDI} for aggregator {scope.aggregator_id}"  # noqa e501
         )
         changed_time = utc_now()
-        site = EndDeviceMapper.map_from_request(end_device, scope.aggregator_id, changed_time)
+        registration_pin = EndDeviceManager.generate_registration_pin()  # This will only apply to INSERTED sites
+        site = EndDeviceMapper.map_from_request(end_device, scope.aggregator_id, changed_time, registration_pin)
         result = await upsert_site_for_aggregator(session, scope.aggregator_id, site)
         await session.commit()
 

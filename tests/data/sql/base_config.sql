@@ -35,14 +35,14 @@ INSERT INTO public.aggregator_certificate_assignment("assignment_id", "certifica
 
 SELECT pg_catalog.setval('public.aggregator_certificate_assignment_assignment_id_seq', 6, true);
 
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category") VALUES (1, '1111111111', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 04:05:06.500', 'site1-lfdi', 1111, 0);
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category") VALUES (2, '2222222222', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 05:06:07.500', 'site2-lfdi', 2222, 1);
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category") VALUES (3, '3333333333', 2, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 08:09:10.500', 'site3-lfdi', 3333, 2);
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category") VALUES (4, '4444444444', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 11:12:13.500', 'site4-lfdi', 4444, 3);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (1, '1111111111', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 04:05:06.500', 'site1-lfdi', 1111, 0, 11111);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (2, '2222222222', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 05:06:07.500', 'site2-lfdi', 2222, 1, 22222);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (3, '3333333333', 2, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 08:09:10.500', 'site3-lfdi', 3333, 2, 33333);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (4, '4444444444', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 11:12:13.500', 'site4-lfdi', 4444, 3, 44444);
 -- Device registered site - using cert from certificate6.py
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category") VALUES (5, '5555555555', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 14:15:16.500', 'ec80646c5131ffa8ade49ac24be5295a7cfeb69d', 634853966776, 4); 
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (5, '5555555555', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 14:15:16.500', 'ec80646c5131ffa8ade49ac24be5295a7cfeb69d', 634853966776, 4, 55555); 
 -- Device registered site - using cert from certificate7.py
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category") VALUES (6, '6666666666', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 17:18:19.500', '93a527c16d8fca36e0f7da189fde375d5e494717', 396331899108, 5); 
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (6, '6666666666', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 17:18:19.500', '93a527c16d8fca36e0f7da189fde375d5e494717', 396331899108, 5, 66666); 
 
 SELECT pg_catalog.setval('public.site_site_id_seq', 7, true);
 
