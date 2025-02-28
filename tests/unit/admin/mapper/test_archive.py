@@ -23,7 +23,7 @@ def test_map_to_site_response():
 
     all_mapped = ArchiveMapper.map_to_site_response(all)
     assert isinstance(all_mapped, ArchiveSiteResponse)
-    assert_class_instance_equality(ArchiveSite, all, all_mapped)  # These should just map 1-1
+    assert_class_instance_equality(ArchiveSite, all, all_mapped, {"registration_pin"})  # These should just map 1-1
     assert all_mapped.groups == []
     assert all_mapped.der_availability is None
     assert all_mapped.der_config is None
@@ -32,7 +32,7 @@ def test_map_to_site_response():
     optional_mapped = ArchiveMapper.map_to_site_response(optional)
     assert isinstance(optional_mapped, ArchiveSiteResponse)
     assert_class_instance_equality(
-        ArchiveSite, optional, optional_mapped, {"archive_time"}
+        ArchiveSite, optional, optional_mapped, {"archive_time", "registration_pin"}
     )  # These should just map 1-1
     assert_nowish(optional_mapped.archive_time)  # This is a workaround in case we get some bad data
 

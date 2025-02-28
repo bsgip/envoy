@@ -190,6 +190,8 @@ async def test_get_virtual_site_for_aggregator(
         assert virtual_site.device_category == DeviceCategory(0)
         assert virtual_site.timezone_id == timezone_id
 
+        assert virtual_site.registration_pin == 0, "This is a nonsensical concept for the aggregator end device"
+
 
 @pytest.mark.parametrize(
     "aggregator_lfdi",
@@ -430,6 +432,7 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
         assert site_1.lfdi == "site1-lfdi"
         assert site_1.sfdi == 1111
         assert site_1.device_category == DeviceCategory(0)
+        assert site_1.registration_pin == 11111
 
         # Sanity check the site count
         assert await select_aggregator_site_count(session, 1, datetime.min) == 4
@@ -449,6 +452,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
     site_id_to_update = 1
     aggregator_id = 1
     site_to_upsert: Site = generate_class_instance(Site)
+    existing_registration_pin: int
     async with generate_async_session(pg_base_config) as session:
         existing_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
         assert existing_site
@@ -458,6 +462,8 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         site_to_upsert.sfdi = existing_site.sfdi
         site_to_upsert.aggregator_id = existing_site.aggregator_id
         site_to_upsert.site_id = existing_site.site_id
+        existing_registration_pin = existing_site.registration_pin
+    assert existing_registration_pin != site_to_upsert.registration_pin, "Need to be different for test to be valid"
 
     # Perform the upsert in a new session
     async with generate_async_session(pg_base_config) as session:
@@ -470,8 +476,11 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         # check it exists
         site_db = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
 
-        assert_class_instance_equality(Site, site_to_upsert, site_db, ignored_properties={"site_id", "created_time"})
+        assert_class_instance_equality(
+            Site, site_to_upsert, site_db, ignored_properties={"site_id", "created_time", "registration_pin"}
+        )
         assert_datetime_equal(site_db.created_time, datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc))  # Not updated
+        assert site_db.registration_pin == existing_registration_pin, "We don't want UPDATEs changing the PIN"
 
         # Sanity check another site in the same aggregator
         site_2 = await select_single_site_with_site_id(session, 2, aggregator_id)
@@ -483,6 +492,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         assert site_2.lfdi == "site2-lfdi"
         assert site_2.sfdi == 2222
         assert site_2.device_category == DeviceCategory(1)
+        assert site_2.registration_pin == 22222
 
         # Sanity check the site count
         assert await select_aggregator_site_count(session, 1, datetime.min) == 3
@@ -505,6 +515,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
                 lfdi="site1-lfdi",
                 sfdi=1111,
                 device_category=0,
+                registration_pin=11111,
             ),
             archive_data,
         )
@@ -520,9 +531,11 @@ async def test_upsert_site_for_aggregator_cant_change_agg_id(pg_base_config):
 
     original_site: Site
     update_attempt_site: Site
+    original_registration_pin: int
     async with generate_async_session(pg_base_config) as session:
         original_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
         assert original_site
+        original_registration_pin = original_site.registration_pin
 
         update_attempt_site = clone_class_instance(original_site, ignored_properties=set(["assignments", "site_ders"]))
         update_attempt_site.aggregator_id = 3
@@ -537,6 +550,7 @@ async def test_upsert_site_for_aggregator_cant_change_agg_id(pg_base_config):
         assert site_db
         assert site_db.nmi == original_site.nmi, "nmi should NOT have changed"
         assert site_db.aggregator_id == original_site.aggregator_id, "aggregator_id should NOT have changed"
+        assert site_db.registration_pin == original_registration_pin, "registration_pin should NOT have changed"
 
         # Sanity check the site count hasn't changed
         assert await select_aggregator_site_count(session, 1, datetime.min) == 3

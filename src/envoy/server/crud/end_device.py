@@ -131,6 +131,7 @@ async def get_virtual_site_for_aggregator(
         aggregator_id=aggregator_id,
         device_category=device_category,
         timezone_id=timezone_id,
+        registration_pin=0,  # This is a nonsensical concept for the aggregator end device
     )
 
 
@@ -169,6 +170,9 @@ async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, 
     Inserts/Updates will be based on matches on the agg_id / sfdi index. Attempts to mutate agg_id/sfdi will result
     in inserting a new record.
 
+    The site registration_pin will only be settable on insert. Attempts to update an existing registration_pin will
+    be ignored.
+
     The current value (if any) for the site will be archived"""
 
     if aggregator_id != site.aggregator_id:
@@ -179,10 +183,11 @@ async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, 
         session, Site, ArchiveSite, lambda q: q.where((Site.aggregator_id == aggregator_id) & (Site.sfdi == site.sfdi))
     )
 
-    # Perform the upsert
+    # Perform the upsert - remembering that we can only ever insert the registration_pin, never update it
     table = Site.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
-    stmt = psql_insert(Site).values(**{k: getattr(site, k) for k in update_cols})
+    insert_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    update_cols = [c for c in insert_cols if c != Site.registration_pin.name]
+    stmt = psql_insert(Site).values(**{k: getattr(site, k) for k in insert_cols})
     resp = await session.execute(
         stmt.on_conflict_do_update(
             index_elements=[Site.aggregator_id, Site.sfdi],

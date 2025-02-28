@@ -7,7 +7,12 @@ import pytest
 from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
-from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy_schema.server.schema.sep2.end_device import (
+    EndDeviceListResponse,
+    EndDeviceRequest,
+    EndDeviceResponse,
+    RegistrationResponse,
+)
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from httpx import AsyncClient
 from sqlalchemy import func, select
@@ -52,6 +57,11 @@ def edev_base_uri():
 @pytest.fixture
 def edev_fetch_uri_format():
     return "/edev/{site_id}"
+
+
+@pytest.fixture
+def edev_registration_fetch_uri_format():
+    return "/edev/{site_id}/rg"
 
 
 @pytest.mark.parametrize(
@@ -654,3 +664,53 @@ async def test_create_end_device_device_registration_disabled(
 
     async with generate_async_session(pg_base_config) as session:
         assert site_count_before == await count_all_sites(session, None, None)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "cert,site_id, expected_status, expected_pin",
+    [
+        (AGG_1_VALID_CERT, 1, HTTPStatus.OK, 111115),
+        (AGG_1_VALID_CERT, 2, HTTPStatus.OK, 222220),
+        (AGG_1_VALID_CERT, 0, HTTPStatus.FORBIDDEN, None),  # No registration for aggregator end device
+        (REGISTERED_CERT.decode(), 6, HTTPStatus.OK, 666660),
+        (
+            REGISTERED_CERT.decode(),
+            2,
+            HTTPStatus.FORBIDDEN,
+            None,
+        ),  # Device cert trying to reach out to another EndDevice (aggregator owned)
+        (
+            REGISTERED_CERT.decode(),
+            5,
+            HTTPStatus.FORBIDDEN,
+            None,
+        ),  # Device cert trying to reach out to another EndDevice (different device cert)
+        (AGG_1_VALID_CERT, 3, HTTPStatus.NOT_FOUND, None),  # Wrong Aggregator
+        (AGG_1_VALID_CERT, 9999, HTTPStatus.NOT_FOUND, None),  # Bad site ID
+        (AGG_1_VALID_CERT, 5, HTTPStatus.NOT_FOUND, None),  # Aggregator trying to reach a device cert
+    ],
+)
+async def test_get_enddevice_registration(
+    client: AsyncClient,
+    edev_registration_fetch_uri_format: str,
+    cert: str,
+    site_id: int,
+    expected_status: HTTPStatus,
+    expected_pin: Optional[int],
+):
+    """Tests that fetching named end device's works / fails in simple cases"""
+
+    # check fetching within aggregator
+    uri = edev_registration_fetch_uri_format.format(site_id=site_id)
+    response = await client.get(uri, headers={cert_header: urllib.parse.quote(cert)})
+    assert_response_header(response, expected_status)
+
+    if expected_status == HTTPStatus.OK:
+        body = read_response_body_string(response)
+        assert len(body) > 0
+        parsed_response: RegistrationResponse = RegistrationResponse.from_xml(body)
+        assert parsed_response.href == uri
+        assert parsed_response.pIN == expected_pin
+    else:
+        assert_error_response(response)

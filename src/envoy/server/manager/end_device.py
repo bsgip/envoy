@@ -1,10 +1,15 @@
 import logging
 from datetime import datetime
-from secrets import token_bytes
+from secrets import randbelow, token_bytes
 from typing import Optional, Sequence
 
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
-from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy_schema.server.schema.sep2.end_device import (
+    EndDeviceListResponse,
+    EndDeviceRequest,
+    EndDeviceResponse,
+    RegistrationResponse,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.notification.manager.notification import NotificationManager
@@ -18,10 +23,15 @@ from envoy.server.crud.end_device import (
     select_single_site_with_site_id,
     upsert_site_for_aggregator,
 )
-from envoy.server.exception import ForbiddenError, UnableToGenerateIdError
+from envoy.server.exception import ForbiddenError, NotFoundError, UnableToGenerateIdError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
-from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper, VirtualEndDeviceMapper
+from envoy.server.mapper.sep2.end_device import (
+    EndDeviceListMapper,
+    EndDeviceMapper,
+    RegistrationMapper,
+    VirtualEndDeviceMapper,
+)
 from envoy.server.model.site import Site
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import (
@@ -30,6 +40,8 @@ from envoy.server.request_scope import (
     SiteRequestScope,
     UnregisteredRequestScope,
 )
+
+MAX_REGISTRATION_PIN = 99999
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +182,8 @@ class EndDeviceManager:
             f"add_or_update_enddevice_for_aggregator: upserting sfdi {end_device.sFDI} and lfdi {end_device.lFDI} for aggregator {scope.aggregator_id}"  # noqa e501
         )
         changed_time = utc_now()
-        site = EndDeviceMapper.map_from_request(end_device, scope.aggregator_id, changed_time)
+        registration_pin = RegistrationManager.generate_registration_pin()  # This will only apply to INSERTED sites
+        site = EndDeviceMapper.map_from_request(end_device, scope.aggregator_id, changed_time, registration_pin)
         result = await upsert_site_for_aggregator(session, scope.aggregator_id, site)
         await session.commit()
 
@@ -257,3 +270,24 @@ class EndDeviceListManager:
         return EndDeviceListMapper.map_to_response(
             scope=scope, site_list=site_list, site_count=site_count, virtual_site=virtual_site
         )
+
+
+class RegistrationManager:
+
+    @staticmethod
+    def generate_registration_pin() -> int:
+        """Generates a random integer from 0 -> 99999 (5 digits) that can be used as a end device registration PIN.
+        No guarantees about uniqueness are made"""
+        return randbelow(MAX_REGISTRATION_PIN + 1)  # The upper bound is exclusive so +1 allows us to generate 99999
+
+    @staticmethod
+    async def fetch_registration_for_scope(session: AsyncSession, scope: SiteRequestScope) -> RegistrationResponse:
+        """Fetches the sep2 Registration associated with an existing site. If that site is NOT accessible, NotFound
+        will be raised"""
+        site = await select_single_site_with_site_id(
+            session=session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
+        )
+        if site is None:
+            raise NotFoundError(f"Site {scope.site_id} either doesn't exist or is inaccessible to this client.")
+
+        return RegistrationMapper.map_to_response(scope, site)

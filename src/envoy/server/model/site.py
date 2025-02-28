@@ -40,6 +40,9 @@ class Site(Base):
     lfdi: Mapped[str] = mapped_column(VARCHAR(length=42), nullable=False, unique=True)
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
+    registration_pin: Mapped[int] = mapped_column(
+        INTEGER, nullable=False
+    )  # 5 digit PIN, randomly generated on creation. Used for out of band confirmations.
 
     assignments: Mapped[list["SiteGroupAssignment"]] = relationship(
         back_populates="site",
