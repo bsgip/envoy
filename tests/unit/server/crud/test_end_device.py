@@ -190,6 +190,8 @@ async def test_get_virtual_site_for_aggregator(
         assert virtual_site.device_category == DeviceCategory(0)
         assert virtual_site.timezone_id == timezone_id
 
+        assert virtual_site.registration_pin == 0, "This is a nonsensical concept for the aggregator end device"
+
 
 @pytest.mark.parametrize(
     "aggregator_lfdi",

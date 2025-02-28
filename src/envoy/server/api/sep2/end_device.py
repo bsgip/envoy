@@ -15,8 +15,8 @@ from envoy.server.api.request import (
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
-from envoy.server.exception import BadRequestError, ForbiddenError
-from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager
+from envoy.server.exception import BadRequestError, ForbiddenError, NotFoundError
+from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager, RegistrationManager
 from envoy.server.mapper.common import generate_href
 
 logger = logging.getLogger(__name__)
@@ -136,3 +136,28 @@ async def create_end_device(
         raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.FORBIDDEN)
     except IntegrityError as exc:
         raise LoggedHttpException(logger, exc, detail="lFDI conflict.", status_code=HTTPStatus.CONFLICT)
+
+
+@router.head(uri.RegistrationUri)
+@router.get(
+    uri.RegistrationUri,
+    status_code=HTTPStatus.OK,
+)
+async def get_enddevice_registration(site_id: int, request: Request) -> XmlResponse:
+    """Responds with a single Registration element for an EndDevice resource.
+
+    Args:
+        site_id: Path parameter, the target EndDevice's internal registration number.
+        request: FastAPI request object.
+
+    Returns:
+        fastapi.Response object.
+
+    """
+    try:
+        end_device_registration = await RegistrationManager.fetch_registration_for_scope(
+            db.session, extract_request_claims(request).to_site_request_scope(site_id)
+        )
+        return XmlResponse(end_device_registration)
+    except NotFoundError as exc:
+        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=exc.message)

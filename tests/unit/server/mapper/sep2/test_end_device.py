@@ -1,16 +1,27 @@
 import unittest.mock as mock
 from datetime import datetime
+from typing import Optional
 
 import pytest
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance, generate_value
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
-from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy_schema.server.schema.sep2.end_device import (
+    EndDeviceListResponse,
+    EndDeviceRequest,
+    EndDeviceResponse,
+    RegistrationResponse,
+)
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.sep2.end_device import EndDeviceListMapper, EndDeviceMapper, VirtualEndDeviceMapper
+from envoy.server.mapper.sep2.end_device import (
+    EndDeviceListMapper,
+    EndDeviceMapper,
+    RegistrationMapper,
+    VirtualEndDeviceMapper,
+)
 from envoy.server.model.site import Site
 from envoy.server.request_scope import BaseRequestScope
 
@@ -188,3 +199,47 @@ def test_virtual_end_device_map_to_response():
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
     assert result_optional.lFDI == site_optional.lfdi
     assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
+
+
+@pytest.mark.parametrize(
+    "pin, expected",
+    [
+        (0, 0),
+        (1, 11),
+        (98, 987),
+        (100, 1001),
+        (444, 4442),
+        (44400, 444002),
+        (10203, 102036),
+        (12345, 123455),  # From the example in sep2
+        (99999, 999995),
+    ],
+)
+def test_add_checksum_to_registration_pin(pin, expected):
+    """Various simple test cases"""
+    actual = RegistrationMapper.add_checksum_to_registration_pin(pin)
+    assert actual == expected
+
+
+@pytest.mark.parametrize("href_prefix", [None, "/foo/bar"])
+def test_RegistrationMapper_map_to_response(href_prefix: Optional[str]):
+    """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
+    site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
+    site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
+    scope: BaseRequestScope = generate_class_instance(BaseRequestScope, href_prefix=href_prefix)
+
+    result_all_set = RegistrationMapper.map_to_response(scope, site_all_set)
+    assert result_all_set is not None
+    assert isinstance(result_all_set, RegistrationResponse)
+    if scope.href_prefix is not None:
+        assert result_all_set.href.startswith(scope.href_prefix)
+    assert result_all_set.dateTimeRegistered == site_all_set.created_time.timestamp()
+    assert result_all_set.pIN == RegistrationMapper.add_checksum_to_registration_pin(site_all_set.registration_pin)
+
+    result_optional = RegistrationMapper.map_to_response(scope, site_optional)
+    assert result_optional is not None
+    assert isinstance(result_optional, RegistrationResponse)
+    if scope.href_prefix is not None:
+        assert result_optional.href.startswith(scope.href_prefix)
+    assert result_optional.dateTimeRegistered == site_optional.created_time.timestamp()
+    assert result_optional.pIN == RegistrationMapper.add_checksum_to_registration_pin(site_optional.registration_pin)

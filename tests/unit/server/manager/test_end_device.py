@@ -9,14 +9,20 @@ from assertical.fake.asyncio import create_async_result
 from assertical.fake.generator import generate_class_instance
 from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
-from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceRequest, EndDeviceResponse
+from envoy_schema.server.schema.sep2.end_device import (
+    EndDeviceListResponse,
+    EndDeviceRequest,
+    EndDeviceResponse,
+    RegistrationResponse,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.exception import ForbiddenError, UnableToGenerateIdError
+from envoy.server.exception import ForbiddenError, NotFoundError, UnableToGenerateIdError
 from envoy.server.manager.end_device import (
     MAX_REGISTRATION_PIN,
     EndDeviceListManager,
     EndDeviceManager,
+    RegistrationManager,
     fetch_sites_and_count_for_claims,
 )
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
@@ -177,27 +183,6 @@ async def test_fetch_sites_and_count_for_claims(
         mock_select_aggregator_site_count.assert_not_called()
     else:
         mock_select_aggregator_site_count.assert_called_once_with(session, scope.aggregator_id, AFTER_TIME)
-
-
-def test_generate_registration_pin():
-    """Tests that the results of generate_registration_pin look random enough"""
-    values_attempt_1 = []
-    for _ in range(100):
-        values_attempt_1.append(EndDeviceManager.generate_registration_pin())
-    assert all((v <= MAX_REGISTRATION_PIN and v >= 0 for v in values_attempt_1)), "All values should be in range"
-    distinct_values = set(values_attempt_1)
-    assert len(distinct_values) > 5, "If this is failing, either you're incredible unlucky or something is wrong"
-
-    values_attempt_2 = []
-    for _ in range(len(values_attempt_1)):
-        values_attempt_2.append(EndDeviceManager.generate_registration_pin())
-    assert all((v <= MAX_REGISTRATION_PIN and v >= 0 for v in values_attempt_2)), "All values should be in range"
-    distinct_values = set(values_attempt_2)
-    assert len(distinct_values) > 5, "If this is failing, either you're incredible unlucky or something is wrong"
-
-    assert sorted(values_attempt_1) != sorted(
-        values_attempt_2
-    ), "If this is failing, either you're incredible unlucky or something is wrong"
 
 
 @pytest.mark.anyio
@@ -772,3 +757,82 @@ async def test_end_device_manager_fetch_missing_connection_point(
         session=mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
     )
     mock_ConnectionPointMapper.map_to_response.assert_not_called()  # Don't map if there's nothing in the DB
+
+
+def test_generate_registration_pin():
+    """Tests that the results of generate_registration_pin look random enough"""
+    values_attempt_1 = []
+    for _ in range(100):
+        values_attempt_1.append(RegistrationManager.generate_registration_pin())
+    assert all((v <= MAX_REGISTRATION_PIN and v >= 0 for v in values_attempt_1)), "All values should be in range"
+    distinct_values = set(values_attempt_1)
+    assert len(distinct_values) > 5, "If this is failing, either you're incredible unlucky or something is wrong"
+
+    values_attempt_2 = []
+    for _ in range(len(values_attempt_1)):
+        values_attempt_2.append(RegistrationManager.generate_registration_pin())
+    assert all((v <= MAX_REGISTRATION_PIN and v >= 0 for v in values_attempt_2)), "All values should be in range"
+    distinct_values = set(values_attempt_2)
+    assert len(distinct_values) > 5, "If this is failing, either you're incredible unlucky or something is wrong"
+
+    assert sorted(values_attempt_1) != sorted(
+        values_attempt_2
+    ), "If this is failing, either you're incredible unlucky or something is wrong"
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.select_single_site_with_site_id")
+@mock.patch("envoy.server.manager.end_device.RegistrationMapper")
+async def test_registration_manager_fetch_registration_for_scope(
+    mock_RegistrationMapper: mock.MagicMock, mock_select_single_site_with_site_id: mock.MagicMock
+):
+    """Check that the manager will handle interacting with the DB and its responses when the
+    requested site is found"""
+
+    # Arrange
+    mock_session = create_mock_session()
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
+    site = generate_class_instance(Site)
+    mapped_output = generate_class_instance(RegistrationResponse)
+
+    mock_select_single_site_with_site_id.return_value = site
+    mock_RegistrationMapper.map_to_response = mock.Mock(return_value=mapped_output)
+
+    # Act
+    result = await RegistrationManager.fetch_registration_for_scope(mock_session, scope)
+
+    # Assert
+    assert result is mapped_output
+    assert_mock_session(mock_session, committed=False)
+    mock_select_single_site_with_site_id.assert_called_once_with(
+        session=mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
+    )
+    mock_RegistrationMapper.map_to_response.assert_called_once_with(scope, site)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.select_single_site_with_site_id")
+@mock.patch("envoy.server.manager.end_device.RegistrationMapper")
+async def test_registration_manager_fetch_registration_for_scope_bad_site_id(
+    mock_RegistrationMapper: mock.MagicMock, mock_select_single_site_with_site_id: mock.MagicMock
+):
+    """Check that the manager will handle interacting with the DB and its responses when the
+    requested site does not exist"""
+
+    # Arrange
+    mock_session = create_mock_session()
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
+
+    mock_select_single_site_with_site_id.return_value = None  # database entity is missing / bad ID lookup
+    mock_RegistrationMapper.map_to_response = mock.Mock()
+
+    # Act
+    with pytest.raises(NotFoundError):
+        await RegistrationManager.fetch_registration_for_scope(mock_session, scope)
+
+    # Assert
+    assert_mock_session(mock_session, committed=False)
+    mock_select_single_site_with_site_id.assert_called_once_with(
+        session=mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
+    )
+    mock_RegistrationMapper.map_to_response.assert_not_called()  # Don't map if there's nothing in the DB
