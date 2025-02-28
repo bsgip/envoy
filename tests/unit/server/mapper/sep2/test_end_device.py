@@ -62,6 +62,7 @@ def test_map_to_response():
         result_all_set.ConnectionPointLink.href,
         result_all_set.DERListLink.href,
         result_all_set.SubscriptionListLink.href,
+        result_all_set.RegistrationLink.href,
     ]
     assert len(all_child_hrefs) == len(set(all_child_hrefs)), f"Expected unique hrefs for {all_child_hrefs}"
     for child_href in all_child_hrefs:
@@ -84,7 +85,7 @@ def test_map_to_response():
         result_optional.ConnectionPointLink.href,
         result_optional.DERListLink.href,
         result_optional.SubscriptionListLink.href,
-        result_optional.RegistrationLink,
+        result_optional.RegistrationLink.href,
     ]
     assert len(all_child_hrefs) == len(set(all_child_hrefs)), f"Expected unique hrefs for {all_child_hrefs}"
     for child_href in all_child_hrefs:
