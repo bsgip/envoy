@@ -76,6 +76,7 @@ def scope_for_subscription(sub: Subscription, href_prefix: Optional[str]) -> Agg
         sfdi=0,
         lfdi="",
         href_prefix=href_prefix,
+        iana_pen=0,
         source=CertificateType.AGGREGATOR_CERTIFICATE,
     )
 

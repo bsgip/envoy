@@ -29,6 +29,7 @@ class BaseRequestScope:
     lfdi: str  # The lfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
     sfdi: int  # The sfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
     href_prefix: Optional[str]  # If set - all outgoing href's should be prefixed with this value
+    iana_pen: int  # The IANA Private Enterprise Number of the org hosting this utility server instance
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class RawRequestClaims:
     lfdi: str  # The lfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
     sfdi: int  # The sfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
     href_prefix: Optional[str]  # If set - all outgoing href's should be prefixed with this value
+    iana_pen: int  # The IANA Private Enterprise Number of the org hosting this utility server instance
 
     # The aggregator id that a request is scoped to (sourced from auth dependencies)
     # This can be None if the request does not have access to any aggregator (NOT unscoped access)
@@ -73,6 +75,7 @@ class RawRequestClaims:
             lfdi=self.lfdi,
             sfdi=self.sfdi,
             href_prefix=self.href_prefix,
+            iana_pen=self.iana_pen,
             source=self.source,
             aggregator_id=self.aggregator_id_scope if self.aggregator_id_scope is not None else NULL_AGGREGATOR_ID,
         )
@@ -95,6 +98,7 @@ class RawRequestClaims:
             lfdi=base_scope.lfdi,
             sfdi=base_scope.sfdi,
             href_prefix=base_scope.href_prefix,
+            iana_pen=base_scope.iana_pen,
             source=base_scope.source,
             aggregator_id=base_scope.aggregator_id,
             display_site_id=base_scope.display_site_id,
@@ -135,6 +139,7 @@ class RawRequestClaims:
             lfdi=self.lfdi,
             sfdi=self.sfdi,
             href_prefix=self.href_prefix,
+            iana_pen=self.iana_pen,
             source=self.source,
             aggregator_id=agg_id,
             display_site_id=display_site_id,
@@ -155,6 +160,7 @@ class RawRequestClaims:
             lfdi=scope.lfdi,
             sfdi=scope.sfdi,
             href_prefix=scope.href_prefix,
+            iana_pen=scope.iana_pen,
             source=self.source,
             aggregator_id=scope.aggregator_id,
             display_site_id=scope.display_site_id,
@@ -194,6 +200,7 @@ class RawRequestClaims:
             lfdi=self.lfdi,
             sfdi=self.sfdi,
             href_prefix=self.href_prefix,
+            iana_pen=self.iana_pen,
             source=self.source,
             aggregator_id=agg_id,
             display_site_id=requested_site_id,

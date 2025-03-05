@@ -5,6 +5,7 @@ from itertools import islice, product
 from typing import Iterator, Sequence
 
 from envoy_schema.server.schema import uri
+from envoy_schema.server.schema.sep2.event import EventStatus
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.metering import ReadingType
 from envoy_schema.server.schema.sep2.pricing import (
@@ -28,7 +29,7 @@ from envoy_schema.server.schema.sep2.types import (
     TOUType,
     UomType,
 )
-from envoy_schema.server.schema.sep2.event import EventStatus
+
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, generate_mrid
@@ -117,7 +118,9 @@ class TariffProfileMapper:
 
 
 class PricingReadingType(IntEnum):
-    """The different types of readings that can be priced"""
+    """The different types of readings that can be priced
+
+    Increasing this beyond 4 unique values will have implications for the mrid mapper"""
 
     IMPORT_ACTIVE_POWER_KWH = auto()
     EXPORT_ACTIVE_POWER_KWH = auto()

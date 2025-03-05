@@ -64,6 +64,7 @@ Typically settings are set by setting an environment variable with the same name
 | `azure_ad_db_resource_id` | `string` | If set (with the other Azure AD options) - replaces the db connection password dynamically with a token minted from the tenant token service for this resource id. The token ID should match the resource ID of a managed database service. This token will be rotated as it expires. |
 | `azure_ad_db_refresh_secs` | `int` | If `azure_ad_db_resource_id` is set - the value of this variable will be the rate at which tokens are manually refreshed (in seconds) |
 | `href_prefix` | `string` | Used for when the server is exposed externally under a path prefix. The value of this variable will be prefixed to all returned `href` elements |
+| `iana_pen` | `int` | Defaults to 0. The Internet Assigned Numbers Authority - Private Enterprise Number of the organisation hosting this instance. This value will be used in all encoded MRIDs as per sep2 specifications. |
 
 **Additional Utility Server Settings (server)**
 

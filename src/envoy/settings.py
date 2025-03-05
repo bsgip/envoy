@@ -40,6 +40,7 @@ class CommonSettings(BaseSettings):
     default_timezone: str = "Australia/Brisbane"
 
     href_prefix: Optional[str] = None  # Will ensure all outgoing href's are prefixed with this value (None = disabled)
+    iana_pen: int = 0  # The IANA Private Enterprise Number of the organisation hosting this instance. Encoded in mrids
 
     @property
     def db_middleware_kwargs(self) -> Dict[str, Any]:

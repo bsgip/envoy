@@ -25,6 +25,7 @@ def extract_request_claims(request: Request) -> RawRequestClaims:
 
     aggregator_id: Optional[int] = request.state.aggregator_id
     site_id: Optional[int] = request.state.site_id
+    iana_pen: int = request.state.iana_pen
 
     href_prefix: Optional[str] = getattr(request.state, "href_prefix", None)
     if not href_prefix:
@@ -46,6 +47,7 @@ def extract_request_claims(request: Request) -> RawRequestClaims:
         lfdi=lfdi,
         sfdi=sfdi,
         href_prefix=href_prefix,
+        iana_pen=iana_pen,
     )
 
 
