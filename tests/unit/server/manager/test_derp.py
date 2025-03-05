@@ -365,7 +365,7 @@ async def test_fetch_default_doe_controls_for_site(
     # Assert
     assert result is mapped_control
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
-    mock_DERControlMapper.map_to_default_response.assert_called_once_with(default_doe)
+    mock_DERControlMapper.map_to_default_response.assert_called_once_with(scope, default_doe)
 
     assert_mock_session(mock_session)
 

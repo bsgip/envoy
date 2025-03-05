@@ -14,12 +14,12 @@ from envoy.server.mapper.sep2.mrid import (
     MAX_MRID_TYPE,
     MridMapper,
     MridType,
+    PricingReadingType,
     decode_iana_pen,
     decode_mrid_id,
     decode_mrid_type,
     encode_mrid,
 )
-from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.request_scope import BaseRequestScope
 
 
@@ -154,6 +154,7 @@ def test_all_default_encodings_unique():
     assert_and_append_mrid(MridMapper.encode_doe_mrid(scope1, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_function_set_assignment_mrid(scope1, 0, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_mirror_usage_point_mrid(scope1, 0), all_generated_mrids)
+    assert_and_append_mrid(MridMapper.encode_mirror_meter_reading_mrid(scope1, 0), all_generated_mrids)
     for prt in PricingReadingType:
         assert_and_append_mrid(
             MridMapper.encode_rate_component_mrid(scope1, 0, 0, datetime.min.replace(tzinfo=timezone.utc), prt),
@@ -239,10 +240,25 @@ def test_encode_mirror_usage_point_mrid():
     for scope in [scope1, scope2]:
         assert_and_append_mrid(MridMapper.encode_mirror_usage_point_mrid(scope, 0), all_generated_mrids)
         assert_and_append_mrid(MridMapper.encode_mirror_usage_point_mrid(scope, 123), all_generated_mrids)
-        assert_and_append_mrid(MridMapper.encode_mirror_usage_point_mrid(scope, MAX_INT_64), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_mirror_usage_point_mrid(scope, MAX_INT_32), all_generated_mrids)
 
     assert len(all_generated_mrids) == len(set(all_generated_mrids)), "Each MRID should be unique"
     assert all(decode_mrid_type(m) == MridType.MIRROR_USAGE_POINT for m in all_generated_mrids)
+
+
+def test_encode_mirror_meter_reading_mrid():
+    scope1 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=123)
+    scope2 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=456)
+
+    all_generated_mrids = []
+
+    for scope in [scope1, scope2]:
+        assert_and_append_mrid(MridMapper.encode_mirror_meter_reading_mrid(scope, 0), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_mirror_meter_reading_mrid(scope, 123), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_mirror_meter_reading_mrid(scope, MAX_INT_32), all_generated_mrids)
+
+    assert len(all_generated_mrids) == len(set(all_generated_mrids)), "Each MRID should be unique"
+    assert all(decode_mrid_type(m) == MridType.MIRROR_METER_READING for m in all_generated_mrids)
 
 
 def test_encode_tariff_profile_mrid():
@@ -375,6 +391,7 @@ def test_decode_and_validate_mrid_type():
     do_test(lambda s: MridMapper.encode_doe_mrid(s, 1))
     do_test(lambda s: MridMapper.encode_function_set_assignment_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_mirror_usage_point_mrid(s, 1))
+    do_test(lambda s: MridMapper.encode_mirror_meter_reading_mrid(s, 1))
     do_test(
         lambda s: MridMapper.encode_rate_component_mrid(
             s, 1, 2, datetime(2021, 2, 3, tzinfo=timezone.utc), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH

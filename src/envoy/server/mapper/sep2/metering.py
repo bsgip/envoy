@@ -20,14 +20,12 @@ from envoy_schema.server.schema.sep2.types import (
 )
 
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import generate_href, generate_mrid
+from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.der import to_hex_binary
+from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.request_scope import BaseRequestScope
-
-MIRROR_USAGE_POINT_MRID_PREFIX: int = int("f051", 16)
-MIRROR_METER_READING_MRID_PREFIX: int = int("4ead", 16)
 
 READING_SET_ALL_ID = "all"  # string key identifying a reading set that includes ALL readings for MeterReading
 
@@ -101,12 +99,10 @@ class MirrorUsagePointMapper:
                 "roleFlags": to_hex_binary(RoleFlagsType.NONE),
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
                 "status": 0,
-                "mRID": generate_mrid(MIRROR_USAGE_POINT_MRID_PREFIX, srt.site_reading_type_id),
+                "mRID": MridMapper.encode_mirror_usage_point_mrid(scope, srt.site_reading_type_id),
                 "mirrorMeterReadings": [
                     {
-                        "mRID": generate_mrid(
-                            MIRROR_USAGE_POINT_MRID_PREFIX, srt.site_reading_type_id, MIRROR_METER_READING_MRID_PREFIX
-                        ),
+                        "mRID": MridMapper.encode_mirror_meter_reading_mrid(scope, srt.site_reading_type_id),
                         "readingType": {
                             "accumulationBehaviour": srt.accumulation_behaviour,
                             "dataQualifier": srt.data_qualifier,

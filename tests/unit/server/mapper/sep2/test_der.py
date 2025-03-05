@@ -35,7 +35,7 @@ def test_der_mapping():
     all_set: SiteDER = generate_class_instance(SiteDER, seed=101, optional_is_none=False, generate_relationships=True)
     with_none: SiteDER = generate_class_instance(SiteDER, seed=202, optional_is_none=True, generate_relationships=True)
 
-    scope = BaseRequestScope("lfdi", 111, "/my/prefix")
+    scope = BaseRequestScope("lfdi", 111, "/my/prefix", 222)
     derp_id = "my_derp_id"
 
     mapped_all_set = DERMapper.map_to_response(scope, all_set, derp_id)

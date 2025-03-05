@@ -9,10 +9,10 @@ from envoy_schema.server.schema.sep2.pricing import TariffProfileResponse, TimeT
 
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
+from envoy.server.mapper.sep2.mrid import PricingReadingType
 from envoy.server.mapper.sep2.pricing import (
     TOTAL_PRICING_READING_TYPES,
     ConsumptionTariffIntervalMapper,
-    PricingReadingType,
     PricingReadingTypeMapper,
     RateComponentMapper,
     TariffProfileMapper,
@@ -189,7 +189,8 @@ def test_rate_component_mapping(mock_PricingReadingTypeMapper: mock.MagicMock):
     assert result
     assert result.ReadingTypeLink
     assert result.ReadingTypeLink.href == pricing_reading_type_href
-    assert result.mRID
+    assert isinstance(result.mRID, str)
+    assert len(result.mRID) == 32, "Expected 128 bits of hex chars"
     assert result.href
     assert result.TimeTariffIntervalListLink
     assert result.TimeTariffIntervalListLink.href
@@ -332,6 +333,8 @@ def test_time_tariff_interval_mapping(
     assert mapped_all_set
     assert mapped_all_set.href
     assert mapped_all_set.ConsumptionTariffIntervalListLink.href == cti_list_href
+    assert isinstance(mapped_all_set.mRID, str)
+    assert len(mapped_all_set.mRID) == 32, "Expected 128 bits of hex chars"
 
     # Assert we are utilising the inbuilt utils
     mock_PricingReadingTypeMapper.extract_price.assert_called_once_with(rt, rate_all_set)

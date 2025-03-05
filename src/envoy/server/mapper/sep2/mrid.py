@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
-from enum import IntEnum
+from enum import IntEnum, auto
 
-from envoy.server.mapper.sep2.pricing import PricingReadingType
 from envoy.server.request_scope import BaseRequestScope
 
 
@@ -15,9 +14,21 @@ class MridType(IntEnum):
     DYNAMIC_OPERATING_ENVELOPE = 3
     FUNCTION_SET_ASSIGNMENT = 4
     MIRROR_USAGE_POINT = 5
-    TARIFF = 6
-    RATE_COMPONENT = 7
-    TIME_TARIFF_INTERVAL = 8
+    MIRROR_METER_READING = 6
+    TARIFF = 7
+    RATE_COMPONENT = 8
+    TIME_TARIFF_INTERVAL = 9
+
+
+class PricingReadingType(IntEnum):
+    """The different types of readings that can be priced
+
+    Increasing this beyond 4 unique values will have implications for the mrid mapper"""
+
+    IMPORT_ACTIVE_POWER_KWH = auto()
+    EXPORT_ACTIVE_POWER_KWH = auto()
+    IMPORT_REACTIVE_POWER_KVARH = auto()
+    EXPORT_REACTIVE_POWER_KVARH = auto()
 
 
 # constant maximum values for the various mrid components (max values for an unsigned int representation)
@@ -140,6 +151,13 @@ class MridMapper:
 
         site_reading_type_id: max value is expected to be a 32 bit unsigned int."""
         return encode_mrid(MridType.MIRROR_USAGE_POINT, site_reading_type_id & MAX_INT_32, scope.iana_pen)
+
+    @staticmethod
+    def encode_mirror_meter_reading_mrid(scope: BaseRequestScope, site_reading_type_id: int) -> str:
+        """Encodes a valid MRID for a specific mirror meter reading.
+
+        site_reading_type_id: max value is expected to be a 32 bit unsigned int."""
+        return encode_mrid(MridType.MIRROR_METER_READING, site_reading_type_id & MAX_INT_32, scope.iana_pen)
 
     @staticmethod
     def encode_tariff_profile_mrid(scope: BaseRequestScope, tariff_id: int) -> str:

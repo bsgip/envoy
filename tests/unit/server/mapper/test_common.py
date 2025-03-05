@@ -6,13 +6,7 @@ import pytest
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import (
-    generate_href,
-    generate_mrid,
-    parse_device_category,
-    pow10_to_decimal_value,
-    remove_href_prefix,
-)
+from envoy.server.mapper.common import generate_href, parse_device_category, pow10_to_decimal_value, remove_href_prefix
 from envoy.server.request_scope import BaseRequestScope
 
 
@@ -43,31 +37,6 @@ def test_to_decimal_value(value: Optional[int], multiplier: Optional[int], expec
 
 
 @pytest.mark.parametrize(
-    "args_to_pass, expected_output",
-    [
-        ([1], "0001"),
-        ([255], "00ff"),
-        ([255, 255, 1], "00ff00ff0001"),
-        ([255, 255, 1], "00ff00ff0001"),
-        ([255, -255, 18], "00ff00ff0012"),
-        ([], ""),
-    ],
-)
-def test_generate_mrid(args_to_pass: list[Union[int, float]], expected_output: str):
-    assert generate_mrid(*args_to_pass) == expected_output
-
-
-def test_generate_mrid_128_bit():
-    """Takes a 'representative' mrid generation from RateComponent and checks
-    to see if it's within 128 bit as that one has potential to get quite large"""
-
-    # These values have no specific meaning - they're just there to capture some "long" and "short" values when
-    # being converted to a string
-    result = generate_mrid(87, 128363, 45, int(datetime.now().timestamp()))
-    assert len(result) < 32, "32 hex chars is 16 bytes which is 128 bit"
-
-
-@pytest.mark.parametrize(
     "uri_format, prefix, args, kwargs, expected",
     [
         # Test kwargs are applied
@@ -93,7 +62,7 @@ def test_generate_mrid_128_bit():
 )
 def test_generate_href(uri_format: str, prefix: Optional[str], args: Any, kwargs: Any, expected: str):
     """Tests various combinations of args/kwargs/prefixes"""
-    request_state_parameters = BaseRequestScope("lfdi-val", 1234, prefix)
+    request_state_parameters = BaseRequestScope("lfdi-val", 1234, prefix, 5678)
 
     if args is not None and kwargs is not None:
         assert generate_href(uri_format, request_state_parameters, *args, **kwargs) == expected
@@ -118,7 +87,7 @@ def test_generate_href(uri_format: str, prefix: Optional[str], args: Any, kwargs
     ],
 )
 def test_remove_href_prefix(uri: str, prefix: Optional[str], expected: str):
-    ps = BaseRequestScope("lfdi", 111, prefix)
+    ps = BaseRequestScope("lfdi", 111, prefix, 222)
     assert remove_href_prefix(uri, ps) == expected
 
 
@@ -126,10 +95,10 @@ def test_generate_href_format_errors():
     """Ensures that errors raised by format propogate up"""
 
     with pytest.raises(KeyError):
-        generate_href("{p1}/{p2}", BaseRequestScope("lfdi", 111, None), p1="val1")
+        generate_href("{p1}/{p2}", BaseRequestScope("lfdi", 111, None, 222), p1="val1")
 
     with pytest.raises(KeyError):
-        generate_href("{p1}/{p2}", BaseRequestScope("lfdi", 111, "prefix/"), p1="val1")
+        generate_href("{p1}/{p2}", BaseRequestScope("lfdi", 111, "prefix/", 222), p1="val1")
 
 
 @pytest.mark.parametrize(

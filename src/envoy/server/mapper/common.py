@@ -1,20 +1,11 @@
 from decimal import Decimal
 from itertools import chain
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.request_scope import BaseRequestScope
-
-
-def generate_mrid(*args: Union[int, float]) -> str:
-    """Generates an mRID from a set of numbers by concatenating them (hex encoded) - padded to a minimum of 4 digits
-
-    This isn't amazingly robust but for our purposes should allow us to generate a (likely) distinct mrid for
-    entities that don't have a corresponding unique ID (eg the entity is entirely virtual with no corresponding
-    database model)"""
-    return "".join([f"{abs(a):04x}" for a in args])
 
 
 def generate_href(uri_format: str, request_scope: BaseRequestScope, *args: Any, **kwargs: Any) -> str:

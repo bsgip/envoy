@@ -20,6 +20,8 @@ def test_map_to_response():
     )
     assert result is not None
     assert scope.href_prefix in result.href
+    assert isinstance(result.mRID, str)
+    assert len(result.mRID) == 32, "Expected 128 bits of hex characters"
     assert isinstance(result, FunctionSetAssignmentsResponse)
     assert isinstance(result.TimeLink, identification.Link)
     assert isinstance(result.DERProgramListLink, identification.ListLink)
@@ -33,6 +35,7 @@ def test_map_to_list_response():
     result = FunctionSetAssignmentsMapper.map_to_list_response(
         scope=scope, function_set_assignments=function_set_assignments
     )
+
     assert result is not None
     assert scope.href_prefix in result.href
     assert isinstance(result, FunctionSetAssignmentsListResponse)

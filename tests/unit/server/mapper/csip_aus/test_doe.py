@@ -13,7 +13,7 @@ from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
 def test_map_derc_to_response():
@@ -60,11 +60,14 @@ def test_map_default_to_response():
     doe_default: DefaultDoeConfiguration = generate_class_instance(
         DefaultDoeConfiguration, seed=101, optional_is_none=True
     )
+    scope = generate_class_instance(BaseRequestScope)
 
-    result_all_set = DERControlMapper.map_to_default_response(doe_default)
+    result_all_set = DERControlMapper.map_to_default_response(scope, doe_default)
     assert result_all_set is not None
     assert isinstance(result_all_set, DefaultDERControl)
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
+    assert isinstance(result_all_set.mRID, str)
+    assert len(result_all_set.mRID) == 32, "Expected 128 bits encoded as hex"
     assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(
@@ -135,6 +138,8 @@ def test_map_derp_doe_program_response_with_default_doe():
     assert result.DERControlListLink.all_ == total_does
     assert result.DERControlListLink.href
     assert result.DERControlListLink.href != result.href
+    assert isinstance(result.mRID, str)
+    assert len(result.mRID) == 32, "Expected 128 bits of hex"
 
     assert result.ActiveDERControlListLink is not None
     assert isinstance(result.ActiveDERControlListLink, ListLink)

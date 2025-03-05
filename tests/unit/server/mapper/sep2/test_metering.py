@@ -125,7 +125,8 @@ def test_MirrorUsagePointMapper_map_to_response():
     assert result_all_set is not None
     assert isinstance(result_all_set, MirrorUsagePoint)
     assert result_all_set.href == uris.MirrorUsagePointUri.format(mup_id=srt_all_set.site_reading_type_id)
-    assert result_all_set.mRID != ""
+    assert isinstance(result_all_set.mRID, str)
+    assert len(result_all_set.mRID) == 32, "Expected 128 bits of hex chars"
     assert len(result_all_set.mirrorMeterReadings) == 1
     assert result_all_set.mirrorMeterReadings[0].mRID != result_all_set.mRID
     assert result_all_set.mirrorMeterReadings[0].readingType
@@ -137,7 +138,8 @@ def test_MirrorUsagePointMapper_map_to_response():
     assert result_optional is not None
     assert isinstance(result_optional, MirrorUsagePoint)
     assert result_optional.href == uris.MirrorUsagePointUri.format(mup_id=srt_optional.site_reading_type_id)
-    assert result_optional.mRID != ""
+    assert isinstance(result_optional.mRID, str)
+    assert len(result_optional.mRID) == 32, "Expected 128 bits of hex chars"
     assert len(result_optional.mirrorMeterReadings) == 1
     assert result_optional.mirrorMeterReadings[0].mRID != result_optional.mRID
     assert result_optional.mirrorMeterReadings[0].readingType
@@ -147,6 +149,8 @@ def test_MirrorUsagePointMapper_map_to_response():
         result_optional.mirrorMeterReadings[0].readingType.powerOfTenMultiplier == srt_optional.power_of_ten_multiplier
     )
 
+    assert result_all_set.mRID != result_all_set.mirrorMeterReadings[0].mRID, "mrid should be unique"
+    assert result_optional.mRID != result_optional.mirrorMeterReadings[0].mRID, "mrid should be unique"
     assert result_all_set.mRID != result_optional.mRID, "mrid should be unique"
     assert (
         result_all_set.mirrorMeterReadings[0].mRID != result_optional.mirrorMeterReadings[0].mRID

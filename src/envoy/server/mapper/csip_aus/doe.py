@@ -18,14 +18,13 @@ from envoy_schema.server.schema.sep2.pricing import PrimacyType
 from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
 
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import generate_href, generate_mrid
+from envoy.server.mapper.common import generate_href
+from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
-from envoy.server.request_scope import AggregatorRequestScope, DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
 
-DOE_PROGRAM_MRID_PREFIX: int = int("D0E", 16)
 DOE_PROGRAM_ID: str = "doe"
-DOE_DEFAULT_CONTROL_ID: int = int("DEF", 16)
 
 
 class DERControlListSource(IntEnum):
@@ -58,7 +57,7 @@ class DERControlMapper:
                     der_program_id=DOE_PROGRAM_ID,
                     derc_id_or_date=doe.dynamic_operating_envelope_id,
                 ),
-                "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, doe.site_id, doe.dynamic_operating_envelope_id),
+                "mRID": MridMapper.encode_doe_mrid(scope, doe.dynamic_operating_envelope_id),
                 "version": 1,
                 "description": doe.start_time.isoformat(),
                 "interval": DateTimeIntervalType.model_validate(
@@ -85,11 +84,11 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def map_to_default_response(default_doe: DefaultDoeConfiguration) -> DefaultDERControl:
+    def map_to_default_response(scope: BaseRequestScope, default_doe: DefaultDoeConfiguration) -> DefaultDERControl:
         """Creates a csip aus compliant DefaultDERControl from the specified defaults"""
         return DefaultDERControl.model_validate(
             {
-                "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, DOE_DEFAULT_CONTROL_ID),
+                "mRID": MridMapper.encode_default_doe_mrid(scope),
                 "DERControlBase_": DERControlBase.model_validate(
                     {
                         "opModImpLimW": DERControlMapper.map_to_active_power(default_doe.import_limit_active_watts),
@@ -188,7 +187,7 @@ class DERProgramMapper:
         return DERProgramResponse.model_validate(
             {
                 "href": DERProgramMapper.doe_href(rq_scope),
-                "mRID": generate_mrid(DOE_PROGRAM_MRID_PREFIX, rq_scope.display_site_id),
+                "mRID": MridMapper.encode_doe_program_mrid(rq_scope, rq_scope.display_site_id),
                 "primacy": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
                 "description": "Dynamic Operating Envelope",
                 "DefaultDERControlLink": default_der_link,

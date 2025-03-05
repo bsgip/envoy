@@ -131,7 +131,7 @@ class DERControlManager:
         if not default_doe:
             raise NotFoundError(f"There is no default DERControl configured for site {scope.site_id}")
 
-        return DERControlMapper.map_to_default_response(default_doe)
+        return DERControlMapper.map_to_default_response(scope, default_doe)
 
     @staticmethod
     async def fetch_doe_controls_for_scope_day(
