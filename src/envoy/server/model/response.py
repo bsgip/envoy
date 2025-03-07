@@ -1,0 +1,67 @@
+from datetime import datetime
+from typing import Optional
+
+from envoy_schema.server.schema.sep2.response import ResponseType
+from sqlalchemy import INTEGER, BigInteger, DateTime, ForeignKey, Index, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from envoy.server.model.base import Base
+from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.site import Site
+from envoy.server.model.tariff import TariffGeneratedRate
+
+
+class DynamicOperatingEnvelopeResponse(Base):
+    """Represents a client response to a specific dynamic operating envelope.
+
+    These are explicitly NOT archived - primarily for performance / storage purposes"""
+
+    __tablename__ = "dynamic_operating_envelope_response"
+    dynamic_operating_envelope_response_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    dynamic_operating_envelope_id: Mapped[int] = mapped_column(
+        ForeignKey("dynamic_operating_envelope.dynamic_operating_envelope_id", ondelete="CASCADE")
+    )  # The doe that this response applies to
+    site_id: Mapped[int] = mapped_column(
+        ForeignKey("site.site_id", ondelete="CASCADE")
+    )  # The parent site that ultimately owns the DOE. Redundant, but included for select query performance
+
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the response was created
+
+    response_type: Mapped[Optional[ResponseType]] = mapped_column(INTEGER, nullable=True)
+
+    dynamic_operating_envelope: Mapped[DynamicOperatingEnvelope] = relationship(lazy="raise")
+    site: Mapped[Site] = relationship(lazy="raise")
+
+    __table_args__ = (
+        Index("ix_dynamic_operating_envelope_response_site_id_created_time", "site_id", "created_time", unique=False),
+    )
+
+
+class TariffGeneratedRateResponse(Base):
+    """Represents a client response to a specific tariff generated rate
+
+    These are explicitly NOT archived - primarily for performance / storage purposes"""
+
+    __tablename__ = "tariff_generated_rate_response"
+    tariff_generated_rate_response_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    tariff_generated_rate_id: Mapped[int] = mapped_column(
+        ForeignKey("tariff_generated_rate.tariff_generated_rate_id", ondelete="CASCADE")
+    )  # The rate that this response applies to
+    site_id: Mapped[int] = mapped_column(
+        ForeignKey("site.site_id", ondelete="CASCADE")
+    )  # The parent site that ultimately owns the rate. Redundant, but included for select query performance
+
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When the response was created
+
+    response_type: Mapped[Optional[ResponseType]] = mapped_column(INTEGER, nullable=True)
+
+    tariff_generated_rate: Mapped[TariffGeneratedRate] = relationship(lazy="raise")
+    site: Mapped[Site] = relationship(lazy="raise")
+
+    __table_args__ = (
+        Index("ix_tariff_generated_rate_response_site_id_created_time", "site_id", "created_time", unique=False),
+    )

@@ -57,7 +57,9 @@ class Subscription(Base):
         passive_deletes=True,
     )  # The set of conditions that might limit the firing of a notification
 
-    __table_args__ = (Index("aggregator_id", "resource_type", unique=False),)
+    __table_args__ = (
+        Index("ix_subscription_aggregator_id_resource_type", "aggregator_id", "resource_type", unique=False),
+    )
 
 
 class SubscriptionCondition(Base):

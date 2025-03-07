@@ -94,6 +94,14 @@ VALUES (4, 1, 1, NULL, '2000-01-01 00:00:00Z', '2022-03-04 14:22:33.500', '2022-
 
 SELECT pg_catalog.setval('public.tariff_generated_rate_tariff_generated_rate_id_seq', 5, true);
 
+
+INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id", "site_id", "created_time", "response_type") VALUES (1, 1, 1, '2022-01-01 00:00:00+10', 1);
+INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id", "site_id", "created_time", "response_type") VALUES (2, 1, 1, '2022-01-02 00:00:00+10', NULL);
+INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id", "site_id", "created_time", "response_type") VALUES (3, 3, 2, '2022-01-03 00:00:00+10', 2);
+
+SELECT pg_catalog.setval('public.tariff_generated_rate_response_tariff_generated_rate_response_id_seq', 4, true);
+
+
 INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
 VALUES (1, 1, 2, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33.500', '2022-05-07 01:02+10', 11, 1.11, -1.22);
 INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
@@ -104,6 +112,13 @@ INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "
 VALUES (4, 1, NULL, '2000-01-01 00:00:00Z', '2022-05-06 14:22:33.500', '2022-05-08 01:02+10', 44, 4.11, -4.22);
 
 SELECT pg_catalog.setval('public.dynamic_operating_envelope_dynamic_operating_envelope_id_seq', 5, true);
+
+INSERT INTO public.dynamic_operating_envelope_response("dynamic_operating_envelope_response_id", "dynamic_operating_envelope_id", "site_id", "created_time", "response_type") VALUES (1, 1, 1, '2023-01-01 00:00:00+10', 3);
+INSERT INTO public.dynamic_operating_envelope_response("dynamic_operating_envelope_response_id", "dynamic_operating_envelope_id", "site_id", "created_time", "response_type") VALUES (2, 1, 1, '2023-01-02 00:00:00+10', NULL);
+INSERT INTO public.dynamic_operating_envelope_response("dynamic_operating_envelope_response_id", "dynamic_operating_envelope_id", "site_id", "created_time", "response_type") VALUES (3, 3, 2, '2023-01-03 00:00:00+10', 4);
+
+SELECT pg_catalog.setval('public.dynamic_operating_envelope_response_dynamic_operating_envelope_response_id_seq', 4, true);
+
 
 INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "created_time", "changed_time")
 VALUES (1, -- site_reading_type_id
