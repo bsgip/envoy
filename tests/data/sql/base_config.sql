@@ -95,9 +95,9 @@ VALUES (4, 1, 1, NULL, '2000-01-01 00:00:00Z', '2022-03-04 14:22:33.500', '2022-
 SELECT pg_catalog.setval('public.tariff_generated_rate_tariff_generated_rate_id_seq', 5, true);
 
 
-INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id", "site_id", "created_time", "response_type") VALUES (1, 1, 1, '2022-01-01 00:00:00+10', 1);
-INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id", "site_id", "created_time", "response_type") VALUES (2, 1, 1, '2022-01-02 00:00:00+10', NULL);
-INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id", "site_id", "created_time", "response_type") VALUES (3, 3, 2, '2022-01-03 00:00:00+10', 2);
+INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id", "site_id", "created_time", "response_type", "pricing_reading_type") VALUES (1, 1, 1, '2022-01-01 00:00:00+10', 1, 1);
+INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id", "site_id", "created_time", "response_type", "pricing_reading_type") VALUES (2, 1, 1, '2022-01-02 00:00:00+10', NULL, 2);
+INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id", "site_id", "created_time", "response_type", "pricing_reading_type") VALUES (3, 3, 2, '2022-01-03 00:00:00+10', 2, 3);
 
 SELECT pg_catalog.setval('public.tariff_generated_rate_respons_tariff_generated_rate_respons_seq', 4, true);
 

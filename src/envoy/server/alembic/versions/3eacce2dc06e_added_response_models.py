@@ -1,8 +1,8 @@
 """added_response_models
 
-Revision ID: 292f39617d7b
+Revision ID: 3eacce2dc06e
 Revises: 5c4cb6749db0
-Create Date: 2025-03-11 15:57:49.451572
+Create Date: 2025-03-11 17:22:41.153313
 
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "292f39617d7b"
+revision = "3eacce2dc06e"
 down_revision = "5c4cb6749db0"
 branch_labels = None
 depends_on = None
@@ -46,6 +46,7 @@ def upgrade() -> None:
         sa.Column("site_id", sa.Integer(), nullable=False),
         sa.Column("created_time", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("response_type", sa.INTEGER(), nullable=True),
+        sa.Column("pricing_reading_type", sa.SMALLINT(), nullable=False),
         sa.ForeignKeyConstraint(["site_id"], ["site.site_id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(
             ["tariff_generated_rate_id"], ["tariff_generated_rate.tariff_generated_rate_id"], ondelete="CASCADE"

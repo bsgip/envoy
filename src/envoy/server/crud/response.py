@@ -3,6 +3,7 @@ from typing import Optional, Sequence, Union
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse as DOEResponse
 from envoy.server.model.response import TariffGeneratedRateResponse as RateResponse
@@ -17,6 +18,8 @@ async def select_doe_response_for_scope(
 ) -> Optional[DOEResponse]:
     """Attempts to fetch a doe response using its' primary key, also scoping it to a particular aggregator/site
 
+    Will populate the "site" relationship
+
     aggregator_id: The aggregator id to constrain the lookup to
     site_id: If None - no effect otherwise the query will apply a filter on site_id using this value"""
 
@@ -27,6 +30,7 @@ async def select_doe_response_for_scope(
             (DOEResponse.dynamic_operating_envelope_response_id == doe_response_id)
             & (Site.aggregator_id == aggregator_id)
         )
+        .options(selectinload(DOEResponse.site))
     )
     if site_id is not None:
         stmt = stmt.where(DOEResponse.site_id == site_id)
@@ -44,6 +48,8 @@ async def select_rate_response_for_scope(
     """Attempts to fetch a tariff generated rate response using its' primary key, also scoping it to a particular
     aggregator/site
 
+    Will populate the "site" relationship
+
     aggregator_id: The aggregator id to constrain the lookup to
     site_id: If None - no effect otherwise the query will apply a filter on site_id using this value"""
 
@@ -54,6 +60,7 @@ async def select_rate_response_for_scope(
             (RateResponse.tariff_generated_rate_response_id == tariff_generated_rate_response_id)
             & (Site.aggregator_id == aggregator_id)
         )
+        .options(selectinload(RateResponse.site))
     )
     if site_id is not None:
         stmt = stmt.where(RateResponse.site_id == site_id)
@@ -75,13 +82,15 @@ async def _doe_responses(
 
     site_id: If None - no site_id filter applied, otherwise filter on site_id = Value
 
-    Orders by 2030.5 requirements on Response which is created DESC, site_id ASC"""
+    Orders by 2030.5 requirements on Response which is created DESC, site_id ASC
+
+    Will populate the "site" relationship for all returned entities"""
 
     select_clause: Union[Select[tuple[int]], Select[tuple[DOEResponse]]]
     if is_counting:
         select_clause = select(func.count()).select_from(DOEResponse)
     else:
-        select_clause = select(DOEResponse)
+        select_clause = select(DOEResponse).options(selectinload(DOEResponse.site))
 
     # fmt: off
     stmt = (
@@ -121,13 +130,15 @@ async def _rate_responses(
 
     site_id: If None - no site_id filter applied, otherwise filter on site_id = Value
 
-    Orders by 2030.5 requirements on Response which is created DESC, site_id ASC"""
+    Orders by 2030.5 requirements on Response which is created DESC, site_id ASC
+
+    Will populate the "site" relationship for all returned entities"""
 
     select_clause: Union[Select[tuple[int]], Select[tuple[RateResponse]]]
     if is_counting:
         select_clause = select(func.count()).select_from(RateResponse)
     else:
-        select_clause = select(RateResponse)
+        select_clause = select(RateResponse).options(selectinload(RateResponse.site))
 
     # fmt: off
     stmt = (
@@ -170,7 +181,8 @@ async def count_doe_responses(
 async def select_doe_responses(
     session: AsyncSession, aggregator_id: int, site_id: Optional[int], start: int, limit: int, created_after: datetime
 ) -> Sequence[DOEResponse]:
-    """Selects DynamicOperatingEnvelopeResponse entities (with pagination).
+    """Selects DynamicOperatingEnvelopeResponse entities (with pagination). Will populate the "site" relationship for
+    all returned entities.
 
     site_id: The specific site does responses are being requested for
     start: The number of matching entities to skip
@@ -200,7 +212,8 @@ async def count_tariff_generated_rate_responses(
 async def select_tariff_generated_rate_responses(
     session: AsyncSession, aggregator_id: int, site_id: Optional[int], start: int, limit: int, created_after: datetime
 ) -> Sequence[RateResponse]:
-    """Selects TariffGeneratedRateResponse entities (with pagination).
+    """Selects TariffGeneratedRateResponse entities (with pagination). Will populate the "site" relationship for all
+    returned entities
 
     site_id: The specific site rate responses are being requested for
     start: The number of matching entities to skip
