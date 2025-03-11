@@ -17,7 +17,9 @@ class DynamicOperatingEnvelopeResponse(Base):
     These are explicitly NOT archived - primarily for performance / storage purposes"""
 
     __tablename__ = "dynamic_operating_envelope_response"
-    dynamic_operating_envelope_response_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    dynamic_operating_envelope_response_id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=True
+    )
     dynamic_operating_envelope_id: Mapped[int] = mapped_column(
         ForeignKey("dynamic_operating_envelope.dynamic_operating_envelope_id", ondelete="CASCADE")
     )  # The doe that this response applies to
@@ -45,7 +47,7 @@ class TariffGeneratedRateResponse(Base):
     These are explicitly NOT archived - primarily for performance / storage purposes"""
 
     __tablename__ = "tariff_generated_rate_response"
-    tariff_generated_rate_response_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    tariff_generated_rate_response_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     tariff_generated_rate_id: Mapped[int] = mapped_column(
         ForeignKey("tariff_generated_rate.tariff_generated_rate_id", ondelete="CASCADE")
     )  # The rate that this response applies to
