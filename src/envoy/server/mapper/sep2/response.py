@@ -1,23 +1,19 @@
-from datetime import datetime
-from typing import Optional, Sequence
+from typing import Sequence
 
 import envoy_schema.server.schema.uri as uri
-from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
-from envoy_schema.server.schema.sep2.identification import Link, ListLink
+from envoy_schema.server.schema.sep2.identification import ListLink
 from envoy_schema.server.schema.sep2.response import (
     DERControlResponse,
     PriceResponse,
     ResponseListResponse,
     ResponseSet,
-    ResponseType,
+    ResponseSetList,
 )
-from envoy_schema.server.schema.sep2.types import SubscribableType
 
-from envoy.server.crud.common import sum_digits
-from envoy.server.mapper.common import generate_href, parse_device_category
+from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.mrid import MridMapper, PricingReadingType, ResponseSetType
+from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
-from envoy.server.model.site import Site
 from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
@@ -98,7 +94,7 @@ class ResponseMapper:
 
     @staticmethod
     def map_from_doe_request(
-        r: DERControlResponse, dynamic_operating_envelope: DynamicOperatingEnvelopeResponse
+        r: DERControlResponse, dynamic_operating_envelope: DynamicOperatingEnvelope
     ) -> DynamicOperatingEnvelopeResponse:
         """Maps a sep2 DERControlResponse to an internal DynamicOperatingEnvelopeResponse model."""
 
@@ -116,7 +112,7 @@ class ResponseListMapper:
     def map_to_price_response(
         scope: DeviceOrAggregatorRequestScope,
         responses: Sequence[TariffGeneratedRateResponse],
-        response_count: int,
+        total_responses: int,
     ) -> ResponseListResponse:
         """Generates a list response for a price response list"""
         href = generate_href(
@@ -128,7 +124,7 @@ class ResponseListMapper:
 
         return ResponseListResponse(
             href=href,
-            all_=response_count,
+            all_=total_responses,
             results=len(responses),
             Response_=[ResponseMapper.map_to_price_response(scope, r) for r in responses],
         )
@@ -137,7 +133,7 @@ class ResponseListMapper:
     def map_to_doe_response(
         scope: DeviceOrAggregatorRequestScope,
         responses: Sequence[DynamicOperatingEnvelopeResponse],
-        response_count: int,
+        total_responses: int,
     ) -> ResponseListResponse:
         """Generates a list response for a doe response list"""
         href = generate_href(
@@ -149,7 +145,7 @@ class ResponseListMapper:
 
         return ResponseListResponse(
             href=href,
-            all_=response_count,
+            all_=total_responses,
             results=len(responses),
             Response_=[ResponseMapper.map_to_doe_response(scope, r) for r in responses],
         )
@@ -180,4 +176,15 @@ class ResponseSetMapper:
         )
 
     @staticmethod
-    def map_to_list_response(scope: DeviceOrAggregatorRequestScope, skip: int, limit: int) -> ResponseSet:
+    def map_to_list_response(
+        scope: DeviceOrAggregatorRequestScope, response_sets: list[ResponseSet], total_response_sets: int
+    ) -> ResponseSetList:
+        """Constructs a list response from a list of existing sets"""
+        href = generate_href(
+            uri.ResponseSetListUri,
+            scope,
+            site_id=scope.display_site_id,
+        )
+        return ResponseSetList(
+            href=href, all_=total_response_sets, results=len(response_sets), ResponseSet_=response_sets
+        )
