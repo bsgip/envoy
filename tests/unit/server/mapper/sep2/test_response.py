@@ -18,6 +18,7 @@ from envoy.server.mapper.sep2.response import (
     ResponseListMapper,
     ResponseMapper,
     ResponseSetMapper,
+    href_to_response_set_type,
     response_set_type_to_href,
 )
 from envoy.server.model.doe import DynamicOperatingEnvelope
@@ -39,6 +40,21 @@ def test_response_set_type_to_href():
 
     assert len(hrefs) > 0
     assert len(hrefs) == len(set(hrefs)), "All values should be unique"
+
+
+@pytest.mark.parametrize("t", ResponseSetType)
+def test_response_set_type_to_href_roundtrip(t: ResponseSetType):
+    """Tests that response_set_type_to_href is reversed by href_to_response_set_type"""
+    href = response_set_type_to_href(t)
+    result = href_to_response_set_type(href)
+    assert isinstance(result, ResponseSetType)
+    assert result == t
+
+
+@pytest.mark.parametrize("bad_value", [None, "foo", "/doe", "doe/"])
+def test_href_to_response_set_type_bad_values(bad_value: Optional[str]):
+    with pytest.raises(ValueError):
+        href_to_response_set_type(bad_value)
 
 
 @pytest.mark.parametrize("href_prefix, optional_is_none", product([None, "/my/href/prefix/"], [True, False]))

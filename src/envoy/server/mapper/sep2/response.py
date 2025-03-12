@@ -28,6 +28,16 @@ def response_set_type_to_href(t: ResponseSetType) -> str:
         raise ValueError(f"Unsupported ResponseSetType {t} ({int(t)})")
 
 
+def href_to_response_set_type(href_part: str) -> ResponseSetType:
+    """Converts the output of response_set_type_to_href back to the original ResponseSetType"""
+    if href_part == "price":
+        return ResponseSetType.TARIFF_GENERATED_RATES
+    elif href_part == "doe":
+        return ResponseSetType.DYNAMIC_OPERATING_ENVELOPES
+    else:
+        raise ValueError(f"Unrecognised response set '{href_part}'")
+
+
 class ResponseMapper:
     @staticmethod
     def map_to_price_response(scope: BaseRequestScope, rate_response: TariffGeneratedRateResponse) -> PriceResponse:
