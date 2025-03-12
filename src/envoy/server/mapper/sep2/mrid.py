@@ -18,6 +18,7 @@ class MridType(IntEnum):
     TARIFF = 7
     RATE_COMPONENT = 8
     TIME_TARIFF_INTERVAL = 9
+    RESPONSE_SET = 10
 
 
 class PricingReadingType(IntEnum):
@@ -29,6 +30,14 @@ class PricingReadingType(IntEnum):
     EXPORT_ACTIVE_POWER_KWH = auto()
     IMPORT_REACTIVE_POWER_KVARH = auto()
     EXPORT_REACTIVE_POWER_KVARH = auto()
+
+
+class ResponseSetType(IntEnum):
+    """The different type of response sets that are exposed via this utility server. Essentially this is a mapping
+    of every type that has "response" objects associated with them"""
+
+    TARIFF_GENERATED_RATES = auto()
+    DYNAMIC_OPERATING_ENVELOPES = auto()
 
 
 # constant maximum values for the various mrid components (max values for an unsigned int representation)
@@ -222,6 +231,13 @@ class MridMapper:
 
         id = (prt_int << 90) | (tariff_generated_rate_id & MAX_INT_64)
         return encode_mrid(MridType.TIME_TARIFF_INTERVAL, id, scope.iana_pen)
+
+    @staticmethod
+    def encode_response_set_mrid(scope: BaseRequestScope, response_set_type: ResponseSetType) -> str:
+        """Encodes a valid MRID for a specific response set.
+
+        response_set_type: max value is expected to be a 32 bit unsigned int."""
+        return encode_mrid(MridType.RESPONSE_SET, int(response_set_type) & MAX_INT_32, scope.iana_pen)
 
     @staticmethod
     def decode_and_validate_mrid_type(scope: BaseRequestScope, mrid: str) -> MridType:

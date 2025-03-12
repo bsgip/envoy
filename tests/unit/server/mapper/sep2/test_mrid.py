@@ -15,6 +15,7 @@ from envoy.server.mapper.sep2.mrid import (
     MridMapper,
     MridType,
     PricingReadingType,
+    ResponseSetType,
     decode_iana_pen,
     decode_mrid_id,
     decode_mrid_type,
@@ -162,6 +163,7 @@ def test_all_default_encodings_unique():
         )
         assert_and_append_mrid(MridMapper.encode_time_tariff_interval_mrid(scope1, 0, prt), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_tariff_profile_mrid(scope1, 0), all_generated_mrids)
+    assert_and_append_mrid(MridMapper.encode_response_set_mrid(scope1, 0), all_generated_mrids)
 
     assert len(all_generated_mrids) == len(set(all_generated_mrids)), "Each MRID should be unique"
 
@@ -325,6 +327,18 @@ def test_encode_rate_component_mrid_bad_pricing_reading_type():
         MridMapper.encode_rate_component_mrid(scope, tariff_id, site_id, timestamp, 5)  # Too high
 
 
+def test_encode_response_set_mrid():
+    scope1 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=123)
+    scope2 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=456)
+
+    all_mrids = []
+    for r in ResponseSetType:
+        for scope in [scope1, scope2]
+            assert_and_append_mrid(MridMapper.encode_response_set_mrid(scope, r))
+
+    assert len(all_mrids) == len(set(all_mrids)), "Each MRID should be unique"
+
+
 def test_encode_time_tariff_interval_mrid():
     scope1 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=123)
     scope2 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=456)
@@ -399,6 +413,7 @@ def test_decode_and_validate_mrid_type():
     )
     do_test(lambda s: MridMapper.encode_time_tariff_interval_mrid(s, 1, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH))
     do_test(lambda s: MridMapper.encode_tariff_profile_mrid(s, 1))
+    do_test(lambda s: MridMapper.encode_response_set_mrid(s, 1))
 
 
 @pytest.mark.parametrize("doe_id", [0, MAX_INT_32, MAX_INT_64, 123, 4])
