@@ -1,7 +1,8 @@
 import logging
 from datetime import datetime
+from itertools import islice
 
-from envoy_schema.server.schema.sep2.response import Response, ResponseListResponse
+from envoy_schema.server.schema.sep2.response import Response, ResponseListResponse, ResponseSet, ResponseSetList
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.response import (
@@ -14,13 +15,36 @@ from envoy.server.crud.response import (
 )
 from envoy.server.exception import NotFoundError
 from envoy.server.mapper.sep2.mrid import ResponseSetType
-from envoy.server.mapper.sep2.response import ResponseListMapper, ResponseMapper
+from envoy.server.mapper.sep2.response import ResponseListMapper, ResponseMapper, ResponseSetMapper
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope
 
 logger = logging.getLogger(__name__)
 
 
 class ResponseManager:
+
+    @staticmethod
+    def fetch_response_set_for_scope(
+        scope: DeviceOrAggregatorRequestScope, response_set_type: ResponseSetType
+    ) -> ResponseSet:
+        """Returns the "virtual" response set for the specific response_set_type"""
+        return ResponseSetMapper.map_to_set_response(scope, response_set_type)
+
+    @staticmethod
+    def fetch_response_set_list_for_scope(
+        scope: DeviceOrAggregatorRequestScope, start: int, limit: int
+    ) -> ResponseSetList:
+        """Provides a list view of the "virtual" response sets available for any given scope"""
+
+        # "Paginate" the enum that backs all of our response sets
+        response_sets = [
+            ResponseManager.fetch_response_set_for_scope(scope, rst)
+            for rst in islice(ResponseSetType, start, (start + limit))
+        ]
+        total_response_sets = len(ResponseSetType)
+
+        return ResponseSetMapper.map_to_list_response(scope, response_sets, total_response_sets)
+
     @staticmethod
     async def fetch_response_for_scope(
         session: AsyncSession,

@@ -333,8 +333,8 @@ def test_encode_response_set_mrid():
 
     all_mrids = []
     for r in ResponseSetType:
-        for scope in [scope1, scope2]
-            assert_and_append_mrid(MridMapper.encode_response_set_mrid(scope, r))
+        for scope in [scope1, scope2]:
+            assert_and_append_mrid(MridMapper.encode_response_set_mrid(scope, r), all_mrids)
 
     assert len(all_mrids) == len(set(all_mrids)), "Each MRID should be unique"
 
