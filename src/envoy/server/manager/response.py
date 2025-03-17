@@ -160,10 +160,15 @@ class ResponseManager:
                 )
 
             doe_response = ResponseMapper.map_from_doe_request(cast(DERControlResponse, response), doe)
+
+            # Once we commit, the object becomes mostly detached and can't be referenced. So we need to do any
+            # remaining operations on it between flush and commit
             session.add(doe_response)
+            await session.flush()
+            href = ResponseMapper.doe_response_href(scope, doe_response)
             await session.commit()
 
-            return ResponseMapper.doe_response_href(scope, doe_response)
+            return href
 
         elif response_set_type == ResponseSetType.TARIFF_GENERATED_RATES:
 
@@ -188,9 +193,14 @@ class ResponseManager:
                 cast(PriceResponse, response), tariff_generated_rate, pricing_reading_type
             )
 
+            # Once we commit, the object becomes mostly detached and can't be referenced. So we need to do any
+            # remaining operations on it between flush and commit
             session.add(rate_response)
+            await session.flush()
+            href = ResponseMapper.price_response_href(scope, rate_response)
             await session.commit()
-            return ResponseMapper.price_response_href(scope, rate_response)
+
+            return href
         else:
             logger.error(f"Unknown response set type {response_set_type} ({int(response_set_type)})")
             raise BadRequestError(f"Responses for {response_set_type} are NOT supported.")
