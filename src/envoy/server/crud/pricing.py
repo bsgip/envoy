@@ -63,6 +63,32 @@ async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optiona
     return resp.scalar_one_or_none()
 
 
+async def select_tariff_generated_rate_for_scope(
+    session: AsyncSession,
+    aggregator_id: int,
+    site_id: Optional[int],
+    rate_id: int,
+) -> Optional[TariffGeneratedRate]:
+    """Attempts to fetch a TariffGeneratedRate using its' primary id, also scoping it to a particular aggregator/site
+
+    aggregator_id: The aggregator id to constrain the lookup to
+    site_id: If None - no effect otherwise the query will apply a filter on site_id using this value"""
+
+    stmt = (
+        select(TariffGeneratedRate, Site.timezone_id)
+        .join(TariffGeneratedRate.site)
+        .where((TariffGeneratedRate.tariff_generated_rate_id == rate_id) & (Site.aggregator_id == aggregator_id))
+    )
+    if site_id is not None:
+        stmt = stmt.where(TariffGeneratedRate.site_id == site_id)
+
+    resp = await session.execute(stmt)
+    raw = resp.one_or_none()
+    if raw is None:
+        return None
+    return localize_start_time(raw)
+
+
 async def _tariff_rates_for_day(
     only_count: bool,
     session: AsyncSession,

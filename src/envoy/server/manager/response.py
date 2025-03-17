@@ -1,10 +1,20 @@
 import logging
 from datetime import datetime
 from itertools import islice
+from typing import Union, cast
 
-from envoy_schema.server.schema.sep2.response import Response, ResponseListResponse, ResponseSet, ResponseSetList
+from envoy_schema.server.schema.sep2.response import (
+    DERControlResponse,
+    PriceResponse,
+    Response,
+    ResponseListResponse,
+    ResponseSet,
+    ResponseSetList,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.server.crud.doe import select_doe_for_scope
+from envoy.server.crud.pricing import select_tariff_generated_rate_for_scope
 from envoy.server.crud.response import (
     count_doe_responses,
     count_tariff_generated_rate_responses,
@@ -13,8 +23,8 @@ from envoy.server.crud.response import (
     select_rate_response_for_scope,
     select_tariff_generated_rate_responses,
 )
-from envoy.server.exception import NotFoundError
-from envoy.server.mapper.sep2.mrid import ResponseSetType
+from envoy.server.exception import BadRequestError, NotFoundError
+from envoy.server.mapper.sep2.mrid import MridMapper, MridType, ResponseSetType
 from envoy.server.mapper.sep2.response import ResponseListMapper, ResponseMapper, ResponseSetMapper
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope
 
@@ -110,3 +120,77 @@ class ResponseManager:
             raise NotFoundError(
                 f"ResponseList for {response_set_type} either doesn't exist or is inaccessible in this scope"
             )
+
+    @staticmethod
+    async def create_response_for_scope(
+        session: AsyncSession,
+        scope: DeviceOrAggregatorRequestScope,
+        response_set_type: ResponseSetType,
+        response: Union[DERControlResponse, PriceResponse],
+    ) -> str:
+        """Creates a new Response entry in the database for the specified subject.
+
+        raises BadRequestError if the subject doesn't parse or doesn't map to an accessible entity on record.
+
+        Returns the href associated with the new Response entity
+        """
+
+        try:
+            mrid_type = MridMapper.decode_and_validate_mrid_type(scope, response.subject)
+        except ValueError as exc:
+            logger.error(f"{response.subject} doesn't validate/decode for iana pen {scope.iana_pen}", exc_info=exc)
+            raise BadRequestError(
+                f"subject '{response.subject}' doesn't reference a valid MRID from this utility server"
+            )
+
+        if response_set_type == ResponseSetType.DYNAMIC_OPERATING_ENVELOPES:
+
+            if mrid_type != MridType.DYNAMIC_OPERATING_ENVELOPE:
+                raise BadRequestError(
+                    f"You cannot send a {mrid_type} response to this list. Only DERControl (doe) mrids are accepted"
+                )
+
+            doe_id = MridMapper.decode_doe_mrid(response.subject)
+
+            # Validate the referenced doe is accessible to this scope
+            doe = await select_doe_for_scope(session, scope.aggregator_id, scope.site_id, doe_id)
+            if doe is None:
+                raise BadRequestError(
+                    f"subject '{response.subject}' references a DOE not available on this utility server"
+                )
+
+            doe_response = ResponseMapper.map_from_doe_request(cast(DERControlResponse, response), doe)
+            session.add(doe_response)
+            await session.commit()
+
+            return ResponseMapper.doe_response_href(scope, doe_response)
+
+        elif response_set_type == ResponseSetType.TARIFF_GENERATED_RATES:
+
+            if mrid_type != MridType.TIME_TARIFF_INTERVAL:
+                raise BadRequestError(
+                    f"You cannot send a {mrid_type} response to this list. Only TimeTariffInterval mrids are accepted"
+                )
+
+            # We have a response targeting a tariff generated rate
+            (pricing_reading_type, rate_id) = MridMapper.decode_time_tariff_interval_mrid(response.subject)
+
+            # Validate the referenced tariff rate is accessible to this scope
+            tariff_generated_rate = await select_tariff_generated_rate_for_scope(
+                session, scope.aggregator_id, scope.site_id, rate_id
+            )
+            if tariff_generated_rate is None:
+                raise BadRequestError(
+                    f"subject '{response.subject}' references a price not available on this utility server"
+                )
+
+            rate_response = ResponseMapper.map_from_price_request(
+                cast(PriceResponse, response), tariff_generated_rate, pricing_reading_type
+            )
+
+            session.add(rate_response)
+            await session.commit()
+            return ResponseMapper.price_response_href(scope, rate_response)
+        else:
+            logger.error(f"Unknown response set type {response_set_type} ({int(response_set_type)})")
+            raise BadRequestError(f"Responses for {response_set_type} are NOT supported.")

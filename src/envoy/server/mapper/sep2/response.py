@@ -39,12 +39,11 @@ def href_to_response_set_type(href_part: str) -> ResponseSetType:
 
 
 class ResponseMapper:
-    @staticmethod
-    def map_to_price_response(scope: BaseRequestScope, rate_response: TariffGeneratedRateResponse) -> PriceResponse:
-        """Generates a sep2 PriceResponse for a given TariffGeneratedRateResponse.
 
-        rate_response: Will need the site relationship populated"""
-        href = generate_href(
+    @staticmethod
+    def price_response_href(scope: BaseRequestScope, rate_response: TariffGeneratedRateResponse) -> str:
+        """Generates the href for the specified TariffGeneratedRateResponse. Requires the primary key to be set"""
+        return generate_href(
             uri.ResponseUri,
             scope,
             site_id=rate_response.site_id,
@@ -52,8 +51,24 @@ class ResponseMapper:
             response_list_id=response_set_type_to_href(ResponseSetType.TARIFF_GENERATED_RATES),
         )
 
+    @staticmethod
+    def doe_response_href(scope: BaseRequestScope, doe_response: DynamicOperatingEnvelopeResponse) -> str:
+        """Generates the href for the specified DynamicOperatingEnvelopeResponse. Requires the primary key to be set"""
+        return generate_href(
+            uri.ResponseUri,
+            scope,
+            site_id=doe_response.site_id,
+            response_id=doe_response.dynamic_operating_envelope_response_id,
+            response_list_id=response_set_type_to_href(ResponseSetType.DYNAMIC_OPERATING_ENVELOPES),
+        )
+
+    @staticmethod
+    def map_to_price_response(scope: BaseRequestScope, rate_response: TariffGeneratedRateResponse) -> PriceResponse:
+        """Generates a sep2 PriceResponse for a given TariffGeneratedRateResponse.
+
+        rate_response: Will need the site relationship populated"""
         return PriceResponse(
-            href=href,
+            href=ResponseMapper.price_response_href(scope, rate_response),
             createdDateTime=int(rate_response.created_time.timestamp()),
             endDeviceLFDI=rate_response.site.lfdi,
             status=rate_response.response_type,
@@ -86,16 +101,8 @@ class ResponseMapper:
         """Generates a sep2 DERControlResponse for a given DynamicOperatingEnvelopeResponse.
 
         doe_response: Will need the site relationship populated"""
-        href = generate_href(
-            uri.ResponseUri,
-            scope,
-            site_id=doe_response.site_id,
-            response_id=doe_response.dynamic_operating_envelope_response_id,
-            response_list_id=response_set_type_to_href(ResponseSetType.DYNAMIC_OPERATING_ENVELOPES),
-        )
-
         return DERControlResponse(
-            href=href,
+            href=ResponseMapper.doe_response_href(scope, doe_response),
             createdDateTime=int(doe_response.created_time.timestamp()),
             endDeviceLFDI=doe_response.site.lfdi,
             status=doe_response.response_type,

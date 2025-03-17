@@ -15,6 +15,7 @@ from envoy.server.crud.pricing import (
     select_rate_stats,
     select_single_tariff,
     select_tariff_count,
+    select_tariff_generated_rate_for_scope,
     select_tariff_rate_for_day_time,
     select_tariff_rates_for_day,
 )
@@ -421,3 +422,79 @@ async def test_select_rate_daily_stats_pagination(
         assert daily_stats.total_distinct_dates == expected_count, "Date count is independent of pagination"
         assert all([isinstance(d, date) for (d, _) in daily_stats.single_date_counts]), "Validating date type"
         assert all([isinstance(c, int) for (_, c) in daily_stats.single_date_counts]), "Validating int type"
+
+
+@pytest.mark.parametrize(
+    "agg_id, site_id, rate_id, expected_site_id, expected_dt",
+    [
+        (1, 1, 1, 1, datetime(2022, 3, 5, 1, 2, 0)),
+        (1, None, 1, 1, datetime(2022, 3, 5, 1, 2, 0)),  # Unscoped site
+        (1, 1, 2, 1, datetime(2022, 3, 5, 3, 4, 0)),
+        (1, None, 2, 1, datetime(2022, 3, 5, 3, 4, 0)),  # Unscoped site
+        (1, 2, 3, 2, datetime(2022, 3, 5, 1, 2, 0)),
+        (1, None, 3, 2, datetime(2022, 3, 5, 1, 2, 0)),  # Unscoped site
+        (2, 1, 1, None, None),  # Bad Agg ID
+        (99, 1, 1, None, None),  # Bad Agg ID
+        (1, 2, 1, None, None),  # Bad Site ID
+        (1, 99, 1, None, None),  # Bad Site ID
+    ],
+)
+@pytest.mark.anyio
+async def test_select_tariff_generated_rate_for_scope(
+    pg_additional_does,
+    agg_id: int,
+    site_id: Optional[int],
+    rate_id: int,
+    expected_site_id: Optional[int],
+    expected_dt: Optional[datetime],
+):
+
+    async with generate_async_session(pg_additional_does) as session:
+        actual = await select_tariff_generated_rate_for_scope(session, agg_id, site_id, rate_id)
+        if expected_site_id is None or expected_dt is None:
+            expected_id = None
+        else:
+            expected_id = rate_id
+        assert_rate_for_id(
+            expected_rate_id=expected_id,
+            expected_tariff_id=1,
+            expected_site_id=expected_site_id,
+            expected_date=None if expected_dt is None else expected_dt.date(),
+            expected_time=None if expected_dt is None else expected_dt.time(),
+            expected_tz="Australia/Brisbane",
+            actual_rate=actual,
+        )
+
+
+@pytest.mark.parametrize(
+    "agg_id, site_id, rate_id, expected_site_id, expected_dt",
+    [
+        (1, 1, 1, 1, datetime(2022, 3, 4, 7, 2, 0)),  # Adjusted for LA time
+        (1, 1, 2, 1, datetime(2022, 3, 4, 9, 4, 0)),  # Adjusted for LA time
+        (99, 99, 99, None, None),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_tariff_generated_rate_for_scope_la_timezone(
+    pg_la_timezone,
+    agg_id: int,
+    site_id: Optional[int],
+    rate_id: int,
+    expected_site_id: Optional[int],
+    expected_dt: Optional[datetime],
+):
+    async with generate_async_session(pg_la_timezone) as session:
+        actual = await select_tariff_generated_rate_for_scope(session, agg_id, site_id, rate_id)
+        if expected_dt is None:
+            expected_id = None
+        else:
+            expected_id = rate_id
+        assert_rate_for_id(
+            expected_rate_id=expected_id,
+            expected_tariff_id=1,
+            expected_site_id=expected_site_id,
+            expected_date=None if expected_dt is None else expected_dt.date(),
+            expected_time=None if expected_dt is None else expected_dt.time(),
+            expected_tz="America/Los_Angeles",
+            actual_rate=actual,
+        )
