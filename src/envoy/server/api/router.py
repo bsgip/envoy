@@ -8,6 +8,7 @@ from envoy.server.api.sep2.end_device import router as edev_router
 from envoy.server.api.sep2.function_set_assignments import router as fsa_router
 from envoy.server.api.sep2.metering_mirror import router as mm_router
 from envoy.server.api.sep2.pricing import router as price_router
+from envoy.server.api.sep2.response import router as response_router
 from envoy.server.api.sep2.subscription import router as sub_router
 from envoy.server.api.sep2.time import router as tm_router
 from envoy.server.api.unsecured.health import router as health_router
@@ -24,6 +25,7 @@ routers = [
     fsa_router,
     mm_router,
     price_router,
+    response_router,
     sub_router,
     tm_router,
 ]

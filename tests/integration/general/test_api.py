@@ -81,6 +81,12 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.PUT, HTTPMethod.POST], "/edev/1/der/1/dercap"),
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.PUT, HTTPMethod.POST], "/edev/1/der/1/derg"),
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.PUT, HTTPMethod.POST], "/edev/1/der/1/ders"),
+
+    # response function set
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/rsps"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/rsps/doe"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/edev/1/rsps/doe/rsp"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/rsps/doe/rsp/1"),
 ]
 # fmt: on
 

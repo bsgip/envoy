@@ -39,11 +39,7 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     global_dependencies = [Depends(lfdi_auth)]
     lifespan_managers = []
 
-    # if href_prefix is specified - include the PathPrefixDepends
-    if new_settings.href_prefix:
-        global_dependencies.append(
-            Depends(RequestStateSettingsDepends(new_settings.href_prefix, new_settings.iana_pen))
-        )
+    global_dependencies.append(Depends(RequestStateSettingsDepends(new_settings.href_prefix, new_settings.iana_pen)))
 
     # if default DOE is specified - include the DefaultDoeDepends
     if new_settings.default_doe_import_active_watts and new_settings.default_doe_export_active_watts:

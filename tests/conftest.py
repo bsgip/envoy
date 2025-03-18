@@ -15,6 +15,8 @@ from tests.unit.jwt import DEFAULT_CLIENT_ID, DEFAULT_DATABASE_RESOURCE_ID, DEFA
 DEFAULT_DOE_IMPORT_ACTIVE_WATTS = Decimal("8200")
 DEFAULT_DOE_EXPORT_ACTIVE_WATTS = Decimal("5400")
 
+TEST_IANA_PEN = 28547  # private enterprise number for the Australian National University - for use in testing
+
 
 @pytest.fixture
 def preserved_environment():
@@ -30,6 +32,9 @@ def pg_empty_config(
 
     # Install the DATABASE_URL before running alembic
     os.environ["DATABASE_URL"] = generate_async_conn_str_from_connection(postgresql)
+
+    # Load the default TEST_IANA_PEN into the IANA_PEN configuration
+    os.environ["IANA_PEN"] = str(TEST_IANA_PEN)
 
     if "notifications_enabled" in request.fixturenames:
         os.environ["ENABLE_NOTIFICATIONS"] = "True"
