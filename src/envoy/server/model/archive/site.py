@@ -25,7 +25,7 @@ from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX
 
 
 class ArchiveSite(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.Site.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.Site.__tablename__  # type: ignore
 
     site_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
     nmi: Mapped[Optional[str]] = mapped_column(VARCHAR(length=11), nullable=True)
@@ -41,7 +41,7 @@ class ArchiveSite(ArchiveBase):
 
 
 class ArchiveSiteDER(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDER.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDER.__tablename__  # type: ignore
 
     site_der_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
     site_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
@@ -51,7 +51,7 @@ class ArchiveSiteDER(ArchiveBase):
 
 
 class ArchiveSiteDERRating(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERRating.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERRating.__tablename__  # type: ignore
 
     site_der_rating_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
     site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
@@ -108,7 +108,7 @@ class ArchiveSiteDERRating(ArchiveBase):
 
 
 class ArchiveSiteDERSetting(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERSetting.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERSetting.__tablename__  # type: ignore
 
     site_der_setting_id: Mapped[int] = mapped_column(INTEGER, index=True)  # This is the original PK
     site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
@@ -165,7 +165,7 @@ class ArchiveSiteDERSetting(ArchiveBase):
 
 
 class ArchiveSiteDERAvailability(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERAvailability.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERAvailability.__tablename__  # type: ignore
 
     site_der_availability_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
     site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
@@ -187,7 +187,7 @@ class ArchiveSiteDERAvailability(ArchiveBase):
 
 
 class ArchiveSiteDERStatus(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERStatus.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERStatus.__tablename__  # type: ignore
 
     site_der_status_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
     site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK

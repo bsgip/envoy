@@ -1,6 +1,5 @@
-from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import pytest
 from envoy_schema.server.schema.sep2.types import DeviceCategory

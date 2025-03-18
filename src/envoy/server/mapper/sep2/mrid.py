@@ -245,7 +245,7 @@ class MridMapper:
         the current settings in scope (i.e. it's for a seperate deployed instance of this server) a ValueError will
         be raised"""
         if not mrid or len(mrid) != 32:
-            raise ValueError(f"Expected mrid to have 32 hex characters")
+            raise ValueError("Expected mrid to have 32 hex characters")
 
         decoded_iana_pen = decode_iana_pen(mrid)
         if decoded_iana_pen != scope.iana_pen:
@@ -264,7 +264,7 @@ class MridMapper:
 
         returns the DynamicOperatingEnvelope.dynamic_operating_envelope_id"""
         if not mrid or len(mrid) != 32:
-            raise ValueError(f"Expected mrid to have 32 hex characters")
+            raise ValueError("Expected mrid to have 32 hex characters")
 
         return decode_mrid_id(mrid)
 
@@ -277,7 +277,7 @@ class MridMapper:
 
         returns the SiteReadingType.site_reading_type_id"""
         if not mrid or len(mrid) != 32:
-            raise ValueError(f"Expected mrid to have 32 hex characters")
+            raise ValueError("Expected mrid to have 32 hex characters")
 
         return decode_mrid_id(mrid)
 
@@ -290,7 +290,7 @@ class MridMapper:
 
         returns the PricingReadingType AND TariffGeneratedRate.tariff_generated_rate_id"""
         if not mrid or len(mrid) != 32:
-            raise ValueError(f"Expected mrid to have 32 hex characters")
+            raise ValueError("Expected mrid to have 32 hex characters")
 
         id = decode_mrid_id(mrid)
         return (PricingReadingType((id >> 90) + 1), id & 0xFFFFFFFFFFFFFFFF)

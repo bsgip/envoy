@@ -1,6 +1,5 @@
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
-from enum import IntEnum, auto
 from itertools import islice, product
 from typing import Iterator, Sequence
 

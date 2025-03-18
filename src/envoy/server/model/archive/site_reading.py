@@ -19,7 +19,7 @@ from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX
 
 
 class ArchiveSiteReadingType(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site_reading.SiteReadingType.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site_reading.SiteReadingType.__tablename__  # type: ignore
 
     site_reading_type_id: Mapped[int] = mapped_column(INTEGER, index=True)
     aggregator_id: Mapped[int] = mapped_column(INTEGER)
@@ -38,7 +38,7 @@ class ArchiveSiteReadingType(ArchiveBase):
 
 
 class ArchiveSiteReading(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site_reading.SiteReading.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site_reading.SiteReading.__tablename__  # type: ignore
 
     site_reading_id: Mapped[int] = mapped_column(BigInteger, index=True)
     site_reading_type_id: Mapped[int] = mapped_column(INTEGER)
