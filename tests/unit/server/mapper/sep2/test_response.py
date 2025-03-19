@@ -132,26 +132,25 @@ def test_ResponseMapper_map_from_doe_request(optional_is_none: bool, response_ty
 
 
 @pytest.mark.parametrize(
-    "href_prefix, optional_is_none, scope_type, response_set_type",
-    product(
-        [None, "/prefix"], [True, False], [DeviceOrAggregatorRequestScope, AggregatorRequestScope], ResponseSetType
-    ),
+    "href_prefix, optional_is_none, response_set_type",
+    product([None, "/prefix"], [True, False], ResponseSetType),
 )
 def test_ResponseListMapper_response_list_href(
-    href_prefix: Optional[str], optional_is_none: bool, scope_type: type, response_set_type: ResponseSetType
+    href_prefix: Optional[str], optional_is_none: bool, response_set_type: ResponseSetType
 ):
     """Quick sanity check to make sure there isn't obvious runtime exception when generating various list hrefs"""
     scope = generate_class_instance(
-        scope_type,
+        BaseRequestScope,
         seed=1001,
         optional_is_none=optional_is_none,
         href_prefix=href_prefix,
     )
-    href = ResponseListMapper.response_list_href(scope, response_set_type)
+    display_site_id = 9988776655
+    href = ResponseListMapper.response_list_href(scope, display_site_id, response_set_type)
     assert isinstance(href, str)
     if href_prefix is not None:
         href.startswith(href_prefix)
-    assert str(scope.display_site_id) in href
+    assert str(display_site_id) in href
 
 
 @pytest.mark.parametrize(
