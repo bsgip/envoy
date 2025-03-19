@@ -19,7 +19,8 @@ from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, Subscrib
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
-from envoy.server.mapper.sep2.mrid import MridMapper
+from envoy.server.mapper.sep2.mrid import MridMapper, ResponseSetType
+from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper, ResponseMapper
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
@@ -60,6 +61,10 @@ class DERControlMapper:
                 "mRID": MridMapper.encode_doe_mrid(scope, doe.dynamic_operating_envelope_id),
                 "version": 1,
                 "description": doe.start_time.isoformat(),
+                "replyTo": ResponseListMapper.response_list_href(
+                    scope, scope.display_site_id, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES
+                ),  # Response function set
+                "responseRequired": SPECIFIC_RESPONSE_REQUIRED,  # Response function set
                 "interval": DateTimeIntervalType.model_validate(
                     {
                         "duration": doe.duration_seconds,

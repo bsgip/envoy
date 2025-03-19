@@ -18,6 +18,9 @@ from envoy.server.model.response import DynamicOperatingEnvelopeResponse, Tariff
 from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
+# From sep2 Table 27 - This will indicate that response to each SPECIFIC event is requested
+SPECIFIC_RESPONSE_REQUIRED = "03"
+
 
 def response_set_type_to_href(t: ResponseSetType) -> str:
     """Converts a ResponseSetType to a href id/slug that will uniquely identify the type as a short identifier"""
@@ -125,6 +128,15 @@ class ResponseMapper:
 
 
 class ResponseListMapper:
+    @staticmethod
+    def response_list_href(scope: BaseRequestScope, display_site_id: int, response_set_type: ResponseSetType) -> str:
+        """Returns a href for a ResponseList resource of the specified type (for the specified scope)"""
+        return generate_href(
+            uri.ResponseListUri,
+            scope,
+            site_id=display_site_id,
+            response_list_id=response_set_type_to_href(response_set_type),
+        )
 
     @staticmethod
     def map_to_price_response(
@@ -133,15 +145,10 @@ class ResponseListMapper:
         total_responses: int,
     ) -> ResponseListResponse:
         """Generates a list response for a price response list"""
-        href = generate_href(
-            uri.ResponseListUri,
-            scope,
-            site_id=scope.display_site_id,
-            response_list_id=response_set_type_to_href(ResponseSetType.TARIFF_GENERATED_RATES),
-        )
-
         return ResponseListResponse(
-            href=href,
+            href=ResponseListMapper.response_list_href(
+                scope, scope.display_site_id, ResponseSetType.TARIFF_GENERATED_RATES
+            ),
             all_=total_responses,
             results=len(responses),
             Response_=[ResponseMapper.map_to_price_response(scope, r) for r in responses],
@@ -154,15 +161,10 @@ class ResponseListMapper:
         total_responses: int,
     ) -> ResponseListResponse:
         """Generates a list response for a doe response list"""
-        href = generate_href(
-            uri.ResponseListUri,
-            scope,
-            site_id=scope.display_site_id,
-            response_list_id=response_set_type_to_href(ResponseSetType.DYNAMIC_OPERATING_ENVELOPES),
-        )
-
         return ResponseListResponse(
-            href=href,
+            href=ResponseListMapper.response_list_href(
+                scope, scope.display_site_id, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES
+            ),
             all_=total_responses,
             results=len(responses),
             Response_=[ResponseMapper.map_to_doe_response(scope, r) for r in responses],

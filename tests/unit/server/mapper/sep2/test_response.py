@@ -26,7 +26,7 @@ from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import TariffGeneratedRate
-from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
 def test_response_set_type_to_href():
@@ -129,6 +129,29 @@ def test_ResponseMapper_map_from_doe_request(optional_is_none: bool, response_ty
     assert result.created_time is None, "Assigned by the database"
     assert result.site_id == doe.site_id
     assert result.dynamic_operating_envelope_id == doe.dynamic_operating_envelope_id
+
+
+@pytest.mark.parametrize(
+    "href_prefix, optional_is_none, scope_type, response_set_type",
+    product(
+        [None, "/prefix"], [True, False], [DeviceOrAggregatorRequestScope, AggregatorRequestScope], ResponseSetType
+    ),
+)
+def test_ResponseListMapper_response_list_href(
+    href_prefix: Optional[str], optional_is_none: bool, scope_type: type, response_set_type: ResponseSetType
+):
+    """Quick sanity check to make sure there isn't obvious runtime exception when generating various list hrefs"""
+    scope = generate_class_instance(
+        scope_type,
+        seed=1001,
+        optional_is_none=optional_is_none,
+        href_prefix=href_prefix,
+    )
+    href = ResponseListMapper.response_list_href(scope, response_set_type)
+    assert isinstance(href, str)
+    if href_prefix is not None:
+        href.startswith(href_prefix)
+    assert str(scope.display_site_id) in href
 
 
 @pytest.mark.parametrize(

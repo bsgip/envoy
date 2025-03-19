@@ -2,6 +2,7 @@ import re
 import unittest.mock as mock
 from datetime import datetime
 from http import HTTPStatus
+from itertools import chain
 from typing import Optional
 
 import pytest
@@ -226,6 +227,7 @@ async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_pref
     ]
     visited_uris: set[str] = set()
     href_extractor = re.compile('href[\\r\\n ]*=[\\r\\n ]*"([^"]*)"', re.MULTILINE | re.IGNORECASE)
+    reply_to_extractor = re.compile('replyTo[\\r\\n ]*=[\\r\\n ]*"([^"]*)"', re.MULTILINE | re.IGNORECASE)
 
     while len(uris_to_visit) > 0:
         # get the next URI to visit
@@ -244,7 +246,7 @@ async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_pref
 
         # search for more hrefs to request from our response
         # Ensure they all start with prefix
-        for match in re.finditer(href_extractor, body):
+        for match in chain(re.finditer(href_extractor, body), re.finditer(reply_to_extractor, body)):
             new_uri = match.group(1)
 
             if expected_href_prefix is not None:

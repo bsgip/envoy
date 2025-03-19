@@ -33,7 +33,8 @@ from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.der import to_hex_binary
-from envoy.server.mapper.sep2.mrid import MridMapper, PricingReadingType
+from envoy.server.mapper.sep2.mrid import MridMapper, PricingReadingType, ResponseSetType
+from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
 
@@ -401,6 +402,10 @@ class TimeTariffIntervalMapper:
                 "description": rate.start_time.isoformat(),
                 "touTier": TOUType.NOT_APPLICABLE,
                 "creationTime": int(rate.changed_time.timestamp()),
+                "replyTo": ResponseListMapper.response_list_href(
+                    scope, rate.site_id, ResponseSetType.TARIFF_GENERATED_RATES
+                ),  # Response function set
+                "responseRequired": SPECIFIC_RESPONSE_REQUIRED,  # Response function set
                 "interval": {
                     "start": int(rate.start_time.timestamp()),
                     "duration": rate.duration_seconds,
