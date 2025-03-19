@@ -46,7 +46,7 @@ def get_value_multiplier(value: Optional[int], multiplier: Optional[int], value_
 
 
 def set_value_multiplier(
-    vm: Union[Optional[ValueMultiplier], Optional[DisplacementMultiplier]]
+    vm: Union[Optional[ValueMultiplier], Optional[DisplacementMultiplier]],
 ) -> tuple[Optional[int], Optional[int]]:
     """Utility for undoing get_value_multiplier. Returns the value|displacement / multiplier
     for the specified vm that should allow a quick shorthand for setting the values back

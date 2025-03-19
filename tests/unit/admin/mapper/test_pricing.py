@@ -1,5 +1,4 @@
-""" Basic tests that valid no exceptions are being raised
-"""
+"""Basic tests that valid no exceptions are being raised"""
 
 from datetime import datetime
 

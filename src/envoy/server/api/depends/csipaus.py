@@ -1,5 +1,4 @@
-""" Module for CSIP-Australia specific middleware and depends.
-"""
+"""Module for CSIP-Australia specific middleware and depends."""
 
 from fastapi import FastAPI
 from starlette.types import Receive, Scope, Send, Message

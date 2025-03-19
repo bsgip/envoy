@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 
 def generate_combined_lifespan_manager(
-    managers: list[Callable[[FastAPI], _AsyncGeneratorContextManager]]
+    managers: list[Callable[[FastAPI], _AsyncGeneratorContextManager]],
 ) -> Optional[Callable[[FastAPI], _AsyncGeneratorContextManager]]:
     """Given a (possibly empty) set of lifespan managers - create a single
     lifespan manager that will enter/exit them all sequentially

@@ -1,5 +1,4 @@
-""" Managers for pricing/tariff endpoints
-"""
+"""Managers for pricing/tariff endpoints"""
 
 from datetime import datetime
 from typing import List

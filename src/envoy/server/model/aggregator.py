@@ -12,6 +12,7 @@ NULL_AGGREGATOR_ID: int = 0
 
 class Aggregator(Base):
     "Represents a Distributed Energy Resource (DER) aggregator"
+
     __tablename__ = "aggregator"
 
     aggregator_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
