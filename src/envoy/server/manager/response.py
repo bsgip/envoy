@@ -126,7 +126,7 @@ class ResponseManager:
         session: AsyncSession,
         scope: DeviceOrAggregatorRequestScope,
         response_set_type: ResponseSetType,
-        response: Union[DERControlResponse, PriceResponse],
+        response: Union[DERControlResponse, PriceResponse, Response],
     ) -> str:
         """Creates a new Response entry in the database for the specified subject.
 

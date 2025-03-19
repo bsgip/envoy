@@ -4,16 +4,10 @@ from http import HTTPStatus
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-import envoy_schema.server.schema.uri as uris
 import pytest
-from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_nowish
 from assertical.fake.generator import generate_class_instance
-from assertical.fake.http import HTTPMethod, MockedAsyncClient
 from assertical.fixtures.postgres import generate_async_session
-from envoy_schema.server.schema.sep2.der import DERCapability
-from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
-from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading
 from envoy_schema.server.schema.sep2.response import (
     DERControlResponse,
     PriceResponse,
@@ -23,26 +17,18 @@ from envoy_schema.server.schema.sep2.response import (
     ResponseSetList,
     ResponseType,
 )
-from envoy_schema.server.schema.sep2.types import DeviceCategory
-from envoy_schema.server.schema.uri import EndDeviceListUri
 from httpx import AsyncClient
-from sqlalchemy import delete, func, insert, select
+from sqlalchemy import func, insert, select
 
-from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
-from envoy.server.crud.subscription import select_subscription_by_id
-from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
-from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.mrid import MridMapper, PricingReadingType, ResponseSetType
 from envoy.server.mapper.sep2.response import response_set_type_to_href
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
-from envoy.server.model.subscription import Subscription
 from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope
 from tests.conftest import TEST_IANA_PEN
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
-from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
 from tests.data.certificates.certificate6 import TEST_CERTIFICATE_FINGERPRINT as DEVICE_5_CERT
 from tests.data.certificates.certificate7 import TEST_CERTIFICATE_FINGERPRINT as DEVICE_6_CERT
 from tests.data.certificates.certificate8 import TEST_CERTIFICATE_FINGERPRINT as UNREGISTERED_CERT

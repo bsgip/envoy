@@ -1,10 +1,11 @@
-from typing import Sequence
+from typing import Sequence, Union
 
 import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.sep2.identification import ListLink
 from envoy_schema.server.schema.sep2.response import (
     DERControlResponse,
     PriceResponse,
+    Response,
     ResponseListResponse,
     ResponseSet,
     ResponseSetList,
@@ -79,7 +80,7 @@ class ResponseMapper:
 
     @staticmethod
     def map_from_price_request(
-        r: PriceResponse,
+        r: Union[PriceResponse, Response],
         tariff_generated_rate: TariffGeneratedRate,
         pricing_reading_type: PricingReadingType,
     ) -> TariffGeneratedRateResponse:
@@ -111,7 +112,7 @@ class ResponseMapper:
 
     @staticmethod
     def map_from_doe_request(
-        r: DERControlResponse, dynamic_operating_envelope: DynamicOperatingEnvelope
+        r: Union[DERControlResponse, Response], dynamic_operating_envelope: DynamicOperatingEnvelope
     ) -> DynamicOperatingEnvelopeResponse:
         """Maps a sep2 DERControlResponse to an internal DynamicOperatingEnvelopeResponse model."""
 

@@ -204,7 +204,9 @@ async def create_response(
     request: Request,
     site_id: int,
     response_list_id: str,
-    payload: Union[DERControlResponse, PriceResponse] = Depends(XmlRequest(Sep2Response)),
+    payload: Union[DERControlResponse, PriceResponse, Sep2Response] = Depends(
+        XmlRequest(DERControlResponse, PriceResponse, Sep2Response)
+    ),
 ) -> Response:
     """Creates a "Response" to an existing TimeTariffInterval or DERControl.
 

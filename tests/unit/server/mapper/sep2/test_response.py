@@ -8,6 +8,7 @@ from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.response import (
     DERControlResponse,
     PriceResponse,
+    Response,
     ResponseListResponse,
     ResponseSet,
     ResponseSetList,
@@ -80,9 +81,9 @@ def test_ResponseMapper_map_to_price_response(href_prefix: Optional[str], option
     assert len(result.subject) == 32, "Expected 128 bits of hex chars"
 
 
-@pytest.mark.parametrize("optional_is_none", [True, False])
-def test_ResponseMapper_map_from_price_request(optional_is_none: bool):
-    price_response = generate_class_instance(PriceResponse, seed=101, optional_is_none=optional_is_none)
+@pytest.mark.parametrize("optional_is_none, response_type", product([True, False], [Response, DERControlResponse]))
+def test_ResponseMapper_map_from_price_request(optional_is_none: bool, response_type: type[Response]):
+    price_response = generate_class_instance(response_type, seed=101, optional_is_none=optional_is_none)
     tariff_generated_rate = generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=optional_is_none)
     for prt in PricingReadingType:
         result = ResponseMapper.map_from_price_request(price_response, tariff_generated_rate, prt)
@@ -117,12 +118,12 @@ def test_ResponseMapper_map_to_doe_response(href_prefix: Optional[str], optional
     assert len(result.subject) == 32, "Expected 128 bits of hex chars"
 
 
-@pytest.mark.parametrize("optional_is_none", [True, False])
-def test_ResponseMapper_map_from_doe_request(optional_is_none: bool):
-    der_response = generate_class_instance(DERControlResponse, seed=101, optional_is_none=optional_is_none)
+@pytest.mark.parametrize("optional_is_none, response_type", product([True, False], [Response, DERControlResponse]))
+def test_ResponseMapper_map_from_doe_request(optional_is_none: bool, response_type: type[Response]):
+    response = generate_class_instance(response_type, seed=101, optional_is_none=optional_is_none)
     doe = generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=optional_is_none)
 
-    result = ResponseMapper.map_from_doe_request(der_response, doe)
+    result = ResponseMapper.map_from_doe_request(response, doe)
     assert isinstance(result, DynamicOperatingEnvelopeResponse)
     assert result.dynamic_operating_envelope_response_id is None, "Assigned by the database"
     assert result.created_time is None, "Assigned by the database"
