@@ -26,7 +26,7 @@ from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import TariffGeneratedRate
-from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
 def test_response_set_type_to_href():
