@@ -36,11 +36,11 @@ from parse import parse  # type: ignore
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, remove_href_prefix
+from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID, DERControlMapper
 from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMapper, DERSettingMapper, DERStatusMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
 from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
-from envoy.server.mapper.sep2.mrid import PricingReadingType
 from envoy.server.mapper.sep2.pricing import TimeTariffIntervalMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus

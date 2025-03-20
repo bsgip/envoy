@@ -9,7 +9,7 @@ from envoy_schema.server.schema.sep2.pricing import TariffProfileResponse, TimeT
 
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.sep2.mrid import PricingReadingType
+from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pricing import (
     TOTAL_PRICING_READING_TYPES,
     ConsumptionTariffIntervalMapper,

@@ -5,7 +5,7 @@ from envoy_schema.server.schema.sep2.response import ResponseType
 from sqlalchemy import INTEGER, SMALLINT, BigInteger, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from envoy.server.mapper.sep2.mrid import PricingReadingType
+from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site

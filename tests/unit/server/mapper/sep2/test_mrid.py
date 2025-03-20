@@ -5,6 +5,7 @@ from typing import Callable
 import pytest
 from assertical.fake.generator import generate_class_instance
 
+from envoy.server.mapper.constants import MridType, PricingReadingType, ResponseSetType
 from envoy.server.mapper.sep2.mrid import (
     MAX_IANA_PEN,
     MAX_INT_26,
@@ -13,9 +14,6 @@ from envoy.server.mapper.sep2.mrid import (
     MAX_MRID_ID,
     MAX_MRID_TYPE,
     MridMapper,
-    MridType,
-    PricingReadingType,
-    ResponseSetType,
     decode_iana_pen,
     decode_mrid_id,
     decode_mrid_type,

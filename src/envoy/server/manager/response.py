@@ -24,7 +24,8 @@ from envoy.server.crud.response import (
     select_tariff_generated_rate_responses,
 )
 from envoy.server.exception import BadRequestError, NotFoundError
-from envoy.server.mapper.sep2.mrid import MridMapper, MridType, ResponseSetType
+from envoy.server.mapper.constants import MridType, ResponseSetType
+from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import ResponseListMapper, ResponseMapper, ResponseSetMapper
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope
 

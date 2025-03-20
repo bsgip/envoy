@@ -14,7 +14,8 @@ from envoy_schema.server.schema.sep2.response import (
     ResponseSetList,
 )
 
-from envoy.server.mapper.sep2.mrid import MridType, PricingReadingType, ResponseSetType, decode_mrid_type
+from envoy.server.mapper.constants import MridType, PricingReadingType, ResponseSetType
+from envoy.server.mapper.sep2.mrid import decode_mrid_type
 from envoy.server.mapper.sep2.response import (
     ResponseListMapper,
     ResponseMapper,

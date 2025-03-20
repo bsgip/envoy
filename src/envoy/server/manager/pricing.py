@@ -28,7 +28,7 @@ from envoy.server.crud.pricing import (
     select_tariff_rates_for_day,
 )
 from envoy.server.exception import InvalidIdError, NotFoundError
-from envoy.server.mapper.sep2.mrid import PricingReadingType
+from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pricing import (
     TOTAL_PRICING_READING_TYPES,
     ConsumptionTariffIntervalMapper,

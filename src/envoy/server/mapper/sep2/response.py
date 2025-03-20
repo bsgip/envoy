@@ -12,7 +12,8 @@ from envoy_schema.server.schema.sep2.response import (
 )
 
 from envoy.server.mapper.common import generate_href
-from envoy.server.mapper.sep2.mrid import MridMapper, PricingReadingType, ResponseSetType
+from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
+from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
 from envoy.server.model.tariff import TariffGeneratedRate

@@ -32,8 +32,9 @@ from envoy_schema.server.schema.sep2.types import (
 from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
+from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
 from envoy.server.mapper.sep2.der import to_hex_binary
-from envoy.server.mapper.sep2.mrid import MridMapper, PricingReadingType, ResponseSetType
+from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope

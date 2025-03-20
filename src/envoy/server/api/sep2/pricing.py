@@ -22,7 +22,7 @@ from envoy.server.manager.pricing import (
     TimeTariffIntervalManager,
 )
 from envoy.server.mapper.common import generate_href
-from envoy.server.mapper.sep2.mrid import PricingReadingType
+from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pricing import PricingReadingTypeMapper
 
 logger = logging.getLogger(__name__)

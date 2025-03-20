@@ -12,7 +12,8 @@ from sqlalchemy import func, select
 
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.response import ResponseManager
-from envoy.server.mapper.sep2.mrid import MridMapper, MridType, PricingReadingType, ResponseSetType
+from envoy.server.mapper.constants import MridType, PricingReadingType, ResponseSetType
+from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import response_set_type_to_href
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse

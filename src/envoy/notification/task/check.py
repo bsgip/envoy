@@ -29,7 +29,7 @@ from envoy.notification.exception import NotificationError
 from envoy.notification.handler import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
-from envoy.server.mapper.sep2.mrid import PricingReadingType
+from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper, NotificationType, SubscriptionMapper
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus

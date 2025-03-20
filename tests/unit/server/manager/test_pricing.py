@@ -26,7 +26,7 @@ from envoy.server.manager.pricing import (
     TariffProfileManager,
     TimeTariffIntervalManager,
 )
-from envoy.server.mapper.sep2.mrid import PricingReadingType
+from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pricing import TOTAL_PRICING_READING_TYPES
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
