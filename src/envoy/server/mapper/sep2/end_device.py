@@ -27,6 +27,7 @@ class EndDeviceMapper:
         der_href = generate_href(uri.DERListUri, scope, site_id=site.site_id)
         pubsub_href = generate_href(uri.SubscriptionListUri, scope, site_id=site.site_id)
         registration_href = generate_href(uri.RegistrationUri, scope, site_id=site.site_id)
+        logevent_href = generate_href(uri.LogEventListUri, scope, site_id=site.site_id)
         return EndDeviceResponse.model_validate(
             {
                 "href": edev_href,
@@ -41,6 +42,7 @@ class EndDeviceMapper:
                 "SubscriptionListLink": ListLink(href=pubsub_href),
                 "FunctionSetAssignmentsListLink": ListLink(href=fsa_href),
                 "RegistrationLink": Link(href=registration_href),
+                "LogEventListLink": ListLink(href=logevent_href),
             }
         )
 
