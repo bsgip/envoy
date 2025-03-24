@@ -73,8 +73,8 @@ async def test_fetch_log_event_for_scope_missing(
 
 
 @mock.patch("envoy.server.manager.log_event.LogEventListMapper.map_to_list_response")
-@mock.patch("envoy.server.manager.log_event.select_log_events")
-@mock.patch("envoy.server.manager.log_event.count_log_events")
+@mock.patch("envoy.server.manager.log_event.select_site_log_events")
+@mock.patch("envoy.server.manager.log_event.count_site_log_events")
 @pytest.mark.anyio
 async def test_fetch_log_event_list_for_scope(
     mock_count_log_events: mock.MagicMock,
