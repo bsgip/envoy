@@ -353,3 +353,16 @@ INSERT INTO public.site_der_status (site_der_status_id, site_der_id, created_tim
 VALUES (1, 2, '2000-01-01 00:00:00Z', '2022-11-01 11:05:04.500', 64, 1, '2010-11-03 11:05:06+11', 10, '2010-11-05 11:05:08+11', 1, '2010-11-07 11:05:10+11', 'mnstat', '2010-11-09 11:05:12+11', 1, '2010-11-11 11:05:14+11', NULL, '2016-05-06 10:38:37+10', 1, '2016-05-10 10:38:41+10', 8, '2016-05-08 10:38:39+10');
 SELECT pg_catalog.setval('public.site_der_status_site_der_status_id_seq', 2, true);
 
+
+INSERT INTO public.site_log_event (site_log_event_id, site_id, created_time, details, extended_data, function_set, log_event_code, log_event_id, log_event_pen, profile_id)
+VALUES (1, 1, '2023-05-01 01:01:01.500', 'log-1', 11, 1, 12, 13, 14, 0);
+INSERT INTO public.site_log_event (site_log_event_id, site_id, created_time, details, extended_data, function_set, log_event_code, log_event_id, log_event_pen, profile_id)
+VALUES (2, 1, '2023-05-01 02:02:02.500', 'log-2', 21, 2, 22, 23, 24, 1);
+INSERT INTO public.site_log_event (site_log_event_id, site_id, created_time, details, extended_data, function_set, log_event_code, log_event_id, log_event_pen, profile_id)
+VALUES (3, 2, '2023-05-01 03:03:03.500', 'log-3', 31, 3, 32, 33, 34, 2);
+INSERT INTO public.site_log_event (site_log_event_id, site_id, created_time, details, extended_data, function_set, log_event_code, log_event_id, log_event_pen, profile_id)
+VALUES (4, 3, '2023-05-01 04:04:04.500', 'log-4', 41, 4, 42, 43, 44, 3);
+INSERT INTO public.site_log_event (site_log_event_id, site_id, created_time, details, extended_data, function_set, log_event_code, log_event_id, log_event_pen, profile_id)
+VALUES (5, 1, '2023-05-01 05:05:05.500', NULL, NULL, 5, 52, 53, 54, 4);
+SELECT pg_catalog.setval('public.site_log_event_site_log_event_id_seq', 6, true);
+

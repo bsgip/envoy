@@ -15,8 +15,20 @@ from envoy_schema.server.schema.sep2.der import (
     OperationalModeStatusType,
     StorageModeStatusType,
 )
+from envoy_schema.server.schema.sep2.log_events import FunctionSetIdentifier, ProfileIdentifier
 from envoy_schema.server.schema.sep2.types import DeviceCategory
-from sqlalchemy import DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import (
+    DECIMAL,
+    INTEGER,
+    SMALLINT,
+    VARCHAR,
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Index,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
@@ -334,3 +346,31 @@ class SiteDERStatus(Base):
 
     site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_status", lazy="raise", single_parent=True)
     __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)
+
+
+class SiteLogEvent(Base):
+    """Represents a "log event" occurring for a particular site. A log event is any "unusual" event that a site /
+    EndDevice has come across through interacting with one of the various function sets."""
+
+    __tablename__ = "site_log_event"
+
+    site_log_event_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id", ondelete="CASCADE"))
+
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When this record was created
+
+    details: Mapped[Optional[str]] = mapped_column(VARCHAR(32), nullable=True)  # Human readable string
+    extended_data: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # Additional details from client
+    function_set: Mapped[FunctionSetIdentifier] = mapped_column(SMALLINT)  # What function set generated this event
+    log_event_code: Mapped[int] = mapped_column(SMALLINT)  # sep2 defined, scoped to the function set
+    log_event_id: Mapped[int] = mapped_column(SMALLINT)  # sep2 defined, scoped to the function set
+    log_event_pen: Mapped[int] = mapped_column(INTEGER)  # sep2 defined, scoped to the function set
+    profile_id: Mapped[ProfileIdentifier] = mapped_column(SMALLINT)
+
+    site: Mapped["Site"] = relationship(lazy="raise")
+
+    __table_args__ = (
+        Index("site_log_event_site_id_created_time_log_event_id_idx", "site_id", "created_time", "log_event_id"),
+    )
