@@ -37,19 +37,19 @@ class LogEventMapper:
         )
 
     @staticmethod
-    def map_from_log_event(l: LogEvent, site_id: int) -> SiteLogEvent:
+    def map_from_log_event(log_event: LogEvent, site_id: int) -> SiteLogEvent:
         """Maps a sep2 LogEvent to an internal SiteLogEvent model for a specific site"""
 
         # createdTime will be managed by the DB itself
         return SiteLogEvent(
             site_id=site_id,
-            details=l.details,
-            extended_data=l.extendedData,
-            function_set=l.functionSet,
-            log_event_code=l.logEventCode,
-            log_event_id=l.logEventID,
-            log_event_pen=l.logEventPEN,
-            profile_id=l.profileID,
+            details=log_event.details,
+            extended_data=log_event.extendedData,
+            function_set=log_event.functionSet,
+            log_event_code=log_event.logEventCode,
+            log_event_id=log_event.logEventID,
+            log_event_pen=log_event.logEventPEN,
+            profile_id=log_event.profileID,
         )
 
 

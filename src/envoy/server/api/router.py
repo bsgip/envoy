@@ -6,6 +6,7 @@ from envoy.server.api.sep2.derp import router as derp_router
 from envoy.server.api.sep2.device_capability import router as dcap_router
 from envoy.server.api.sep2.end_device import router as edev_router
 from envoy.server.api.sep2.function_set_assignments import router as fsa_router
+from envoy.server.api.sep2.log_event import router as log_router
 from envoy.server.api.sep2.metering_mirror import router as mm_router
 from envoy.server.api.sep2.pricing import router as price_router
 from envoy.server.api.sep2.response import router as response_router
@@ -23,6 +24,7 @@ routers = [
     der_router,
     derp_router,
     fsa_router,
+    log_router,
     mm_router,
     price_router,
     response_router,
