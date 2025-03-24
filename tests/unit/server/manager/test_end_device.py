@@ -20,7 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.exception import ForbiddenError, NotFoundError, UnableToGenerateIdError
 from envoy.server.manager.end_device import (
     MAX_REGISTRATION_PIN,
-    EndDeviceListManager,
     EndDeviceManager,
     RegistrationManager,
     fetch_sites_and_count_for_claims,
@@ -634,7 +633,7 @@ async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
     mock_fetch_sites_and_count_for_claims.return_value = (returned_sites, returned_site_count)
 
     # Act
-    result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_for_scope(
+    result: EndDeviceListResponse = await EndDeviceManager.fetch_enddevicelist_for_scope(
         mock_session, scope, start, after, limit
     )
 
@@ -688,7 +687,7 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
     mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
     mock_fetch_sites_and_count_for_claims.return_value = (returned_sites, returned_site_count)
     # Act
-    result: EndDeviceListResponse = await EndDeviceListManager.fetch_enddevicelist_for_scope(
+    result: EndDeviceListResponse = await EndDeviceManager.fetch_enddevicelist_for_scope(
         mock_session, scope, start, after, input_limit
     )
 

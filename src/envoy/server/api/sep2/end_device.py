@@ -16,7 +16,7 @@ from envoy.server.api.request import (
 )
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.exception import BadRequestError, ForbiddenError, NotFoundError
-from envoy.server.manager.end_device import EndDeviceListManager, EndDeviceManager, RegistrationManager
+from envoy.server.manager.end_device import EndDeviceManager, RegistrationManager
 from envoy.server.mapper.common import generate_href
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,7 @@ async def get_enddevice_list(
     """
 
     return XmlResponse(
-        await EndDeviceListManager.fetch_enddevicelist_for_scope(
+        await EndDeviceManager.fetch_enddevicelist_for_scope(
             db.session,
             extract_request_claims(request).to_unregistered_request_scope(),
             start=extract_start_from_paging_param(start),

@@ -223,8 +223,6 @@ class EndDeviceManager:
 
         return True
 
-
-class EndDeviceListManager:
     @staticmethod
     async def fetch_enddevicelist_for_scope(
         session: AsyncSession,
