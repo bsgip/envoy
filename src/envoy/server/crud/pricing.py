@@ -69,7 +69,7 @@ async def select_tariff_generated_rate_for_scope(
     site_id: Optional[int],
     rate_id: int,
 ) -> Optional[TariffGeneratedRate]:
-    """Attempts to fetch a TariffGeneratedRate using its' primary id, also scoping it to a particular aggregator/site
+    """Attempts to fetch a TariffGeneratedRate using its primary id, also scoping it to a particular aggregator/site
 
     aggregator_id: The aggregator id to constrain the lookup to
     site_id: If None - no effect otherwise the query will apply a filter on site_id using this value"""

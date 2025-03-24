@@ -78,7 +78,7 @@ async def _doe_responses(
     limit: Optional[int],
     created_after: datetime,
 ) -> Union[Sequence[DOEResponse], int]:
-    """Internal utility for fetching doe responses's
+    """Internal utility for fetching doe responses
 
     site_id: If None - no site_id filter applied, otherwise filter on site_id = Value
 

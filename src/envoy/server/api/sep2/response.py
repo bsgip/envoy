@@ -18,11 +18,27 @@ from envoy.server.api.request import (
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.response import ResponseManager
+from envoy.server.mapper.constants import ResponseSetType
 from envoy.server.mapper.sep2.response import href_to_response_set_type
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def try_parse_response_set_type(site_id: int, response_list_id: str) -> ResponseSetType:
+    """Parses the URI path component associated with a "response_list_id" into a ResponseSetType.
+
+    raising a LoggedHttpException with appropriate HTTP status code if something doesn't work"""
+    try:
+        return href_to_response_set_type(response_list_id)
+    except ValueError as exc:
+        logger.error(
+            f"ValueError: '{response_list_id}' does not map to a response set type for site {site_id}.", exc_info=exc
+        )
+        raise LoggedHttpException(
+            logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=f"ResponseSet '{response_list_id}' does not exist"
+        )
 
 
 @router.head(uri.ResponseSetUri)
@@ -47,13 +63,7 @@ async def get_response_set(
 
     """
 
-    try:
-        response_set_type = href_to_response_set_type(response_list_id)
-    except ValueError as exc:
-        logger.error(f"'{response_list_id}' does not map to a response set type for site {site_id}.", exc_info=exc)
-        raise LoggedHttpException(
-            logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=f"ResponseSet '{response_list_id}' does not exist"
-        )
+    response_set_type = try_parse_response_set_type(site_id, response_list_id)
 
     try:
         response = ResponseManager.fetch_response_set_for_scope(
@@ -128,13 +138,7 @@ async def get_response(
 
     """
 
-    try:
-        response_set_type = href_to_response_set_type(response_list_id)
-    except ValueError as exc:
-        logger.error(f"'{response_list_id}' does not map to a response set type for site {site_id}.", exc_info=exc)
-        raise LoggedHttpException(
-            logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=f"ResponseList '{response_list_id}' does not exist"
-        )
+    response_set_type = try_parse_response_set_type(site_id, response_list_id)
 
     try:
         response = await ResponseManager.fetch_response_for_scope(
@@ -177,13 +181,7 @@ async def get_response_list(
 
     """
 
-    try:
-        response_set_type = href_to_response_set_type(response_list_id)
-    except ValueError as exc:
-        logger.error(f"'{response_list_id}' does not map to a response set type for site {site_id}.", exc_info=exc)
-        raise LoggedHttpException(
-            logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=f"ResponseList '{response_list_id}' does not exist"
-        )
+    response_set_type = try_parse_response_set_type(site_id, response_list_id)
 
     try:
         response = await ResponseManager.fetch_response_list_for_scope(
@@ -222,13 +220,7 @@ async def create_response(
         fastapi.Response object with a LOCATION_HEADER_NAME header with the href of the newly created response.
 
     """
-    try:
-        response_set_type = href_to_response_set_type(response_list_id)
-    except ValueError as exc:
-        logger.error(f"'{response_list_id}' does not map to a response set type for site {site_id}.", exc_info=exc)
-        raise LoggedHttpException(
-            logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=f"ResponseList '{response_list_id}' does not exist"
-        )
+    response_set_type = try_parse_response_set_type(site_id, response_list_id)
 
     try:
         location_href = await ResponseManager.create_response_for_scope(

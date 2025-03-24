@@ -25,18 +25,18 @@ def encode_mrid(mrid_type: MridType, id: int, iana_pen: int) -> str:
 
     This function will encode the following MRID format from LSB to MSB
 
-    Bits 0-31 (4 bytes): IANA Pen
-    Bytes 32-123 (11.5 Bytes): Unique ID identifying the source record primary key
-    Byte 124-127 (0.5 bytes) mrid_type byte
+    Bits 0-31 (32 bits): IANA Pen
+    Bytes 32-123 (92 bits): Unique ID identifying the source record primary key
+    Byte 124-127 (4 bits) mrid_type byte
 
     Will return a hex encoded mrid string like: 'abbbbbbbbbbbbbbbbbbbbbbbcccccccc' with:
         "a" representing the mrid type
         "b" representing the id
         "c" representing the iana_pen
 
-    mrid_type: Treated as an unsigned int - What is this mrid representing?
-    id: Treated as an unsigned int - an mrid_type specific value - Limited to 88 bits of precision
-    iana_pen: Treated as an unsigned int - The IANA Private Enterprise Number of the organisation hosting this server"""
+    mrid_type:  (4 bits) Unsigned int - What is this mrid representing?
+    id:  (92 bits) Unsigned int - an mrid_type specific value
+    iana_pen: (32 bits) Unsigned int - The IANA Private Enterprise Number of the org hosting this server"""
 
     if iana_pen < 0 or iana_pen > MAX_IANA_PEN:
         raise ValueError(f"iana_pen {iana_pen} is not in the range 0 -> {MAX_IANA_PEN}")

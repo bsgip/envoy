@@ -147,9 +147,7 @@ class ResponseManager:
         if response_set_type == ResponseSetType.DYNAMIC_OPERATING_ENVELOPES:
 
             if mrid_type != MridType.DYNAMIC_OPERATING_ENVELOPE:
-                raise BadRequestError(
-                    f"You cannot send a {mrid_type} response to this list. Only DERControl (doe) mrids are accepted"
-                )
+                raise BadRequestError(f"{mrid_type} responses are not accepted to this list.")
 
             doe_id = MridMapper.decode_doe_mrid(response.subject)
 
@@ -174,9 +172,7 @@ class ResponseManager:
         elif response_set_type == ResponseSetType.TARIFF_GENERATED_RATES:
 
             if mrid_type != MridType.TIME_TARIFF_INTERVAL:
-                raise BadRequestError(
-                    f"You cannot send a {mrid_type} response to this list. Only TimeTariffInterval mrids are accepted"
-                )
+                raise BadRequestError(f"{mrid_type} responses are not accepted to this list.")
 
             # We have a response targeting a tariff generated rate
             (pricing_reading_type, rate_id) = MridMapper.decode_time_tariff_interval_mrid(response.subject)

@@ -32,7 +32,7 @@ class PricingReadingType(IntEnum):
 
 
 class ResponseSetType(IntEnum):
-    """The different type of response sets that are exposed via this utility server. Essentially this is a mapping
+    """The different types of response sets that are exposed via this utility server. Essentially this is a mapping
     of every type that has "response" objects associated with them"""
 
     TARIFF_GENERATED_RATES = auto()
