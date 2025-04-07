@@ -31,7 +31,7 @@ def test_settings_defaults(preserved_environment):
     settings = CommonSettings()
 
     assert settings.enable_notifications is None
-    assert settings.sql_alchemy_engine_arguments is None
+    assert settings.sqlalchemy_engine_arguments is None
     assert settings.database_url == PostgresDsn(TEST_DATABASE_URL)
     assert isinstance(settings.db_middleware_kwargs, dict)
 
@@ -42,10 +42,10 @@ def test_settings_engine_args(preserved_environment):
     # Reset config
     remove_mandatory_settings()
     os.environ["DATABASE_URL"] = TEST_DATABASE_URL
-    os.environ["SQL_ALCHEMY_ENGINE_ARGUMENTS"] = '{"foo": "bar", "num": 123, "bool": true, "float": 1.23}'
+    os.environ["SQLALCHEMY_ENGINE_ARGUMENTS"] = '{"foo": "bar", "num": 123, "bool": true, "float": 1.23}'
 
     settings = CommonSettings()
-    assert settings.sql_alchemy_engine_arguments == {"foo": "bar", "num": 123, "bool": True, "float": 1.23}
+    assert settings.sqlalchemy_engine_arguments == {"foo": "bar", "num": 123, "bool": True, "float": 1.23}
 
 
 def test_generate_middleware_kwargs():
