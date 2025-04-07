@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings
@@ -7,16 +7,22 @@ from pydantic_settings import BaseSettings
 def generate_middleware_kwargs(
     database_url: str,
     commit_on_exit: bool,
+    sqlalchemy_engine_args: Optional[dict[str, Any]],
     azure_ad_db_resource_id: Optional[str],
     azure_ad_db_refresh_secs: Optional[int],
 ) -> dict[str, Any]:
     """Generates kwargs for SQLAlchemyMiddleware for a given set of settings values"""
     settings = {"db_url": database_url, "commit_on_exit": commit_on_exit}
 
+    engine_args = sqlalchemy_engine_args.copy() if sqlalchemy_engine_args is not None else {}
+
     # this setting causes the pool to recycle connections after the given number of seconds has passed
     # It will ensure that connections won't stay live in the pool after the tokens are refreshed
     if azure_ad_db_resource_id and azure_ad_db_refresh_secs:
-        settings["engine_args"] = {"pool_recycle": azure_ad_db_refresh_secs}
+        engine_args["pool_recycle"] = azure_ad_db_refresh_secs
+
+    if engine_args:
+        settings["engine_args"] = engine_args
     return settings
 
 
@@ -41,11 +47,14 @@ class CommonSettings(BaseSettings):
 
     href_prefix: Optional[str] = None  # Will ensure all outgoing href's are prefixed with this value (None = disabled)
 
+    sqlalchemy_engine_arguments: Optional[dict[str, Union[str, int, float]]] = None
+
     @property
     def db_middleware_kwargs(self) -> Dict[str, Any]:
         return generate_middleware_kwargs(
             database_url=str(self.database_url),
             commit_on_exit=False,
+            sqlalchemy_engine_args=self.sqlalchemy_engine_arguments,
             azure_ad_db_resource_id=self.azure_ad_db_resource_id,
             azure_ad_db_refresh_secs=self.azure_ad_db_refresh_secs,
         )
