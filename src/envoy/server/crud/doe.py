@@ -4,7 +4,7 @@ from typing import Optional, Sequence, Union
 from sqlalchemy import TIMESTAMP, Select, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.crud.common import localize_start_time
+from envoy.server.crud.common import localize_start_time, localize_start_time_for_entity
 from envoy.server.model.doe import DynamicOperatingEnvelope as DOE
 from envoy.server.model.site import Site
 
@@ -68,12 +68,14 @@ async def _does_at_timestamp(
         .where(
             (DOE.start_time <= timestamp) &
             (DOE.start_time + (DOE.duration_seconds * one_second) > timestamp) &
-            (DOE.changed_time >= changed_after) &
             (Site.aggregator_id == aggregator_id))
         .offset(start)
         .limit(limit)
     )
     # fmt: on
+
+    if changed_after != datetime.min:
+        stmt = stmt.where((DOE.changed_time >= changed_after))
 
     if site_id is not None:
         stmt = stmt.where(DOE.site_id == site_id)
@@ -88,11 +90,68 @@ async def _does_at_timestamp(
         return [localize_start_time(doe_and_tz) for doe_and_tz in resp.all()]
 
 
-async def _does_for_day(
+async def _site_does_for_day(
     is_counting: bool,
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int,
+    day: Optional[date],
+    start: int,
+    changed_after: datetime,
+    limit: Optional[int],
+) -> Union[Sequence[DOE], int]:
+    """Internal utility for fetching doe's for a specific day (if specified) for a single site that either counts or
+    returns the entities
+
+    Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC
+
+    Where the site_id is None, all sites for the aggregator will be considered."""
+
+    # Discovering the timezone BEFORE making the query will allow the better use of indexes
+    site_timezone_id = (
+        await session.execute(
+            select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
+        )
+    ).scalar_one_or_none()
+    if not site_timezone_id:
+        if is_counting:
+            return 0
+        else:
+            return []
+
+    # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
+    # groups of sites but this could be subject to change as the DNSP's requirements become more clear
+    select_clause: Union[Select[tuple[int]], Select[tuple[DOE, str]]]
+    if is_counting:
+        select_clause = select(func.count()).select_from(DOE)
+    else:
+        select_clause = select(DOE)
+
+    stmt = select_clause.where((DOE.site_id == site_id)).offset(start).limit(limit)
+
+    if changed_after != datetime.min:
+        stmt = stmt.where((DOE.changed_time >= changed_after))
+
+    # To best utilise the doe indexes - we map our literal start/end times to the site local time zone
+    if day:
+        tz_adjusted_from_expr = func.timezone(site_timezone_id, cast(day, TIMESTAMP))
+        tz_adjusted_to_expr = func.timezone(site_timezone_id, cast(day + timedelta(days=1), TIMESTAMP))
+        stmt = stmt.where((DOE.start_time >= tz_adjusted_from_expr) & (DOE.start_time < tz_adjusted_to_expr))
+
+    if not is_counting:
+        stmt = stmt.order_by(DOE.start_time.asc(), DOE.changed_time.desc(), DOE.dynamic_operating_envelope_id.desc())
+
+    resp = await session.execute(stmt)
+    if is_counting:
+        return resp.scalar_one()
+    else:
+        return [localize_start_time_for_entity(doe, site_timezone_id) for doe in resp.scalars()]
+
+
+async def _aggregator_does_for_day(
+    is_counting: bool,
+    session: AsyncSession,
+    aggregator_id: int,
     day: Optional[date],
     start: int,
     changed_after: datetime,
@@ -112,20 +171,10 @@ async def _does_for_day(
     else:
         select_clause = select(DOE, Site.timezone_id)
 
-    # If there is a site_id specified we will filter on that, otherwise we will consider all sites for the aggregator
-    where_clause = (DOE.changed_time >= changed_after) & (Site.aggregator_id == aggregator_id)
-    if site_id is not None:
-        where_clause &= DOE.site_id == site_id
+    stmt = select_clause.join(DOE.site).where(Site.aggregator_id == aggregator_id).offset(start).limit(limit)
 
-    # fmt: off
-    stmt = (
-        select_clause
-        .join(DOE.site)
-        .where(where_clause)
-        .offset(start)
-        .limit(limit)
-    )
-    # fmt: on
+    if changed_after != datetime.min:
+        stmt = stmt.where((DOE.changed_time >= changed_after))
 
     # To best utilise the doe indexes - we map our literal start/end times to the site local time zone
     if day:
@@ -148,9 +197,14 @@ async def count_does(session: AsyncSession, aggregator_id: int, site_id: Optiona
 
     changed_after: Only doe's with a changed_time greater than this value will be counted (0 will count everything)"""
 
-    return await _does_for_day(
-        True, session, aggregator_id, site_id, None, 0, changed_after, None
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    if site_id is None:
+        return await _aggregator_does_for_day(
+            True, session, aggregator_id, None, 0, changed_after, None
+        )  # type: ignore [return-value]  # Test coverage will ensure that it's an int count
+    else:
+        return await _site_does_for_day(
+            True, session, aggregator_id, site_id, None, 0, changed_after, None
+        )  # type: ignore [return-value]  # Test coverage will ensure that it's an int count
 
 
 async def select_does(
@@ -166,9 +220,14 @@ async def select_does(
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
 
-    return await _does_for_day(
-        False, session, aggregator_id, site_id, None, start, changed_after, limit
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    if site_id is None:
+        return await _aggregator_does_for_day(
+            False, session, aggregator_id, None, start, changed_after, limit
+        )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    else:
+        return await _site_does_for_day(
+            False, session, aggregator_id, site_id, None, start, changed_after, limit
+        )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
 
 
 async def count_does_for_day(
@@ -179,9 +238,14 @@ async def count_does_for_day(
 
     changed_after: Only doe's with a changed_time greater than this value will be counted (0 will count everything)"""
 
-    return await _does_for_day(
-        True, session, aggregator_id, site_id, day, 0, changed_after, None
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    if site_id is None:
+        return await _aggregator_does_for_day(
+            True, session, aggregator_id, day, 0, changed_after, None
+        )  # type: ignore [return-value]  # Test coverage will ensure that it's an int count
+    else:
+        return await _site_does_for_day(
+            True, session, aggregator_id, site_id, day, 0, changed_after, None
+        )  # type: ignore [return-value]  # Test coverage will ensure that it's an int count
 
 
 async def select_does_for_day(
@@ -198,9 +262,14 @@ async def select_does_for_day(
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
 
-    return await _does_for_day(
-        False, session, aggregator_id, site_id, day, start, changed_after, limit
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    if site_id is None:
+        return await _aggregator_does_for_day(
+            False, session, aggregator_id, day, start, changed_after, limit
+        )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    else:
+        return await _site_does_for_day(
+            False, session, aggregator_id, site_id, day, start, changed_after, limit
+        )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
 
 
 async def count_does_at_timestamp(
@@ -215,7 +284,7 @@ async def count_does_at_timestamp(
 
     return await _does_at_timestamp(
         True, session, aggregator_id, site_id, timestamp, 0, changed_after, None
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
 
 
 async def select_does_at_timestamp(

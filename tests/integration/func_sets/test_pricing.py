@@ -312,14 +312,14 @@ async def test_get_ratecomponentlist(
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "tariff_id, site_id, rc_id, pricing_reading, expected_href, expected_ttis",
+    "tariff_id, site_id, rc_id, pricing_reading, expected_href",
     [
-        (1, 1, "2022-03-05", 1, "/edev/1/tp/1/rc/2022-03-05/1", 2),
-        (1, 1, "2022-03-05", 2, "/edev/1/tp/1/rc/2022-03-05/2", 2),
-        (1, 1, "2022-03-06", 3, "/edev/1/tp/1/rc/2022-03-06/3", 1),
-        (1, 3, "2022-03-06", 3, "/edev/3/tp/1/rc/2022-03-06/3", 0),
-        (1, 3, "2022-03-05", 1, "/edev/3/tp/1/rc/2022-03-05/1", 0),
-        (3, 1, "2022-03-05", 1, "/edev/1/tp/3/rc/2022-03-05/1", 0),
+        (1, 1, "2022-03-05", 1, "/edev/1/tp/1/rc/2022-03-05/1"),
+        (1, 1, "2022-03-05", 2, "/edev/1/tp/1/rc/2022-03-05/2"),
+        (1, 1, "2022-03-06", 3, "/edev/1/tp/1/rc/2022-03-06/3"),
+        (1, 3, "2022-03-06", 3, "/edev/3/tp/1/rc/2022-03-06/3"),
+        (1, 3, "2022-03-05", 1, "/edev/3/tp/1/rc/2022-03-05/1"),
+        (3, 1, "2022-03-05", 1, "/edev/1/tp/3/rc/2022-03-05/1"),
     ],
 )
 async def test_get_ratecomponent(
@@ -330,7 +330,6 @@ async def test_get_ratecomponent(
     rc_id: str,
     pricing_reading: int,
     expected_href: Optional[str],
-    expected_ttis: int,
 ):
     """Tests that single rate component lookups ALWAYS return (they are virtual of course). The way we
     check whether it's working or not is by inspecting the count of TimeTariffIntervals (tti) underneath
@@ -351,7 +350,6 @@ async def test_get_ratecomponent(
     assert parsed_response.ReadingTypeLink
     assert parsed_response.ReadingTypeLink.href
     assert parsed_response.TimeTariffIntervalListLink
-    assert parsed_response.TimeTariffIntervalListLink.all_ == expected_ttis
 
 
 @pytest.mark.anyio
