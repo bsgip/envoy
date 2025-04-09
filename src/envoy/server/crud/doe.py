@@ -171,15 +171,10 @@ async def _aggregator_does_for_day(
     else:
         select_clause = select(DOE, Site.timezone_id)
 
-    # fmt: off
-    stmt = (
-        select_clause
-        .join(DOE.site)
-        .where((DOE.changed_time >= changed_after) & (Site.aggregator_id == aggregator_id))
-        .offset(start)
-        .limit(limit)
-    )
-    # fmt: on
+    stmt = select_clause.join(DOE.site).where(Site.aggregator_id == aggregator_id).offset(start).limit(limit)
+
+    if changed_after != datetime.min:
+        stmt = stmt.where((DOE.changed_time >= changed_after))
 
     # To best utilise the doe indexes - we map our literal start/end times to the site local time zone
     if day:
