@@ -7,7 +7,6 @@ from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.pricing import TariffProfileResponse, TimeTariffIntervalResponse
 
-from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pricing import (
@@ -176,8 +175,7 @@ def test_tariff_profile_list_mapping():
 def test_rate_component_mapping(mock_PricingReadingTypeMapper: mock.MagicMock):
     """Non exhaustive test of rate component mapping - mainly to weed out obvious
     validation errors"""
-    total_rates: int = 123
-    tariff_id: int = 456
+    tariff_id: int = 123
     pricing_reading: PricingReadingType = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
     day: date = date(2014, 1, 25)
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
@@ -185,7 +183,7 @@ def test_rate_component_mapping(mock_PricingReadingTypeMapper: mock.MagicMock):
     pricing_reading_type_href = "/abc/213"
     mock_PricingReadingTypeMapper.pricing_reading_type_href = mock.Mock(return_value=pricing_reading_type_href)
 
-    result = RateComponentMapper.map_to_response(scope, total_rates, tariff_id, pricing_reading, day)
+    result = RateComponentMapper.map_to_response(scope, tariff_id, pricing_reading, day)
     assert result
     assert result.ReadingTypeLink
     assert result.ReadingTypeLink.href == pricing_reading_type_href
@@ -205,39 +203,39 @@ def test_rate_component_mapping(mock_PricingReadingTypeMapper: mock.MagicMock):
     [
         # Basic test case of get everything
         (
-            ([(date(2022, 1, 1), 5), (date(2022, 1, 2), 4)], 0, 0),  # Input
-            (date(2022, 1, 1), 5, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
-            (date(2022, 1, 2), 4, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+            ([date(2022, 1, 1), date(2022, 1, 2)], 0, 0),  # Input
+            (date(2022, 1, 1), PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2022, 1, 2), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
         ),
         # Skip start
         (
-            ([(date(2022, 1, 1), 5), (date(2022, 1, 2), 4)], 2, 0),  # Input
-            (date(2022, 1, 1), 5, PricingReadingType.IMPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
-            (date(2022, 1, 2), 4, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+            ([date(2022, 1, 1), date(2022, 1, 2)], 2, 0),  # Input
+            (date(2022, 1, 1), PricingReadingType.IMPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
+            (date(2022, 1, 2), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
         ),
         # Skip end
         (
-            ([(date(2022, 1, 1), 5), (date(2022, 1, 2), 4)], 0, 2),  # Input
-            (date(2022, 1, 1), 5, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
-            (date(2022, 1, 2), 4, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
+            ([date(2022, 1, 1), date(2022, 1, 2)], 0, 2),  # Input
+            (date(2022, 1, 1), PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2022, 1, 2), PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
         ),
         # Skip both
         (
-            ([(date(2022, 1, 1), 5), (date(2022, 1, 2), 4)], 1, 2),  # Input
-            (date(2022, 1, 1), 5, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
-            (date(2022, 1, 2), 4, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
+            ([date(2022, 1, 1), date(2022, 1, 2)], 1, 2),  # Input
+            (date(2022, 1, 1), PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2022, 1, 2), PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
         ),
         # Big skip past entire dates
         (
-            ([(date(2022, 1, 1), 5), (date(2022, 1, 2), 4), (date(2022, 1, 3), 3)], 5, 5),  # Input
-            (date(2022, 1, 2), 4, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
-            (date(2022, 1, 2), 4, PricingReadingType.IMPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+            ([date(2022, 1, 1), date(2022, 1, 2), date(2022, 1, 3)], 5, 5),  # Input
+            (date(2022, 1, 2), PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2022, 1, 2), PricingReadingType.IMPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
         ),
         # Singleton
         (
-            ([(date(2022, 1, 1), 5)], 1, 2),  # Input
-            (date(2022, 1, 1), 5, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
-            (date(2022, 1, 1), 5, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
+            ([date(2022, 1, 1)], 1, 2),  # Input
+            (date(2022, 1, 1), PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2022, 1, 1), PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
         ),
     ],
 )
@@ -246,19 +244,21 @@ def test_rate_component_list_mapping_paging(rates):
     there are only 3 under the hood. The test isn't exhaustive - it mainly checks that the
     mapping properly trims entries from the start/end of the list"""
     (
-        (input_date_counts, skip_start, skip_end),
-        (first_date, first_count, first_price_type),
-        (last_date, last_count, last_price_type),
+        (input_unique_dates, skip_start, skip_end),
+        (first_date, first_price_type),
+        (last_date, last_price_type),
     ) = rates
 
-    stats = TariffGeneratedRateDailyStats(total_distinct_dates=9876, single_date_counts=input_date_counts)
-    expected_count = (len(input_date_counts) * TOTAL_PRICING_READING_TYPES) - skip_end - skip_start
+    total_unique_rate_days = 9876
+    expected_count = (len(input_unique_dates) * TOTAL_PRICING_READING_TYPES) - skip_end - skip_start
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
-    list_response = RateComponentMapper.map_to_list_response(scope, stats, skip_start, skip_end, 1)
+    list_response = RateComponentMapper.map_to_list_response(
+        scope, input_unique_dates, total_unique_rate_days, skip_start, skip_end, 1
+    )
 
     # check the overall structure of the list
-    assert list_response.all_ == 9876 * TOTAL_PRICING_READING_TYPES
+    assert list_response.all_ == total_unique_rate_days * TOTAL_PRICING_READING_TYPES
     assert list_response.results == len(list_response.RateComponent)
     assert len(list_response.RateComponent) == expected_count
 
@@ -267,12 +267,10 @@ def test_rate_component_list_mapping_paging(rates):
         first = list_response.RateComponent[0]
         assert first.href.endswith(f"/{first_price_type}"), f"{first.href} should end with /{first_price_type}"
         assert f"/{first_date.isoformat()}/" in first.href
-        assert first.TimeTariffIntervalListLink.all_ == first_count
 
         last = list_response.RateComponent[-1]
         assert last.href.endswith(f"/{last_price_type}"), f"{last.href} should end with /{last_price_type}"
         assert f"/{last_date.isoformat()}/" in last.href
-        assert last.TimeTariffIntervalListLink.all_ == last_count
 
 
 @pytest.mark.parametrize(
@@ -395,7 +393,7 @@ def test_mrid_uniqueness():
     rate.site_id = id
 
     tti = TimeTariffIntervalMapper.map_to_response(scope, rate, reading_type)
-    rc = RateComponentMapper.map_to_response(scope, 999, id, reading_type, day)
+    rc = RateComponentMapper.map_to_response(scope, id, reading_type, day)
     tp = TariffProfileMapper.map_to_response(scope, tariff, 999)
 
     assert tti.mRID != rc.mRID

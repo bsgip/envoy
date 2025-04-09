@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from itertools import islice
 from typing import Optional, Sequence, Union
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import TIMESTAMP, Date, Row, Select, cast, distinct, func, select
+from sqlalchemy import TIMESTAMP, Date, Select, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.crud.common import localize_start_time
+from envoy.server.crud.common import localize_start_time, localize_start_time_for_entity
 from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
@@ -104,30 +105,42 @@ async def _tariff_rates_for_day(
 
     Orders by sep2 requirements on TimeTariffInterval which is start ASC, creation DESC, id DESC"""
 
+    # Discovering the timezone BEFORE making the query will allow the better use of indexes
+    site_timezone_id = (
+        await session.execute(
+            select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
+        )
+    ).scalar_one_or_none()
+    if not site_timezone_id:
+        if only_count:
+            return 0
+        else:
+            return []
+
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
     select_clause: Union[Select[tuple[int]], Select[tuple[TariffGeneratedRate, str]]]
     if only_count:
         select_clause = select(func.count()).select_from(TariffGeneratedRate)
     else:
-        select_clause = select(TariffGeneratedRate, Site.timezone_id)
+        select_clause = select(TariffGeneratedRate)
 
     # To best utilise the rate indexes - we map our literal start/end times to the site local time zone
-    tz_adjusted_from_expr = func.timezone(Site.timezone_id, cast(day, TIMESTAMP))
-    tz_adjusted_to_expr = func.timezone(Site.timezone_id, cast(day + timedelta(days=1), TIMESTAMP))
+    tz_adjusted_from_expr = func.timezone(site_timezone_id, cast(day, TIMESTAMP))
+    tz_adjusted_to_expr = func.timezone(site_timezone_id, cast(day + timedelta(days=1), TIMESTAMP))
     stmt = (
-        select_clause.join(TariffGeneratedRate.site)
-        .where(
+        select_clause.where(
             (TariffGeneratedRate.tariff_id == tariff_id)
             & (TariffGeneratedRate.start_time >= tz_adjusted_from_expr)
             & (TariffGeneratedRate.start_time < tz_adjusted_to_expr)
-            & (TariffGeneratedRate.changed_time >= changed_after)
             & (TariffGeneratedRate.site_id == site_id)
-            & (Site.aggregator_id == aggregator_id)
         )
         .offset(start)
         .limit(limit)
     )
+
+    if changed_after != datetime.min:
+        stmt = stmt.where((TariffGeneratedRate.changed_time >= changed_after))
 
     if not only_count:
         stmt = stmt.order_by(
@@ -140,7 +153,7 @@ async def _tariff_rates_for_day(
     if only_count:
         return resp.scalar_one()
     else:
-        return [localize_start_time(rate_and_tz) for rate_and_tz in resp.all()]
+        return [localize_start_time_for_entity(rate, site_timezone_id) for rate in resp.scalars()]
 
 
 async def count_tariff_rates_for_day(
@@ -228,16 +241,6 @@ class TariffGeneratedRateStats:
     last_rate: Optional[datetime]  # The highest start_time for a TariffGeneratedRate (None if no rates)
 
 
-@dataclass
-class TariffGeneratedRateDailyStats:
-    """Simple combo of some high level stats associated with TariffGenerateRate broken down by start_time.date"""
-
-    total_distinct_dates: int  # total number of distinct dates (not just the specified page of data)
-    single_date_counts: Sequence[
-        Row[tuple[date, int]]
-    ]  # each unique dates count of TariffGenerateRate instances. date ordered
-
-
 async def select_rate_stats(
     session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int, changed_after: datetime
 ) -> TariffGeneratedRateStats:
@@ -273,27 +276,59 @@ async def select_rate_stats(
         return TariffGeneratedRateStats(total_rates=count, first_rate=min_date, last_rate=max_date)
 
 
+async def _select_rate_day_range(
+    session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int, changed_after: datetime
+) -> Optional[tuple[date, date]]:
+    """Fetches the inclusive min/max TariffGeneratedRate (based on start_time) and returns the site timezone adjusted
+    date from those min/max values. Returns the inclusive date range (min, max) or None if there is NO data"""
+    site_timezone_id = (
+        await session.execute(
+            select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
+        )
+    ).scalar_one_or_none()
+    if not site_timezone_id:
+        return None
+
+    expr_start_at_site_tz = func.timezone(site_timezone_id, TariffGeneratedRate.start_time)
+    stmt = select(cast(func.min(expr_start_at_site_tz), Date), cast(func.max(expr_start_at_site_tz), Date)).where(
+        (TariffGeneratedRate.tariff_id == tariff_id) & (TariffGeneratedRate.site_id == site_id)
+    )
+
+    if changed_after != datetime.min:
+        stmt = stmt.where((TariffGeneratedRate.changed_time >= changed_after))
+
+    resp = (await session.execute(stmt)).one_or_none()
+    if not resp or not resp[0] or not resp[1]:
+        return None
+
+    return (resp[0], resp[1])
+
+
+def _count_date_range_dates(date_range: Optional[tuple[date, date]]) -> int:
+    """Counts the number of unique dates in the inclusive date_range (min, max)"""
+    if not date_range:
+        return 0
+
+    return int((date_range[1] - date_range[0]).days) + 1
+
+
 async def count_unique_rate_days(
     session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int, changed_after: datetime
 ) -> int:
     """Counts the number of unique dates (not counting the time) that a site has TariffGeneratedRate's for. The
-    counted dates will be done in the local timezone for the site"""
-    expr_start_at_site_tz = func.timezone(Site.timezone_id, TariffGeneratedRate.start_time)
-    stmt = (
-        select(func.count(distinct(cast(expr_start_at_site_tz, Date))))
-        .join(TariffGeneratedRate.site)
-        .where(
-            (TariffGeneratedRate.tariff_id == tariff_id)
-            & (TariffGeneratedRate.site_id == site_id)
-            & (TariffGeneratedRate.changed_time >= changed_after)
-            & (Site.aggregator_id == aggregator_id)
-        )
+    counted dates will be done in the local timezone for the site
+
+    NOTE - the counting will only return the range of unique days between min/max TariffGeneratedRate for performance
+    reasons."""
+
+    # Discovering the timezone BEFORE making the query will allow the better use of indexes
+    date_range = await _select_rate_day_range(
+        session, aggregator_id=aggregator_id, tariff_id=tariff_id, site_id=site_id, changed_after=changed_after
     )
-    resp = await session.execute(stmt)
-    return resp.scalar_one()
+    return _count_date_range_dates(date_range)
 
 
-async def select_rate_daily_stats(
+async def select_unique_rate_days(
     session: AsyncSession,
     aggregator_id: int,
     tariff_id: int,
@@ -301,29 +336,22 @@ async def select_rate_daily_stats(
     start: int,
     changed_after: datetime,
     limit: int,
-) -> TariffGeneratedRateDailyStats:
-    """Fetches the aggregate totals of TariffGeneratedRate grouped by the date upon which they occurred. The occurrence
-    date will be in the local timezone for the site
+) -> tuple[list[date], int]:
+    """Fetches the unique dates that contain TariffGeneratedRate entities for the specified site. This range is based
+    on the min/max TariffGeneratedRate.start_time for performance reasons and can therefore return "empty" Dates if they
+    exist between the min/max value. Also returns the total count as if count_unique_rate_days() was called.
 
-    Results will be ordered by date ASC"""
-    expr_start_at_site_tz = func.timezone(Site.timezone_id, TariffGeneratedRate.start_time)
-    stmt = (
-        select(cast(expr_start_at_site_tz, Date).label("start_date"), func.count())
-        .join(TariffGeneratedRate.site)
-        .where(
-            (TariffGeneratedRate.tariff_id == tariff_id)
-            & (TariffGeneratedRate.site_id == site_id)
-            & (TariffGeneratedRate.changed_time >= changed_after)
-            & (Site.aggregator_id == aggregator_id)
-        )
-        .group_by("start_date")
-        .order_by("start_date")
-        .offset(start)
-        .limit(limit)
+    Results will be ordered by date ASC
+
+    returns (unique_rate_days, total_unique_rate_days)"""
+
+    date_range = await _select_rate_day_range(
+        session, aggregator_id=aggregator_id, tariff_id=tariff_id, site_id=site_id, changed_after=changed_after
     )
-    resp = await session.execute(stmt)
-    date_page = resp.fetchall()
+    if not date_range:
+        return ([], 0)
 
-    count = await count_unique_rate_days(session, aggregator_id, tariff_id, site_id, changed_after)
+    day_count = _count_date_range_dates(date_range)
 
-    return TariffGeneratedRateDailyStats(total_distinct_dates=count, single_date_counts=date_page)
+    date_generator = (date_range[0] + timedelta(days=n) for n in range(day_count))
+    return (list(islice(date_generator, start, start + limit)), day_count)

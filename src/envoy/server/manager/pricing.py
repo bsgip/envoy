@@ -17,15 +17,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.api.request import extract_date_from_iso_string
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.crud.pricing import (
-    TariffGeneratedRateDailyStats,
     count_tariff_rates_for_day,
     count_unique_rate_days,
     select_all_tariffs,
-    select_rate_daily_stats,
     select_single_tariff,
     select_tariff_count,
     select_tariff_rate_for_day_time,
     select_tariff_rates_for_day,
+    select_unique_rate_days,
 )
 from envoy.server.exception import InvalidIdError, NotFoundError
 from envoy.server.mapper.constants import PricingReadingType
@@ -120,7 +119,6 @@ class RateComponentManager:
 
     @staticmethod
     async def fetch_rate_component(
-        session: AsyncSession,
         scope: SiteRequestScope,
         tariff_id: int,
         rate_component_id: str,
@@ -132,10 +130,7 @@ class RateComponentManager:
         This function will construct the RateComponent directly"""
 
         day = RateComponentManager.parse_rate_component_id(rate_component_id)
-        count = await count_tariff_rates_for_day(
-            session, scope.aggregator_id, tariff_id, scope.site_id, day, datetime.min
-        )
-        return RateComponentMapper.map_to_response(scope, count, tariff_id, pricing_type, day)
+        return RateComponentMapper.map_to_response(scope, tariff_id, pricing_type, day)
 
     @staticmethod
     async def fetch_rate_component_list(
@@ -164,7 +159,7 @@ class RateComponentManager:
             db_adjusted_limit = db_adjusted_limit + 1
 
         # query for the raw underlying stats broken down by date
-        rate_stats: TariffGeneratedRateDailyStats = await select_rate_daily_stats(
+        unique_rate_days, total_unique_rate_days = await select_unique_rate_days(
             session,
             scope.aggregator_id,
             tariff_id,
@@ -181,13 +176,18 @@ class RateComponentManager:
         # if the client limit could actually "bite" we need to consider culling items off the end of the list
         # to respect it
         trailing_items_to_remove = 0
-        if (limit + leading_items_to_remove) < (len(rate_stats.single_date_counts) * TOTAL_PRICING_READING_TYPES):
+        if (limit + leading_items_to_remove) < (len(unique_rate_days) * TOTAL_PRICING_READING_TYPES):
             trailing_items_to_remove = (
                 TOTAL_PRICING_READING_TYPES - db_adjusted_limit_remainder
             ) % TOTAL_PRICING_READING_TYPES  # noqa e501
 
         return RateComponentMapper.map_to_list_response(
-            scope, rate_stats, leading_items_to_remove, trailing_items_to_remove, tariff_id
+            scope,
+            unique_rate_days,
+            total_unique_rate_days,
+            leading_items_to_remove,
+            trailing_items_to_remove,
+            tariff_id,
         )
 
 

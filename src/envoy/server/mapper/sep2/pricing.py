@@ -29,7 +29,6 @@ from envoy_schema.server.schema.sep2.types import (
     UomType,
 )
 
-from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
@@ -192,7 +191,6 @@ class RateComponentMapper:
     @staticmethod
     def map_to_response(
         scope: SiteRequestScope,
-        total_rates: int,
         tariff_id: int,
         pricing_reading: PricingReadingType,
         day: date,
@@ -220,14 +218,15 @@ class RateComponentMapper:
                 "ReadingTypeLink": Link(
                     href=PricingReadingTypeMapper.pricing_reading_type_href(scope, pricing_reading)
                 ),
-                "TimeTariffIntervalListLink": ListLink(href=rc_href + "/tti", all_=total_rates),
+                "TimeTariffIntervalListLink": ListLink(href=rc_href + "/tti"),
             }
         )
 
     @staticmethod
     def map_to_list_response(
         scope: SiteRequestScope,
-        daily_rate_stats: TariffGeneratedRateDailyStats,
+        unique_rate_days: list[date],
+        total_unique_rate_days: int,
         skip_start: int,
         skip_end: int,
         tariff_id: int,
@@ -236,16 +235,16 @@ class RateComponentMapper:
         organised by date"""
         rc_list = []
         iterator = islice(
-            product(daily_rate_stats.single_date_counts, PricingReadingType),  # Iterator
+            product(unique_rate_days, PricingReadingType),  # Iterator
             skip_start,  # Start index
-            (len(daily_rate_stats.single_date_counts) * TOTAL_PRICING_READING_TYPES) - skip_end,  # End
+            (len(unique_rate_days) * TOTAL_PRICING_READING_TYPES) - skip_end,  # End
         )
-        for (day, rate_count), pricing_type in iterator:
-            rc_list.append(RateComponentMapper.map_to_response(scope, rate_count, tariff_id, pricing_type, day))
+        for day, pricing_type in iterator:
+            rc_list.append(RateComponentMapper.map_to_response(scope, tariff_id, pricing_type, day))
 
         return RateComponentListResponse.model_validate(
             {
-                "all_": daily_rate_stats.total_distinct_dates * TOTAL_PRICING_READING_TYPES,
+                "all_": total_unique_rate_days * TOTAL_PRICING_READING_TYPES,
                 "results": len(rc_list),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "RateComponent": rc_list,

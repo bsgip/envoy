@@ -270,7 +270,6 @@ async def get_singleratecomponent(
     """
     try:
         rc = await RateComponentManager.fetch_rate_component(
-            db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
             rate_component_id=rate_component_id,

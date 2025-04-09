@@ -18,7 +18,6 @@ from envoy_schema.server.schema.sep2.pricing import (
     TimeTariffIntervalResponse,
 )
 
-from envoy.server.crud.pricing import TariffGeneratedRateDailyStats
 from envoy.server.exception import InvalidIdError
 from envoy.server.manager.pricing import (
     ConsumptionTariffIntervalManager,
@@ -275,55 +274,40 @@ async def test_fetch_tariff_profile_missing(mock_select_single_tariff: mock.Magi
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.pricing.RateComponentMapper")
-@mock.patch("envoy.server.manager.pricing.count_tariff_rates_for_day")
-async def test_fetch_rate_component(
-    mock_count_tariff_rates_for_day: mock.MagicMock, mock_RateComponentMapper: mock.MagicMock
-):
+async def test_fetch_rate_component(mock_RateComponentMapper: mock.MagicMock):
     """Simple test to ensure dependencies are called correctly"""
-    mock_session = create_mock_session()
     tariff_id = 111
-    count = 444
     rc_id = "2012-02-03"
     mapped_rc = generate_class_instance(RateComponentResponse)
     pricing_type = PricingReadingType.EXPORT_ACTIVE_POWER_KWH
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
-    mock_count_tariff_rates_for_day.return_value = count
     mock_RateComponentMapper.map_to_response = mock.Mock(return_value=mapped_rc)
 
-    response = await RateComponentManager.fetch_rate_component(mock_session, scope, tariff_id, rc_id, pricing_type)
+    response = await RateComponentManager.fetch_rate_component(scope, tariff_id, rc_id, pricing_type)
     assert response is mapped_rc
 
-    mock_count_tariff_rates_for_day.assert_called_once_with(
-        mock_session, scope.aggregator_id, tariff_id, scope.site_id, date(2012, 2, 3), datetime.min
-    )
-    mock_RateComponentMapper.map_to_response.assert_called_once_with(
-        scope, count, tariff_id, pricing_type, date(2012, 2, 3)
-    )
-    assert_mock_session(mock_session)
+    mock_RateComponentMapper.map_to_response.assert_called_once_with(scope, tariff_id, pricing_type, date(2012, 2, 3))
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.pricing.RateComponentMapper")
-@mock.patch("envoy.server.manager.pricing.select_rate_daily_stats")
+@mock.patch("envoy.server.manager.pricing.select_unique_rate_days")
 async def test_fetch_rate_component_list(
-    mock_select_rate_daily_stats: mock.MagicMock, mock_RateComponentMapper: mock.MagicMock
+    mock_select_unique_rate_days: mock.MagicMock, mock_RateComponentMapper: mock.MagicMock
 ):
     """Tests usage of basic dependencies in a simple case"""
     mock_session = create_mock_session()
     tariff_id = 111
     changed_after = datetime.now()
-    input_date_counts = [(date(2012, 1, 2), 5)]
+    input_dates = [date(2012, 1, 2)]
     total_distinct_dates = 62
     start = 4
     limit = 8
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mapped_list = generate_class_instance(RateComponentListResponse)
-    rate_stats = TariffGeneratedRateDailyStats(
-        single_date_counts=input_date_counts, total_distinct_dates=total_distinct_dates
-    )
 
-    mock_select_rate_daily_stats.return_value = rate_stats
+    mock_select_unique_rate_days.return_value = (input_dates, total_distinct_dates)
     mock_RateComponentMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
 
     list_response = await RateComponentManager.fetch_rate_component_list(
@@ -332,10 +316,12 @@ async def test_fetch_rate_component_list(
     assert list_response is mapped_list
 
     # check mock assumptions
-    mock_select_rate_daily_stats.assert_called_once_with(
+    mock_select_unique_rate_days.assert_called_once_with(
         mock_session, scope.aggregator_id, tariff_id, scope.site_id, 1, changed_after, 2  # adjusted start
     )  # adjusted limit
-    mock_RateComponentMapper.map_to_list_response.assert_called_once_with(scope, rate_stats, 0, 0, tariff_id)
+    mock_RateComponentMapper.map_to_list_response.assert_called_once_with(
+        scope, input_dates, total_distinct_dates, 0, 0, tariff_id
+    )
     assert_mock_session(mock_session)
 
 
@@ -344,83 +330,82 @@ async def test_fetch_rate_component_list(
     [
         # no pagination - oversized limit
         (
-            ([(date(2023, 1, 2), 3), (date(2023, 1, 3), 4), (date(2023, 1, 4), 5)], 0, 99),  # Input data/start/limit
-            (date(2023, 1, 2), 3, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
-            (date(2023, 1, 4), 5, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+            ([date(2023, 1, 2), date(2023, 1, 3), date(2023, 1, 4)], 0, 99),  # Input data/start/limit
+            (date(2023, 1, 2), PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2023, 1, 4), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
             12,  # Expected total items in list
         ),
         # no pagination - matched limit
         (
-            ([(date(2023, 1, 2), 3), (date(2023, 1, 3), 4), (date(2023, 1, 4), 5)], 0, 12),  # Input data/start/limit
-            (date(2023, 1, 2), 3, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
-            (date(2023, 1, 4), 5, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+            ([date(2023, 1, 2), date(2023, 1, 3), date(2023, 1, 4)], 0, 12),  # Input data/start/limit
+            (date(2023, 1, 2), PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2023, 1, 4), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
             12,  # Expected total items in list
         ),
         # no pagination - undersized limit
         (
-            ([(date(2023, 1, 2), 3), (date(2023, 1, 3), 4), (date(2023, 1, 4), 5)], 0, 10),  # Input data/start/limit
-            (date(2023, 1, 2), 3, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
-            (date(2023, 1, 4), 5, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
+            ([date(2023, 1, 2), date(2023, 1, 3), date(2023, 1, 4)], 0, 10),  # Input data/start/limit
+            (date(2023, 1, 2), PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2023, 1, 4), PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
             10,  # Expected total items in list
         ),
         # unaligned pagination - oversized limit
         (
-            ([(date(2023, 1, 2), 3), (date(2023, 1, 3), 4), (date(2023, 1, 4), 5)], 2, 99),  # Input data/start/limit
-            (date(2023, 1, 2), 3, PricingReadingType.IMPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
-            (date(2023, 1, 4), 5, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+            ([date(2023, 1, 2), date(2023, 1, 3), date(2023, 1, 4)], 2, 99),  # Input data/start/limit
+            (date(2023, 1, 2), PricingReadingType.IMPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
+            (date(2023, 1, 4), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
             10,  # Expected total items in list
         ),
         # aligned pagination - oversized limit
         (
-            ([(date(2023, 1, 3), 4), (date(2023, 1, 4), 5)], 4, 99),  # Input data/start/limit
-            (date(2023, 1, 3), 4, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
-            (date(2023, 1, 4), 5, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+            ([date(2023, 1, 3), date(2023, 1, 4)], 4, 99),  # Input data/start/limit
+            (date(2023, 1, 3), PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2023, 1, 4), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
             8,  # Expected total items in list
         ),
         # aligned pagination - matched limit
         (
-            ([(date(2023, 1, 3), 4), (date(2023, 1, 4), 5)], 4, 8),  # Input data/start/limit
-            (date(2023, 1, 3), 4, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
-            (date(2023, 1, 4), 5, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+            ([date(2023, 1, 3), date(2023, 1, 4)], 4, 8),  # Input data/start/limit
+            (date(2023, 1, 3), PricingReadingType.IMPORT_ACTIVE_POWER_KWH),  # First output child RateComponent
+            (date(2023, 1, 4), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
             8,  # Expected total items in list
         ),
         # misaligned pagination - technically aligned limit
         (
-            ([(date(2023, 1, 3), 4), (date(2023, 1, 4), 5)], 3, 5),  # Input data/start/limit
-            (date(2023, 1, 3), 4, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
-            (date(2023, 1, 4), 5, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+            ([date(2023, 1, 3), date(2023, 1, 4)], 3, 5),  # Input data/start/limit
+            (date(2023, 1, 3), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
+            (date(2023, 1, 4), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
             5,  # Expected total items in list
         ),
     ],
 )
 @pytest.mark.anyio
-@mock.patch("envoy.server.manager.pricing.select_rate_daily_stats")
-async def test_fetch_rate_component_list_pagination(mock_select_rate_daily_stats: mock.MagicMock, page_data):
+@mock.patch("envoy.server.manager.pricing.select_unique_rate_days")
+async def test_fetch_rate_component_list_pagination(mock_select_unique_rate_days: mock.MagicMock, page_data):
     """This test technically integrates with the mapper directly to double check the integration with
     the virtual pagination is running as expected.
 
     It does overlap a little with tests on the mapper but because this is so finnicky - I think it's worth it
     for a little more safety"""
     (
-        (input_date_counts, start, limit),
-        (first_date, first_count, first_price_type),
-        (last_date, last_count, last_price_type),
+        (input_dates, start, limit),
+        (first_date, first_price_type),
+        (last_date, last_price_type),
         expected_count,
     ) = page_data
 
     mock_session = create_mock_session()
     tariff_id = 111
     changed_after = datetime.now()
+    total_distinct_dates = 515215
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
 
-    mock_select_rate_daily_stats.return_value = TariffGeneratedRateDailyStats(
-        single_date_counts=input_date_counts, total_distinct_dates=42
-    )
+    mock_select_unique_rate_days.return_value = (input_dates, total_distinct_dates)
 
     list_response = await RateComponentManager.fetch_rate_component_list(
         mock_session, scope, tariff_id, start, changed_after, limit
     )
-    assert list_response.all_ == 42 * TOTAL_PRICING_READING_TYPES
+    assert list_response.all_ == total_distinct_dates * TOTAL_PRICING_READING_TYPES
     assert list_response.results == expected_count
     assert len(list_response.RateComponent) == expected_count
 
@@ -429,15 +414,13 @@ async def test_fetch_rate_component_list_pagination(mock_select_rate_daily_stats
         first = list_response.RateComponent[0]
         assert first.href.endswith(f"/{first_price_type}"), f"{first.href} should end with /{first_price_type}"
         assert f"/{first_date.isoformat()}/" in first.href
-        assert first.TimeTariffIntervalListLink.all_ == first_count
 
         last = list_response.RateComponent[-1]
         assert last.href.endswith(f"/{last_price_type}"), f"{last.href} should end with /{last_price_type}"
         assert f"/{last_date.isoformat()}/" in last.href
-        assert last.TimeTariffIntervalListLink.all_ == last_count
 
     # check mock assumptions
-    mock_select_rate_daily_stats.assert_called_once()
+    mock_select_unique_rate_days.assert_called_once()
     assert_mock_session(mock_session)
 
 
@@ -448,14 +431,14 @@ async def test_fetch_rate_component_list_pagination(mock_select_rate_daily_stats
         # misaligned pagination - technically aligned limit
         (
             (3, 5),  # Input data/start/limit
-            (date(2022, 3, 5), 2, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
-            (date(2022, 3, 6), 1, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
+            (date(2022, 3, 5), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
+            (date(2022, 3, 6), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # Last output child RateComponent
             5,  # Expected total items in list
         ),
         (
             (3, 3),  # Input data/start/limit
-            (date(2022, 3, 5), 2, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
-            (date(2022, 3, 6), 1, PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
+            (date(2022, 3, 5), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH),  # First output child RateComponent
+            (date(2022, 3, 6), PricingReadingType.EXPORT_ACTIVE_POWER_KWH),  # Last output child RateComponent
             3,  # Expected total items in list
         ),
     ],
@@ -469,8 +452,8 @@ async def test_fetch_rate_component_list_full_db(pg_base_config, page_data):
 
     (
         (start, limit),
-        (first_date, first_count, first_price_type),
-        (last_date, last_count, last_price_type),
+        (first_date, first_price_type),
+        (last_date, last_price_type),
         expected_count,
     ) = page_data
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, aggregator_id=1, site_id=1)
@@ -490,12 +473,10 @@ async def test_fetch_rate_component_list_full_db(pg_base_config, page_data):
             first = list_response.RateComponent[0]
             assert first.href.endswith(f"/{first_price_type}"), f"{first.href} should end with /{first_price_type}"
             assert f"/{first_date.isoformat()}/" in first.href
-            assert first.TimeTariffIntervalListLink.all_ == first_count
 
             last = list_response.RateComponent[-1]
             assert last.href.endswith(f"/{last_price_type}"), f"{last.href} should end with /{last_price_type}"
             assert f"/{last_date.isoformat()}/" in last.href
-            assert last.TimeTariffIntervalListLink.all_ == last_count
 
 
 @pytest.mark.anyio

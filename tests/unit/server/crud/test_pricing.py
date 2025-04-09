@@ -5,19 +5,20 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from assertical.asserts.time import assert_datetime_equal
+from assertical.asserts.type import assert_list_type
 from assertical.fixtures.postgres import generate_async_session
 
 from envoy.server.crud.pricing import (
     count_tariff_rates_for_day,
     count_unique_rate_days,
     select_all_tariffs,
-    select_rate_daily_stats,
     select_rate_stats,
     select_single_tariff,
     select_tariff_count,
     select_tariff_generated_rate_for_scope,
     select_tariff_rate_for_day_time,
     select_tariff_rates_for_day,
+    select_unique_rate_days,
 )
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
@@ -343,15 +344,15 @@ async def test_select_rate_stats_la_time(
 @pytest.mark.parametrize(
     "agg_id, tariff_id, site_id, after, output_list",
     [
-        (1, 1, 1, datetime.min, [(date(2022, 3, 5), 2), (date(2022, 3, 6), 1)]),
+        (1, 1, 1, datetime.min, [date(2022, 3, 5), date(2022, 3, 6)]),
         (
             1,
             1,
             1,
             datetime(2022, 3, 4, 12, 22, 32, tzinfo=timezone.utc),
-            [(date(2022, 3, 5), 1), (date(2022, 3, 6), 1)],
+            [date(2022, 3, 5), date(2022, 3, 6)],
         ),
-        (1, 1, 1, datetime(2022, 3, 4, 14, 22, 32, tzinfo=timezone.utc), [(date(2022, 3, 6), 1)]),
+        (1, 1, 1, datetime(2022, 3, 4, 14, 22, 32, tzinfo=timezone.utc), [date(2022, 3, 6)]),
         (1, 1, 1, datetime(2022, 3, 4, 14, 22, 34, tzinfo=timezone.utc), []),  # filter miss on changed_after
         (3, 1, 1, datetime.min, []),  # filter miss on agg_id
         (1, 3, 1, datetime.min, []),  # filter miss on tariff_id
@@ -359,69 +360,69 @@ async def test_select_rate_stats_la_time(
     ],
 )
 @pytest.mark.anyio
-async def test_select_rate_daily_stats_filtering(
+async def test_select_unique_rate_days_filtering(
     pg_base_config, agg_id: int, tariff_id: int, site_id: int, after: datetime, output_list: list[tuple[date, int]]
 ):
-    """Tests the various filter options on select_rate_daily_stats and count_unique_rate_days"""
+    """Tests the various filter options on select_unique_rate_days and count_unique_rate_days"""
     async with generate_async_session(pg_base_config) as session:
-        daily_stats = await select_rate_daily_stats(session, agg_id, tariff_id, site_id, 0, after, 99)
-        unique_rate_days = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
-        assert daily_stats.total_distinct_dates == len(
-            daily_stats.single_date_counts
+        (unique_rate_days, select_count) = await select_unique_rate_days(
+            session, agg_id, tariff_id, site_id, 0, after, 99
+        )
+        unique_rate_days_count = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
+        assert unique_rate_days_count == len(
+            unique_rate_days
         ), "Without pagination limits the total count will equal the page count"
-        assert unique_rate_days == daily_stats.total_distinct_dates
-        assert daily_stats.single_date_counts == output_list
-        assert all([isinstance(d, date) for (d, _) in daily_stats.single_date_counts]), "Validating date type"
-        assert all([isinstance(c, int) for (_, c) in daily_stats.single_date_counts]), "Validating int type"
+        assert select_count == unique_rate_days_count, "These should always align"
+        assert unique_rate_days == output_list
+        assert_list_type(date, unique_rate_days)
 
 
 @pytest.mark.parametrize(
     "agg_id, tariff_id, site_id, after, output_list",
     [
-        (1, 1, 1, datetime.min, [(date(2022, 3, 4), 2), (date(2022, 3, 5), 1)]),  # Adjusted LA time
+        (1, 1, 1, datetime.min, [date(2022, 3, 4), date(2022, 3, 5)]),  # Adjusted LA time
     ],
 )
 @pytest.mark.anyio
-async def test_select_rate_daily_stats_filtering_la_time(
+async def test_select_unique_rate_days_filtering_la_time(
     pg_la_timezone, agg_id: int, tariff_id: int, site_id: int, after: datetime, output_list: list[tuple[date, int]]
 ):
-    """Extends test_select_rate_daily_stats_filtering with a test on different site timezones"""
+    """Extends test_select_unique_rate_days_filtering with a test on different site timezones"""
     async with generate_async_session(pg_la_timezone) as session:
-        daily_stats = await select_rate_daily_stats(session, agg_id, tariff_id, site_id, 0, after, 99)
-        unique_rate_days = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
-        assert daily_stats.total_distinct_dates == len(
-            daily_stats.single_date_counts
+        (unique_rate_days, select_count) = await select_unique_rate_days(
+            session, agg_id, tariff_id, site_id, 0, after, 99
+        )
+        unique_rate_days_count = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
+        assert unique_rate_days_count == len(
+            unique_rate_days
         ), "Without pagination limits the total count will equal the page count"
-        assert unique_rate_days == daily_stats.total_distinct_dates
-        assert daily_stats.single_date_counts == output_list
-        assert all([isinstance(d, date) for (d, _) in daily_stats.single_date_counts]), "Validating date type"
-        assert all([isinstance(c, int) for (_, c) in daily_stats.single_date_counts]), "Validating int type"
+        assert select_count == unique_rate_days_count, "These should always align"
+        assert unique_rate_days == output_list
+        assert_list_type(date, unique_rate_days)
 
 
 @pytest.mark.parametrize(
     "start, limit, output_list",
     [
-        (0, 99, [(date(2022, 3, 5), 2), (date(2022, 3, 6), 1)]),
-        (1, 99, [(date(2022, 3, 6), 1)]),
+        (0, 99, [date(2022, 3, 5), date(2022, 3, 6)]),
+        (1, 99, [date(2022, 3, 6)]),
         (2, 99, []),
         (0, 0, []),
-        (0, 1, [(date(2022, 3, 5), 2)]),
-        (1, 1, [(date(2022, 3, 6), 1)]),
+        (0, 1, [date(2022, 3, 5)]),
+        (1, 1, [date(2022, 3, 6)]),
         (2, 1, []),
     ],
 )
 @pytest.mark.anyio
-async def test_select_rate_daily_stats_pagination(
+async def test_select_unique_rate_days_pagination(
     pg_base_config, start: int, limit: int, output_list: list[tuple[date, int]]
 ):
-    """Tests the various pagination options on select_rate_daily_stats"""
-    expected_count = 2  # For agg/tariff/site = 1 (what we are testing here) - There are 2 distinct dates
+    """Tests the various pagination options on select_unique_rate_days"""
     async with generate_async_session(pg_base_config) as session:
-        daily_stats = await select_rate_daily_stats(session, 1, 1, 1, start, datetime.min, limit)
-        assert daily_stats.single_date_counts == output_list
-        assert daily_stats.total_distinct_dates == expected_count, "Date count is independent of pagination"
-        assert all([isinstance(d, date) for (d, _) in daily_stats.single_date_counts]), "Validating date type"
-        assert all([isinstance(c, int) for (_, c) in daily_stats.single_date_counts]), "Validating int type"
+        (unique_rate_days, select_count) = await select_unique_rate_days(session, 1, 1, 1, start, datetime.min, limit)
+        assert unique_rate_days == output_list
+        assert isinstance(select_count, int)
+        assert_list_type(date, unique_rate_days)
 
 
 @pytest.mark.parametrize(
