@@ -12,7 +12,6 @@ from envoy.server.crud.pricing import (
     count_tariff_rates_for_day,
     count_unique_rate_days,
     select_all_tariffs,
-    select_rate_stats,
     select_single_tariff,
     select_tariff_count,
     select_tariff_generated_rate_for_scope,
@@ -266,79 +265,6 @@ async def test_select_and_count_tariff_rates_for_day_filters_la_time(
             assert_rate_for_id(
                 id, tariff_id, site_id, expected_datetime.date(), expected_datetime.time(), "America/Los_Angeles", rate
             )
-
-
-@pytest.mark.parametrize(
-    "filter, expected",
-    [
-        ((1, 1, 1, datetime.min), (3, datetime(2022, 3, 5, 1, 2), datetime(2022, 3, 6, 1, 2))),
-        (
-            (1, 1, 1, datetime(2022, 3, 4, 12, 22, 32, tzinfo=timezone.utc)),
-            (2, datetime(2022, 3, 5, 3, 4), datetime(2022, 3, 6, 1, 2)),
-        ),
-        (
-            (1, 1, 1, datetime(2022, 3, 4, 14, 22, 32, tzinfo=timezone.utc)),
-            (1, datetime(2022, 3, 6, 1, 2), datetime(2022, 3, 6, 1, 2)),
-        ),
-        (
-            (1, 1, 1, datetime(2022, 3, 4, 14, 22, 34, tzinfo=timezone.utc)),
-            (0, None, None),
-        ),  # filter miss on changed_after
-        ((3, 1, 1, datetime.min), (0, None, None)),  # filter miss on agg_id
-        ((1, 3, 1, datetime.min), (0, None, None)),  # filter miss on tariff_id
-        ((1, 1, 4, datetime.min), (0, None, None)),  # filter miss on site_id
-    ],
-)
-@pytest.mark.anyio
-async def test_select_rate_stats(
-    pg_base_config, filter: tuple[int, int, int, datetime], expected: tuple[int, datetime, datetime]
-):
-    """Tests the various filter options on select_rate_stats"""
-    (agg_id, tariff_id, site_id, after) = filter
-    (expected_count, expected_first, expected_last) = expected
-    async with generate_async_session(pg_base_config) as session:
-        stats = await select_rate_stats(session, agg_id, tariff_id, site_id, after)
-        assert stats
-        assert stats.total_rates == expected_count
-        assert_datetime_equal(stats.first_rate, expected_first)
-        assert_datetime_equal(stats.last_rate, expected_last)
-        if stats.first_rate:
-            assert stats.first_rate.tzname() == ZoneInfo("Australia/Brisbane").tzname(
-                stats.first_rate
-            ), "Expected datetime in local time"
-        if stats.last_rate:
-            assert stats.last_rate.tzname() == ZoneInfo("Australia/Brisbane").tzname(
-                stats.last_rate
-            ), "Expected datetime in local time"
-
-
-@pytest.mark.parametrize(
-    "filter, expected",
-    [
-        ((1, 1, 1, datetime.min), (3, datetime(2022, 3, 4, 7, 2), datetime(2022, 3, 5, 7, 2))),  # Adjusted to LA time
-    ],
-)
-@pytest.mark.anyio
-async def test_select_rate_stats_la_time(
-    pg_la_timezone, filter: tuple[int, int, int, datetime], expected: tuple[int, datetime, datetime]
-):
-    """Tests the various filter options on select_rate_stats"""
-    (agg_id, tariff_id, site_id, after) = filter
-    (expected_count, expected_first, expected_last) = expected
-    async with generate_async_session(pg_la_timezone) as session:
-        stats = await select_rate_stats(session, agg_id, tariff_id, site_id, after)
-        assert stats
-        assert stats.total_rates == expected_count
-        assert_datetime_equal(stats.first_rate, expected_first)
-        assert_datetime_equal(stats.last_rate, expected_last)
-        if stats.first_rate:
-            assert stats.first_rate.tzname() == ZoneInfo("America/Los_Angeles").tzname(
-                stats.first_rate
-            ), "Expected datetime in local time"
-        if stats.last_rate:
-            assert stats.last_rate.tzname() == ZoneInfo("America/Los_Angeles").tzname(
-                stats.last_rate
-            ), "Expected datetime in local time"
 
 
 @pytest.mark.parametrize(

@@ -1,8 +1,6 @@
-from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from itertools import islice
 from typing import Optional, Sequence, Union
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import TIMESTAMP, Date, Select, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -232,50 +230,6 @@ async def select_tariff_rate_for_day_time(
     return localize_start_time(row)
 
 
-@dataclass
-class TariffGeneratedRateStats:
-    """Simple combo of some high level stats associated with TariffGenerateRate"""
-
-    total_rates: int  # total number of TariffGeneratedRate
-    first_rate: Optional[datetime]  # The lowest start_time for a TariffGeneratedRate (None if no rates)
-    last_rate: Optional[datetime]  # The highest start_time for a TariffGeneratedRate (None if no rates)
-
-
-async def select_rate_stats(
-    session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int, changed_after: datetime
-) -> TariffGeneratedRateStats:
-    """Calculates some basic statistics on TariffGeneratedRate. The max/min date will be in the local timezone
-    for site
-
-    tariff_id: The parent tariff primary key
-    site_id: The specific site rates are being requested for
-    changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)"""
-    expr_start_at_site_tz = func.timezone(Site.timezone_id, TariffGeneratedRate.start_time)
-    stmt = (
-        select(
-            func.count(), func.max(expr_start_at_site_tz), func.min(expr_start_at_site_tz), func.max(Site.timezone_id)
-        )  # There will only be a single tz_name due to site being 1-1 relationship
-        .join(TariffGeneratedRate.site)
-        .where(
-            (TariffGeneratedRate.tariff_id == tariff_id)
-            & (TariffGeneratedRate.site_id == site_id)
-            & (TariffGeneratedRate.changed_time >= changed_after)
-            & (Site.aggregator_id == aggregator_id)
-        )
-    )
-
-    resp = await session.execute(stmt)
-    (count, max_date, min_date, tz_name) = resp.one()
-    if count == 0:
-        return TariffGeneratedRateStats(total_rates=count, first_rate=None, last_rate=None)
-    else:
-        # Adjust max/min to use site local time
-        tz = ZoneInfo(tz_name)
-        max_date = max_date.astimezone(tz)
-        min_date = min_date.astimezone(tz)
-        return TariffGeneratedRateStats(total_rates=count, first_rate=min_date, last_rate=max_date)
-
-
 async def _select_rate_day_range(
     session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int, changed_after: datetime
 ) -> Optional[tuple[date, date]]:
@@ -289,10 +243,12 @@ async def _select_rate_day_range(
     if not site_timezone_id:
         return None
 
-    expr_start_at_site_tz = func.timezone(site_timezone_id, TariffGeneratedRate.start_time)
-    stmt = select(cast(func.min(expr_start_at_site_tz), Date), cast(func.max(expr_start_at_site_tz), Date)).where(
-        (TariffGeneratedRate.tariff_id == tariff_id) & (TariffGeneratedRate.site_id == site_id)
-    )
+    # Ensure that the min/max happens first otherwise the query planner will do a full index scan (rather than
+    # a single index lookup)
+    stmt = select(
+        cast(func.timezone(site_timezone_id, func.min(TariffGeneratedRate.start_time)), Date),
+        cast(func.timezone(site_timezone_id, func.max(TariffGeneratedRate.start_time)), Date),
+    ).where((TariffGeneratedRate.tariff_id == tariff_id) & (TariffGeneratedRate.site_id == site_id))
 
     if changed_after != datetime.min:
         stmt = stmt.where((TariffGeneratedRate.changed_time >= changed_after))
