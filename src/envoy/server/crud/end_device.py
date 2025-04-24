@@ -35,7 +35,7 @@ from envoy.server.model.site import (
 )
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 from envoy.server.settings import settings
 
 # Valid site_ids for end_devices start 1 and increase
@@ -255,12 +255,18 @@ async def delete_site_for_aggregator(
     )
 
     # Cleanup prices
+    # NOTE - The underlying index on TariffGeneratedRate includes tariff_id - if we want this to run efficiently,
+    #        we need to include tariff_id in the WHERE clause otherwise we'll be forced into a full table scan.
+    #        see: https://github.com/bsgip/envoy/issues/191
+    all_tariff_ids = (await session.execute(select(Tariff.tariff_id))).scalars().all()
     await delete_rows_into_archive(
         session,
         TariffGeneratedRate,
         ArchiveTariffGeneratedRate,
         deleted_time,
-        lambda q: q.where((TariffGeneratedRate.site_id == site_id)),
+        lambda q: q.where(
+            (TariffGeneratedRate.tariff_id.in_(all_tariff_ids)) & (TariffGeneratedRate.site_id == site_id)
+        ),
     )
 
     # Cleanup does
