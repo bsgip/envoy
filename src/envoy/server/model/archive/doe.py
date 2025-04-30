@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DECIMAL, INTEGER, BigInteger, DateTime
+from sqlalchemy import DECIMAL, INTEGER, BigInteger, DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
@@ -23,3 +23,5 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     duration_seconds: Mapped[int] = mapped_column()
     import_limit_active_watts: Mapped[Decimal] = mapped_column(DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES))
     export_limit_watts: Mapped[Decimal] = mapped_column(DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES))
+
+    __table_args__ = (Index("archive_dynamic_operating_envelope_site_id_start_time", "site_id", "start_time"),)

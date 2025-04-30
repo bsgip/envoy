@@ -8,6 +8,7 @@ from assertical.asserts.time import assert_datetime_equal
 from assertical.fixtures.postgres import generate_async_session
 
 from envoy.server.crud.doe import (
+    _select_site_does_include_deleted,
     count_does,
     count_does_at_timestamp,
     count_does_for_day,
@@ -123,10 +124,10 @@ async def test_select_doe_for_scope_la_timezone(
 async def test_select_doe_pagination(pg_base_config, expected_ids: list[int], start: int, after: datetime, limit: int):
     """Tests out the basic pagination features"""
     async with generate_async_session(pg_base_config) as session:
-        rates = await select_does(session, 1, 1, start, after, limit)
-        assert len(rates) == len(expected_ids)
-        for id, rate in zip(expected_ids, rates):
-            assert_doe_for_id(id, 1, None, None, rate)
+        does = await select_does(session, 1, 1, start, after, limit)
+        assert len(does) == len(expected_ids)
+        for id, doe in zip(expected_ids, does):
+            assert_doe_for_id(id, 1, None, None, doe)
 
 
 @pytest.mark.parametrize(
@@ -209,10 +210,10 @@ async def test_select_doe_for_day_pagination(
 ):
     """Tests out the basic pagination behavior"""
     async with generate_async_session(pg_base_config) as session:
-        rates = await select_does_for_day(session, 1, 1, date(2022, 5, 7), start, after, limit)
-        assert len(rates) == len(expected_ids)
-        for id, rate in zip(expected_ids, rates):
-            assert_doe_for_id(id, 1, None, None, rate)
+        does = await select_does_for_day(session, 1, 1, date(2022, 5, 7), start, after, limit)
+        assert len(does) == len(expected_ids)
+        for id, doe in zip(expected_ids, does):
+            assert_doe_for_id(id, 1, None, None, doe)
 
 
 @pytest.mark.parametrize(
@@ -421,7 +422,16 @@ async def test_select_doe_at_timestamp_pagination(
 ):
     """Tests out the basic pagination features for a timestamp that has 2 overlapping DOEs"""
     async with generate_async_session(pg_additional_does) as session:
-        rates = await select_does_at_timestamp(session, 1, 1, timestamp, start, after, limit)
-        assert len(rates) == len(expected_ids)
-        for id, rate in zip(expected_ids, rates):
-            assert_doe_for_id(id, 1, None, None, rate, check_duration_seconds=False)
+        does = await select_does_at_timestamp(session, 1, 1, timestamp, start, after, limit)
+        assert len(does) == len(expected_ids)
+        for id, doe in zip(expected_ids, does):
+            assert_doe_for_id(id, 1, None, None, doe, check_duration_seconds=False)
+
+
+@pytest.mark.anyio
+async def test_select_site_does_include_deleted(pg_base_config):
+    async with generate_async_session(pg_base_config) as session:
+        does = await _select_site_does_include_deleted(
+            session, 1, 1, None, 0, datetime(2000, 1, 1, tzinfo=timezone.utc), 99
+        )
+        raise NotImplementedError()
