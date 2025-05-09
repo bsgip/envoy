@@ -8,16 +8,16 @@ from assertical.asserts.time import assert_datetime_equal
 from assertical.fixtures.postgres import generate_async_session
 
 from envoy.server.crud.doe import (
-    _select_site_does_include_deleted,
-    count_does,
+    count_active_does_include_deleted,
     count_does_at_timestamp,
-    count_does_for_day,
+    select_active_does_include_deleted,
     select_doe_for_scope,
-    select_does,
     select_does_at_timestamp,
-    select_does_for_day,
 )
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope as ArchiveDOE
 from envoy.server.model.doe import DynamicOperatingEnvelope as DOE
+
+AEST = ZoneInfo("Australia/Brisbane")
 
 
 def assert_doe_for_id(
@@ -33,29 +33,39 @@ def assert_doe_for_id(
     if expected_doe_id is None:
         assert actual_doe is None
     else:
-        assert isinstance(actual_doe, DOE)
+        # This is just by convention
+        if actual_doe.dynamic_operating_envelope_id in {18, 19, 20}:
+            assert isinstance(actual_doe, ArchiveDOE)
+        else:
+            assert isinstance(actual_doe, DOE)
+
         assert actual_doe.dynamic_operating_envelope_id == expected_doe_id
         assert expected_site_id is None or actual_doe.site_id == expected_site_id
         if check_duration_seconds:
             assert actual_doe.duration_seconds == 10 * expected_doe_id + expected_doe_id
         assert actual_doe.import_limit_active_watts == Decimal(f"{expected_doe_id}.11")
         assert actual_doe.export_limit_watts == Decimal(f"-{expected_doe_id}.22")
-        if expected_datetime:
+        if expected_tz:
             tz = ZoneInfo(expected_tz)
-            expected_in_local = datetime(
-                expected_datetime.year,
-                expected_datetime.month,
-                expected_datetime.day,
-                expected_datetime.hour,
-                expected_datetime.minute,
-                expected_datetime.second,
-                tzinfo=tz,
-            )
-            assert_datetime_equal(actual_doe.start_time, expected_in_local)
             assert actual_doe.start_time.tzname() == tz.tzname(
                 actual_doe.start_time
             ), "Start time should be returned in local time"
-            assert_datetime_equal(actual_doe.created_time, datetime(2000, 1, 1, 0, 0, 0, 0, tzinfo=timezone.utc))
+
+            if expected_datetime:
+                expected_in_local = datetime(
+                    expected_datetime.year,
+                    expected_datetime.month,
+                    expected_datetime.day,
+                    expected_datetime.hour,
+                    expected_datetime.minute,
+                    expected_datetime.second,
+                    tzinfo=tz,
+                )
+                assert_datetime_equal(actual_doe.start_time, expected_in_local)
+                assert actual_doe.start_time.tzname() == tz.tzname(
+                    actual_doe.start_time
+                ), "Start time should be returned in local time"
+                assert_datetime_equal(actual_doe.created_time, datetime(2000, 1, 1, 0, 0, 0, 0, tzinfo=timezone.utc))
 
 
 @pytest.mark.parametrize(
@@ -107,61 +117,64 @@ async def test_select_doe_for_scope_la_timezone(
 
 
 @pytest.mark.parametrize(
-    "expected_ids, start, after, limit",
+    "expected_ids, expected_count, start, after, limit",
     [
-        ([1, 2, 4], 0, datetime.min, 99),
-        ([1], 0, datetime.min, 1),
-        ([2, 4], 1, datetime.min, 99),
-        ([2], 1, datetime.min, 1),
-        ([4], 2, datetime.min, 99),
-        ([], 3, datetime.min, 99),
-        ([], 0, datetime.min, 0),
-        ([2, 4], 0, datetime(2022, 5, 6, 12, 22, 32, tzinfo=timezone.utc), 99),
-        ([4], 0, datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc), 99),
+        ([1, 2, 4, 18, 5, 9, 19, 6, 7, 8], 10, 0, datetime.min, 99),
+        ([1], 10, 0, datetime.min, 1),
+        ([4, 18, 5], 10, 2, datetime.min, 3),
+        ([], 10, 0, datetime.min, 0),
+        ([], 10, 99, datetime.min, 99),
+        ([2, 4, 18, 5, 9, 19, 6, 7, 8], 9, 0, datetime(2022, 5, 6, 12, 22, 32, tzinfo=timezone.utc), 99),
+        ([18, 5, 19, 6, 7, 8], 6, 0, datetime(2023, 5, 6, 11, 22, 32, tzinfo=timezone.utc), 99),
+        ([5, 19], 6, 1, datetime(2023, 5, 6, 11, 22, 32, tzinfo=timezone.utc), 2),
     ],
 )
 @pytest.mark.anyio
-async def test_select_doe_pagination(pg_base_config, expected_ids: list[int], start: int, after: datetime, limit: int):
+async def test_select_and_count_active_does_include_deleted_pagination(
+    pg_additional_does, expected_ids: list[int], expected_count: int, start: int, after: datetime, limit: int
+):
     """Tests out the basic pagination features"""
-    async with generate_async_session(pg_base_config) as session:
-        does = await select_does(session, 1, 1, start, after, limit)
+    now = datetime(1970, 1, 1, 0, 0, 0)  # This is sufficiently in this past to allow everything to pass
+    async with generate_async_session(pg_additional_does) as session:
+        does = await select_active_does_include_deleted(session, 1, 1, now, start, after, limit)
+        count = await count_active_does_include_deleted(session, 1, 1, now, after)
         assert len(does) == len(expected_ids)
+        assert count == expected_count
         for id, doe in zip(expected_ids, does):
-            assert_doe_for_id(id, 1, None, None, doe)
+            assert_doe_for_id(id, 1, None, None, doe, check_duration_seconds=False)
 
 
 @pytest.mark.parametrize(
-    "expected_id_and_starts, agg_id, site_id",
+    "expected_ids, agg_id, site_id, now",
     [
-        ([(1, datetime(2022, 5, 7, 1, 2)), (2, datetime(2022, 5, 7, 3, 4)), (4, datetime(2022, 5, 8, 1, 2))], 1, 1),
-        ([(3, datetime(2022, 5, 7, 1, 2))], 1, 2),
-        ([], 2, 1),
-        ([], 1, 3),
-        (
-            [
-                (3, datetime(2022, 5, 7, 1, 2)),  # For site #2
-                (1, datetime(2022, 5, 7, 1, 2)),  # Site #1
-                (2, datetime(2022, 5, 7, 3, 4)),  # Site #1
-                (4, datetime(2022, 5, 8, 1, 2)),  # Site #1
-            ],
-            1,
-            None,  # This is how the DERControlManager handles an aggregator level query
-        ),
+        ([1, 2, 4, 18, 5, 9, 19, 6, 7, 8], 1, 1, datetime.min),
+        ([3, 20, 10, 11, 12, 13], 1, 2, datetime.min),
+        ([18, 5, 9, 19, 6, 7, 8], 1, 1, datetime(2023, 5, 7, 0, 59, 59, tzinfo=AEST)),  # Before start
+        ([18, 5, 9, 19, 6, 7, 8], 1, 1, datetime(2023, 5, 7, 1, 4, 59, tzinfo=AEST)),  # Before end
+        ([9, 19, 6, 7, 8], 1, 1, datetime(2023, 5, 7, 1, 5, 0, tzinfo=AEST)),  # On expiry time
+        ([18, 5, 9, 19, 6, 7, 8], 1, 1, datetime(2023, 5, 7, 0, 59, 59, tzinfo=AEST)),  # Before start
+        ([], 1, 1, datetime(2045, 1, 1, 0, 0, 0, tzinfo=AEST)),  # Everything expired
+        ([], 1, 3, datetime.min),  # Wrong site_id
+        ([], 1, 99, datetime.min),  # Bad site_id
+        ([], 2, 1, datetime.min),  # Wrong Agg
+        ([], 99, 1, datetime.min),  # Bad Agg
     ],
 )
 @pytest.mark.anyio
-async def test_select_and_count_doe_filters(
-    pg_base_config, expected_id_and_starts: list[tuple[int, datetime]], agg_id: int, site_id: int
+async def test_select_and_count_active_does_include_deleted_filtered(
+    pg_additional_does, expected_ids: list[int], agg_id: int, site_id: int, now: datetime
 ):
     """Tests out the basic filters features and validates the associated count function too"""
-    async with generate_async_session(pg_base_config) as session:
-        does = await select_does(session, agg_id, site_id, 0, datetime.min, 99)
-        count = await count_does(session, agg_id, site_id, datetime.min)
+    async with generate_async_session(pg_additional_does) as session:
+        does = await select_active_does_include_deleted(session, agg_id, site_id, now, 0, datetime.min, 99)
+        count = await count_active_does_include_deleted(session, agg_id, site_id, now, datetime.min)
         assert isinstance(count, int)
-        assert len(does) == len(expected_id_and_starts)
+
+        assert expected_ids == [d.dynamic_operating_envelope_id for d in does]
         assert len(does) == count
-        for (id, expected_datetime), doe in zip(expected_id_and_starts, does):
-            assert_doe_for_id(id, site_id, expected_datetime, "Australia/Brisbane", doe)
+
+        for doe_id, doe in zip(expected_ids, does):
+            assert_doe_for_id(doe_id, site_id, None, "Australia/Brisbane", doe, check_duration_seconds=False)
 
 
 @pytest.mark.parametrize(
@@ -181,87 +194,10 @@ async def test_select_and_count_doe_filters_la_time(
     pg_la_timezone, expected_id_and_starts: list[tuple[int, datetime]], agg_id: int, site_id: int
 ):
     """Builds on test_select_and_count_doe_filters with the la timezone"""
+    now = datetime(1970, 1, 1, 0, 0, 0)  # This is sufficiently in this past to allow everything to pass
     async with generate_async_session(pg_la_timezone) as session:
-        does = await select_does(session, agg_id, site_id, 0, datetime.min, 99)
-        count = await count_does(session, agg_id, site_id, datetime.min)
-        assert isinstance(count, int)
-        assert len(does) == len(expected_id_and_starts)
-        assert len(does) == count
-        for (id, expected_datetime), doe in zip(expected_id_and_starts, does):
-            assert_doe_for_id(id, site_id, expected_datetime, "America/Los_Angeles", doe)
-
-
-@pytest.mark.parametrize(
-    "expected_ids, start, after, limit",
-    [
-        ([1, 2], 0, datetime.min, 99),
-        ([1], 0, datetime.min, 1),
-        ([2], 1, datetime.min, 99),
-        ([2], 1, datetime.min, 1),
-        ([], 2, datetime.min, 99),
-        ([], 0, datetime.min, 0),
-        ([2], 0, datetime(2022, 5, 6, 12, 22, 32, tzinfo=timezone.utc), 99),
-        ([], 0, datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc), 99),
-    ],
-)
-@pytest.mark.anyio
-async def test_select_doe_for_day_pagination(
-    pg_base_config, expected_ids: list[int], start: int, after: datetime, limit: int
-):
-    """Tests out the basic pagination behavior"""
-    async with generate_async_session(pg_base_config) as session:
-        does = await select_does_for_day(session, 1, 1, date(2022, 5, 7), start, after, limit)
-        assert len(does) == len(expected_ids)
-        for id, doe in zip(expected_ids, does):
-            assert_doe_for_id(id, 1, None, None, doe)
-
-
-@pytest.mark.parametrize(
-    "expected_id_and_starts, agg_id, site_id, day",
-    [
-        ([(1, datetime(2022, 5, 7, 1, 2)), (2, datetime(2022, 5, 7, 3, 4))], 1, 1, date(2022, 5, 7)),
-        ([(3, datetime(2022, 5, 7, 1, 2))], 1, 2, date(2022, 5, 7)),
-        ([], 2, 1, date(2022, 5, 7)),
-        ([], 1, 3, date(2022, 5, 7)),
-        ([], 1, 1, date(2023, 5, 7)),
-    ],
-)
-@pytest.mark.anyio
-async def test_select_and_count_doe_for_day_filters(
-    pg_base_config, expected_id_and_starts: list[tuple[int, datetime]], agg_id: int, site_id: int, day: date
-):
-    """Tests out the basic filters features and validates the associated count function too"""
-    async with generate_async_session(pg_base_config) as session:
-        does = await select_does_for_day(session, agg_id, site_id, day, 0, datetime.min, 99)
-        count = await count_does_for_day(session, agg_id, site_id, day, datetime.min)
-        assert isinstance(count, int)
-        assert len(does) == len(expected_id_and_starts)
-        assert len(does) == count
-        for (id, expected_datetime), doe in zip(expected_id_and_starts, does):
-            assert_doe_for_id(id, site_id, expected_datetime, "Australia/Brisbane", doe)
-
-
-@pytest.mark.parametrize(
-    "expected_id_and_starts, agg_id, site_id, day",
-    [
-        (
-            [(1, datetime(2022, 5, 6, 8, 2)), (2, datetime(2022, 5, 6, 10, 4))],
-            1,
-            1,
-            date(2022, 5, 6),
-        ),  # Adjusted for LA time
-        ([(4, datetime(2022, 5, 7, 8, 2))], 1, 1, date(2022, 5, 7)),  # Adjusted for LA time
-        ([], 1, 1, date(2022, 5, 8)),  # Adjusted for LA time
-    ],
-)
-@pytest.mark.anyio
-async def test_select_and_count_doe_for_day_filters_la_time(
-    pg_la_timezone, expected_id_and_starts: list[tuple[int, datetime]], agg_id: int, site_id: int, day: date
-):
-    """Builds on test_select_and_count_doe_for_day_filters with the la timezone"""
-    async with generate_async_session(pg_la_timezone) as session:
-        does = await select_does_for_day(session, agg_id, site_id, day, 0, datetime.min, 99)
-        count = await count_does_for_day(session, agg_id, site_id, day, datetime.min)
+        does = await select_active_does_include_deleted(session, agg_id, site_id, now, 0, datetime.min, 99)
+        count = await count_active_does_include_deleted(session, agg_id, site_id, now, datetime.min)
         assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count
@@ -426,12 +362,3 @@ async def test_select_doe_at_timestamp_pagination(
         assert len(does) == len(expected_ids)
         for id, doe in zip(expected_ids, does):
             assert_doe_for_id(id, 1, None, None, doe, check_duration_seconds=False)
-
-
-@pytest.mark.anyio
-async def test_select_site_does_include_deleted(pg_base_config):
-    async with generate_async_session(pg_base_config) as session:
-        does = await _select_site_does_include_deleted(
-            session, 1, 1, None, 0, datetime(2000, 1, 1, tzinfo=timezone.utc), 99
-        )
-        raise NotImplementedError()

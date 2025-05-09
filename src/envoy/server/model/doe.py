@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DECIMAL, BigInteger, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import DECIMAL, BigInteger, Computed, DateTime, ForeignKey, Index, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model.base import Base
@@ -39,4 +39,12 @@ class DynamicOperatingEnvelope(Base):
 
     site: Mapped["Site"] = relationship(lazy="raise")
 
-    __table_args__ = (UniqueConstraint("site_id", "start_time", name="site_id_start_time_uc"),)
+    end_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        Computed(text("date_add(start_time, duration_seconds * interval '1 sec', 'UTC')"), persisted=True),
+    )  # This is to support finding DOE's that are either currently active or yet to start (i.e. not expired)
+
+    __table_args__ = (
+        UniqueConstraint("start_time", "site_id", name="start_time_site_id_uc"),
+        Index("ix_dynamic_operating_envelope_end_time_site_id", "end_time", "site_id"),
+    )

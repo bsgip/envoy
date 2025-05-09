@@ -1,7 +1,7 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from typing import Optional, Sequence, Union
 
-from sqlalchemy import TIMESTAMP, Select, cast, func, literal_column, select
+from sqlalchemy import Select, func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.common import localize_start_time, localize_start_time_for_entity
@@ -60,20 +60,12 @@ async def _does_at_timestamp(
     else:
         select_clause = select(DOE, Site.timezone_id)
 
-    one_second = timedelta(seconds=1)
-
-    # fmt: off
     stmt = (
-        select_clause
-        .join(DOE.site)
-        .where(
-            (DOE.start_time <= timestamp) &
-            (DOE.start_time + (DOE.duration_seconds * one_second) > timestamp) &
-            (Site.aggregator_id == aggregator_id))
+        select_clause.join(DOE.site)
+        .where((DOE.end_time > timestamp) & (DOE.start_time <= timestamp) & (Site.aggregator_id == aggregator_id))
         .offset(start)
         .limit(limit)
     )
-    # fmt: on
 
     if changed_after != datetime.min:
         stmt = stmt.where((DOE.changed_time >= changed_after))
@@ -91,79 +83,71 @@ async def _does_at_timestamp(
         return [localize_start_time(doe_and_tz) for doe_and_tz in resp.all()]
 
 
-async def _site_does_for_day(
-    is_counting: bool,
+async def count_active_does_include_deleted(
     session: AsyncSession,
     aggregator_id: int,
     site_id: int,
-    day: Optional[date],
-    start: int,
+    now: datetime,
     changed_after: datetime,
-    limit: Optional[int],
-) -> Union[Sequence[DOE], int]:
-    """Internal utility for fetching doe's for a specific day (if specified) for a single site that either counts or
-    returns the entities
+) -> int:
+    """Provides the count of records returned from select_active_does_include_deleted (assuming no pagination).
 
-    Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC
+    aggregator_id: Only DOEs from this aggregator_id will be counted
+    site_id: Only DOEs from this site_id will be counted
+    now: The timestamp that excludes any DOE whose end_time precedes this (i.e. they are expired and no longer relevant)
+    changed_after: Only DOE's modified after this time will be counted."""
 
-    Where the site_id is None, all sites for the aggregator will be considered."""
-
-    # Discovering the timezone BEFORE making the query will allow the better use of indexes
+    # Discovering the timezone BEFORE making the query will allow the better use of indexes (and avoid a lot of joins)
     site_timezone_id = (
         await session.execute(
             select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
         )
     ).scalar_one_or_none()
     if not site_timezone_id:
-        if is_counting:
-            return 0
-        else:
-            return []
+        return 0
 
-    # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
-    # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    select_clause: Union[Select[tuple[int]], Select[tuple[DOE, str]]]
-    if is_counting:
-        select_clause = select(func.count()).select_from(DOE)
-    else:
-        select_clause = select(DOE)
-
-    stmt = select_clause.where((DOE.site_id == site_id)).offset(start).limit(limit)
+    count_active_does_stmt = (
+        select(func.count()).select_from(DOE).where((DOE.end_time > now) & (DOE.site_id == site_id))
+    )
+    count_archive_does_stmt = (
+        select(func.count())
+        .select_from(ArchiveDOE)
+        .where((ArchiveDOE.end_time > now) & (ArchiveDOE.site_id == site_id) & (ArchiveDOE.deleted_time.is_not(None)))
+    )
 
     if changed_after != datetime.min:
-        stmt = stmt.where((DOE.changed_time >= changed_after))
+        # The "changed_time" for archives is actually the "deleted_time"
+        count_active_does_stmt = count_active_does_stmt.where(DOE.changed_time >= changed_after)
+        count_archive_does_stmt = count_archive_does_stmt.where(ArchiveDOE.deleted_time >= changed_after)
 
-    # To best utilise the doe indexes - we map our literal start/end times to the site local time zone
-    if day:
-        tz_adjusted_from_expr = func.timezone(site_timezone_id, cast(day, TIMESTAMP))
-        tz_adjusted_to_expr = func.timezone(site_timezone_id, cast(day + timedelta(days=1), TIMESTAMP))
-        stmt = stmt.where((DOE.start_time >= tz_adjusted_from_expr) & (DOE.start_time < tz_adjusted_to_expr))
+    count_active = (await session.execute(count_active_does_stmt)).scalar_one()
+    count_archive = (await session.execute(count_archive_does_stmt)).scalar_one()
 
-    if not is_counting:
-        stmt = stmt.order_by(DOE.start_time.asc(), DOE.changed_time.desc(), DOE.dynamic_operating_envelope_id.desc())
-
-    resp = await session.execute(stmt)
-    if is_counting:
-        return resp.scalar_one()
-    else:
-        return [localize_start_time_for_entity(doe, site_timezone_id) for doe in resp.scalars()]
+    return count_active + count_archive
 
 
-async def _select_site_does_include_deleted(
+async def select_active_does_include_deleted(
     session: AsyncSession,
     aggregator_id: int,
     site_id: int,
-    day: Optional[date],
+    now: datetime,
     start: int,
     changed_after: datetime,
     limit: Optional[int],
 ) -> Sequence[Union[DOE, ArchiveDOE]]:
-    """Internal utility for fetching doe's for a specific day (if specified) for a single site. Deleted records
-    will also be interleaved with the normal DynamicOperatingEnvelope instances as ArchiveDynamicOperatingEnvelope
+    """Fetches DOEs from dynamic_operating_envelope AND its archive according to the specified filter criteria. Only
+    DOE's whose end_time is after "now" will be returned.
+
+    aggregator_id: Only DOEs from this aggregator_id will be included
+    site_id: Only DOEs from this site_id will be included
+    now: The timestamp that excludes any DOE whose end_time precedes this (i.e. they are expired and no longer relevant)
+    start: How many DOEs to skip
+    limit: Max number of DOEs to return
+    changed_after: Only DOE's modified after this time will be included.
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
 
-    # Discovering the timezone BEFORE making the query will allow the better use of indexes
+    # Discovering the timezone BEFORE making the query will allow the better use of indexes (and avoid a lot of joins)
     site_timezone_id = (
         await session.execute(
             select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
@@ -186,7 +170,7 @@ async def _select_site_does_include_deleted(
         literal_column("NULL").label("archive_time"),
         literal_column("NULL").label("deleted_time"),
         literal_column("0").label("is_archive"),
-    ).where(DOE.site_id == site_id)
+    ).where((DOE.end_time > now) & (DOE.site_id == site_id))
 
     select_archive_does = select(
         ArchiveDOE.dynamic_operating_envelope_id,
@@ -202,24 +186,12 @@ async def _select_site_does_include_deleted(
         ArchiveDOE.archive_time,
         ArchiveDOE.deleted_time,
         literal_column("1").label("is_archive"),
-    ).where((ArchiveDOE.site_id == site_id) & (ArchiveDOE.deleted_time.is_not(None)))
+    ).where((ArchiveDOE.end_time > now) & (ArchiveDOE.site_id == site_id) & (ArchiveDOE.deleted_time.is_not(None)))
 
     if changed_after != datetime.min:
         # The "changed_time" for archives is actually the "deleted_time"
         select_active_does = select_active_does.where(DOE.changed_time >= changed_after)
         select_archive_does = select_archive_does.where(ArchiveDOE.deleted_time >= changed_after)
-
-    # To best utilise the doe indexes - we map our literal start/end times to the site local time zone
-    if day:
-        tz_adjusted_from_expr = func.timezone(site_timezone_id, cast(day, TIMESTAMP))
-        tz_adjusted_to_expr = func.timezone(site_timezone_id, cast(day + timedelta(days=1), TIMESTAMP))
-
-        select_active_does = select_active_does.where(
-            (DOE.start_time >= tz_adjusted_from_expr) & (DOE.start_time < tz_adjusted_to_expr)
-        )
-        select_archive_does = select_archive_does.where(
-            (ArchiveDOE.start_time >= tz_adjusted_from_expr) & (ArchiveDOE.start_time < tz_adjusted_to_expr)
-        )
 
     stmt = (
         select_active_does.union_all(select_archive_does)
@@ -269,130 +241,6 @@ async def _select_site_does_include_deleted(
         )
         for t in resp.all()
     ]
-
-
-async def _aggregator_does_for_day(
-    is_counting: bool,
-    session: AsyncSession,
-    aggregator_id: int,
-    day: Optional[date],
-    start: int,
-    changed_after: datetime,
-    limit: Optional[int],
-) -> Union[Sequence[DOE], int]:
-    """Internal utility for fetching doe's for a specific day (if specified) that either counts or returns the entities
-
-    Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC
-
-    Where the site_id is None, all sites for the aggregator will be considered."""
-
-    # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
-    # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    select_clause: Union[Select[tuple[int]], Select[tuple[DOE, str]]]
-    if is_counting:
-        select_clause = select(func.count()).select_from(DOE)
-    else:
-        select_clause = select(DOE, Site.timezone_id)
-
-    stmt = select_clause.join(DOE.site).where(Site.aggregator_id == aggregator_id).offset(start).limit(limit)
-
-    if changed_after != datetime.min:
-        stmt = stmt.where((DOE.changed_time >= changed_after))
-
-    # To best utilise the doe indexes - we map our literal start/end times to the site local time zone
-    if day:
-        tz_adjusted_from_expr = func.timezone(Site.timezone_id, cast(day, TIMESTAMP))
-        tz_adjusted_to_expr = func.timezone(Site.timezone_id, cast(day + timedelta(days=1), TIMESTAMP))
-        stmt = stmt.where((DOE.start_time >= tz_adjusted_from_expr) & (DOE.start_time < tz_adjusted_to_expr))
-
-    if not is_counting:
-        stmt = stmt.order_by(DOE.start_time.asc(), DOE.changed_time.desc(), DOE.dynamic_operating_envelope_id.desc())
-
-    resp = await session.execute(stmt)
-    if is_counting:
-        return resp.scalar_one()
-    else:
-        return [localize_start_time(doe_and_tz) for doe_and_tz in resp.all()]
-
-
-async def count_does(session: AsyncSession, aggregator_id: int, site_id: Optional[int], changed_after: datetime) -> int:
-    """Fetches the number of DynamicOperatingEnvelope's stored. Date will be assessed in the local timezone for the site
-
-    changed_after: Only doe's with a changed_time greater than this value will be counted (0 will count everything)"""
-
-    if site_id is None:
-        return await _aggregator_does_for_day(
-            True, session, aggregator_id, None, 0, changed_after, None
-        )  # type: ignore [return-value]  # Test coverage will ensure that it's an int count
-    else:
-        return await _site_does_for_day(
-            True, session, aggregator_id, site_id, None, 0, changed_after, None
-        )  # type: ignore [return-value]  # Test coverage will ensure that it's an int count
-
-
-async def select_does(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], start: int, changed_after: datetime, limit: int
-) -> Sequence[DOE]:
-    """Selects DynamicOperatingEnvelope entities (with pagination). Date will be assessed in the local
-    timezone for the site
-
-    site_id: The specific site does are being requested for
-    start: The number of matching entities to skip
-    limit: The maximum number of entities to return
-    changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)
-
-    Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
-
-    if site_id is None:
-        return await _aggregator_does_for_day(
-            False, session, aggregator_id, None, start, changed_after, limit
-        )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
-    else:
-        return await _site_does_for_day(
-            False, session, aggregator_id, site_id, None, start, changed_after, limit
-        )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
-
-
-async def count_does_for_day(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], day: date, changed_after: datetime
-) -> int:
-    """Fetches the number of DynamicOperatingEnvelope's stored for the specified day. Date will be assessed in the local
-    timezone for the site
-
-    changed_after: Only doe's with a changed_time greater than this value will be counted (0 will count everything)"""
-
-    if site_id is None:
-        return await _aggregator_does_for_day(
-            True, session, aggregator_id, day, 0, changed_after, None
-        )  # type: ignore [return-value]  # Test coverage will ensure that it's an int count
-    else:
-        return await _site_does_for_day(
-            True, session, aggregator_id, site_id, day, 0, changed_after, None
-        )  # type: ignore [return-value]  # Test coverage will ensure that it's an int count
-
-
-async def select_does_for_day(
-    session: AsyncSession, aggregator_id: int, site_id: int, day: date, start: int, changed_after: datetime, limit: int
-) -> Sequence[DOE]:
-    """Selects DynamicOperatingEnvelope entities (with pagination) for a single date. Date will be assessed in the
-    local timezone for the site
-
-    site_id: The specific site does are being requested for
-    day: The specific day of the year to restrict the lookup of values to
-    start: The number of matching entities to skip
-    limit: The maximum number of entities to return
-    changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)
-
-    Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
-
-    if site_id is None:
-        return await _aggregator_does_for_day(
-            False, session, aggregator_id, day, start, changed_after, limit
-        )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
-    else:
-        return await _site_does_for_day(
-            False, session, aggregator_id, site_id, day, start, changed_after, limit
-        )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
 
 
 async def count_does_at_timestamp(
