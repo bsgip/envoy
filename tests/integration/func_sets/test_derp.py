@@ -1,4 +1,5 @@
 import asyncio
+import unittest.mock as mock
 import urllib.parse
 from datetime import date, datetime, timezone
 from http import HTTPStatus
@@ -16,6 +17,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERProgramListResponse,
     DERProgramResponse,
 )
+from freezegun import freeze_time
 from httpx import AsyncClient
 from sqlalchemy import select
 
@@ -77,17 +79,18 @@ LOS_ANGELES_TZ = ZoneInfo("America/Los_Angeles")
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "site_id, expected_doe_count",
+    "site_id, expected_doe_count, expected_status",
     [
-        (1, 3),
-        (2, 1),
-        (3, None),  # Belongs to agg 2
-        (4, 0),
-        (5, None),  # Belongs to device cert
-        (99, None),  # DNE
-        (0, 4),  # Virtual aggregator device should return all for sites 1 and 2
+        (1, 3, HTTPStatus.OK),
+        (2, 1, HTTPStatus.OK),
+        (3, None, HTTPStatus.NOT_FOUND),  # Belongs to agg 2
+        (4, 0, HTTPStatus.OK),
+        (5, None, HTTPStatus.NOT_FOUND),  # Belongs to device cert
+        (99, None, HTTPStatus.NOT_FOUND),  # DNE
+        (0, None, HTTPStatus.FORBIDDEN),  # Virtual aggregator device cant access DERPs
     ],
 )
+@freeze_time("2010-01-01")  # This endpoint is sensitive to "now" and won't report on "old" DOEs
 async def test_get_derprogram_list(
     client: AsyncClient,
     uri_derp_list_format,
@@ -95,6 +98,7 @@ async def test_get_derprogram_list(
     uri_derc_list_format,
     site_id: int,
     expected_doe_count: Optional[int],
+    expected_status: Optional[HTTPStatus],
     agg_1_headers,
 ):
     """Tests getting DERPrograms for various sites and validates access constraints
@@ -107,10 +111,10 @@ async def test_get_derprogram_list(
     response = await client.get(path, headers=agg_1_headers)
 
     if expected_doe_count is None:
-        assert_response_header(response, HTTPStatus.NOT_FOUND)
+        assert_response_header(response, expected_status)
         assert_error_response(response)
     else:
-        assert_response_header(response, HTTPStatus.OK)
+        assert_response_header(response, expected_status)
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response: DERProgramListResponse = DERProgramListResponse.from_xml(body)
@@ -137,7 +141,8 @@ async def test_get_derprogram_list(
         (99, None),  # DNE
     ],
 )
-async def get_derprogram_doe(
+@freeze_time("2010-01-01")  # This endpoint is sensitive to "now" and won't report on "old" DOEs
+async def test_get_derprogram_doe(
     client: AsyncClient,
     uri_derp_doe_format,
     uri_derc_list_format,
@@ -299,19 +304,15 @@ async def get_derprogram_doe(
             99,
             None,
             AGG_1_VALID_CERT,
-            HTTPStatus.OK,
-            4,
-            [
-                (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 311, -322),
-                (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
-                (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
-                (datetime(2022, 5, 8, 1, 2, tzinfo=BRISBANE_TZ), 411, -422),
-            ],
-        ),  # DERControls for aggregator retrieves all site DERControls for aggregator
+            HTTPStatus.FORBIDDEN,
+            0,
+            [],
+        ),  # No DOEs for virtual edev
         # Note: The order of the does is not guaranteed (duplicate datetime for sites, so this is
         # dependent on order of insertion and currently fragile)
     ],
 )
+@freeze_time("2010-01-01")  # This endpoint is sensitive to "now" and won't report on "old" DOEs
 async def test_get_dercontrol_list(
     client: AsyncClient,
     uri_derc_list_format: str,
@@ -355,154 +356,24 @@ async def test_get_dercontrol_list(
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    "site_id, day, start, limit, changed_after, cert, expected_status, expected_total, expected_does",
-    [
-        # testing filters
-        (
-            1,
-            date(2022, 5, 7),
-            None,
-            99,
-            None,
-            AGG_1_VALID_CERT,
-            HTTPStatus.OK,
-            2,
-            [
-                (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
-                (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
-            ],
-        ),
-        (
-            1,
-            date(2022, 5, 8),
-            None,
-            99,
-            None,
-            AGG_1_VALID_CERT,
-            HTTPStatus.OK,
-            1,
-            [
-                (datetime(2022, 5, 8, 1, 2, tzinfo=BRISBANE_TZ), 411, -422),
-            ],
-        ),
-        (
-            2,
-            date(2022, 5, 7),
-            None,
-            99,
-            None,
-            AGG_1_VALID_CERT,
-            HTTPStatus.OK,
-            1,
-            [
-                (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 311, -322),
-            ],
-        ),
-        (
-            1,
-            date(2022, 5, 7),
-            None,
-            99,
-            datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc),
-            AGG_1_VALID_CERT,
-            HTTPStatus.OK,
-            1,
-            [
-                (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
-            ],
-        ),
-        # testing pagination
-        (
-            1,
-            date(2022, 5, 7),
-            1,
-            99,
-            None,
-            AGG_1_VALID_CERT,
-            HTTPStatus.OK,
-            2,
-            [
-                (datetime(2022, 5, 7, 3, 4, tzinfo=BRISBANE_TZ), 211, -222),
-            ],
-        ),
-        (
-            1,
-            date(2022, 5, 7),
-            None,
-            1,
-            None,
-            AGG_1_VALID_CERT,
-            HTTPStatus.OK,
-            2,
-            [
-                (datetime(2022, 5, 7, 1, 2, tzinfo=BRISBANE_TZ), 111, -122),
-            ],
-        ),
-        # Test empty cases
-        (4, date(2022, 5, 7), None, 99, None, AGG_1_VALID_CERT, HTTPStatus.OK, 0, []),  # Wrong Site
-        (1, date(2022, 5, 6), None, 99, None, AGG_1_VALID_CERT, HTTPStatus.OK, 0, []),  # Wrong date
-        (1, date(2022, 5, 7), 3, 99, None, AGG_1_VALID_CERT, HTTPStatus.OK, 2, []),  # Big Skip
-        (1, date(2022, 5, 7), None, 0, None, AGG_1_VALID_CERT, HTTPStatus.OK, 2, []),  # Zero limit
-        (
-            1,
-            date(2022, 5, 7),
-            None,
-            0,
-            datetime(2024, 1, 2),
-            AGG_1_VALID_CERT,
-            HTTPStatus.OK,
-            0,
-            [],
-        ),  # changed_after matches nothing
-        (1, date(2022, 5, 7), None, 99, None, AGG_2_VALID_CERT, HTTPStatus.OK, 0, []),  # Wrong Aggregator
-        (5, date(2022, 5, 7), None, 99, None, DEVICE_5_CERT, HTTPStatus.OK, 0, []),  # Device cert
-        (1, date(2022, 5, 7), None, 99, None, DEVICE_5_CERT, HTTPStatus.FORBIDDEN, 0, []),  # Wrong Aggregator
-        (6, date(2022, 5, 7), None, 99, None, DEVICE_5_CERT, HTTPStatus.FORBIDDEN, 0, []),  # Wrong Aggregator
-        (5, date(2022, 5, 7), None, 99, None, UNREGISTERED_CERT, HTTPStatus.FORBIDDEN, 0, []),  # Wrong Aggregator
-    ],
-)
-async def test_get_dercontrol_list_day(
+@freeze_time("2035-01-01")  # Set this far ahead of all DOEs in the database (such that they all count as expired)
+async def test_get_dercontrol_list_all_expired(
     client: AsyncClient,
-    uri_derc_and_list_by_date_format: str,
-    cert: str,
-    site_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
-    expected_status: HTTPStatus,
-    expected_total: int,
-    expected_does: list[tuple[datetime, float, float]],
-    day: date,
+    uri_derc_list_format: str,
 ):
-    """Tests that the list pagination works correctly for various combinations of start/limit/changed_after"""
-    path = uri_derc_and_list_by_date_format.format(
-        site_id=site_id, der_program_id="doe", derc_id_or_date=day.isoformat()
-    ) + build_paging_params(start, limit, changed_after)
-    response = await client.get(path, headers=generate_headers(cert))
-    assert_response_header(response, expected_status)
+    """Tests that the DERControl list properly expires DERControls when "now" is after they end"""
+    path = uri_derc_list_format.format(site_id=1, der_program_id="doe") + build_paging_params(limit=99)
+    response = await client.get(path, headers=generate_headers(AGG_1_VALID_CERT))
+    assert_response_header(response, HTTPStatus.OK)
 
-    if expected_status != HTTPStatus.OK:
-        assert_error_response(response)
-    else:
-        body = read_response_body_string(response)
-        assert len(body) > 0
+    body = read_response_body_string(response)
+    assert len(body) > 0
 
-        parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
-        if not parsed_response.DERControl:
-            parsed_response.DERControl = []  # Makes it easier to compare
-        assert path.startswith(parsed_response.href), "The derc href should be included in the response"
-        assert parsed_response.results == len(expected_does)
-        assert parsed_response.all_ == expected_total
-        assert len(parsed_response.DERControl) == len(expected_does)
-        for (expected_start, expected_import, expected_output), ctrl in zip(expected_does, parsed_response.DERControl):
-            control: DERControlResponse = ctrl
-            assert control.DERControlBase_
-            assert control.DERControlBase_.opModImpLimW.value == expected_import
-            assert control.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
-            assert control.DERControlBase_.opModExpLimW.value == expected_output
-            assert control.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
-            assert_datetime_equal(expected_start, control.interval.start)
+    # yes there are DOEs for site 1 - but they all exist in the past (due to freeze_time)
+    parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
+    assert parsed_response.DERControl is None or parsed_response.DERControl == []
+    assert parsed_response.results == 0
+    assert parsed_response.all_ == 0
 
 
 @pytest.mark.anyio
@@ -655,15 +526,16 @@ async def test_get_active_doe_for_aggregator(
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "site_id, program, doe_id, expected",
+    "site_id, program, doe_id, expected, is_cancelled",
     [
-        (1, "doe", 1, HTTPStatus.OK),
-        (VIRTUAL_END_DEVICE_SITE_ID, "doe", 1, HTTPStatus.OK),
-        (2, "doe", 10, HTTPStatus.OK),
-        (1, "doe", 10, HTTPStatus.NOT_FOUND),  # Wrong site ID
-        (1, "doe", 99, HTTPStatus.NOT_FOUND),  # Wrong doe ID
-        (3, "doe", 14, HTTPStatus.NOT_FOUND),  # Belongs to site 3 (Under agg 2)
-        (1, "not", 1, HTTPStatus.NOT_FOUND),  # bad program ID
+        (1, "doe", 1, HTTPStatus.OK, False),  # From the "normal" table
+        (1, "doe", 19, HTTPStatus.OK, True),  # From the archive (is cancelled)
+        (VIRTUAL_END_DEVICE_SITE_ID, "doe", 1, HTTPStatus.FORBIDDEN, False),
+        (2, "doe", 10, HTTPStatus.OK, False),
+        (1, "doe", 10, HTTPStatus.NOT_FOUND, False),  # Wrong site ID
+        (1, "doe", 99, HTTPStatus.NOT_FOUND, False),  # Wrong doe ID
+        (3, "doe", 14, HTTPStatus.NOT_FOUND, False),  # Belongs to site 3 (Under agg 2)
+        (1, "not", 1, HTTPStatus.NOT_FOUND, False),  # bad program ID
     ],
 )
 async def test_get_doe(
@@ -674,6 +546,7 @@ async def test_get_doe(
     program: str,
     doe_id: int,
     expected: HTTPStatus,
+    is_cancelled: bool,
     agg_1_headers,
 ):
     """Tests getting DERPrograms for various sites and validates access constraints"""
@@ -690,3 +563,8 @@ async def test_get_doe(
         assert len(body) > 0
         parsed_response: DERControlResponse = DERControlResponse.from_xml(body)
         assert parsed_response.href == path
+
+        if is_cancelled:
+            assert parsed_response.EventStatus_.currentStatus == 2
+        else:
+            assert parsed_response.EventStatus_.currentStatus == 0

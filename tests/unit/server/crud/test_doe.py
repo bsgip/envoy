@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -11,7 +11,7 @@ from envoy.server.crud.doe import (
     count_active_does_include_deleted,
     count_does_at_timestamp,
     select_active_does_include_deleted,
-    select_doe_for_scope,
+    select_doe_include_deleted,
     select_does_at_timestamp,
 )
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope as ArchiveDOE
@@ -73,6 +73,9 @@ def assert_doe_for_id(
     [
         (1, 1, 5, datetime(2023, 5, 7, 1, 0, 0)),
         (2, 3, 15, datetime(2023, 5, 7, 1, 5, 0)),
+        (1, 1, 18, datetime(2023, 5, 7, 1, 0, 0)),  # Archive record
+        (1, 1, 19, datetime(2023, 5, 7, 1, 5, 0)),  # Archive record
+        (1, 1, 21, None),  # Archive record (but not deleted)
         (1, 3, 15, None),
         (0, 1, 1, None),
         (2, 1, 15, None),
@@ -81,11 +84,11 @@ def assert_doe_for_id(
     ],
 )
 @pytest.mark.anyio
-async def test_select_doe_for_scope(
+async def test_select_doe_include_deleted(
     pg_additional_does, agg_id: int, site_id: Optional[int], doe_id: int, expected_dt: Optional[datetime]
 ):
     async with generate_async_session(pg_additional_does) as session:
-        actual = await select_doe_for_scope(session, agg_id, site_id, doe_id)
+        actual = await select_doe_include_deleted(session, agg_id, site_id, doe_id)
         if expected_dt is None:
             expected_id = None
         else:
@@ -102,11 +105,11 @@ async def test_select_doe_for_scope(
     ],
 )
 @pytest.mark.anyio
-async def test_select_doe_for_scope_la_timezone(
+async def test_select_doe_include_deleted_la_timezone(
     pg_la_timezone, agg_id: int, site_id: Optional[int], doe_id: int, expected_dt: Optional[datetime]
 ):
     async with generate_async_session(pg_la_timezone) as session:
-        actual = await select_doe_for_scope(session, agg_id, site_id, doe_id)
+        actual = await select_doe_include_deleted(session, agg_id, site_id, doe_id)
         if expected_dt is None:
             expected_id = None
         else:

@@ -13,7 +13,7 @@ from envoy.server.crud.doe import (
     count_active_does_include_deleted,
     count_does_at_timestamp,
     select_active_does_include_deleted,
-    select_doe_for_scope,
+    select_doe_include_deleted,
     select_does_at_timestamp,
 )
 from envoy.server.crud.end_device import select_single_site_with_site_id
@@ -40,10 +40,9 @@ class DERProgramManager:
 
         if site_id DNE or is inaccessible to aggregator_id a NotFoundError will be raised"""
 
-        if scope.site_id is not None:
-            site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
-            if not site:
-                raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
+        site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
+        if not site:
+            raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
 
         now = utc_now()
         total_does = await count_active_does_include_deleted(
@@ -80,7 +79,7 @@ class DERControlManager:
     ) -> Optional[DERControlResponse]:
         """DER Controls are how Dynamic Operating Envelopes are communicated. This will provide a lookup for a
         particular DOE by ID but ensuring it stays scoped to the appropriate request"""
-        doe = await select_doe_for_scope(session, scope.aggregator_id, scope.site_id, doe_id)
+        doe = await select_doe_include_deleted(session, scope.aggregator_id, scope.site_id, doe_id)
         if doe is None:
             return None
 

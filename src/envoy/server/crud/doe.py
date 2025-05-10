@@ -10,30 +10,50 @@ from envoy.server.model.doe import DynamicOperatingEnvelope as DOE
 from envoy.server.model.site import Site
 
 
-async def select_doe_for_scope(
+async def select_doe_include_deleted(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int,
     doe_id: int,
-) -> Optional[DOE]:
-    """Attempts to fetch a doe using its' DOE id, also scoping it to a particular aggregator/site
+) -> Optional[Union[DOE, ArchiveDOE]]:
+    """Attempts to fetch a doe using its' DOE id, also scoping it to a particular aggregator/site. The archive
+    table will also be checked for deleted instances (of which the most recent deletion will be matched).
 
     aggregator_id: The aggregator id to constrain the lookup to
-    site_id: If None - no effect otherwise the query will apply a filter on site_id using this value"""
+    site_id: the query will apply a filter on site_id using this value"""
 
-    stmt = (
-        select(DOE, Site.timezone_id)
-        .join(DOE.site)
-        .where((DOE.dynamic_operating_envelope_id == doe_id) & (Site.aggregator_id == aggregator_id))
-    )
-    if site_id is not None:
-        stmt = stmt.where(DOE.site_id == site_id)
-
-    resp = await session.execute(stmt)
-    raw = resp.one_or_none()
-    if raw is None:
+    # Start by confirming the referenced site_id exists within the specified aggregator.
+    site_timezone_id = (
+        await session.execute(
+            select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
+        )
+    ).scalar_one_or_none()
+    if not site_timezone_id:
         return None
-    return localize_start_time(raw)
+
+    # Check primary table first
+    primary_table_doe = (
+        await session.execute(
+            select(DOE).where((DOE.dynamic_operating_envelope_id == doe_id) & (DOE.site_id == site_id))
+        )
+    ).scalar_one_or_none()
+    if primary_table_doe is not None:
+        return localize_start_time_for_entity(primary_table_doe, site_timezone_id)
+
+    # Check archive otherwise
+    archive_table_doe = (
+        await session.execute(
+            (
+                select(ArchiveDOE)
+                .where((ArchiveDOE.dynamic_operating_envelope_id == doe_id) & (ArchiveDOE.deleted_time.is_not(None)))
+                .order_by(ArchiveDOE.deleted_time.desc())
+            )
+        )
+    ).scalar_one_or_none()
+    if archive_table_doe is not None:
+        return localize_start_time_for_entity(archive_table_doe, site_timezone_id)
+
+    return None
 
 
 async def _does_at_timestamp(

@@ -14,6 +14,7 @@ from envoy_schema.server.schema.sep2.response import (
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
 from envoy.server.mapper.sep2.mrid import MridMapper
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -116,7 +117,8 @@ class ResponseMapper:
 
     @staticmethod
     def map_from_doe_request(
-        r: Union[DERControlResponse, Response], dynamic_operating_envelope: DynamicOperatingEnvelope
+        r: Union[DERControlResponse, Response],
+        dynamic_operating_envelope: Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope],
     ) -> DynamicOperatingEnvelopeResponse:
         """Maps a sep2 DERControlResponse to an internal DynamicOperatingEnvelopeResponse model."""
 

@@ -1,6 +1,6 @@
 import re
 from itertools import product
-from typing import Optional
+from typing import Optional, Union
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -23,6 +23,7 @@ from envoy.server.mapper.sep2.response import (
     href_to_response_set_type,
     response_set_type_to_href,
 )
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
 from envoy.server.model.site import Site
@@ -119,10 +120,17 @@ def test_ResponseMapper_map_to_doe_response(href_prefix: Optional[str], optional
     assert len(result.subject) == 32, "Expected 128 bits of hex chars"
 
 
-@pytest.mark.parametrize("optional_is_none, response_type", product([True, False], [Response, DERControlResponse]))
-def test_ResponseMapper_map_from_doe_request(optional_is_none: bool, response_type: type[Response]):
+@pytest.mark.parametrize(
+    "doe_type, optional_is_none, response_type",
+    product([DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope], [True, False], [Response, DERControlResponse]),
+)
+def test_ResponseMapper_map_from_doe_request(
+    doe_type: Union[type[DynamicOperatingEnvelope], type[ArchiveDynamicOperatingEnvelope]],
+    optional_is_none: bool,
+    response_type: type[Response],
+):
     response = generate_class_instance(response_type, seed=101, optional_is_none=optional_is_none)
-    doe = generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=optional_is_none)
+    doe = generate_class_instance(doe_type, seed=202, optional_is_none=optional_is_none)
 
     result = ResponseMapper.map_from_doe_request(response, doe)
     assert isinstance(result, DynamicOperatingEnvelopeResponse)

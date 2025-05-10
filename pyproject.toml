@@ -94,6 +94,7 @@ test = [
     "asgi_lifespan",
     "assertical",
     "pytest-env",
+    "freezegun",
 ]
 
 [tool.setuptools.package-data]

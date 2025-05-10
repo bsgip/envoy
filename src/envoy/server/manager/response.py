@@ -13,7 +13,7 @@ from envoy_schema.server.schema.sep2.response import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.crud.doe import select_doe_for_scope
+from envoy.server.crud.doe import select_doe_include_deleted
 from envoy.server.crud.pricing import select_tariff_generated_rate_for_scope
 from envoy.server.crud.response import (
     count_doe_responses,
@@ -152,7 +152,7 @@ class ResponseManager:
             doe_id = MridMapper.decode_doe_mrid(response.subject)
 
             # Validate the referenced doe is accessible to this scope
-            doe = await select_doe_for_scope(session, scope.aggregator_id, scope.site_id, doe_id)
+            doe = await select_doe_include_deleted(session, scope.aggregator_id, scope.site_id, doe_id)
             if doe is None:
                 raise BadRequestError(
                     f"subject '{response.subject}' references a DOE not available on this utility server"
