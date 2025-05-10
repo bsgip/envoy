@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from enum import IntEnum, auto
 from typing import Optional, Sequence, Union
@@ -21,11 +22,17 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.mrid import MridMapper, ResponseSetType
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
 
 DOE_PROGRAM_ID: str = "doe"
+EVENT_STATUS_SCHEDULED = 0
+EVENT_STATUS_ACTIVE = 1
+EVENT_STATUS_CANCELLED = 2
+EVENT_STATUS_CANCELLED_WITH_RANDOMIZATION = 3
+EVENT_STATUS_SUPERSEDED = 4
 
 
 class DERControlListSource(IntEnum):
@@ -46,9 +53,21 @@ class DERControlMapper:
 
     @staticmethod
     def map_to_response(
-        scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope], doe: DynamicOperatingEnvelope
+        scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],
+        doe: Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope],
     ) -> DERControlResponse:
         """Creates a csip aus compliant DERControlResponse from the specific doe"""
+
+        event_status: int
+        event_status_time: datetime
+        if isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None:
+            # This is a deleted DOE
+            event_status = EVENT_STATUS_CANCELLED
+            event_status_time = doe.deleted_time
+        else:
+            event_status = EVENT_STATUS_SCHEDULED
+            event_status_time = doe.changed_time
+
         return DERControlResponse.model_validate(
             {
                 "href": generate_href(
@@ -74,8 +93,8 @@ class DERControlMapper:
                 "creationTime": int(doe.changed_time.timestamp()),
                 "EventStatus_": EventStatus.model_validate(
                     {
-                        "currentStatus": 0,  # Set to 'scheduled'
-                        "dateTime": int(doe.changed_time.timestamp()),  # Set to when the doe is created
+                        "currentStatus": event_status,
+                        "dateTime": int(event_status_time.timestamp()),
                         "potentiallySuperseded": False,
                     }
                 ),
@@ -133,7 +152,7 @@ class DERControlMapper:
     @staticmethod
     def map_to_list_response(
         request_scope: DeviceOrAggregatorRequestScope,
-        does: Sequence[DynamicOperatingEnvelope],
+        does: Sequence[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
         total_does: int,
         source: DERControlListSource,
     ) -> DERControlListResponse:

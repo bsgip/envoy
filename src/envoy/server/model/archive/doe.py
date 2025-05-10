@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DECIMAL, INTEGER, BigInteger, DateTime
+from sqlalchemy import DECIMAL, INTEGER, BigInteger, DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
@@ -23,3 +23,11 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     duration_seconds: Mapped[int] = mapped_column()
     import_limit_active_watts: Mapped[Decimal] = mapped_column(DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES))
     export_limit_watts: Mapped[Decimal] = mapped_column(DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES))
+
+    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index(
+            "archive_doe_end_time_deleted_time_site_id", "end_time", "deleted_time", "site_id"
+        ),  # This is to support finding DOE's that have been deleted (or cancelled)
+    )

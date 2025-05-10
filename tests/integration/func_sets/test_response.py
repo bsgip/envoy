@@ -509,9 +509,9 @@ async def test_get_response_list_pagination_for_device_cert(
             RATE_HREF,
             MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),
             PriceResponse,
-            PriceResponse,
-            HTTPStatus.CREATED,
-        ),
+            None,
+            HTTPStatus.FORBIDDEN,
+        ),  # Can't send responses to aggregator end device
         (
             AGG_1_VALID_CERT,
             1,
@@ -536,9 +536,9 @@ async def test_get_response_list_pagination_for_device_cert(
             DOE_HREF,
             MridMapper.encode_doe_mrid(TEST_SCOPE, 1),
             DERControlResponse,
-            DERControlResponse,
-            HTTPStatus.CREATED,
-        ),
+            None,
+            HTTPStatus.FORBIDDEN,
+        ),  # Can't send responses to aggregator end device
         (
             AGG_2_VALID_CERT,
             1,

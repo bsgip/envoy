@@ -1,3 +1,6 @@
+from typing import Union
+
+import pytest
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.der import (
@@ -10,18 +13,24 @@ from envoy_schema.server.schema.sep2.der import (
 )
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
-from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
+from envoy.server.mapper.csip_aus.doe import (
+    EVENT_STATUS_CANCELLED,
+    EVENT_STATUS_SCHEDULED,
+    DERControlListSource,
+    DERControlMapper,
+    DERProgramMapper,
+)
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
-def test_map_derc_to_response():
+@pytest.mark.parametrize("doe_type", [DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope])
+def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]]):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
-    doe: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=101, optional_is_none=False)
-    doe_opt: DynamicOperatingEnvelope = generate_class_instance(
-        DynamicOperatingEnvelope, seed=202, optional_is_none=True
-    )
+    doe = generate_class_instance(doe_type, seed=101, optional_is_none=False)
+    doe_opt = generate_class_instance(doe_type, seed=202, optional_is_none=True)
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/foo/bar"
     )
@@ -39,6 +48,13 @@ def test_map_derc_to_response():
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * DOE_DECIMAL_POWER)
     assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * DOE_DECIMAL_POWER)
 
+    if isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None:
+        assert result_all_set.EventStatus_.currentStatus == EVENT_STATUS_CANCELLED
+        assert result_all_set.EventStatus_.dateTime == int(doe.deleted_time.timestamp())
+    else:
+        assert result_all_set.EventStatus_.currentStatus == EVENT_STATUS_SCHEDULED
+        assert result_all_set.EventStatus_.dateTime == int(doe.changed_time.timestamp())
+
     result_optional = DERControlMapper.map_to_response(scope, doe_opt)
     assert result_optional is not None
     assert isinstance(result_optional, DERControlResponse)
@@ -53,6 +69,13 @@ def test_map_derc_to_response():
         doe_opt.import_limit_active_watts * DOE_DECIMAL_POWER
     )
     assert result_optional.DERControlBase_.opModExpLimW.value == int(doe_opt.export_limit_watts * DOE_DECIMAL_POWER)
+
+    if isinstance(doe_opt, ArchiveDynamicOperatingEnvelope) and doe_opt.deleted_time is not None:
+        assert result_optional.EventStatus_.currentStatus == EVENT_STATUS_CANCELLED
+        assert result_optional.EventStatus_.dateTime == int(doe_opt.deleted_time.timestamp())
+    else:
+        assert result_optional.EventStatus_.currentStatus == EVENT_STATUS_SCHEDULED
+        assert result_optional.EventStatus_.dateTime == int(doe_opt.changed_time.timestamp())
 
 
 def test_map_default_to_response():

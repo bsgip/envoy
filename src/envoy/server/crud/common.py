@@ -3,10 +3,13 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import Row
 
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.tariff import TariffGeneratedRate
 
-EntityWithStartTime = TypeVar("EntityWithStartTime", bound=Union[TariffGeneratedRate, DynamicOperatingEnvelope])
+EntityWithStartTime = TypeVar(
+    "EntityWithStartTime", bound=Union[TariffGeneratedRate, DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]
+)
 
 
 def localize_start_time_for_entity(entity: EntityWithStartTime, tz_name: str) -> EntityWithStartTime:
