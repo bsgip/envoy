@@ -27,7 +27,7 @@ from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.mapper.constants import MridType, ResponseSetType
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import ResponseListMapper, ResponseMapper, ResponseSetMapper
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +125,7 @@ class ResponseManager:
     @staticmethod
     async def create_response_for_scope(
         session: AsyncSession,
-        scope: DeviceOrAggregatorRequestScope,
+        scope: SiteRequestScope,
         response_set_type: ResponseSetType,
         response: Union[DERControlResponse, PriceResponse, Response],
     ) -> str:

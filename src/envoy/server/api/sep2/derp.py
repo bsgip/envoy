@@ -95,8 +95,8 @@ async def get_dercontrol_list(
     after: list[int] = Query([0], alias="a"),
     limit: list[int] = Query([1], alias="l"),
 ) -> Response:
-    """Responds with a single DERControlListResponse containing DER Controls for the specified site under the
-    dynamic operating envelope program.
+    """Responds with a single DERControlListResponse containing, non expired (according to server time), DER Controls
+    for the specified site under the dynamic operating envelope program.
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.

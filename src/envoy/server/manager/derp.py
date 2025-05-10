@@ -60,10 +60,10 @@ class DERProgramManager:
         """DOE Programs are static - this will just return a fixed Dynamic Operating Envelope Program
 
         if site_id DNE is inaccessible to aggregator_id a NotFoundError will be raised"""
-        if scope.site_id is not None:
-            site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
-            if not site:
-                raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
+
+        site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
+        if not site:
+            raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
 
         now = utc_now()
         total_does = await count_active_does_include_deleted(

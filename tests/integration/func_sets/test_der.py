@@ -17,6 +17,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERSettings,
     DERStatus,
 )
+from freezegun import freeze_time
 from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -473,6 +474,7 @@ async def test_roundtrip_upsert_der_status(
         (5, PUBLIC_SITE_DER_ID, None),  # DNE
     ],
 )
+@freeze_time("2010-01-01")  # DOEs are time sensitive - set time far enough in the past to ensure all pass
 async def test_get_associated_derprogram_list(
     client: AsyncClient,
     site_id: int,

@@ -1,7 +1,6 @@
 import asyncio
-import unittest.mock as mock
 import urllib.parse
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Any, Optional
 from zoneinfo import ZoneInfo

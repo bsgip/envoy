@@ -36,17 +36,17 @@ VALUES (17, 3, NULL, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', '2023-05-07 
 
 SELECT pg_catalog.setval('public.dynamic_operating_envelope_dynamic_operating_envelope_id_seq', 18, true);
 
-INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, '2000-01-01 00:00:00Z', NULL, 18, 1, NULL, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', '2023-05-07 01:00:00+10', 300, 1800, -1800);
-INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (2, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', 18, 1, NULL, '2000-01-01 00:00:00Z', '2010-01-01 00:00:00', '2023-05-07 01:00:00+10', 300, 18.11, -18.22);
-INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (3, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', 19, 1, NULL, '2000-01-01 00:00:00Z', '2010-01-01 00:00:00', '2023-05-07 01:05:00+10', 300, 19.11, -19.22);
-INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (4, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', 20, 2, NULL, '2000-01-01 00:00:00Z', '2010-01-01 00:00:00', '2023-05-07 01:00:00+10', 300, 20.11, -20.22);
-INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (5, '2000-01-01 00:00:00Z', NULL, 1, 1, NULL, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', '2023-05-07 01:00:00+10', 300, 100, -100);
-INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (6, '2000-01-01 00:00:00Z', NULL, 21, 1, NULL, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', '2023-05-07 01:00:00+10', 300, 2100, -2100);
+INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, '2000-01-01 00:00:00Z', NULL, 18, 1, NULL, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', '2023-05-07 01:00:00+10', 300, '2023-05-07 01:05:00+10', 1800, -1800);
+INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
+VALUES (2, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', 18, 1, NULL, '2000-01-01 00:00:00Z', '2010-01-01 00:00:00', '2023-05-07 01:00:00+10', 300, '2023-05-07 01:05:00+10', 18.11, -18.22);
+INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
+VALUES (3, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', 19, 1, NULL, '2000-01-01 00:00:00Z', '2010-01-01 00:00:00', '2023-05-07 01:05:00+10', 300, '2023-05-07 01:10:00+10', 19.11, -19.22);
+INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
+VALUES (4, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', 20, 2, NULL, '2000-01-01 00:00:00Z', '2010-01-01 00:00:00', '2023-05-07 01:00:00+10', 300, '2023-05-07 01:05:00+10', 20.11, -20.22);
+INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
+VALUES (5, '2000-01-01 00:00:00Z', NULL, 1, 1, NULL, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', '2023-05-07 01:00:00+10', 300, '2023-05-07 01:05:00+10', 100, -100);
+INSERT INTO public.archive_dynamic_operating_envelope("archive_id", "archive_time", "deleted_time", "dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
+VALUES (6, '2000-01-01 00:00:00Z', NULL, 21, 1, NULL, '2000-01-01 00:00:00Z', '2023-05-06 11:22:33', '2023-05-07 01:00:00+10', 300, '2023-05-07 01:05:00+10', 2100, -2100);
 
 SELECT pg_catalog.setval('public.archive_dynamic_operating_envelope_archive_id_seq', 7, true);
