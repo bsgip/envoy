@@ -29,20 +29,20 @@ DT1 = datetime(2024, 1, 2, 3, 8, 9, 500000, tzinfo=timezone.utc)
 DT2 = DT1 + timedelta(hours=1.24)
 
 
-async def populate_archive_with_type(pg_base_config, t: type):
+async def populate_archive_with_type(pg_base_config, t: type, **kwargs):
     async with generate_async_session(pg_base_config) as session:
 
         # Archive 1 sits at DT1 for both archive times and delete times
-        session.add(generate_class_instance(t, seed=1001, archive_id=1, archive_time=DT1, deleted_time=DT1))
+        session.add(generate_class_instance(t, seed=1001, archive_id=1, archive_time=DT1, deleted_time=DT1, **kwargs))
 
         # Archive 2 sits at DT1 for deleted time but archive time is out of range
         session.add(
-            generate_class_instance(t, seed=2002, archive_id=2, archive_time=DT1 - timedelta(hours=1), deleted_time=DT1)
+            generate_class_instance(t, seed=2002, archive_id=2, archive_time=DT1 - timedelta(hours=1), deleted_time=DT1, **kwargs)
         )
 
         # Archive 3 sits at DT1 for archive time but deleted time is out of range
         session.add(
-            generate_class_instance(t, seed=3003, archive_id=3, archive_time=DT1, deleted_time=DT1 - timedelta(hours=1))
+            generate_class_instance(t, seed=3003, archive_id=3, archive_time=DT1, deleted_time=DT1 - timedelta(hours=1), **kwargs)
         )
 
         # Archive 4 sits on DT1 and isn't deleted
@@ -53,6 +53,7 @@ async def populate_archive_with_type(pg_base_config, t: type):
                 archive_id=4,
                 archive_time=DT1,
                 deleted_time=None,
+                **kwargs
             )
         )
 
@@ -64,6 +65,7 @@ async def populate_archive_with_type(pg_base_config, t: type):
                 archive_id=5,
                 archive_time=DT1 - timedelta(seconds=1),
                 deleted_time=None,
+                **kwargs
             )
         )
 
@@ -75,6 +77,7 @@ async def populate_archive_with_type(pg_base_config, t: type):
                 archive_id=6,
                 archive_time=DT2,
                 deleted_time=DT2,
+                **kwargs
             )
         )
 
@@ -193,7 +196,7 @@ async def test_get_archive_for_period_does(
 ):
     """Run through some basic query parameter parsing tests"""
 
-    await populate_archive_with_type(pg_base_config, ArchiveDynamicOperatingEnvelope)
+    await populate_archive_with_type(pg_base_config, ArchiveDynamicOperatingEnvelope, max_limit_percent=1)
 
     response = await admin_client_auth.get(
         ArchiveForPeriodDoes.format(period_start=period_start.isoformat(), period_end=period_end.isoformat())

@@ -24,6 +24,9 @@ class DoeListMapper:
                 duration_seconds=doe.duration_seconds,
                 import_limit_active_watts=doe.import_limit_active_watts,
                 export_limit_watts=doe.export_limit_watts,
+                generation_limit_watts=doe.generation_limit_watts,
+                load_limit_watts=doe.load_limit_watts,
+                max_limit_percent=doe.max_limit_percent,
             )
             for doe in doe_list
         ]
@@ -39,6 +42,9 @@ class DoeListMapper:
             duration_seconds=doe.duration_seconds,
             import_limit_active_watts=doe.import_limit_active_watts,
             export_limit_watts=doe.export_limit_watts,
+            generation_limit_watts=doe.generation_limit_watts,
+            load_limit_watts=doe.load_limit_watts,
+            max_limit_percent=doe.max_limit_percent,
             start_time=doe.start_time,
         )
 

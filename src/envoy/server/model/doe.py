@@ -30,12 +30,22 @@ class DynamicOperatingEnvelope(Base):
     )  # When the doe was created/changed
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the doe comes into effect
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this doe applies for
-    import_limit_active_watts: Mapped[Decimal] = mapped_column(
-        DECIMAL(16, DOE_DECIMAL_PLACES)
+    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on imported active power
-    export_limit_watts: Mapped[Decimal] = mapped_column(
-        DECIMAL(16, DOE_DECIMAL_PLACES)
+    export_limit_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on exported active/reactive power
+    generation_limit_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )  # Constraint on generation power
+    load_limit_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )  # Constraint on load power
+    max_limit_percent: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(5, 2), nullable=True
+    )  # Maximum limit as a percentage
+    energize: Mapped[Optional[bool]] = mapped_column(default=True, nullable=True)  # Whether the system should be energized
 
     site: Mapped["Site"] = relationship(lazy="raise")
 

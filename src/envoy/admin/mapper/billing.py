@@ -165,6 +165,9 @@ class BillingMapper:
             duration_seconds=doe.duration_seconds,
             export_limit_watts=doe.export_limit_watts,
             import_limit_active_watts=doe.import_limit_active_watts,
+            generation_limit_watts=doe.generation_limit_watts,
+            load_limit_watts=doe.load_limit_watts,
+            max_limit_percent=doe.max_limit_percent,
             period_start=doe.start_time,
             site_id=doe.site_id,
         )

@@ -1,4 +1,5 @@
 from typing import Union
+from decimal import Decimal
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -43,10 +44,21 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
     assert result_all_set.href.startswith(scope.href_prefix)
     assert f"/{scope.display_site_id}" in result_all_set.href
+    
+    # Test power limit fields
     assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
+    assert result_all_set.DERControlBase_.opModGenLimW.multiplier == -DOE_DECIMAL_PLACES
+    assert result_all_set.DERControlBase_.opModLoadLimW.multiplier == -DOE_DECIMAL_PLACES
+    
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * DOE_DECIMAL_POWER)
     assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * DOE_DECIMAL_POWER)
+    assert result_all_set.DERControlBase_.opModGenLimW.value == int(doe.generation_limit_watts * DOE_DECIMAL_POWER)
+    assert result_all_set.DERControlBase_.opModLoadLimW.value == int(doe.load_limit_watts * DOE_DECIMAL_POWER)
+    
+    # Test max limit and energize fields
+    assert result_all_set.DERControlBase_.opModMaxLimW == int(doe.max_limit_percent * 100)
+    assert result_all_set.DERControlBase_.opModEnergize == doe.energize
 
     if isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None:
         assert result_all_set.EventStatus_.currentStatus == EVENT_STATUS_CANCELLED
@@ -55,6 +67,7 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
         assert result_all_set.EventStatus_.currentStatus == EVENT_STATUS_SCHEDULED
         assert result_all_set.EventStatus_.dateTime == int(doe.changed_time.timestamp())
 
+    # Test with optional (null) values
     result_optional = DERControlMapper.map_to_response(scope, doe_opt)
     assert result_optional is not None
     assert isinstance(result_optional, DERControlResponse)
@@ -63,12 +76,16 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
     assert isinstance(result_optional.DERControlBase_, DERControlBase)
     assert result_optional.href.startswith(scope.href_prefix)
     assert f"/{scope.display_site_id}" in result_optional.href
-    assert result_optional.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
-    assert result_optional.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
-    assert result_optional.DERControlBase_.opModImpLimW.value == int(
-        doe_opt.import_limit_active_watts * DOE_DECIMAL_POWER
-    )
-    assert result_optional.DERControlBase_.opModExpLimW.value == int(doe_opt.export_limit_watts * DOE_DECIMAL_POWER)
+
+    # Test power limit fields with null values
+    assert result_optional.DERControlBase_.opModImpLimW is None
+    assert result_optional.DERControlBase_.opModExpLimW is None
+    assert result_optional.DERControlBase_.opModGenLimW is None
+    assert result_optional.DERControlBase_.opModLoadLimW is None
+    
+    # Test max limit and energize fields with null values
+    assert result_optional.DERControlBase_.opModMaxLimW is None
+    assert result_optional.DERControlBase_.opModEnergize is None
 
     if isinstance(doe_opt, ArchiveDynamicOperatingEnvelope) and doe_opt.deleted_time is not None:
         assert result_optional.EventStatus_.currentStatus == EVENT_STATUS_CANCELLED
@@ -79,26 +96,107 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
 
 
 def test_map_default_to_response():
-    """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
-    doe_default: DefaultDoeConfiguration = generate_class_instance(
-        DefaultDoeConfiguration, seed=101, optional_is_none=True
-    )
+    """Test mapping of DefaultDoeConfiguration to response with various field combinations."""
     scope = generate_class_instance(BaseRequestScope)
 
-    result_all_set = DERControlMapper.map_to_default_response(scope, doe_default)
-    assert result_all_set is not None
-    assert isinstance(result_all_set, DefaultDERControl)
-    assert isinstance(result_all_set.DERControlBase_, DERControlBase)
-    assert isinstance(result_all_set.mRID, str)
-    assert len(result_all_set.mRID) == 32, "Expected 128 bits encoded as hex"
-    assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
-    assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
-    assert result_all_set.DERControlBase_.opModImpLimW.value == int(
-        doe_default.import_limit_active_watts * DOE_DECIMAL_POWER
-    )
-    assert result_all_set.DERControlBase_.opModExpLimW.value == int(
-        doe_default.export_limit_active_watts * DOE_DECIMAL_POWER
-    )
+    # Test case 1: All fields set
+    doe_all_fields = DefaultDoeConfiguration()
+    doe_all_fields.import_limit_active_watts = Decimal("1000.0")
+    doe_all_fields.export_limit_active_watts = Decimal("2000.0")
+    doe_all_fields.generation_limit_watts = Decimal("3000.0")
+    doe_all_fields.load_limit_watts = Decimal("4000.0")
+    doe_all_fields.max_limit_percent = Decimal("0.75")
+    doe_all_fields.energize = True
+
+    result_all_fields = DERControlMapper.map_to_default_response(scope, doe_all_fields)
+    assert result_all_fields is not None
+    assert isinstance(result_all_fields, DefaultDERControl)
+    assert result_all_fields.DERControlBase_.opModImpLimW.value == 100000
+    assert result_all_fields.DERControlBase_.opModExpLimW.value == 200000
+    assert result_all_fields.DERControlBase_.opModGenLimW.value == 300000
+    assert result_all_fields.DERControlBase_.opModLoadLimW.value == 400000
+    assert result_all_fields.DERControlBase_.opModMaxLimW == 75
+    assert result_all_fields.DERControlBase_.opModEnergize is True
+
+    # Test case 2: All fields None
+    doe_all_none = DefaultDoeConfiguration()
+    result_all_none = DERControlMapper.map_to_default_response(scope, doe_all_none)
+    assert result_all_none is not None
+    assert isinstance(result_all_none, DefaultDERControl)
+    assert result_all_none.DERControlBase_.opModImpLimW is None
+    assert result_all_none.DERControlBase_.opModExpLimW is None
+    assert result_all_none.DERControlBase_.opModGenLimW is None
+    assert result_all_none.DERControlBase_.opModLoadLimW is None
+    assert result_all_none.DERControlBase_.opModMaxLimW is None
+    assert result_all_none.DERControlBase_.opModEnergize is None
+
+    # Test case 3: Only power limits set
+    doe_power_only = DefaultDoeConfiguration()
+    doe_power_only.import_limit_active_watts = Decimal("1000.0")
+    doe_power_only.export_limit_active_watts = Decimal("2000.0")
+    doe_power_only.generation_limit_watts = Decimal("3000.0")
+    doe_power_only.load_limit_watts = Decimal("4000.0")
+
+    result_power_only = DERControlMapper.map_to_default_response(scope, doe_power_only)
+    assert result_power_only is not None
+    assert isinstance(result_power_only, DefaultDERControl)
+    assert result_power_only.DERControlBase_.opModImpLimW.value == 100000
+    assert result_power_only.DERControlBase_.opModExpLimW.value == 200000
+    assert result_power_only.DERControlBase_.opModGenLimW.value == 300000
+    assert result_power_only.DERControlBase_.opModLoadLimW.value == 400000
+    assert result_power_only.DERControlBase_.opModMaxLimW is None
+    assert result_power_only.DERControlBase_.opModEnergize is None
+
+    # Test case 4: Only max limit and energize set
+    doe_limits_only = DefaultDoeConfiguration()
+    doe_limits_only.max_limit_percent = Decimal("0.75")
+    doe_limits_only.energize = False
+
+    result_limits_only = DERControlMapper.map_to_default_response(scope, doe_limits_only)
+    assert result_limits_only is not None
+    assert isinstance(result_limits_only, DefaultDERControl)
+    assert result_limits_only.DERControlBase_.opModImpLimW is None
+    assert result_limits_only.DERControlBase_.opModExpLimW is None
+    assert result_limits_only.DERControlBase_.opModGenLimW is None
+    assert result_limits_only.DERControlBase_.opModLoadLimW is None
+    assert result_limits_only.DERControlBase_.opModMaxLimW == 75
+    assert result_limits_only.DERControlBase_.opModEnergize is False
+
+    # Test case 5: Zero values
+    doe_zeros = DefaultDoeConfiguration()
+    doe_zeros.import_limit_active_watts = Decimal("0.0")
+    doe_zeros.export_limit_active_watts = Decimal("0.0")
+    doe_zeros.generation_limit_watts = Decimal("0.0")
+    doe_zeros.load_limit_watts = Decimal("0.0")
+    doe_zeros.max_limit_percent = Decimal("0.0")
+
+    result_zeros = DERControlMapper.map_to_default_response(scope, doe_zeros)
+    assert result_zeros is not None
+    assert isinstance(result_zeros, DefaultDERControl)
+    assert result_zeros.DERControlBase_.opModImpLimW.value == 0
+    assert result_zeros.DERControlBase_.opModExpLimW.value == 0
+    assert result_zeros.DERControlBase_.opModGenLimW.value == 0
+    assert result_zeros.DERControlBase_.opModLoadLimW.value == 0
+    assert result_zeros.DERControlBase_.opModMaxLimW == 0
+    assert result_zeros.DERControlBase_.opModEnergize is None
+
+    # Test case 6: Negative values
+    doe_negative = DefaultDoeConfiguration()
+    doe_negative.import_limit_active_watts = Decimal("-1000.0")
+    doe_negative.export_limit_active_watts = Decimal("-2000.0")
+    doe_negative.generation_limit_watts = Decimal("-3000.0")
+    doe_negative.load_limit_watts = Decimal("-4000.0")
+    doe_negative.max_limit_percent = Decimal("-0.75")
+
+    result_negative = DERControlMapper.map_to_default_response(scope, doe_negative)
+    assert result_negative is not None
+    assert isinstance(result_negative, DefaultDERControl)
+    assert result_negative.DERControlBase_.opModImpLimW.value == -100000
+    assert result_negative.DERControlBase_.opModExpLimW.value == -200000
+    assert result_negative.DERControlBase_.opModGenLimW.value == -300000
+    assert result_negative.DERControlBase_.opModLoadLimW.value == -400000
+    assert result_negative.DERControlBase_.opModMaxLimW == -75
+    assert result_negative.DERControlBase_.opModEnergize is None
 
 
 def test_map_derc_to_list_response():
