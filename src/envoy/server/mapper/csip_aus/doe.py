@@ -50,7 +50,7 @@ class DERControlMapper:
                 "multiplier": -DOE_DECIMAL_PLACES,  # We negate as we are encoding 1.23 as 123 * 10^-2
             }
         )
-    
+
     @staticmethod
     def map_to_optional_active_power(p: Optional[Decimal]) -> Optional[ActivePower]:
         """Creates an ActivePower instance from our own internal power decimal reading"""
@@ -111,7 +111,9 @@ class DERControlMapper:
                         "opModExpLimW": DERControlMapper.map_to_optional_active_power(doe.export_limit_watts),
                         "opModGenLimW": DERControlMapper.map_to_optional_active_power(doe.generation_limit_watts),
                         "opModLoadLimW": DERControlMapper.map_to_optional_active_power(doe.load_limit_watts),
-                        "opModMaxLimW": int(doe.max_limit_percent * 100) if doe.max_limit_percent is not None else None,  # Convert to integer percentage
+                        "opModMaxLimW": (
+                            int(doe.max_limit_percent * 100) if doe.max_limit_percent is not None else None
+                        ),  # Convert to integer percentage
                         "opModEnergize": doe.energize,
                     }
                 ),
@@ -126,11 +128,21 @@ class DERControlMapper:
                 "mRID": MridMapper.encode_default_doe_mrid(scope),
                 "DERControlBase_": DERControlBase.model_validate(
                     {
-                        "opModImpLimW": DERControlMapper.map_to_optional_active_power(default_doe.import_limit_active_watts),
-                        "opModExpLimW": DERControlMapper.map_to_optional_active_power(default_doe.export_limit_active_watts),
-                        "opModGenLimW": DERControlMapper.map_to_optional_active_power(default_doe.generation_limit_watts),
+                        "opModImpLimW": DERControlMapper.map_to_optional_active_power(
+                            default_doe.import_limit_active_watts
+                        ),
+                        "opModExpLimW": DERControlMapper.map_to_optional_active_power(
+                            default_doe.export_limit_active_watts
+                        ),
+                        "opModGenLimW": DERControlMapper.map_to_optional_active_power(
+                            default_doe.generation_limit_watts
+                        ),
                         "opModLoadLimW": DERControlMapper.map_to_optional_active_power(default_doe.load_limit_watts),
-                        "opModMaxLimW": int(default_doe.max_limit_percent * 100) if default_doe.max_limit_percent is not None else None,  # Convert to integer percentage
+                        "opModMaxLimW": (
+                            int(default_doe.max_limit_percent * 100)
+                            if default_doe.max_limit_percent is not None
+                            else None
+                        ),  # Convert to integer percentage
                         "opModEnergize": default_doe.energize,
                     }
                 ),

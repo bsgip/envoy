@@ -32,12 +32,16 @@ async def populate_archive_with_type(pg_base_config, t: type, **kwargs):
 
         # Archive 2 sits at DT1 for deleted time but archive time is out of range
         session.add(
-            generate_class_instance(t, seed=2002, archive_id=2, archive_time=DT1 - timedelta(hours=1), deleted_time=DT1, **kwargs)
+            generate_class_instance(
+                t, seed=2002, archive_id=2, archive_time=DT1 - timedelta(hours=1), deleted_time=DT1, **kwargs
+            )
         )
 
         # Archive 3 sits at DT1 for archive time but deleted time is out of range
         session.add(
-            generate_class_instance(t, seed=3003, archive_id=3, archive_time=DT1, deleted_time=DT1 - timedelta(hours=1), **kwargs)
+            generate_class_instance(
+                t, seed=3003, archive_id=3, archive_time=DT1, deleted_time=DT1 - timedelta(hours=1), **kwargs
+            )
         )
 
         # Archive 4 sits out of range (before)
@@ -48,7 +52,7 @@ async def populate_archive_with_type(pg_base_config, t: type, **kwargs):
                 archive_id=4,
                 archive_time=DT1 - timedelta(hours=1),
                 deleted_time=DT1 - timedelta(hours=1),
-                **kwargs
+                **kwargs,
             )
         )
 
@@ -61,7 +65,7 @@ async def populate_archive_with_type(pg_base_config, t: type, **kwargs):
                 archive_id=6,
                 archive_time=DT3 + timedelta(hours=1),
                 deleted_time=DT3 + timedelta(hours=1),
-                **kwargs
+                **kwargs,
             )
         )
 
@@ -76,7 +80,7 @@ async def populate_archive_with_type(pg_base_config, t: type, **kwargs):
                 archive_id=8,
                 archive_time=DT2 - timedelta(seconds=1),
                 deleted_time=DT2 - timedelta(seconds=1),
-                **kwargs
+                **kwargs,
             )
         )
 
@@ -88,43 +92,24 @@ async def populate_archive_with_type(pg_base_config, t: type, **kwargs):
                 archive_id=9,
                 archive_time=DT2 + timedelta(seconds=1),
                 deleted_time=DT2 + timedelta(seconds=1),
-                **kwargs
+                **kwargs,
             )
         )
 
         # Archive 10 sits on DT1 and isn't deleted
-        session.add(
-            generate_class_instance(
-                t,
-                seed=1010,
-                archive_id=10,
-                archive_time=DT1,
-                deleted_time=None,
-                **kwargs
-            )
-        )
+        session.add(generate_class_instance(t, seed=1010, archive_id=10, archive_time=DT1, deleted_time=None, **kwargs))
 
         # Archive 11 sits before DT1 and isn't deleted
         session.add(
             generate_class_instance(
-                t,
-                seed=1111,
-                archive_id=11,
-                archive_time=DT1 - timedelta(seconds=1),
-                deleted_time=None,
-                **kwargs
+                t, seed=1111, archive_id=11, archive_time=DT1 - timedelta(seconds=1), deleted_time=None, **kwargs
             )
         )
 
         # Archive 12 sits after DT1 and isn't deleted
         session.add(
             generate_class_instance(
-                t,
-                seed=1212,
-                archive_id=12,
-                archive_time=DT1 + timedelta(seconds=1),
-                deleted_time=None,
-                **kwargs
+                t, seed=1212, archive_id=12, archive_time=DT1 + timedelta(seconds=1), deleted_time=None, **kwargs
             )
         )
         await session.commit()

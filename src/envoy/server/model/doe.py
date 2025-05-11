@@ -45,7 +45,9 @@ class DynamicOperatingEnvelope(Base):
     max_limit_percent: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(5, 2), nullable=True
     )  # Maximum limit as a percentage
-    energize: Mapped[Optional[bool]] = mapped_column(default=True, nullable=True)  # Whether the system should be energized
+    energize: Mapped[Optional[bool]] = mapped_column(
+        default=True, nullable=True
+    )  # Whether the system should be energized
 
     site: Mapped["Site"] = relationship(lazy="raise")
 

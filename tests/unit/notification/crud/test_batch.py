@@ -954,7 +954,11 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
         # No deleted time so ignored
         session.add(
             generate_class_instance(
-                ArchiveDynamicOperatingEnvelope, seed=88, site_id=1, dynamic_operating_envelope_id=22, max_limit_percent=1
+                ArchiveDynamicOperatingEnvelope,
+                seed=88,
+                site_id=1,
+                dynamic_operating_envelope_id=22,
+                max_limit_percent=1,
             )
         )
 

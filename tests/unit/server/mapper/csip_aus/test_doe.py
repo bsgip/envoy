@@ -44,18 +44,18 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
     assert result_all_set.href.startswith(scope.href_prefix)
     assert f"/{scope.display_site_id}" in result_all_set.href
-    
+
     # Test power limit fields
     assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModGenLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModLoadLimW.multiplier == -DOE_DECIMAL_PLACES
-    
+
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * DOE_DECIMAL_POWER)
     assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * DOE_DECIMAL_POWER)
     assert result_all_set.DERControlBase_.opModGenLimW.value == int(doe.generation_limit_watts * DOE_DECIMAL_POWER)
     assert result_all_set.DERControlBase_.opModLoadLimW.value == int(doe.load_limit_watts * DOE_DECIMAL_POWER)
-    
+
     # Test max limit and energize fields
     assert result_all_set.DERControlBase_.opModMaxLimW == int(doe.max_limit_percent * 100)
     assert result_all_set.DERControlBase_.opModEnergize == doe.energize
@@ -82,7 +82,7 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
     assert result_optional.DERControlBase_.opModExpLimW is None
     assert result_optional.DERControlBase_.opModGenLimW is None
     assert result_optional.DERControlBase_.opModLoadLimW is None
-    
+
     # Test max limit and energize fields with null values
     assert result_optional.DERControlBase_.opModMaxLimW is None
     assert result_optional.DERControlBase_.opModEnergize is None
