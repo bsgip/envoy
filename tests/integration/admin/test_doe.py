@@ -53,6 +53,9 @@ async def test_update_doe(pg_base_config, admin_client_auth: AsyncClient):
         calculation_log_id=3,
         export_limit_watts=44,
         import_limit_active_watts=55,
+        generation_limit_watts=66,
+        load_limit_watts=None,
+        max_limit_percent=None,
     )
 
     resp = await admin_client_auth.post(
@@ -80,6 +83,9 @@ async def test_update_doe(pg_base_config, admin_client_auth: AsyncClient):
         assert_nowish(db_doe.created_time)  # The update deletes the old and inserts a new record
         assert db_doe.import_limit_active_watts == updated_rate.import_limit_active_watts
         assert db_doe.export_limit_watts == updated_rate.export_limit_watts
+        assert db_doe.generation_limit_watts == updated_rate.generation_limit_watts
+        assert db_doe.load_limit_watts == updated_rate.load_limit_watts
+        assert db_doe.max_limit_percent == updated_rate.max_limit_percent
 
         assert (
             await session.execute(select(func.count()).select_from(ArchiveDynamicOperatingEnvelope))

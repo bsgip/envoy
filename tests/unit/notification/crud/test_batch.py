@@ -804,6 +804,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
                     duration_seconds=11,
                     import_limit_active_watts=Decimal("1.11"),
                     export_limit_watts=Decimal("-1.22"),
+                    end_time=datetime(2022, 5, 7, 1, 2, 11, 0, tzinfo=timezone(timedelta(hours=10))),  # Generated Col
                 ),
             ],
         ),
@@ -925,6 +926,7 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
                 seed=55,
                 site_id=1,
                 dynamic_operating_envelope_id=21,
+                max_limit_percent=1,
             )
         )
         session.add(
@@ -934,6 +936,7 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
                 site_id=1,
                 dynamic_operating_envelope_id=21,
                 deleted_time=timestamp - timedelta(seconds=5),
+                max_limit_percent=1,
             )
         )
         session.add(
@@ -944,13 +947,18 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
                 dynamic_operating_envelope_id=21,
                 deleted_time=timestamp,
                 duration_seconds=21,  # for identifying this record later
+                max_limit_percent=None,
             )
         )
 
         # No deleted time so ignored
         session.add(
             generate_class_instance(
-                ArchiveDynamicOperatingEnvelope, seed=88, site_id=1, dynamic_operating_envelope_id=22
+                ArchiveDynamicOperatingEnvelope,
+                seed=88,
+                site_id=1,
+                dynamic_operating_envelope_id=22,
+                max_limit_percent=1,
             )
         )
 
@@ -962,6 +970,7 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
                 site_id=1,
                 dynamic_operating_envelope_id=23,
                 deleted_time=timestamp - timedelta(seconds=5),
+                max_limit_percent=None,
             )
         )
 
@@ -974,6 +983,7 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
                 dynamic_operating_envelope_id=24,
                 deleted_time=timestamp,
                 duration_seconds=24,  # for identifying this record later
+                max_limit_percent=1,
             )
         )
         session.add(
@@ -984,6 +994,7 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
                 dynamic_operating_envelope_id=25,
                 deleted_time=timestamp,
                 duration_seconds=25,  # for identifying this record later
+                max_limit_percent=1,
             )
         )
         await session.commit()

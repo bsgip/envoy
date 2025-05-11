@@ -85,16 +85,16 @@ async def test_create_does_with_active_subscription(
         await session.commit()
 
     doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=10001, site_id=1, calculation_log_id=None
+        DynamicOperatingEnvelopeRequest, seed=10001, site_id=1, calculation_log_id=None, max_limit_percent=1
     )
     doe_2: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=20002, site_id=1, calculation_log_id=1
+        DynamicOperatingEnvelopeRequest, seed=20002, site_id=1, calculation_log_id=1, max_limit_percent=1
     )
     doe_3: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=30003, site_id=2, calculation_log_id=1
+        DynamicOperatingEnvelopeRequest, seed=30003, site_id=2, calculation_log_id=1, max_limit_percent=1
     )
     doe_4: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=40004, site_id=3, calculation_log_id=None
+        DynamicOperatingEnvelopeRequest, seed=40004, site_id=3, calculation_log_id=None, max_limit_percent=1
     )
 
     content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
@@ -201,6 +201,7 @@ async def test_replace_doe_with_active_subscription(
         site_id=1,
         calculation_log_id=None,
         start_time=datetime(2022, 5, 7, 1, 2, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        max_limit_percent=1,
     )
 
     content = ",".join([d.model_dump_json() for d in [doe_1]])

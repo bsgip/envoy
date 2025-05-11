@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from enum import IntEnum
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 from urllib.parse import urlparse
 
 from envoy_schema.server.schema.sep2.pub_sub import (
@@ -42,6 +42,7 @@ from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMap
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
 from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
 from envoy.server.mapper.sep2.pricing import TimeTariffIntervalMapper
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
@@ -384,7 +385,7 @@ class NotificationMapper:
 
     @staticmethod
     def map_does_to_response(
-        does: Sequence[DynamicOperatingEnvelope],
+        does: Sequence[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,

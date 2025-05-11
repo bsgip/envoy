@@ -225,7 +225,7 @@ async def create_response(
     try:
         location_href = await ResponseManager.create_response_for_scope(
             db.session,
-            scope=extract_request_claims(request).to_device_or_aggregator_request_scope(site_id),
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
             response_set_type=response_set_type,
             response=payload,
         )
