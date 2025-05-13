@@ -25,7 +25,9 @@ from envoy.server.mapper.csip_aus.doe import (
     DERControlResponse,
     DERProgramMapper,
 )
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.request_scope import SiteRequestScope
 
 
@@ -45,9 +47,8 @@ class DERProgramManager:
             raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
 
         now = utc_now()
-        total_does = await count_active_does_include_deleted(
-            session, scope.aggregator_id, scope.site_id, now, datetime.min
-        )
+        total_does = await count_active_does_include_deleted(session, site, now, datetime.min)
+
         # Note that the actual site_id is used to construct the response as it is required for the href
         return DERProgramMapper.doe_program_list_response(scope, total_does, default_doe)
 
@@ -66,9 +67,7 @@ class DERProgramManager:
             raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
 
         now = utc_now()
-        total_does = await count_active_does_include_deleted(
-            session, scope.aggregator_id, scope.site_id, now, datetime.min
-        )
+        total_does = await count_active_does_include_deleted(session, site, now, datetime.min)
         return DERProgramMapper.doe_program_response(scope, total_does, default_doe)
 
 
@@ -95,13 +94,20 @@ class DERControlManager:
     ) -> DERControlListResponse:
         """DER Controls are how Dynamic Operating Envelopes are communicated. This will provide a pagination API
         for iterating DOE's stored against a particular site"""
+
         now = utc_now()
-        does = await select_active_does_include_deleted(
-            session, scope.aggregator_id, scope.site_id, now, start, changed_after, limit
-        )
-        total_count = await count_active_does_include_deleted(
-            session, scope.aggregator_id, scope.site_id, now, changed_after
-        )
+
+        site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
+        does: list[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope]
+        total_count: int
+        if site:
+            # site is accessible to the current scope - perform fetch query
+            does = await select_active_does_include_deleted(session, site, now, start, changed_after, limit)
+            total_count = await count_active_does_include_deleted(session, site, now, changed_after)
+        else:
+            # Site isn't in scope - return empty list
+            does = []
+            total_count = 0
         return DERControlMapper.map_to_list_response(scope, does, total_count, DERControlListSource.DER_CONTROL_LIST)
 
     @staticmethod

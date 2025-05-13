@@ -58,9 +58,7 @@ async def test_program_fetch_list_for_scope(
     # We only validate site existence if we are scoped to that site specifically
 
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
-    mock_count_active_does_include_deleted.assert_called_once_with(
-        mock_session, scope.aggregator_id, scope.site_id, now, datetime.min
-    )
+    mock_count_active_does_include_deleted.assert_called_once_with(mock_session, existing_site, now, datetime.min)
     mock_DERProgramMapper.doe_program_list_response.assert_called_once_with(scope, doe_count, default_doe)
     assert_mock_session(mock_session)
     mock_utc_now.assert_called_once()
@@ -127,9 +125,7 @@ async def test_program_fetch_for_scope(
     assert result is mapped_program
 
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
-    mock_count_active_does_include_deleted.assert_called_once_with(
-        mock_session, scope.aggregator_id, scope.site_id, now, datetime.min
-    )
+    mock_count_active_does_include_deleted.assert_called_once_with(mock_session, existing_site, now, datetime.min)
     mock_DERProgramMapper.doe_program_response.assert_called_once_with(scope, doe_count, default_doe)
     mock_utc_now.assert_called_once()
     assert_mock_session(mock_session)
@@ -192,6 +188,7 @@ async def test_fetch_doe_control_for_scope(
 
 
 @pytest.mark.anyio
+@mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.derp.select_active_does_include_deleted")
 @mock.patch("envoy.server.manager.derp.count_active_does_include_deleted")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
@@ -201,10 +198,12 @@ async def test_fetch_doe_controls_for_scope(
     mock_DERControlMapper: mock.MagicMock,
     mock_count_active_does_include_deleted: mock.MagicMock,
     mock_select_active_does_include_deleted: mock.MagicMock,
+    mock_select_single_site_with_site_id: mock.MagicMock,
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    existing_site = generate_class_instance(Site)
     doe_count = 789
     start = 11
     limit = 34
@@ -221,6 +220,7 @@ async def test_fetch_doe_controls_for_scope(
     mock_select_active_does_include_deleted.return_value = does_page
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
     mock_utc_now.return_value = now
+    mock_select_single_site_with_site_id.return_value = existing_site
 
     # Act
     result = await DERControlManager.fetch_doe_controls_for_scope(mock_session, scope, start, changed_after, limit)
@@ -228,14 +228,56 @@ async def test_fetch_doe_controls_for_scope(
     # Assert
     assert result is mapped_list
 
-    mock_count_active_does_include_deleted.assert_called_once_with(
-        mock_session, scope.aggregator_id, scope.site_id, now, changed_after
-    )
+    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
+    mock_count_active_does_include_deleted.assert_called_once_with(mock_session, existing_site, now, changed_after)
     mock_select_active_does_include_deleted.assert_called_once_with(
-        mock_session, scope.aggregator_id, scope.site_id, now, start, changed_after, limit
+        mock_session, existing_site, now, start, changed_after, limit
     )
     mock_DERControlMapper.map_to_list_response.assert_called_once_with(
         scope, does_page, doe_count, DERControlListSource.DER_CONTROL_LIST
+    )
+    mock_utc_now.assert_called_once()
+    assert_mock_session(mock_session)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
+@mock.patch("envoy.server.manager.derp.select_active_does_include_deleted")
+@mock.patch("envoy.server.manager.derp.count_active_does_include_deleted")
+@mock.patch("envoy.server.manager.derp.DERControlMapper")
+@mock.patch("envoy.server.manager.derp.utc_now")
+async def test_fetch_doe_controls_for_scope_site_dne(
+    mock_utc_now: mock.MagicMock,
+    mock_DERControlMapper: mock.MagicMock,
+    mock_count_active_does_include_deleted: mock.MagicMock,
+    mock_select_active_does_include_deleted: mock.MagicMock,
+    mock_select_single_site_with_site_id: mock.MagicMock,
+):
+    """Tests that if the site isn't accessible that the resulting list is empty"""
+    # Arrange
+    scope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    start = 11
+    limit = 34
+    changed_after = datetime(2022, 11, 12, 4, 5, 6)
+    now = datetime(2023, 6, 7, 8, 9, 0, tzinfo=timezone.utc)
+    mapped_list = generate_class_instance(DERControlListResponse)
+
+    mock_session = create_mock_session()
+    mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
+    mock_utc_now.return_value = now
+    mock_select_single_site_with_site_id.return_value = None
+
+    # Act
+    result = await DERControlManager.fetch_doe_controls_for_scope(mock_session, scope, start, changed_after, limit)
+
+    # Assert
+    assert result is mapped_list
+
+    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
+    mock_count_active_does_include_deleted.assert_not_called()
+    mock_select_active_does_include_deleted.assert_not_called()
+    mock_DERControlMapper.map_to_list_response.assert_called_once_with(
+        scope, [], 0, DERControlListSource.DER_CONTROL_LIST
     )
     mock_utc_now.assert_called_once()
     assert_mock_session(mock_session)

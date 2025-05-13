@@ -14,6 +14,7 @@ from envoy.server.crud.doe import (
     select_doe_include_deleted,
     select_does_at_timestamp,
 )
+from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope as ArchiveDOE
 from envoy.server.model.doe import DynamicOperatingEnvelope as DOE
 
@@ -119,6 +120,19 @@ async def test_select_doe_include_deleted_la_timezone(
         )
 
 
+@pytest.mark.anyio
+async def test_select_and_count_active_does_fails_none_site(pg_additional_does):
+    """Tests out that passing a "None" value to the count/select functions raises an error"""
+
+    now = datetime(2022, 11, 4, tzinfo=timezone.utc)
+    after = datetime.min
+    async with generate_async_session(pg_additional_does) as session:
+        with pytest.raises(Exception):
+            await select_active_does_include_deleted(session, None, now, 0, after, 99)
+        with pytest.raises(Exception):
+            await count_active_does_include_deleted(session, None, now, after)
+
+
 @pytest.mark.parametrize(
     "expected_ids, expected_count, start, after, limit",
     [
@@ -138,9 +152,11 @@ async def test_select_and_count_active_does_include_deleted_pagination(
 ):
     """Tests out the basic pagination features"""
     now = datetime(1970, 1, 1, 0, 0, 0)  # This is sufficiently in this past to allow everything to pass
+
     async with generate_async_session(pg_additional_does) as session:
-        does = await select_active_does_include_deleted(session, 1, 1, now, start, after, limit)
-        count = await count_active_does_include_deleted(session, 1, 1, now, after)
+        existing_site = await select_single_site_with_site_id(session, 1, 1)
+        does = await select_active_does_include_deleted(session, existing_site, now, start, after, limit)
+        count = await count_active_does_include_deleted(session, existing_site, now, after)
         assert len(does) == len(expected_ids)
         assert count == expected_count
         for id, doe in zip(expected_ids, does):
@@ -157,10 +173,6 @@ async def test_select_and_count_active_does_include_deleted_pagination(
         ([9, 19, 6, 7, 8], 1, 1, datetime(2023, 5, 7, 1, 5, 0, tzinfo=AEST)),  # On expiry time
         ([18, 5, 9, 19, 6, 7, 8], 1, 1, datetime(2023, 5, 7, 0, 59, 59, tzinfo=AEST)),  # Before start
         ([], 1, 1, datetime(2045, 1, 1, 0, 0, 0, tzinfo=AEST)),  # Everything expired
-        ([], 1, 3, datetime.min),  # Wrong site_id
-        ([], 1, 99, datetime.min),  # Bad site_id
-        ([], 2, 1, datetime.min),  # Wrong Agg
-        ([], 99, 1, datetime.min),  # Bad Agg
     ],
 )
 @pytest.mark.anyio
@@ -169,8 +181,10 @@ async def test_select_and_count_active_does_include_deleted_filtered(
 ):
     """Tests out the basic filters features and validates the associated count function too"""
     async with generate_async_session(pg_additional_does) as session:
-        does = await select_active_does_include_deleted(session, agg_id, site_id, now, 0, datetime.min, 99)
-        count = await count_active_does_include_deleted(session, agg_id, site_id, now, datetime.min)
+        existing_site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=agg_id)
+
+        does = await select_active_does_include_deleted(session, existing_site, now, 0, datetime.min, 99)
+        count = await count_active_does_include_deleted(session, existing_site, now, datetime.min)
         assert isinstance(count, int)
 
         assert expected_ids == [d.dynamic_operating_envelope_id for d in does]
@@ -189,7 +203,6 @@ async def test_select_and_count_active_does_include_deleted_filtered(
             1,
         ),  # Adjusted for LA time
         ([(3, datetime(2022, 5, 6, 8, 2))], 1, 2),  # Adjusted for LA time
-        ([], 2, 1),  # Adjusted for LA time
     ],
 )
 @pytest.mark.anyio
@@ -199,8 +212,9 @@ async def test_select_and_count_doe_filters_la_time(
     """Builds on test_select_and_count_doe_filters with the la timezone"""
     now = datetime(1970, 1, 1, 0, 0, 0)  # This is sufficiently in this past to allow everything to pass
     async with generate_async_session(pg_la_timezone) as session:
-        does = await select_active_does_include_deleted(session, agg_id, site_id, now, 0, datetime.min, 99)
-        count = await count_active_does_include_deleted(session, agg_id, site_id, now, datetime.min)
+        existing_site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=agg_id)
+        does = await select_active_does_include_deleted(session, existing_site, now, 0, datetime.min, 99)
+        count = await count_active_does_include_deleted(session, existing_site, now, datetime.min)
         assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count

@@ -105,34 +105,25 @@ async def _does_at_timestamp(
 
 async def count_active_does_include_deleted(
     session: AsyncSession,
-    aggregator_id: int,
-    site_id: int,
+    site: Site,
     now: datetime,
     changed_after: datetime,
 ) -> int:
     """Provides the count of records returned from select_active_does_include_deleted (assuming no pagination).
 
-    aggregator_id: Only DOEs from this aggregator_id will be counted
-    site_id: Only DOEs from this site_id will be counted
+    site: The site that the counted DOE's will be all be scoped from
     now: The timestamp that excludes any DOE whose end_time precedes this (i.e. they are expired and no longer relevant)
     changed_after: Only DOE's modified after this time will be counted."""
 
-    # Discovering the timezone BEFORE making the query will allow the better use of indexes (and avoid a lot of joins)
-    site_timezone_id = (
-        await session.execute(
-            select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
-        )
-    ).scalar_one_or_none()
-    if not site_timezone_id:
-        return 0
-
     count_active_does_stmt = (
-        select(func.count()).select_from(DOE).where((DOE.end_time > now) & (DOE.site_id == site_id))
+        select(func.count()).select_from(DOE).where((DOE.end_time > now) & (DOE.site_id == site.site_id))
     )
     count_archive_does_stmt = (
         select(func.count())
         .select_from(ArchiveDOE)
-        .where((ArchiveDOE.end_time > now) & (ArchiveDOE.site_id == site_id) & (ArchiveDOE.deleted_time.is_not(None)))
+        .where(
+            (ArchiveDOE.end_time > now) & (ArchiveDOE.site_id == site.site_id) & (ArchiveDOE.deleted_time.is_not(None))
+        )
     )
 
     if changed_after != datetime.min:
@@ -148,33 +139,22 @@ async def count_active_does_include_deleted(
 
 async def select_active_does_include_deleted(
     session: AsyncSession,
-    aggregator_id: int,
-    site_id: int,
+    site: Site,
     now: datetime,
     start: int,
     changed_after: datetime,
     limit: Optional[int],
-) -> Sequence[Union[DOE, ArchiveDOE]]:
+) -> list[Union[DOE, ArchiveDOE]]:
     """Fetches DOEs from dynamic_operating_envelope AND its archive according to the specified filter criteria. Only
     DOE's whose end_time is after "now" will be returned.
 
-    aggregator_id: Only DOEs from this aggregator_id will be included
-    site_id: Only DOEs from this site_id will be included
+    site: Only DOEs from this site will be included
     now: The timestamp that excludes any DOE whose end_time precedes this (i.e. they are expired and no longer relevant)
     start: How many DOEs to skip
     limit: Max number of DOEs to return
     changed_after: Only DOE's modified after this time will be included.
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
-
-    # Discovering the timezone BEFORE making the query will allow the better use of indexes (and avoid a lot of joins)
-    site_timezone_id = (
-        await session.execute(
-            select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
-        )
-    ).scalar_one_or_none()
-    if not site_timezone_id:
-        return []
 
     select_active_does = select(
         DOE.dynamic_operating_envelope_id,
@@ -190,7 +170,7 @@ async def select_active_does_include_deleted(
         literal_column("NULL").label("archive_time"),
         literal_column("NULL").label("deleted_time"),
         literal_column("0").label("is_archive"),
-    ).where((DOE.end_time > now) & (DOE.site_id == site_id))
+    ).where((DOE.end_time > now) & (DOE.site_id == site.site_id))
 
     select_archive_does = select(
         ArchiveDOE.dynamic_operating_envelope_id,
@@ -206,7 +186,7 @@ async def select_active_does_include_deleted(
         ArchiveDOE.archive_time,
         ArchiveDOE.deleted_time,
         literal_column("1").label("is_archive"),
-    ).where((ArchiveDOE.end_time > now) & (ArchiveDOE.site_id == site_id) & (ArchiveDOE.deleted_time.is_not(None)))
+    ).where((ArchiveDOE.end_time > now) & (ArchiveDOE.site_id == site.site_id) & (ArchiveDOE.deleted_time.is_not(None)))
 
     if changed_after != datetime.min:
         # The "changed_time" for archives is actually the "deleted_time"
@@ -241,7 +221,7 @@ async def select_active_does_include_deleted(
                     archive_time=t.archive_time,
                     deleted_time=t.deleted_time,
                 ),
-                site_timezone_id,
+                site.timezone_id,
             )
             if t.is_archive
             else localize_start_time_for_entity(
@@ -256,7 +236,7 @@ async def select_active_does_include_deleted(
                     import_limit_active_watts=t.import_limit_active_watts,
                     export_limit_watts=t.export_limit_watts,
                 ),
-                site_timezone_id,
+                site.timezone_id,
             )
         )
         for t in resp.all()
