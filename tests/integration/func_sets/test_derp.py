@@ -1,6 +1,6 @@
 import asyncio
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
@@ -454,6 +454,7 @@ async def test_get_active_doe(client: AsyncClient, pg_base_config, uri_derc_acti
         doe_to_edit: DynamicOperatingEnvelope = resp.scalars().one()
         doe_to_edit.duration_seconds = 3
         doe_to_edit.start_time = datetime.now(tz=timezone.utc)
+        doe_to_edit.end_time = doe_to_edit.start_time + timedelta(seconds=doe_to_edit.duration_seconds)
         await session.commit()
 
     path = uri_derc_active_control_list_format.format(site_id=1, der_program_id="doe")

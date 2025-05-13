@@ -49,11 +49,8 @@ async def test_upsert_many_doe_inserts(pg_base_config):
             DynamicOperatingEnvelope,
             doe_out,
             doe_in,
-            ignored_properties={"dynamic_operating_envelope_id", "created_time", "end_time"},
+            ignored_properties={"dynamic_operating_envelope_id", "created_time"},
         )
-        assert doe_out.end_time == doe_out.start_time + timedelta(
-            seconds=doe_out.duration_seconds
-        ), "This can't be set - its generated in the DB"
 
         # created_time should be now as this is an insert, changed_time should match what was put in
         assert_nowish(doe_out.created_time)

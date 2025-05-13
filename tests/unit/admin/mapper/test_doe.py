@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -33,6 +33,8 @@ def test_doe_mapper_from_request(optional_is_none: bool):
     assert mdl.start_time == req.start_time
     assert mdl.changed_time == changed_time
     assert mdl.created_time is None, "This should be left to the DB to populate"
+    assert mdl.end_time == req.start_time + timedelta(seconds=req.duration_seconds)
+    assert mdl.end_time.tzinfo == mdl.start_time.tzinfo
 
     assert not mdl.site
     assert not mdl.dynamic_operating_envelope_id

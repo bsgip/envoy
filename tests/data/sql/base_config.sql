@@ -102,14 +102,14 @@ INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_respons
 SELECT pg_catalog.setval('public.tariff_generated_rate_respons_tariff_generated_rate_respons_seq', 4, true);
 
 
-INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 1, 2, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33.500', '2022-05-07 01:02+10', 11, 1.11, -1.22);
-INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (2, 1, 2, '2000-01-01 00:00:00Z', '2022-05-06 12:22:33.500', '2022-05-07 03:04+10', 22, 2.11, -2.22);
-INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (3, 2, 2, '2000-01-01 00:00:00Z', '2022-05-06 13:22:33.500', '2022-05-07 01:02+10', 33, 3.11, -3.22);
-INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_limit_active_watts", "export_limit_watts")
-VALUES (4, 1, NULL, '2000-01-01 00:00:00Z', '2022-05-06 14:22:33.500', '2022-05-08 01:02+10', 44, 4.11, -4.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 1, 2, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33.500', '2022-05-07 01:02+10', 11, '2022-05-07 01:02:11+10', 1.11, -1.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
+VALUES (2, 1, 2, '2000-01-01 00:00:00Z', '2022-05-06 12:22:33.500', '2022-05-07 03:04+10', 22, '2022-05-07 03:04:22+10', 2.11, -2.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
+VALUES (3, 2, 2, '2000-01-01 00:00:00Z', '2022-05-06 13:22:33.500', '2022-05-07 01:02+10', 33, '2022-05-07 01:02:33+10', 3.11, -3.22);
+INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
+VALUES (4, 1, NULL, '2000-01-01 00:00:00Z', '2022-05-06 14:22:33.500', '2022-05-08 01:02+10', 44, '2022-05-08 01:02:44+10', 4.11, -4.22);
 
 SELECT pg_catalog.setval('public.dynamic_operating_envelope_dynamic_operating_envelope_id_seq', 5, true);
 

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Iterable, Optional
 
 from envoy_schema.admin.schema.doe import (
@@ -24,6 +24,7 @@ class DoeListMapper:
                 duration_seconds=doe.duration_seconds,
                 import_limit_active_watts=doe.import_limit_active_watts,
                 export_limit_watts=doe.export_limit_watts,
+                end_time=doe.start_time + timedelta(seconds=doe.duration_seconds),
             )
             for doe in doe_list
         ]
