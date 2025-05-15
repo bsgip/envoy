@@ -9,6 +9,7 @@ from assertical.fixtures.environment import environment_snapshot
 from assertical.fixtures.postgres import generate_async_conn_str_from_connection
 from psycopg import Connection
 
+from envoy.server.alembic import upgrade
 from tests.integration.conftest import READONLY_USER_KEY_1, READONLY_USER_KEY_2, READONLY_USER_NAME
 from tests.unit.jwt import DEFAULT_CLIENT_ID, DEFAULT_DATABASE_RESOURCE_ID, DEFAULT_ISSUER, DEFAULT_TENANT_ID
 
@@ -78,31 +79,8 @@ def pg_empty_config(
     else:
         os.environ["ALLOW_DEVICE_REGISTRATION"] = "True"
 
-    # we want alembic to run from the server directory but to revert back afterwards
-    cwd = os.getcwd()
-    try:
-        os.chdir("./src/envoy/server/")
-
-        # Create migrations (if none are there)
-        if len(glob.glob("alembic/versions/*.py")) == 0:
-            alembicArgs = [
-                "--raiseerr",
-                "revision",
-                "--autogenerate",
-                "-m",
-                "init",
-            ]
-            alembic.config.main(argv=alembicArgs)
-
-        # Apply migrations
-        alembicArgs = [
-            "--raiseerr",
-            "upgrade",
-            "head",
-        ]
-        alembic.config.main(argv=alembicArgs)
-    finally:
-        os.chdir(cwd)
+    # This will install all of the alembic migrations - DB is accessed from the DATABASE_URL env variable
+    upgrade()
 
     yield postgresql
 

@@ -98,4 +98,4 @@ test = [
 ]
 
 [tool.setuptools.package-data]
-"envoy" = ["py.typed"]
+"envoy" = ["py.typed", "server/alembic.ini"]
