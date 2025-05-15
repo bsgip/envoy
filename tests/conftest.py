@@ -1,9 +1,7 @@
-import glob
 import os
 from decimal import Decimal
 from typing import Generator
 
-import alembic.config
 import pytest
 from assertical.fixtures.environment import environment_snapshot
 from assertical.fixtures.postgres import generate_async_conn_str_from_connection
