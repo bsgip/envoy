@@ -313,7 +313,7 @@ async def test_upsert_site_reading_type_for_aggregator_cant_change_agg_id(pg_bas
 
         update_attempt_srt = clone_class_instance(original_srt, ignored_properties=set(["site"]))
         update_attempt_srt.aggregator_id = 3
-        update_attempt_srt.changed_time = datetime.now(tzinfo=timezone.utc)
+        update_attempt_srt.changed_time = datetime.now(tz=timezone.utc)
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(ValueError):
