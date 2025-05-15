@@ -16,7 +16,7 @@ from envoy.server.crud.doe import (
     select_doe_include_deleted,
     select_does_at_timestamp,
 )
-from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.crud.end_device import select_single_site_with_site_id, select_site_with_default_site_control
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.doe import (
@@ -26,7 +26,7 @@ from envoy.server.mapper.csip_aus.doe import (
     DERProgramMapper,
 )
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+from envoy.server.model.config.default_site_control import DefaultSiteControlConfiguration
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.request_scope import SiteRequestScope
 
@@ -36,7 +36,7 @@ class DERProgramManager:
     async def fetch_list_for_scope(
         session: AsyncSession,
         scope: SiteRequestScope,
-        default_doe: Optional[DefaultDoeConfiguration],
+        default_doe: Optional[DefaultSiteControlConfiguration],
     ) -> DERProgramListResponse:
         """Program lists are static - this will just return a single fixed Dynamic Operating Envelope Program
 
@@ -56,7 +56,7 @@ class DERProgramManager:
     async def fetch_doe_program_for_scope(
         session: AsyncSession,
         scope: SiteRequestScope,
-        default_doe: Optional[DefaultDoeConfiguration],
+        default_doe: Optional[DefaultSiteControlConfiguration],
     ) -> DERProgramResponse:
         """DOE Programs are static - this will just return a fixed Dynamic Operating Envelope Program
 
@@ -134,15 +134,15 @@ class DERControlManager:
     async def fetch_default_doe_controls_for_site(
         session: AsyncSession,
         scope: SiteRequestScope,
-        default_doe: Optional[DefaultDoeConfiguration],
+        default_doe: Optional[DefaultSiteControlConfiguration],
     ) -> DefaultDERControl:
         """Returns a default DOE control for a site or raises a NotFoundError if the site / defaults are inaccessible
         or not configured"""
-        site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
+        site = await select_site_with_default_site_control(session, scope.site_id, scope.aggregator_id)
         if not site:
             raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
 
-        if not default_doe:
+        if not site.default_site_control and not default_doe:
             raise NotFoundError(f"There is no default DERControl configured for site {scope.site_id}")
 
         return DERControlMapper.map_to_default_response(scope, default_doe)

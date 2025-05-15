@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal
 from itertools import product
 from typing import Callable, Optional, Union
 
@@ -22,6 +23,7 @@ from envoy.server.crud.end_device import (
     select_single_site_with_lfdi,
     select_single_site_with_sfdi,
     select_single_site_with_site_id,
+    select_site_with_default_site_control,
     upsert_site_for_aggregator,
 )
 from envoy.server.manager.time import utc_now
@@ -39,7 +41,7 @@ from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveS
 from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.doe import DefaultSiteControl, DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition
@@ -819,3 +821,47 @@ async def test_delete_site_for_aggregator(
             assert site is not None, "If the delete was NOT committed - the site should still exist"
         else:
             assert site is None, "If the delete was NOT committed but the site DNE - it should continue to not exist"
+
+
+@pytest.mark.parametrize(
+    "site_id, agg_id, expected_vals",
+    [
+        (1, 1, (1, 1, 10.10, 9.99, 8.88, 7.77, 6.66)),
+        (2, 1, None),
+        (3, 2, (2, 3, 20.20, 19.19, 18.18, 17.17, 16.16)),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_site_with_default_site_control(
+    pg_base_config,
+    site_id: int,
+    agg_id: int,
+    expected_vals: Optional[
+        tuple[int, int, Optional[Decimal], Optional[Decimal], Optional[Decimal], Optional[Decimal], Optional[Decimal]]
+    ],
+):
+    """Tests the site to default site control relationship"""
+    async with generate_async_session(pg_base_config) as session:
+        site = await select_site_with_default_site_control(session, site_id=site_id, aggregator_id=agg_id)
+
+        if expected_vals is None:
+            assert site.default_site_control is None
+        else:
+            default_site_control = site.default_site_control
+            (
+                default_site_control_id,
+                site_id,
+                import_limit_active_watts,
+                export_limit_watts,
+                generation_limit_watts,
+                load_limit_watts,
+                ramp_rate_percent_per_second,
+            ) = expected_vals
+            assert isinstance(site, DefaultSiteControl)
+            assert default_site_control.site_id == site_id
+            assert default_site_control.default_site_control_id == default_site_control_id
+            assert default_site_control.import_limit_active_watts == import_limit_active_watts
+            assert default_site_control.export_limit_watts == export_limit_watts
+            assert default_site_control.generation_limit_watts == generation_limit_watts
+            assert default_site_control.load_limit_watts == load_limit_watts
+            assert default_site_control.ramp_rate_percent_per_second == ramp_rate_percent_per_second

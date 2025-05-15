@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from fastapi import Request
 
-from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+from envoy.server.model.config.default_site_control import DefaultSiteControlConfiguration
 
 
 class DefaultDoeDepends:
@@ -16,7 +16,7 @@ class DefaultDoeDepends:
         self.export_limit_active_watts = export_limit_active_watts
 
     async def __call__(self, request: Request) -> None:
-        request.state.default_doe = DefaultDoeConfiguration(
+        request.state.default_doe = DefaultSiteControlConfiguration(
             import_limit_active_watts=self.import_limit_active_watts,
             export_limit_active_watts=self.export_limit_active_watts,
         )

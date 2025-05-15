@@ -40,20 +40,20 @@ INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "creat
 INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (3, '3333333333', 2, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 08:09:10.500', 'site3-lfdi', 3333, 2, 33333);
 INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (4, '4444444444', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 11:12:13.500', 'site4-lfdi', 4444, 3, 44444);
 -- Device registered site - using cert from certificate6.py
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (5, '5555555555', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 14:15:16.500', 'ec80646c5131ffa8ade49ac24be5295a7cfeb69d', 634853966776, 4, 55555); 
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (5, '5555555555', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 14:15:16.500', 'ec80646c5131ffa8ade49ac24be5295a7cfeb69d', 634853966776, 4, 55555);
 -- Device registered site - using cert from certificate7.py
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (6, '6666666666', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 17:18:19.500', '93a527c16d8fca36e0f7da189fde375d5e494717', 396331899108, 5, 66666); 
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (6, '6666666666', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 17:18:19.500', '93a527c16d8fca36e0f7da189fde375d5e494717', 396331899108, 5, 66666);
 
 SELECT pg_catalog.setval('public.site_site_id_seq', 7, true);
 
 
 -- Calculation log 1/2 have the same interval but calculation log 2 has a more recent created time
 -- Only calculation log 2 will have child entities
-INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_range_start", "calculation_range_duration_seconds", "interval_width_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "power_forecast_basis_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_range_start", "calculation_range_duration_seconds", "interval_width_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "power_forecast_basis_time", "weather_forecast_creation_time", "weather_forecast_location_id")
 VALUES (1, '2024-01-21 01:22:33.500', '2024-01-31 01:02:03', 86401, 301, 'topo-id-1', 'external-id-1', 'description-1', '2024-01-20 01:11:00.500', '2024-01-19 01:22:00.500', '2024-01-20 01:11:11.500', 'weather-location-1');
-INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_range_start", "calculation_range_duration_seconds", "interval_width_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "power_forecast_basis_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_range_start", "calculation_range_duration_seconds", "interval_width_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "power_forecast_basis_time", "weather_forecast_creation_time", "weather_forecast_location_id")
 VALUES (2, '2024-01-21 02:22:33.500', '2024-01-31 01:02:03', 86402, 302, 'topo-id-2', 'external-id-2', 'description-2', '2024-01-20 02:11:00.500', '2024-01-19 02:22:00.500', '2024-02-20 01:11:11.500', 'weather-location-2');
-INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_range_start", "calculation_range_duration_seconds", "interval_width_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "power_forecast_basis_time", "weather_forecast_creation_time", "weather_forecast_location_id") 
+INSERT INTO public.calculation_log("calculation_log_id", "created_time", "calculation_range_start", "calculation_range_duration_seconds", "interval_width_seconds", "topology_id", "external_id", "description", "power_forecast_creation_time", "power_forecast_basis_time", "weather_forecast_creation_time", "weather_forecast_location_id")
 VALUES (3, '2024-01-21 03:22:33.500', '2024-01-31 02:02:03', 86403, 303, 'topo-id-3', 'external-id-3', 'description-3', '2024-01-20 03:11:00.500', '2024-01-19 03:22:00.500', '2024-03-20 01:11:11.500', 'weather-location-3');
 SELECT pg_catalog.setval('public.calculation_log_calculation_log_id_seq', 4, true);
 
@@ -316,32 +316,32 @@ INSERT INTO public.site_group("site_group_id", "created_time", "changed_time", "
 
 SELECT pg_catalog.setval('public.site_group_site_group_id_seq', 4, true);
 
-INSERT INTO public.site_group_assignment("site_group_assignment_id", "created_time", "changed_time", "site_id", "site_group_id") 
+INSERT INTO public.site_group_assignment("site_group_assignment_id", "created_time", "changed_time", "site_id", "site_group_id")
 VALUES (1, '2000-01-01 00:00:00Z', '2024-02-11 01:55:44.500', 1, 1);
-INSERT INTO public.site_group_assignment("site_group_assignment_id", "created_time", "changed_time", "site_id", "site_group_id") 
+INSERT INTO public.site_group_assignment("site_group_assignment_id", "created_time", "changed_time", "site_id", "site_group_id")
 VALUES (2, '2000-01-01 00:00:00Z', '2024-02-11 02:55:44.500', 2, 1);
-INSERT INTO public.site_group_assignment("site_group_assignment_id", "created_time", "changed_time", "site_id", "site_group_id") 
+INSERT INTO public.site_group_assignment("site_group_assignment_id", "created_time", "changed_time", "site_id", "site_group_id")
 VALUES (3, '2000-01-01 00:00:00Z', '2024-02-11 03:55:44.500', 3, 1);
-INSERT INTO public.site_group_assignment("site_group_assignment_id", "created_time", "changed_time", "site_id", "site_group_id") 
+INSERT INTO public.site_group_assignment("site_group_assignment_id", "created_time", "changed_time", "site_id", "site_group_id")
 VALUES (4, '2000-01-01 00:00:00Z', '2024-02-11 04:55:44.500', 1, 2);
 
 SELECT pg_catalog.setval('public.site_group_assignment_site_group_assignment_id_seq', 5, true);
 
 
-INSERT INTO public.site_der("site_der_id", "created_time", "changed_time", "site_id") 
+INSERT INTO public.site_der("site_der_id", "created_time", "changed_time", "site_id")
 VALUES (1, '2000-01-01 00:00:00Z', '2024-03-14 04:55:44.500', 2);
-INSERT INTO public.site_der("site_der_id", "created_time", "changed_time", "site_id") 
+INSERT INTO public.site_der("site_der_id", "created_time", "changed_time", "site_id")
 VALUES (2, '2000-01-01 00:00:00Z', '2024-03-14 05:55:44.500', 1);
 SELECT pg_catalog.setval('public.site_der_site_der_id_seq', 3, true);
 
 -- These DER values have been autogenerated due to their enormous size
 -- They assign a DERAvailability, DERCapability, DERSettings and DERStatus to DER 2 which belongs to site 1
 
-INSERT INTO public.site_der_availability (site_der_availability_id, site_der_id, created_time, changed_time, availability_duration_sec, max_charge_duration_sec, reserved_charge_percent, reserved_deliver_percent, estimated_var_avail_value, estimated_var_avail_multiplier, estimated_w_avail_value, estimated_w_avail_multiplier) 
+INSERT INTO public.site_der_availability (site_der_availability_id, site_der_id, created_time, changed_time, availability_duration_sec, max_charge_duration_sec, reserved_charge_percent, reserved_deliver_percent, estimated_var_avail_value, estimated_var_avail_multiplier, estimated_w_avail_value, estimated_w_avail_multiplier)
 VALUES (1, 2, '2000-01-01 00:00:00Z', '2022-07-23 10:03:23.500', 202, 208, 12.12, 13.12, 205, 204, 207, 206);
 SELECT pg_catalog.setval('public.site_der_availability_site_der_availability_id_seq', 2, true);
 
-INSERT INTO public.site_der_rating (site_der_rating_id, site_der_id, created_time, changed_time, modes_supported, abnormal_category, max_a_value, max_a_multiplier, max_ah_value, max_ah_multiplier, max_charge_rate_va_value, max_charge_rate_va_multiplier, max_charge_rate_w_value, max_charge_rate_w_multiplier, max_discharge_rate_va_value, max_discharge_rate_va_multiplier, max_discharge_rate_w_value, max_discharge_rate_w_multiplier, max_v_value, max_v_multiplier, max_va_value, max_va_multiplier, max_var_value, max_var_multiplier, max_var_neg_value, max_var_neg_multiplier, max_w_value, max_w_multiplier, max_wh_value, max_wh_multiplier, min_pf_over_excited_displacement, min_pf_over_excited_multiplier, min_pf_under_excited_displacement, min_pf_under_excited_multiplier, min_v_value, min_v_multiplier, normal_category, over_excited_pf_displacement, over_excited_pf_multiplier, over_excited_w_value, over_excited_w_multiplier, reactive_susceptance_value, reactive_susceptance_multiplier, under_excited_pf_displacement, under_excited_pf_multiplier, under_excited_w_value, under_excited_w_multiplier, v_nom_value, v_nom_multiplier, der_type, doe_modes_supported) 
+INSERT INTO public.site_der_rating (site_der_rating_id, site_der_id, created_time, changed_time, modes_supported, abnormal_category, max_a_value, max_a_multiplier, max_ah_value, max_ah_multiplier, max_charge_rate_va_value, max_charge_rate_va_multiplier, max_charge_rate_w_value, max_charge_rate_w_multiplier, max_discharge_rate_va_value, max_discharge_rate_va_multiplier, max_discharge_rate_w_value, max_discharge_rate_w_multiplier, max_v_value, max_v_multiplier, max_va_value, max_va_multiplier, max_var_value, max_var_multiplier, max_var_neg_value, max_var_neg_multiplier, max_w_value, max_w_multiplier, max_wh_value, max_wh_multiplier, min_pf_over_excited_displacement, min_pf_over_excited_multiplier, min_pf_under_excited_displacement, min_pf_under_excited_multiplier, min_v_value, min_v_multiplier, normal_category, over_excited_pf_displacement, over_excited_pf_multiplier, over_excited_w_value, over_excited_w_multiplier, reactive_susceptance_value, reactive_susceptance_multiplier, under_excited_pf_displacement, under_excited_pf_multiplier, under_excited_w_value, under_excited_w_multiplier, v_nom_value, v_nom_multiplier, der_type, doe_modes_supported)
 VALUES (1, 2, '2000-01-01 00:00:00Z', '2022-04-13 10:01:42.500', 1, 1, 106, 105, 108, 107, 110, 109, 112, 111, 114, 113, 116, 115, 118, 117, 120, 119, 124, 121, 123, 122, 126, 125, 128, 127, 129, 130, 131, 132, 134, 133, 1, 137, 138, 140, 139, 142, 141, 1145, 1146, 1148, 1147, 1150, 1149, 4, 1);
 SELECT pg_catalog.setval('public.site_der_rating_site_der_rating_id_seq', 2, true);
 
@@ -349,7 +349,7 @@ INSERT INTO public.site_der_setting (site_der_setting_id, site_der_id, created_t
 VALUES (1, 2, '2000-01-01 00:00:00Z', '2022-02-09 11:06:44.500', 4096, 406, 407, 408, 409, 410, 411, 412, 413, 415, 414, 417, 416, 419, 418, 421, 420, 423, 422, 425, 424, 427, 426, 429, 428, 433, 430, 432, 431, 435, 434, 437, 436, 438, 439, 440, 441, 443, 442, 1447, 1449, 1448, 1453, 1450, 1452, 1451, 2);
 SELECT pg_catalog.setval('public.site_der_setting_site_der_setting_id_seq', 2, true);
 
-INSERT INTO public.site_der_status (site_der_status_id, site_der_id, created_time, changed_time, alarm_status, generator_connect_status, generator_connect_status_time, inverter_status, inverter_status_time, local_control_mode_status, local_control_mode_status_time, manufacturer_status, manufacturer_status_time, operational_mode_status, operational_mode_status_time, state_of_charge_status, state_of_charge_status_time, storage_mode_status, storage_mode_status_time, storage_connect_status, storage_connect_status_time) 
+INSERT INTO public.site_der_status (site_der_status_id, site_der_id, created_time, changed_time, alarm_status, generator_connect_status, generator_connect_status_time, inverter_status, inverter_status_time, local_control_mode_status, local_control_mode_status_time, manufacturer_status, manufacturer_status_time, operational_mode_status, operational_mode_status_time, state_of_charge_status, state_of_charge_status_time, storage_mode_status, storage_mode_status_time, storage_connect_status, storage_connect_status_time)
 VALUES (1, 2, '2000-01-01 00:00:00Z', '2022-11-01 11:05:04.500', 64, 1, '2010-11-03 11:05:06+11', 10, '2010-11-05 11:05:08+11', 1, '2010-11-07 11:05:10+11', 'mnstat', '2010-11-09 11:05:12+11', 1, '2010-11-11 11:05:14+11', NULL, '2016-05-06 10:38:37+10', 1, '2016-05-10 10:38:41+10', 8, '2016-05-08 10:38:39+10');
 SELECT pg_catalog.setval('public.site_der_status_site_der_status_id_seq', 2, true);
 
@@ -366,3 +366,8 @@ INSERT INTO public.site_log_event (site_log_event_id, site_id, created_time, det
 VALUES (5, 1, '2023-05-01 05:05:05.500', NULL, NULL, 5, 52, 53, 54, 4);
 SELECT pg_catalog.setval('public.site_log_event_site_log_event_id_seq', 6, true);
 
+
+INSERT INTO public.default_site_control(default_site_control_id, site_id, import_limit_active_watts, export_limit_watts, generation_limit_watts, load_limit_watts, ramp_rate_percent_per_second)
+VALUES (1, 1, 10.10, 9.99, 8.88, 7.77, 6.66);
+INSERT INTO public.default_site_control(default_site_control_id, site_id, import_limit_active_watts, export_limit_watts, generation_limit_watts, load_limit_watts, ramp_rate_percent_per_second)
+VALUES (2, 3, 20.20, 19.19, 18.18, 17.17, 16.16);

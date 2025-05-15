@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import HTTPException, Request
 
-from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+from envoy.server.model.config.default_site_control import DefaultSiteControlConfiguration
 from envoy.server.request_scope import RawRequestClaims
 
 MAX_LIMIT = 500
@@ -51,7 +51,7 @@ def extract_request_claims(request: Request) -> RawRequestClaims:
     )
 
 
-def extract_default_doe(request: Request) -> Optional[DefaultDoeConfiguration]:
+def extract_default_doe(request: Request) -> Optional[DefaultSiteControlConfiguration]:
     """If the DefaultDoeDepends is enabled a DefaultDoeConfiguration will be returned for this request or None
     otherwise. This is a placeholder for static default DOE values"""
     if request.state is not None:

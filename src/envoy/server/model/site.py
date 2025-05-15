@@ -32,6 +32,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
+from envoy.server.model.doe import DefaultSiteControl
 
 PERCENT_DECIMAL_PLACES = 4
 PERCENT_DECIMAL_POWER = pow(10, PERCENT_DECIMAL_PLACES)
@@ -69,6 +70,11 @@ class Site(Base):
         cascade="all, delete",
         passive_deletes=True,
     )  # What DER live underneath/behind this site
+    default_site_control: Mapped[Optional[DefaultSiteControl]] = relationship(
+        lazy="raise", passive_deletes=True, uselist=False
+    )  # The default DOE + other controls that apply to this site
+
+    # NOTE: We're defining Default are set on a per Site basis
 
     __table_args__ = (
         UniqueConstraint("sfdi", "aggregator_id", name="sfdi_aggregator_id_uc"),

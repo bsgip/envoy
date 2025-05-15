@@ -6,7 +6,7 @@ import pytest
 from assertical.asserts.time import assert_nowish
 from assertical.fake.generator import generate_class_instance
 from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
-from envoy_schema.server.schema.sep2.der import (
+from envoy_schema.server.schema.sep2.der import (w
     DefaultDERControl,
     DERControlListResponse,
     DERControlResponse,
@@ -17,7 +17,7 @@ from envoy_schema.server.schema.sep2.der import (
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.mapper.csip_aus.doe import DERControlListSource
-from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+from envoy.server.model.config.default_site_control import DefaultSiteControlConfiguration
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
@@ -38,7 +38,7 @@ async def test_program_fetch_list_for_scope(
     # Arrange
     doe_count = 789
     existing_site = generate_class_instance(Site)
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
+    default_doe = generate_class_instance(DefaultSiteControlConfiguration)
     mapped_list = generate_class_instance(DERProgramListResponse)
     scope = generate_class_instance(SiteRequestScope)
     now = datetime(2020, 1, 2, tzinfo=timezone.utc)
@@ -75,7 +75,7 @@ async def test_program_fetch_list_scope_dne(
 ):
     """Checks that if the crud layer indicates site doesn't exist then the manager will raise an exception"""
     # Arrange
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
+    default_doe = generate_class_instance(DefaultSiteControlConfiguration)
 
     mock_session = create_mock_session()
     mock_select_single_site_with_site_id.return_value = None
@@ -108,7 +108,7 @@ async def test_program_fetch_for_scope(
     doe_count = 789
     existing_site = generate_class_instance(Site)
     mapped_program = generate_class_instance(DERProgramResponse)
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
+    default_doe = generate_class_instance(DefaultSiteControlConfiguration)
     scope = generate_class_instance(SiteRequestScope)
     now = datetime(2011, 2, 3, tzinfo=timezone.utc)
 
@@ -142,7 +142,7 @@ async def test_program_fetch_site_dne(
 ):
     """Checks that if the crud layer indicates site doesn't exist then the manager will raise an exception"""
     # Arrange
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
+    default_doe = generate_class_instance(DefaultSiteControlConfiguration)
 
     mock_session = create_mock_session()
     mock_select_single_site_with_site_id.return_value = None
@@ -346,7 +346,7 @@ async def test_fetch_default_doe_controls_for_site(
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
+    default_doe = generate_class_instance(DefaultSiteControlConfiguration)
 
     returned_site = generate_class_instance(Site)
 
@@ -378,7 +378,7 @@ async def test_fetch_default_doe_controls_for_site_bad_site(
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
+    default_doe = generate_class_instance(DefaultSiteControlConfiguration)
 
     mapped_control = generate_class_instance(DefaultDERControl)
 
