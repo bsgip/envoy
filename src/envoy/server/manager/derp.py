@@ -142,12 +142,17 @@ class DERControlManager:
         if not site:
             raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
 
-        default_site_control = site.default_site_control
-        if not site.default_site_control and not default_doe:
+        if site.default_site_control is None and default_doe is None:
             raise NotFoundError(f"There is no default DefaultDERControl configured for site {scope.site_id}")
 
-        if default_site_control and default_doe:
-            default_site_control = DERControlManager._resolve_default_site_control(default_site_control, default_doe)
+        if not site.default_site_control and default_doe:
+            default_site_control = DERControlManager._resolve_default_site_control(default_doe, None)
+        elif site.default_site_control and default_doe:
+            default_site_control = DERControlManager._resolve_default_site_control(
+                default_doe, site.default_site_control
+            )
+        elif site.default_site_control:
+            default_site_control = site.default_site_control
 
         return DERControlMapper.map_to_default_response(scope, default_site_control)
 

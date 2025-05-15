@@ -18,7 +18,7 @@ from envoy.server.exception import NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.mapper.csip_aus.doe import DERControlListSource
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.doe import DefaultSiteControl, DynamicOperatingEnvelope
 from envoy.server.model.site import Site
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
 
@@ -428,3 +428,37 @@ async def test_fetch_default_doe_controls_for_site_no_default(
     mock_DERControlMapper.map_to_default_response.assert_not_called()
 
     assert_mock_session(mock_session)
+
+
+@pytest.mark.parametrize(
+    "default_doe_config, default_site_control, expected",
+    [
+        # No site control
+        (
+            DefaultDoeConfiguration(100, 200, 300, 400, 50),
+            None,
+            (100, 200, 300, 400, 50),
+        ),
+        # Partial site control
+        (
+            DefaultDoeConfiguration(100, 200, 300, 400, 50),
+            DefaultSiteControl(import_limit_active_watts=111, load_limit_active_watts=444),
+            (111, 200, 300, 444, 50),
+        ),
+        # Full site control
+        (
+            DefaultDoeConfiguration(100, 200, 300, 400, 50),
+            DefaultSiteControl(1, 2, 3, 4, 5),
+            (1, 2, 3, 4, 5),
+        ),
+    ],
+)
+def test_resolve_default_site_control(default_doe_config, default_site_control, expected):
+    """Tests all combos of resolution"""
+    result = DERControlManager._resolve_default_site_control(default_doe_config, default_site_control)
+
+    assert result.import_limit_active_watts == expected[0]
+    assert result.export_limit_active_watts == expected[1]
+    assert result.generation_limit_active_watts == expected[2]
+    assert result.load_limit_active_watts == expected[3]
+    assert result.ramp_rate_percent_per_second == expected[4]
