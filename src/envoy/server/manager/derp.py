@@ -26,8 +26,8 @@ from envoy.server.mapper.csip_aus.doe import (
     DERProgramMapper,
 )
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.config.default_site_control import DefaultSiteControlConfiguration
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+from envoy.server.model.doe import DefaultSiteControl, DynamicOperatingEnvelope
 from envoy.server.request_scope import SiteRequestScope
 
 
@@ -36,7 +36,7 @@ class DERProgramManager:
     async def fetch_list_for_scope(
         session: AsyncSession,
         scope: SiteRequestScope,
-        default_doe: Optional[DefaultSiteControlConfiguration],
+        default_doe: Optional[DefaultDoeConfiguration],
     ) -> DERProgramListResponse:
         """Program lists are static - this will just return a single fixed Dynamic Operating Envelope Program
 
@@ -56,7 +56,7 @@ class DERProgramManager:
     async def fetch_doe_program_for_scope(
         session: AsyncSession,
         scope: SiteRequestScope,
-        default_doe: Optional[DefaultSiteControlConfiguration],
+        default_doe: Optional[DefaultDoeConfiguration],
     ) -> DERProgramResponse:
         """DOE Programs are static - this will just return a fixed Dynamic Operating Envelope Program
 
@@ -134,7 +134,7 @@ class DERControlManager:
     async def fetch_default_doe_controls_for_site(
         session: AsyncSession,
         scope: SiteRequestScope,
-        default_doe: Optional[DefaultSiteControlConfiguration],
+        default_doe: Optional[DefaultDoeConfiguration],
     ) -> DefaultDERControl:
         """Returns a default DOE control for a site or raises a NotFoundError if the site / defaults are inaccessible
         or not configured"""
@@ -142,7 +142,38 @@ class DERControlManager:
         if not site:
             raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
 
+        default_site_control = site.default_site_control
         if not site.default_site_control and not default_doe:
-            raise NotFoundError(f"There is no default DERControl configured for site {scope.site_id}")
+            raise NotFoundError(f"There is no default DefaultDERControl configured for site {scope.site_id}")
 
-        return DERControlMapper.map_to_default_response(scope, default_doe)
+        if default_site_control and default_doe:
+            default_site_control = DERControlManager._resolve_default_site_control(default_site_control, default_doe)
+
+        return DERControlMapper.map_to_default_response(scope, default_site_control)
+
+    @staticmethod
+    def _resolve_default_site_control(
+        default_doe: DefaultDoeConfiguration,
+        default_site_control: Optional[DefaultSiteControl] = None,
+    ) -> DefaultSiteControl:
+        """Construct DefaultSiteControl with optional fields filled using the global DefaultDoeConfiguration"""
+        if default_site_control is not None:
+            return DefaultSiteControl(
+                import_limit_active_watts=default_site_control.import_limit_active_watts
+                or default_doe.import_limit_active_watts,
+                export_limit_active_watts=default_site_control.export_limit_active_watts
+                or default_doe.export_limit_active_watts,
+                generation_limit_active_watts=default_site_control.generation_limit_active_watts
+                or default_doe.generation_limit_active_watts,
+                load_limit_active_watts=default_site_control.load_limit_active_watts
+                or default_doe.load_limit_active_watts,
+                ramp_rate_percent_per_second=default_site_control.ramp_rate_percent_per_second
+                or default_doe.ramp_rate_percent_per_second,
+            )
+        return DefaultSiteControl(
+            import_limit_active_watts=default_doe.import_limit_active_watts,
+            export_limit_active_watts=default_doe.export_limit_active_watts,
+            generation_limit_active_watts=default_doe.generation_limit_active_watts,
+            load_limit_active_watts=default_doe.load_limit_active_watts,
+            ramp_rate_percent_per_second=default_doe.ramp_rate_percent_per_second,
+        )

@@ -826,9 +826,9 @@ async def test_delete_site_for_aggregator(
 @pytest.mark.parametrize(
     "site_id, agg_id, expected_vals",
     [
-        (1, 1, (1, 1, 10.10, 9.99, 8.88, 7.77, 6.66)),
+        (1, 1, (1, 1, Decimal("10.10"), Decimal("9.99"), Decimal("8.88"), Decimal("7.77"), 6)),
         (2, 1, None),
-        (3, 2, (2, 3, 20.20, 19.19, 18.18, 17.17, 16.16)),
+        (3, 2, (2, 3, Decimal("20.20"), Decimal("19.19"), Decimal("18.18"), Decimal("17.17"), 16)),
     ],
 )
 @pytest.mark.anyio
@@ -852,16 +852,16 @@ async def test_select_site_with_default_site_control(
                 default_site_control_id,
                 site_id,
                 import_limit_active_watts,
-                export_limit_watts,
-                generation_limit_watts,
-                load_limit_watts,
+                export_limit_active_watts,
+                generation_limit_active_watts,
+                load_limit_active_watts,
                 ramp_rate_percent_per_second,
             ) = expected_vals
-            assert isinstance(site, DefaultSiteControl)
+            assert isinstance(default_site_control, DefaultSiteControl)
             assert default_site_control.site_id == site_id
             assert default_site_control.default_site_control_id == default_site_control_id
             assert default_site_control.import_limit_active_watts == import_limit_active_watts
-            assert default_site_control.export_limit_watts == export_limit_watts
-            assert default_site_control.generation_limit_watts == generation_limit_watts
-            assert default_site_control.load_limit_watts == load_limit_watts
+            assert default_site_control.export_limit_active_watts == export_limit_active_watts
+            assert default_site_control.generation_limit_active_watts == generation_limit_active_watts
+            assert default_site_control.load_limit_active_watts == load_limit_active_watts
             assert default_site_control.ramp_rate_percent_per_second == ramp_rate_percent_per_second

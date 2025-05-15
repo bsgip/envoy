@@ -21,7 +21,7 @@ from envoy.server.mapper.csip_aus.doe import (
     DERProgramMapper,
 )
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.config.default_site_control import DefaultSiteControlConfiguration
+from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
@@ -80,8 +80,8 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
 
 def test_map_default_to_response():
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
-    doe_default: DefaultSiteControlConfiguration = generate_class_instance(
-        DefaultSiteControlConfiguration, seed=101, optional_is_none=True
+    doe_default: DefaultDoeConfiguration = generate_class_instance(
+        DefaultDoeConfiguration, seed=101, optional_is_none=True
     )
     scope = generate_class_instance(BaseRequestScope)
 
@@ -151,7 +151,7 @@ def test_map_derp_doe_program_response_with_default_doe():
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, display_site_id=54122
     )
-    default_doe = generate_class_instance(DefaultSiteControlConfiguration)
+    default_doe = generate_class_instance(DefaultDoeConfiguration)
 
     result = DERProgramMapper.doe_program_response(scope, total_does, default_doe)
     assert result is not None
@@ -222,7 +222,7 @@ def test_map_derp_doe_program_list_response_with_default_doe():
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj"""
     total_does = 456
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
-    default_doe = generate_class_instance(DefaultSiteControlConfiguration)
+    default_doe = generate_class_instance(DefaultDoeConfiguration)
 
     result = DERProgramMapper.doe_program_list_response(scope, total_does, default_doe)
     assert result is not None

@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from envoy_schema.server.schema.sep2.der import (
     AbnormalCategoryType,
@@ -32,7 +32,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
-from envoy.server.model.doe import DefaultSiteControl
+
+if TYPE_CHECKING:
+    from envoy.server.model import DefaultSiteControl
+
 
 PERCENT_DECIMAL_PLACES = 4
 PERCENT_DECIMAL_POWER = pow(10, PERCENT_DECIMAL_PLACES)
@@ -70,8 +73,8 @@ class Site(Base):
         cascade="all, delete",
         passive_deletes=True,
     )  # What DER live underneath/behind this site
-    default_site_control: Mapped[Optional[DefaultSiteControl]] = relationship(
-        lazy="raise", passive_deletes=True, uselist=False
+    default_site_control: Mapped[Optional["DefaultSiteControl"]] = relationship(
+        back_populates="site", lazy="raise", passive_deletes=True, uselist=False
     )  # The default DOE + other controls that apply to this site
 
     # NOTE: We're defining Default are set on a per Site basis

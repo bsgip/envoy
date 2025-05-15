@@ -23,8 +23,8 @@ from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.mrid import MridMapper, ResponseSetType
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.config.default_site_control import DefaultSiteControlConfiguration
-from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DynamicOperatingEnvelope
+from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DefaultSiteControl, DynamicOperatingEnvelope
 from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
 
 DOE_PROGRAM_ID: str = "doe"
@@ -102,13 +102,13 @@ class DERControlMapper:
                     opModImpLimW=DERControlMapper.map_to_active_power(doe.import_limit_active_watts),
                     opModExpLimW=DERControlMapper.map_to_active_power(doe.export_limit_watts),
                     opModLoadLimW=(
-                        DERControlMapper.map_to_active_power(doe.load_limit_watts)
-                        if doe.load_limit_watts is not None
+                        DERControlMapper.map_to_active_power(doe.load_limit_active_watts)
+                        if doe.load_limit_active_watts is not None
                         else None
                     ),
                     opModGenLimW=(
-                        DERControlMapper.map_to_active_power(doe.generation_limit_watts)
-                        if doe.generation_limit_watts is not None
+                        DERControlMapper.map_to_active_power(doe.generation_limit_active_watts)
+                        if doe.generation_limit_active_watts is not None
                         else None
                     ),
                     opModEnergize=doe.set_connected if doe.set_connected is not None else None,
@@ -118,20 +118,33 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def map_to_default_response(
-        scope: BaseRequestScope, default_doe: DefaultSiteControlConfiguration
-    ) -> DefaultDERControl:
+    def map_to_default_response(scope: BaseRequestScope, default_doe: DefaultSiteControl) -> DefaultDERControl:
         """Creates a csip aus compliant DefaultDERControl from the specified defaults"""
-        return DefaultDERControl.model_validate(
-            {
-                "mRID": MridMapper.encode_default_doe_mrid(scope),
-                "DERControlBase_": DERControlBase.model_validate(
-                    {
-                        "opModImpLimW": DERControlMapper.map_to_active_power(default_doe.import_limit_active_watts),
-                        "opModExpLimW": DERControlMapper.map_to_active_power(default_doe.export_limit_active_watts),
-                    }
+        return DefaultDERControl(
+            mRID=MridMapper.encode_default_doe_mrid(scope),
+            setGradW=default_doe.ramp_rate_percent_per_second,
+            DERControlBase_=DERControlBase(
+                opModImpLimW=(
+                    DERControlMapper.map_to_active_power(default_doe.import_limit_active_watts)
+                    if default_doe.import_limit_active_watts is not None
+                    else None
                 ),
-            }
+                opModExpLimW=(
+                    DERControlMapper.map_to_active_power(default_doe.export_limit_active_watts)
+                    if default_doe.export_limit_active_watts is not None
+                    else None
+                ),
+                opModLoadLimW=(
+                    DERControlMapper.map_to_active_power(default_doe.load_limit_active_watts)
+                    if default_doe.load_limit_active_watts is not None
+                    else None
+                ),
+                opModGenLimW=(
+                    DERControlMapper.map_to_active_power(default_doe.generation_limit_active_watts)
+                    if default_doe.generation_limit_active_watts is not None
+                    else None
+                ),
+            ),
         )
 
     @staticmethod
@@ -209,7 +222,7 @@ class DERProgramMapper:
     def doe_program_response(
         rq_scope: DeviceOrAggregatorRequestScope,
         total_does: int,
-        default_doe: Optional[DefaultSiteControlConfiguration],
+        default_doe: Optional[DefaultDoeConfiguration],
     ) -> DERProgramResponse:
         """Returns a static Dynamic Operating Envelope program response"""
 
@@ -248,7 +261,7 @@ class DERProgramMapper:
     def doe_program_list_response(
         rq_scope: DeviceOrAggregatorRequestScope,
         total_does: int,
-        default_doe: Optional[DefaultSiteControlConfiguration],
+        default_doe: Optional[DefaultDoeConfiguration],
     ) -> DERProgramListResponse:
         """Returns a fixed list of just the DOE Program"""
         return DERProgramListResponse.model_validate(

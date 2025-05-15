@@ -1,12 +1,15 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import DECIMAL, BigInteger, DateTime, ForeignKey, Index, Integer, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model.base import Base
-from envoy.server.model.site import Site
+
+if TYPE_CHECKING:
+    from envoy.server.model.site import Site
+
 
 DOE_DECIMAL_PLACES = 2
 DOE_DECIMAL_POWER = pow(10, DOE_DECIMAL_PLACES)
@@ -37,7 +40,7 @@ class DynamicOperatingEnvelope(Base):
     )  # Constraint on imported active power
     export_limit_watts: Mapped[Decimal] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES)
-    )  # Constraint on exported active/reactive power
+    )  # Constraint on exported active power TODO: rename to ..active_watts
 
     site: Mapped["Site"] = relationship(lazy="raise")
 
@@ -52,8 +55,10 @@ class DynamicOperatingEnvelope(Base):
     # NOTE: We've decided to include these 'non-DOE' related fields (that map to DERControl elements) here and
     # eventually generalise this to capture specifically the DERControl that are of interest to CSIP-AUS (i.e. not
     # necessarily everything in core IEEE2030.5).
-    generation_limit_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
-    load_limit_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
+    generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )
+    load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
     set_energized: Mapped[Optional[bool]] = mapped_column(nullable=True)
     set_connected: Mapped[Optional[bool]] = mapped_column(nullable=True)
 
@@ -69,7 +74,7 @@ class DefaultSiteControl(Base):
 
     __tablename__ = "default_site_control"
     default_site_control_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id", ondelete="CASCADE"))
+    site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id", ondelete="CASCADE"), nullable=False, index=True)
 
     import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
@@ -77,6 +82,10 @@ class DefaultSiteControl(Base):
     export_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on exported active power
-    generation_limit_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
-    load_limit_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
-    ramp_rate_percent_per_second: Mapped[Decimal] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
+    generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )
+    load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
+    ramp_rate_percent_per_second: Mapped[int] = mapped_column(nullable=True)
+
+    site: Mapped["Site"] = relationship(back_populates="default_site_control", lazy="raise")

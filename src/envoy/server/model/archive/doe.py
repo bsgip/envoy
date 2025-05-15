@@ -55,13 +55,13 @@ class ArchiveDefaultSiteControl(ArchiveBase):
     import_limit_active_watts: Mapped[Decimal] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on imported active power
-    export_limit_watts: Mapped[Decimal] = mapped_column(
+    export_limit_active_watts: Mapped[Decimal] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on exported active/reactive power
-    generation_limit_watts: Mapped[Optional[Decimal]] = mapped_column(
+    generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
-    load_limit_watts: Mapped[Optional[Decimal]] = mapped_column(
+    load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
     ramp_rate_percent_per_second: Mapped[Decimal] = mapped_column(
