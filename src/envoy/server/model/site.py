@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 
 from envoy_schema.server.schema.sep2.der import (
     AbnormalCategoryType,
@@ -33,13 +34,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
-
-if TYPE_CHECKING:
-    from envoy.server.model import DefaultSiteControl
-
-
-PERCENT_DECIMAL_PLACES = 4
-PERCENT_DECIMAL_POWER = pow(10, PERCENT_DECIMAL_PLACES)
+from envoy.server.model.constants import DOE_DECIMAL_PLACES, PERCENT_DECIMAL_PLACES
 
 
 class Site(Base):
@@ -384,3 +379,29 @@ class SiteLogEvent(Base):
     __table_args__ = (
         Index("site_log_event_site_id_created_time_log_event_id_idx", "site_id", "created_time", "log_event_id"),
     )
+
+
+# TODO: deally this would be in the model.doe module. This causes a circular import issue due to the relationship
+# mapping between Site and this model. The recommended solution is to use a type.TYPE_CHECKING if statement before the
+# imports. However, this causes an issue with the `assertical` testing package that needs to be looked into.
+class DefaultSiteControl(Base):
+    """Represents fields that map to a subset of the attributes defined in CSIP-AUS' DefaultDERControl resource.
+    This entity is linked to a Site."""
+
+    __tablename__ = "default_site_control"
+    default_site_control_id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id", ondelete="CASCADE"), nullable=False, index=True)
+
+    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )  # Constraint on imported active power
+    export_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )  # Constraint on exported active power
+    generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )
+    load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
+    ramp_rate_percent_per_second: Mapped[Optional[int]] = mapped_column(nullable=True)
+
+    site: Mapped["Site"] = relationship(back_populates="default_site_control", lazy="raise")

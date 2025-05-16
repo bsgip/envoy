@@ -3,7 +3,6 @@ from unittest import mock
 import pytest
 from assertical.fake.generator import generate_class_instance
 from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
-
 # from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
 from envoy_schema.server.schema.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,

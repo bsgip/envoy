@@ -380,8 +380,8 @@ async def test_get_dercontrol_list_all_expired(
 async def test_get_default_doe_not_configured(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
     """Tests getting the default DOE with no default configured returns 404"""
 
-    # test a known site
-    path = uri_derc_default_control_format.format(site_id=1, der_program_id="doe")
+    # test a known site in base_config that does not have anything set either
+    path = uri_derc_default_control_format.format(site_id=2, der_program_id="doe")
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, HTTPStatus.NOT_FOUND)
@@ -401,11 +401,11 @@ async def test_get_default_invalid_site_id(client: AsyncClient, uri_derc_default
 
 
 @pytest.mark.anyio
-async def test_get_default_doe(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
+async def test_get_fallback_default_doe(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
     """Tests getting the default DOE"""
 
     # test a known site
-    path = uri_derc_default_control_format.format(site_id=1, der_program_id="doe")
+    path = uri_derc_default_control_format.format(site_id=2, der_program_id="doe")
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, HTTPStatus.OK)
@@ -421,6 +421,30 @@ async def test_get_default_doe(client: AsyncClient, uri_derc_default_control_for
     assert (
         parsed_response.DERControlBase_.opModExpLimW.value
         == DERControlMapper.map_to_active_power(DEFAULT_DOE_EXPORT_ACTIVE_WATTS).value
+    )
+
+
+@pytest.mark.anyio
+async def test_get_site_specific_default_doe(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
+    """Tests getting the default DOE"""
+
+    # test a known site
+    path = uri_derc_default_control_format.format(site_id=1, der_program_id="doe")
+    response = await client.get(path, headers=agg_1_headers)
+
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    parsed_response: DefaultDERControl = DefaultDERControl.from_xml(body)
+
+    assert (
+        parsed_response.DERControlBase_.opModImpLimW.value
+        != DERControlMapper.map_to_active_power(DEFAULT_DOE_IMPORT_ACTIVE_WATTS).value
+    )
+    assert (
+        parsed_response.DERControlBase_.opModExpLimW.value
+        != DERControlMapper.map_to_active_power(DEFAULT_DOE_EXPORT_ACTIVE_WATTS).value
     )
 
 

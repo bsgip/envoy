@@ -1,8 +1,8 @@
 """Module for CSIP-Australia specific middleware and depends."""
 
 from fastapi import FastAPI
-from starlette.types import Receive, Scope, Send, Message
 from starlette.datastructures import MutableHeaders
+from starlette.types import Message, Receive, Scope, Send
 
 
 class CSIPV11aXmlNsOptInMiddleware:

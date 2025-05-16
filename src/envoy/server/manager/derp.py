@@ -27,7 +27,8 @@ from envoy.server.mapper.csip_aus.doe import (
 )
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
-from envoy.server.model.doe import DefaultSiteControl, DynamicOperatingEnvelope
+from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.site import DefaultSiteControl
 from envoy.server.request_scope import SiteRequestScope
 
 

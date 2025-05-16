@@ -41,8 +41,16 @@ from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveS
 from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
-from envoy.server.model.doe import DefaultSiteControl, DynamicOperatingEnvelope
-from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.site import (
+    DefaultSiteControl,
+    Site,
+    SiteDER,
+    SiteDERAvailability,
+    SiteDERRating,
+    SiteDERSetting,
+    SiteDERStatus,
+)
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -539,7 +547,9 @@ async def test_upsert_site_for_aggregator_cant_change_agg_id(pg_base_config):
         assert original_site
         original_registration_pin = original_site.registration_pin
 
-        update_attempt_site = clone_class_instance(original_site, ignored_properties=set(["assignments", "site_ders"]))
+        update_attempt_site = clone_class_instance(
+            original_site, ignored_properties=set(["assignments", "site_ders", "default_site_control"])
+        )
         update_attempt_site.aggregator_id = 3
         update_attempt_site.nmi = "new-nmi"
 

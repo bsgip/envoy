@@ -8,7 +8,7 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 )
 from httpx import AsyncClient
 
-from tests.integration.response import assert_response_header, read_response_body_string, assert_error_response
+from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
 
 
 @pytest.mark.anyio

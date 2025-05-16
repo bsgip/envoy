@@ -18,8 +18,8 @@ from envoy.server.exception import NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.mapper.csip_aus.doe import DERControlListSource
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
-from envoy.server.model.doe import DefaultSiteControl, DynamicOperatingEnvelope
-from envoy.server.model.site import Site
+from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.site import DefaultSiteControl, Site
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
@@ -338,43 +338,45 @@ async def test_fetch_active_doe_controls_for_site(
 
 
 @pytest.mark.anyio
-@mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
+@mock.patch("envoy.server.manager.derp.select_site_with_default_site_control")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
+@mock.patch("envoy.server.manager.derp.DERControlManager._resolve_default_site_control")
 async def test_fetch_default_doe_controls_for_site(
+    mock_resolve_default_site_control: mock.MagicMock,
     mock_DERControlMapper: mock.MagicMock,
-    mock_select_single_site_with_site_id: mock.MagicMock,
+    mock_select_site_with_default_site_control: mock.MagicMock,
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
     default_doe = generate_class_instance(DefaultDoeConfiguration)
 
-    returned_site = generate_class_instance(Site)
+    returned_site = generate_class_instance(Site, generate_relationships=True)
+    mock_resolve_default_site_control.return_value = returned_site.default_site_control
+    mock_select_site_with_default_site_control.return_value = returned_site
 
     mapped_control = generate_class_instance(DefaultDERControl)
+    mock_DERControlMapper.map_to_default_response = mock.Mock(return_value=mapped_control)
 
     mock_session = create_mock_session()
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
-
-    mock_select_single_site_with_site_id.return_value = returned_site
-    mock_DERControlMapper.map_to_default_response = mock.Mock(return_value=mapped_control)
 
     # Act
     result = await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, default_doe)
 
     # Assert
     assert result is mapped_control
-    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
-    mock_DERControlMapper.map_to_default_response.assert_called_once_with(scope, default_doe)
+    mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
+    mock_DERControlMapper.map_to_default_response.assert_called_once_with(scope, returned_site.default_site_control)
 
     assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
-@mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
+@mock.patch("envoy.server.manager.derp.select_site_with_default_site_control")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
 async def test_fetch_default_doe_controls_for_site_bad_site(
     mock_DERControlMapper: mock.MagicMock,
-    mock_select_single_site_with_site_id: mock.MagicMock,
+    mock_select_site_with_default_site_control: mock.MagicMock,
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
@@ -385,7 +387,7 @@ async def test_fetch_default_doe_controls_for_site_bad_site(
     mock_session = create_mock_session()
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
-    mock_select_single_site_with_site_id.return_value = None
+    mock_select_site_with_default_site_control.return_value = None
     mock_DERControlMapper.map_to_default_response = mock.Mock(return_value=mapped_control)
 
     # Act
@@ -393,30 +395,30 @@ async def test_fetch_default_doe_controls_for_site_bad_site(
         await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, default_doe)
 
     # Assert
-    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
+    mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_DERControlMapper.map_to_default_response.assert_not_called()
     assert_mock_session(mock_session)
 
 
 @pytest.mark.anyio
-@mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
+@mock.patch("envoy.server.manager.derp.select_site_with_default_site_control")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
 async def test_fetch_default_doe_controls_for_site_no_default(
     mock_DERControlMapper: mock.MagicMock,
-    mock_select_single_site_with_site_id: mock.MagicMock,
+    mock_select_site_with_default_site_control: mock.MagicMock,
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
     default_doe = None
 
-    returned_site = generate_class_instance(Site)
+    returned_site = generate_class_instance(Site, generate_relationships=False)
 
     mapped_control = generate_class_instance(DefaultDERControl)
 
     mock_session = create_mock_session()
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
-    mock_select_single_site_with_site_id.return_value = returned_site
+    mock_select_site_with_default_site_control.return_value = returned_site
     mock_DERControlMapper.map_to_default_response = mock.Mock(return_value=mapped_control)
 
     # Act
@@ -424,8 +426,39 @@ async def test_fetch_default_doe_controls_for_site_no_default(
         await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, default_doe)
 
     # Assert
-    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
+    mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_DERControlMapper.map_to_default_response.assert_not_called()
+
+    assert_mock_session(mock_session)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.derp.select_site_with_default_site_control")
+@mock.patch("envoy.server.manager.derp.DERControlMapper")
+async def test_fetch_default_doe_controls_for_site_no_global_default(
+    mock_DERControlMapper: mock.MagicMock,
+    mock_select_site_with_default_site_control: mock.MagicMock,
+):
+    """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
+    # Arrange
+    default_doe = None
+
+    returned_site = generate_class_instance(Site, generate_relationships=True)
+
+    mapped_control = None
+
+    mock_session = create_mock_session()
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
+
+    mock_select_site_with_default_site_control.return_value = returned_site
+    mock_DERControlMapper.map_to_default_response = mock.Mock(return_value=mapped_control)
+
+    # Act
+    await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, default_doe)
+
+    # Assert
+    mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
+    mock_DERControlMapper.map_to_default_response.assert_called_once()
 
     assert_mock_session(mock_session)
 
@@ -441,14 +474,32 @@ async def test_fetch_default_doe_controls_for_site_no_default(
         ),
         # Partial site control
         (
-            DefaultDoeConfiguration(100, 200, 300, 400, 50),
+            DefaultDoeConfiguration(
+                import_limit_active_watts=100,
+                export_limit_active_watts=200,
+                generation_limit_active_watts=300,
+                load_limit_active_watts=400,
+                ramp_rate_percent_per_second=50,
+            ),
             DefaultSiteControl(import_limit_active_watts=111, load_limit_active_watts=444),
             (111, 200, 300, 444, 50),
         ),
         # Full site control
         (
-            DefaultDoeConfiguration(100, 200, 300, 400, 50),
-            DefaultSiteControl(1, 2, 3, 4, 5),
+            DefaultDoeConfiguration(
+                import_limit_active_watts=100,
+                export_limit_active_watts=200,
+                generation_limit_active_watts=300,
+                load_limit_active_watts=400,
+                ramp_rate_percent_per_second=50,
+            ),
+            DefaultSiteControl(
+                import_limit_active_watts=1,
+                export_limit_active_watts=2,
+                generation_limit_active_watts=3,
+                load_limit_active_watts=4,
+                ramp_rate_percent_per_second=5,
+            ),
             (1, 2, 3, 4, 5),
         ),
     ],

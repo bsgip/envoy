@@ -2,11 +2,9 @@ from pathlib import Path
 
 import pytest
 from assertical.fake.generator import generate_class_instance
-
-
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
-from envoy_schema.server.schema.sep2.identification import ListLink, Link
-from envoy_schema.server.schema.uri import DeviceCapabilityUri, MirrorUsagePointListUri, TimeUri, EndDeviceListUri
+from envoy_schema.server.schema.sep2.identification import Link, ListLink
+from envoy_schema.server.schema.uri import DeviceCapabilityUri, EndDeviceListUri, MirrorUsagePointListUri, TimeUri
 
 from envoy.server.mapper.sep2.device_capability import DeviceCapabilityMapper
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope

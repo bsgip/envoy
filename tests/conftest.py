@@ -14,6 +14,9 @@ from tests.unit.jwt import DEFAULT_CLIENT_ID, DEFAULT_DATABASE_RESOURCE_ID, DEFA
 
 DEFAULT_DOE_IMPORT_ACTIVE_WATTS = Decimal("8200")
 DEFAULT_DOE_EXPORT_ACTIVE_WATTS = Decimal("5400")
+DEFAULT_DOE_LOAD_ACTIVE_WATTS = Decimal("7200")
+DEFAULT_DOE_GENERATION_ACTIVE_WATTS = Decimal("4400")
+DEFAULT_DOE_RAMP_RATE_PERCENT_PER_SECOND = 50
 
 TEST_IANA_PEN = 28547  # private enterprise number for the Australian National University - for use in testing
 
@@ -63,8 +66,15 @@ def pg_empty_config(
 
     no_default_doe_marker = request.node.get_closest_marker("no_default_doe")
     if no_default_doe_marker is None:
+        os.environ["USE_GLOBAL_DEFAULT_DOE_FALLBACK"] = "true"
         os.environ["DEFAULT_DOE_IMPORT_ACTIVE_WATTS"] = str(DEFAULT_DOE_IMPORT_ACTIVE_WATTS)
         os.environ["DEFAULT_DOE_EXPORT_ACTIVE_WATTS"] = str(DEFAULT_DOE_EXPORT_ACTIVE_WATTS)
+        os.environ["DEFAULT_DOE_LOAD_ACTIVE_WATTS"] = str(DEFAULT_DOE_LOAD_ACTIVE_WATTS)
+        os.environ["DEFAULT_DOE_GENERATION_ACTIVE_WATTS"] = str(DEFAULT_DOE_GENERATION_ACTIVE_WATTS)
+        os.environ["DEFAULT_DOE_RAMP_RATE_PERCENT_PER_SECOND"] = str(DEFAULT_DOE_RAMP_RATE_PERCENT_PER_SECOND)
+
+    else:
+        os.environ["USE_GLOBAL_DEFAULT_DOE_FALLBACK"] = "false"
 
     if request.node.get_closest_marker("csipv11a_xmlns_optin_middleware"):
         os.environ["INSTALL_CSIP_V11A_OPT_IN_MIDDLEWARE"] = "true"

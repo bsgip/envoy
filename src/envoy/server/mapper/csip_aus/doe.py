@@ -24,7 +24,9 @@ from envoy.server.mapper.sep2.mrid import MridMapper, ResponseSetType
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
-from envoy.server.model.doe import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER, DefaultSiteControl, DynamicOperatingEnvelope
+from envoy.server.model.constants import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER
+from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.site import DefaultSiteControl
 from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
 
 DOE_PROGRAM_ID: str = "doe"

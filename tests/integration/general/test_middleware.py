@@ -1,20 +1,17 @@
 import urllib
 from http import HTTPStatus
 
-from psycopg import Connection
-import pytest
-from httpx import AsyncClient
 import envoy_schema.server.schema.uri as uris
-from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
-from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointRequest
+import pytest
 from assertical.fake.generator import generate_class_instance
+from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointRequest
+from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
+from httpx import AsyncClient
+from psycopg import Connection
 
 from envoy.server.api.depends.csipaus import CSIPV11aXmlNsOptInMiddleware
-
-
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.integration.integration_server import cert_header
-
 
 EQUIVALENT_NS_MAP = CSIPV11aXmlNsOptInMiddleware.equivalent_ns_map
 

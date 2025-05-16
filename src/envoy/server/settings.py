@@ -1,4 +1,5 @@
 import importlib.metadata
+from decimal import Decimal
 from typing import Any, Dict, Optional
 
 from envoy.settings import CommonSettings
@@ -16,8 +17,15 @@ class AppSettings(CommonSettings):
 
     cert_header: str = "x-forwarded-client-cert"  # either client certificate in PEM format or the sha256 fingerprint
 
+    # Global fallback default doe for sites that do not have these configured.
+    use_global_default_doe_fallback: bool = True
     default_doe_import_active_watts: Optional[str] = None  # Constant default DERControl import as a decimal float
     default_doe_export_active_watts: Optional[str] = None  # Constant default DERControl export as a decimal float
+    default_doe_load_active_watts: Optional[str] = None  # Constant default DERControl load limit as a decimal float
+    default_doe_generation_active_watts: Optional[str] = (
+        None  # Constant default DERControl generation limit as a decimal float
+    )
+    default_doe_ramp_rate_percent_per_second: Optional[int] = None  # Constant default DERControl ramp rate setpoint.
 
     install_csip_v11a_opt_in_middleware: Optional[bool] = (
         False  # Flag whether to install the envoy.server.api.depends.csipaus.AllowEquivalentXmlNsMiddleware
@@ -35,6 +43,24 @@ class AppSettings(CommonSettings):
             "redoc_url": self.redoc_url,
             "title": self.title,
             "version": self.version,
+        }
+
+    @property
+    def default_doe_configuration(self) -> Dict[str, Any]:
+        return {
+            "import_limit_active_watts": (
+                Decimal(self.default_doe_import_active_watts) if self.default_doe_import_active_watts else None
+            ),
+            "export_limit_active_watts": (
+                Decimal(self.default_doe_export_active_watts) if self.default_doe_export_active_watts else None
+            ),
+            "load_limit_active_watts": (
+                Decimal(self.default_doe_load_active_watts) if self.default_doe_load_active_watts else None
+            ),
+            "generation_limit_active_watts": (
+                Decimal(self.default_doe_generation_active_watts) if self.default_doe_generation_active_watts else None
+            ),
+            "ramp_rate_percent_per_second": self.default_doe_ramp_rate_percent_per_second,
         }
 
 

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Optional
 
 
 # TODO: rename to DefaultSiteControlConfiguration as part of DOE->SiteControl refactor.
@@ -10,8 +11,8 @@ class DefaultDoeConfiguration:
 
     """
 
-    import_limit_active_watts: Decimal
-    export_limit_active_watts: Decimal
-    generation_limit_active_watts: Decimal
-    load_limit_active_watts: Decimal
-    ramp_rate_percent_per_second: Decimal
+    import_limit_active_watts: Optional[Decimal] = None
+    export_limit_active_watts: Optional[Decimal] = None
+    generation_limit_active_watts: Optional[Decimal] = None
+    load_limit_active_watts: Optional[Decimal] = None
+    ramp_rate_percent_per_second: Optional[int] = None
