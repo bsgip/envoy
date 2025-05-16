@@ -30,6 +30,7 @@ from envoy.server.manager.time import utc_now
 from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (
+    ArchiveDefaultSiteControl,
     ArchiveSite,
     ArchiveSiteDER,
     ArchiveSiteDERAvailability,
@@ -737,6 +738,16 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         )
     )
 
+    snapshot.append(
+        await count_table_rows(
+            session,
+            DefaultSiteControl,
+            None,
+            ArchiveDefaultSiteControl,
+            lambda q: q.where(DefaultSiteControl.site_id == site_id),
+        )
+    )
+
     return snapshot
 
 
@@ -839,6 +850,8 @@ async def test_delete_site_for_aggregator(
         (1, 1, (1, 1, Decimal("10.10"), Decimal("9.99"), Decimal("8.88"), Decimal("7.77"), 6)),
         (2, 1, None),
         (3, 2, (2, 3, Decimal("20.20"), Decimal("19.19"), Decimal("18.18"), Decimal("17.17"), 16)),
+        (3, 1, None),
+        (99, 99, None),
     ],
 )
 @pytest.mark.anyio
@@ -855,7 +868,8 @@ async def test_select_site_with_default_site_control(
         site = await select_site_with_default_site_control(session, site_id=site_id, aggregator_id=agg_id)
 
         if expected_vals is None:
-            assert site.default_site_control is None
+            if site is not None:
+                assert site.default_site_control is None
         else:
             default_site_control = site.default_site_control
             (
