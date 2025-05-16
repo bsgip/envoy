@@ -92,6 +92,7 @@ class DERControlMapper:
                         "start": int(doe.start_time.timestamp()),
                     }
                 ),
+                "randomizeStart": doe.randomize_start_seconds,
                 "creationTime": int(doe.changed_time.timestamp()),
                 "EventStatus_": EventStatus.model_validate(
                     {

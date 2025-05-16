@@ -31,7 +31,7 @@ env = [
 exclude_dirs = ["tests"]
 
 [tool.mypy]
-exclude = ["src/envoy/server/alembic", "tests"]
+exclude = ["src/envoy/server/alembic", "tests", "build", "dist"]
 check_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_decorators = true

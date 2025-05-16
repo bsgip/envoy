@@ -30,6 +30,9 @@ class DynamicOperatingEnvelope(Base):
     )  # When the doe was created/changed
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the doe comes into effect
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this doe applies for
+    randomize_start_seconds: Mapped[Optional[int]] = mapped_column(
+        nullable=True
+    )  # Client directive to randomize the actual start_time by this many seconds
     import_limit_active_watts: Mapped[Decimal] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES)
     )  # Constraint on imported active power

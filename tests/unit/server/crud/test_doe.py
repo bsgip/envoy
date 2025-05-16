@@ -46,6 +46,15 @@ def assert_doe_for_id(
             assert actual_doe.duration_seconds == 10 * expected_doe_id + expected_doe_id
         assert actual_doe.import_limit_active_watts == Decimal(f"{expected_doe_id}.11")
         assert actual_doe.export_limit_watts == Decimal(f"-{expected_doe_id}.22")
+
+        # This is also by convention
+        if actual_doe.dynamic_operating_envelope_id in {1, 3, 4}:
+            assert actual_doe.randomize_start_seconds == (
+                100 * expected_doe_id + 10 * expected_doe_id + expected_doe_id
+            )
+        else:
+            assert actual_doe.randomize_start_seconds is None
+
         if expected_tz:
             tz = ZoneInfo(expected_tz)
             assert actual_doe.start_time.tzname() == tz.tzname(

@@ -48,6 +48,7 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
     assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * DOE_DECIMAL_POWER)
     assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * DOE_DECIMAL_POWER)
+    assert result_all_set.randomizeStart == doe.randomize_start_seconds
 
     if isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None:
         assert result_all_set.EventStatus_.currentStatus == EVENT_STATUS_CANCELLED
@@ -70,6 +71,7 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
         doe_opt.import_limit_active_watts * DOE_DECIMAL_POWER
     )
     assert result_optional.DERControlBase_.opModExpLimW.value == int(doe_opt.export_limit_watts * DOE_DECIMAL_POWER)
+    assert result_optional.randomizeStart is None
 
     if isinstance(doe_opt, ArchiveDynamicOperatingEnvelope) and doe_opt.deleted_time is not None:
         assert result_optional.EventStatus_.currentStatus == EVENT_STATUS_CANCELLED

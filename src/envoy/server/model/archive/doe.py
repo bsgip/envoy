@@ -21,6 +21,7 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     duration_seconds: Mapped[int] = mapped_column()
+    randomize_start_seconds: Mapped[Optional[int]] = mapped_column(nullable=True)
     import_limit_active_watts: Mapped[Decimal] = mapped_column(DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES))
     export_limit_watts: Mapped[Decimal] = mapped_column(DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES))
 
