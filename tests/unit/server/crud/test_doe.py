@@ -5,7 +5,9 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from assertical.asserts.time import assert_datetime_equal
+from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
+from sqlalchemy import update
 
 from envoy.server.crud.doe import (
     count_active_does_include_deleted,
@@ -17,6 +19,7 @@ from envoy.server.crud.doe import (
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope as ArchiveDOE
 from envoy.server.model.doe import DynamicOperatingEnvelope as DOE
+from envoy.server.model.doe import SiteControlGroup
 
 AEST = ZoneInfo("Australia/Brisbane")
 
@@ -46,6 +49,7 @@ def assert_doe_for_id(
             assert actual_doe.duration_seconds == 10 * expected_doe_id + expected_doe_id
         assert actual_doe.import_limit_active_watts == Decimal(f"{expected_doe_id}.11")
         assert actual_doe.export_limit_watts == Decimal(f"-{expected_doe_id}.22")
+        assert actual_doe.site_control_group_id == 1
 
         # This is also by convention
         if actual_doe.dynamic_operating_envelope_id in {1, 3, 4}:
@@ -79,26 +83,32 @@ def assert_doe_for_id(
 
 
 @pytest.mark.parametrize(
-    "agg_id, site_id, doe_id, expected_dt",
+    "site_control_group_id, agg_id, site_id, doe_id, expected_dt",
     [
-        (1, 1, 5, datetime(2023, 5, 7, 1, 0, 0)),
-        (2, 3, 15, datetime(2023, 5, 7, 1, 5, 0)),
-        (1, 1, 18, datetime(2023, 5, 7, 1, 0, 0)),  # Archive record
-        (1, 1, 19, datetime(2023, 5, 7, 1, 5, 0)),  # Archive record
-        (1, 1, 21, None),  # Archive record (but not deleted)
-        (1, 3, 15, None),
-        (0, 1, 1, None),
-        (2, 1, 15, None),
-        (1, 1, 99, None),
-        (1, 99, 5, None),
+        (1, 1, 1, 5, datetime(2023, 5, 7, 1, 0, 0)),
+        (1, 2, 3, 15, datetime(2023, 5, 7, 1, 5, 0)),
+        (1, 1, 1, 18, datetime(2023, 5, 7, 1, 0, 0)),  # Archive record
+        (1, 1, 1, 19, datetime(2023, 5, 7, 1, 5, 0)),  # Archive record
+        (1, 1, 1, 21, None),  # Archive record (but not deleted)
+        (1, 1, 3, 15, None),
+        (1, 0, 1, 1, None),
+        (1, 2, 1, 15, None),
+        (1, 1, 1, 99, None),
+        (1, 1, 99, 5, None),
+        (99, 1, 1, 5, None),
     ],
 )
 @pytest.mark.anyio
 async def test_select_doe_include_deleted(
-    pg_additional_does, agg_id: int, site_id: Optional[int], doe_id: int, expected_dt: Optional[datetime]
+    pg_additional_does,
+    site_control_group_id: int,
+    agg_id: int,
+    site_id: Optional[int],
+    doe_id: int,
+    expected_dt: Optional[datetime],
 ):
     async with generate_async_session(pg_additional_does) as session:
-        actual = await select_doe_include_deleted(session, agg_id, site_id, doe_id)
+        actual = await select_doe_include_deleted(session, site_control_group_id, agg_id, site_id, doe_id)
         if expected_dt is None:
             expected_id = None
         else:
@@ -107,19 +117,24 @@ async def test_select_doe_include_deleted(
 
 
 @pytest.mark.parametrize(
-    "agg_id, site_id, doe_id, expected_dt",
+    "site_control_group_id, agg_id, site_id, doe_id, expected_dt",
     [
-        (1, 1, 1, datetime(2022, 5, 6, 8, 2)),  # Adjusted for LA time
-        (1, 1, 4, datetime(2022, 5, 7, 8, 2)),  # Adjusted for LA time
-        (99, 99, 99, None),
+        (1, 1, 1, 1, datetime(2022, 5, 6, 8, 2)),  # Adjusted for LA time
+        (1, 1, 1, 4, datetime(2022, 5, 7, 8, 2)),  # Adjusted for LA time
+        (99, 99, 99, 99, None),
     ],
 )
 @pytest.mark.anyio
 async def test_select_doe_include_deleted_la_timezone(
-    pg_la_timezone, agg_id: int, site_id: Optional[int], doe_id: int, expected_dt: Optional[datetime]
+    pg_la_timezone,
+    site_control_group_id: int,
+    agg_id: int,
+    site_id: Optional[int],
+    doe_id: int,
+    expected_dt: Optional[datetime],
 ):
     async with generate_async_session(pg_la_timezone) as session:
-        actual = await select_doe_include_deleted(session, agg_id, site_id, doe_id)
+        actual = await select_doe_include_deleted(session, site_control_group_id, agg_id, site_id, doe_id)
         if expected_dt is None:
             expected_id = None
         else:
@@ -137,9 +152,9 @@ async def test_select_and_count_active_does_fails_none_site(pg_additional_does):
     after = datetime.min
     async with generate_async_session(pg_additional_does) as session:
         with pytest.raises(Exception):
-            await select_active_does_include_deleted(session, None, now, 0, after, 99)
+            await select_active_does_include_deleted(session, 1, None, now, 0, after, 99)
         with pytest.raises(Exception):
-            await count_active_does_include_deleted(session, None, now, after)
+            await count_active_does_include_deleted(session, 1, None, now, after)
 
 
 @pytest.mark.parametrize(
@@ -161,11 +176,14 @@ async def test_select_and_count_active_does_include_deleted_pagination(
 ):
     """Tests out the basic pagination features"""
     now = datetime(1970, 1, 1, 0, 0, 0)  # This is sufficiently in this past to allow everything to pass
+    site_control_group_id = 1
 
     async with generate_async_session(pg_additional_does) as session:
         existing_site = await select_single_site_with_site_id(session, 1, 1)
-        does = await select_active_does_include_deleted(session, existing_site, now, start, after, limit)
-        count = await count_active_does_include_deleted(session, existing_site, now, after)
+        does = await select_active_does_include_deleted(
+            session, site_control_group_id, existing_site, now, start, after, limit
+        )
+        count = await count_active_does_include_deleted(session, site_control_group_id, existing_site, now, after)
         assert len(does) == len(expected_ids)
         assert count == expected_count
         for id, doe in zip(expected_ids, does):
@@ -173,27 +191,32 @@ async def test_select_and_count_active_does_include_deleted_pagination(
 
 
 @pytest.mark.parametrize(
-    "expected_ids, agg_id, site_id, now",
+    "expected_ids, site_control_group_id, agg_id, site_id, now",
     [
-        ([1, 2, 4, 18, 5, 9, 19, 6, 7, 8], 1, 1, datetime.min),
-        ([3, 20, 10, 11, 12, 13], 1, 2, datetime.min),
-        ([18, 5, 9, 19, 6, 7, 8], 1, 1, datetime(2023, 5, 7, 0, 59, 59, tzinfo=AEST)),  # Before start
-        ([18, 5, 9, 19, 6, 7, 8], 1, 1, datetime(2023, 5, 7, 1, 4, 59, tzinfo=AEST)),  # Before end
-        ([9, 19, 6, 7, 8], 1, 1, datetime(2023, 5, 7, 1, 5, 0, tzinfo=AEST)),  # On expiry time
-        ([18, 5, 9, 19, 6, 7, 8], 1, 1, datetime(2023, 5, 7, 0, 59, 59, tzinfo=AEST)),  # Before start
-        ([], 1, 1, datetime(2045, 1, 1, 0, 0, 0, tzinfo=AEST)),  # Everything expired
+        ([1, 2, 4, 18, 5, 9, 19, 6, 7, 8], 1, 1, 1, datetime.min),
+        ([3, 20, 10, 11, 12, 13], 1, 1, 2, datetime.min),
+        ([18, 5, 9, 19, 6, 7, 8], 1, 1, 1, datetime(2023, 5, 7, 0, 59, 59, tzinfo=AEST)),  # Before start
+        ([18, 5, 9, 19, 6, 7, 8], 1, 1, 1, datetime(2023, 5, 7, 1, 4, 59, tzinfo=AEST)),  # Before end
+        ([9, 19, 6, 7, 8], 1, 1, 1, datetime(2023, 5, 7, 1, 5, 0, tzinfo=AEST)),  # On expiry time
+        ([18, 5, 9, 19, 6, 7, 8], 1, 1, 1, datetime(2023, 5, 7, 0, 59, 59, tzinfo=AEST)),  # Before start
+        ([], 1, 1, 1, datetime(2045, 1, 1, 0, 0, 0, tzinfo=AEST)),  # Everything expired
+        ([], 99, 1, 1, datetime.min),  # wrong site group id
     ],
 )
 @pytest.mark.anyio
 async def test_select_and_count_active_does_include_deleted_filtered(
-    pg_additional_does, expected_ids: list[int], agg_id: int, site_id: int, now: datetime
+    pg_additional_does, site_control_group_id: int, expected_ids: list[int], agg_id: int, site_id: int, now: datetime
 ):
     """Tests out the basic filters features and validates the associated count function too"""
     async with generate_async_session(pg_additional_does) as session:
         existing_site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=agg_id)
 
-        does = await select_active_does_include_deleted(session, existing_site, now, 0, datetime.min, 99)
-        count = await count_active_does_include_deleted(session, existing_site, now, datetime.min)
+        does = await select_active_does_include_deleted(
+            session, site_control_group_id, existing_site, now, 0, datetime.min, 99
+        )
+        count = await count_active_does_include_deleted(
+            session, site_control_group_id, existing_site, now, datetime.min
+        )
         assert isinstance(count, int)
 
         assert expected_ids == [d.dynamic_operating_envelope_id for d in does]
@@ -201,6 +224,62 @@ async def test_select_and_count_active_does_include_deleted_filtered(
 
         for doe_id, doe in zip(expected_ids, does):
             assert_doe_for_id(doe_id, site_id, None, "Australia/Brisbane", doe, check_duration_seconds=False)
+
+
+@pytest.mark.parametrize(
+    "expected_ids, site_control_group_id, agg_id, site_id, now",
+    [
+        ([1, 2, 4], 1, 1, 1, datetime.min),
+        ([18, 5, 9, 19, 6, 7, 8], 2, 1, 1, datetime.min),
+        ([3, 20], 1, 1, 2, datetime.min),
+        ([10, 11, 12, 13], 2, 1, 2, datetime.min),
+        ([], 99, 1, 2, datetime.min),
+        ([], 1, 1, 1, datetime(2023, 5, 7, 1, 5, 0, tzinfo=AEST)),  # On expiry time
+        ([9, 19, 6, 7, 8], 2, 1, 1, datetime(2023, 5, 7, 1, 5, 0, tzinfo=AEST)),  # On expiry time
+    ],
+)
+@pytest.mark.anyio
+async def test_select_and_count_active_does_include_deleted_multiple_groups(
+    pg_additional_does, site_control_group_id: int, expected_ids: list[int], agg_id: int, site_id: int, now: datetime
+):
+    """Tests out the basic filters when half of the DOEs have been split into a different control group"""
+
+    # Migrate ever
+    async with generate_async_session(pg_additional_does) as session:
+        session.add(generate_class_instance(SiteControlGroup, site_control_group_id=2))
+        await session.flush()
+
+        await session.execute(
+            update(DOE)
+            .values(site_control_group_id=2)
+            .where(DOE.dynamic_operating_envelope_id >= 5)
+            .where(DOE.dynamic_operating_envelope_id < 20)
+        )
+        await session.execute(
+            update(ArchiveDOE)
+            .values(site_control_group_id=2)
+            .where(ArchiveDOE.dynamic_operating_envelope_id >= 5)
+            .where(ArchiveDOE.dynamic_operating_envelope_id < 20)
+        )
+        await session.commit()
+
+    async with generate_async_session(pg_additional_does) as session:
+        existing_site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=agg_id)
+
+        does = await select_active_does_include_deleted(
+            session, site_control_group_id, existing_site, now, 0, datetime.min, 99
+        )
+        count = await count_active_does_include_deleted(
+            session, site_control_group_id, existing_site, now, datetime.min
+        )
+        assert isinstance(count, int)
+
+        assert expected_ids == [d.dynamic_operating_envelope_id for d in does]
+        assert len(does) == count
+
+        for doe_id, doe in zip(expected_ids, does):
+            assert doe.dynamic_operating_envelope_id == doe_id
+            assert doe.site_control_group_id == site_control_group_id
 
 
 @pytest.mark.parametrize(
@@ -220,10 +299,15 @@ async def test_select_and_count_doe_filters_la_time(
 ):
     """Builds on test_select_and_count_doe_filters with the la timezone"""
     now = datetime(1970, 1, 1, 0, 0, 0)  # This is sufficiently in this past to allow everything to pass
+    site_control_group_id = 1
     async with generate_async_session(pg_la_timezone) as session:
         existing_site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=agg_id)
-        does = await select_active_does_include_deleted(session, existing_site, now, 0, datetime.min, 99)
-        count = await count_active_does_include_deleted(session, existing_site, now, datetime.min)
+        does = await select_active_does_include_deleted(
+            session, site_control_group_id, existing_site, now, 0, datetime.min, 99
+        )
+        count = await count_active_does_include_deleted(
+            session, site_control_group_id, existing_site, now, datetime.min
+        )
         assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count
@@ -232,17 +316,19 @@ async def test_select_and_count_doe_filters_la_time(
 
 
 @pytest.mark.parametrize(
-    "expected_id_and_starts, timestamp, agg_id, site_id",
+    "expected_id_and_starts, timestamp, site_control_group_id, agg_id, site_id",
     [
         (
             [(5, datetime(2023, 5, 7, 1, 0, 0))],
             datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
             1,
             1,
+            1,
         ),  # For Agg 1 / Site 1 at timestamp
         (
             [(10, datetime(2023, 5, 7, 1, 0, 0)), (5, datetime(2023, 5, 7, 1, 0, 0))],
             datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
             1,
             None,
         ),  # For Agg 1 / ANY Site at timestamp
@@ -251,6 +337,7 @@ async def test_select_and_count_doe_filters_la_time(
             datetime(2023, 5, 7, 1, 0, 1, tzinfo=ZoneInfo("Australia/Brisbane")),
             1,
             1,
+            1,
         ),  # For Agg 1 / ANY Site at timestamp (that overlaps multiple DOEs)
         (
             [
@@ -260,11 +347,13 @@ async def test_select_and_count_doe_filters_la_time(
             ],
             datetime(2023, 5, 7, 1, 0, 1, tzinfo=ZoneInfo("Australia/Brisbane")),
             1,
+            1,
             None,
         ),  # For Agg 1 / ANY Site at timestamp (that overlaps multiple DOEs)
         (
             [(5, datetime(2023, 5, 7, 1, 0, 0)), (9, datetime(2023, 5, 7, 1, 0, 1))],
             datetime(2023, 5, 7, 1, 3, 22, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
             1,
             1,
         ),
@@ -276,11 +365,13 @@ async def test_select_and_count_doe_filters_la_time(
             ],
             datetime(2023, 5, 7, 1, 3, 22, tzinfo=ZoneInfo("Australia/Brisbane")),
             1,
+            1,
             None,
         ),
         (
             [(9, datetime(2023, 5, 7, 1, 0, 1)), (6, datetime(2023, 5, 7, 1, 5, 0))],
             datetime(2023, 5, 7, 1, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
             1,
             1,
         ),
@@ -289,28 +380,33 @@ async def test_select_and_count_doe_filters_la_time(
             datetime(2023, 5, 7, 1, 10, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
             1,
             1,
+            1,
         ),
         (
             [(14, datetime(2023, 5, 7, 1, 0, 0))],
             datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
             2,
             3,
         ),  # For agg 2
         (
             [],
             datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
             99,
             1,
         ),  # Bad Agg ID
         (
             [],
             datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
             2,
             1,
         ),  # Agg ID can't access another agg's sites
         (
             [],
             datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            1,
             2,
             0,
         ),  # Zero site ID
@@ -318,11 +414,19 @@ async def test_select_and_count_doe_filters_la_time(
             [],
             datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
             1,
+            1,
             99,
         ),  # Missing site ID
+        (
+            [],
+            datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+            2,
+            1,
+            1,
+        ),  # Wrong site control id
         # Throw the timestamp timezone off
-        ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles")), 1, None),
-        ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles")), 1, 1),
+        ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles")), 1, 1, None),
+        ([], datetime(2023, 5, 7, 1, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles")), 1, 1, 1),
     ],
 )
 @pytest.mark.anyio
@@ -330,13 +434,16 @@ async def test_select_and_count_doe_for_timestamp_filters(
     pg_additional_does,
     expected_id_and_starts: list[tuple[int, datetime]],
     timestamp: datetime,
+    site_control_group_id: int,
     agg_id: int,
     site_id: Optional[int],
 ):
     """Tests out the basic filters features and validates the associated count function too"""
     async with generate_async_session(pg_additional_does) as session:
-        does = await select_does_at_timestamp(session, agg_id, site_id, timestamp, 0, datetime.min, 99)
-        count = await count_does_at_timestamp(session, agg_id, site_id, timestamp, datetime.min)
+        does = await select_does_at_timestamp(
+            session, site_control_group_id, agg_id, site_id, timestamp, 0, datetime.min, 99
+        )
+        count = await count_does_at_timestamp(session, site_control_group_id, agg_id, site_id, timestamp, datetime.min)
         assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count
@@ -384,7 +491,7 @@ async def test_select_doe_at_timestamp_pagination(
 ):
     """Tests out the basic pagination features for a timestamp that has 2 overlapping DOEs"""
     async with generate_async_session(pg_additional_does) as session:
-        does = await select_does_at_timestamp(session, 1, 1, timestamp, start, after, limit)
+        does = await select_does_at_timestamp(session, 1, 1, 1, timestamp, start, after, limit)
         assert len(does) == len(expected_ids)
         for id, doe in zip(expected_ids, does):
             assert_doe_for_id(id, 1, None, None, doe, check_duration_seconds=False)

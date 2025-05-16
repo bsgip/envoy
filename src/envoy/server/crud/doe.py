@@ -12,6 +12,7 @@ from envoy.server.model.site import Site
 
 async def select_doe_include_deleted(
     session: AsyncSession,
+    site_control_group_id: int,
     aggregator_id: int,
     site_id: int,
     doe_id: int,
@@ -19,6 +20,7 @@ async def select_doe_include_deleted(
     """Attempts to fetch a doe using its' DOE id, also scoping it to a particular aggregator/site. The archive
     table will also be checked for deleted instances (of which the most recent deletion will be matched).
 
+    site_control_group_id: The SiteControlGroup to select doe's from
     aggregator_id: The aggregator id to constrain the lookup to
     site_id: the query will apply a filter on site_id using this value"""
 
@@ -34,7 +36,11 @@ async def select_doe_include_deleted(
     # Check primary table first
     primary_table_doe = (
         await session.execute(
-            select(DOE).where((DOE.dynamic_operating_envelope_id == doe_id) & (DOE.site_id == site_id))
+            select(DOE).where(
+                (DOE.site_control_group_id == site_control_group_id)
+                & (DOE.dynamic_operating_envelope_id == doe_id)
+                & (DOE.site_id == site_id)
+            )
         )
     ).scalar_one_or_none()
     if primary_table_doe is not None:
@@ -45,7 +51,11 @@ async def select_doe_include_deleted(
         await session.execute(
             (
                 select(ArchiveDOE)
-                .where((ArchiveDOE.dynamic_operating_envelope_id == doe_id) & (ArchiveDOE.deleted_time.is_not(None)))
+                .where(
+                    (ArchiveDOE.site_control_group_id == site_control_group_id)
+                    & (ArchiveDOE.dynamic_operating_envelope_id == doe_id)
+                    & (ArchiveDOE.deleted_time.is_not(None))
+                )
                 .order_by(ArchiveDOE.deleted_time.desc())
             )
         )
@@ -59,6 +69,7 @@ async def select_doe_include_deleted(
 async def _does_at_timestamp(
     is_counting: bool,
     session: AsyncSession,
+    site_control_group_id: int,
     aggregator_id: int,
     site_id: Optional[int],
     timestamp: datetime,
@@ -68,6 +79,8 @@ async def _does_at_timestamp(
 ) -> Union[Sequence[DOE], int]:
     """Internal utility for fetching doe's that are active for the specific timestamp
 
+    aggregator_id: The aggregator to scope all DOEs to
+    site_control_group_id: The SiteControlGroup to select doe's from
     site_id: If None - no site_id filter applied, otherwise filter on site_id = Value
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
@@ -82,7 +95,12 @@ async def _does_at_timestamp(
 
     stmt = (
         select_clause.join(DOE.site)
-        .where((DOE.end_time > timestamp) & (DOE.start_time <= timestamp) & (Site.aggregator_id == aggregator_id))
+        .where(
+            (DOE.site_control_group_id == site_control_group_id)
+            & (DOE.end_time > timestamp)
+            & (DOE.start_time <= timestamp)
+            & (Site.aggregator_id == aggregator_id)
+        )
         .offset(start)
         .limit(limit)
     )
@@ -105,24 +123,33 @@ async def _does_at_timestamp(
 
 async def count_active_does_include_deleted(
     session: AsyncSession,
+    site_control_group_id: int,
     site: Site,
     now: datetime,
     changed_after: datetime,
 ) -> int:
     """Provides the count of records returned from select_active_does_include_deleted (assuming no pagination).
 
+    site_control_group_id: The SiteControlGroup to select doe's from
     site: The site that the counted DOE's will be all be scoped from
     now: The timestamp that excludes any DOE whose end_time precedes this (i.e. they are expired and no longer relevant)
     changed_after: Only DOE's modified after this time will be counted."""
 
     count_active_does_stmt = (
-        select(func.count()).select_from(DOE).where((DOE.end_time > now) & (DOE.site_id == site.site_id))
+        select(func.count())
+        .select_from(DOE)
+        .where(
+            (DOE.site_control_group_id == site_control_group_id) & (DOE.end_time > now) & (DOE.site_id == site.site_id)
+        )
     )
     count_archive_does_stmt = (
         select(func.count())
         .select_from(ArchiveDOE)
         .where(
-            (ArchiveDOE.end_time > now) & (ArchiveDOE.site_id == site.site_id) & (ArchiveDOE.deleted_time.is_not(None))
+            (ArchiveDOE.site_control_group_id == site_control_group_id)
+            & (ArchiveDOE.end_time > now)
+            & (ArchiveDOE.site_id == site.site_id)
+            & (ArchiveDOE.deleted_time.is_not(None))
         )
     )
 
@@ -139,6 +166,7 @@ async def count_active_does_include_deleted(
 
 async def select_active_does_include_deleted(
     session: AsyncSession,
+    site_control_group_id: int,
     site: Site,
     now: datetime,
     start: int,
@@ -148,6 +176,7 @@ async def select_active_does_include_deleted(
     """Fetches DOEs from dynamic_operating_envelope AND its archive according to the specified filter criteria. Only
     DOE's whose end_time is after "now" will be returned.
 
+    site_control_group_id: The SiteControlGroup to select doe's from
     site: Only DOEs from this site will be included
     now: The timestamp that excludes any DOE whose end_time precedes this (i.e. they are expired and no longer relevant)
     start: How many DOEs to skip
@@ -158,6 +187,7 @@ async def select_active_does_include_deleted(
 
     select_active_does = select(
         DOE.dynamic_operating_envelope_id,
+        DOE.site_control_group_id,
         DOE.site_id,
         DOE.calculation_log_id,
         DOE.created_time,
@@ -171,10 +201,11 @@ async def select_active_does_include_deleted(
         literal_column("NULL").label("archive_time"),
         literal_column("NULL").label("deleted_time"),
         literal_column("0").label("is_archive"),
-    ).where((DOE.end_time > now) & (DOE.site_id == site.site_id))
+    ).where((DOE.site_control_group_id == site_control_group_id) & (DOE.end_time > now) & (DOE.site_id == site.site_id))
 
     select_archive_does = select(
         ArchiveDOE.dynamic_operating_envelope_id,
+        ArchiveDOE.site_control_group_id,
         ArchiveDOE.site_id,
         ArchiveDOE.calculation_log_id,
         ArchiveDOE.created_time,
@@ -188,7 +219,12 @@ async def select_active_does_include_deleted(
         ArchiveDOE.archive_time,
         ArchiveDOE.deleted_time,
         literal_column("1").label("is_archive"),
-    ).where((ArchiveDOE.end_time > now) & (ArchiveDOE.site_id == site.site_id) & (ArchiveDOE.deleted_time.is_not(None)))
+    ).where(
+        (ArchiveDOE.site_control_group_id == site_control_group_id)
+        & (ArchiveDOE.end_time > now)
+        & (ArchiveDOE.site_id == site.site_id)
+        & (ArchiveDOE.deleted_time.is_not(None))
+    )
 
     if changed_after != datetime.min:
         # The "changed_time" for archives is actually the "deleted_time"
@@ -211,6 +247,7 @@ async def select_active_does_include_deleted(
             localize_start_time_for_entity(
                 ArchiveDOE(
                     dynamic_operating_envelope_id=t.dynamic_operating_envelope_id,
+                    site_control_group_id=t.site_control_group_id,
                     site_id=t.site_id,
                     calculation_log_id=t.calculation_log_id,
                     created_time=t.created_time,
@@ -230,6 +267,7 @@ async def select_active_does_include_deleted(
             else localize_start_time_for_entity(
                 DOE(
                     dynamic_operating_envelope_id=t.dynamic_operating_envelope_id,
+                    site_control_group_id=t.site_control_group_id,
                     site_id=t.site_id,
                     calculation_log_id=t.calculation_log_id,
                     created_time=t.created_time,
@@ -248,22 +286,29 @@ async def select_active_does_include_deleted(
 
 
 async def count_does_at_timestamp(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], timestamp: datetime, changed_after: datetime
+    session: AsyncSession,
+    site_control_group_id: int,
+    aggregator_id: int,
+    site_id: Optional[int],
+    timestamp: datetime,
+    changed_after: datetime,
 ) -> int:
     """Fetches the number of DynamicOperatingEnvelope's stored that contain timestamp.
 
+    site_control_group_id: The SiteControlGroup to select doe's from
     aggregator_id: The aggregator ID to filter sites/does against
     site_id: If None, no filter on site_id otherwise filters the results to this specific site_id
     timestamp: The actual timestamp that a DOE range must contain in order to be considered
     changed_after: Only doe's with a changed_time greater than this value will be counted (0 will count everything)"""
 
     return await _does_at_timestamp(
-        True, session, aggregator_id, site_id, timestamp, 0, changed_after, None
+        True, session, site_control_group_id, aggregator_id, site_id, timestamp, 0, changed_after, None
     )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
 
 
 async def select_does_at_timestamp(
     session: AsyncSession,
+    site_control_group_id: int,
     aggregator_id: int,
     site_id: Optional[int],
     timestamp: datetime,
@@ -274,6 +319,7 @@ async def select_does_at_timestamp(
     """Selects DynamicOperatingEnvelope entities (with pagination) that contain timestamp. Date will be assessed in the
     local timezone for the site
 
+    site_control_group_id: The SiteControlGroup to select doe's from
     aggregator_id: The aggregator ID to filter sites/does against
     site_id: If None, no filter on site_id otherwise filters the results to this specific site_id
     timestamp: The actual timestamp that a DOE range must contain in order to be considered
@@ -284,5 +330,5 @@ async def select_does_at_timestamp(
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
 
     return await _does_at_timestamp(
-        False, session, aggregator_id, site_id, timestamp, start, changed_after, limit
+        False, session, site_control_group_id, aggregator_id, site_id, timestamp, start, changed_after, limit
     )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
