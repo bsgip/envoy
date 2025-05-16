@@ -802,6 +802,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
                     changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
                     start_time=datetime(2022, 5, 7, 1, 2, 0, 0, tzinfo=timezone(timedelta(hours=10))),
                     duration_seconds=11,
+                    randomize_start_seconds=111,
                     import_limit_active_watts=Decimal("1.11"),
                     export_limit_watts=Decimal("-1.22"),
                     end_time=datetime(2022, 5, 7, 1, 2, 11, 0, tzinfo=timezone(timedelta(hours=10))),  # Generated Col
