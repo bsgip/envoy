@@ -466,6 +466,7 @@ async def test_fetch_default_doe_controls_for_site_no_global_default(
 @pytest.mark.parametrize(
     "default_doe_config, default_site_control, expected",
     [
+        (None, None, None),
         # No site control
         (
             DefaultDoeConfiguration(100, 200, 300, 400, 50),
@@ -502,14 +503,28 @@ async def test_fetch_default_doe_controls_for_site_no_global_default(
             ),
             (1, 2, 3, 4, 5),
         ),
+        (
+            None,
+            DefaultSiteControl(
+                import_limit_active_watts=1,
+                export_limit_active_watts=2,
+                generation_limit_active_watts=3,
+                load_limit_active_watts=4,
+                ramp_rate_percent_per_second=5,
+            ),
+            (1, 2, 3, 4, 5),
+        ),
     ],
 )
 def test_resolve_default_site_control(default_doe_config, default_site_control, expected):
     """Tests all combos of resolution"""
     result = DERControlManager._resolve_default_site_control(default_doe_config, default_site_control)
 
-    assert result.import_limit_active_watts == expected[0]
-    assert result.export_limit_active_watts == expected[1]
-    assert result.generation_limit_active_watts == expected[2]
-    assert result.load_limit_active_watts == expected[3]
-    assert result.ramp_rate_percent_per_second == expected[4]
+    if expected is None:
+        assert result is None
+    else:
+        assert result.import_limit_active_watts == expected[0]
+        assert result.export_limit_active_watts == expected[1]
+        assert result.generation_limit_active_watts == expected[2]
+        assert result.load_limit_active_watts == expected[3]
+        assert result.ramp_rate_percent_per_second == expected[4]
