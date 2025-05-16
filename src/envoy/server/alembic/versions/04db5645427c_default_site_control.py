@@ -1,16 +1,17 @@
 """default site control
 
-Revision ID: 6a716c1da377
+Revision ID: 04db5645427c
 Revises: 4a32b0556f8e
-Create Date: 2025-05-16 12:48:41.881225
+Create Date: 2025-05-16 13:45:03.207151
 
 """
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
+
 
 # revision identifiers, used by Alembic.
-revision = "6a716c1da377"
+revision = "04db5645427c"
 down_revision = "4a32b0556f8e"
 branch_labels = None
 depends_on = None
@@ -22,6 +23,8 @@ def upgrade() -> None:
         "archive_default_site_control",
         sa.Column("default_site_control_id", sa.INTEGER(), nullable=False),
         sa.Column("site_id", sa.INTEGER(), nullable=False),
+        sa.Column("created_time", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("changed_time", sa.DateTime(timezone=True), nullable=False),
         sa.Column("import_limit_active_watts", sa.DECIMAL(precision=16, scale=2), nullable=True),
         sa.Column("export_limit_active_watts", sa.DECIMAL(precision=16, scale=2), nullable=True),
         sa.Column("generation_limit_active_watts", sa.DECIMAL(precision=16, scale=2), nullable=True),
@@ -42,6 +45,8 @@ def upgrade() -> None:
         "default_site_control",
         sa.Column("default_site_control_id", sa.INTEGER(), nullable=False),
         sa.Column("site_id", sa.Integer(), nullable=False),
+        sa.Column("created_time", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("changed_time", sa.DateTime(timezone=True), nullable=False),
         sa.Column("import_limit_active_watts", sa.DECIMAL(precision=16, scale=2), nullable=True),
         sa.Column("export_limit_active_watts", sa.DECIMAL(precision=16, scale=2), nullable=True),
         sa.Column("generation_limit_active_watts", sa.DECIMAL(precision=16, scale=2), nullable=True),

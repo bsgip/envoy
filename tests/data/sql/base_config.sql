@@ -367,8 +367,8 @@ VALUES (5, 1, '2023-05-01 05:05:05.500', NULL, NULL, 5, 52, 53, 54, 4);
 SELECT pg_catalog.setval('public.site_log_event_site_log_event_id_seq', 6, true);
 
 
-INSERT INTO public.default_site_control(default_site_control_id, site_id, import_limit_active_watts, export_limit_active_watts, generation_limit_active_watts, load_limit_active_watts, ramp_rate_percent_per_second)
-VALUES (1, 1, 10.10, 9.99, 8.88, 7.77, 6);
-INSERT INTO public.default_site_control(default_site_control_id, site_id, import_limit_active_watts, export_limit_active_watts, generation_limit_active_watts, load_limit_active_watts, ramp_rate_percent_per_second)
-VALUES (2, 3, 20.20, 19.19, 18.18, 17.17, 16);
+INSERT INTO public.default_site_control(default_site_control_id, site_id, import_limit_active_watts, export_limit_active_watts, generation_limit_active_watts, load_limit_active_watts, ramp_rate_percent_per_second, created_time, changed_time)
+VALUES (1, 1, 10.10, 9.99, 8.88, 7.77, 6, '2023-05-01 02:02:02.500', '2023-05-01 02:02:02.500');
+INSERT INTO public.default_site_control(default_site_control_id, site_id, import_limit_active_watts, export_limit_active_watts, generation_limit_active_watts, load_limit_active_watts, ramp_rate_percent_per_second,  created_time, changed_time)
+VALUES (2, 3, 20.20, 19.19, 18.18, 17.17, 16, '2023-05-01 02:02:02.500', '2023-05-01 02:02:02.500');
 SELECT pg_catalog.setval('public.default_site_control_default_site_control_id_seq', 3, true);
