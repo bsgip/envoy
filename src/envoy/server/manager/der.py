@@ -90,7 +90,7 @@ class DERManager:
         # fetch runtime server config
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
-        return DERMapper.map_to_list_response(scope, ders, total, config)
+        return DERMapper.map_to_list_response(scope, ders, total, config.derl_pollrate_seconds)
 
     @staticmethod
     async def fetch_der_for_site(

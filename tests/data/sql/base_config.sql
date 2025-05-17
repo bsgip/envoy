@@ -372,3 +372,6 @@ VALUES (1, 1, 10.10, 9.99, 8.88, 7.77, 6, '2023-05-01 02:02:02.500', '2023-05-01
 INSERT INTO public.default_site_control(default_site_control_id, site_id, import_limit_active_watts, export_limit_active_watts, generation_limit_active_watts, load_limit_active_watts, ramp_rate_percent_per_second,  created_time, changed_time)
 VALUES (2, 3, 20.20, 19.19, 18.18, 17.17, 16, '2023-05-01 02:02:02.500', '2023-05-01 02:02:02.500');
 SELECT pg_catalog.setval('public.default_site_control_default_site_control_id_seq', 3, true);
+
+INSERT INTO public.runtime_server_config(runtime_server_config_id,  changed_time, created_time, dcap_pollrate_seconds, edevl_pollrate_seconds, fsal_pollrate_seconds, derpl_pollrate_seconds, derl_pollrate_seconds, mup_postrate_seconds, site_control_pow10_encoding)
+VALUES (1, '2023-05-01 01:01:01.500', '2023-05-01 01:01:01.500', 300, 300, 300, 60, 60, 60, -2);

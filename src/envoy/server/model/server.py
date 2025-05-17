@@ -10,9 +10,9 @@ from envoy.server.model.base import Base
 class RuntimeServerConfig(Base):
     """Single row table for runtime server configurations, e.g. poll/post rates, for specific resources"""
 
-    __tablename__ = "server_runtime_configuration"
+    __tablename__ = "runtime_server_config"
 
-    server_runtime_configuration_id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    runtime_server_config_id: Mapped[int] = mapped_column(primary_key=True, default=1)
 
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
