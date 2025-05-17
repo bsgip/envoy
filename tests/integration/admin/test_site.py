@@ -8,7 +8,7 @@ import pytest
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
-from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteUri
+from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri
 from httpx import AsyncClient
 
 from envoy.admin.crud.site import count_all_site_groups, count_all_sites
@@ -142,7 +142,7 @@ async def test_get_all_sites(
     async with generate_async_session(pg_base_config) as session:
         expected_total_sites = await count_all_sites(session, group, after)
 
-    response = await admin_client_auth.get(SiteUri + _build_query_string(start, limit, group, after))
+    response = await admin_client_auth.get(SiteListUri + _build_query_string(start, limit, group, after))
     assert response.status_code == HTTPStatus.OK
 
     body = read_response_body_string(response)

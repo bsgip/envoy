@@ -5,7 +5,7 @@ from typing import Optional
 
 from envoy_schema.admin.schema.site import SitePageResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
-from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteUri
+from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri
 from fastapi import APIRouter, HTTPException, Query
 from fastapi_async_sqlalchemy import db
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get(SiteUri, status_code=HTTPStatus.OK, response_model=SitePageResponse)
+@router.get(SiteListUri, status_code=HTTPStatus.OK, response_model=SitePageResponse)
 async def get_all_sites(
     start: list[int] = Query([0]),
     limit: list[int] = Query([100]),
