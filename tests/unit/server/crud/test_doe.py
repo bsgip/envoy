@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from assertical.asserts.time import assert_datetime_equal
+from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import update
@@ -12,9 +13,12 @@ from sqlalchemy import update
 from envoy.server.crud.doe import (
     count_active_does_include_deleted,
     count_does_at_timestamp,
+    count_site_control_groups,
     select_active_does_include_deleted,
     select_doe_include_deleted,
     select_does_at_timestamp,
+    select_site_control_group_by_code,
+    select_site_control_groups,
 )
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope as ArchiveDOE
@@ -495,3 +499,96 @@ async def test_select_doe_at_timestamp_pagination(
         assert len(does) == len(expected_ids)
         for id, doe in zip(expected_ids, does):
             assert_doe_for_id(id, 1, None, None, doe, check_duration_seconds=False)
+
+
+@pytest.fixture
+async def extra_site_control_groups(pg_base_config):
+
+    # Current database entry has changed time '2021-04-05 10:01:00.500'
+    async with generate_async_session(pg_base_config) as session:
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=101,
+                primacy=2,
+                group_code="scg-2",
+                site_control_group_id=2,
+                changed_time=datetime(2021, 4, 5, 10, 2, 0, 500000, tzinfo=timezone.utc),
+            )
+        )
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=202,
+                primacy=1,
+                group_code="scg-3",
+                site_control_group_id=3,
+                changed_time=datetime(2021, 4, 5, 10, 3, 0, 500000, tzinfo=timezone.utc),
+            )
+        )
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=303,
+                primacy=1,
+                group_code="scg-4",
+                site_control_group_id=4,
+                changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=timezone.utc),
+            )
+        )
+        await session.commit()
+    yield pg_base_config
+
+
+@pytest.mark.parametrize(
+    "group_code, expected_id, expected_primacy",
+    [("doe", 1, 0), ("scg-3", 3, 1), ("doe-1", None, None), ("doe space", None, None), (None, None, None)],
+)
+@pytest.mark.anyio
+async def test_select_site_control_group_by_code(
+    extra_site_control_groups, group_code: str, expected_id: Optional[int], expected_primacy: Optional[int]
+):
+    """Tests that select_site_control_group_by_code works with a variety of success/failure cases"""
+
+    async with generate_async_session(extra_site_control_groups) as session:
+        result = await select_site_control_group_by_code(session, group_code)
+
+        if expected_id is None or expected_primacy is None:
+            assert result is None
+        else:
+            assert isinstance(result, SiteControlGroup)
+            assert result.group_code == group_code
+            assert result.site_control_group_id == expected_id
+
+
+@pytest.mark.parametrize(
+    "start, limit, changed_after, expected_ids, expected_count",
+    [
+        (0, 99, datetime.min, [1, 4, 3, 2], 4),
+        (1, 2, datetime.min, [4, 3], 4),
+        (99, 99, datetime.min, [], 4),
+        (0, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), [1, 4, 3, 2], 4),
+        (3, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), [2], 4),
+        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), [4, 3, 2], 3),
+        (0, 99, datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc), [4, 3], 2),
+        (0, 99, datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc), [4], 1),
+        (0, 99, datetime(2021, 4, 5, 10, 5, 0, tzinfo=timezone.utc), [], 0),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_and_count_site_control_groups(
+    extra_site_control_groups,
+    start: Optional[int],
+    limit: Optional[int],
+    changed_after: datetime,
+    expected_ids: list[int],
+    expected_count: int,
+):
+    async with generate_async_session(extra_site_control_groups) as session:
+        actual_groups = await select_site_control_groups(session, start, changed_after, limit)
+        assert expected_ids == [e.site_control_group_id for e in actual_groups]
+        assert_list_type(SiteControlGroup, actual_groups, len(expected_ids))
+
+        actual_count = await count_site_control_groups(session, changed_after)
+        assert isinstance(actual_count, int)
+        assert actual_count == expected_count

@@ -54,7 +54,7 @@ def uri_derp_doe_format():
 
 @pytest.fixture
 def uri_derc_and_list_by_date_format():
-    return uri.DERControlAndListByDateUri
+    return uri.DERControlUri
 
 
 @pytest.fixture
@@ -576,7 +576,7 @@ async def test_get_doe(
     """Tests getting DERPrograms for various sites and validates access constraints"""
 
     # Test a known site
-    path = uri_derc_and_list_by_date_format.format(site_id=site_id, der_program_id=program, derc_id_or_date=doe_id)
+    path = uri_derc_and_list_by_date_format.format(site_id=site_id, der_program_id=program, derc_id=doe_id)
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, expected)

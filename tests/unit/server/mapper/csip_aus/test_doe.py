@@ -1,4 +1,6 @@
-from typing import Union
+from datetime import datetime, timedelta, timezone
+from itertools import product
+from typing import Optional, Union
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -11,15 +13,10 @@ from envoy_schema.server.schema.sep2.der import (
     DERProgramListResponse,
     DERProgramResponse,
 )
+from envoy_schema.server.schema.sep2.event import EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
-from envoy.server.mapper.csip_aus.doe import (
-    EVENT_STATUS_CANCELLED,
-    EVENT_STATUS_SCHEDULED,
-    DERControlListSource,
-    DERControlMapper,
-    DERProgramMapper,
-)
+from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.constants import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER
@@ -27,16 +24,49 @@ from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
-@pytest.mark.parametrize("doe_type", [DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope])
-def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]]):
+@pytest.mark.parametrize(
+    "doe_type, randomize_seconds, is_active",
+    product([DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope], [-123, 123, None], [True, False]),
+)
+def test_map_derc_to_response(
+    doe_type: type[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+    randomize_seconds: Optional[int],
+    is_active: bool,
+):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
-    doe = generate_class_instance(doe_type, seed=101, optional_is_none=False)
-    doe_opt = generate_class_instance(doe_type, seed=202, optional_is_none=True)
+
+    doe_start_time = datetime(2023, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
+    doe_duration = 300
+    doe_end_time = doe_start_time + timedelta(seconds=doe_duration)
+
+    if is_active:
+        now = doe_start_time + timedelta(seconds=1)
+    else:
+        now = doe_start_time - timedelta(seconds=1)
+
+    doe = generate_class_instance(
+        doe_type,
+        seed=101,
+        optional_is_none=False,
+        randomize_start_seconds=randomize_seconds,
+        start_time=doe_start_time,
+        end_time=doe_end_time,
+        duration_seconds=doe_duration,
+    )
+    doe_opt = generate_class_instance(
+        doe_type,
+        seed=202,
+        optional_is_none=True,
+        randomize_start_seconds=randomize_seconds,
+        start_time=doe_start_time,
+        end_time=doe_end_time,
+        duration_seconds=doe_duration,
+    )
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/foo/bar"
     )
 
-    result_all_set = DERControlMapper.map_to_response(scope, doe)
+    result_all_set = DERControlMapper.map_to_response(scope, doe, now)
     assert result_all_set is not None
     assert isinstance(result_all_set, DERControlResponse)
     assert result_all_set.interval.start == doe.start_time.timestamp()
@@ -50,14 +80,21 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
     assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * DOE_DECIMAL_POWER)
     assert result_all_set.randomizeStart == doe.randomize_start_seconds
 
+    # Event status parsing is a little complex - this tries to check all the options
     if isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None:
-        assert result_all_set.EventStatus_.currentStatus == EVENT_STATUS_CANCELLED
+        if randomize_seconds:
+            assert result_all_set.EventStatus_.currentStatus == EventStatusType.CancelledWithRandomization
+        else:
+            assert result_all_set.EventStatus_.currentStatus == EventStatusType.Cancelled
         assert result_all_set.EventStatus_.dateTime == int(doe.deleted_time.timestamp())
     else:
-        assert result_all_set.EventStatus_.currentStatus == EVENT_STATUS_SCHEDULED
+        if is_active:
+            assert result_all_set.EventStatus_.currentStatus == EventStatusType.Active
+        else:
+            assert result_all_set.EventStatus_.currentStatus == EventStatusType.Scheduled
         assert result_all_set.EventStatus_.dateTime == int(doe.changed_time.timestamp())
 
-    result_optional = DERControlMapper.map_to_response(scope, doe_opt)
+    result_optional = DERControlMapper.map_to_response(scope, doe_opt, now)
     assert result_optional is not None
     assert isinstance(result_optional, DERControlResponse)
     assert result_optional.interval.start == doe_opt.start_time.timestamp()
@@ -71,13 +108,19 @@ def test_map_derc_to_response(doe_type: type[Union[DynamicOperatingEnvelope, Arc
         doe_opt.import_limit_active_watts * DOE_DECIMAL_POWER
     )
     assert result_optional.DERControlBase_.opModExpLimW.value == int(doe_opt.export_limit_watts * DOE_DECIMAL_POWER)
-    assert result_optional.randomizeStart is None
+    assert result_optional.randomizeStart == randomize_seconds
 
     if isinstance(doe_opt, ArchiveDynamicOperatingEnvelope) and doe_opt.deleted_time is not None:
-        assert result_optional.EventStatus_.currentStatus == EVENT_STATUS_CANCELLED
+        if randomize_seconds:
+            assert result_optional.EventStatus_.currentStatus == EventStatusType.CancelledWithRandomization
+        else:
+            assert result_optional.EventStatus_.currentStatus == EventStatusType.Cancelled
         assert result_optional.EventStatus_.dateTime == int(doe_opt.deleted_time.timestamp())
     else:
-        assert result_optional.EventStatus_.currentStatus == EVENT_STATUS_SCHEDULED
+        if is_active:
+            assert result_optional.EventStatus_.currentStatus == EventStatusType.Active
+        else:
+            assert result_optional.EventStatus_.currentStatus == EventStatusType.Scheduled
         assert result_optional.EventStatus_.dateTime == int(doe_opt.changed_time.timestamp())
 
 

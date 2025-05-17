@@ -13,7 +13,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERProgramListResponse,
     DERProgramResponse,
 )
-from envoy_schema.server.schema.sep2.event import EventStatus
+from envoy_schema.server.schema.sep2.event import EventStatus, EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.pricing import PrimacyType
 from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
@@ -30,11 +30,6 @@ from envoy.server.model.site import DefaultSiteControl
 from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
 
 DOE_PROGRAM_ID: str = "doe"
-EVENT_STATUS_SCHEDULED = 0
-EVENT_STATUS_ACTIVE = 1
-EVENT_STATUS_CANCELLED = 2
-EVENT_STATUS_CANCELLED_WITH_RANDOMIZATION = 3
-EVENT_STATUS_SUPERSEDED = 4
 
 
 class DERControlListSource(IntEnum):
@@ -57,27 +52,35 @@ class DERControlMapper:
     def map_to_response(
         scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],
         doe: Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope],
+        now: datetime,
     ) -> DERControlResponse:
-        """Creates a csip aus compliant DERControlResponse from the specific doe"""
+        """Creates a csip aus compliant DERControlResponse from the specific doe. Needs to know current datetime
+        in order to determine if the control is active or scheduled"""
 
+        is_intersecting_now = doe.start_time <= now and doe.end_time > now
         event_status: int
         event_status_time: datetime
         if isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None:
             # This is a deleted DOE
-            event_status = EVENT_STATUS_CANCELLED
+            event_status = (
+                EventStatusType.Cancelled
+                if doe.randomize_start_seconds is None
+                else EventStatusType.CancelledWithRandomization
+            )
             event_status_time = doe.deleted_time
         else:
-            event_status = EVENT_STATUS_SCHEDULED
+            # This is either a schedule / active DOE
+            event_status = EventStatusType.Active if is_intersecting_now else EventStatusType.Scheduled
             event_status_time = doe.changed_time
 
         return DERControlResponse.model_validate(
             {
                 "href": generate_href(
-                    uri.DERControlAndListByDateUri,
+                    uri.DERControlUri,
                     scope,
                     site_id=scope.display_site_id,
                     der_program_id=DOE_PROGRAM_ID,
-                    derc_id_or_date=doe.dynamic_operating_envelope_id,
+                    derc_id=doe.dynamic_operating_envelope_id,
                 ),
                 "mRID": MridMapper.encode_doe_mrid(scope, doe.dynamic_operating_envelope_id),
                 "version": 1,
@@ -183,6 +186,7 @@ class DERControlMapper:
         does: Sequence[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
         total_does: int,
         source: DERControlListSource,
+        now: datetime,
     ) -> DERControlListResponse:
         """Maps a page of DOEs into a DERControlListResponse. total_does should be the total of all DOEs accessible
         to a particular site
@@ -203,7 +207,7 @@ class DERControlMapper:
                 "all_": total_does,
                 "results": len(does),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
-                "DERControl": [DERControlMapper.map_to_response(request_scope, site) for site in does],
+                "DERControl": [DERControlMapper.map_to_response(request_scope, site, now) for site in does],
             }
         )
 

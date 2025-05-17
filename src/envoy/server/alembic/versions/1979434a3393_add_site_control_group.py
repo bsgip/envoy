@@ -52,6 +52,12 @@ def upgrade() -> None:
         sa.UniqueConstraint("group_code"),
     )
     op.create_index(op.f("ix_site_control_group_changed_time"), "site_control_group", ["changed_time"], unique=False)
+    op.create_index(
+        op.f("ix_site_control_group_primacy_site_control_group_id"),
+        "site_control_group",
+        ["primacy", "site_control_group_id"],
+        unique=False,
+    )
 
     # We need to create a "doe" control group entry if there are existing DOEs - otherwise we leave the table blank
     op.execute(

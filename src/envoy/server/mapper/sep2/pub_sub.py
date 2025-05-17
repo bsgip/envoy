@@ -35,6 +35,7 @@ from parse import parse  # type: ignore
 
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import InvalidMappingError
+from envoy.server.manager.time import utc_now
 from envoy.server.mapper.common import generate_href, remove_href_prefix
 from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID, DERControlMapper
@@ -394,6 +395,7 @@ class NotificationMapper:
         doe_list_href = generate_href(
             DERControlListUri, scope, site_id=scope.display_site_id, der_program_id=DOE_PROGRAM_ID
         )
+        now = utc_now()
         return Notification.model_validate(
             {
                 "subscribedResource": doe_list_href,
@@ -403,7 +405,7 @@ class NotificationMapper:
                     "type": XSI_TYPE_DER_CONTROL_LIST,
                     "all_": len(does),
                     "results": len(does),
-                    "DERControl": [DERControlMapper.map_to_response(scope, d) for d in does],
+                    "DERControl": [DERControlMapper.map_to_response(scope, d, now) for d in does],
                 },
             }
         )

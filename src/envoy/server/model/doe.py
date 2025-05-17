@@ -36,6 +36,12 @@ class SiteControlGroup(Base):
         lazy="raise", back_populates="site_control_group"
     )
 
+    Index(
+        "ix_site_control_group_primacy_site_control_group_id",
+        "primacy",
+        "site_control_group_id",
+    ),
+
 
 # TODO: Rename this and related archive to SiteControl. These entities will eventually hold more than
 # just DOE related information, e.g. set-point control, etc.

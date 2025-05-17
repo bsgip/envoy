@@ -79,11 +79,12 @@ class DERControlManager:
     ) -> Optional[DERControlResponse]:
         """DER Controls are how Dynamic Operating Envelopes are communicated. This will provide a lookup for a
         particular DOE by ID but ensuring it stays scoped to the appropriate request"""
+        now = utc_now()
         doe = await select_doe_include_deleted(session, scope.aggregator_id, scope.site_id, doe_id)
         if doe is None:
             return None
 
-        return DERControlMapper.map_to_response(scope, doe)
+        return DERControlMapper.map_to_response(scope, doe, now)
 
     @staticmethod
     async def fetch_doe_controls_for_scope(
@@ -109,7 +110,9 @@ class DERControlManager:
             # Site isn't in scope - return empty list
             does = []
             total_count = 0
-        return DERControlMapper.map_to_list_response(scope, does, total_count, DERControlListSource.DER_CONTROL_LIST)
+        return DERControlMapper.map_to_list_response(
+            scope, does, total_count, DERControlListSource.DER_CONTROL_LIST, now
+        )
 
     @staticmethod
     async def fetch_active_doe_controls_for_scope(
@@ -128,7 +131,7 @@ class DERControlManager:
         )
         total_count = await count_does_at_timestamp(session, scope.aggregator_id, scope.site_id, now, changed_after)
         return DERControlMapper.map_to_list_response(
-            scope, does, total_count, DERControlListSource.ACTIVE_DER_CONTROL_LIST
+            scope, does, total_count, DERControlListSource.ACTIVE_DER_CONTROL_LIST, now
         )
 
     @staticmethod

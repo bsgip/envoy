@@ -208,13 +208,13 @@ async def get_default_dercontrol(
     return XmlResponse(derc_list)
 
 
-@router.head(uri.DERControlAndListByDateUri)
-@router.get(uri.DERControlAndListByDateUri, status_code=HTTPStatus.OK)
+@router.head(uri.DERControlUri)
+@router.get(uri.DERControlUri, status_code=HTTPStatus.OK)
 async def get_dercontrol_by_id(
     request: Request,
     site_id: int,
     der_program_id: str,
-    derc_id_or_date: int,  # The name is a reference to some deprecated functionality. It's just a derc_id now
+    derc_id: int,
 ) -> Response:
     """Fetches a DERControl by its id.
 
@@ -235,7 +235,7 @@ async def get_dercontrol_by_id(
         derc = await DERControlManager.fetch_doe_control_for_scope(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
-            doe_id=derc_id_or_date,
+            doe_id=derc_id,
         )
 
         if derc is None:

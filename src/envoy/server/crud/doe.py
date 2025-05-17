@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.crud.common import localize_start_time, localize_start_time_for_entity
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope as ArchiveDOE
 from envoy.server.model.doe import DynamicOperatingEnvelope as DOE
+from envoy.server.model.doe import SiteControlGroup
 from envoy.server.model.site import Site
 
 
@@ -85,8 +86,6 @@ async def _does_at_timestamp(
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
 
-    # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
-    # groups of sites but this could be subject to change as the DNSP's requirements become more clear
     select_clause: Union[Select[tuple[int]], Select[tuple[DOE, str]]]
     if is_counting:
         select_clause = select(func.count()).select_from(DOE)
@@ -332,3 +331,65 @@ async def select_does_at_timestamp(
     return await _does_at_timestamp(
         False, session, site_control_group_id, aggregator_id, site_id, timestamp, start, changed_after, limit
     )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+
+
+async def _site_control_groups(
+    is_counting: bool,
+    session: AsyncSession,
+    start: Optional[int],
+    changed_after: datetime,
+    limit: Optional[int],
+) -> Union[Sequence[SiteControlGroup], int]:
+    """Internal utility for fetching/counting SiteControlGroup's
+
+    Orders by 2030.5 requirements on DERProgram which is primacy ASC, primary key DESC"""
+
+    stmt: Union[Select[tuple[int]], Select[tuple[SiteControlGroup]]]
+    if is_counting:
+        stmt = select(func.count()).select_from(SiteControlGroup)
+    else:
+        stmt = select(SiteControlGroup).offset(start).limit(limit)
+
+    if changed_after != datetime.min:
+        stmt = stmt.where((SiteControlGroup.changed_time >= changed_after))
+
+    if not is_counting:
+        stmt = stmt.order_by(SiteControlGroup.primacy.asc(), SiteControlGroup.site_control_group_id.desc())
+
+    resp = await session.execute(stmt)
+    if is_counting:
+        return resp.scalar_one()
+    else:
+        return resp.scalars().all()
+
+
+async def select_site_control_groups(
+    session: AsyncSession,
+    start: Optional[int],
+    changed_after: datetime,
+    limit: Optional[int],
+) -> Sequence[SiteControlGroup]:
+    """Fetches SiteControlGroup with some basic pagination / filtering on change time.
+
+    Orders by 2030.5 requirements on DERProgram which is primacy ASC, primary key DESC"""
+
+    # Test coverage will ensure that it's an entity list
+    return await _site_control_groups(False, session, start, changed_after, limit)  # type: ignore [return-value]
+
+
+async def count_site_control_groups(
+    session: AsyncSession,
+    changed_after: datetime,
+) -> int:
+    """Counts SiteControlGroups that have been modified after the specified change time."""
+
+    # Test coverage will ensure that it's an int
+    return await _site_control_groups(True, session, 0, changed_after, None)  # type: ignore [return-value]
+
+
+async def select_site_control_group_by_code(session: AsyncSession, group_code: str) -> Optional[SiteControlGroup]:
+    """Fetches a single SiteControlGroup with the specified group_code. Returns None if it can't be found."""
+
+    stmt = select(SiteControlGroup).where(SiteControlGroup.group_code == group_code).limit(1)
+    resp = await session.execute(stmt)
+    return resp.scalar_one_or_none()
