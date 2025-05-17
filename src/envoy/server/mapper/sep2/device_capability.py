@@ -1,10 +1,8 @@
-from typing import Optional
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
 from envoy.server.mapper.common import generate_href
-from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.request_scope import BaseRequestScope
 
 

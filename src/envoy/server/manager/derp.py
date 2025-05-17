@@ -90,7 +90,7 @@ class DERControlManager:
         # fetch runtime server config
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
-        return DERControlMapper.map_to_response(scope, doe, config)
+        return DERControlMapper.map_to_response(scope, doe, config.site_control_pow10_encoding)
 
     @staticmethod
     async def fetch_doe_controls_for_scope(
@@ -116,7 +116,13 @@ class DERControlManager:
             # Site isn't in scope - return empty list
             does = []
             total_count = 0
-        return DERControlMapper.map_to_list_response(scope, does, total_count, DERControlListSource.DER_CONTROL_LIST)
+
+        # fetch runtime server config
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
+
+        return DERControlMapper.map_to_list_response(
+            scope, does, total_count, DERControlListSource.DER_CONTROL_LIST, config.site_control_pow10_encoding
+        )
 
     @staticmethod
     async def fetch_active_doe_controls_for_scope(
@@ -134,8 +140,12 @@ class DERControlManager:
             session, scope.aggregator_id, scope.site_id, now, start, changed_after, limit
         )
         total_count = await count_does_at_timestamp(session, scope.aggregator_id, scope.site_id, now, changed_after)
+
+        # fetch runtime server config
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
+
         return DERControlMapper.map_to_list_response(
-            scope, does, total_count, DERControlListSource.ACTIVE_DER_CONTROL_LIST
+            scope, does, total_count, DERControlListSource.ACTIVE_DER_CONTROL_LIST, config.site_control_pow10_encoding
         )
 
     @staticmethod
@@ -157,7 +167,7 @@ class DERControlManager:
         # fetch runtime server config
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
-        return DERControlMapper.map_to_default_response(scope, default_site_control, config)
+        return DERControlMapper.map_to_default_response(scope, default_site_control, config.site_control_pow10_encoding)
 
     @staticmethod
     def _resolve_default_site_control(
