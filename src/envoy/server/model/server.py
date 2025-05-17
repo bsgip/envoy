@@ -12,6 +12,8 @@ class RuntimeServerConfig(Base):
 
     __tablename__ = "server_runtime_configuration"
 
+    server_runtime_configuration_id: Mapped[int] = mapped_column(primary_key=True, default=1)
+
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )  # When the aggregator was created
@@ -27,3 +29,4 @@ class RuntimeServerConfig(Base):
     mup_postrate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # mirror usage point
     site_control_pow10_encoding: Mapped[Optional[int]] = mapped_column(
         INTEGER, nullable=True
+    )  # power of 10 encoding for site controls
