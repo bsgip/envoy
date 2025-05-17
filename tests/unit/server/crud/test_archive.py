@@ -14,7 +14,7 @@ from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
@@ -195,7 +195,11 @@ async def test_delete_rows_into_archive_no_matches(pg_base_config, original_type
     [
         (ot, at, c)
         for (ot, at), c in product(
-            ((ot, at) for ot, at in find_paired_archive_classes() if ot not in {Site, Tariff, SiteReadingType}),
+            (
+                (ot, at)
+                for ot, at in find_paired_archive_classes()
+                if ot not in {Site, Tariff, SiteReadingType, SiteControlGroup}
+            ),
             [True, False],
         )
     ],

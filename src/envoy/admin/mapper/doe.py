@@ -18,6 +18,7 @@ class DoeListMapper:
         return [
             DynamicOperatingEnvelope(
                 site_id=doe.site_id,
+                site_control_group_id=1,  # This is a legacy workaround - this entire function will be deprecated
                 calculation_log_id=doe.calculation_log_id,
                 changed_time=changed_time,
                 start_time=doe.start_time,

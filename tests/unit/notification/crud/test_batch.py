@@ -288,8 +288,9 @@ def test_get_subscription_filter_id_invalid():
             DynamicOperatingEnvelope(
                 dynamic_operating_envelope_id=99,
                 site_id=2,
+                site_control_group_id=3,
             ),
-            99,
+            3,
         ),
         (
             SubscriptionResource.TARIFF_GENERATED_RATE,
@@ -797,6 +798,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
             [
                 DynamicOperatingEnvelope(
                     dynamic_operating_envelope_id=1,
+                    site_control_group_id=1,
                     site_id=1,
                     calculation_log_id=2,
                     created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),

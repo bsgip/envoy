@@ -31,7 +31,7 @@ async def test_upsert_many_doe_inserts(pg_base_config):
     deleted_time = datetime(2022, 11, 4, 7, 4, 2, tzinfo=timezone.utc)
     async with generate_async_session(pg_base_config) as session:
         doe_in: DynamicOperatingEnvelope = generate_class_instance(
-            DynamicOperatingEnvelope, generate_relationships=False, site_id=1
+            DynamicOperatingEnvelope, generate_relationships=False, site_id=1, site_control_group_id=1
         )
         # clean up generated instance to ensure it doesn't clash with base_config
         del doe_in.dynamic_operating_envelope_id
@@ -57,7 +57,10 @@ async def test_upsert_many_doe_inserts(pg_base_config):
         assert_datetime_equal(doe_out.changed_time, doe_out.changed_time)
 
         doe_in_1 = generate_class_instance(
-            DynamicOperatingEnvelope, site_id=1, start_time=doe_in.start_time + timedelta(seconds=1)
+            DynamicOperatingEnvelope,
+            site_id=1,
+            start_time=doe_in.start_time + timedelta(seconds=1),
+            site_control_group_id=1,
         )
 
         # See if any errors get raised
@@ -76,11 +79,12 @@ async def test_upsert_many_doe_update(pg_base_config):
     original_doe_copy: DynamicOperatingEnvelope
     async with generate_async_session(pg_base_config) as session:
         original_doe = await _select_latest_dynamic_operating_envelope(session)
-        original_doe_copy = clone_class_instance(original_doe, ignored_properties={"site"})
+        original_doe_copy = clone_class_instance(original_doe, ignored_properties={"site", "site_control_group"})
 
         # clean up generated instance to ensure it doesn't clash with base_config
         doe_to_update: DynamicOperatingEnvelope = clone_class_instance(
-            original_doe, ignored_properties={"dynamic_operating_envelope_id", "created_time", "site"}
+            original_doe,
+            ignored_properties={"dynamic_operating_envelope_id", "created_time", "site", "site_control_group"},
         )
         doe_to_update.export_limit_watts += Decimal("99.1")
         doe_to_update.import_limit_active_watts += Decimal("98.2")
@@ -98,7 +102,7 @@ async def test_upsert_many_doe_update(pg_base_config):
             DynamicOperatingEnvelope,
             doe_to_update,
             doe_after_update,
-            ignored_properties={"dynamic_operating_envelope_id", "created_time", "site"},
+            ignored_properties={"dynamic_operating_envelope_id", "created_time", "site", "site_control_group"},
         )
         assert_nowish(doe_after_update.created_time)
 

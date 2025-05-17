@@ -6,6 +6,7 @@ from envoy_schema.server.schema.sep2.pub_sub import Subscription, SubscriptionLi
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.aggregator import select_aggregator
+from envoy.server.crud.doe import select_site_control_group_by_id
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.pricing import select_single_tariff
 from envoy.server.crud.site_reading import fetch_site_reading_type_for_aggregator
@@ -129,7 +130,11 @@ class SubscriptionManager:
 
         # Lookup the linked entity (if any) to ensure it's accessible to this site
         if sub.resource_id is not None:
-            if sub.resource_type == SubscriptionResource.READING:
+            if sub.resource_type == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
+                scg = await select_site_control_group_by_id(session, sub.resource_id)
+                if scg is None:
+                    raise BadRequestError(f"Invalid site_control_group_id {sub.resource_id} for site {scope.site_id}")
+            elif sub.resource_type == SubscriptionResource.READING:
                 srt = await fetch_site_reading_type_for_aggregator(
                     session, scope.aggregator_id, sub.resource_id, scope.site_id, include_site_relation=False
                 )

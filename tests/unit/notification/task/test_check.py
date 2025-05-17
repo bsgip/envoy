@@ -260,13 +260,14 @@ def test_get_entity_pages_der(resource: SubscriptionResource, notification_type:
             [0, 2],
         ),
         (
-            Subscription(resource_type=SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, resource_id=2, conditions=[]),
+            Subscription(resource_type=SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, resource_id=1, conditions=[]),
             SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
             [
-                DynamicOperatingEnvelope(dynamic_operating_envelope_id=1, site_id=2),
-                DynamicOperatingEnvelope(dynamic_operating_envelope_id=2, site_id=2),
+                DynamicOperatingEnvelope(dynamic_operating_envelope_id=1, site_id=1, site_control_group_id=1),
+                DynamicOperatingEnvelope(dynamic_operating_envelope_id=2, site_id=2, site_control_group_id=1),
+                DynamicOperatingEnvelope(dynamic_operating_envelope_id=3, site_id=1, site_control_group_id=2),
             ],
-            [1],
+            [0, 1],
         ),
         (
             Subscription(resource_type=SubscriptionResource.TARIFF_GENERATED_RATE, resource_id=2, conditions=[]),
@@ -672,13 +673,13 @@ async def test_check_db_change_or_delete(
 
     # Create some entities that will form 2 batches
     batch1_entity1: DynamicOperatingEnvelope = generate_class_instance(
-        DynamicOperatingEnvelope, seed=101, generate_relationships=True
+        DynamicOperatingEnvelope, seed=101, site_control_group_id=1, generate_relationships=True
     )
     batch1_entity2: DynamicOperatingEnvelope = generate_class_instance(
-        DynamicOperatingEnvelope, seed=202, generate_relationships=True
+        DynamicOperatingEnvelope, seed=202, site_control_group_id=1, generate_relationships=True
     )
     batch2_entity1: DynamicOperatingEnvelope = generate_class_instance(
-        DynamicOperatingEnvelope, seed=303, generate_relationships=True
+        DynamicOperatingEnvelope, seed=303, site_control_group_id=1, generate_relationships=True
     )
     batch1_entity2.site_id = batch1_entity1.site_id
     batch1_entity2.site.site_id = batch1_entity1.site.site_id

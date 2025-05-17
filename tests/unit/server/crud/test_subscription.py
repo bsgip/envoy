@@ -432,7 +432,7 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
                 changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
                 resource_type=SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
                 scoped_site_id=2,
-                resource_id=None,
+                resource_id=1,
                 notification_uri="http://test.insert/",
                 entity_limit=555,
             ),  # Will rewrite sub 2

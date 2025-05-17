@@ -236,6 +236,7 @@ async def test_get_response_for_device_cert(
         await session.execute(
             insert(DynamicOperatingEnvelope).values(
                 dynamic_operating_envelope_id=101,
+                site_control_group_id=1,
                 site_id=5,
                 calculation_log_id=None,
                 changed_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
@@ -411,6 +412,7 @@ async def test_get_response_list_pagination_for_device_cert(
         await session.execute(
             insert(DynamicOperatingEnvelope).values(
                 dynamic_operating_envelope_id=101,
+                site_control_group_id=1,
                 site_id=5,
                 calculation_log_id=None,
                 changed_time=datetime(2025, 1, 2, tzinfo=timezone.utc),

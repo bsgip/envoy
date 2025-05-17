@@ -121,10 +121,10 @@ async def test_get_derprogram_list(
         assert parsed_response.all_ == 1
         assert parsed_response.results == 1
         assert len(parsed_response.DERProgram) == 1
-        assert parsed_response.DERProgram[0].href == uri_derp_doe_format.format(site_id=site_id, der_program_id="doe")
+        assert parsed_response.DERProgram[0].href == uri_derp_doe_format.format(site_id=site_id, der_program_id=1)
         assert parsed_response.DERProgram[0].DERControlListLink.all_ == expected_doe_count
         assert parsed_response.DERProgram[0].DERControlListLink.href == uri_derc_list_format.format(
-            site_id=site_id, der_program_id="doe"
+            site_id=site_id, der_program_id=1
         )
 
 
@@ -152,7 +152,7 @@ async def test_get_derprogram_doe(
     """Tests getting DERPrograms for various sites and validates access constraints"""
 
     # Test a known site
-    path = uri_derp_doe_format.format(site_id=site_id, der_program_id="doe")
+    path = uri_derp_doe_format.format(site_id=site_id, der_program_id=1)
     response = await client.get(path, headers=agg_1_headers)
 
     if expected_doe_count is None:
@@ -163,11 +163,9 @@ async def test_get_derprogram_doe(
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response: DERProgramResponse = DERProgramResponse.from_xml(body)
-        assert parsed_response.href == uri_derp_doe_format.format(site_id=site_id, der_program_id="doe")
+        assert parsed_response.href == uri_derp_doe_format.format(site_id=site_id, der_program_id=1)
         assert parsed_response.DERControlListLink.all_ == expected_doe_count
-        assert parsed_response.DERControlListLink.href == uri_derc_list_format.format(
-            site_id=site_id, der_program_id="doe"
-        )
+        assert parsed_response.DERControlListLink.href == uri_derc_list_format.format(site_id=site_id, der_program_id=1)
 
 
 @pytest.mark.anyio
@@ -325,7 +323,7 @@ async def test_get_dercontrol_list(
     expected_does: list[tuple[datetime, float, float]],
 ):
     """Tests that the list pagination works correctly for various combinations of start/limit/changed_after"""
-    path = uri_derc_list_format.format(site_id=site_id, der_program_id="doe") + build_paging_params(
+    path = uri_derc_list_format.format(site_id=site_id, der_program_id=1) + build_paging_params(
         start, limit, changed_after
     )
     response = await client.get(path, headers=generate_headers(cert))
@@ -361,7 +359,7 @@ async def test_get_dercontrol_list_all_expired(
     uri_derc_list_format: str,
 ):
     """Tests that the DERControl list properly expires DERControls when "now" is after they end"""
-    path = uri_derc_list_format.format(site_id=1, der_program_id="doe") + build_paging_params(limit=99)
+    path = uri_derc_list_format.format(site_id=1, der_program_id=1) + build_paging_params(limit=99)
     response = await client.get(path, headers=generate_headers(AGG_1_VALID_CERT))
     assert_response_header(response, HTTPStatus.OK)
 
@@ -381,7 +379,7 @@ async def test_get_default_doe_not_configured(client: AsyncClient, uri_derc_defa
     """Tests getting the default DOE with no default configured returns 404"""
 
     # test a known site in base_config that does not have anything set either
-    path = uri_derc_default_control_format.format(site_id=2, der_program_id="doe")
+    path = uri_derc_default_control_format.format(site_id=2, der_program_id=1)
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, HTTPStatus.NOT_FOUND)
@@ -393,7 +391,7 @@ async def test_get_default_invalid_site_id(client: AsyncClient, uri_derc_default
     """Tests getting the default DOE with no default configured returns 404"""
 
     # test trying to fetch a site unavailable to this aggregator
-    path = uri_derc_default_control_format.format(site_id=3, der_program_id="doe")
+    path = uri_derc_default_control_format.format(site_id=3, der_program_id=1)
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, HTTPStatus.NOT_FOUND)
@@ -405,7 +403,7 @@ async def test_get_fallback_default_doe(client: AsyncClient, uri_derc_default_co
     """Tests getting the default DOE"""
 
     # test a known site
-    path = uri_derc_default_control_format.format(site_id=2, der_program_id="doe")
+    path = uri_derc_default_control_format.format(site_id=2, der_program_id=1)
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, HTTPStatus.OK)
@@ -429,7 +427,7 @@ async def test_get_site_specific_default_doe(client: AsyncClient, uri_derc_defau
     """Tests getting the default DOE"""
 
     # test a known site
-    path = uri_derc_default_control_format.format(site_id=1, der_program_id="doe")
+    path = uri_derc_default_control_format.format(site_id=1, der_program_id=1)
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, HTTPStatus.OK)
@@ -453,7 +451,7 @@ async def test_get_active_doe_nothing_active(client: AsyncClient, uri_derc_activ
     """Tests getting the active DOEs when nothing is active returns nothing"""
 
     # test a known site
-    path = uri_derc_active_control_list_format.format(site_id=1, der_program_id="doe")
+    path = uri_derc_active_control_list_format.format(site_id=1, der_program_id=1)
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, HTTPStatus.OK)
@@ -481,7 +479,7 @@ async def test_get_active_doe(client: AsyncClient, pg_base_config, uri_derc_acti
         doe_to_edit.end_time = doe_to_edit.start_time + timedelta(seconds=doe_to_edit.duration_seconds)
         await session.commit()
 
-    path = uri_derc_active_control_list_format.format(site_id=1, der_program_id="doe")
+    path = uri_derc_active_control_list_format.format(site_id=1, der_program_id=1)
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, HTTPStatus.OK)
@@ -532,7 +530,7 @@ async def test_get_active_doe_for_aggregator(
         doe_to_edit.start_time = datetime.now(tz=timezone.utc)
         await session.commit()
 
-    path = uri_derc_active_control_list_format.format(site_id=0, der_program_id="doe")
+    path = uri_derc_active_control_list_format.format(site_id=0, der_program_id=1)
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, HTTPStatus.FORBIDDEN)
@@ -552,14 +550,14 @@ async def test_get_active_doe_for_aggregator(
 @pytest.mark.parametrize(
     "site_id, program, doe_id, expected, is_cancelled",
     [
-        (1, "doe", 1, HTTPStatus.OK, False),  # From the "normal" table
-        (1, "doe", 19, HTTPStatus.OK, True),  # From the archive (is cancelled)
-        (VIRTUAL_END_DEVICE_SITE_ID, "doe", 1, HTTPStatus.FORBIDDEN, False),
-        (2, "doe", 10, HTTPStatus.OK, False),
-        (1, "doe", 10, HTTPStatus.NOT_FOUND, False),  # Wrong site ID
-        (1, "doe", 99, HTTPStatus.NOT_FOUND, False),  # Wrong doe ID
-        (3, "doe", 14, HTTPStatus.NOT_FOUND, False),  # Belongs to site 3 (Under agg 2)
-        (1, "not", 1, HTTPStatus.NOT_FOUND, False),  # bad program ID
+        (1, 1, 1, HTTPStatus.OK, False),  # From the "normal" table
+        (1, 1, 19, HTTPStatus.OK, True),  # From the archive (is cancelled)
+        (VIRTUAL_END_DEVICE_SITE_ID, 1, 1, HTTPStatus.FORBIDDEN, False),
+        (2, 1, 10, HTTPStatus.OK, False),
+        (1, 1, 10, HTTPStatus.NOT_FOUND, False),  # Wrong site ID
+        (1, 1, 99, HTTPStatus.NOT_FOUND, False),  # Wrong doe ID
+        (3, 1, 14, HTTPStatus.NOT_FOUND, False),  # Belongs to site 3 (Under agg 2)
+        (1, 99, 1, HTTPStatus.NOT_FOUND, False),  # bad program ID
     ],
 )
 async def test_get_doe(

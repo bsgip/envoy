@@ -53,7 +53,7 @@ def sub_uri_format():
 def subscribable_resource_hrefs(site_id: int, pricing_reading_type_id: int) -> list[str]:
     """Very coarse list of resource endpoints that can be subscribed (keyed for a particular site_id)"""
     return [
-        f"/edev/{site_id}/derp/doe/derc",
+        f"/edev/{site_id}/derp/1/derc",
         f"/edev/{site_id}",
         f"/edev/{site_id}/der/1/dercap",
         f"/edev/{site_id}/der/1/dera",
@@ -272,7 +272,7 @@ async def test_create_doe_subscription(
     insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
     insert_request.encoding = SubscriptionEncoding.XML
     insert_request.notificationURI = "https://example.com/456?foo=bar"
-    insert_request.subscribedResource = f"/edev/{edev_id}/derp/doe/derc"
+    insert_request.subscribedResource = f"/edev/{edev_id}/derp/1/derc"
     response = await client.post(
         sub_list_uri_format.format(site_id=edev_id),
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
