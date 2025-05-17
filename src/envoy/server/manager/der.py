@@ -18,6 +18,7 @@ from envoy.server.crud.der import generate_default_site_der, select_site_der_for
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID, STATIC_POLL_RATE_SECONDS
+from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.der import (
@@ -86,7 +87,10 @@ class DERManager:
             ders = [(site_der, DOE_PROGRAM_ID)]
             total = 1
 
-        return DERMapper.map_to_list_response(scope, STATIC_POLL_RATE_SECONDS, ders, total)
+        # fetch runtime server config
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
+
+        return DERMapper.map_to_list_response(scope, ders, total, config)
 
     @staticmethod
     async def fetch_der_for_site(

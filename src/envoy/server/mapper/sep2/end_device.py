@@ -14,6 +14,7 @@ from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.crud.common import sum_digits
 from envoy.server.mapper.common import generate_href, parse_device_category
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.site import Site
 from envoy.server.request_scope import BaseRequestScope
 from envoy.server.settings import settings
@@ -86,6 +87,7 @@ class EndDeviceListMapper:
         scope: BaseRequestScope,
         site_list: Sequence[Site],
         site_count: int,
+        pollrate_seconds: int,
         virtual_site: Optional[Site] = None,
     ) -> EndDeviceListResponse:
 
@@ -101,14 +103,12 @@ class EndDeviceListMapper:
             end_devices.insert(0, VirtualEndDeviceMapper.map_to_response(scope, virtual_site))
             result_count += 1
 
-        return EndDeviceListResponse.model_validate(
-            {
-                "href": generate_href(uri.EndDeviceListUri, scope),
-                "all_": site_count,
-                "results": result_count,
-                "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
-                "EndDevice": end_devices,
-            }
+        return EndDeviceListResponse(
+            href=generate_href(uri.EndDeviceListUri, scope),
+            all_=site_count,
+            results=result_count,
+            subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
+            EndDevice=end_devices,
         )
 
 

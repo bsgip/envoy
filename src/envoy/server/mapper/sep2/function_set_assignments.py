@@ -37,13 +37,12 @@ class FunctionSetAssignmentsMapper:
 
     @staticmethod
     def map_to_list_response(
-        scope: SiteRequestScope, function_set_assignments: list[FunctionSetAssignmentsResponse]
+        scope: SiteRequestScope, function_set_assignments: list[FunctionSetAssignmentsResponse], pollrate_seconds: int
     ) -> FunctionSetAssignmentsListResponse:
-        return FunctionSetAssignmentsListResponse.model_validate(
-            {
-                "href": generate_href(uri.FunctionSetAssignmentsListUri, scope, site_id=scope.site_id),
-                "all_": 1,
-                "results": 1,
-                "FunctionSetAssignments": function_set_assignments,
-            }
+        return FunctionSetAssignmentsListResponse(
+            href=generate_href(uri.FunctionSetAssignmentsListUri, scope, site_id=scope.site_id),
+            pollRate=pollrate_seconds,
+            all_=1,
+            results=1,
+            FunctionSetAssignments=function_set_assignments,
         )
