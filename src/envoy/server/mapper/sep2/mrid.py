@@ -92,11 +92,14 @@ class MridMapper:
         return encode_mrid(MridType.DEFAULT_DOE, DEFAULT_DOE_ID, scope.iana_pen)
 
     @staticmethod
-    def encode_doe_program_mrid(scope: BaseRequestScope, site_id: int) -> str:
-        """Encodes a valid MRID for a DOE program scoped to the specified site_id
+    def encode_doe_program_mrid(scope: BaseRequestScope, site_control_group_id: int, site_id: int) -> str:
+        """Encodes a valid MRID for a DOE program scoped to the specified site_control_group_id / site
 
+        site_control_group_id: max value is expected to be a 32 bit unsigned int.
         site_id: max value is expected to be a 32 bit unsigned int."""
-        return encode_mrid(MridType.DER_PROGRAM, DER_PROGRAM_PREFIX_DOE | (site_id & MAX_INT_32), scope.iana_pen)
+        return encode_mrid(
+            MridType.DER_PROGRAM, ((site_control_group_id & MAX_INT_32) << 32) | (site_id & MAX_INT_32), scope.iana_pen
+        )
 
     @staticmethod
     def encode_doe_mrid(scope: BaseRequestScope, dynamic_operating_envelope_id: int) -> str:

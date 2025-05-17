@@ -17,9 +17,6 @@ class SiteControlGroup(Base):
 
     __tablename__ = "site_control_group"
     site_control_group_id: Mapped[int] = mapped_column(primary_key=True)
-    group_code: Mapped[str] = mapped_column(
-        VARCHAR(length=32), unique=True
-    )  # The unique name of this group - must be alphanumeric with no special characters
     description: Mapped[str] = mapped_column(VARCHAR(length=32))  # Human readable description of this group
     primacy: Mapped[int] = (
         mapped_column()

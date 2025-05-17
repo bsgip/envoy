@@ -81,7 +81,7 @@ def to_hex_binary(v: Optional[int]) -> Optional[str]:
 
 class DERMapper:
     @staticmethod
-    def map_to_response(scope: BaseRequestScope, der: SiteDER, active_derp_id: Optional[str]) -> DER:
+    def map_to_response(scope: BaseRequestScope, der: SiteDER, active_derp_id: Optional[int]) -> DER:
         der_href = generate_href(uri.DERUri, scope, site_id=der.site_id, der_id=der.site_der_id)
         current_derp_link: Optional[Link] = None
         if active_derp_id:
@@ -117,7 +117,7 @@ class DERMapper:
     def map_to_list_response(
         scope: DeviceOrAggregatorRequestScope,
         poll_rate_seconds: int,
-        ders_with_act_derp_id: list[tuple[SiteDER, Optional[str]]],
+        ders: list[SiteDER],
         der_count: int,
     ) -> DERListResponse:
         """Turns a set of SiteDER (with their active DER program ID) into a list response
@@ -128,8 +128,8 @@ class DERMapper:
                 "href": generate_href(uri.DERListUri, scope, site_id=scope.display_site_id),
                 "pollRate": poll_rate_seconds,
                 "all_": der_count,
-                "results": len(ders_with_act_derp_id),
-                "DER_": [DERMapper.map_to_response(scope, e, act_derp_id) for e, act_derp_id in ders_with_act_derp_id],
+                "results": len(ders),
+                "DER_": [DERMapper.map_to_response(scope, d, None) for d in ders],
             }
         )
 

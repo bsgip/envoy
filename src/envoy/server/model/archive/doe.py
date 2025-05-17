@@ -17,7 +17,6 @@ class ArchiveSiteControlGroup(ArchiveBase):
     __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.SiteControlGroup.__tablename__  # type: ignore
 
     site_control_group_id: Mapped[int] = mapped_column(INTEGER, index=True)
-    group_code: Mapped[str] = mapped_column(VARCHAR(length=32))
     description: Mapped[str] = mapped_column(VARCHAR(length=32))
     primacy: Mapped[int] = mapped_column(INTEGER)
 

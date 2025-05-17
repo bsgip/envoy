@@ -15,7 +15,6 @@ from envoy_schema.server.schema.sep2.der import (
 )
 from envoy_schema.server.schema.sep2.event import EventStatus, EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
-from envoy_schema.server.schema.sep2.pricing import PrimacyType
 from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
 
 from envoy.server.exception import InvalidMappingError
@@ -23,13 +22,10 @@ from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.mrid import MridMapper, ResponseSetType
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.constants import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.site import DefaultSiteControl
 from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
-
-DOE_PROGRAM_ID: str = "doe"
 
 
 class DERControlListSource(IntEnum):
@@ -51,6 +47,7 @@ class DERControlMapper:
     @staticmethod
     def map_to_response(
         scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],
+        site_control_group_id: int,
         doe: Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope],
         now: datetime,
     ) -> DERControlResponse:
@@ -79,14 +76,14 @@ class DERControlMapper:
                     uri.DERControlUri,
                     scope,
                     site_id=scope.display_site_id,
-                    der_program_id=DOE_PROGRAM_ID,
+                    der_program_id=site_control_group_id,
                     derc_id=doe.dynamic_operating_envelope_id,
                 ),
                 "mRID": MridMapper.encode_doe_mrid(scope, doe.dynamic_operating_envelope_id),
                 "version": 1,
                 "description": doe.start_time.isoformat(),
                 "replyTo": ResponseListMapper.response_list_href(
-                    scope, scope.display_site_id, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES
+                    scope, scope.display_site_id, ResponseSetType.SITE_CONTROLS
                 ),  # Response function set
                 "responseRequired": SPECIFIC_RESPONSE_REQUIRED,  # Response function set
                 "interval": DateTimeIntervalType.model_validate(
@@ -154,70 +151,80 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def doe_list_href(request_scope: DeviceOrAggregatorRequestScope) -> str:
+    def site_control_list_href(request_scope: DeviceOrAggregatorRequestScope, site_control_group_id: int) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
-            uri.DERControlListUri, request_scope, site_id=request_scope.display_site_id, der_program_id=DOE_PROGRAM_ID
+            uri.DERControlListUri,
+            request_scope,
+            site_id=request_scope.display_site_id,
+            der_program_id=site_control_group_id,
         )
 
     @staticmethod
-    def active_doe_list_href(request_scope: DeviceOrAggregatorRequestScope) -> str:
+    def active_control_list_href(request_scope: DeviceOrAggregatorRequestScope, site_control_group_id: int) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
             uri.ActiveDERControlListUri,
             request_scope,
             site_id=request_scope.display_site_id,
-            der_program_id=DOE_PROGRAM_ID,
+            der_program_id=site_control_group_id,
         )
 
     @staticmethod
-    def default_doe_href(request_scope: DeviceOrAggregatorRequestScope) -> str:
+    def default_control_href(request_scope: DeviceOrAggregatorRequestScope, site_control_group_id: int) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
             uri.DefaultDERControlUri,
             request_scope,
             site_id=request_scope.display_site_id,
-            der_program_id=DOE_PROGRAM_ID,
+            der_program_id=site_control_group_id,
         )
 
     @staticmethod
     def map_to_list_response(
         request_scope: DeviceOrAggregatorRequestScope,
-        does: Sequence[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
-        total_does: int,
+        site_control_group_id: int,
+        site_controls: Sequence[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+        total_controls: int,
         source: DERControlListSource,
         now: datetime,
     ) -> DERControlListResponse:
-        """Maps a page of DOEs into a DERControlListResponse. total_does should be the total of all DOEs accessible
-        to a particular site
+        """Maps a page of DOEs into a DERControlListResponse. total_controls should be the total of all controls
+        accessible to a particular site
 
         source - What is this requesting this mapping? It will determine the href generated for the derc list"""
 
         href: str
         if source == DERControlListSource.DER_CONTROL_LIST:
-            href = DERControlMapper.doe_list_href(request_scope)
+            href = DERControlMapper.site_control_list_href(request_scope, site_control_group_id)
         elif source == DERControlListSource.ACTIVE_DER_CONTROL_LIST:
-            href = DERControlMapper.active_doe_list_href(request_scope)
+            href = DERControlMapper.active_control_list_href(request_scope, site_control_group_id)
         else:
             raise InvalidMappingError(f"Unsupported source {source} for calculating href")
 
         return DERControlListResponse.model_validate(
             {
                 "href": href,
-                "all_": total_does,
-                "results": len(does),
+                "all_": total_controls,
+                "results": len(site_controls),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
-                "DERControl": [DERControlMapper.map_to_response(request_scope, site, now) for site in does],
+                "DERControl": [
+                    DERControlMapper.map_to_response(request_scope, site_control_group_id, site, now)
+                    for site in site_controls
+                ],
             }
         )
 
 
 class DERProgramMapper:
     @staticmethod
-    def doe_href(rq_scope: DeviceOrAggregatorRequestScope) -> str:
-        """Returns a href for a particular site's DER Program for Dynamic Operating Envelopes"""
+    def derp_href(rq_scope: DeviceOrAggregatorRequestScope, site_control_group_id: int) -> str:
+        """Returns a href for a particular site's DER Program for the specified site control group"""
         return generate_href(
-            uri.DERProgramUri, rq_scope, site_id=rq_scope.display_site_id, der_program_id=DOE_PROGRAM_ID
+            uri.DERProgramUri,
+            rq_scope,
+            site_id=rq_scope.display_site_id,
+            der_program_id=site_control_group_id,
         )
 
     @staticmethod
@@ -228,37 +235,44 @@ class DERProgramMapper:
     @staticmethod
     def doe_program_response(
         rq_scope: DeviceOrAggregatorRequestScope,
-        total_does: int,
-        default_doe: Optional[DefaultDoeConfiguration],
+        total_controls: int,
+        site_control_group: SiteControlGroup,
+        default_doe: Optional[DefaultSiteControl],
     ) -> DERProgramResponse:
-        """Returns a static Dynamic Operating Envelope program response"""
+        """Returns a DERProgram response for a SiteControlGroup"""
 
-        # The default DOE link will only be included if we have a default DOE configured for this site
+        # The default control link will only be included if we have a default DOE configured for this site
         default_der_link: Optional[Link] = None
         if default_doe is not None:
             default_der_link = Link.model_validate(
                 {
-                    "href": DERControlMapper.default_doe_href(rq_scope),
+                    "href": DERControlMapper.default_control_href(rq_scope, site_control_group.site_control_group_id),
                 }
             )
 
         return DERProgramResponse.model_validate(
             {
-                "href": DERProgramMapper.doe_href(rq_scope),
-                "mRID": MridMapper.encode_doe_program_mrid(rq_scope, rq_scope.display_site_id),
-                "primacy": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
-                "description": "Dynamic Operating Envelope",
+                "href": DERProgramMapper.derp_href(rq_scope, site_control_group.site_control_group_id),
+                "mRID": MridMapper.encode_doe_program_mrid(
+                    rq_scope, site_control_group.site_control_group_id, rq_scope.display_site_id
+                ),
+                "primacy": site_control_group.primacy,
+                "description": site_control_group.description,
                 "DefaultDERControlLink": default_der_link,
                 "ActiveDERControlListLink": ListLink.model_validate(
                     {
-                        "href": DERControlMapper.active_doe_list_href(rq_scope),
-                        "all_": 1 if total_does > 0 else 0,
+                        "href": DERControlMapper.active_control_list_href(
+                            rq_scope, site_control_group.site_control_group_id
+                        ),
+                        "all_": 1 if total_controls > 0 else 0,
                     }
                 ),
                 "DERControlListLink": ListLink.model_validate(
                     {
-                        "href": DERControlMapper.doe_list_href(rq_scope),
-                        "all_": total_does,
+                        "href": DERControlMapper.site_control_list_href(
+                            rq_scope, site_control_group.site_control_group_id
+                        ),
+                        "all_": total_controls,
                     }
                 ),
             }
@@ -267,15 +281,21 @@ class DERProgramMapper:
     @staticmethod
     def doe_program_list_response(
         rq_scope: DeviceOrAggregatorRequestScope,
-        total_does: int,
-        default_doe: Optional[DefaultDoeConfiguration],
+        site_control_groups_with_control_count: list[tuple[SiteControlGroup, int]],
+        total_site_control_groups: int,
+        default_doe: Optional[DefaultSiteControl],
     ) -> DERProgramListResponse:
-        """Returns a fixed list of just the DOE Program"""
+        """Returns a list of all DERPrograms.
+
+        site_control_groups_with_control_count: List of groups to encode tupled with the count of upcoming controls"""
         return DERProgramListResponse.model_validate(
             {
                 "href": DERProgramMapper.doe_list_href(rq_scope),
-                "DERProgram": [DERProgramMapper.doe_program_response(rq_scope, total_does, default_doe)],
-                "all_": 1,
-                "results": 1,
+                "DERProgram": [
+                    DERProgramMapper.doe_program_response(rq_scope, control_count, group, default_doe)
+                    for group, control_count in site_control_groups_with_control_count
+                ],
+                "all_": total_site_control_groups,
+                "results": len(site_control_groups_with_control_count),
             }
         )

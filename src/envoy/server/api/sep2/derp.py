@@ -16,7 +16,6 @@ from envoy.server.api.request import (
 from envoy.server.api.response import XmlResponse
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
-from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +47,9 @@ async def get_derprogram_list(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
             default_doe=extract_default_doe(request),
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -59,22 +61,21 @@ async def get_derprogram_list(
 
 @router.head(uri.DERProgramUri)
 @router.get(uri.DERProgramUri, status_code=HTTPStatus.OK)
-async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str) -> Response:
+async def get_derprogram_doe(request: Request, site_id: int, der_program_id: int) -> Response:
     """Responds with a single DERProgramResponse for the DER Program specific to dynamic operating envelopes
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
-        der_program_id: DERProgramID - only 'doe' is supported
+        der_program_id: numerical DERProgramID
     Returns:
         fastapi.Response object.
     """
-    if der_program_id != DOE_PROGRAM_ID:
-        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
         derp = await DERProgramManager.fetch_doe_program_for_scope(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
+            der_program_id=der_program_id,
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
@@ -90,7 +91,7 @@ async def get_derprogram_doe(request: Request, site_id: int, der_program_id: str
 async def get_dercontrol_list(
     request: Request,
     site_id: int,
-    der_program_id: str,
+    der_program_id: int,
     start: list[int] = Query([0], alias="s"),
     after: list[int] = Query([0], alias="a"),
     limit: list[int] = Query([1], alias="l"),
@@ -100,7 +101,7 @@ async def get_dercontrol_list(
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
-        der_program_id: DERProgramID - only 'doe' is supported
+        der_program_id: numerical DERProgramID
         start: list query parameter for the start index value. Default 0.
         after: list query parameter for lists with a datetime primary index. Default 0.
         limit: list query parameter for the maximum number of objects to return. Default 1.
@@ -108,13 +109,12 @@ async def get_dercontrol_list(
     Returns:
         fastapi.Response object.
     """
-    if der_program_id != DOE_PROGRAM_ID:
-        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
         derc_list = await DERControlManager.fetch_doe_controls_for_scope(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
+            der_program_id=der_program_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -132,7 +132,7 @@ async def get_dercontrol_list(
 async def get_active_dercontrol_list(
     request: Request,
     site_id: int,
-    der_program_id: str,
+    der_program_id: int,
     start: list[int] = Query([0], alias="s"),
     after: list[int] = Query([0], alias="a"),
     limit: list[int] = Query([1], alias="l"),
@@ -142,7 +142,7 @@ async def get_active_dercontrol_list(
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
-        der_program_id: DERProgramID - only 'doe' is supported
+        der_program_id: numerical DERProgramID
         start: list query parameter for the start index value. Default 0.
         after: list query parameter for lists with a datetime primary index. Default 0.
         limit: list query parameter for the maximum number of objects to return. Default 1.
@@ -151,13 +151,11 @@ async def get_active_dercontrol_list(
         fastapi.Response object.
     """
 
-    if der_program_id != DOE_PROGRAM_ID:
-        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
-
     try:
         derc_list = await DERControlManager.fetch_active_doe_controls_for_scope(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
+            der_program_id=der_program_id,
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -175,14 +173,14 @@ async def get_active_dercontrol_list(
 async def get_default_dercontrol(
     request: Request,
     site_id: int,
-    der_program_id: str,
+    der_program_id: int,
 ) -> Response:
     """Responds with a single DefaultDERControl containing the default DER Controls for the specified site under the
     dynamic operating envelope program. Returns 404 if no default has been configured
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
-        der_program_id: DERProgramID - only 'doe' is supported
+        der_program_id: numerical DERProgramID
         start: list query parameter for the start index value. Default 0.
         after: list query parameter for lists with a datetime primary index. Default 0.
         limit: list query parameter for the maximum number of objects to return. Default 1.
@@ -191,13 +189,11 @@ async def get_default_dercontrol(
         fastapi.Response object.
     """
 
-    if der_program_id != DOE_PROGRAM_ID:
-        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
-
     try:
         derc_list = await DERControlManager.fetch_default_doe_controls_for_site(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
+            der_program_id=der_program_id,
             default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
@@ -213,7 +209,7 @@ async def get_default_dercontrol(
 async def get_dercontrol_by_id(
     request: Request,
     site_id: int,
-    der_program_id: str,
+    der_program_id: int,
     derc_id: int,
 ) -> Response:
     """Fetches a DERControl by its id.
@@ -222,19 +218,18 @@ async def get_dercontrol_by_id(
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
-        der_program_id: DERProgramID - only 'doe' is supported
+        der_program_id: numerical DERProgramID
         derc_id_or_date: Path parameter, ID of the DERControl to return.
 
     Returns:
         fastapi.Response object.
     """
-    if der_program_id != DOE_PROGRAM_ID:
-        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"DERProgram {der_program_id} Not found")
 
     try:
         derc = await DERControlManager.fetch_doe_control_for_scope(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
+            der_program_id=der_program_id,
             doe_id=derc_id,
         )
 

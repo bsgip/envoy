@@ -21,7 +21,6 @@ def upgrade() -> None:
     op.create_table(
         "archive_site_control_group",
         sa.Column("site_control_group_id", sa.INTEGER(), nullable=False),
-        sa.Column("group_code", sa.VARCHAR(length=32), nullable=False),
         sa.Column("description", sa.VARCHAR(length=32), nullable=False),
         sa.Column("primacy", sa.INTEGER(), nullable=False),
         sa.Column("created_time", sa.DateTime(timezone=True), nullable=False),
@@ -43,13 +42,11 @@ def upgrade() -> None:
     op.create_table(
         "site_control_group",
         sa.Column("site_control_group_id", sa.Integer(), nullable=False),
-        sa.Column("group_code", sa.VARCHAR(length=32), nullable=False),
         sa.Column("description", sa.VARCHAR(length=32), nullable=False),
         sa.Column("primacy", sa.Integer(), nullable=False),
         sa.Column("created_time", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("changed_time", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("site_control_group_id"),
-        sa.UniqueConstraint("group_code"),
     )
     op.create_index(op.f("ix_site_control_group_changed_time"), "site_control_group", ["changed_time"], unique=False)
     op.create_index(
@@ -60,10 +57,10 @@ def upgrade() -> None:
     )
 
     # We need to create a "doe" control group entry if there are existing DOEs - otherwise we leave the table blank
+    # This will have site_control_group_id = 1 and will represent the old, static, group labelled as "doe"
     op.execute(
-        """INSERT INTO site_control_group(group_code, description, primacy, created_time, changed_time)
-SELECT 'doe' as group_code,
-        'Dynamic Operating Envelopes' as description,
+        """INSERT INTO site_control_group(description, primacy, created_time, changed_time)
+SELECT 'Dynamic Operating Envelopes' as description,
         0 as primacy,
         now() as created_time,
         now() as changed_time

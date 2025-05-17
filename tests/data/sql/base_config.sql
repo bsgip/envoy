@@ -46,8 +46,8 @@ INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "creat
 
 SELECT pg_catalog.setval('public.site_site_id_seq', 7, true);
 
-INSERT INTO public.site_control_group("site_control_group_id", "group_code", "description", "primacy", "created_time", "changed_time") 
-VALUES (1, 'doe', 'Dynamic Operating Envelopes', 0, '2000-01-01 00:00:00Z', '2021-04-05 10:01:00.500');
+INSERT INTO public.site_control_group("site_control_group_id", "description", "primacy", "created_time", "changed_time") 
+VALUES (1, 'Dynamic Operating Envelopes', 0, '2000-01-01 00:00:00Z', '2021-04-05 10:01:00.500');
 
 SELECT pg_catalog.setval('public.site_control_group_site_control_group_id_seq', 2, true);
 
@@ -255,7 +255,7 @@ VALUES (2, -- subscription_id
     '2000-01-01 00:00:00Z', -- created_time
     '2024-01-02 12:22:33.500', -- changed_time
     2, -- resource_type
-    NULL, -- resource_id
+    1, -- resource_id
     2, -- scoped_site_id
     'https://example.com:22/path/', -- notification_uri
     22 -- entity_limit

@@ -41,9 +41,9 @@ def test_fetch_response_set_for_scope(mock_ResponseMapper: mock.MagicMock, rst: 
 @pytest.mark.parametrize(
     "start, limit, expected_rst",
     [
-        (0, 99, [ResponseSetType.TARIFF_GENERATED_RATES, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES]),
-        (1, 99, [ResponseSetType.DYNAMIC_OPERATING_ENVELOPES]),
-        (1, 1, [ResponseSetType.DYNAMIC_OPERATING_ENVELOPES]),
+        (0, 99, [ResponseSetType.TARIFF_GENERATED_RATES, ResponseSetType.SITE_CONTROLS]),
+        (1, 99, [ResponseSetType.SITE_CONTROLS]),
+        (1, 1, [ResponseSetType.SITE_CONTROLS]),
         (0, 1, [ResponseSetType.TARIFF_GENERATED_RATES]),
         (0, 0, []),
         (99, 99, []),
@@ -93,7 +93,7 @@ async def test_fetch_response_for_scope_doe_exists(
 
     # Act
     result = await ResponseManager.fetch_response_for_scope(
-        mock_session, scope, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES, response_id
+        mock_session, scope, ResponseSetType.SITE_CONTROLS, response_id
     )
 
     # Assert
@@ -128,9 +128,7 @@ async def test_fetch_response_for_scope_doe_missing(
 
     # Act
     with pytest.raises(NotFoundError):
-        await ResponseManager.fetch_response_for_scope(
-            mock_session, scope, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES, response_id
-        )
+        await ResponseManager.fetch_response_for_scope(mock_session, scope, ResponseSetType.SITE_CONTROLS, response_id)
 
     # Assert
     assert_mock_session(mock_session)
@@ -260,7 +258,7 @@ async def test_fetch_response_list_for_scope_does(
 
     # Act
     result = await ResponseManager.fetch_response_list_for_scope(
-        mock_session, scope, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES, start, limit, created_after
+        mock_session, scope, ResponseSetType.SITE_CONTROLS, start, limit, created_after
     )
 
     # Assert
@@ -371,9 +369,7 @@ async def test_create_response_for_scope_invalid_mrid(
 
     # Act
     with pytest.raises(BadRequestError):
-        await ResponseManager.create_response_for_scope(
-            session, scope, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES, response
-        )
+        await ResponseManager.create_response_for_scope(session, scope, ResponseSetType.SITE_CONTROLS, response)
 
     # Assert
     assert_mock_session(session, committed=False)
@@ -439,9 +435,7 @@ async def test_create_response_for_scope_doe_with_price_mrid(
 
     # Act
     with pytest.raises(BadRequestError):
-        await ResponseManager.create_response_for_scope(
-            session, scope, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES, response
-        )
+        await ResponseManager.create_response_for_scope(session, scope, ResponseSetType.SITE_CONTROLS, response)
 
     # Assert
     assert_mock_session(session, committed=False)
@@ -478,9 +472,7 @@ async def test_create_response_for_scope_doe_not_in_scope(
 
     # Act
     with pytest.raises(BadRequestError):
-        await ResponseManager.create_response_for_scope(
-            session, scope, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES, response
-        )
+        await ResponseManager.create_response_for_scope(session, scope, ResponseSetType.SITE_CONTROLS, response)
 
     # Assert
     mock_decode_and_validate_mrid_type.assert_called_once_with(scope, response.subject)
@@ -526,7 +518,7 @@ async def test_create_response_for_scope_doe_created_normally(
 
     async with generate_async_session(pg_base_config) as session:
         returned_href = await ResponseManager.create_response_for_scope(
-            session, scope, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES, response
+            session, scope, ResponseSetType.SITE_CONTROLS, response
         )
 
     # Assert
@@ -540,7 +532,7 @@ async def test_create_response_for_scope_doe_created_normally(
     assert isinstance(returned_href, str)
     assert returned_href.startswith(scope.href_prefix)
     response_id = int(returned_href.split("/")[-1])  # Assume LAST component of href is the DB ID
-    assert response_set_type_to_href(ResponseSetType.DYNAMIC_OPERATING_ENVELOPES) in returned_href
+    assert response_set_type_to_href(ResponseSetType.SITE_CONTROLS) in returned_href
     async with generate_async_session(pg_base_config) as session:
         db_count_after = (
             await session.execute(select(func.count()).select_from(DynamicOperatingEnvelopeResponse))

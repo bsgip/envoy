@@ -36,7 +36,6 @@ from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.constants import PricingReadingType
-from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.pub_sub import (
     NotificationMapper,
@@ -351,6 +350,7 @@ def test_SubscriptionListMapper_map_to_site_response():
     sub_list[1].notification_uri = "https://my.example:22/bar"
     sub_list[1].resource_type = SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE
     sub_list[1].scoped_site_id = 1
+    sub_list[1].resource_id = 2
     sub_count = 43
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1001, optional_is_none=True, href_prefix="/custom/prefix"
@@ -457,10 +457,12 @@ def test_SubscriptionMapper_map_from_request():
         (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/tp/44/rc", (SubscriptionResource.TARIFF_GENERATED_RATE, None, 44)),
         ("/edev/33nan/tp/44/rc", InvalidMappingError),
         ("/edev/33/tp/44-4/rc", InvalidMappingError),
-        ("/edev/55/derp/doe/derc", (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, 55, None)),
+        ("/edev/55/derp/doe/derc", InvalidMappingError),  # This is the legacy way of doing DOE subscriptions
+        ("/edev/55/derp/66/derc", (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, 55, 66)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp/doe/derc", InvalidMappingError),  # Legacy method for DOE subs
         (
-            f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp/doe/derc",
-            (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, None, None),
+            f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp/77/derc",
+            (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, None, 77),
         ),
         ("/edev/55/derp/doe_but_not/derc", InvalidMappingError),
         ("/edev/55-3/derp/doe/derc", InvalidMappingError),
@@ -521,17 +523,20 @@ def test_NotificationMapper_map_sites_to_response(notification_type: Notificatio
 def test_NotificationMapper_map_does_to_response(notification_type: NotificationType):
     doe1: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=101, optional_is_none=False)
     doe2: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True)
+    site_control_group_id = 51521251
 
     sub = generate_class_instance(Subscription, seed=303)
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
 
-    notification = NotificationMapper.map_does_to_response([doe1, doe2], sub, scope, notification_type)
+    notification = NotificationMapper.map_does_to_response(
+        site_control_group_id, [doe1, doe2], sub, scope, notification_type
+    )
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
     assert (
-        DERControlListUri.format(site_id=scope.display_site_id, der_program_id=DOE_PROGRAM_ID)
+        DERControlListUri.format(site_id=scope.display_site_id, der_program_id=site_control_group_id)
         in notification.subscribedResource
     )
     assert notification.subscriptionURI.startswith("/custom/prefix")

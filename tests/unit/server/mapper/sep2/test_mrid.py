@@ -149,7 +149,7 @@ def test_all_default_encodings_unique():
     all_generated_mrids = []
 
     assert_and_append_mrid(MridMapper.encode_default_doe_mrid(scope1), all_generated_mrids)
-    assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope1, 0), all_generated_mrids)
+    assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope1, 0, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_doe_mrid(scope1, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_function_set_assignment_mrid(scope1, 0, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_mirror_usage_point_mrid(scope1, 0), all_generated_mrids)
@@ -185,9 +185,9 @@ def test_encode_doe_program_mrid():
     all_generated_mrids = []
 
     for scope in [scope1, scope2]:
-        assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope, 0), all_generated_mrids)
-        assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope, 123), all_generated_mrids)
-        assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope, MAX_INT_32), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope, 0, 0), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope, 123, 456), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope, MAX_INT_32, MAX_INT_32), all_generated_mrids)
 
     assert len(all_generated_mrids) == len(set(all_generated_mrids)), "Each MRID should be unique"
     assert all(decode_mrid_type(m) == MridType.DER_PROGRAM for m in all_generated_mrids)
@@ -399,7 +399,7 @@ def test_decode_and_validate_mrid_type():
             MridMapper.decode_and_validate_mrid_type(scope2, mrid1)
 
     do_test(lambda s: MridMapper.encode_default_doe_mrid(s))
-    do_test(lambda s: MridMapper.encode_doe_program_mrid(s, 1))
+    do_test(lambda s: MridMapper.encode_doe_program_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_doe_mrid(s, 1))
     do_test(lambda s: MridMapper.encode_function_set_assignment_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_mirror_usage_point_mrid(s, 1))

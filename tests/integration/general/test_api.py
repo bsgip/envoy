@@ -60,11 +60,11 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
 
     # derp/derc function set
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/actderc"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/dderc"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/doe/derc/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/1/actderc"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/1/dderc"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/1/derc"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/1/derc/1"),
 
     # mirror metering function set
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/mup"),
@@ -84,9 +84,9 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
 
     # response function set
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/rsps"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/rsps/doe"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/edev/1/rsps/doe/rsp"),
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/rsps/doe/rsp/1"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/rsps/site_control"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/edev/1/rsps/site_control/rsp"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/rsps/site_control/rsp/1"),
 
     # log function set
     ([HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.POST], "/edev/1/lel"),

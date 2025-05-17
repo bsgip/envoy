@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -36,7 +35,7 @@ def test_der_mapping():
     with_none: SiteDER = generate_class_instance(SiteDER, seed=202, optional_is_none=True, generate_relationships=True)
 
     scope = BaseRequestScope("lfdi", 111, "/my/prefix", 222)
-    derp_id = "my_derp_id"
+    derp_id = 124124
 
     mapped_all_set = DERMapper.map_to_response(scope, all_set, derp_id)
     assert isinstance(mapped_all_set, DER)
@@ -49,7 +48,7 @@ def test_der_mapping():
     assert isinstance(mapped_all_set.DERCapabilityLink, Link)
     assert isinstance(mapped_all_set.DERSettingsLink, Link)
     assert isinstance(mapped_all_set.DERStatusLink, Link)
-    assert derp_id in mapped_all_set.CurrentDERProgramLink.href
+    assert f"/{derp_id}" in mapped_all_set.CurrentDERProgramLink.href
     assert str(all_set.site_id) in mapped_all_set.CurrentDERProgramLink.href
 
     # Test with NO active der program id
@@ -69,16 +68,14 @@ def test_der_mapping():
     assert isinstance(mapped_with_none.DERCapabilityLink, Link)
     assert isinstance(mapped_with_none.DERSettingsLink, Link)
     assert isinstance(mapped_with_none.DERStatusLink, Link)
-    assert derp_id in mapped_with_none.CurrentDERProgramLink.href
+    assert f"/{derp_id}" in mapped_with_none.CurrentDERProgramLink.href
     assert str(with_none.site_id) in mapped_with_none.CurrentDERProgramLink.href
 
 
 def test_der_list():
-    ders: list[tuple[SiteDER, Optional[str]]] = [
-        (generate_class_instance(SiteDER, seed=101, optional_is_none=False, generate_relationships=True), "DERPID1"),
-        (generate_class_instance(SiteDER, seed=202, optional_is_none=False, generate_relationships=True), None),
-        (generate_class_instance(SiteDER, seed=303, optional_is_none=True, generate_relationships=True), None),
-        (generate_class_instance(SiteDER, seed=404, optional_is_none=True, generate_relationships=True), "DERPID2"),
+    ders: list[SiteDER] = [
+        generate_class_instance(SiteDER, seed=101, optional_is_none=False, generate_relationships=True),
+        generate_class_instance(SiteDER, seed=202, optional_is_none=True, generate_relationships=True),
     ]
 
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=11)
@@ -87,10 +84,10 @@ def test_der_list():
 
     mapped = DERMapper.map_to_list_response(scope, poll_rate, ders, count)
     assert isinstance(mapped, DERListResponse)
-    assert mapped.results == 4
+    assert mapped.results == 2
     assert mapped.all_ == count
     assert mapped.pollRate == poll_rate
-    assert len(mapped.DER_) == 4
+    assert len(mapped.DER_) == len(ders)
     assert all([isinstance(x, DER) for x in mapped.DER_])
 
 

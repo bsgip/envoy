@@ -13,7 +13,6 @@ from envoy.server.model.site import Site
 
 async def select_doe_include_deleted(
     session: AsyncSession,
-    site_control_group_id: int,
     aggregator_id: int,
     site_id: int,
     doe_id: int,
@@ -37,11 +36,7 @@ async def select_doe_include_deleted(
     # Check primary table first
     primary_table_doe = (
         await session.execute(
-            select(DOE).where(
-                (DOE.site_control_group_id == site_control_group_id)
-                & (DOE.dynamic_operating_envelope_id == doe_id)
-                & (DOE.site_id == site_id)
-            )
+            select(DOE).where((DOE.dynamic_operating_envelope_id == doe_id) & (DOE.site_id == site_id))
         )
     ).scalar_one_or_none()
     if primary_table_doe is not None:
@@ -52,11 +47,7 @@ async def select_doe_include_deleted(
         await session.execute(
             (
                 select(ArchiveDOE)
-                .where(
-                    (ArchiveDOE.site_control_group_id == site_control_group_id)
-                    & (ArchiveDOE.dynamic_operating_envelope_id == doe_id)
-                    & (ArchiveDOE.deleted_time.is_not(None))
-                )
+                .where((ArchiveDOE.dynamic_operating_envelope_id == doe_id) & (ArchiveDOE.deleted_time.is_not(None)))
                 .order_by(ArchiveDOE.deleted_time.desc())
             )
         )
@@ -387,9 +378,11 @@ async def count_site_control_groups(
     return await _site_control_groups(True, session, 0, changed_after, None)  # type: ignore [return-value]
 
 
-async def select_site_control_group_by_code(session: AsyncSession, group_code: str) -> Optional[SiteControlGroup]:
-    """Fetches a single SiteControlGroup with the specified group_code. Returns None if it can't be found."""
+async def select_site_control_group_by_id(
+    session: AsyncSession, site_control_group_id: int
+) -> Optional[SiteControlGroup]:
+    """Fetches a single SiteControlGroup with the specified site_control_group_id. Returns None if it can't be found."""
 
-    stmt = select(SiteControlGroup).where(SiteControlGroup.group_code == group_code).limit(1)
+    stmt = select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == site_control_group_id).limit(1)
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()

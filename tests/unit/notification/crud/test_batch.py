@@ -184,9 +184,10 @@ def test_get_batch_key_invalid():
             DynamicOperatingEnvelope(
                 dynamic_operating_envelope_id=99,
                 site_id=2,
+                site_control_group_id=3,
                 site=Site(site_id=2, aggregator_id=1),
             ),
-            (1, 2),
+            (1, 2, 3),
         ),
         (
             SubscriptionResource.TARIFF_GENERATED_RATE,

@@ -349,6 +349,9 @@ async def get_derprogram_list(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
             default_doe=extract_default_doe(request),
+            start=extract_start_from_paging_param(start),
+            limit=extract_limit_from_paging_param(limit),
+            changed_after=extract_datetime_from_paging_param(after),
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

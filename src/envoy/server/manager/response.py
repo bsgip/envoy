@@ -65,7 +65,7 @@ class ResponseManager:
     ) -> Response:
         """Fetches a Response by id for a specific response set. Failure to find the response will raise a
         NotFoundError."""
-        if response_set_type == ResponseSetType.DYNAMIC_OPERATING_ENVELOPES:
+        if response_set_type == ResponseSetType.SITE_CONTROLS:
             doe_response = await select_doe_response_for_scope(session, scope.aggregator_id, scope.site_id, response_id)
             if doe_response is not None:
                 return ResponseMapper.map_to_doe_response(scope, doe_response)
@@ -93,7 +93,7 @@ class ResponseManager:
         start/limit/after parameters and ordered according to sep2 Response ordering.
 
         Raises NotFoundError if the response_set_type is not supported"""
-        if response_set_type == ResponseSetType.DYNAMIC_OPERATING_ENVELOPES:
+        if response_set_type == ResponseSetType.SITE_CONTROLS:
             total_doe_responses = await count_doe_responses(session, scope.aggregator_id, scope.site_id, after)
             doe_responses = await select_doe_responses(
                 session,
@@ -144,7 +144,7 @@ class ResponseManager:
                 f"subject '{response.subject}' doesn't reference a valid MRID from this utility server"
             )
 
-        if response_set_type == ResponseSetType.DYNAMIC_OPERATING_ENVELOPES:
+        if response_set_type == ResponseSetType.SITE_CONTROLS:
 
             if mrid_type != MridType.DYNAMIC_OPERATING_ENVELOPE:
                 raise BadRequestError(f"{mrid_type} responses are not accepted to this list.")

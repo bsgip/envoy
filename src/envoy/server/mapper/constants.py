@@ -36,4 +36,4 @@ class ResponseSetType(IntEnum):
     of every type that has "response" objects associated with them"""
 
     TARIFF_GENERATED_RATES = auto()
-    DYNAMIC_OPERATING_ENVELOPES = auto()
+    SITE_CONTROLS = auto()

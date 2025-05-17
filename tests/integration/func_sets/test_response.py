@@ -42,7 +42,7 @@ from tests.integration.response import (
     read_response_body_string,
 )
 
-DOE_HREF = response_set_type_to_href(ResponseSetType.DYNAMIC_OPERATING_ENVELOPES)  # Shorthand for brevity
+DOE_HREF = response_set_type_to_href(ResponseSetType.SITE_CONTROLS)  # Shorthand for brevity
 RATE_HREF = response_set_type_to_href(ResponseSetType.TARIFF_GENERATED_RATES)  # Shorthand for brevity
 TEST_SCOPE = generate_class_instance(BaseRequestScope, href_prefix=None, iana_pen=TEST_IANA_PEN)
 

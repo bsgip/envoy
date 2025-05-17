@@ -240,9 +240,14 @@ def entities_to_notification(
             notification_type=notification_type,
         )
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
+        # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int, site_control_group_id: int)
+        (_, _, site_control_group_id) = batch_key
         return NotificationMapper.map_does_to_response(
-            cast(Sequence[DynamicOperatingEnvelope], entities), sub, scope, notification_type  # type: ignore
+            site_control_group_id=site_control_group_id,
+            does=cast(Sequence[DynamicOperatingEnvelope], entities),  # type: ignore
+            sub=sub,
+            scope=scope,
+            notification_type=notification_type,
         )
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)

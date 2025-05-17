@@ -31,7 +31,6 @@ from envoy.server.manager.der import (
     site_der_for_site,
 )
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
-from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.model.archive.site import (
     ArchiveSiteDERAvailability,
@@ -145,7 +144,7 @@ async def test_fetch_der_for_site_der_exists(
     assert result is mock_map
 
     assert site_der.site_der_id == PUBLIC_SITE_DER_ID, "This should've been set during the fetch"
-    mock_DERMapper.map_to_response.assert_called_once_with(scope, site_der, DOE_PROGRAM_ID)
+    mock_DERMapper.map_to_response.assert_called_once_with(scope, site_der, None)
     mock_site_der_for_site.assert_called_once_with(
         mock_session, aggregator_id=scope.aggregator_id, site_id=scope.site_id
     )

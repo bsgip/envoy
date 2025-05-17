@@ -28,8 +28,8 @@ def response_set_type_to_href(t: ResponseSetType) -> str:
     """Converts a ResponseSetType to a href id/slug that will uniquely identify the type as a short identifier"""
     if t == ResponseSetType.TARIFF_GENERATED_RATES:
         return "price"
-    elif t == ResponseSetType.DYNAMIC_OPERATING_ENVELOPES:
-        return "doe"
+    elif t == ResponseSetType.SITE_CONTROLS:
+        return "site_control"
     else:
         raise ValueError(f"Unsupported ResponseSetType {t} ({int(t)})")
 
@@ -38,8 +38,8 @@ def href_to_response_set_type(href_part: str) -> ResponseSetType:
     """Converts the output of response_set_type_to_href back to the original ResponseSetType"""
     if href_part == "price":
         return ResponseSetType.TARIFF_GENERATED_RATES
-    elif href_part == "doe":
-        return ResponseSetType.DYNAMIC_OPERATING_ENVELOPES
+    elif href_part == "site_control":
+        return ResponseSetType.SITE_CONTROLS
     else:
         raise ValueError(f"Unrecognised response set '{href_part}'")
 
@@ -65,7 +65,7 @@ class ResponseMapper:
             scope,
             site_id=doe_response.site_id,
             response_id=doe_response.dynamic_operating_envelope_response_id,
-            response_list_id=response_set_type_to_href(ResponseSetType.DYNAMIC_OPERATING_ENVELOPES),
+            response_list_id=response_set_type_to_href(ResponseSetType.SITE_CONTROLS),
         )
 
     @staticmethod
@@ -165,9 +165,7 @@ class ResponseListMapper:
     ) -> ResponseListResponse:
         """Generates a list response for a doe response list"""
         return ResponseListResponse(
-            href=ResponseListMapper.response_list_href(
-                scope, scope.display_site_id, ResponseSetType.DYNAMIC_OPERATING_ENVELOPES
-            ),
+            href=ResponseListMapper.response_list_href(scope, scope.display_site_id, ResponseSetType.SITE_CONTROLS),
             all_=total_responses,
             results=len(responses),
             Response_=[ResponseMapper.map_to_doe_response(scope, r) for r in responses],

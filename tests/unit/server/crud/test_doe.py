@@ -17,7 +17,7 @@ from envoy.server.crud.doe import (
     select_active_does_include_deleted,
     select_doe_include_deleted,
     select_does_at_timestamp,
-    select_site_control_group_by_code,
+    select_site_control_group_by_id,
     select_site_control_groups,
 )
 from envoy.server.crud.end_device import select_single_site_with_site_id
@@ -87,32 +87,30 @@ def assert_doe_for_id(
 
 
 @pytest.mark.parametrize(
-    "site_control_group_id, agg_id, site_id, doe_id, expected_dt",
+    "agg_id, site_id, doe_id, expected_dt",
     [
-        (1, 1, 1, 5, datetime(2023, 5, 7, 1, 0, 0)),
-        (1, 2, 3, 15, datetime(2023, 5, 7, 1, 5, 0)),
-        (1, 1, 1, 18, datetime(2023, 5, 7, 1, 0, 0)),  # Archive record
-        (1, 1, 1, 19, datetime(2023, 5, 7, 1, 5, 0)),  # Archive record
-        (1, 1, 1, 21, None),  # Archive record (but not deleted)
-        (1, 1, 3, 15, None),
-        (1, 0, 1, 1, None),
-        (1, 2, 1, 15, None),
-        (1, 1, 1, 99, None),
-        (1, 1, 99, 5, None),
-        (99, 1, 1, 5, None),
+        (1, 1, 5, datetime(2023, 5, 7, 1, 0, 0)),
+        (2, 3, 15, datetime(2023, 5, 7, 1, 5, 0)),
+        (1, 1, 18, datetime(2023, 5, 7, 1, 0, 0)),  # Archive record
+        (1, 1, 19, datetime(2023, 5, 7, 1, 5, 0)),  # Archive record
+        (1, 1, 21, None),  # Archive record (but not deleted)
+        (1, 3, 15, None),
+        (0, 1, 1, None),
+        (2, 1, 15, None),
+        (1, 1, 99, None),
+        (1, 99, 5, None),
     ],
 )
 @pytest.mark.anyio
 async def test_select_doe_include_deleted(
     pg_additional_does,
-    site_control_group_id: int,
     agg_id: int,
     site_id: Optional[int],
     doe_id: int,
     expected_dt: Optional[datetime],
 ):
     async with generate_async_session(pg_additional_does) as session:
-        actual = await select_doe_include_deleted(session, site_control_group_id, agg_id, site_id, doe_id)
+        actual = await select_doe_include_deleted(session, agg_id, site_id, doe_id)
         if expected_dt is None:
             expected_id = None
         else:
@@ -121,24 +119,23 @@ async def test_select_doe_include_deleted(
 
 
 @pytest.mark.parametrize(
-    "site_control_group_id, agg_id, site_id, doe_id, expected_dt",
+    "agg_id, site_id, doe_id, expected_dt",
     [
-        (1, 1, 1, 1, datetime(2022, 5, 6, 8, 2)),  # Adjusted for LA time
-        (1, 1, 1, 4, datetime(2022, 5, 7, 8, 2)),  # Adjusted for LA time
-        (99, 99, 99, 99, None),
+        (1, 1, 1, datetime(2022, 5, 6, 8, 2)),  # Adjusted for LA time
+        (1, 1, 4, datetime(2022, 5, 7, 8, 2)),  # Adjusted for LA time
+        (99, 99, 99, None),
     ],
 )
 @pytest.mark.anyio
 async def test_select_doe_include_deleted_la_timezone(
     pg_la_timezone,
-    site_control_group_id: int,
     agg_id: int,
     site_id: Optional[int],
     doe_id: int,
     expected_dt: Optional[datetime],
 ):
     async with generate_async_session(pg_la_timezone) as session:
-        actual = await select_doe_include_deleted(session, site_control_group_id, agg_id, site_id, doe_id)
+        actual = await select_doe_include_deleted(session, agg_id, site_id, doe_id)
         if expected_dt is None:
             expected_id = None
         else:
@@ -511,7 +508,6 @@ async def extra_site_control_groups(pg_base_config):
                 SiteControlGroup,
                 seed=101,
                 primacy=2,
-                group_code="scg-2",
                 site_control_group_id=2,
                 changed_time=datetime(2021, 4, 5, 10, 2, 0, 500000, tzinfo=timezone.utc),
             )
@@ -521,7 +517,6 @@ async def extra_site_control_groups(pg_base_config):
                 SiteControlGroup,
                 seed=202,
                 primacy=1,
-                group_code="scg-3",
                 site_control_group_id=3,
                 changed_time=datetime(2021, 4, 5, 10, 3, 0, 500000, tzinfo=timezone.utc),
             )
@@ -531,7 +526,6 @@ async def extra_site_control_groups(pg_base_config):
                 SiteControlGroup,
                 seed=303,
                 primacy=1,
-                group_code="scg-4",
                 site_control_group_id=4,
                 changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=timezone.utc),
             )
@@ -541,24 +535,24 @@ async def extra_site_control_groups(pg_base_config):
 
 
 @pytest.mark.parametrize(
-    "group_code, expected_id, expected_primacy",
-    [("doe", 1, 0), ("scg-3", 3, 1), ("doe-1", None, None), ("doe space", None, None), (None, None, None)],
+    "site_control_group_id, expected_primacy",
+    [(1, 0), (3, 1), (99, None), (None, None)],
 )
 @pytest.mark.anyio
-async def test_select_site_control_group_by_code(
-    extra_site_control_groups, group_code: str, expected_id: Optional[int], expected_primacy: Optional[int]
+async def test_select_site_control_group_by_id(
+    extra_site_control_groups, site_control_group_id: int, expected_primacy: Optional[int]
 ):
     """Tests that select_site_control_group_by_code works with a variety of success/failure cases"""
 
     async with generate_async_session(extra_site_control_groups) as session:
-        result = await select_site_control_group_by_code(session, group_code)
+        result = await select_site_control_group_by_id(session, site_control_group_id)
 
-        if expected_id is None or expected_primacy is None:
+        if expected_primacy is None:
             assert result is None
         else:
             assert isinstance(result, SiteControlGroup)
-            assert result.group_code == group_code
-            assert result.site_control_group_id == expected_id
+            assert result.primacy == expected_primacy
+            assert result.site_control_group_id == site_control_group_id
 
 
 @pytest.mark.parametrize(

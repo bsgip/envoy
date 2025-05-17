@@ -38,7 +38,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.common import generate_href, remove_href_prefix
 from envoy.server.mapper.constants import PricingReadingType
-from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID, DERControlMapper
+from envoy.server.mapper.csip_aus.doe import DERControlMapper
 from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMapper, DERSettingMapper, DERStatusMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
 from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
@@ -91,12 +91,14 @@ class SubscriptionMapper:
             else:
                 return generate_href(EndDeviceUri, scope, site_id=scope.display_site_id)
         elif sub.resource_type == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-            if sub.resource_id is not None:
+            if sub.resource_id is None:
                 raise InvalidMappingError(
-                    f"Subscribing to DOEs with resource_id is unsupported on sub {sub.subscription_id}"
+                    f"Subscribing to DOEs without a resource_id is unsupported on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERControlListUri, scope, site_id=scope.display_site_id, der_program_id=DOE_PROGRAM_ID)
+            return generate_href(
+                DERControlListUri, scope, site_id=scope.display_site_id, der_program_id=sub.resource_id
+            )
         elif sub.resource_type == SubscriptionResource.READING:
             if sub.resource_id is None:
                 raise InvalidMappingError(
@@ -228,12 +230,12 @@ class SubscriptionMapper:
 
         # Try DOE
         result = parse(DERControlListUri, href)
-        if result and result["der_program_id"] == DOE_PROGRAM_ID:
+        if result:
             try:
                 return (
                     SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
                     _parse_site_id_from_match(result["site_id"]),
-                    None,
+                    int(result["der_program_id"]),
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DOE resource")
@@ -386,6 +388,7 @@ class NotificationMapper:
 
     @staticmethod
     def map_does_to_response(
+        site_control_group_id: int,
         does: Sequence[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
         sub: Subscription,
         scope: AggregatorRequestScope,
@@ -393,7 +396,7 @@ class NotificationMapper:
     ) -> Notification:
         """Turns a list of does into a notification"""
         doe_list_href = generate_href(
-            DERControlListUri, scope, site_id=scope.display_site_id, der_program_id=DOE_PROGRAM_ID
+            DERControlListUri, scope, site_id=scope.display_site_id, der_program_id=site_control_group_id
         )
         now = utc_now()
         return Notification.model_validate(
@@ -405,7 +408,9 @@ class NotificationMapper:
                     "type": XSI_TYPE_DER_CONTROL_LIST,
                     "all_": len(does),
                     "results": len(does),
-                    "DERControl": [DERControlMapper.map_to_response(scope, d, now) for d in does],
+                    "DERControl": [
+                        DERControlMapper.map_to_response(scope, site_control_group_id, d, now) for d in does
+                    ],
                 },
             }
         )

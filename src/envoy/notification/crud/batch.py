@@ -83,7 +83,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
     Given the SubscriptionResource - it's safe to rely on the ordering of the batch key tuple entries:
 
     SubscriptionResource.SITE: (aggregator_id: int, site_id: int)
-    SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
+    SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int, site_control_group_id: int)
     SubscriptionResource.READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
     SubscriptionResource.TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
     SubscriptionResource.SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
@@ -97,7 +97,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
         return (site.aggregator_id, site.site_id)
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         doe = cast(DynamicOperatingEnvelope, entity)  # type: ignore # Pretty sure this is a mypy quirk
-        return (doe.site.aggregator_id, doe.site_id)
+        return (doe.site.aggregator_id, doe.site_id, doe.site_control_group_id)
     elif resource == SubscriptionResource.READING:
         reading = cast(SiteReading, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (
@@ -132,8 +132,8 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
         # Site lists subscriptions can be scoped to a single site
         return cast(Site, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        # DOE subscriptions can be scoped to a single DOE (doesn't make a lot of sense in practice but it can be done)
-        return cast(DynamicOperatingEnvelope, entity).dynamic_operating_envelope_id  # type: ignore # mypy quirk
+        # DOE subscriptions can be scoped to a single DERP
+        return cast(DynamicOperatingEnvelope, entity).site_control_group_id  # type: ignore # mypy quirk
     elif resource == SubscriptionResource.READING:
         # Reading subscriptions can be scoped to the overarching type
         return cast(SiteReading, entity).site_reading_type_id  # type: ignore # Pretty sure this is a mypy quirk
