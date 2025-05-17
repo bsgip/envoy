@@ -466,7 +466,23 @@ async def test_fetch_default_doe_controls_for_site_no_global_default(
 @pytest.mark.parametrize(
     "default_doe_config, default_site_control, expected",
     [
+        # misc
         (None, None, None),
+        (
+            DefaultDoeConfiguration(100, 200, 300, 400, 50),
+            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0),
+            (0, 200, 300, 0, 50),
+        ),
+        (
+            DefaultDoeConfiguration(None, 200, 300, None, 50),
+            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0),
+            (0, 200, 300, 0, 50),
+        ),
+        (
+            DefaultDoeConfiguration(None, None, None, None, None),
+            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0),
+            (0, None, None, 0, None),
+        ),
         # No site control
         (
             DefaultDoeConfiguration(100, 200, 300, 400, 50),

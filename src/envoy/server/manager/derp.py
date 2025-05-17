@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from envoy_schema.server.schema.sep2.der import (
     DefaultDERControl,
@@ -151,25 +151,46 @@ class DERControlManager:
     @staticmethod
     def _resolve_default_site_control(
         default_doe: Optional[DefaultDoeConfiguration],
-        default_site_control: Optional[DefaultSiteControl] = None,
+        default_site_control: Optional[DefaultSiteControl],
     ) -> Optional[DefaultSiteControl]:
-        """Construct DefaultSiteControl with optional fields filled using the global DefaultDoeConfiguration"""
+        """
+        Coalesce site control entity with fallback configuration values. For each field, the
+        entity's non-None value takes precedence, otherwise the fallback configuration value is used.
+
+        Args:
+            default_doe (Optional[DefaultDoeConfiguration]): Fallback configuration
+                providing default values.
+            default_site_control (Optional[DefaultSiteControl]): Site control entity
+                loaded from the database whose non-None fields take precedence.
+
+        Returns:
+            Optional[DefaultSiteControl]: DefaultSiteControl instance with values
+            coalesced from entity and fallback configuration. Returns None if both inputs are None.
+        """
+
+        def _prefer_left(left: Any, right: Any) -> Any:
+            return left if left is not None else right
 
         if default_doe is None:
             return default_site_control
 
         if default_site_control is not None:
             return DefaultSiteControl(
-                import_limit_active_watts=default_site_control.import_limit_active_watts
-                or default_doe.import_limit_active_watts,
-                export_limit_active_watts=default_site_control.export_limit_active_watts
-                or default_doe.export_limit_active_watts,
-                generation_limit_active_watts=default_site_control.generation_limit_active_watts
-                or default_doe.generation_limit_active_watts,
-                load_limit_active_watts=default_site_control.load_limit_active_watts
-                or default_doe.load_limit_active_watts,
-                ramp_rate_percent_per_second=default_site_control.ramp_rate_percent_per_second
-                or default_doe.ramp_rate_percent_per_second,
+                import_limit_active_watts=_prefer_left(
+                    default_site_control.import_limit_active_watts, default_doe.import_limit_active_watts
+                ),
+                export_limit_active_watts=_prefer_left(
+                    default_site_control.export_limit_active_watts, default_doe.export_limit_active_watts
+                ),
+                generation_limit_active_watts=_prefer_left(
+                    default_site_control.generation_limit_active_watts, default_doe.generation_limit_active_watts
+                ),
+                load_limit_active_watts=_prefer_left(
+                    default_site_control.load_limit_active_watts, default_doe.load_limit_active_watts
+                ),
+                ramp_rate_percent_per_second=_prefer_left(
+                    default_site_control.ramp_rate_percent_per_second, default_doe.ramp_rate_percent_per_second
+                ),
             )
         return DefaultSiteControl(
             import_limit_active_watts=default_doe.import_limit_active_watts,
