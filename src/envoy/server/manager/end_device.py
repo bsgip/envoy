@@ -23,7 +23,6 @@ from envoy.server.crud.end_device import (
     select_single_site_with_site_id,
     upsert_site_for_aggregator,
 )
-from envoy.server.crud.server import select_server_config
 from envoy.server.exception import ForbiddenError, NotFoundError, UnableToGenerateIdError
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
@@ -34,7 +33,6 @@ from envoy.server.mapper.sep2.end_device import (
     RegistrationMapper,
     VirtualEndDeviceMapper,
 )
-from envoy.server.model.config.server import map_server_config
 from envoy.server.model.site import Site
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import (

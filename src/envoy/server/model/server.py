@@ -27,7 +27,3 @@ class RuntimeServerConfig(Base):
     mup_postrate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # mirror usage point
     site_control_pow10_encoding: Mapped[Optional[int]] = mapped_column(
         INTEGER, nullable=True
-    )  # power of 10 encoding for site controls
-    tariff_pow10_encoding: Mapped[Optional[int]] = mapped_column(
-        INTEGER, nullable=True
-    )  # power of 10 encoding for tariffs

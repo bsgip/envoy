@@ -4,11 +4,9 @@ from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityRe
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.end_device import select_aggregator_site_count, select_single_site_with_lfdi
-from envoy.server.crud.server import select_server_config
 from envoy.server.crud.site_reading import count_site_reading_types_for_aggregator  # is this mup?
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.mapper.sep2.device_capability import DeviceCapabilityMapper
-from envoy.server.model.config.server import map_server_config
 from envoy.server.request_scope import CertificateType, UnregisteredRequestScope
 
 

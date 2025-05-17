@@ -14,7 +14,6 @@ from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.crud.common import sum_digits
 from envoy.server.mapper.common import generate_href, parse_device_category
-from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.site import Site
 from envoy.server.request_scope import BaseRequestScope
 from envoy.server.settings import settings

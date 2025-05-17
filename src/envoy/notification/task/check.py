@@ -29,8 +29,10 @@ from envoy.notification.exception import NotificationError
 from envoy.notification.handler import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
+from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper, NotificationType, SubscriptionMapper
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
@@ -217,6 +219,7 @@ def entities_to_notification(
     notification_type: NotificationType,
     entities: Sequence[TResourceModel],
     pricing_reading_type: Optional[PricingReadingType],
+    config: RuntimeServerConfig,
 ) -> Sep2Notification:
     """Givens a subscription and associated entities - generate the notification content that will be sent out"""
     scope = scope_for_subscription(sub, href_prefix)
@@ -242,7 +245,7 @@ def entities_to_notification(
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
         return NotificationMapper.map_does_to_response(
-            cast(Sequence[DynamicOperatingEnvelope], entities), sub, scope, notification_type  # type: ignore
+            cast(Sequence[DynamicOperatingEnvelope], entities), sub, scope, notification_type, config.site_control_pow10_encoding  # type: ignore
         )
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
@@ -361,9 +364,20 @@ async def check_db_change_or_delete(
         timestamp,
         len(all_notifications),
     )
+
+    # fetch runtime server config
+    config = await RuntimeServerConfigManager.fetch_current_config(session)
+
     for n in all_notifications:
         content = entities_to_notification(
-            resource, n.subscription, n.batch_key, href_prefix, n.notification_type, n.entities, n.pricing_reading_type
+            resource,
+            n.subscription,
+            n.batch_key,
+            href_prefix,
+            n.notification_type,
+            n.entities,
+            n.pricing_reading_type,
+            config,
         ).to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
         if isinstance(content, bytes):
             content = content.decode()

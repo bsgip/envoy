@@ -17,7 +17,7 @@ from envoy.server.crud.archive import copy_rows_into_archive
 from envoy.server.crud.der import generate_default_site_der, select_site_der_for_site
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
-from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID, STATIC_POLL_RATE_SECONDS
+from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.doe import DOE_PROGRAM_ID

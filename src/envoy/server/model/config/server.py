@@ -1,7 +1,4 @@
-from dataclasses import dataclass, asdict, replace
-from typing import Optional
-
-from envoy.server.model import server
+from dataclasses import dataclass
 
 
 @dataclass(slots=True, frozen=True)
@@ -15,4 +12,3 @@ class RuntimeServerConfig:
     derl_pollrate_seconds: int = 60
     mup_postrate_seconds: int = 60
     site_control_pow10_encoding: int = -2
-    tariff_pow10_encoding: int = -4

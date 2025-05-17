@@ -25,7 +25,6 @@ from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, Respon
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.config.server import RuntimeServerConfig
-from envoy.server.model.constants import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import DefaultSiteControl
 from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
@@ -57,7 +56,7 @@ class DERControlMapper:
     def map_to_response(
         scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],
         doe: Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope],
-        config: RuntimeServerConfig,
+        pow10_multiplier: int,
     ) -> DERControlResponse:
         """Creates a csip aus compliant DERControlResponse from the specific doe"""
 
@@ -103,23 +102,15 @@ class DERControlMapper:
                     }
                 ),
                 "DERControlBase_": DERControlBase(
-                    opModImpLimW=DERControlMapper.map_to_active_power(
-                        doe.import_limit_active_watts, config.site_control_pow10_encoding
-                    ),
-                    opModExpLimW=DERControlMapper.map_to_active_power(
-                        doe.export_limit_watts, config.site_control_pow10_encoding
-                    ),
+                    opModImpLimW=DERControlMapper.map_to_active_power(doe.import_limit_active_watts, pow10_multiplier),
+                    opModExpLimW=DERControlMapper.map_to_active_power(doe.export_limit_watts, pow10_multiplier),
                     opModLoadLimW=(
-                        DERControlMapper.map_to_active_power(
-                            doe.load_limit_active_watts, config.site_control_pow10_encoding
-                        )
+                        DERControlMapper.map_to_active_power(doe.load_limit_active_watts, pow10_multiplier)
                         if doe.load_limit_active_watts is not None
                         else None
                     ),
                     opModGenLimW=(
-                        DERControlMapper.map_to_active_power(
-                            doe.generation_limit_active_watts, config.site_control_pow10_encoding
-                        )
+                        DERControlMapper.map_to_active_power(doe.generation_limit_active_watts, pow10_multiplier)
                         if doe.generation_limit_active_watts is not None
                         else None
                     ),
@@ -131,7 +122,7 @@ class DERControlMapper:
 
     @staticmethod
     def map_to_default_response(
-        scope: BaseRequestScope, default_doe: DefaultSiteControl, config: RuntimeServerConfig
+        scope: BaseRequestScope, default_doe: DefaultSiteControl, pow10_multipier: int
     ) -> DefaultDERControl:
         """Creates a csip aus compliant DefaultDERControl from the specified defaults"""
         return DefaultDERControl(
@@ -139,30 +130,22 @@ class DERControlMapper:
             setGradW=default_doe.ramp_rate_percent_per_second,
             DERControlBase_=DERControlBase(
                 opModImpLimW=(
-                    DERControlMapper.map_to_active_power(
-                        default_doe.import_limit_active_watts, config.site_control_pow10_encoding
-                    )
+                    DERControlMapper.map_to_active_power(default_doe.import_limit_active_watts, pow10_multipier)
                     if default_doe.import_limit_active_watts is not None
                     else None
                 ),
                 opModExpLimW=(
-                    DERControlMapper.map_to_active_power(
-                        default_doe.export_limit_active_watts, config.site_control_pow10_encoding
-                    )
+                    DERControlMapper.map_to_active_power(default_doe.export_limit_active_watts, pow10_multipier)
                     if default_doe.export_limit_active_watts is not None
                     else None
                 ),
                 opModLoadLimW=(
-                    DERControlMapper.map_to_active_power(
-                        default_doe.load_limit_active_watts, config.site_control_pow10_encoding
-                    )
+                    DERControlMapper.map_to_active_power(default_doe.load_limit_active_watts, pow10_multipier)
                     if default_doe.load_limit_active_watts is not None
                     else None
                 ),
                 opModGenLimW=(
-                    DERControlMapper.map_to_active_power(
-                        default_doe.generation_limit_active_watts, config.site_control_pow10_encoding
-                    )
+                    DERControlMapper.map_to_active_power(default_doe.generation_limit_active_watts, pow10_multipier)
                     if default_doe.generation_limit_active_watts is not None
                     else None
                 ),
@@ -202,6 +185,7 @@ class DERControlMapper:
         does: Sequence[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
         total_does: int,
         source: DERControlListSource,
+        power10_multiplier: int,
     ) -> DERControlListResponse:
         """Maps a page of DOEs into a DERControlListResponse. total_does should be the total of all DOEs accessible
         to a particular site
@@ -222,7 +206,9 @@ class DERControlMapper:
                 "all_": total_does,
                 "results": len(does),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
-                "DERControl": [DERControlMapper.map_to_response(request_scope, site) for site in does],
+                "DERControl": [
+                    DERControlMapper.map_to_response(request_scope, site, power10_multiplier) for site in does
+                ],
             }
         )
 

@@ -84,7 +84,7 @@ class MirrorMeteringManager:
         # fetch runtime server config
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
-        return MirrorUsagePointMapper.map_to_response(scope, srt, srt.site, config)
+        return MirrorUsagePointMapper.map_to_response(scope, srt, srt.site, config.mup_postrate_seconds)
 
     @staticmethod
     async def delete_mirror_usage_point(
@@ -160,4 +160,7 @@ class MirrorMeteringManager:
             session=session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, changed_after=changed_after
         )
 
-        return MirrorUsagePointListMapper.map_to_list_response(scope, srts, count)
+        # fetch runtime server config
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
+
+        return MirrorUsagePointListMapper.map_to_list_response(scope, srts, count, config.mup_postrate_seconds)
