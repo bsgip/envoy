@@ -23,7 +23,9 @@ from envoy.server.crud.end_device import (
     select_single_site_with_site_id,
     upsert_site_for_aggregator,
 )
+from envoy.server.crud.server import select_server_config
 from envoy.server.exception import ForbiddenError, NotFoundError, UnableToGenerateIdError
+from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
 from envoy.server.mapper.sep2.end_device import (
@@ -32,6 +34,7 @@ from envoy.server.mapper.sep2.end_device import (
     RegistrationMapper,
     VirtualEndDeviceMapper,
 )
+from envoy.server.model.config.server import map_server_config
 from envoy.server.model.site import Site
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import (
@@ -265,8 +268,15 @@ class EndDeviceManager:
         if includes_virtual_site:
             site_count += 1
 
+        # fetch runtime server config
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
+
         return EndDeviceListMapper.map_to_response(
-            scope=scope, site_list=site_list, site_count=site_count, virtual_site=virtual_site
+            scope=scope,
+            site_list=site_list,
+            site_count=site_count,
+            virtual_site=virtual_site,
+            pollrate_seconds=config.edevl_pollrate_seconds,
         )
 
 

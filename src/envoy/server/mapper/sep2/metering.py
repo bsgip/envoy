@@ -23,6 +23,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.mrid import MridMapper
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.request_scope import BaseRequestScope
@@ -88,14 +89,16 @@ class MirrorUsagePointMapper:
         )
 
     @staticmethod
-    def map_to_response(scope: BaseRequestScope, srt: SiteReadingType, site: Site) -> MirrorUsagePoint:
+    def map_to_response(
+        scope: BaseRequestScope, srt: SiteReadingType, site: Site, post_rate_seconds: int
+    ) -> MirrorUsagePoint:
         """Maps a SiteReadingType and associated Site into a MirrorUsagePoint"""
 
         return MirrorUsagePoint.model_validate(
             {
                 "href": generate_href(uris.MirrorUsagePointUri, scope, mup_id=srt.site_reading_type_id),
                 "deviceLFDI": site.lfdi,
-                "postRate": None,
+                "postRate": post_rate_seconds,
                 "roleFlags": to_hex_binary(RoleFlagsType.NONE),
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
                 "status": 0,
@@ -122,7 +125,7 @@ class MirrorUsagePointMapper:
 class MirrorUsagePointListMapper:
     @staticmethod
     def map_to_list_response(
-        scope: BaseRequestScope, srts: Sequence[SiteReadingType], srt_count: int
+        scope: BaseRequestScope, srts: Sequence[SiteReadingType], srt_count: int, post_rate_seconds: int
     ) -> MirrorUsagePointListResponse:
         """Maps a set of SiteReadingType (requires the associated site relationship being populated for each
         SiteReadingType)"""
@@ -131,7 +134,9 @@ class MirrorUsagePointListMapper:
                 "href": generate_href(uris.MirrorUsagePointListUri, scope),
                 "all_": srt_count,
                 "results": len(srts),
-                "mirrorUsagePoints": [MirrorUsagePointMapper.map_to_response(scope, srt, srt.site) for srt in srts],
+                "mirrorUsagePoints": [
+                    MirrorUsagePointMapper.map_to_response(scope, srt, srt.site, post_rate_seconds) for srt in srts
+                ],
             }
         )
 

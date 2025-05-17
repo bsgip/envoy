@@ -19,6 +19,7 @@ from envoy_schema.server.schema.sep2.identification import Link
 from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.mapper.common import generate_href
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
@@ -116,21 +117,19 @@ class DERMapper:
     @staticmethod
     def map_to_list_response(
         scope: DeviceOrAggregatorRequestScope,
-        poll_rate_seconds: int,
         ders_with_act_derp_id: list[tuple[SiteDER, Optional[str]]],
         der_count: int,
+        config: RuntimeServerConfig,
     ) -> DERListResponse:
         """Turns a set of SiteDER (with their active DER program ID) into a list response
 
         ders_with_act_derp_id: SiteDER tupled with the Active DER Program ID for that SiteDER (if any)"""
-        return DERListResponse.model_validate(
-            {
-                "href": generate_href(uri.DERListUri, scope, site_id=scope.display_site_id),
-                "pollRate": poll_rate_seconds,
-                "all_": der_count,
-                "results": len(ders_with_act_derp_id),
-                "DER_": [DERMapper.map_to_response(scope, e, act_derp_id) for e, act_derp_id in ders_with_act_derp_id],
-            }
+        return DERListResponse(
+            href=generate_href(uri.DERListUri, scope, site_id=scope.display_site_id),
+            pollRate=config.derl_pollrate_seconds,
+            all_=der_count,
+            results=len(ders_with_act_derp_id),
+            DER_=[DERMapper.map_to_response(scope, e, act_derp_id) for e, act_derp_id in ders_with_act_derp_id],
         )
 
 
