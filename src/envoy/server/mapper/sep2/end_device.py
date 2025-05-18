@@ -104,6 +104,7 @@ class EndDeviceListMapper:
 
         return EndDeviceListResponse(
             href=generate_href(uri.EndDeviceListUri, scope),
+            pollRate=pollrate_seconds,
             all_=site_count,
             results=result_count,
             subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,

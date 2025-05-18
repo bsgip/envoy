@@ -127,7 +127,7 @@ class DERControlManager:
         # fetch runtime server config
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
-        return DERControlMapper.map_to_response(scope, der_program_id, doe, config.site_control_pow10_encoding)
+        return DERControlMapper.map_to_response(scope, der_program_id, doe, config.site_control_pow10_encoding, now)
 
     @staticmethod
     async def fetch_doe_controls_for_scope(
@@ -167,6 +167,7 @@ class DERControlManager:
             total_count,
             DERControlListSource.DER_CONTROL_LIST,
             config.site_control_pow10_encoding,
+            now,
         )
 
     @staticmethod
@@ -188,7 +189,6 @@ class DERControlManager:
         total_count = await count_does_at_timestamp(
             session, der_program_id, scope.aggregator_id, scope.site_id, now, changed_after
         )
-        total_count = await count_does_at_timestamp(session, scope.aggregator_id, scope.site_id, now, changed_after)
 
         # fetch runtime server config
         config = await RuntimeServerConfigManager.fetch_current_config(session)
@@ -200,6 +200,7 @@ class DERControlManager:
             total_count,
             DERControlListSource.ACTIVE_DER_CONTROL_LIST,
             config.site_control_pow10_encoding,
+            now,
         )
 
     @staticmethod

@@ -251,7 +251,7 @@ def entities_to_notification(
             sub=sub,
             scope=scope,
             notification_type=notification_type,
-            config.site_control_pow10_encoding,
+            power10_multiplier=config.site_control_pow10_encoding,
         )
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)

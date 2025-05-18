@@ -1,7 +1,7 @@
 """add_site_control_group
 
 Revision ID: 1979434a3393
-Revises: 7bb1448c856a
+Revises: b56468b9b547
 Create Date: 2025-05-16 20:17:31.889740
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "1979434a3393"
-down_revision = "7bb1448c856a"
+down_revision = "b56468b9b547"
 branch_labels = None
 depends_on = None
 

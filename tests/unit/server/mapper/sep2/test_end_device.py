@@ -109,21 +109,24 @@ def test_list_map_to_response():
     assert isinstance(result, EndDeviceListResponse)
     assert result.all_ == site_count
     assert result.results == len(all_sites)
+    assert result.pollRate == 10
     assert_list_type(EndDeviceResponse, result.EndDevice, len(all_sites))
     assert len(set([ed.lFDI for ed in result.EndDevice])) == len(
         all_sites
     ), f"Expected {len(all_sites)} unique LFDI's in the children"
 
-    empty_result = EndDeviceListMapper.map_to_response(scope, [], site_count, pollrate_seconds=10)
+    empty_result = EndDeviceListMapper.map_to_response(scope, [], site_count, pollrate_seconds=11)
     assert empty_result is not None
     assert isinstance(empty_result, EndDeviceListResponse)
     assert empty_result.all_ == site_count
+    assert empty_result.pollRate == 11
     assert_list_type(EndDeviceResponse, empty_result.EndDevice, 0)
 
-    no_result = EndDeviceListMapper.map_to_response(scope, [], 0, pollrate_seconds=10)
+    no_result = EndDeviceListMapper.map_to_response(scope, [], 0, pollrate_seconds=12)
     assert no_result is not None
     assert isinstance(no_result, EndDeviceListResponse)
     assert no_result.all_ == 0
+    assert no_result.pollRate == 12
     assert_list_type(EndDeviceResponse, no_result.EndDevice, 0)
 
 
