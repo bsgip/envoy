@@ -308,7 +308,7 @@ def test_map_derp_doe_program_list_response(
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
 
     result = DERProgramMapper.doe_program_list_response(
-        scope, control_groups_with_counts, total_control_groups, 3, default_doe
+        scope, control_groups_with_counts, total_control_groups, default_doe, 3
     )
     assert result is not None
     assert isinstance(result, DERProgramListResponse)

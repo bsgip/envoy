@@ -257,9 +257,6 @@ async def test_fetch_doe_control_for_scope(
     config = RuntimeServerConfig()
     mock_fetch_current_config.return_value = config
 
-    config = RuntimeServerConfig()
-    mock_fetch_current_config.return_value = config
-
     result = await DERControlManager.fetch_doe_control_for_scope(mock_session, scope, derp_id, doe_id)
 
     assert_mock_session(mock_session, committed=False)
@@ -267,7 +264,9 @@ async def test_fetch_doe_control_for_scope(
         assert result is None
     else:
         assert result is mapped_doe
-        mock_DERControlMapper.map_to_response.assert_called_once_with(scope, derp_id, selected_doe, now)
+        mock_DERControlMapper.map_to_response.assert_called_once_with(
+            scope, derp_id, selected_doe, config.site_control_pow10_encoding, now
+        )
     mock_select_doe_include_deleted.assert_called_once_with(mock_session, scope.aggregator_id, scope.site_id, doe_id)
 
 
@@ -451,13 +450,6 @@ async def test_fetch_active_doe_controls_for_site(
     assert result is mapped_list
     mock_select_does_at_timestamp.assert_called_once()
     mock_count_does_at_timestamp.assert_called_once()
-    mock_DERControlMapper.map_to_list_response.assert_called_once_with(
-        scope,
-        returned_does,
-        returned_count,
-        DERControlListSource.ACTIVE_DER_CONTROL_LIST,
-        config.site_control_pow10_encoding,
-    )
 
     # The timestamp should be (roughly) utc now and should match for both calls
     actual_now: datetime = mock_select_does_at_timestamp.call_args_list[0].args[4]
@@ -469,6 +461,16 @@ async def test_fetch_active_doe_controls_for_site(
     )
     mock_count_does_at_timestamp.assert_called_once_with(
         mock_session, derp_id, scope.aggregator_id, scope.site_id, actual_now, changed_after
+    )
+
+    mock_DERControlMapper.map_to_list_response.assert_called_once_with(
+        scope,
+        derp_id,
+        returned_does,
+        returned_count,
+        DERControlListSource.ACTIVE_DER_CONTROL_LIST,
+        config.site_control_pow10_encoding,
+        actual_now,
     )
 
     assert_mock_session(mock_session)
