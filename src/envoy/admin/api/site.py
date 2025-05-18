@@ -5,7 +5,7 @@ from typing import Optional
 
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
-from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri, SiteUri
+from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri
 from fastapi import APIRouter, HTTPException, Query
 from fastapi_async_sqlalchemy import db
 
