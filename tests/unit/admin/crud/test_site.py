@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+from decimal import Decimal
+from itertools import product
 from typing import Optional
 
 import pytest
@@ -305,21 +307,19 @@ async def test_select_all_site_groups(
 @pytest.mark.anyio
 async def test_select_single_site_no_scoping_missing_site_ids(pg_base_config, missing_site_id: int):
     async with generate_async_session(pg_base_config) as session:
-        assert (await select_single_site_no_scoping(session, missing_site_id, False, False)) is None
-        assert (await select_single_site_no_scoping(session, missing_site_id, True, False)) is None
-        assert (await select_single_site_no_scoping(session, missing_site_id, False, True)) is None
-        assert (await select_single_site_no_scoping(session, missing_site_id, True, True)) is None
+        for groups, der, site_default in product([True, False], [True, False], [True, False]):
+            assert (await select_single_site_no_scoping(session, missing_site_id, groups, der, site_default)) is None
 
 
 @pytest.mark.parametrize(
-    "site_id, expected_group_ids, expected_der_ids",
+    "site_id, expected_group_ids, expected_der_ids, expected_site_import_watts",
     [
-        (1, [1, 2], (2, 1, 1, 1, 1)),
-        (2, [1], (1, None, None, None, None)),
-        (3, [1], None),
-        (4, [], None),
-        (5, [], None),
-        (6, [], None),
+        (1, [1, 2], (2, 1, 1, 1, 1), Decimal("10.10")),
+        (2, [1], (1, None, None, None, None), None),
+        (3, [1], None, Decimal("20.20")),
+        (4, [], None, None),
+        (5, [], None, None),
+        (6, [], None, None),
     ],
 )
 @pytest.mark.anyio
@@ -328,37 +328,11 @@ async def test_select_single_site_no_scoping(
     site_id,
     expected_group_ids: list[int],
     expected_der_ids: Optional[tuple[int, Optional[int], Optional[int], Optional[int], Optional[int]]],
+    expected_site_import_watts: Optional[Decimal],
 ):
     """
     expected_der_ids: Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
 
-    async with generate_async_session(pg_base_config) as session:
-        site_no_groups_no_der = await select_single_site_no_scoping(session, site_id, include_groups=False)
-        assert isinstance(site_no_groups_no_der, Site)
-        assert site_no_groups_no_der.site_id == site_id
-
-    async with generate_async_session(pg_base_config) as session:
-        site_with_groups_no_der = await select_single_site_no_scoping(session, site_id, include_groups=True)
-        assert isinstance(site_with_groups_no_der, Site)
-        assert site_with_groups_no_der.site_id == site_id
-
-    async with generate_async_session(pg_base_config) as session:
-        site_no_groups_with_der = await select_single_site_no_scoping(session, site_id, include_der=True)
-        assert isinstance(site_no_groups_with_der, Site)
-        assert site_no_groups_with_der.site_id == site_id
-
-    async with generate_async_session(pg_base_config) as session:
-        site_with_groups_der = await select_single_site_no_scoping(
-            session, site_id, include_der=True, include_groups=True
-        )
-        assert isinstance(site_with_groups_der, Site)
-        assert site_with_groups_der.site_id == site_id
-
-    # Validate the groups were returned as expected
-    assert expected_group_ids == [a.group.site_group_id for a in site_with_groups_der.assignments]
-    assert expected_group_ids == [a.group.site_group_id for a in site_with_groups_no_der.assignments]
-
-    # Validate the DER were returned as expected
     def der_to_expected_tuple(
         ders: list[SiteDER],
     ) -> Optional[tuple[int, Optional[int], Optional[int], Optional[int], Optional[int]]]:
@@ -376,17 +350,34 @@ async def test_select_single_site_no_scoping(
             ders[0].site_der_status.site_der_status_id if ders[0].site_der_status else None,
         )
 
-    assert expected_der_ids == der_to_expected_tuple(site_no_groups_with_der.site_ders)
-    assert expected_der_ids == der_to_expected_tuple(site_with_groups_der.site_ders)
+    for include_groups, include_der, include_site_default in product([True, False], [True, False], [True, False]):
+        async with generate_async_session(pg_base_config) as session:
+            site = await select_single_site_no_scoping(
+                session,
+                site_id,
+                include_groups=include_groups,
+                include_der=include_der,
+                include_site_default=include_site_default,
+            )
 
-    # And that sites without groups don't have any groups
-    with pytest.raises(InvalidRequestError):
-        assert len(site_no_groups_no_der.assignments) == 0
-    with pytest.raises(InvalidRequestError):
-        assert len(site_no_groups_with_der.assignments) == 0
+            if include_groups:
+                assert expected_group_ids == [a.group.site_group_id for a in site.assignments]
+            else:
+                with pytest.raises(InvalidRequestError):
+                    assert len(site.assignments) == 0
 
-    # And that sites without groups don't have any groups
-    with pytest.raises(InvalidRequestError):
-        assert len(site_no_groups_no_der.site_ders) == 0
-    with pytest.raises(InvalidRequestError):
-        assert len(site_with_groups_no_der.site_ders) == 0
+            if include_der:
+                assert expected_der_ids == der_to_expected_tuple(site.site_ders)
+            else:
+                with pytest.raises(InvalidRequestError):
+                    assert len(site.site_ders) == 0
+
+            if include_site_default:
+                assert expected_site_import_watts == (
+                    site.default_site_control.import_limit_active_watts
+                    if site.default_site_control is not None
+                    else None
+                )
+            else:
+                with pytest.raises(InvalidRequestError):
+                    assert site.default_site_control.default_site_control_id == 0

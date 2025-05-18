@@ -1,11 +1,11 @@
 from dataclasses import asdict, replace
 from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.server import select_server_config
-from envoy.server.model.server import RuntimeServerConfig as ConfigEntity
 from envoy.server.model.config.server import RuntimeServerConfig
-
+from envoy.server.model.server import RuntimeServerConfig as ConfigEntity
 
 # reference default values
 default = RuntimeServerConfig()
@@ -32,4 +32,5 @@ def _map_server_config(
 class RuntimeServerConfigManager:
     @staticmethod
     async def fetch_current_config(session: AsyncSession) -> RuntimeServerConfig:
+        """Fetches the current config (with any defaults applied for missing values)"""
         return _map_server_config(await select_server_config(session))
