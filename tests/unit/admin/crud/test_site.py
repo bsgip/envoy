@@ -7,7 +7,13 @@ from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy.exc import InvalidRequestError
 
-from envoy.admin.crud.site import count_all_site_groups, count_all_sites, select_all_site_groups, select_all_sites
+from envoy.admin.crud.site import (
+    count_all_site_groups,
+    count_all_sites,
+    select_all_site_groups,
+    select_all_sites,
+    select_single_site_no_scoping,
+)
 from envoy.server.api.request import MAX_LIMIT
 from envoy.server.model.site import (
     Site,
@@ -293,3 +299,94 @@ async def test_select_all_site_groups(
         assert all([isinstance(g[0], SiteGroup) for g in groups])
         assert all([isinstance(g[1], int) for g in groups])
         assert expected_id_count == [(sg.site_group_id, count) for sg, count in groups]
+
+
+@pytest.mark.parametrize("missing_site_id", [0, -1, 9999])
+@pytest.mark.anyio
+async def test_select_single_site_no_scoping_missing_site_ids(pg_base_config, missing_site_id: int):
+    async with generate_async_session(pg_base_config) as session:
+        assert (await select_single_site_no_scoping(session, missing_site_id, False, False)) is None
+        assert (await select_single_site_no_scoping(session, missing_site_id, True, False)) is None
+        assert (await select_single_site_no_scoping(session, missing_site_id, False, True)) is None
+        assert (await select_single_site_no_scoping(session, missing_site_id, True, True)) is None
+
+
+@pytest.mark.parametrize(
+    "site_id, expected_group_ids, expected_der_ids",
+    [
+        (1, [1, 2], (2, 1, 1, 1, 1)),
+        (2, [1], (1, None, None, None, None)),
+        (3, [1], None),
+        (4, [], None),
+        (5, [], None),
+        (6, [], None),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_single_site_no_scoping(
+    pg_base_config,
+    site_id,
+    expected_group_ids: list[int],
+    expected_der_ids: Optional[tuple[int, Optional[int], Optional[int], Optional[int], Optional[int]]],
+):
+    """
+    expected_der_ids: Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
+
+    async with generate_async_session(pg_base_config) as session:
+        site_no_groups_no_der = await select_single_site_no_scoping(session, site_id, include_groups=False)
+        assert isinstance(site_no_groups_no_der, Site)
+        assert site_no_groups_no_der.site_id == site_id
+
+    async with generate_async_session(pg_base_config) as session:
+        site_with_groups_no_der = await select_single_site_no_scoping(session, site_id, include_groups=True)
+        assert isinstance(site_with_groups_no_der, Site)
+        assert site_with_groups_no_der.site_id == site_id
+
+    async with generate_async_session(pg_base_config) as session:
+        site_no_groups_with_der = await select_single_site_no_scoping(session, site_id, include_der=True)
+        assert isinstance(site_no_groups_with_der, Site)
+        assert site_no_groups_with_der.site_id == site_id
+
+    async with generate_async_session(pg_base_config) as session:
+        site_with_groups_der = await select_single_site_no_scoping(
+            session, site_id, include_der=True, include_groups=True
+        )
+        assert isinstance(site_with_groups_der, Site)
+        assert site_with_groups_der.site_id == site_id
+
+    # Validate the groups were returned as expected
+    assert expected_group_ids == [a.group.site_group_id for a in site_with_groups_der.assignments]
+    assert expected_group_ids == [a.group.site_group_id for a in site_with_groups_no_der.assignments]
+
+    # Validate the DER were returned as expected
+    def der_to_expected_tuple(
+        ders: list[SiteDER],
+    ) -> Optional[tuple[int, Optional[int], Optional[int], Optional[int], Optional[int]]]:
+        """Returns Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
+        if not ders:
+            return None
+
+        assert len(ders) == 1, "There should be ONLY be a single SiteDER per site "
+
+        return (
+            ders[0].site_der_id,
+            ders[0].site_der_availability.site_der_availability_id if ders[0].site_der_availability else None,
+            ders[0].site_der_rating.site_der_rating_id if ders[0].site_der_rating else None,
+            ders[0].site_der_setting.site_der_setting_id if ders[0].site_der_setting else None,
+            ders[0].site_der_status.site_der_status_id if ders[0].site_der_status else None,
+        )
+
+    assert expected_der_ids == der_to_expected_tuple(site_no_groups_with_der.site_ders)
+    assert expected_der_ids == der_to_expected_tuple(site_with_groups_der.site_ders)
+
+    # And that sites without groups don't have any groups
+    with pytest.raises(InvalidRequestError):
+        assert len(site_no_groups_no_der.assignments) == 0
+    with pytest.raises(InvalidRequestError):
+        assert len(site_no_groups_with_der.assignments) == 0
+
+    # And that sites without groups don't have any groups
+    with pytest.raises(InvalidRequestError):
+        assert len(site_no_groups_no_der.site_ders) == 0
+    with pytest.raises(InvalidRequestError):
+        assert len(site_with_groups_no_der.site_ders) == 0

@@ -19,6 +19,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from envoy.admin.crud.doe import count_all_does
+from envoy.admin.mapper.doe import DEFAULT_DOE_SITE_CONTROL_GROUP_ID
 from envoy.server.api.request import MAX_LIMIT
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope
@@ -144,7 +145,7 @@ async def test_get_all_does(
 ):
     """Sanity check on the Fetch DOE endpoint"""
     async with generate_async_session(pg_base_config) as session:
-        expected_total_does = await count_all_does(session, after)
+        expected_total_does = await count_all_does(session, DEFAULT_DOE_SITE_CONTROL_GROUP_ID, after)
 
     response = await admin_client_auth.get(DoeUri + _build_query_string(start, limit, None, after))
     assert response.status_code == HTTPStatus.OK

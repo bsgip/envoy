@@ -1,12 +1,49 @@
 from datetime import datetime
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence
 
-from sqlalchemy import and_, func, insert, or_, select
+from sqlalchemy import Delete, and_, func, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.archive import delete_rows_into_archive
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
+
+
+async def delete_does_with_start_time_in_range(
+    session: AsyncSession,
+    site_control_group_id: int,
+    site_id: Optional[int],
+    period_start: datetime,
+    period_end: datetime,
+    deleted_time: datetime,
+) -> None:
+    """Deletes (with archive) all does whose **start_time** is in the range period_start to period_end. Does not perform
+    any checks for aggregator_id scoping
+
+    site_control_group_id: Only this site control group's controls will be considered
+    site_id: if specified - scope the deletion to just controls for this site
+    period_start: inclusive start of range to search
+    period_end: exclusive end of range to search"""
+
+    query: Callable[[Delete], Delete]
+    if site_id is None:
+        query = lambda q: q.where(  # noqa: E731
+            (DynamicOperatingEnvelope.site_control_group_id == site_control_group_id)
+            & (DynamicOperatingEnvelope.start_time >= period_start)
+            & (DynamicOperatingEnvelope.start_time < period_end)
+        )
+    else:
+        query = lambda q: q.where(  # noqa: E731
+            (DynamicOperatingEnvelope.site_control_group_id == site_control_group_id)
+            & (DynamicOperatingEnvelope.site_id == site_id)
+            & (DynamicOperatingEnvelope.start_time >= period_start)
+            & (DynamicOperatingEnvelope.start_time < period_end)
+        )
+
+    # Perform the archival delete
+    await delete_rows_into_archive(
+        session, DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope, deleted_time, query
+    )
 
 
 async def upsert_many_doe(
@@ -36,10 +73,14 @@ async def upsert_many_doe(
     )
 
 
-async def count_all_does(session: AsyncSession, changed_after: Optional[datetime]) -> int:
+async def count_all_does(session: AsyncSession, site_control_group_id: int, changed_after: Optional[datetime]) -> int:
     """Admin counting of does - no filtering on aggregator is made. If changed_after is specified, only
     does that have their changed_time >= changed_after will be included"""
-    stmt = select(func.count()).select_from(DynamicOperatingEnvelope)
+    stmt = (
+        select(func.count())
+        .select_from(DynamicOperatingEnvelope)
+        .where(DynamicOperatingEnvelope.site_control_group_id == site_control_group_id)
+    )
 
     if changed_after and changed_after != datetime.min:
         stmt = stmt.where(DynamicOperatingEnvelope.changed_time >= changed_after)
@@ -50,6 +91,7 @@ async def count_all_does(session: AsyncSession, changed_after: Optional[datetime
 
 async def select_all_does(
     session: AsyncSession,
+    site_control_group_id: int,
     start: int,
     limit: int,
     changed_after: Optional[datetime],
@@ -62,6 +104,7 @@ async def select_all_does(
         select(DynamicOperatingEnvelope)
         .offset(start)
         .limit(limit)
+        .where(DynamicOperatingEnvelope.site_control_group_id == site_control_group_id)
         .order_by(
             DynamicOperatingEnvelope.dynamic_operating_envelope_id.asc(),
         )
@@ -69,6 +112,45 @@ async def select_all_does(
 
     if changed_after and changed_after != datetime.min:
         stmt = stmt.where(DynamicOperatingEnvelope.changed_time >= changed_after)
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
+
+
+async def count_all_site_control_groups(session: AsyncSession, changed_after: Optional[datetime]) -> int:
+    """Admin counting of site control groups. If changed_after is specified, only groups that have their
+    changed_time >= changed_after will be included"""
+    stmt = select(func.count()).select_from(SiteControlGroup)
+
+    if changed_after and changed_after != datetime.min:
+        stmt = stmt.where(SiteControlGroup.changed_time >= changed_after)
+
+    resp = await session.execute(stmt)
+    return resp.scalar_one()
+
+
+async def select_all_site_control_groups(
+    session: AsyncSession,
+    start: int,
+    limit: int,
+    changed_after: Optional[datetime],
+) -> Sequence[SiteControlGroup]:
+    """Admin selecting of site control groups - no filtering on aggregator is made. Returns ordered by
+    site_control_group_id ASC
+
+    changed_after is INCLUSIVE"""
+
+    stmt = (
+        select(SiteControlGroup)
+        .offset(start)
+        .limit(limit)
+        .order_by(
+            SiteControlGroup.site_control_group_id.asc(),
+        )
+    )
+
+    if changed_after and changed_after != datetime.min:
+        stmt = stmt.where(SiteControlGroup.changed_time >= changed_after)
 
     resp = await session.execute(stmt)
     return resp.scalars().all()

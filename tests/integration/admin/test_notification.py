@@ -1,5 +1,6 @@
 from datetime import datetime
 from http import HTTPStatus
+from typing import Union
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -8,7 +9,8 @@ from assertical.fake.http import HTTPMethod, MockedAsyncClient
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
-from envoy_schema.admin.schema.uri import DoeUri, TariffGeneratedRateCreateUri
+from envoy_schema.admin.schema.site_control import SiteControlRequest
+from envoy_schema.admin.schema.uri import DoeUri, SiteControlUri, SiteUri, TariffGeneratedRateCreateUri
 from httpx import AsyncClient
 from sqlalchemy import delete, insert, select
 
@@ -17,9 +19,17 @@ from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import PRICE_DECIMAL_POWER
 
 
+@pytest.mark.parametrize(
+    "body_type, uri",
+    [(DynamicOperatingEnvelopeRequest, DoeUri), (SiteControlRequest, SiteControlUri.format(group_id=1))],
+)
 @pytest.mark.anyio
 async def test_create_does_no_active_subscription(
-    pg_base_config, admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient
+    pg_base_config,
+    admin_client_auth: AsyncClient,
+    notifications_enabled: MockedAsyncClient,
+    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
+    uri: str,
 ):
     # There is currently a DOE sub in place - delete it before the test
     async with generate_async_session(pg_base_config) as session:
@@ -28,13 +38,13 @@ async def test_create_does_no_active_subscription(
         await session.delete(sub)
         await session.commit()
 
-    doe = generate_class_instance(DynamicOperatingEnvelopeRequest)
+    doe = generate_class_instance(body_type)
     doe.site_id = 1
 
-    doe_1 = generate_class_instance(DynamicOperatingEnvelopeRequest)
+    doe_1 = generate_class_instance(body_type, seed=123, optional_is_none=True)
     doe_1.site_id = 2
 
-    resp = await admin_client_auth.post(DoeUri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
+    resp = await admin_client_auth.post(uri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
 
     assert resp.status_code == HTTPStatus.CREATED
 
@@ -44,9 +54,17 @@ async def test_create_does_no_active_subscription(
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
 
 
+@pytest.mark.parametrize(
+    "body_type, uri",
+    [(DynamicOperatingEnvelopeRequest, DoeUri), (SiteControlRequest, SiteControlUri.format(group_id=1))],
+)
 @pytest.mark.anyio
 async def test_create_does_with_active_subscription(
-    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+    admin_client_auth: AsyncClient,
+    notifications_enabled: MockedAsyncClient,
+    pg_base_config,
+    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
+    uri: str,
 ):
     """Tests creating DOEs with an active subscription generates notifications via the MockedAsyncClient"""
     # Create a subscription to actually pickup these changes
@@ -84,22 +102,14 @@ async def test_create_does_with_active_subscription(
 
         await session.commit()
 
-    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=10001, site_id=1, calculation_log_id=None
-    )
-    doe_2: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=20002, site_id=1, calculation_log_id=1
-    )
-    doe_3: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=30003, site_id=2, calculation_log_id=1
-    )
-    doe_4: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=40004, site_id=3, calculation_log_id=None
-    )
+    doe_1 = generate_class_instance(body_type, seed=10001, site_id=1, calculation_log_id=None)
+    doe_2 = generate_class_instance(body_type, seed=20002, site_id=1, calculation_log_id=1)
+    doe_3 = generate_class_instance(body_type, seed=30003, site_id=2, calculation_log_id=1)
+    doe_4 = generate_class_instance(body_type, seed=40004, site_id=3, calculation_log_id=None)
 
     content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
     resp = await admin_client_auth.post(
-        DoeUri,
+        uri,
         content=f"[{content}]",
     )
     assert resp.status_code == HTTPStatus.CREATED
@@ -168,9 +178,17 @@ async def test_create_does_with_active_subscription(
     ), "Only one notification (for sub2) should have the doe3 batch"
 
 
+@pytest.mark.parametrize(
+    "body_type, uri",
+    [(DynamicOperatingEnvelopeRequest, DoeUri), (SiteControlRequest, SiteControlUri.format(group_id=1))],
+)
 @pytest.mark.anyio
 async def test_replace_doe_with_active_subscription(
-    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+    admin_client_auth: AsyncClient,
+    notifications_enabled: MockedAsyncClient,
+    pg_base_config,
+    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
+    uri: str,
 ):
     """Tests replacing a DOEs with an active subscription generates notifications for the deleted and inserted entity"""
     # Create a subscription to actually pickup these changes
@@ -185,7 +203,7 @@ async def test_replace_doe_with_active_subscription(
                 aggregator_id=1,
                 changed_time=datetime.now(),
                 resource_type=SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
-                resource_id=None,
+                resource_id=1,
                 scoped_site_id=None,
                 notification_uri=subscription1_uri,
                 entity_limit=10,
@@ -195,8 +213,8 @@ async def test_replace_doe_with_active_subscription(
         await session.commit()
 
     # This will replace DOE 1 and generate a delete for the original and an insert for the new value
-    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest,
+    doe_1 = generate_class_instance(
+        body_type,
         seed=10001,
         site_id=1,
         calculation_log_id=None,
@@ -205,7 +223,7 @@ async def test_replace_doe_with_active_subscription(
 
     content = ",".join([d.model_dump_json() for d in [doe_1]])
     resp = await admin_client_auth.post(
-        DoeUri,
+        uri,
         content=f"[{content}]",
     )
     assert resp.status_code == HTTPStatus.CREATED
@@ -251,9 +269,17 @@ async def test_replace_doe_with_active_subscription(
     ), "Only one notification for the deletion"
 
 
+@pytest.mark.parametrize(
+    "body_type, uri",
+    [(DynamicOperatingEnvelopeRequest, DoeUri), (SiteControlRequest, SiteControlUri.format(group_id=1))],
+)
 @pytest.mark.anyio
 async def test_create_does_with_paginated_notifications(
-    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+    admin_client_auth: AsyncClient,
+    notifications_enabled: MockedAsyncClient,
+    pg_base_config,
+    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
+    uri: str,
 ):
     """Tests creating DOEs with an active subscription respected the subscription entity_limit"""
     # Create a subscription to actually pickup these changes
@@ -274,22 +300,14 @@ async def test_create_does_with_paginated_notifications(
 
         await session.commit()
 
-    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=101, site_id=1, calculation_log_id=None
-    )
-    doe_2: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=202, site_id=1, calculation_log_id=None
-    )
-    doe_3: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=303, site_id=1, calculation_log_id=None
-    )
-    doe_4: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, seed=404, site_id=3, calculation_log_id=None
-    )
+    doe_1 = generate_class_instance(body_type, seed=101, site_id=1, calculation_log_id=None)
+    doe_2 = generate_class_instance(body_type, seed=202, site_id=1, calculation_log_id=None)
+    doe_3 = generate_class_instance(body_type, seed=303, site_id=1, calculation_log_id=None)
+    doe_4 = generate_class_instance(body_type, seed=404, site_id=3, calculation_log_id=None)
 
     content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
     resp = await admin_client_auth.post(
-        DoeUri,
+        uri,
         content=f"[{content}]",
     )
     assert resp.status_code == HTTPStatus.CREATED
@@ -540,3 +558,50 @@ async def test_replace_rate_with_active_subscription(
             )
             == 1
         ), "Only one notification for the deletion"
+
+
+@pytest.mark.anyio
+async def test_delete_site_with_active_subscription(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests delete sites with an active subscription generates notifications via the MockedAsyncClient"""
+    # Create a subscription to actually pickup these changes
+    subscription1_uri = "http://my.example:542/uri"
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # this is unscoped
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.SITE,
+                resource_id=None,
+                scoped_site_id=None,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    # Delete site 1 and site 2
+    resp = await admin_client_auth.delete(SiteUri.format(site_id=1))
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    resp = await admin_client_auth.delete(SiteUri.format(site_id=2))
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+
+    # Sub 1 got both notifications
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 2
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"

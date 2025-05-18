@@ -1,0 +1,303 @@
+import json
+from datetime import datetime, timezone
+from http import HTTPStatus
+from typing import Optional
+from zoneinfo import ZoneInfo
+
+import pytest
+from assertical.asserts.generator import assert_class_instance_equality
+from assertical.asserts.time import assert_nowish
+from assertical.asserts.type import assert_list_type
+from assertical.fake.generator import generate_class_instance
+from assertical.fixtures.postgres import generate_async_session
+from envoy_schema.admin.schema.site_control import (
+    SiteControlGroupPageResponse,
+    SiteControlGroupRequest,
+    SiteControlGroupResponse,
+    SiteControlPageResponse,
+    SiteControlRequest,
+    SiteControlResponse,
+)
+from envoy_schema.admin.schema.uri import SiteControlGroupListUri, SiteControlGroupUri, SiteControlUri
+from httpx import AsyncClient
+from sqlalchemy import func, select
+
+from envoy.admin.crud.doe import count_all_does, count_all_site_control_groups
+from envoy.admin.mapper.doe import DEFAULT_DOE_SITE_CONTROL_GROUP_ID
+from envoy.server.api.request import MAX_LIMIT
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.doe import DynamicOperatingEnvelope
+from tests.integration.admin.test_site import _build_query_string
+from tests.integration.response import read_location_header, read_response_body_string
+
+
+@pytest.mark.anyio
+async def test_create_site_control_group(admin_client_auth: AsyncClient):
+    """Tests that site control groups can be created and then fetched"""
+    group_request = generate_class_instance(SiteControlGroupRequest)
+    resp = await admin_client_auth.post(SiteControlGroupListUri, content=group_request.model_dump_json())
+
+    assert resp.status_code == HTTPStatus.CREATED
+    location_header = read_location_header(resp)
+
+    # Check we can fetch it
+    resp = await admin_client_auth.get(location_header)
+    assert resp.status_code == HTTPStatus.OK
+    body = read_response_body_string(resp)
+    assert len(body) > 0
+    group_response: SiteControlGroupResponse = SiteControlGroupResponse(**json.loads(body))
+
+    assert_nowish(group_response.changed_time)
+    assert_nowish(group_response.created_time)
+    assert_class_instance_equality(SiteControlGroupRequest, group_request, group_response)
+
+
+@pytest.mark.parametrize("site_control_group_id, expected_primacy", [(1, 0), (99, None)])
+@pytest.mark.anyio
+async def test_get_site_control_group_by_id(
+    admin_client_auth: AsyncClient, site_control_group_id: int, expected_primacy: Optional[int]
+):
+    """Tests that site control groups can be created and then fetched"""
+
+    # Check we can fetch it
+    resp = await admin_client_auth.get(SiteControlGroupUri.format(group_id=site_control_group_id))
+    if expected_primacy is None:
+        assert resp.status_code == HTTPStatus.NOT_FOUND
+    else:
+        assert resp.status_code == HTTPStatus.OK
+        body = read_response_body_string(resp)
+        assert len(body) > 0
+        group_response: SiteControlGroupResponse = SiteControlGroupResponse(**json.loads(body))
+
+        assert group_response.site_control_group_id == site_control_group_id
+        assert group_response.primacy == expected_primacy
+
+
+@pytest.mark.parametrize(
+    "start, limit, after, expected_group_ids",
+    [
+        (None, None, None, [1]),
+        (1, None, None, []),
+        (0, 1, None, [1]),
+        (0, 0, None, []),
+        (None, None, datetime(2021, 4, 5, 10, 1, 0, 500000, tzinfo=timezone.utc), [1]),
+        (None, None, datetime(2021, 4, 5, 10, 2, 0, 500000, tzinfo=timezone.utc), []),
+    ],
+)
+@pytest.mark.anyio
+async def test_get_all_site_control_groups(
+    admin_client_auth: AsyncClient,
+    pg_base_config,
+    start: Optional[int],
+    limit: Optional[int],
+    after: Optional[datetime],
+    expected_group_ids: list[int],
+):
+    """Sanity check on the Fetch site control groups endpoint"""
+    async with generate_async_session(pg_base_config) as session:
+        expected_total_groups = await count_all_site_control_groups(session, after)
+
+    response = await admin_client_auth.get(SiteControlGroupListUri + _build_query_string(start, limit, None, after))
+    assert response.status_code == HTTPStatus.OK
+
+    body = read_response_body_string(response)
+    assert len(body) > 0
+    group_page: SiteControlGroupPageResponse = SiteControlGroupPageResponse(**json.loads(body))
+
+    assert isinstance(group_page.limit, int)
+    assert isinstance(group_page.total_count, int)
+    assert isinstance(group_page.start, int)
+    if after is None:
+        assert group_page.after is None
+    else:
+        assert isinstance(group_page.after, datetime)
+    assert group_page.total_count == expected_total_groups
+    if start is None:
+        assert group_page.start == 0
+    else:
+        assert group_page.start == start
+    if limit is None:
+        assert group_page.limit == 100  # Default limit
+    elif limit <= MAX_LIMIT:
+        assert group_page.limit == limit
+    else:
+        assert group_page.limit == MAX_LIMIT
+
+    assert_list_type(SiteControlGroupResponse, group_page.site_control_groups, len(expected_group_ids))
+    assert expected_group_ids == [g.site_control_group_id for g in group_page.site_control_groups]
+
+
+@pytest.mark.anyio
+async def test_create_site_controls(admin_client_auth: AsyncClient):
+    control_1 = generate_class_instance(SiteControlRequest, site_id=1)
+    control_2 = generate_class_instance(SiteControlRequest, site_id=2)
+
+    resp = await admin_client_auth.post(
+        SiteControlUri.format(group_id=1), content=f"[{control_1.model_dump_json()}, {control_2.model_dump_json()}]"
+    )
+
+    assert resp.status_code == HTTPStatus.CREATED
+
+
+@pytest.mark.anyio
+async def test_create_site_controls_bad_group_id(admin_client_auth: AsyncClient):
+    control = generate_class_instance(SiteControlRequest, site_id=1)
+    resp = await admin_client_auth.post(SiteControlUri.format(group_id=99), content=f"[{control.model_dump_json()}]")
+    assert resp.status_code == HTTPStatus.BAD_REQUEST
+
+
+@pytest.mark.anyio
+async def test_update_site_control(pg_base_config, admin_client_auth: AsyncClient):
+    """Checks that updating a site control will update in place and not insert a new record"""
+    # Check the DB
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(func.count()).select_from(DynamicOperatingEnvelope)
+        resp = await session.execute(stmt)
+        initial_count = resp.scalar_one()
+
+    # This should be updating doe 1
+    updated_rate = SiteControlRequest(
+        site_id=1,
+        start_time=datetime(2022, 5, 7, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
+        duration_seconds=11131,
+        calculation_log_id=3,
+        export_limit_watts=44,
+        import_limit_watts=55,
+    )
+
+    resp = await admin_client_auth.post(
+        SiteControlUri.format(group_id=1),
+        content=f"[{updated_rate.model_dump_json()}]",
+    )
+
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Check the DB
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(func.count()).select_from(DynamicOperatingEnvelope)
+        resp = await session.execute(stmt)
+        after_count = resp.scalar_one()
+
+        assert initial_count == after_count, "This should've been an update, not an insert"
+
+        stmt = select(DynamicOperatingEnvelope).where(DynamicOperatingEnvelope.calculation_log_id == 3)
+        db_doe = (await session.execute(stmt)).scalar_one()
+
+        assert db_doe.calculation_log_id == updated_rate.calculation_log_id
+        assert db_doe.start_time == updated_rate.start_time
+        assert db_doe.duration_seconds == updated_rate.duration_seconds
+        assert_nowish(db_doe.changed_time)
+        assert_nowish(db_doe.created_time)  # The update deletes the old and inserts a new record
+        assert db_doe.import_limit_active_watts == updated_rate.import_limit_watts
+        assert db_doe.export_limit_watts == updated_rate.export_limit_watts
+
+        assert (
+            await session.execute(select(func.count()).select_from(ArchiveDynamicOperatingEnvelope))
+        ).scalar_one() == 1, "The old updated record should be archived. Unit tests will test this in more detail"
+
+
+@pytest.mark.parametrize(
+    "site_control_group_id, start, limit, after, expected_doe_ids",
+    [
+        (
+            1,
+            None,
+            None,
+            None,
+            [1, 2, 3, 4],
+        ),
+        (
+            1,
+            None,
+            99,
+            None,
+            [1, 2, 3, 4],
+        ),
+        (
+            1,
+            1,
+            2,
+            None,
+            [2, 3],
+        ),
+        (
+            1,
+            1,
+            2,
+            None,
+            [2, 3],
+        ),
+        (
+            1,
+            None,
+            9999,
+            None,
+            [1, 2, 3, 4],
+        ),
+        (
+            1,
+            None,
+            99,
+            datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
+            [3, 4],
+        ),
+        (
+            1,
+            1,
+            99,
+            datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
+            [4],
+        ),
+        (
+            2,
+            1,
+            99,
+            datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
+            [],
+        ),  # Change site control group id
+    ],
+)
+@pytest.mark.anyio
+async def test_get_all_site_controls(
+    admin_client_auth: AsyncClient,
+    pg_base_config,
+    site_control_group_id,
+    start: Optional[int],
+    limit: Optional[int],
+    after: Optional[datetime],
+    expected_doe_ids: list[int],
+):
+    """Sanity check on the Fetch DOE endpoint"""
+    async with generate_async_session(pg_base_config) as session:
+        expected_total_does = await count_all_does(session, site_control_group_id, after)
+
+    response = await admin_client_auth.get(
+        SiteControlUri.format(group_id=site_control_group_id) + _build_query_string(start, limit, None, after)
+    )
+    assert response.status_code == HTTPStatus.OK
+
+    body = read_response_body_string(response)
+    assert len(body) > 0
+    site_page: SiteControlPageResponse = SiteControlPageResponse(**json.loads(body))
+
+    assert isinstance(site_page.limit, int)
+    assert isinstance(site_page.total_count, int)
+    assert isinstance(site_page.start, int)
+    if after is None:
+        assert site_page.after is None
+    else:
+        assert isinstance(site_page.after, datetime)
+    assert site_page.total_count == expected_total_does
+    if start is None:
+        assert site_page.start == 0
+    else:
+        assert site_page.start == start
+    if limit is None:
+        assert site_page.limit == 100  # Default limit
+    elif limit <= MAX_LIMIT:
+        assert site_page.limit == limit
+    else:
+        assert site_page.limit == MAX_LIMIT
+
+    assert_list_type(SiteControlResponse, site_page.controls, len(expected_doe_ids))
+    assert expected_doe_ids == [d.site_control_id for d in site_page.controls]

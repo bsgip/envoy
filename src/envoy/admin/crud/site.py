@@ -112,3 +112,28 @@ async def select_all_site_groups(
         results.append((group, count_by_group_id.get(group.site_group_id, 0)))
 
     return results
+
+
+async def select_single_site_no_scoping(
+    session: AsyncSession,
+    site_id: int,
+    include_groups: bool = False,
+    include_der: bool = False,
+) -> Optional[Site]:
+    """Admin selecting of a single site - no filtering on aggregator is made."""
+
+    stmt = select(Site).limit(1).where(Site.site_id == site_id)
+
+    if include_groups:
+        stmt = stmt.options(selectinload(Site.assignments).selectinload(SiteGroupAssignment.group))
+
+    if include_der:
+        stmt = stmt.options(
+            selectinload(Site.site_ders).selectinload(SiteDER.site_der_availability),
+            selectinload(Site.site_ders).selectinload(SiteDER.site_der_rating),
+            selectinload(Site.site_ders).selectinload(SiteDER.site_der_setting),
+            selectinload(Site.site_ders).selectinload(SiteDER.site_der_status),
+        )
+
+    resp = await session.execute(stmt)
+    return resp.scalar_one_or_none()

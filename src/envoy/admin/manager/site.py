@@ -1,12 +1,22 @@
 from datetime import datetime
 from typing import Optional
 
-from envoy_schema.admin.schema.site import SitePageResponse
+from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.admin.crud.site import count_all_site_groups, count_all_sites, select_all_site_groups, select_all_sites
+from envoy.admin.crud.site import (
+    count_all_site_groups,
+    count_all_sites,
+    select_all_site_groups,
+    select_all_sites,
+    select_single_site_no_scoping,
+)
 from envoy.admin.mapper.site import SiteGroupMapper, SiteMapper
+from envoy.notification.manager.notification import NotificationManager
+from envoy.server.crud.end_device import delete_site_for_aggregator
+from envoy.server.manager.time import utc_now
+from envoy.server.model.subscription import SubscriptionResource
 
 
 class SiteManager:
@@ -35,6 +45,31 @@ class SiteManager:
             after=changed_after,
             sites=sites,
         )
+
+    @staticmethod
+    async def get_single_site(session: AsyncSession, site_id: int) -> Optional[SiteResponse]:
+        """Admin specific fetch of a single site that covers all aggregators."""
+        site = await select_single_site_no_scoping(session, site_id, include_der=True, include_groups=True)
+        if site is None:
+            return None
+
+        return SiteMapper.map_to_site_response(site)
+
+    @staticmethod
+    async def delete_single_site(session: AsyncSession, site_id: int) -> bool:
+        """Admin specific delete of a single site."""
+
+        site = await select_single_site_no_scoping(session, site_id, include_der=False, include_groups=False)
+        if site is None:
+            return False
+
+        deleted_time = utc_now()
+        is_deleted = await delete_site_for_aggregator(session, site.aggregator_id, site_id, deleted_time)
+
+        await session.commit()
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, deleted_time)
+
+        return is_deleted
 
     @staticmethod
     async def get_all_site_groups(session: AsyncSession, start: int, limit: int) -> SiteGroupPageResponse:

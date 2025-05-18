@@ -8,10 +8,14 @@ import pytest
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
-from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri
+from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri, SiteUri
 from httpx import AsyncClient
+from sqlalchemy import func, select
 
 from envoy.admin.crud.site import count_all_site_groups, count_all_sites
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.archive.site import ArchiveSite
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from tests.integration.response import read_response_body_string
 
 
@@ -255,3 +259,94 @@ async def test_get_site_groups(
         assert group.site_group_id == expected_group_count[0]
         assert group.total_sites == expected_group_count[1]
         assert group.name == group_name
+
+
+@pytest.mark.parametrize(
+    "site_id, expected_der_changed_time",
+    [
+        (1, SITE_1_DER_EXPECTED),
+        (2, SITE_X_NO_DER_EXPECTED),
+        (3, SITE_X_NO_DER_EXPECTED),
+        (99, None),
+    ],
+)
+@pytest.mark.anyio
+async def test_get_site(
+    admin_client_auth: AsyncClient,
+    site_id: int,
+    expected_der_changed_time: Optional[tuple[Optional[datetime], Optional[datetime], Optional[datetime]]],
+):
+    """expected_der_changed_times is the combination of the changed_time properties from
+    (der_config, der_availability, der_status) It's there to validate the DER metadata being correctly assigned"""
+
+    response = await admin_client_auth.get(SiteUri.format(site_id=site_id))
+
+    if expected_der_changed_time is None:
+        assert response.status_code == HTTPStatus.NOT_FOUND
+    else:
+        body = read_response_body_string(response)
+        assert len(body) > 0
+        site_response: SiteResponse = SiteResponse(**json.loads(body))
+
+        assert site_response.site_id == site_id
+        assert (
+            site_response.der_config.changed_time if site_response.der_config else None,
+            site_response.der_availability.changed_time if site_response.der_availability else None,
+            site_response.der_status.changed_time if site_response.der_status else None,
+        ) == expected_der_changed_time
+
+
+@pytest.mark.parametrize(
+    "site_id, expected_status, archive_site_count, archive_doe_count, archive_price_count",
+    [
+        (1, HTTPStatus.NO_CONTENT, 1, 3, 3),
+        (2, HTTPStatus.NO_CONTENT, 1, 1, 1),
+        (3, HTTPStatus.NO_CONTENT, 1, 0, 0),
+        (4, HTTPStatus.NO_CONTENT, 1, 0, 0),
+        (5, HTTPStatus.NO_CONTENT, 1, 0, 0),
+        (99, HTTPStatus.NOT_FOUND, 0, 0, 0),
+    ],
+)
+@pytest.mark.anyio
+async def test_delete_site_archives(
+    admin_client_auth: AsyncClient,
+    pg_base_config,
+    site_id: int,
+    expected_status: HTTPStatus,
+    archive_site_count: int,
+    archive_doe_count: int,
+    archive_price_count: int,
+):
+    """Tests that deleting sites generates archive records"""
+
+    response = await admin_client_auth.delete(SiteUri.format(site_id=site_id))
+    assert response.status_code == expected_status
+
+    # Count archive rows are generated
+    async with generate_async_session(pg_base_config) as session:
+        actual_archive_site_count = (
+            await session.execute(
+                select(func.count()).select_from(ArchiveSite).where(ArchiveSite.deleted_time.is_not(None))
+            )
+        ).scalar_one()
+        actual_archive_doe_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(ArchiveDynamicOperatingEnvelope)
+                .where(ArchiveDynamicOperatingEnvelope.deleted_time.is_not(None))
+            )
+        ).scalar_one()
+        actual_archive_price_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(ArchiveTariffGeneratedRate)
+                .where(ArchiveTariffGeneratedRate.deleted_time.is_not(None))
+            )
+        ).scalar_one()
+        assert actual_archive_site_count == archive_site_count
+        assert actual_archive_doe_count == archive_doe_count
+        assert actual_archive_price_count == archive_price_count
+
+    # Subsequent query will now 404
+    response = await admin_client_auth.delete(SiteUri.format(site_id=site_id))
+    assert response.status_code == HTTPStatus.NOT_FOUND

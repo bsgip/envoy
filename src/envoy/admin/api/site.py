@@ -3,9 +3,9 @@ from datetime import datetime
 from http import HTTPStatus
 from typing import Optional
 
-from envoy_schema.admin.schema.site import SitePageResponse
+from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
-from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri
+from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri, SiteUri
 from fastapi import APIRouter, HTTPException, Query
 from fastapi_async_sqlalchemy import db
 
@@ -15,6 +15,39 @@ from envoy.server.api.request import extract_limit_from_paging_param, extract_st
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.get(SiteUri, status_code=HTTPStatus.OK, response_model=SiteResponse)
+async def get_single_site(
+    site_id: int,
+) -> SiteResponse:
+    """Endpoint for requesting a SiteResponse instance by its id
+
+    Returns:
+        SiteResponse
+
+    """
+
+    site_response = await SiteManager.get_single_site(session=db.session, site_id=site_id)
+    if site_response is None:
+        raise HTTPException(HTTPStatus.NOT_FOUND, f"Site with id '{site_id}' not found")
+    return site_response
+
+
+@router.delete(SiteUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
+async def delete_single_site(
+    site_id: int,
+) -> None:
+    """Fully deletes the specific site with ID (existing values will be archived). All descendent controls / other
+    elements will be removed
+
+    Returns:
+        No response body - NO_CONTENT if successful or NOT_FOUND if the site doesn't exist
+    """
+
+    is_deleted = await SiteManager.delete_single_site(session=db.session, site_id=site_id)
+    if not is_deleted:
+        raise HTTPException(HTTPStatus.NOT_FOUND, f"Site with id '{site_id}' not found")
 
 
 @router.get(SiteListUri, status_code=HTTPStatus.OK, response_model=SitePageResponse)

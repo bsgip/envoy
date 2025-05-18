@@ -5,7 +5,7 @@ from envoy_schema.admin.schema.doe import DoePageResponse, DynamicOperatingEnvel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.doe import count_all_does, select_all_does, upsert_many_doe
-from envoy.admin.mapper.doe import DoeListMapper
+from envoy.admin.mapper.doe import DEFAULT_DOE_SITE_CONTROL_GROUP_ID, DoeListMapper
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.manager.time import utc_now
 from envoy.server.model.subscription import SubscriptionResource
@@ -31,9 +31,10 @@ class DoeListManager:
     ) -> DoePageResponse:
         """Admin specific (paginated) fetch of does that covers all aggregators.
         changed_after: If specified - filter to does whose changed date is >= this value"""
-        doe_count = await count_all_does(session, changed_after)
+        doe_count = await count_all_does(session, DEFAULT_DOE_SITE_CONTROL_GROUP_ID, changed_after)
         does = await select_all_does(
             session,
+            site_control_group_id=DEFAULT_DOE_SITE_CONTROL_GROUP_ID,
             changed_after=changed_after,
             start=start,
             limit=limit,
