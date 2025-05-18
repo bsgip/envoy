@@ -28,7 +28,6 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from envoy.admin.crud.doe import count_all_does, count_all_site_control_groups
-from envoy.admin.mapper.doe import DEFAULT_DOE_SITE_CONTROL_GROUP_ID
 from envoy.server.api.request import MAX_LIMIT
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope
@@ -327,7 +326,7 @@ async def test_get_all_site_controls(
             1,
             "2022-05-07T01:02:00+10:00",
             "2022-05-07T02:02:00+10:00",
-            [1, 2, 3],
+            [1, 3],
         ),
     ],
 )

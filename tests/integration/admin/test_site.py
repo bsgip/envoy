@@ -8,7 +8,7 @@ import pytest
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
-from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri
+from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri, SiteUri
 from httpx import AsyncClient
 from sqlalchemy import func, select
 

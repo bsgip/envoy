@@ -7,7 +7,6 @@ from envoy_schema.admin.schema.site_control import (
     SiteControlGroupResponse,
     SiteControlPageResponse,
     SiteControlRequest,
-    SiteControlResponse,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
