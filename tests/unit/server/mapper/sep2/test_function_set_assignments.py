@@ -33,7 +33,7 @@ def test_map_to_list_response():
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=101)
 
     result = FunctionSetAssignmentsMapper.map_to_list_response(
-        scope=scope, function_set_assignments=function_set_assignments
+        scope=scope, function_set_assignments=function_set_assignments, pollrate_seconds=12
     )
 
     assert result is not None
@@ -41,3 +41,4 @@ def test_map_to_list_response():
     assert isinstance(result, FunctionSetAssignmentsListResponse)
     assert len(result.FunctionSetAssignments) == 1
     assert isinstance(result.FunctionSetAssignments[0], FunctionSetAssignmentsResponse)
+    assert result.pollRate == 12

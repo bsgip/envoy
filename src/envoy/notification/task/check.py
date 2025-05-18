@@ -245,11 +245,11 @@ def entities_to_notification(
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int)
         return NotificationMapper.map_does_to_response(
-            cast(Sequence[DynamicOperatingEnvelope], entities),
+            cast(Sequence[DynamicOperatingEnvelope], entities),  # type: ignore
             sub,
             scope,
             notification_type,
-            config.site_control_pow10_encoding,  # type: ignore
+            config.site_control_pow10_encoding,
         )
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)

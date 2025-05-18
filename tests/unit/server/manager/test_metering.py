@@ -12,6 +12,7 @@ from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading, 
 
 from envoy.server.exception import ForbiddenError, InvalidIdError, NotFoundError
 from envoy.server.manager.metering import MirrorMeteringManager
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import SubscriptionResource
@@ -186,11 +187,13 @@ async def test_create_or_fetch_mirror_usage_point_device_no_site(
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.metering.fetch_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.metering.MirrorUsagePointMapper")
+@mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
 @pytest.mark.parametrize(
     "cert_type, scope_site_id",
     product([CertificateType.AGGREGATOR_CERTIFICATE, CertificateType.DEVICE_CERTIFICATE], [123, None]),
 )
 async def test_fetch_mirror_usage_point(
+    mock_fetch_current_config: mock.MagicMock,
     mock_MirrorUsagePointMapper: mock.MagicMock,
     mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
     cert_type: CertificateType,
@@ -209,6 +212,9 @@ async def test_fetch_mirror_usage_point(
     mock_fetch_site_reading_type_for_aggregator.return_value = existing_srt
     mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     result = await MirrorMeteringManager.fetch_mirror_usage_point(mock_session, scope, srt_id)
 
@@ -222,7 +228,9 @@ async def test_fetch_mirror_usage_point(
         site_reading_type_id=srt_id,
         include_site_relation=True,
     )
-    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(scope, existing_srt, existing_srt.site)
+    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(
+        scope, existing_srt, existing_srt.site, config.mup_postrate_seconds
+    )
 
 
 @pytest.mark.anyio
@@ -401,6 +409,7 @@ async def test_add_or_update_readings_no_srt(
 @mock.patch("envoy.server.manager.metering.fetch_site_reading_types_page_for_aggregator")
 @mock.patch("envoy.server.manager.metering.count_site_reading_types_for_aggregator")
 @mock.patch("envoy.server.manager.metering.MirrorUsagePointListMapper")
+@mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
 @pytest.mark.parametrize(
     "scope",
     [
@@ -410,6 +419,7 @@ async def test_add_or_update_readings_no_srt(
     ],
 )
 async def test_list_mirror_usage_points(
+    mock_fetch_current_config: mock.MagicMock,
     mock_MirrorUsagePointListMapper: mock.MagicMock,
     mock_count_site_reading_types_for_aggregator: mock.MagicMock,
     mock_fetch_site_reading_types_page_for_aggregator: mock.MagicMock,
@@ -430,6 +440,9 @@ async def test_list_mirror_usage_points(
     mock_fetch_site_reading_types_page_for_aggregator.return_value = existing_srts
     mock_MirrorUsagePointListMapper.map_to_list_response = mock.Mock(return_value=mup_response)
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     result = await MirrorMeteringManager.list_mirror_usage_points(mock_session, scope, start, limit, changed_after)
     assert result is mup_response
@@ -448,4 +461,6 @@ async def test_list_mirror_usage_points(
         session=mock_session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, changed_after=changed_after
     )
 
-    mock_MirrorUsagePointListMapper.map_to_list_response.assert_called_once_with(scope, existing_srts, count)
+    mock_MirrorUsagePointListMapper.map_to_list_response.assert_called_once_with(
+        scope, existing_srts, count, config.mup_postrate_seconds
+    )

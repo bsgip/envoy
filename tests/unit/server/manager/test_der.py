@@ -39,6 +39,7 @@ from envoy.server.model.archive.site import (
     ArchiveSiteDERSetting,
     ArchiveSiteDERStatus,
 )
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import SiteRequestScope
@@ -175,6 +176,7 @@ AFTER_EPOCH = datetime(2022, 10, 9, 8, 7, 6, tzinfo=timezone.utc)
 
 
 @mock.patch("envoy.server.manager.der.site_der_for_site")
+@mock.patch("envoy.server.manager.der.RuntimeServerConfigManager.fetch_current_config")
 @pytest.mark.parametrize(
     "start, limit, after, expected_count",
     [
@@ -186,7 +188,12 @@ AFTER_EPOCH = datetime(2022, 10, 9, 8, 7, 6, tzinfo=timezone.utc)
 )
 @pytest.mark.anyio
 async def test_fetch_der_list_for_site_pagination(
-    mock_site_der_for_site: mock.MagicMock, start: int, limit: int, after: datetime, expected_count: int
+    mock_fetch_current_config: mock.MagicMock,
+    mock_site_der_for_site: mock.MagicMock,
+    start: int,
+    limit: int,
+    after: datetime,
+    expected_count: int,
 ):
     """Fetch when site_der_for_site returns an instance"""
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
@@ -195,6 +202,9 @@ async def test_fetch_der_list_for_site_pagination(
     site_der: SiteDER = generate_class_instance(SiteDER, seed=101)
     site_der.changed_time = AFTER_EPOCH
     mock_site_der_for_site.return_value = site_der
+
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
 
     result = await DERManager.fetch_der_list_for_site(mock_session, scope, start, limit, after)
     assert isinstance(result, DERListResponse)

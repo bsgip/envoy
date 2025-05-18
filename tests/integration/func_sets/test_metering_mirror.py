@@ -234,7 +234,9 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
     assert len(body) > 0
     parsed_response: MirrorUsagePoint = MirrorUsagePoint.from_xml(body)
     assert parsed_response.href == expected_href
-    assert_class_instance_equality(MirrorUsagePoint, mup, parsed_response, ignored_properties=set(["href", "mRID"]))
+    assert_class_instance_equality(
+        MirrorUsagePoint, mup, parsed_response, ignored_properties=set(["href", "mRID", "postRate"])
+    )
 
     # see if the list endpoint can fetch it via the updated time
     response = await client.get(
@@ -470,7 +472,9 @@ async def test_device_cert_mup_creation(client: AsyncClient):
     assert len(body) > 0
     parsed_response: MirrorUsagePoint = MirrorUsagePoint.from_xml(body)
     assert parsed_response.href == mup_href
-    assert_class_instance_equality(MirrorUsagePoint, mup, parsed_response, ignored_properties=set(["href", "mRID"]))
+    assert_class_instance_equality(
+        MirrorUsagePoint, mup, parsed_response, ignored_properties=set(["href", "mRID", "postRate"])
+    )
 
     # Ensure other certs can't access it
     response = await client.get(mup_href, headers={cert_header: urllib.parse.quote(DEVICE_6_CERT)})

@@ -18,6 +18,7 @@ from envoy.server.exception import NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.mapper.csip_aus.doe import DERControlListSource
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import DefaultSiteControl, Site
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
@@ -28,7 +29,9 @@ from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteReque
 @mock.patch("envoy.server.manager.derp.count_active_does_include_deleted")
 @mock.patch("envoy.server.manager.derp.DERProgramMapper")
 @mock.patch("envoy.server.manager.derp.utc_now")
+@mock.patch("envoy.server.manager.derp.RuntimeServerConfigManager.fetch_current_config")
 async def test_program_fetch_list_for_scope(
+    mock_fetch_current_config: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
     mock_DERProgramMapper: mock.MagicMock,
     mock_count_active_does_include_deleted: mock.MagicMock,
@@ -49,6 +52,9 @@ async def test_program_fetch_list_for_scope(
     mock_count_active_does_include_deleted.return_value = doe_count
     mock_DERProgramMapper.doe_program_list_response = mock.Mock(return_value=mapped_list)
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     result = await DERProgramManager.fetch_list_for_scope(mock_session, scope, default_doe)
 
@@ -59,7 +65,9 @@ async def test_program_fetch_list_for_scope(
 
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_count_active_does_include_deleted.assert_called_once_with(mock_session, existing_site, now, datetime.min)
-    mock_DERProgramMapper.doe_program_list_response.assert_called_once_with(scope, doe_count, default_doe)
+    mock_DERProgramMapper.doe_program_list_response.assert_called_once_with(
+        scope, doe_count, default_doe, config.derpl_pollrate_seconds
+    )
     assert_mock_session(mock_session)
     mock_utc_now.assert_called_once()
 
@@ -162,8 +170,10 @@ async def test_program_fetch_site_dne(
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.derp.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
+@mock.patch("envoy.server.manager.derp.RuntimeServerConfigManager.fetch_current_config")
 @pytest.mark.parametrize("selected_doe", [generate_class_instance(DynamicOperatingEnvelope), None])
 async def test_fetch_doe_control_for_scope(
+    mock_fetch_current_config: mock.MagicMock,
     mock_DERControlMapper: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     selected_doe: Optional[DynamicOperatingEnvelope],
@@ -176,6 +186,9 @@ async def test_fetch_doe_control_for_scope(
     mock_select_doe_include_deleted.return_value = selected_doe
     mock_DERControlMapper.map_to_response = mock.Mock(return_value=mapped_doe)
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     result = await DERControlManager.fetch_doe_control_for_scope(mock_session, scope, doe_id)
 
     assert_mock_session(mock_session, committed=False)
@@ -183,7 +196,9 @@ async def test_fetch_doe_control_for_scope(
         assert result is None
     else:
         assert result is mapped_doe
-        mock_DERControlMapper.map_to_response.assert_called_once_with(scope, selected_doe)
+        mock_DERControlMapper.map_to_response.assert_called_once_with(
+            scope, selected_doe, config.site_control_pow10_encoding
+        )
     mock_select_doe_include_deleted.assert_called_once_with(mock_session, scope.aggregator_id, scope.site_id, doe_id)
 
 
@@ -193,7 +208,9 @@ async def test_fetch_doe_control_for_scope(
 @mock.patch("envoy.server.manager.derp.count_active_does_include_deleted")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
 @mock.patch("envoy.server.manager.derp.utc_now")
+@mock.patch("envoy.server.manager.derp.RuntimeServerConfigManager.fetch_current_config")
 async def test_fetch_doe_controls_for_scope(
+    mock_fetch_current_config: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
     mock_DERControlMapper: mock.MagicMock,
     mock_count_active_does_include_deleted: mock.MagicMock,
@@ -222,6 +239,9 @@ async def test_fetch_doe_controls_for_scope(
     mock_utc_now.return_value = now
     mock_select_single_site_with_site_id.return_value = existing_site
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     result = await DERControlManager.fetch_doe_controls_for_scope(mock_session, scope, start, changed_after, limit)
 
@@ -234,7 +254,7 @@ async def test_fetch_doe_controls_for_scope(
         mock_session, existing_site, now, start, changed_after, limit
     )
     mock_DERControlMapper.map_to_list_response.assert_called_once_with(
-        scope, does_page, doe_count, DERControlListSource.DER_CONTROL_LIST
+        scope, does_page, doe_count, DERControlListSource.DER_CONTROL_LIST, config.site_control_pow10_encoding
     )
     mock_utc_now.assert_called_once()
     assert_mock_session(mock_session)
@@ -246,7 +266,9 @@ async def test_fetch_doe_controls_for_scope(
 @mock.patch("envoy.server.manager.derp.count_active_does_include_deleted")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
 @mock.patch("envoy.server.manager.derp.utc_now")
+@mock.patch("envoy.server.manager.derp.RuntimeServerConfigManager.fetch_current_config")
 async def test_fetch_doe_controls_for_scope_site_dne(
+    mock_fetch_current_config: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
     mock_DERControlMapper: mock.MagicMock,
     mock_count_active_does_include_deleted: mock.MagicMock,
@@ -267,6 +289,9 @@ async def test_fetch_doe_controls_for_scope_site_dne(
     mock_utc_now.return_value = now
     mock_select_single_site_with_site_id.return_value = None
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     result = await DERControlManager.fetch_doe_controls_for_scope(mock_session, scope, start, changed_after, limit)
 
@@ -277,7 +302,7 @@ async def test_fetch_doe_controls_for_scope_site_dne(
     mock_count_active_does_include_deleted.assert_not_called()
     mock_select_active_does_include_deleted.assert_not_called()
     mock_DERControlMapper.map_to_list_response.assert_called_once_with(
-        scope, [], 0, DERControlListSource.DER_CONTROL_LIST
+        scope, [], 0, DERControlListSource.DER_CONTROL_LIST, config.site_control_pow10_encoding
     )
     mock_utc_now.assert_called_once()
     assert_mock_session(mock_session)
@@ -287,7 +312,9 @@ async def test_fetch_doe_controls_for_scope_site_dne(
 @mock.patch("envoy.server.manager.derp.select_does_at_timestamp")
 @mock.patch("envoy.server.manager.derp.count_does_at_timestamp")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
+@mock.patch("envoy.server.manager.derp.RuntimeServerConfigManager.fetch_current_config")
 async def test_fetch_active_doe_controls_for_site(
+    mock_fetch_current_config: mock.MagicMock,
     mock_DERControlMapper: mock.MagicMock,
     mock_count_does_at_timestamp: mock.MagicMock,
     mock_select_does_at_timestamp: mock.MagicMock,
@@ -309,6 +336,9 @@ async def test_fetch_active_doe_controls_for_site(
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     result = await DERControlManager.fetch_active_doe_controls_for_scope(
         mock_session, scope, start, changed_after, limit
@@ -319,7 +349,11 @@ async def test_fetch_active_doe_controls_for_site(
     mock_select_does_at_timestamp.assert_called_once()
     mock_count_does_at_timestamp.assert_called_once()
     mock_DERControlMapper.map_to_list_response.assert_called_once_with(
-        scope, returned_does, returned_count, DERControlListSource.ACTIVE_DER_CONTROL_LIST
+        scope,
+        returned_does,
+        returned_count,
+        DERControlListSource.ACTIVE_DER_CONTROL_LIST,
+        config.site_control_pow10_encoding,
     )
 
     # The timestamp should be (roughly) utc now and should match for both calls
@@ -341,7 +375,9 @@ async def test_fetch_active_doe_controls_for_site(
 @mock.patch("envoy.server.manager.derp.select_site_with_default_site_control")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
 @mock.patch("envoy.server.manager.derp.DERControlManager._resolve_default_site_control")
+@mock.patch("envoy.server.manager.derp.RuntimeServerConfigManager.fetch_current_config")
 async def test_fetch_default_doe_controls_for_site(
+    mock_fetch_current_config: mock.MagicMock,
     mock_resolve_default_site_control: mock.MagicMock,
     mock_DERControlMapper: mock.MagicMock,
     mock_select_site_with_default_site_control: mock.MagicMock,
@@ -360,13 +396,18 @@ async def test_fetch_default_doe_controls_for_site(
     mock_session = create_mock_session()
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     result = await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, default_doe)
 
     # Assert
     assert result is mapped_control
     mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
-    mock_DERControlMapper.map_to_default_response.assert_called_once_with(scope, returned_site.default_site_control)
+    mock_DERControlMapper.map_to_default_response.assert_called_once_with(
+        scope, returned_site.default_site_control, config.site_control_pow10_encoding
+    )
 
     assert_mock_session(mock_session)
 
@@ -435,7 +476,9 @@ async def test_fetch_default_doe_controls_for_site_no_default(
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.derp.select_site_with_default_site_control")
 @mock.patch("envoy.server.manager.derp.DERControlMapper")
+@mock.patch("envoy.server.manager.derp.RuntimeServerConfigManager.fetch_current_config")
 async def test_fetch_default_doe_controls_for_site_no_global_default(
+    mock_fetch_current_config: mock.MagicMock,
     mock_DERControlMapper: mock.MagicMock,
     mock_select_site_with_default_site_control: mock.MagicMock,
 ):
@@ -452,6 +495,8 @@ async def test_fetch_default_doe_controls_for_site_no_global_default(
 
     mock_select_site_with_default_site_control.return_value = returned_site
     mock_DERControlMapper.map_to_default_response = mock.Mock(return_value=mapped_control)
+
+    mock_fetch_current_config.return_value = RuntimeServerConfig()
 
     # Act
     await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, default_doe)

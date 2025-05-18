@@ -270,12 +270,12 @@ class DERProgramMapper:
         rq_scope: DeviceOrAggregatorRequestScope,
         total_does: int,
         default_doe: Optional[DefaultDoeConfiguration],
-        config: RuntimeServerConfig,
+        pollrate_seconds: int,
     ) -> DERProgramListResponse:
         """Returns a fixed list of just the DOE Program"""
         return DERProgramListResponse(
             href=DERProgramMapper.doe_list_href(rq_scope),
-            pollRate=config.derpl_pollrate_seconds,
+            pollRate=pollrate_seconds,
             DERProgram=[DERProgramMapper.doe_program_response(rq_scope, total_does, default_doe)],
             all_=1,
             results=1,

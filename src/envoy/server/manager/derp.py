@@ -55,7 +55,7 @@ class DERProgramManager:
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
         # Note that the actual site_id is used to construct the response as it is required for the href
-        return DERProgramMapper.doe_program_list_response(scope, total_does, default_doe, config)
+        return DERProgramMapper.doe_program_list_response(scope, total_does, default_doe, config.derpl_pollrate_seconds)
 
     @staticmethod
     async def fetch_doe_program_for_scope(

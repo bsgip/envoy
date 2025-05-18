@@ -527,7 +527,7 @@ def test_NotificationMapper_map_does_to_response(notification_type: Notification
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
 
-    notification = NotificationMapper.map_does_to_response([doe1, doe2], sub, scope, notification_type)
+    notification = NotificationMapper.map_does_to_response([doe1, doe2], sub, scope, notification_type, -3)
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
     assert (

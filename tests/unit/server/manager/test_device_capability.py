@@ -6,6 +6,7 @@ from assertical.fake.generator import generate_class_instance
 from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
 
 from envoy.server.manager.device_capability import DeviceCapabilityManager
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.site import Site
 from envoy.server.request_scope import CertificateType, UnregisteredRequestScope
 
@@ -16,7 +17,9 @@ from envoy.server.request_scope import CertificateType, UnregisteredRequestScope
 @mock.patch("envoy.server.manager.device_capability.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.device_capability.select_aggregator_site_count")
 @mock.patch("envoy.server.manager.device_capability.count_site_reading_types_for_aggregator")
+@mock.patch("envoy.server.manager.device_capability.RuntimeServerConfigManager.fetch_current_config")
 async def test_device_capability_manager_aggregator_scope(
+    mock_fetch_current_config: mock.Mock,
     mock_count_site_reading_types_for_aggregator: mock.Mock,
     mock_select_aggregator_site_count: mock.Mock,
     mock_select_single_site_with_lfdi: mock.Mock,
@@ -34,6 +37,9 @@ async def test_device_capability_manager_aggregator_scope(
     mock_select_aggregator_site_count.return_value = 11
     mock_count_site_reading_types_for_aggregator.return_value = 22
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     assert (
         await DeviceCapabilityManager.fetch_device_capability(session=mock_session, scope=scope)
@@ -49,7 +55,7 @@ async def test_device_capability_manager_aggregator_scope(
         mock_session, scope.aggregator_id, None, datetime.min
     )
     mock_map_to_response.assert_called_once_with(
-        scope=scope, edev_cnt=12, mup_cnt=22
+        scope=scope, edev_cnt=12, mup_cnt=22, pollrate_seconds=config.dcap_pollrate_seconds
     )  # The edev count must also include aggregator end device
 
 
@@ -96,7 +102,9 @@ async def test_device_capability_manager_unregistered_device_scope(
 @mock.patch("envoy.server.manager.device_capability.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.device_capability.select_aggregator_site_count")
 @mock.patch("envoy.server.manager.device_capability.count_site_reading_types_for_aggregator")
+@mock.patch("envoy.server.manager.device_capability.RuntimeServerConfigManager.fetch_current_config")
 async def test_device_capability_manager_registered_device_scope(
+    mock_fetch_current_config: mock.Mock,
     mock_count_site_reading_types_for_aggregator: mock.Mock,
     mock_select_aggregator_site_count: mock.Mock,
     mock_select_single_site_with_lfdi: mock.Mock,
@@ -115,6 +123,9 @@ async def test_device_capability_manager_registered_device_scope(
         UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE
     )
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     assert (
         await DeviceCapabilityManager.fetch_device_capability(session=mock_session, scope=scope)
@@ -129,5 +140,5 @@ async def test_device_capability_manager_registered_device_scope(
         mock_session, scope.aggregator_id, existing_site.site_id, datetime.min
     )
     mock_map_to_response.assert_called_once_with(
-        scope=scope, edev_cnt=1, mup_cnt=99
+        scope=scope, edev_cnt=1, mup_cnt=99, pollrate_seconds=config.dcap_pollrate_seconds
     )  # 2 edevs, one for the returned edev and one for the virtual aggregator edev
