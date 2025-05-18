@@ -19,7 +19,6 @@ from envoy_schema.server.schema.sep2.identification import Link
 from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.mapper.common import generate_href
-from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
