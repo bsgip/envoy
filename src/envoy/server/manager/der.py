@@ -16,7 +16,8 @@ from envoy.server.crud.archive import copy_rows_into_archive
 from envoy.server.crud.der import generate_default_site_der, select_site_der_for_site
 from envoy.server.crud.end_device import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
-from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID, STATIC_POLL_RATE_SECONDS
+from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
+from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.der import (
     DERAvailabilityMapper,
@@ -69,6 +70,7 @@ class DERManager:
 
         # If there isn't custom DER info already in place - return a default
         site_der = await site_der_for_site(session, aggregator_id=scope.aggregator_id, site_id=scope.site_id)
+        session.expunge(site_der)  # NOTE: modifying this instance so we remove it from session to avoid ORM conflicts.
         site_der.site_der_id = PUBLIC_SITE_DER_ID
 
         # Manually filter - we are forcing our single DER into a simple list
@@ -84,7 +86,10 @@ class DERManager:
             ders = [site_der]
             total = 1
 
-        return DERMapper.map_to_list_response(scope, STATIC_POLL_RATE_SECONDS, ders, total)
+        # fetch runtime server config
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
+
+        return DERMapper.map_to_list_response(scope, ders, total, config.derl_pollrate_seconds)
 
     @staticmethod
     async def fetch_der_for_site(

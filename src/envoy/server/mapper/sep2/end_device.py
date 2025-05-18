@@ -86,6 +86,7 @@ class EndDeviceListMapper:
         scope: BaseRequestScope,
         site_list: Sequence[Site],
         site_count: int,
+        pollrate_seconds: int,
         virtual_site: Optional[Site] = None,
     ) -> EndDeviceListResponse:
 
@@ -101,14 +102,12 @@ class EndDeviceListMapper:
             end_devices.insert(0, VirtualEndDeviceMapper.map_to_response(scope, virtual_site))
             result_count += 1
 
-        return EndDeviceListResponse.model_validate(
-            {
-                "href": generate_href(uri.EndDeviceListUri, scope),
-                "all_": site_count,
-                "results": result_count,
-                "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
-                "EndDevice": end_devices,
-            }
+        return EndDeviceListResponse(
+            href=generate_href(uri.EndDeviceListUri, scope),
+            all_=site_count,
+            results=result_count,
+            subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
+            EndDevice=end_devices,
         )
 
 

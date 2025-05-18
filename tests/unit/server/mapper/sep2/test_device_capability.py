@@ -28,7 +28,9 @@ def test_map_to_response(scope: BaseRequestScope):
     edev_cnt = 1
     mup_cnt = 1
 
-    device_capability = DeviceCapabilityMapper.map_to_response(scope=scope, edev_cnt=edev_cnt, mup_cnt=mup_cnt)
+    device_capability = DeviceCapabilityMapper.map_to_response(
+        scope=scope, edev_cnt=edev_cnt, mup_cnt=mup_cnt, pollrate_seconds=10
+    )
     assert device_capability is not None
     assert isinstance(device_capability, DeviceCapabilityResponse)
 
@@ -40,6 +42,7 @@ def test_map_to_response(scope: BaseRequestScope):
         href=_form_href(scope.href_prefix, MirrorUsagePointListUri), all_=f"{mup_cnt}"
     )
     assert device_capability.href == _form_href(scope.href_prefix, DeviceCapabilityUri)
+    assert device_capability.pollRate == 10
 
 
 @pytest.mark.parametrize(

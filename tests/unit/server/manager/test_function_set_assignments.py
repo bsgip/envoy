@@ -11,6 +11,7 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 )
 
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.request_scope import SiteRequestScope
 
 
@@ -50,7 +51,9 @@ async def test_function_set_assignments_fetch_function_set_assignments_for_aggre
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.function_set_assignments.FunctionSetAssignmentsMapper")
+@mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
 async def test_function_set_assignments_fetch_function_set_assignments_list_for_aggregator_and_site(
+    mock_fetch_current_config: mock.MagicMock,
     mock_FunctionSetAssignmentsMapper: mock.MagicMock,
 ):
     """Check the manager will handle interacting with its responses"""
@@ -63,6 +66,9 @@ async def test_function_set_assignments_fetch_function_set_assignments_list_for_
 
     # Just do a simple passthrough
     mock_FunctionSetAssignmentsMapper.map_to_list_response = mock.Mock(return_value=mapped_fsal)
+
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
 
     # Act
     with mock.patch(
@@ -80,5 +86,5 @@ async def test_function_set_assignments_fetch_function_set_assignments_list_for_
     assert result == mapped_fsal
     assert_mock_session(mock_session)
     mock_FunctionSetAssignmentsMapper.map_to_list_response.assert_called_once_with(
-        scope=scope, function_set_assignments=[mapped_fsa]
+        scope=scope, function_set_assignments=[mapped_fsa], pollrate_seconds=config.fsal_pollrate_seconds
     )

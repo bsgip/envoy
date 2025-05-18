@@ -121,7 +121,7 @@ def test_MirrorUsagePointMapper_map_to_response():
     srt_optional: SiteReadingType = generate_class_instance(SiteReadingType, seed=303, optional_is_none=True)
     scope = generate_class_instance(BaseRequestScope, optional_is_none=True)
 
-    result_all_set = MirrorUsagePointMapper.map_to_response(scope, srt_all_set, site)
+    result_all_set = MirrorUsagePointMapper.map_to_response(scope, srt_all_set, site, 13)
     assert result_all_set is not None
     assert isinstance(result_all_set, MirrorUsagePoint)
     assert result_all_set.href == uris.MirrorUsagePointUri.format(mup_id=srt_all_set.site_reading_type_id)
@@ -133,8 +133,9 @@ def test_MirrorUsagePointMapper_map_to_response():
     assert result_all_set.mirrorMeterReadings[0].readingType.phase == srt_all_set.phase
     assert result_all_set.mirrorMeterReadings[0].readingType.uom == srt_all_set.uom
     assert result_all_set.mirrorMeterReadings[0].readingType.powerOfTenMultiplier == srt_all_set.power_of_ten_multiplier
+    assert result_all_set.postRate == 13
 
-    result_optional = MirrorUsagePointMapper.map_to_response(scope, srt_optional, site)
+    result_optional = MirrorUsagePointMapper.map_to_response(scope, srt_optional, site, 13)
     assert result_optional is not None
     assert isinstance(result_optional, MirrorUsagePoint)
     assert result_optional.href == uris.MirrorUsagePointUri.format(mup_id=srt_optional.site_reading_type_id)
@@ -155,6 +156,7 @@ def test_MirrorUsagePointMapper_map_to_response():
     assert (
         result_all_set.mirrorMeterReadings[0].mRID != result_optional.mirrorMeterReadings[0].mRID
     ), "mrid should be unique"
+    assert result_all_set.postRate == 13
 
 
 @mock.patch("envoy.server.mapper.sep2.metering.MirrorUsagePointMapper")
@@ -170,7 +172,7 @@ def test_MirrorUsagePointMapper_map_to_list_response(mock_MirrorUsagePointMapper
 
     mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
 
-    result_all_set = MirrorUsagePointListMapper.map_to_list_response(scope, [srt_all_set], srt_count)
+    result_all_set = MirrorUsagePointListMapper.map_to_list_response(scope, [srt_all_set], srt_count, 1)
     assert result_all_set is not None
     assert isinstance(result_all_set, MirrorUsagePointListResponse)
     assert result_all_set.all_ == srt_count
@@ -179,7 +181,7 @@ def test_MirrorUsagePointMapper_map_to_list_response(mock_MirrorUsagePointMapper
     assert result_all_set.mirrorUsagePoints[0] == mapped_mup
 
     # Ensure we depend on the underlying individual entity map_to_response
-    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(scope, srt_all_set, site)
+    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(scope, srt_all_set, site, 1)
 
 
 def test_MirrorMeterReadingMapper_map_reading_from_request_no_time_period():

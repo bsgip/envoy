@@ -19,7 +19,6 @@ from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
-from envoy.server.model.constants import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.site import DefaultSiteControl
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
@@ -68,7 +67,7 @@ def test_map_derc_to_response(
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/foo/bar"
     )
 
-    result_all_set = DERControlMapper.map_to_response(scope, site_control_group_id, doe, now)
+    result_all_set = DERControlMapper.map_to_response(scope, site_control_group_id, doe, -4, now)
     assert result_all_set is not None
     assert isinstance(result_all_set, DERControlResponse)
     assert result_all_set.interval.start == doe.start_time.timestamp()
@@ -77,16 +76,14 @@ def test_map_derc_to_response(
     assert result_all_set.href.startswith(scope.href_prefix)
     assert f"/{scope.display_site_id}" in result_all_set.href
     assert f"/{site_control_group_id}" in result_all_set.href
-    assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
-    assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
-    assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * DOE_DECIMAL_POWER)
-    assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * DOE_DECIMAL_POWER)
-    assert result_all_set.DERControlBase_.opModGenLimW.multiplier == -DOE_DECIMAL_PLACES
-    assert result_all_set.DERControlBase_.opModLoadLimW.multiplier == -DOE_DECIMAL_PLACES
-    assert result_all_set.DERControlBase_.opModGenLimW.value == int(
-        doe.generation_limit_active_watts * DOE_DECIMAL_POWER
-    )
-    assert result_all_set.DERControlBase_.opModLoadLimW.value == int(doe.load_limit_active_watts * DOE_DECIMAL_POWER)
+    assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -4
+    assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -4
+    assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * 10000)
+    assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * 10000)
+    assert result_all_set.DERControlBase_.opModGenLimW.multiplier == -4
+    assert result_all_set.DERControlBase_.opModLoadLimW.multiplier == -4
+    assert result_all_set.DERControlBase_.opModGenLimW.value == int(doe.generation_limit_active_watts * 10000)
+    assert result_all_set.DERControlBase_.opModLoadLimW.value == int(doe.load_limit_active_watts * 10000)
     assert result_all_set.DERControlBase_.opModConnect == doe.set_connected
     assert result_all_set.DERControlBase_.opModEnergize == doe.set_energized
     assert result_all_set.randomizeStart == doe.randomize_start_seconds
@@ -105,7 +102,7 @@ def test_map_derc_to_response(
             assert result_all_set.EventStatus_.currentStatus == EventStatusType.Scheduled
         assert result_all_set.EventStatus_.dateTime == int(doe.changed_time.timestamp())
 
-    result_optional = DERControlMapper.map_to_response(scope, site_control_group_id, doe_opt, now)
+    result_optional = DERControlMapper.map_to_response(scope, site_control_group_id, doe_opt, -3, now)
     assert result_optional is not None
     assert isinstance(result_optional, DERControlResponse)
     assert result_optional.interval.start == doe_opt.start_time.timestamp()
@@ -143,7 +140,7 @@ def test_map_default_to_response():
     )
     scope = generate_class_instance(BaseRequestScope)
 
-    result_all_set = DERControlMapper.map_to_default_response(scope, doe_default)
+    result_all_set = DERControlMapper.map_to_default_response(scope, doe_default, 1)
     assert result_all_set is not None
     assert isinstance(result_all_set, DefaultDERControl)
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
@@ -181,7 +178,7 @@ def test_map_derc_to_list_response():
     )
 
     result = DERControlMapper.map_to_list_response(
-        scope, site_control_group_id, all_does, doe_count, DERControlListSource.DER_CONTROL_LIST, now
+        scope, site_control_group_id, all_does, doe_count, DERControlListSource.DER_CONTROL_LIST, 1, now
     )
     assert result is not None
     assert isinstance(result, DERControlListResponse)
@@ -193,9 +190,10 @@ def test_map_derc_to_list_response():
     ), f"Expected {len(all_does)} unique mrid's in the children"
     assert str(scope.display_site_id) in result.href
     assert f"/{site_control_group_id}" in result.href
+    assert result.DERControl[0].DERControlBase_.opModGenLimW.multiplier == 1
 
     empty_result = DERControlMapper.map_to_list_response(
-        scope, site_control_group_id, [], doe_count, DERControlListSource.ACTIVE_DER_CONTROL_LIST, now
+        scope, site_control_group_id, [], doe_count, DERControlListSource.ACTIVE_DER_CONTROL_LIST, 1, now
     )
     assert empty_result is not None
     assert isinstance(empty_result, DERControlListResponse)
@@ -310,11 +308,12 @@ def test_map_derp_doe_program_list_response(
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
 
     result = DERProgramMapper.doe_program_list_response(
-        scope, control_groups_with_counts, total_control_groups, default_doe
+        scope, control_groups_with_counts, total_control_groups, 3, default_doe
     )
     assert result is not None
     assert isinstance(result, DERProgramListResponse)
     assert result.href
+    assert result.pollRate == 3
 
     assert result.all_ == total_control_groups
     if len(control_groups_with_counts) == 0:
@@ -347,5 +346,5 @@ def test_mrid_uniqueness():
     now = datetime(2022, 11, 3, tzinfo=timezone.utc)
 
     program = DERProgramMapper.doe_program_response(scope, 999, site_control_group, None)
-    control = DERControlMapper.map_to_response(scope, site_control_group.site_control_group_id, doe, now)
+    control = DERControlMapper.map_to_response(scope, site_control_group.site_control_group_id, doe, 1, now)
     assert program.mRID != control.mRID

@@ -25,6 +25,7 @@ from envoy.server.manager.end_device import (
     fetch_sites_and_count_for_claims,
 )
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.site import Site
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import (
@@ -609,7 +610,9 @@ async def test_add_or_update_enddevice_for_scope_device(
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.end_device.fetch_sites_and_count_for_claims")
 @mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
+@mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
 async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
+    mock_fetch_current_config: mock.Mock,
     mock_EndDeviceListMapper: mock.MagicMock,
     mock_fetch_sites_and_count_for_claims: mock.MagicMock,
 ):
@@ -632,6 +635,9 @@ async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
     mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
     mock_fetch_sites_and_count_for_claims.return_value = (returned_sites, returned_site_count)
 
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     result: EndDeviceListResponse = await EndDeviceManager.fetch_enddevicelist_for_scope(
         mock_session, scope, start, after, limit
@@ -646,6 +652,7 @@ async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
         site_list=returned_sites,
         site_count=returned_site_count + 1,
         virtual_site=None,
+        pollrate_seconds=config.edevl_pollrate_seconds,
     )
     mock_fetch_sites_and_count_for_claims.assert_called_once_with(mock_session, scope, start - 1, after, limit)
 
@@ -658,7 +665,9 @@ async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
 @mock.patch("envoy.server.manager.end_device.fetch_sites_and_count_for_claims")
 @mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
 @mock.patch("envoy.server.manager.end_device.get_virtual_site_for_aggregator")
+@mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
 async def test_fetch_enddevicelist_for_scope_aggregator(
+    mock_fetch_current_config: mock.Mock,
     mock_get_virtual_site_for_aggregator: mock.MagicMock,
     mock_EndDeviceListMapper: mock.MagicMock,
     mock_fetch_sites_and_count_for_claims: mock.MagicMock,
@@ -686,6 +695,10 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
     mock_get_virtual_site_for_aggregator.return_value = returned_virtual_site
     mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
     mock_fetch_sites_and_count_for_claims.return_value = (returned_sites, returned_site_count)
+
+    config = RuntimeServerConfig()
+    mock_fetch_current_config.return_value = config
+
     # Act
     result: EndDeviceListResponse = await EndDeviceManager.fetch_enddevicelist_for_scope(
         mock_session, scope, start, after, input_limit
@@ -701,6 +714,7 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
         site_list=returned_sites,
         site_count=returned_site_count + 1,
         virtual_site=expected_virtual_site,
+        pollrate_seconds=config.edevl_pollrate_seconds,
     )
     mock_fetch_sites_and_count_for_claims.assert_called_once_with(
         mock_session, scope, start, after, expected_query_limit

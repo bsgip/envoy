@@ -393,6 +393,7 @@ class NotificationMapper:
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
+        power10_multiplier: int,
     ) -> Notification:
         """Turns a list of does into a notification"""
         doe_list_href = generate_href(
@@ -409,7 +410,8 @@ class NotificationMapper:
                     "all_": len(does),
                     "results": len(does),
                     "DERControl": [
-                        DERControlMapper.map_to_response(scope, site_control_group_id, d, now) for d in does
+                        DERControlMapper.map_to_response(scope, site_control_group_id, d, power10_multiplier, now)
+                        for d in does
                     ],
                 },
             }

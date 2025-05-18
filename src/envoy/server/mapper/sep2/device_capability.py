@@ -8,7 +8,9 @@ from envoy.server.request_scope import BaseRequestScope
 
 class DeviceCapabilityMapper:
     @staticmethod
-    def map_to_response(scope: BaseRequestScope, edev_cnt: int, mup_cnt: int) -> DeviceCapabilityResponse:
+    def map_to_response(
+        scope: BaseRequestScope, edev_cnt: int, mup_cnt: int, pollrate_seconds: int
+    ) -> DeviceCapabilityResponse:
         """Maps inputs to generate a Response object.
 
         Args:
@@ -20,6 +22,7 @@ class DeviceCapabilityMapper:
         """
         return DeviceCapabilityResponse(
             href=generate_href(uri.DeviceCapabilityUri, scope),
+            pollRate=pollrate_seconds,
             EndDeviceListLink=ListLink(href=generate_href(uri.EndDeviceListUri, scope), all_=edev_cnt),
             MirrorUsagePointListLink=ListLink(href=generate_href(uri.MirrorUsagePointListUri, scope), all_=mup_cnt),
             TimeLink=Link(href=generate_href(uri.TimeUri, scope)),

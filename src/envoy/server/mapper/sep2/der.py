@@ -116,9 +116,9 @@ class DERMapper:
     @staticmethod
     def map_to_list_response(
         scope: DeviceOrAggregatorRequestScope,
-        poll_rate_seconds: int,
         ders: list[SiteDER],
         der_count: int,
+        pollrate_seconds: int,
     ) -> DERListResponse:
         """Turns a set of SiteDER (with their active DER program ID) into a list response
 
@@ -126,7 +126,7 @@ class DERMapper:
         return DERListResponse.model_validate(
             {
                 "href": generate_href(uri.DERListUri, scope, site_id=scope.display_site_id),
-                "pollRate": poll_rate_seconds,
+                "pollRate": pollrate_seconds,
                 "all_": der_count,
                 "results": len(ders),
                 "DER_": [DERMapper.map_to_response(scope, d, None) for d in ders],
