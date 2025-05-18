@@ -22,7 +22,6 @@ from envoy.server.mapper.csip_aus.doe import (
 )
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
-from envoy.server.model.constants import DOE_DECIMAL_PLACES, DOE_DECIMAL_POWER
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
