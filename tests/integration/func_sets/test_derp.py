@@ -22,8 +22,12 @@ from sqlalchemy import select
 
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.mapper.csip_aus.doe import DERControlMapper
-from envoy.server.model.doe import DOE_DECIMAL_PLACES, DynamicOperatingEnvelope
-from tests.conftest import DEFAULT_DOE_EXPORT_ACTIVE_WATTS, DEFAULT_DOE_IMPORT_ACTIVE_WATTS
+from envoy.server.model.doe import DynamicOperatingEnvelope
+from tests.conftest import (
+    DEFAULT_DOE_EXPORT_ACTIVE_WATTS,
+    DEFAULT_DOE_IMPORT_ACTIVE_WATTS,
+    DEFAULT_SITE_CONTROL_POW10_ENCODING,
+)
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate6 import TEST_CERTIFICATE_FINGERPRINT as DEVICE_5_CERT
@@ -348,9 +352,9 @@ async def test_get_dercontrol_list(
             control: DERControlResponse = ctrl
             assert control.DERControlBase_
             assert control.DERControlBase_.opModImpLimW.value == expected_import
-            assert control.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
+            assert control.DERControlBase_.opModImpLimW.multiplier == DEFAULT_SITE_CONTROL_POW10_ENCODING
             assert control.DERControlBase_.opModExpLimW.value == expected_output
-            assert control.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
+            assert control.DERControlBase_.opModExpLimW.multiplier == DEFAULT_SITE_CONTROL_POW10_ENCODING
             assert_datetime_equal(expected_start, control.interval.start)
 
 
@@ -416,11 +420,15 @@ async def test_get_fallback_default_doe(client: AsyncClient, uri_derc_default_co
 
     assert (
         parsed_response.DERControlBase_.opModImpLimW.value
-        == DERControlMapper.map_to_active_power(DEFAULT_DOE_IMPORT_ACTIVE_WATTS).value
+        == DERControlMapper.map_to_active_power(
+            DEFAULT_DOE_IMPORT_ACTIVE_WATTS, DEFAULT_SITE_CONTROL_POW10_ENCODING
+        ).value
     )
     assert (
         parsed_response.DERControlBase_.opModExpLimW.value
-        == DERControlMapper.map_to_active_power(DEFAULT_DOE_EXPORT_ACTIVE_WATTS).value
+        == DERControlMapper.map_to_active_power(
+            DEFAULT_DOE_EXPORT_ACTIVE_WATTS, DEFAULT_SITE_CONTROL_POW10_ENCODING
+        ).value
     )
 
 
@@ -440,11 +448,15 @@ async def test_get_site_specific_default_doe(client: AsyncClient, uri_derc_defau
 
     assert (
         parsed_response.DERControlBase_.opModImpLimW.value
-        != DERControlMapper.map_to_active_power(DEFAULT_DOE_IMPORT_ACTIVE_WATTS).value
+        != DERControlMapper.map_to_active_power(
+            DEFAULT_DOE_IMPORT_ACTIVE_WATTS, DEFAULT_SITE_CONTROL_POW10_ENCODING
+        ).value
     )
     assert (
         parsed_response.DERControlBase_.opModExpLimW.value
-        != DERControlMapper.map_to_active_power(DEFAULT_DOE_EXPORT_ACTIVE_WATTS).value
+        != DERControlMapper.map_to_active_power(
+            DEFAULT_DOE_EXPORT_ACTIVE_WATTS, DEFAULT_SITE_CONTROL_POW10_ENCODING
+        ).value
     )
 
 

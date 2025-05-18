@@ -46,7 +46,7 @@ class DERControlMapper:
     @staticmethod
     def map_to_active_power(p: Decimal, pow10_multiplier: int) -> ActivePower:
         """Creates an ActivePower instance from our own internal power decimal reading"""
-        decimal_power = pow(10, -pow10_multiplier)
+        decimal_power = int(pow(10, -pow10_multiplier))
         return ActivePower(
             value=int(p * decimal_power),
             multiplier=pow10_multiplier,

@@ -31,6 +31,7 @@ from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationType, SubscriptionMapper
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
@@ -650,7 +651,9 @@ async def test_fetch_batched_entities_bad_resource():
 @mock.patch("envoy.notification.task.check.entities_serviced_by_subscription")
 @mock.patch("envoy.notification.task.check.select_subscriptions_for_resource")
 @mock.patch("envoy.notification.task.check.fetch_batched_entities")
+@mock.patch("envoy.notification.task.check.RuntimeServerConfigManager.fetch_current_config")
 async def test_check_db_change_or_delete(
+    mock_fetch_current_config: mock.MagicMock,
     mock_fetch_batched_entities: mock.MagicMock,
     mock_select_subscriptions_for_resource: mock.MagicMock,
     mock_entities_serviced_by_subscription: mock.MagicMock,
@@ -703,6 +706,10 @@ async def test_check_db_change_or_delete(
             return (e for e in entities)
 
     mock_entities_serviced_by_subscription.side_effect = side_effect_entities_serviced_by_subscription
+
+    # Create runtime server config
+    config: RuntimeServerConfig = generate_class_instance(RuntimeServerConfig)
+    mock_fetch_current_config.return_value = config
 
     #
     # ACT

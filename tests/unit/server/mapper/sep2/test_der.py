@@ -85,7 +85,7 @@ def test_der_list():
     poll_rate = 99
     count = 42
 
-    mapped = DERMapper.map_to_list_response(scope, poll_rate, ders, count)
+    mapped = DERMapper.map_to_list_response(scope, ders, count, poll_rate)
     assert isinstance(mapped, DERListResponse)
     assert mapped.results == 4
     assert mapped.all_ == count
