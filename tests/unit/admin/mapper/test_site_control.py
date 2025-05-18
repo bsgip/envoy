@@ -69,6 +69,8 @@ def test_site_control_mapper_roundtrip(optional_is_none: bool):
     assert mdl.changed_time == changed_time
     assert mdl.created_time is None, "Must be set in the DB"
     assert mdl.dynamic_operating_envelope_id is None, "Must be set in the DB"
+    mdl.created_time = datetime(2022, 1, 2, 3, 4, 5)
+    mdl.dynamic_operating_envelope_id = 213123
 
     actual_req = SiteControlListMapper.map_to_response(mdl)
 
