@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Sequence
 
 from envoy_schema.admin.schema.archive import (
@@ -53,8 +54,10 @@ class ArchiveMapper:
             site_id=doe.site_id,
             calculation_log_id=doe.calculation_log_id,
             duration_seconds=doe.duration_seconds,
-            import_limit_active_watts=doe.import_limit_active_watts,
-            export_limit_watts=doe.export_limit_watts,
+            import_limit_active_watts=(
+                doe.import_limit_active_watts if doe.import_limit_active_watts is not None else Decimal(0)
+            ),
+            export_limit_watts=doe.export_limit_watts if doe.export_limit_watts is not None else Decimal(0),
             start_time=doe.start_time,
             changed_time=doe.changed_time,
             created_time=doe.created_time,

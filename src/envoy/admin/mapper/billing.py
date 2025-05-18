@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Generator, Iterable, Optional
 
 from envoy_schema.admin.schema.billing import (
@@ -163,8 +164,10 @@ class BillingMapper:
     def map_doe(doe: DynamicOperatingEnvelope) -> BillingDoe:
         return BillingDoe(
             duration_seconds=doe.duration_seconds,
-            export_limit_watts=doe.export_limit_watts,
-            import_limit_active_watts=doe.import_limit_active_watts,
+            export_limit_watts=doe.export_limit_watts if doe.export_limit_watts is not None else Decimal(0),
+            import_limit_active_watts=(
+                doe.import_limit_active_watts if doe.import_limit_active_watts is not None else Decimal(0)
+            ),
             period_start=doe.start_time,
             site_id=doe.site_id,
         )

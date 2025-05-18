@@ -76,6 +76,8 @@ LIMIT 1;
         sa.Column("site_control_group_id", sa.INTEGER(), nullable=False, server_default=sa.text("1")),
     )
     op.alter_column("archive_dynamic_operating_envelope", "site_control_group_id", server_default=None)
+    op.alter_column("archive_dynamic_operating_envelope", "import_limit_active_watts", nullable=True)
+    op.alter_column("archive_dynamic_operating_envelope", "export_limit_watts", nullable=True)
 
     op.drop_index("archive_doe_end_time_deleted_time_site_id", table_name="archive_dynamic_operating_envelope")
     op.create_index(
@@ -89,6 +91,8 @@ LIMIT 1;
         sa.Column("site_control_group_id", sa.Integer(), nullable=False, server_default=sa.text("1")),
     )
     op.alter_column("dynamic_operating_envelope", "site_control_group_id", server_default=None)
+    op.alter_column("dynamic_operating_envelope", "import_limit_active_watts", nullable=True)
+    op.alter_column("dynamic_operating_envelope", "export_limit_watts", nullable=True)
     op.drop_index("ix_dynamic_operating_envelope_end_time_site_id", table_name="dynamic_operating_envelope")
     op.drop_constraint("start_time_site_id_uc", "dynamic_operating_envelope", type_="unique")
     op.create_index(
@@ -139,6 +143,10 @@ def downgrade() -> None:
         unique=False,
     )
     op.drop_column("archive_dynamic_operating_envelope", "site_control_group_id")
+    op.alter_column("archive_dynamic_operating_envelope", "import_limit_active_watts", nullable=False)
+    op.alter_column("archive_dynamic_operating_envelope", "export_limit_watts", nullable=False)
+    op.alter_column("dynamic_operating_envelope", "import_limit_active_watts", nullable=False)
+    op.alter_column("dynamic_operating_envelope", "export_limit_watts", nullable=False)
     op.drop_index(op.f("ix_site_control_group_changed_time"), table_name="site_control_group")
     op.drop_table("site_control_group")
     op.drop_index(op.f("ix_archive_site_control_group_site_control_group_id"), table_name="archive_site_control_group")

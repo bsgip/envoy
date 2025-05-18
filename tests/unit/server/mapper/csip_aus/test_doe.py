@@ -81,6 +81,14 @@ def test_map_derc_to_response(
     assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
     assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * DOE_DECIMAL_POWER)
     assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * DOE_DECIMAL_POWER)
+    assert result_all_set.DERControlBase_.opModGenLimW.multiplier == -DOE_DECIMAL_PLACES
+    assert result_all_set.DERControlBase_.opModLoadLimW.multiplier == -DOE_DECIMAL_PLACES
+    assert result_all_set.DERControlBase_.opModGenLimW.value == int(
+        doe.generation_limit_active_watts * DOE_DECIMAL_POWER
+    )
+    assert result_all_set.DERControlBase_.opModLoadLimW.value == int(doe.load_limit_active_watts * DOE_DECIMAL_POWER)
+    assert result_all_set.DERControlBase_.opModConnect == doe.set_connected
+    assert result_all_set.DERControlBase_.opModEnergize == doe.set_energized
     assert result_all_set.randomizeStart == doe.randomize_start_seconds
 
     # Event status parsing is a little complex - this tries to check all the options
@@ -106,12 +114,12 @@ def test_map_derc_to_response(
     assert result_optional.href.startswith(scope.href_prefix)
     assert f"/{scope.display_site_id}" in result_optional.href
     assert f"/{site_control_group_id}" in result_optional.href
-    assert result_optional.DERControlBase_.opModImpLimW.multiplier == -DOE_DECIMAL_PLACES
-    assert result_optional.DERControlBase_.opModExpLimW.multiplier == -DOE_DECIMAL_PLACES
-    assert result_optional.DERControlBase_.opModImpLimW.value == int(
-        doe_opt.import_limit_active_watts * DOE_DECIMAL_POWER
-    )
-    assert result_optional.DERControlBase_.opModExpLimW.value == int(doe_opt.export_limit_watts * DOE_DECIMAL_POWER)
+    assert result_optional.DERControlBase_.opModImpLimW is None
+    assert result_optional.DERControlBase_.opModExpLimW is None
+    assert result_optional.DERControlBase_.opModGenLimW is None
+    assert result_optional.DERControlBase_.opModLoadLimW is None
+    assert result_optional.DERControlBase_.opModConnect is None
+    assert result_optional.DERControlBase_.opModEnergize is None
     assert result_optional.randomizeStart == randomize_seconds
 
     if isinstance(doe_opt, ArchiveDynamicOperatingEnvelope) and doe_opt.deleted_time is not None:

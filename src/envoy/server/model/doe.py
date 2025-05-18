@@ -66,11 +66,11 @@ class DynamicOperatingEnvelope(Base):
     randomize_start_seconds: Mapped[Optional[int]] = mapped_column(
         nullable=True
     )  # Client directive to randomize the actual start_time by this many seconds
-    import_limit_active_watts: Mapped[Decimal] = mapped_column(
-        DECIMAL(16, DOE_DECIMAL_PLACES)
+    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on imported active power
-    export_limit_watts: Mapped[Decimal] = mapped_column(
-        DECIMAL(16, DOE_DECIMAL_PLACES)
+    export_limit_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on exported active power TODO: rename to ..active_watts
 
     end_time: Mapped[datetime] = mapped_column(

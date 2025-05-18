@@ -102,8 +102,16 @@ class DERControlMapper:
                     }
                 ),
                 "DERControlBase_": DERControlBase(
-                    opModImpLimW=DERControlMapper.map_to_active_power(doe.import_limit_active_watts),
-                    opModExpLimW=DERControlMapper.map_to_active_power(doe.export_limit_watts),
+                    opModImpLimW=(
+                        DERControlMapper.map_to_active_power(doe.import_limit_active_watts)
+                        if doe.import_limit_active_watts is not None
+                        else None
+                    ),
+                    opModExpLimW=(
+                        DERControlMapper.map_to_active_power(doe.export_limit_watts)
+                        if doe.export_limit_watts is not None
+                        else None
+                    ),
                     opModLoadLimW=(
                         DERControlMapper.map_to_active_power(doe.load_limit_active_watts)
                         if doe.load_limit_active_watts is not None
@@ -114,7 +122,7 @@ class DERControlMapper:
                         if doe.generation_limit_active_watts is not None
                         else None
                     ),
-                    opModEnergize=doe.set_connected if doe.set_connected is not None else None,
+                    opModEnergize=doe.set_energized if doe.set_energized is not None else None,
                     opModConnect=doe.set_connected if doe.set_connected is not None else None,
                 ),
             }

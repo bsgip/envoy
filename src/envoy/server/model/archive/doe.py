@@ -38,13 +38,14 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     duration_seconds: Mapped[int] = mapped_column()
     randomize_start_seconds: Mapped[Optional[int]] = mapped_column(nullable=True)
-    import_limit_active_watts: Mapped[Decimal] = mapped_column(DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES))
-    export_limit_watts: Mapped[Decimal] = mapped_column(DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES))
+    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
+    )
+    export_limit_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
+    )
 
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
-    # NOTE: We've decided to include these 'non-DOE' related fields (that map to DERControl elements) here and
-    # eventually completely drop the DOE concept and convert this entity to reflect the CSIP-AUS DERControl resource.
     generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
