@@ -11,7 +11,12 @@ from envoy_schema.admin.schema.site_control import (
     SiteControlPageResponse,
     SiteControlRequest,
 )
-from envoy_schema.admin.schema.uri import SiteControlGroupListUri, SiteControlGroupUri, SiteControlUri
+from envoy_schema.admin.schema.uri import (
+    SiteControlGroupListUri,
+    SiteControlGroupUri,
+    SiteControlRangeUri,
+    SiteControlUri,
+)
 from fastapi import APIRouter, Query, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError
@@ -125,4 +130,18 @@ async def get_all_site_controls(
         start=extract_start_from_paging_param(start),
         limit=extract_limit_from_paging_param(limit),
         changed_after=after,
+    )
+
+
+@router.delete(SiteControlRangeUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
+async def delete_site_controls_in_range(group_id: int, period_start: datetime, period_end: datetime) -> None:
+    """Deletes all DER controls for the specified group whose start time lies in the specified time range (inclusive
+    start, exclusive end). All deleted controls will be properly cancelled / archived.
+
+    Returns:
+        None
+    """
+
+    await SiteControlListManager.delete_site_controls_in_range(
+        db.session, site_control_group_id=group_id, site_id=None, period_start=period_start, period_end=period_end
     )

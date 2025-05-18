@@ -18,7 +18,12 @@ from envoy_schema.admin.schema.site_control import (
     SiteControlRequest,
     SiteControlResponse,
 )
-from envoy_schema.admin.schema.uri import SiteControlGroupListUri, SiteControlGroupUri, SiteControlUri
+from envoy_schema.admin.schema.uri import (
+    SiteControlGroupListUri,
+    SiteControlGroupUri,
+    SiteControlRangeUri,
+    SiteControlUri,
+)
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
@@ -301,3 +306,64 @@ async def test_get_all_site_controls(
 
     assert_list_type(SiteControlResponse, site_page.controls, len(expected_doe_ids))
     assert expected_doe_ids == [d.site_control_id for d in site_page.controls]
+
+
+@pytest.mark.parametrize(
+    "site_control_group_id, period_start_str, period_end_str, expected_doe_ids",
+    [
+        (
+            1,
+            "2022-05-07T01:02:00+10:00",
+            "2023-05-07T01:02:00+10:00",
+            [1, 2, 3, 4],
+        ),
+        (
+            2,
+            "2022-05-07T01:02:00+10:00",
+            "2023-05-07T01:02:00+10:00",
+            [],
+        ),
+        (
+            1,
+            "2022-05-07T01:02:00+10:00",
+            "2022-05-07T02:02:00+10:00",
+            [1, 2, 3],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_delete_does_in_range(
+    admin_client_auth: AsyncClient,
+    pg_base_config,
+    site_control_group_id: int,
+    period_start_str: str,
+    period_end_str: str,
+    expected_doe_ids: list[int],
+):
+    """Sanity check on the Fetch DOE endpoint"""
+    async with generate_async_session(pg_base_config) as session:
+        before_doe_count = await count_all_does(session, site_control_group_id, None)
+
+    response = await admin_client_auth.delete(
+        SiteControlRangeUri.format(
+            group_id=site_control_group_id, period_start=period_start_str, period_end=period_end_str
+        )
+    )
+    assert response.status_code == HTTPStatus.NO_CONTENT
+
+    async with generate_async_session(pg_base_config) as session:
+        deleted_does = (
+            (
+                await session.execute(
+                    select(ArchiveDynamicOperatingEnvelope)
+                    .where(ArchiveDynamicOperatingEnvelope.deleted_time.is_not(None))
+                    .order_by(ArchiveDynamicOperatingEnvelope.dynamic_operating_envelope_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        deleted_doe_ids = [d.dynamic_operating_envelope_id for d in deleted_does]
+        assert deleted_doe_ids == expected_doe_ids
+
+        assert (before_doe_count - len(deleted_doe_ids)) == (await count_all_does(session, site_control_group_id, None))

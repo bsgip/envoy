@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.admin.crud.doe import (
     count_all_does,
     count_all_site_control_groups,
+    delete_does_with_start_time_in_range,
     select_all_does,
     select_all_site_control_groups,
     upsert_many_doe,
@@ -26,6 +27,7 @@ from envoy.server.model.subscription import SubscriptionResource
 
 
 class SiteControlGroupManager:
+
     @staticmethod
     async def create_site_control_group(session: AsyncSession, request: SiteControlGroupRequest) -> int:
         """Creates a new site control group"""
@@ -63,6 +65,32 @@ class SiteControlGroupManager:
 
 
 class SiteControlListManager:
+    @staticmethod
+    async def delete_site_controls_in_range(
+        session: AsyncSession,
+        site_control_group_id: int,
+        site_id: Optional[int],
+        period_start: datetime,
+        period_end: datetime,
+    ) -> None:
+        """deletes all site controls matching the specified parameters."""
+
+        deleted_time = utc_now()
+        await delete_does_with_start_time_in_range(
+            session,
+            site_control_group_id=site_control_group_id,
+            site_id=site_id,
+            period_start=period_start,
+            period_end=period_end,
+            deleted_time=deleted_time,
+        )
+        await session.commit()
+
+        await NotificationManager.notify_changed_deleted_entities(
+            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, deleted_time
+        )
+        return
+
     @staticmethod
     async def add_many_site_control(
         session: AsyncSession, site_control_group_id: int, control_list: list[SiteControlRequest]
