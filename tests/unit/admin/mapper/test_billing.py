@@ -308,8 +308,19 @@ def test_map_doe(optional_is_none: bool):
 
     mapped = BillingMapper.map_doe(original)
     assert isinstance(mapped, BillingDoe)
-    assert_class_instance_equality(BillingDoe, original, mapped, ignored_properties=set(["period_start"]))
+    assert_class_instance_equality(
+        BillingDoe,
+        original,
+        mapped,
+        ignored_properties={"period_start", "import_limit_active_watts", "export_limit_watts"},
+    )
     assert mapped.period_start == original.start_time
+    if optional_is_none:
+        assert mapped.import_limit_active_watts == Decimal(0), "Workaround limitations on legacy API"
+        assert mapped.export_limit_watts == Decimal(0), "Workaround limitations on legacy API"
+    else:
+        assert mapped.import_limit_active_watts == original.import_limit_active_watts
+        assert mapped.export_limit_watts == original.export_limit_watts
 
 
 @pytest.mark.parametrize(

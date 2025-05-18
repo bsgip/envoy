@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -53,8 +54,13 @@ def test_doe_mapper_to_response():
     optional_mapped = DoeListMapper.map_to_response(optional)
     assert isinstance(optional_mapped, DynamicOperatingEnvelopeResponse)
     assert_class_instance_equality(
-        DynamicOperatingEnvelopeResponse, optional, optional_mapped
+        DynamicOperatingEnvelopeResponse,
+        optional,
+        optional_mapped,
+        ignored_properties={"import_limit_active_watts", "export_limit_watts"},
     )  # These should just map 1-1
+    assert optional_mapped.import_limit_active_watts == Decimal(0), "Workaround limitations on legacy API"
+    assert optional_mapped.export_limit_watts == Decimal(0), "Workaround limitations on legacy API"
 
 
 def test_doe_mapper_to_paged_response():

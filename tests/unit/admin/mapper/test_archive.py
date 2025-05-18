@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_nowish
@@ -73,9 +74,14 @@ def test_map_to_doe_response():
     optional_mapped = ArchiveMapper.map_to_doe_response(optional)
     assert isinstance(optional_mapped, ArchiveDynamicOperatingEnvelopeResponse)
     assert_class_instance_equality(
-        ArchiveDynamicOperatingEnvelopeResponse, optional, optional_mapped, {"archive_time"}
+        ArchiveDynamicOperatingEnvelopeResponse,
+        optional,
+        optional_mapped,
+        {"archive_time", "import_limit_active_watts", "export_limit_watts"},
     )  # These should just map 1-1
     assert_nowish(optional_mapped.archive_time)  # This is a workaround in case we get some bad data
+    assert optional_mapped.import_limit_active_watts == Decimal(0), "Workaround limitations on legacy API"
+    assert optional_mapped.export_limit_watts == Decimal(0), "Workaround limitations on legacy API"
 
 
 def test_map_to_paged_doe_response():
