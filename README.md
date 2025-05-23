@@ -25,9 +25,10 @@ To ensure everything is setup correctly, tests can be run with:
 `pytest`
 
 envoy uses the following linting/formatting tools:
-* [bandit](https://pypi.org/project/black/)
+* [black](https://pypi.org/project/black/)
 * [flake8](https://pypi.org/project/flake8/)
 * [mypy](https://pypi.org/project/mypy/)
+* [bandit](https://pypi.org/project/bandit/)
 
 Contributions via a pull request are welcome but will be validated using the above tools.
 
