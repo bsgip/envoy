@@ -61,10 +61,12 @@ You are welcome to sign additional certificates using the "test ca", but please 
 The easiest way to validate that the example services have started is by issuing a HTTPS request to localhost:8443/dcap
 
 ```
-curl --cacert ./tls-termination/test_certs/testca.crt --cert ./tls-termination/test_certs/testclient.p12:testclientpassphrase --cert-type p12 https://localhost:8443/dcap
+curl --cacert ./tls-termination/test_certs/testca.crt --cert ./tls-termination/test_certs/testdevice.p12:testclientpassphrase --cert-type p12 https://localhost:8443/dcap
+```
 
-# This should generate a response like this:
-<DeviceCapability xmlns="urn:ieee:std:2030.5:ns" xmlns:csipaus="https://csipaus.org/ns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" href="/dcap"><EndDeviceListLink href="/edev" all="0"/><MirrorUsagePointListLink href="/mup" all="0"/></DeviceCapability>
+That should generate a response like this:
+```
+<DeviceCapability xmlns="urn:ieee:std:2030.5:ns" xmlns:csipaus="https://csipaus.org/ns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" href="/dcap"><TimeLink href="/tm"/><EndDeviceListLink href="/edev" all="0"/><MirrorUsagePointListLink href="/mup" all="0"/></DeviceCapability>
 ```
 
 ## Connecting with Postman
