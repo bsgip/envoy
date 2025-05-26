@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import IntEnum, auto
 from typing import Optional, Sequence, Union
@@ -53,7 +53,8 @@ class DERControlMapper:
         """Creates a csip aus compliant DERControlResponse from the specific doe. Needs to know current datetime
         in order to determine if the control is active or scheduled"""
 
-        is_intersecting_now = doe.start_time <= now and doe.end_time > now
+        # end_time is not populated in the upstream query, so use duration instead.
+        is_intersecting_now = doe.start_time <= now and doe.start_time + timedelta(seconds=doe.duration_seconds) > now
         event_status: int
         event_status_time: datetime
         if isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None:
