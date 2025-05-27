@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 import envoy_schema.server.schema.uri as uri
 import pytest
 from assertical.asserts.time import assert_datetime_equal
+from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.der import (
     DefaultDERControl,
@@ -21,8 +22,11 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
+from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.doe import DERControlMapper
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
+from envoy.server.model.site import Site
 from tests.conftest import (
     DEFAULT_DOE_EXPORT_ACTIVE_WATTS,
     DEFAULT_DOE_IMPORT_ACTIVE_WATTS,
@@ -354,6 +358,63 @@ async def test_get_dercontrol_list(
             assert control.DERControlBase_.opModExpLimW.value == expected_output
             assert control.DERControlBase_.opModExpLimW.multiplier == DEFAULT_SITE_CONTROL_POW10_ENCODING
             assert_datetime_equal(expected_start, control.interval.start)
+
+
+@pytest.mark.anyio
+async def test_get_dercontrol_list_intersecting_some(
+    client: AsyncClient,
+    pg_base_config,
+    uri_derc_list_format: str,
+):
+    """Exposes an error with controls that were active (but started in the past)"""
+
+    start_time = utc_now() - timedelta(seconds=1)
+    duration_seconds = 300
+    end_time = start_time + timedelta(seconds=duration_seconds)
+    async with generate_async_session(pg_base_config) as session:
+        site = (await session.execute(select(Site).where(Site.site_id == 1))).scalar_one()
+        site_control_group = (
+            await session.execute(select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 1))
+        ).scalar_one()
+
+        session.add(
+            generate_class_instance(
+                DynamicOperatingEnvelope,
+                seed=101,
+                dynamic_operating_envelope_id=None,
+                start_time=start_time,
+                duration_seconds=duration_seconds,
+                calculation_log_id=None,
+                end_time=end_time,
+                site=site,
+                site_control_group=site_control_group,
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveDynamicOperatingEnvelope,
+                seed=202,
+                deleted_time=start_time,
+                start_time=start_time,
+                duration_seconds=duration_seconds,
+                end_time=end_time,
+                site_id=1,
+                site_control_group_id=1,
+            )
+        )
+        await session.commit()
+
+    path = uri_derc_list_format.format(site_id=1, der_program_id=1) + build_paging_params(limit=99)
+    response = await client.get(path, headers=generate_headers(AGG_1_VALID_CERT))
+    assert_response_header(response, HTTPStatus.OK)
+
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    # This will just return our newly minted DOEs - we aren't going to inspect the contents too closely (other tests
+    # do that for us).
+    parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
+    assert len(parsed_response.DERControl) == 2, "One deleted, one active control"
 
 
 @pytest.mark.anyio

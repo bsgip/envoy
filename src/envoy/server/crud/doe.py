@@ -175,6 +175,13 @@ async def select_active_does_include_deleted(
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
 
+    # generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    #     DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    # )
+    # load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
+    # set_energized: Mapped[Optional[bool]] = mapped_column(nullable=True)
+    # set_connected: Mapped[Optional[bool]] = mapped_column(nullable=True)
+
     select_active_does = select(
         DOE.dynamic_operating_envelope_id,
         DOE.site_control_group_id,
@@ -182,11 +189,16 @@ async def select_active_does_include_deleted(
         DOE.calculation_log_id,
         DOE.created_time,
         DOE.changed_time,
+        DOE.end_time,
         DOE.start_time,
         DOE.duration_seconds,
         DOE.randomize_start_seconds,
         DOE.import_limit_active_watts,
         DOE.export_limit_watts,
+        DOE.generation_limit_active_watts,
+        DOE.load_limit_active_watts,
+        DOE.set_energized,
+        DOE.set_connected,
         literal_column("NULL").label("archive_id"),
         literal_column("NULL").label("archive_time"),
         literal_column("NULL").label("deleted_time"),
@@ -200,11 +212,16 @@ async def select_active_does_include_deleted(
         ArchiveDOE.calculation_log_id,
         ArchiveDOE.created_time,
         ArchiveDOE.deleted_time.label(ArchiveDOE.changed_time.name),  # Changed time will be using "deleted_time"
+        ArchiveDOE.end_time,
         ArchiveDOE.start_time,
         ArchiveDOE.duration_seconds,
         ArchiveDOE.randomize_start_seconds,
         ArchiveDOE.import_limit_active_watts,
         ArchiveDOE.export_limit_watts,
+        ArchiveDOE.generation_limit_active_watts,
+        ArchiveDOE.load_limit_active_watts,
+        ArchiveDOE.set_energized,
+        ArchiveDOE.set_connected,
         ArchiveDOE.archive_id,
         ArchiveDOE.archive_time,
         ArchiveDOE.deleted_time,
@@ -244,9 +261,14 @@ async def select_active_does_include_deleted(
                     changed_time=t.changed_time,
                     start_time=t.start_time,
                     duration_seconds=t.duration_seconds,
+                    end_time=t.end_time,
                     randomize_start_seconds=t.randomize_start_seconds,
                     import_limit_active_watts=t.import_limit_active_watts,
                     export_limit_watts=t.export_limit_watts,
+                    generation_limit_active_watts=t.generation_limit_active_watts,
+                    load_limit_active_watts=t.load_limit_active_watts,
+                    set_energized=t.set_energized,
+                    set_connected=t.set_connected,
                     archive_id=t.archive_id,
                     archive_time=t.archive_time,
                     deleted_time=t.deleted_time,
@@ -264,9 +286,14 @@ async def select_active_does_include_deleted(
                     changed_time=t.changed_time,
                     start_time=t.start_time,
                     duration_seconds=t.duration_seconds,
+                    end_time=t.end_time,
                     randomize_start_seconds=t.randomize_start_seconds,
                     import_limit_active_watts=t.import_limit_active_watts,
                     export_limit_watts=t.export_limit_watts,
+                    generation_limit_active_watts=t.generation_limit_active_watts,
+                    load_limit_active_watts=t.load_limit_active_watts,
+                    set_energized=t.set_energized,
+                    set_connected=t.set_connected,
                 ),
                 site.timezone_id,
             )

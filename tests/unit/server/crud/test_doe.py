@@ -1,15 +1,17 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
+from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal
 from assertical.asserts.type import assert_list_type
-from assertical.fake.generator import generate_class_instance
+from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
-from sqlalchemy import update
+from sqlalchemy import select, update
 
+from envoy.admin.crud.doe import upsert_many_doe
 from envoy.server.crud.doe import (
     count_active_does_include_deleted,
     count_does_at_timestamp,
@@ -21,9 +23,11 @@ from envoy.server.crud.doe import (
     select_site_control_groups,
 )
 from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.manager.time import utc_now
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope as ArchiveDOE
 from envoy.server.model.doe import DynamicOperatingEnvelope as DOE
 from envoy.server.model.doe import SiteControlGroup
+from envoy.server.model.site import Site
 
 AEST = ZoneInfo("Australia/Brisbane")
 
@@ -62,6 +66,8 @@ def assert_doe_for_id(
             )
         else:
             assert actual_doe.randomize_start_seconds is None
+
+        assert actual_doe.end_time == actual_doe.start_time + timedelta(seconds=actual_doe.duration_seconds)
 
         if expected_tz:
             tz = ZoneInfo(expected_tz)
@@ -314,6 +320,102 @@ async def test_select_and_count_doe_filters_la_time(
         assert len(does) == count
         for (id, expected_datetime), doe in zip(expected_id_and_starts, does):
             assert_doe_for_id(id, site_id, expected_datetime, "America/Los_Angeles", doe)
+
+
+@pytest.mark.anyio
+async def test_select_active_does_include_deleted_via_roundtrip(pg_base_config):
+    """Tests that DOEs selected via select_active_does_include_deleted match the values inserted via the admin
+    server endpoints. This should ensure that the models are being correctly selected (i.e. no missing columns)."""
+
+    # Start by inserting a control that we intend to delete
+    now = utc_now()
+    start_time_to_delete = now - timedelta(seconds=1)
+    duration_seconds = 300
+    end_time_to_delete = start_time_to_delete + timedelta(seconds=duration_seconds)
+    doe_to_delete = generate_class_instance(
+        DOE,
+        seed=101,
+        dynamic_operating_envelope_id=None,
+        start_time=start_time_to_delete,
+        duration_seconds=duration_seconds,
+        calculation_log_id=None,
+        end_time=end_time_to_delete,
+        site_id=1,
+        site_control_group_id=1,
+        site=None,
+        site_control_group=None,
+    )
+    async with generate_async_session(pg_base_config) as session:
+        site = (await session.execute(select(Site).where(Site.site_id == 1))).scalar_one()
+        site_control_group = (
+            await session.execute(select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 1))
+        ).scalar_one()
+
+        cloned_doe = clone_class_instance(doe_to_delete)
+        cloned_doe.site = site
+        cloned_doe.site_control_group = site_control_group
+
+        session.add(cloned_doe)
+        await session.commit()
+
+    # Now we plan on inserting two DOEs - one to replace the DOE we just inserted, the other will be brand new
+    doe_to_replace = generate_class_instance(
+        DOE,
+        seed=202,
+        start_time=start_time_to_delete,
+        duration_seconds=duration_seconds,
+        end_time=end_time_to_delete,
+        site_id=1,
+        site_control_group_id=1,
+        calculation_log_id=None,
+    )
+    doe_to_insert = generate_class_instance(
+        DOE,
+        seed=303,
+        start_time=start_time_to_delete - timedelta(seconds=1),
+        duration_seconds=duration_seconds,
+        end_time=end_time_to_delete - timedelta(seconds=1),
+        site_id=1,
+        site_control_group_id=1,
+        calculation_log_id=None,
+    )
+    async with generate_async_session(pg_base_config) as session:
+        await upsert_many_doe(session, [doe_to_replace, doe_to_insert], now)
+        await session.commit()
+
+    # Now refetch everything using select_active_does_include_deleted - This will include three DOEs consisting of:
+    # the archived doe_to_delete
+    # the active doe_to_replace
+    # the active doe_to_insert
+    async with generate_async_session(pg_base_config) as session:
+        results = await select_active_does_include_deleted(
+            session, 1, Site(site_id=1, timezone_id="Australia/Brisbane"), now, 0, datetime.min, 99
+        )
+        assert len(results) == 3
+        archive_does = [r for r in results if isinstance(r, ArchiveDOE)]
+        assert len(archive_does) == 1
+        active_does = [r for r in results if isinstance(r, DOE)]
+        assert len(active_does) == 2
+
+        # Lets make sure everything round tripped OK - the ordering here is guaranteed by the start_time
+        assert_class_instance_equality(
+            DOE,  # We compare this on DOE as we don't care about the archive specific columns
+            doe_to_delete,
+            archive_does[0],
+            ignored_properties={"changed_time", "created_time", "dynamic_operating_envelope_id"},
+        )
+        assert_class_instance_equality(
+            DOE,
+            doe_to_insert,
+            active_does[0],
+            ignored_properties={"changed_time", "created_time", "dynamic_operating_envelope_id"},
+        )
+        assert_class_instance_equality(
+            DOE,
+            doe_to_replace,
+            active_does[1],
+            ignored_properties={"changed_time", "created_time", "dynamic_operating_envelope_id"},
+        )
 
 
 @pytest.mark.parametrize(
