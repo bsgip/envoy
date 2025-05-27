@@ -23,8 +23,13 @@ def ignore_exception(_loop: AbstractEventLoop, _context: dict[str, Any]) -> None
 
 
 @pytest.fixture(autouse=True)
-def setup_event_loop(event_loop: AbstractEventLoop) -> None:
+def setup_event_loop() -> None:
+    event_loop = asyncio.get_event_loop()
+
+    current_handler = event_loop.get_exception_handler()
     event_loop.set_exception_handler(ignore_exception)
+    yield
+    event_loop.set_exception_handler(current_handler)
 
 
 @pytest.mark.asyncio
