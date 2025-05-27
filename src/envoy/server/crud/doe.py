@@ -175,13 +175,6 @@ async def select_active_does_include_deleted(
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
 
-    # generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
-    #     DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
-    # )
-    # load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
-    # set_energized: Mapped[Optional[bool]] = mapped_column(nullable=True)
-    # set_connected: Mapped[Optional[bool]] = mapped_column(nullable=True)
-
     select_active_does = select(
         DOE.dynamic_operating_envelope_id,
         DOE.site_control_group_id,
