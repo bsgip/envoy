@@ -6,7 +6,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from asyncio import AbstractEventLoop
 from typing import Any, NoReturn
 
 import pytest
