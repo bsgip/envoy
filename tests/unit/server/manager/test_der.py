@@ -177,12 +177,14 @@ AFTER_EPOCH = datetime(2022, 10, 9, 8, 7, 6, tzinfo=timezone.utc)
 @mock.patch("envoy.server.manager.der.site_der_for_site")
 @mock.patch("envoy.server.manager.der.RuntimeServerConfigManager.fetch_current_config")
 @pytest.mark.parametrize(
-    "start, limit, after, expected_count",
+    "contains, start, limit, after, expected_count",
     [
-        (0, 99, AFTER_EPOCH - timedelta(seconds=10), 1),
-        (0, 0, AFTER_EPOCH - timedelta(seconds=10), 0),
-        (1, 99, AFTER_EPOCH - timedelta(seconds=10), 0),
-        (0, 99, AFTER_EPOCH + timedelta(seconds=10), 0),
+        (True, 0, 99, AFTER_EPOCH - timedelta(seconds=10), 1),
+        (False, 0, 99, AFTER_EPOCH - timedelta(seconds=10), 1),
+        (True, 0, 0, AFTER_EPOCH - timedelta(seconds=10), 0),
+        (False, 0, 0, AFTER_EPOCH - timedelta(seconds=10), 0),
+        (True, 1, 99, AFTER_EPOCH - timedelta(seconds=10), 0),
+        (True, 0, 99, AFTER_EPOCH + timedelta(seconds=10), 0),
     ],
 )
 @pytest.mark.anyio
@@ -192,11 +194,14 @@ async def test_fetch_der_list_for_site_pagination(
     start: int,
     limit: int,
     after: datetime,
+    contains: bool,
     expected_count: int,
 ):
     """Fetch when site_der_for_site returns an instance"""
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mock_session = create_mock_session()
+    mock_session.__contains__ = mock.Mock(return_value=contains)
+    mock_session.expunge = mock.Mock()
 
     site_der: SiteDER = generate_class_instance(SiteDER, seed=101)
     site_der.changed_time = AFTER_EPOCH
@@ -213,6 +218,12 @@ async def test_fetch_der_list_for_site_pagination(
         mock_session, aggregator_id=scope.aggregator_id, site_id=scope.site_id
     )
     assert_mock_session(mock_session)
+
+    # We only expunge objects that exist in the session (otherwise we get errors)
+    if contains:
+        mock_session.expunge.assert_called_once_with(site_der)
+    else:
+        mock_session.expunge.assert_not_called()
 
 
 @pytest.mark.parametrize(
