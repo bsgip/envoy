@@ -29,19 +29,22 @@ from tests.integration.response import assert_error_response, assert_response_he
 
 
 @pytest.mark.parametrize(
-    "start, limit, after, expected_sub_ids",
+    "site_id, start, limit, after, expected_sub_ids",
     [
-        (0, 99, None, [PUBLIC_SITE_DER_ID]),
-        (0, 99, datetime(2024, 3, 14, 5, 55, 44, tzinfo=timezone.utc), [PUBLIC_SITE_DER_ID]),
-        (0, 99, datetime(2024, 3, 14, 5, 55, 45, tzinfo=timezone.utc), []),
-        (1, 99, None, []),
-        (None, None, None, [PUBLIC_SITE_DER_ID]),
+        (1, 0, 99, None, [PUBLIC_SITE_DER_ID]),
+        (2, 0, 99, None, [PUBLIC_SITE_DER_ID]),
+        (4, 0, 99, None, [PUBLIC_SITE_DER_ID]),  # Has no site_der (will use the virtual element instead)
+        (1, 0, 99, datetime(2024, 3, 14, 5, 55, 44, tzinfo=timezone.utc), [PUBLIC_SITE_DER_ID]),
+        (1, 0, 99, datetime(2024, 3, 14, 5, 55, 45, tzinfo=timezone.utc), []),
+        (1, 1, 99, None, []),
+        (1, None, None, None, [PUBLIC_SITE_DER_ID]),
     ],
 )
 @pytest.mark.anyio
 async def test_get_der_list(
     client: AsyncClient,
     valid_headers: dict,
+    site_id: int,
     start: Optional[int],
     limit: Optional[int],
     after: Optional[datetime],
@@ -50,7 +53,6 @@ async def test_get_der_list(
     """Simple test of pagination"""
 
     # Arrange
-    site_id = 1
     der_id = PUBLIC_SITE_DER_ID
     der_list_uri = uri.DERListUri.format(site_id=site_id, der_id=der_id) + build_paging_params(
         start=start, limit=limit, changed_after=after

@@ -70,7 +70,8 @@ class DERManager:
 
         # If there isn't custom DER info already in place - return a default
         site_der = await site_der_for_site(session, aggregator_id=scope.aggregator_id, site_id=scope.site_id)
-        session.expunge(site_der)  # NOTE: modifying this instance so we remove it from session to avoid ORM conflicts.
+        if site_der in session:
+            session.expunge(site_der)  # modifying this instance so we remove it from session to avoid ORM conflicts.
         site_der.site_der_id = PUBLIC_SITE_DER_ID
 
         # Manually filter - we are forcing our single DER into a simple list
