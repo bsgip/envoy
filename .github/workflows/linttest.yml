@@ -1,7 +1,7 @@
 name: Linting and Testing
 on:
   push:
-    branches: [main, 4-matrixise-linttest]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
