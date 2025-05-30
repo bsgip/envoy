@@ -150,6 +150,7 @@ We recommend adding these to a `.env` file in the root directory so that they ar
 4. Apply alembic migrations to the database schema
 
 ```
+ln -s $PWD/.env $PWD/src/envoy/server/.env
 cd src/envoy/server/
 alembic upgrade head
 ```
