@@ -39,9 +39,10 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
     config_response: RuntimeServerConfigResponse = RuntimeServerConfigResponse(**json.loads(body))
     assert config_response.dcap_pollrate_seconds > 0
     assert config_response.derpl_pollrate_seconds > 0
+    assert config_response.disable_edev_registration is False
 
     # Update some config
-    config_request = generate_class_instance(RuntimeServerConfigRequest, seed=101)
+    config_request = generate_class_instance(RuntimeServerConfigRequest, seed=101, disable_edev_registration=True)
     resp = await admin_client_auth.post(ServerConfigRuntimeUri, content=config_request.model_dump_json())
     assert resp.status_code == HTTPStatus.NO_CONTENT
 
@@ -58,7 +59,9 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
     )
 
     # update again (this time there is something in the db)
-    second_config_request = generate_class_instance(RuntimeServerConfigRequest, seed=202)
+    second_config_request = generate_class_instance(
+        RuntimeServerConfigRequest, seed=202, disable_edev_registration=False
+    )
     resp = await admin_client_auth.post(ServerConfigRuntimeUri, content=second_config_request.model_dump_json())
     assert resp.status_code == HTTPStatus.NO_CONTENT
 

@@ -54,6 +54,9 @@ class ConfigManager:
         if updated_values.site_control_pow10_encoding is not None:
             existing_db_config.site_control_pow10_encoding = updated_values.site_control_pow10_encoding
 
+        if updated_values.disable_edev_registration is not None:
+            existing_db_config.disable_edev_registration = updated_values.disable_edev_registration
+
         await session.commit()
 
     @staticmethod
@@ -77,6 +80,7 @@ class ConfigManager:
             derpl_pollrate_seconds=config.derpl_pollrate_seconds,
             mup_postrate_seconds=config.mup_postrate_seconds,
             site_control_pow10_encoding=config.site_control_pow10_encoding,
+            disable_edev_registration=config.disable_edev_registration,
             tariff_pow10_encoding=-4,  # Currently held constant
             changed_time=changed_time,
             created_time=created_time,

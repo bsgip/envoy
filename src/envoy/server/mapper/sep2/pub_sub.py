@@ -369,7 +369,11 @@ class NotificationMapper:
 
     @staticmethod
     def map_sites_to_response(
-        sites: Sequence[Site], sub: Subscription, scope: AggregatorRequestScope, notification_type: NotificationType
+        sites: Sequence[Site],
+        sub: Subscription,
+        scope: AggregatorRequestScope,
+        notification_type: NotificationType,
+        disable_registration: bool,
     ) -> Notification:
         """Turns a list of sites into a notification"""
         return Notification.model_validate(
@@ -381,7 +385,7 @@ class NotificationMapper:
                     "type": XSI_TYPE_END_DEVICE_LIST,
                     "all_": len(sites),
                     "results": len(sites),
-                    "EndDevice": [EndDeviceMapper.map_to_response(scope, s) for s in sites],
+                    "EndDevice": [EndDeviceMapper.map_to_response(scope, s, disable_registration) for s in sites],
                 },
             }
         )

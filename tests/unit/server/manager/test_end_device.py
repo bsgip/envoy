@@ -239,8 +239,11 @@ async def test_end_device_manager_generate_unique_device_id(
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.end_device.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
+@mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
 async def test_end_device_manager_fetch_existing_device(
-    mock_EndDeviceMapper: mock.MagicMock, mock_select_single_site_with_site_id: mock.MagicMock
+    mock_fetch_current_config: mock.MagicMock,
+    mock_EndDeviceMapper: mock.MagicMock,
+    mock_select_single_site_with_site_id: mock.MagicMock,
 ):
     """Check that the manager will handle interacting with the DB and its responses"""
 
@@ -249,8 +252,10 @@ async def test_end_device_manager_fetch_existing_device(
     raw_site: Site = generate_class_instance(Site)
     mapped_ed: EndDeviceResponse = generate_class_instance(EndDeviceResponse)
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    runtime_config = generate_class_instance(RuntimeServerConfig)
 
     # Just do a simple passthrough
+    mock_fetch_current_config.return_value = runtime_config
     mock_select_single_site_with_site_id.return_value = raw_site
     mock_EndDeviceMapper.map_to_response = mock.Mock(return_value=mapped_ed)
 
@@ -263,7 +268,10 @@ async def test_end_device_manager_fetch_existing_device(
     mock_select_single_site_with_site_id.assert_called_once_with(
         session=mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
     )
-    mock_EndDeviceMapper.map_to_response.assert_called_once_with(scope, raw_site)
+    mock_fetch_current_config.assert_called_once_with(mock_session)
+    mock_EndDeviceMapper.map_to_response.assert_called_once_with(
+        scope, raw_site, runtime_config.disable_edev_registration
+    )
 
 
 @pytest.mark.anyio
@@ -652,6 +660,7 @@ async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
         site_list=returned_sites,
         site_count=returned_site_count + 1,
         virtual_site=None,
+        disable_registration=config.disable_edev_registration,
         pollrate_seconds=config.edevl_pollrate_seconds,
     )
     mock_fetch_sites_and_count_for_claims.assert_called_once_with(mock_session, scope, start - 1, after, limit)
@@ -714,6 +723,7 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
         site_list=returned_sites,
         site_count=returned_site_count + 1,
         virtual_site=expected_virtual_site,
+        disable_registration=config.disable_edev_registration,
         pollrate_seconds=config.edevl_pollrate_seconds,
     )
     mock_fetch_sites_and_count_for_claims.assert_called_once_with(

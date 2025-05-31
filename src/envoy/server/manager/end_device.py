@@ -106,7 +106,9 @@ class EndDeviceManager:
             )
             if site is None:
                 return None
-            return EndDeviceMapper.map_to_response(scope, site)
+
+            config = await RuntimeServerConfigManager.fetch_current_config(session)
+            return EndDeviceMapper.map_to_response(scope, site, config.disable_edev_registration)
 
     @staticmethod
     async def delete_enddevice_for_scope(session: AsyncSession, scope: SiteRequestScope) -> bool:
@@ -274,6 +276,7 @@ class EndDeviceManager:
             site_list=site_list,
             site_count=site_count,
             virtual_site=virtual_site,
+            disable_registration=config.disable_edev_registration,
             pollrate_seconds=config.edevl_pollrate_seconds,
         )
 

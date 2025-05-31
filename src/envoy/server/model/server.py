@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import INTEGER, func, DateTime
+from sqlalchemy import BOOLEAN, INTEGER, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from envoy.server.model.base import Base
@@ -30,3 +30,7 @@ class RuntimeServerConfig(Base):
     site_control_pow10_encoding: Mapped[Optional[int]] = mapped_column(
         INTEGER, nullable=True
     )  # power of 10 encoding for site controls
+
+    disable_edev_registration: Mapped[Optional[bool]] = mapped_column(
+        BOOLEAN, nullable=True
+    )  # Should EndDevice RegistrationLink's be disabled?

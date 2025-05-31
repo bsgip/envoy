@@ -501,7 +501,7 @@ def test_NotificationMapper_map_sites_to_response(notification_type: Notificatio
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
 
-    notification = NotificationMapper.map_sites_to_response([site1, site2], sub, scope, notification_type)
+    notification = NotificationMapper.map_sites_to_response([site1, site2], sub, scope, notification_type, False)
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
     assert EndDeviceListUri in notification.subscribedResource

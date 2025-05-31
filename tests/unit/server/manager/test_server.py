@@ -1,12 +1,12 @@
 from typing import Optional
-import pytest
 from unittest import mock
 
+import pytest
 from assertical.fixtures.postgres import generate_async_session
 
-from envoy.server.model.server import RuntimeServerConfig as entity_mdl
-from envoy.server.model.config.server import RuntimeServerConfig as domain_mdl
 from envoy.server.manager.server import RuntimeServerConfigManager, _map_server_config
+from envoy.server.model.config.server import RuntimeServerConfig as domain_mdl
+from envoy.server.model.server import RuntimeServerConfig as entity_mdl
 
 
 @pytest.mark.parametrize(
@@ -22,6 +22,7 @@ from envoy.server.manager.server import RuntimeServerConfigManager, _map_server_
                 derl_pollrate_seconds=6,
                 mup_postrate_seconds=7,
                 site_control_pow10_encoding=8,
+                disable_edev_registration=True,
             ),
             domain_mdl(),
             domain_mdl(
@@ -32,6 +33,7 @@ from envoy.server.manager.server import RuntimeServerConfigManager, _map_server_
                 derl_pollrate_seconds=6,
                 mup_postrate_seconds=7,
                 site_control_pow10_encoding=8,
+                disable_edev_registration=True,
             ),
         ),
         (
@@ -44,8 +46,14 @@ from envoy.server.manager.server import RuntimeServerConfigManager, _map_server_
                 derl_pollrate_seconds=None,
                 mup_postrate_seconds=None,
                 site_control_pow10_encoding=None,
+                disable_edev_registration=None,
             ),
-            domain_mdl(derl_pollrate_seconds=16, mup_postrate_seconds=17, site_control_pow10_encoding=18),
+            domain_mdl(
+                derl_pollrate_seconds=16,
+                mup_postrate_seconds=17,
+                site_control_pow10_encoding=18,
+                disable_edev_registration=True,
+            ),
             domain_mdl(
                 dcap_pollrate_seconds=2,
                 edevl_pollrate_seconds=3,
@@ -54,6 +62,7 @@ from envoy.server.manager.server import RuntimeServerConfigManager, _map_server_
                 derl_pollrate_seconds=16,
                 mup_postrate_seconds=17,
                 site_control_pow10_encoding=18,
+                disable_edev_registration=True,
             ),
         ),
         (None, domain_mdl(), domain_mdl()),
@@ -86,3 +95,4 @@ async def test_manager_fetch_current_config(pg_base_config):
     assert cfg.derl_pollrate_seconds == 60
     assert cfg.mup_postrate_seconds == 60
     assert cfg.site_control_pow10_encoding == -2
+    assert cfg.disable_edev_registration is False

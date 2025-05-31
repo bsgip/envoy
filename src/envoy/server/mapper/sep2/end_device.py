@@ -21,7 +21,7 @@ from envoy.server.settings import settings
 
 class EndDeviceMapper:
     @staticmethod
-    def map_to_response(scope: BaseRequestScope, site: Site) -> EndDeviceResponse:
+    def map_to_response(scope: BaseRequestScope, site: Site, disable_registration: bool) -> EndDeviceResponse:
         edev_href = generate_href(uri.EndDeviceUri, scope, site_id=site.site_id)
         fsa_href = generate_href(uri.FunctionSetAssignmentsListUri, scope, site_id=site.site_id)
         der_href = generate_href(uri.DERListUri, scope, site_id=site.site_id)
@@ -41,7 +41,7 @@ class EndDeviceMapper:
                 "DERListLink": ListLink(href=der_href, all_=1),  # Always a single DER
                 "SubscriptionListLink": ListLink(href=pubsub_href),
                 "FunctionSetAssignmentsListLink": ListLink(href=fsa_href),
-                "RegistrationLink": Link(href=registration_href),
+                "RegistrationLink": None if disable_registration else Link(href=registration_href),
                 "LogEventListLink": ListLink(href=logevent_href),
             }
         )
@@ -87,10 +87,10 @@ class EndDeviceListMapper:
         site_list: Sequence[Site],
         site_count: int,
         pollrate_seconds: int,
+        disable_registration: bool,
         virtual_site: Optional[Site] = None,
     ) -> EndDeviceListResponse:
-
-        end_devices = [EndDeviceMapper.map_to_response(scope, site) for site in site_list]
+        end_devices = [EndDeviceMapper.map_to_response(scope, site, disable_registration) for site in site_list]
         result_count = len(end_devices)
 
         # Add the virtual site to the results if present

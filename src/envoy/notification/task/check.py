@@ -225,7 +225,7 @@ def entities_to_notification(
     scope = scope_for_subscription(sub, href_prefix)
     if resource == SubscriptionResource.SITE:
         return NotificationMapper.map_sites_to_response(
-            cast(Sequence[Site], entities), sub, scope, notification_type  # type: ignore # mypy quirk
+            cast(Sequence[Site], entities), sub, scope, notification_type, config.disable_edev_registration  # type: ignore # mypy quirk # noqa: E501
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         if pricing_reading_type is None:

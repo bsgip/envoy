@@ -26,7 +26,8 @@ from envoy.server.model.site import Site
 from envoy.server.request_scope import BaseRequestScope
 
 
-def test_device_category_round_trip():
+@pytest.mark.parametrize("disable_registration", [True, False])
+def test_device_category_round_trip(disable_registration: bool):
     """Tests that the mapping for device_category from int to hex string works both ways"""
 
     for dc in [DEVICE_CATEGORY_ALL_SET] + [x for x in DeviceCategory]:
@@ -34,19 +35,20 @@ def test_device_category_round_trip():
         site.device_category = dc
         scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
 
-        end_device = EndDeviceMapper.map_to_response(scope, site)
+        end_device = EndDeviceMapper.map_to_response(scope, site, disable_registration)
 
         roundtrip_site = EndDeviceMapper.map_from_request(end_device, 1, datetime.now(), 2)
         assert roundtrip_site.device_category == site.device_category
 
 
-def test_map_to_response():
+@pytest.mark.parametrize("disable_registration", [True, False])
+def test_map_to_response(disable_registration: bool):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
     site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
     site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
     scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
 
-    result_all_set = EndDeviceMapper.map_to_response(scope, site_all_set)
+    result_all_set = EndDeviceMapper.map_to_response(scope, site_all_set, disable_registration)
     assert result_all_set is not None
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
@@ -55,21 +57,26 @@ def test_map_to_response():
     assert isinstance(result_all_set.ConnectionPointLink, ConnectionPointLink)
     assert isinstance(result_all_set.DERListLink, ListLink)
     assert isinstance(result_all_set.SubscriptionListLink, ListLink)
-    assert isinstance(result_all_set.RegistrationLink, Link)
 
     # Validate the links are unique and all extend the edev base href
     all_child_hrefs = [
         result_all_set.ConnectionPointLink.href,
         result_all_set.DERListLink.href,
         result_all_set.SubscriptionListLink.href,
-        result_all_set.RegistrationLink.href,
     ]
+
+    if disable_registration:
+        assert result_all_set.RegistrationLink is None
+    else:
+        assert isinstance(result_all_set.RegistrationLink, Link)
+        all_child_hrefs.append(result_all_set.RegistrationLink.href)
+
     assert len(all_child_hrefs) == len(set(all_child_hrefs)), f"Expected unique hrefs for {all_child_hrefs}"
     for child_href in all_child_hrefs:
         assert child_href != result_all_set.href, "Children must NOT match base href"
         assert child_href.startswith(result_all_set.href), "Children must extend base href"
 
-    result_optional = EndDeviceMapper.map_to_response(scope, site_optional)
+    result_optional = EndDeviceMapper.map_to_response(scope, site_optional, disable_registration)
     assert result_optional is not None
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
@@ -78,15 +85,19 @@ def test_map_to_response():
     assert isinstance(result_optional.ConnectionPointLink, ConnectionPointLink)
     assert isinstance(result_optional.DERListLink, ListLink)
     assert isinstance(result_optional.SubscriptionListLink, ListLink)
-    assert isinstance(result_optional.RegistrationLink, Link)
 
     # Validate the links are unique and all extend the edev base href
     all_child_hrefs = [
         result_optional.ConnectionPointLink.href,
         result_optional.DERListLink.href,
         result_optional.SubscriptionListLink.href,
-        result_optional.RegistrationLink.href,
     ]
+    if disable_registration:
+        assert result_optional.RegistrationLink is None
+    else:
+        assert isinstance(result_optional.RegistrationLink, Link)
+        all_child_hrefs.append(result_optional.RegistrationLink.href)
+
     assert len(all_child_hrefs) == len(set(all_child_hrefs)), f"Expected unique hrefs for {all_child_hrefs}"
     for child_href in all_child_hrefs:
         assert child_href != result_optional.href, "Children must NOT match base href"
@@ -104,7 +115,9 @@ def test_list_map_to_response():
 
     all_sites = [site1, site2, site3, site4]
 
-    result = EndDeviceListMapper.map_to_response(scope, all_sites, site_count, pollrate_seconds=10)
+    result = EndDeviceListMapper.map_to_response(
+        scope, all_sites, site_count, disable_registration=False, pollrate_seconds=10
+    )
     assert result is not None
     assert isinstance(result, EndDeviceListResponse)
     assert result.all_ == site_count
@@ -115,14 +128,16 @@ def test_list_map_to_response():
         all_sites
     ), f"Expected {len(all_sites)} unique LFDI's in the children"
 
-    empty_result = EndDeviceListMapper.map_to_response(scope, [], site_count, pollrate_seconds=11)
+    empty_result = EndDeviceListMapper.map_to_response(
+        scope, [], site_count, disable_registration=False, pollrate_seconds=11
+    )
     assert empty_result is not None
     assert isinstance(empty_result, EndDeviceListResponse)
     assert empty_result.all_ == site_count
     assert empty_result.pollRate == 11
     assert_list_type(EndDeviceResponse, empty_result.EndDevice, 0)
 
-    no_result = EndDeviceListMapper.map_to_response(scope, [], 0, pollrate_seconds=12)
+    no_result = EndDeviceListMapper.map_to_response(scope, [], 0, disable_registration=False, pollrate_seconds=12)
     assert no_result is not None
     assert isinstance(no_result, EndDeviceListResponse)
     assert no_result.all_ == 0
@@ -197,7 +212,7 @@ def test_virtual_end_device_map_to_response():
     assert result_all_set.lFDI == site_all_set.lfdi
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
 
-    result_optional = EndDeviceMapper.map_to_response(scope, site_optional)
+    result_optional = EndDeviceMapper.map_to_response(scope, site_optional, False)
     assert result_optional is not None
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
