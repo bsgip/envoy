@@ -126,7 +126,7 @@ INSERT INTO public.dynamic_operating_envelope_response("dynamic_operating_envelo
 SELECT pg_catalog.setval('public.dynamic_operating_envelope_re_dynamic_operating_envelope_re_seq', 4, true);
 
 
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "created_time", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
 VALUES (1, -- site_reading_type_id
     1, -- aggregator_id
     1, -- site_id
@@ -138,10 +138,11 @@ VALUES (1, -- site_reading_type_id
     64, -- phase
     3, -- power_of_ten_multiplier
     0, -- default_interval_seconds
+    1, -- role_flags,
     '2000-01-01 00:00:00Z', -- created_time
     '2022-05-06 11:22:33.500' -- changed_time
     );
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "created_time", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
 VALUES (2, -- site_reading_type_id
     3, -- aggregator_id
     1, -- site_id
@@ -153,10 +154,11 @@ VALUES (2, -- site_reading_type_id
     64, -- phase
     0, -- power_of_ten_multiplier
     0, -- default_interval_seconds
+    2, -- role_flags,
     '2000-01-01 00:00:00Z', -- created_time
     '2022-05-06 12:22:33.500' -- changed_time
     );
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "created_time", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
 VALUES (3, -- site_reading_type_id
     1, -- aggregator_id
     1, -- site_id
@@ -168,10 +170,11 @@ VALUES (3, -- site_reading_type_id
     64, -- phase
     0, -- power_of_ten_multiplier
     3600, -- default_interval_seconds
+    3, -- role_flags,
     '2000-01-01 00:00:00Z', -- created_time
     '2022-05-06 13:22:33.500' -- changed_time
     );
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "created_time", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
 VALUES (4, -- site_reading_type_id
     1, -- aggregator_id
     2, -- site_id
@@ -183,6 +186,7 @@ VALUES (4, -- site_reading_type_id
     0, -- phase
     -1, -- power_of_ten_multiplier
     0, -- default_interval_seconds
+    4, -- role_flags,
     '2000-01-01 00:00:00Z', -- created_time
     '2022-05-06 14:22:33.500' -- changed_time
     );

@@ -24,6 +24,7 @@ from envoy_schema.server.schema.sep2.types import (
 )
 
 from envoy.server.exception import InvalidMappingError
+from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.metering import (
     MirrorMeterReadingMapper,
     MirrorUsagePointListMapper,
@@ -35,17 +36,17 @@ from envoy.server.request_scope import BaseRequestScope
 
 
 def _no_uom_test_cases():
-    mup_no_mmr: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=101)
+    mup_no_mmr: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=101, roleFlags="00")
     mup_no_mmr.mirrorMeterReadings = None
 
-    mup_empty_mmr: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=202)
+    mup_empty_mmr: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=202, roleFlags="00")
     mup_empty_mmr.mirrorMeterReadings = []
 
-    mup_no_rt: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=303)
+    mup_no_rt: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=303, roleFlags="00")
     mup_no_rt.mirrorMeterReadings = [generate_class_instance(MirrorMeterReading, seed=505)]
     mup_no_rt.mirrorMeterReadings[0].readingType = None
 
-    mup_no_uom: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=606)
+    mup_no_uom: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=606, roleFlags="00")
     mup_no_uom.mirrorMeterReadings = [generate_class_instance(MirrorMeterReading, seed=707)]
     mup_no_uom.mirrorMeterReadings[0].readingType = generate_class_instance(ReadingType, seed=808)
     mup_no_uom.mirrorMeterReadings[0].readingType.uom = None
@@ -69,14 +70,14 @@ def test_MirrorUsagePointMapper_map_from_request():
     aggregator_id = 123
     site_id = 456
     changed_time = datetime.now()
-    mup_all_set: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=101, optional_is_none=False)
+    mup_all_set = generate_class_instance(MirrorUsagePoint, seed=101, optional_is_none=False, roleFlags="7a")
     mup_all_set.mirrorMeterReadings = [generate_class_instance(MirrorMeterReading, seed=202)]
     mup_all_set.mirrorMeterReadings[0].readingType = generate_class_instance(
         ReadingType, seed=303, optional_is_none=False
     )
     mup_all_set.mirrorMeterReadings[0].readingType.uom = UomType.APPARENT_POWER_VA  # This must always be set
 
-    mup_optional: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=404, optional_is_none=True)
+    mup_optional = generate_class_instance(MirrorUsagePoint, seed=404, optional_is_none=True, roleFlags="10")
     mup_optional.mirrorMeterReadings = [generate_class_instance(MirrorMeterReading, seed=505)]
     mup_optional.mirrorMeterReadings[0].readingType = generate_class_instance(
         ReadingType, seed=606, optional_is_none=True
@@ -97,6 +98,7 @@ def test_MirrorUsagePointMapper_map_from_request():
     assert result_all_set.accumulation_behaviour == mup_all_set.mirrorMeterReadings[0].readingType.accumulationBehaviour
     assert result_all_set.flow_direction == mup_all_set.mirrorMeterReadings[0].readingType.flowDirection
     assert result_all_set.default_interval_seconds == mup_all_set.mirrorMeterReadings[0].readingType.intervalLength
+    assert result_all_set.role_flags == 122, "This is the 7a converted from hexbinary"
 
     result_optional = MirrorUsagePointMapper.map_from_request(mup_optional, aggregator_id, site_id, changed_time)
     assert result_optional is not None
@@ -112,6 +114,7 @@ def test_MirrorUsagePointMapper_map_from_request():
     assert result_optional.accumulation_behaviour == AccumulationBehaviourType.NOT_APPLICABLE, "Not set in mup_optional"
     assert result_optional.flow_direction == FlowDirectionType.NOT_APPLICABLE, "Not set in mup_optional"
     assert result_optional.default_interval_seconds == 0, "Not set in mup_optional"
+    assert result_optional.role_flags == 16, "This is the 10 converted from hexbinary"
 
 
 def test_MirrorUsagePointMapper_map_to_response():
@@ -134,6 +137,7 @@ def test_MirrorUsagePointMapper_map_to_response():
     assert result_all_set.mirrorMeterReadings[0].readingType.uom == srt_all_set.uom
     assert result_all_set.mirrorMeterReadings[0].readingType.powerOfTenMultiplier == srt_all_set.power_of_ten_multiplier
     assert result_all_set.postRate == 13
+    assert result_all_set.roleFlags == to_hex_binary(srt_all_set.role_flags)
 
     result_optional = MirrorUsagePointMapper.map_to_response(scope, srt_optional, site, 13)
     assert result_optional is not None
@@ -149,6 +153,7 @@ def test_MirrorUsagePointMapper_map_to_response():
     assert (
         result_optional.mirrorMeterReadings[0].readingType.powerOfTenMultiplier == srt_optional.power_of_ten_multiplier
     )
+    assert result_optional.roleFlags == to_hex_binary(srt_optional.role_flags)
 
     assert result_all_set.mRID != result_all_set.mirrorMeterReadings[0].mRID, "mrid should be unique"
     assert result_optional.mRID != result_optional.mirrorMeterReadings[0].mRID, "mrid should be unique"

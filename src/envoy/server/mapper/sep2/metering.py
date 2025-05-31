@@ -72,6 +72,10 @@ class MirrorUsagePointMapper:
             default_interval_seconds = 0
         else:
             default_interval_seconds = rt.intervalLength
+        if mup.roleFlags is None:
+            role_flags = RoleFlagsType.NONE
+        else:
+            role_flags = int(mup.roleFlags, 16)
 
         return SiteReadingType(
             aggregator_id=aggregator_id,
@@ -84,6 +88,7 @@ class MirrorUsagePointMapper:
             phase=phase,
             power_of_ten_multiplier=power_of_ten_multiplier,
             default_interval_seconds=default_interval_seconds,
+            role_flags=role_flags,
             changed_time=changed_time,
         )
 
@@ -98,7 +103,7 @@ class MirrorUsagePointMapper:
                 "href": generate_href(uris.MirrorUsagePointUri, scope, mup_id=srt.site_reading_type_id),
                 "deviceLFDI": site.lfdi,
                 "postRate": postrate_seconds,
-                "roleFlags": to_hex_binary(RoleFlagsType.NONE),
+                "roleFlags": to_hex_binary(srt.role_flags),
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
                 "status": 0,
                 "mRID": MridMapper.encode_mirror_usage_point_mrid(scope, srt.site_reading_type_id),

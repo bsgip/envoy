@@ -79,6 +79,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 phase=64,
                 power_of_ten_multiplier=3,
                 default_interval_seconds=0,
+                role_flags=1,
                 changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
                 created_time=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
             ),
@@ -99,6 +100,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 phase=64,
                 power_of_ten_multiplier=3,
                 default_interval_seconds=0,
+                role_flags=1,
                 changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
                 created_time=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
             ),
@@ -119,6 +121,7 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
                 phase=64,
                 power_of_ten_multiplier=0,
                 default_interval_seconds=0,
+                role_flags=2,
                 changed_time=datetime(2022, 5, 6, 12, 22, 33, 500000, tzinfo=timezone.utc),
                 created_time=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
             ),
@@ -229,6 +232,7 @@ async def test_upsert_site_reading_type_for_aggregator_non_indexed(
         srt_to_upsert.phase = existing_srt.phase
         srt_to_upsert.power_of_ten_multiplier = existing_srt.power_of_ten_multiplier
         srt_to_upsert.default_interval_seconds = existing_srt.default_interval_seconds
+        srt_to_upsert.role_flags = existing_srt.role_flags
 
     # Perform the upsert in a new session
     async with generate_async_session(pg_base_config) as session:
@@ -270,6 +274,7 @@ async def test_upsert_site_reading_type_for_aggregator_non_indexed(
                     phase=64,
                     power_of_ten_multiplier=3,
                     default_interval_seconds=0,
+                    role_flags=1,
                     created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
                     changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
                 ),
@@ -290,6 +295,7 @@ async def test_upsert_site_reading_type_for_aggregator_non_indexed(
                     phase=64,
                     power_of_ten_multiplier=0,
                     default_interval_seconds=3600,
+                    role_flags=3,
                     created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
                     changed_time=datetime(2022, 5, 6, 13, 22, 33, 500000, tzinfo=timezone.utc),
                 ),

@@ -8,6 +8,7 @@ from envoy_schema.server.schema.sep2.types import (
     KindType,
     PhaseCode,
     QualityFlagsType,
+    RoleFlagsType,
     UomType,
 )
 from sqlalchemy import INTEGER, BigInteger, DateTime, ForeignKey, UniqueConstraint, func
@@ -40,6 +41,7 @@ class SiteReadingType(Base):
     default_interval_seconds: Mapped[int] = mapped_column(
         INTEGER
     )  # If a batch of readings is received without an interval - this length will be used to describe the batch length
+    role_flags: Mapped[RoleFlagsType] = mapped_column(INTEGER)
 
     # These are the properties that can change via upsert
     created_time: Mapped[datetime] = mapped_column(
@@ -63,6 +65,7 @@ class SiteReadingType(Base):
             "phase",
             "power_of_ten_multiplier",
             "default_interval_seconds",
+            "role_flags",
             name="site_reading_type_all_values_uc",
         ),
     )

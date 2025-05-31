@@ -152,6 +152,7 @@ async def upsert_site_reading_type_for_aggregator(
             & (SiteReadingType.phase == site_reading_type.phase)
             & (SiteReadingType.power_of_ten_multiplier == site_reading_type.power_of_ten_multiplier)
             & (SiteReadingType.default_interval_seconds == site_reading_type.default_interval_seconds)
+            & (SiteReadingType.role_flags == site_reading_type.role_flags)
         ),
     )
 
@@ -173,6 +174,7 @@ async def upsert_site_reading_type_for_aggregator(
                 SiteReadingType.phase,
                 SiteReadingType.power_of_ten_multiplier,
                 SiteReadingType.default_interval_seconds,
+                SiteReadingType.role_flags,
             ],
             set_={k: getattr(stmt.excluded, k) for k in update_cols},
         ).returning(SiteReadingType.site_reading_type_id)
