@@ -76,9 +76,6 @@ def pg_empty_config(
     else:
         os.environ["USE_GLOBAL_DEFAULT_DOE_FALLBACK"] = "false"
 
-    if request.node.get_closest_marker("csipv11a_xmlns_optin_middleware"):
-        os.environ["INSTALL_CSIP_V11A_OPT_IN_MIDDLEWARE"] = "true"
-
     if request.node.get_closest_marker("admin_ro_user"):
         os.environ["READ_ONLY_USER"] = READONLY_USER_NAME
         os.environ["READ_ONLY_KEYS"] = f'["{READONLY_USER_KEY_1}", "{READONLY_USER_KEY_2}"]'

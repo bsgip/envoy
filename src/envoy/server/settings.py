@@ -27,10 +27,6 @@ class AppSettings(CommonSettings):
     )
     default_doe_ramp_rate_percent_per_second: Optional[int] = None  # Constant default DERControl ramp rate setpoint.
 
-    install_csip_v11a_opt_in_middleware: Optional[bool] = (
-        False  # Flag whether to install the envoy.server.api.depends.csipaus.AllowEquivalentXmlNsMiddleware
-    )
-
     allow_device_registration: bool = False  # True: LFDI auth will allow unknown certs to register single EndDevices
 
     @property
