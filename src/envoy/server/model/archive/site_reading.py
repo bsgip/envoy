@@ -8,6 +8,7 @@ from envoy_schema.server.schema.sep2.types import (
     KindType,
     PhaseCode,
     QualityFlagsType,
+    RoleFlagsType,
     UomType,
 )
 from sqlalchemy import INTEGER, BigInteger, DateTime
@@ -32,7 +33,7 @@ class ArchiveSiteReadingType(ArchiveBase):
     phase: Mapped[PhaseCode] = mapped_column(INTEGER)
     power_of_ten_multiplier: Mapped[int] = mapped_column(INTEGER)
     default_interval_seconds: Mapped[int] = mapped_column(INTEGER)
-    role_flags: Mapped[int] = mapped_column(INTEGER)
+    role_flags: Mapped[RoleFlagsType] = mapped_column(INTEGER)
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading set was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading set was last altered
