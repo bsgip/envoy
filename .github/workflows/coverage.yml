@@ -24,7 +24,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt install -y postgresql
-          pip install .[dev,test]
+          pip install --ignore-installed .[dev,test]
 
       - name: Coverage (source branch)
         run: |
@@ -43,7 +43,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt install -y postgresql
-          pip install .[dev,test]
+          pip install --ignore-installed .[dev,test]
 
       - name: Coverage (target branch)
         run: |
