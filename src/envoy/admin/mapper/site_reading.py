@@ -46,7 +46,7 @@ class AdminSiteReadingMapper:
         total_count: int,
         start: int,
         limit: int,
-        site_ids: list[int],
+        site_id: int,
         start_time: datetime,
         end_time: datetime,
     ) -> AdminSiteReadingPageResponse:
@@ -57,7 +57,7 @@ class AdminSiteReadingMapper:
             total_count: Total number of readings matching the query (for pagination)
             start: Pagination offset used in the query
             limit: Pagination limit used in the query
-            site_ids: Site IDs filter used in the query
+            site_id: Site ID filter used in the query (single site, not list)
             start_time: Start time filter used in the query
             end_time: End time filter used in the query
 
@@ -70,7 +70,7 @@ class AdminSiteReadingMapper:
             total_count=total_count,
             limit=limit,
             start=start,
-            site_ids=site_ids,
+            site_id=site_id,
             start_time=start_time,
             end_time=end_time,
             readings=admin_readings,
