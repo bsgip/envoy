@@ -4,12 +4,12 @@ from http import HTTPStatus
 from envoy_schema.admin.schema.site_reading import AdminSiteReadingPageResponse
 from fastapi import APIRouter, Query
 from fastapi_async_sqlalchemy import db
-from envoy_schema.admin.schema.uri import SiteReadingUri
 from envoy.admin.manager.site_reading import AdminSiteReadingManager
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+SiteReadingUri = "/site-readings/{site_id}/period/{period_start}/{period_end}"
 
 
 @router.get(SiteReadingUri, status_code=HTTPStatus.OK, response_model=AdminSiteReadingPageResponse)
