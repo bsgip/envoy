@@ -36,7 +36,7 @@ async def count_site_readings_for_site_and_time(
     stmt = (
         select(func.count())
         .select_from(SiteReading)
-        .join(SiteReadingType)
+        .join(SiteReadingType, SiteReading.site_reading_type_id == SiteReadingType.site_reading_type_id)
         .where((SiteReading.time_period_start >= start_time) & (SiteReading.time_period_start <= end_time))
         .where(SiteReadingType.site_id == site_id)
     )
@@ -76,8 +76,8 @@ async def select_site_readings_for_site_and_time(
         - Eagerly loads SiteReadingType to avoid N+1 queries
     """
     stmt = (
-        select(SiteReading)
-        .join(SiteReadingType)
+        select(SiteReading, SiteReadingType)
+        .join(SiteReadingType, SiteReading.site_reading_type_id == SiteReadingType.site_reading_type_id)
         .where((SiteReading.time_period_start >= start_time) & (SiteReading.time_period_start <= end_time))
         .where(SiteReadingType.site_id == site_id)
         .options(selectinload(SiteReading.site_reading_type))
