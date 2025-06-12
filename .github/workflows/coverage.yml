@@ -4,6 +4,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   # This run coverage on the target and source branches before comparing
   coverage:
