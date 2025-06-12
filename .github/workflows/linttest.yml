@@ -97,6 +97,7 @@ jobs:
         pyver: ["3.10", "3.11", "3.12"]
     runs-on: ubuntu-latest
 
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3.1.0
@@ -119,3 +120,43 @@ jobs:
         with:
           paths: .test_report_py${{ matrix.pyver }}.xml
         if: always()
+  
+  alembic:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql+asyncpg://envoyuser:envoypass@postgres:5432/envoydb
+
+    container: python:3.11-slim
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: envoypass
+          POSTGRES_USER: envoyuser
+          POSTGRES_DB: envoydb
+
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.1.0
+
+      - name: Install Dependencies
+        run: |
+          pip install .
+
+      - name: Upgrade
+        run: |
+          cd src/envoy/server/
+          alembic upgrade head
+
+      - name: Downgrade
+        run: |
+          cd src/envoy/server/
+          alembic downgrade base
