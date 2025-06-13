@@ -1,4 +1,4 @@
-""" Module containing all managers related to the admin api """
+"""Module containing all managers related to the admin api"""
 
 from .aggregator import *
 from .archive import *
