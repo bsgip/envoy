@@ -108,8 +108,8 @@ class ConfigManager:
         if request.generation_limit_watts is not None:
             site.default_site_control.generation_limit_active_watts = request.generation_limit_watts.value
 
-        if request.import_limit_watts is not None:
-            site.default_site_control.import_limit_active_watts = request.import_limit_watts.value
+        if request.load_limit_watts is not None:
+            site.default_site_control.load_limit_active_watts = request.load_limit_watts.value
 
         if request.ramp_rate_percent_per_second is not None:
             ramp_rate_value = (
