@@ -41,7 +41,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.common import generate_href, remove_href_prefix
 from envoy.server.mapper.constants import PricingReadingType
-from envoy.server.mapper.csip_aus.doe import DERControlMapper
+from envoy.server.mapper.csip_aus.doe import DefaultDERControl, DERControlMapper
 from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMapper, DERSettingMapper, DERStatusMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
 from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
@@ -691,7 +691,7 @@ class NotificationMapper:
 
     @staticmethod
     def map_default_site_control_response(
-        default_doe: DefaultSiteControl,
+        default_control: Optional[DefaultSiteControl],
         pow10_multipier: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
@@ -703,14 +703,16 @@ class NotificationMapper:
             DefaultDERControlUri, scope, site_id=scope.display_site_id, der_program_id=sub.resource_id
         )
 
-        resource_model = DERControlMapper.map_to_default_response(scope, default_doe, pow10_multipier)
-        resource_model.type = XSI_TYPE_DEFAULT_DER_CONTROL
+        resource_model: Optional[DefaultDERControl] = None
+        if default_control is not None:
+            resource_model = DERControlMapper.map_to_default_response(scope, default_control, pow10_multipier)
+            resource_model.type = XSI_TYPE_DEFAULT_DER_CONTROL
 
         return Notification.model_validate(
             {
                 "subscribedResource": default_der_control_href,
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": _map_to_notification_status(notification_type),
-                "resource": resource_model.model_dump(),
+                "resource": resource_model.model_dump() if resource_model is not None else None,
             }
         )

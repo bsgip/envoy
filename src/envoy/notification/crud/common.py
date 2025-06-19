@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import TypeVar
 
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
@@ -29,6 +30,7 @@ from envoy.server.model.subscription import Subscription
 from envoy.server.model.tariff import TariffGeneratedRate
 
 
+@dataclass
 class SiteScopedRuntimeServerConfig:
     """RuntimeServerConfig isn't scoped to a specific Site - for csip-aus it will need to be"""
 
@@ -36,32 +38,29 @@ class SiteScopedRuntimeServerConfig:
     site_id: int
     original: RuntimeServerConfig
 
-    def __init__(self, aggregator_id: int, site_id: int, cfg: RuntimeServerConfig):
-        self.aggregator_id = aggregator_id
-        self.site_id = site_id
-        self.original = cfg
+
+@dataclass
+class ArchiveSiteScopedRuntimeServerConfig:
+    """There is no model for this in the DB - we don't archive top level config changes"""
+
+    aggregator_id: int
+    site_id: int
 
 
+@dataclass
 class ControlGroupScopedDefaultSiteControl:
     """DefaultSiteControl isn't scoped to a specific SiteControlGroup - for csip-aus it will need to be"""
 
     site_control_group_id: int
     original: DefaultSiteControl
 
-    def __init__(self, site_control_group_id: int, d: DefaultSiteControl):
-        self.site_control_group_id = site_control_group_id
-        self.original = d
 
-
+@dataclass
 class ArchiveControlGroupScopedDefaultSiteControl:
     """DefaultSiteControl isn't scoped to a specific SiteControlGroup - for csip-aus it will need to be"""
 
     site_control_group_id: int
     original: ArchiveDefaultSiteControl
-
-    def __init__(self, site_control_group_id: int, d: ArchiveDefaultSiteControl):
-        self.site_control_group_id = site_control_group_id
-        self.original = d
 
 
 TResourceModel = TypeVar(
@@ -77,8 +76,8 @@ TResourceModel = TypeVar(
     SiteDERSetting,
     SiteDERStatus,
     Subscription,
-    ControlGroupScopedDefaultSiteControl,
-    SiteScopedRuntimeServerConfig,
+    DefaultSiteControl,
+    RuntimeServerConfig,
 )
 
 TArchiveResourceModel = TypeVar(
@@ -94,5 +93,5 @@ TArchiveResourceModel = TypeVar(
     ArchiveSiteDERSetting,
     ArchiveSiteDERStatus,
     ArchiveSubscription,
-    ArchiveControlGroupScopedDefaultSiteControl,
+    ArchiveDefaultSiteControl,
 )

@@ -14,9 +14,10 @@ from envoy_schema.server.schema.sep2.pub_sub import (
 )
 
 from envoy.notification.crud.batch import AggregatorBatchedEntities, get_batch_key
+from envoy.notification.crud.common import ControlGroupScopedDefaultSiteControl, SiteScopedRuntimeServerConfig
 from envoy.notification.exception import NotificationError
 from envoy.notification.task.check import (
-    DER_RESOURCES,
+    NON_LIST_RESOURCES,
     NotificationEntities,
     all_entity_batches,
     batched,
@@ -558,6 +559,10 @@ def test_all_entity_batches(input_changed: dict[tuple, list], input_deleted: dic
         (SubscriptionResource.SITE_DER_SETTING, SiteDERSetting, 12414),
         (SubscriptionResource.SITE_DER_STATUS, SiteDERStatus, None),
         (SubscriptionResource.SITE_DER_STATUS, SiteDERStatus, 987941),
+        (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, SiteScopedRuntimeServerConfig, None),
+        (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, SiteScopedRuntimeServerConfig, 241214),
+        (SubscriptionResource.DEFAULT_SITE_CONTROL, ControlGroupScopedDefaultSiteControl, None),
+        (SubscriptionResource.DEFAULT_SITE_CONTROL, ControlGroupScopedDefaultSiteControl, 331241),
     ],
 )
 def test_entities_to_notification_sites(  # noqa: C901
@@ -602,17 +607,24 @@ def test_entities_to_notification_sites(  # noqa: C901
             assert "{" not in notification.subscriptionURI, "Trying to catch format variables not being replaced"
 
             # DER resources are NOT list enabled and either set resource with the first element or leave it None
-            if resource in DER_RESOURCES:
+            if resource in NON_LIST_RESOURCES:
                 if entity_length > 0:
                     assert isinstance(notification.resource, NotificationResourceCombined)
                     assert notification.resource.all_ is None
                     assert notification.resource.results is None
                 else:
+
                     assert notification.resource is None
+
             else:
-                assert notification.resource.all_ == len(entities)
-                assert notification.resource.results == len(entities)
                 assert isinstance(notification.resource, NotificationResourceCombined)
+                if resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
+                    # FSA list is not fully encoded as a list
+                    assert notification.resource.all_ == 1
+                    assert notification.resource.results == 0
+                else:
+                    assert notification.resource.all_ == len(entities)
+                    assert notification.resource.results == len(entities)
 
             # The underlying sub site scope should dictate how the top level object encodes site id in the hrefs
             expected_sub_resource_href_snippet: Optional[str] = None
@@ -644,6 +656,12 @@ def test_entities_to_notification_sites(  # noqa: C901
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_DER_STATUS and entity_length:
                 assert notification.resource.inverterStatus.value == entities[0].inverter_status
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS and entity_length:
+                assert notification.resource.pollRate == entities[0].original.fsal_pollrate_seconds
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL and entity_length:
+                assert notification.resource.setGradW == entities[0].original.ramp_rate_percent_per_second
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
 
 

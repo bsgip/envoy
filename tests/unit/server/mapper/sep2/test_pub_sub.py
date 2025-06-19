@@ -927,3 +927,18 @@ def test_NotificationMapper_map_default_site_control_response(notification_type:
         notification_all_set.resource.DERControlBase_.opModExpLimW.value
         == DERControlMapper.map_to_active_power(all_set.export_limit_active_watts, pow10_mult).value
     )
+
+
+def test_NotificationMapper_map_default_site_control_response_none_value():
+
+    sub = generate_class_instance(Subscription, seed=303)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    pow10_mult = -3
+
+    notification_all_set = NotificationMapper.map_default_site_control_response(
+        None, pow10_mult, sub, scope, NotificationType.ENTITY_DELETED
+    )
+    assert isinstance(notification_all_set, Notification)
+
+    # Resource won't be set if we don't have a value
+    assert notification_all_set.resource is None

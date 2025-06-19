@@ -12,6 +12,8 @@ from envoy.notification.crud.archive import (
     orm_relationship_map_parent_entities,
 )
 from envoy.notification.crud.common import (
+    ArchiveControlGroupScopedDefaultSiteControl,
+    ArchiveSiteScopedRuntimeServerConfig,
     ControlGroupScopedDefaultSiteControl,
     SiteScopedRuntimeServerConfig,
     TArchiveResourceModel,
@@ -19,9 +21,11 @@ from envoy.notification.crud.common import (
 )
 from envoy.notification.exception import NotificationError
 from envoy.server.crud.common import localize_start_time_for_entity
+from envoy.server.crud.server import select_server_config
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (
+    ArchiveDefaultSiteControl,
     ArchiveSite,
     ArchiveSiteDER,
     ArchiveSiteDERAvailability,
@@ -31,7 +35,7 @@ from envoy.server.model.archive.site import (
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.server import RuntimeServerConfig
 from envoy.server.model.site import (
     DefaultSiteControl,
@@ -179,7 +183,7 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
         # der entities get scoped to the parent der
         return PUBLIC_SITE_DER_ID  # There is only a single site DER per EndDevice - it has a static id
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
-        return 1  # There is no subscriptions to a single FSA
+        return -1  # There are no subscriptions to a single FSA
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         return cast(ControlGroupScopedDefaultSiteControl, entity).site_control_group_id  # type: ignore
     else:
@@ -204,6 +208,10 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
         return cast(SiteDERSetting, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         return cast(SiteDERStatus, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
+    elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
+        return cast(ControlGroupScopedDefaultSiteControl, entity).original.site_id  # type: ignore
+    elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
+        return cast(SiteScopedRuntimeServerConfig, entity).site_id  # type: ignore
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate site id")
 
@@ -620,3 +628,79 @@ async def fetch_der_status_by_changed_at(
     return AggregatorBatchedEntities(
         timestamp, SubscriptionResource.SITE_DER_STATUS, active_der_statuses, deleted_der_statuses
     )
+
+
+async def fetch_default_site_controls_by_changed_at(
+    session: AsyncSession, timestamp: datetime
+) -> AggregatorBatchedEntities[ControlGroupScopedDefaultSiteControl, ArchiveControlGroupScopedDefaultSiteControl]:  # type: ignore # noqa: E501
+    """Fetches all DefaultSiteControl instances matching the specified changed_at and returns them keyed by their
+    aggregator/site id
+
+    Also fetches any site from the archive that was deleted at the specified timestamp"""
+
+    active_defaults, deleted_defaults = await fetch_entities_with_archive_by_datetime(
+        session, DefaultSiteControl, ArchiveDefaultSiteControl, timestamp
+    )
+
+    # Now fetch all site's so we can populate the site_relationship
+    referenced_site_ids = {
+        e.site_id
+        for e in cast(
+            Iterable[Union[DefaultSiteControl, ArchiveDefaultSiteControl]],
+            chain(active_defaults, deleted_defaults),
+        )
+    }
+    active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
+        session, Site, ArchiveSite, referenced_site_ids
+    )
+
+    # Map the "site" relationship
+    orm_relationship_map_parent_entities(
+        cast(Iterable[Union[DefaultSiteControl, ArchiveDefaultSiteControl]], chain(active_defaults, deleted_defaults)),
+        lambda e: e.site_id,
+        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        "site",
+    )
+
+    # The defaults will need to vary per SiteControlGroup so we generate an instance per site_control_group_id
+    site_control_group_ids = (await session.execute(select(SiteControlGroup.site_control_group_id))).scalars().all()
+
+    site_control_scoped_actives = [
+        ControlGroupScopedDefaultSiteControl(scg_id, ad) for ad in active_defaults for scg_id in site_control_group_ids
+    ]
+    site_control_scoped_deleted = [
+        ArchiveControlGroupScopedDefaultSiteControl(scg_id, ad)
+        for ad in deleted_defaults
+        for scg_id in site_control_group_ids
+    ]
+
+    return AggregatorBatchedEntities(
+        timestamp, SubscriptionResource.DEFAULT_SITE_CONTROL, site_control_scoped_actives, site_control_scoped_deleted
+    )  # type: ignore
+
+
+async def fetch_runtime_config_by_changed_at(
+    session: AsyncSession, timestamp: datetime
+) -> AggregatorBatchedEntities[SiteScopedRuntimeServerConfig, ArchiveSiteScopedRuntimeServerConfig]:  # type: ignore # noqa: E501
+    """Fetches all RuntimeServerCOnfig instances matching the specified changed_at and returns them keyed by their
+    aggregator/site id"""
+
+    runtime_cfg = await select_server_config(session)
+    if runtime_cfg is None or runtime_cfg.changed_time != timestamp:
+        return AggregatorBatchedEntities(
+            timestamp,
+            SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
+            [],
+            [],
+        )  # type: ignore
+
+    # The fsa update will need to vary per Site so we generate an instance per site_id
+    aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id))).all()
+
+    site_scoped_cfgs = [
+        SiteScopedRuntimeServerConfig(agg_id, site_id, runtime_cfg) for agg_id, site_id in aggregator_site_ids
+    ]
+
+    return AggregatorBatchedEntities(
+        timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, site_scoped_cfgs, []
+    )  # type: ignore

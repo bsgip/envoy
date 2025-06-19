@@ -405,6 +405,6 @@ class DefaultSiteControl(Base):
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )
     load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
-    ramp_rate_percent_per_second: Mapped[Optional[int]] = mapped_column(nullable=True)
+    ramp_rate_percent_per_second: Mapped[Optional[int]] = mapped_column(nullable=True)  # hundredths of percent per sec
 
     site: Mapped["Site"] = relationship(back_populates="default_site_control", lazy="raise")
