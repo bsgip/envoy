@@ -28,7 +28,11 @@ from envoy.notification.crud.batch import (
     get_subscription_filter_id,
     select_subscriptions_for_resource,
 )
-from envoy.notification.crud.common import TResourceModel
+from envoy.notification.crud.common import (
+    ControlGroupScopedDefaultSiteControl,
+    SiteScopedRuntimeServerConfig,
+    TResourceModel,
+)
 from envoy.notification.exception import NotificationError
 from envoy.server.crud.end_device import Site
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
@@ -47,7 +51,15 @@ from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveS
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.server import RuntimeServerConfig
+from envoy.server.model.site import (
+    DefaultSiteControl,
+    SiteDER,
+    SiteDERAvailability,
+    SiteDERRating,
+    SiteDERSetting,
+    SiteDERStatus,
+)
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -259,6 +271,23 @@ def test_get_batch_key_invalid():
             ),
             (1, 3, PUBLIC_SITE_DER_ID),
         ),
+        (
+            SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
+            SiteScopedRuntimeServerConfig(
+                aggregator_id=11,
+                site_id=22,
+                cfg=generate_class_instance(RuntimeServerConfig),
+            ),
+            (11, 22),
+        ),
+        (
+            SubscriptionResource.DEFAULT_SITE_CONTROL,
+            ControlGroupScopedDefaultSiteControl(
+                site_control_group_id=33,
+                d=DefaultSiteControl(site_id=11, site=Site(site_id=11, aggregator_id=22)),
+            ),
+            (22, 11, 33),
+        ),
     ],
 )
 def test_get_batch_key(resource: SubscriptionResource, entity: TResourceModel, expected: tuple):
@@ -301,6 +330,13 @@ def test_get_subscription_filter_id_invalid():
                 start_time=datetime(2023, 2, 3, 4, 5, 6),
             ),
             2,
+        ),
+        (
+            SubscriptionResource.DEFAULT_SITE_CONTROL,
+            ControlGroupScopedDefaultSiteControl(
+                site_control_group_id=4, d=generate_class_instance(DefaultSiteControl, seed=101)
+            ),
+            4,
         ),
     ],
 )

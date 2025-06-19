@@ -393,7 +393,7 @@ class DefaultSiteControl(Base):
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )  # When this record was created
-    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
     import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True

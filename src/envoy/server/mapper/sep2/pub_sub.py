@@ -4,6 +4,7 @@ from typing import Optional, Sequence, Union
 from urllib.parse import urlparse
 
 from envoy_schema.server.schema.sep2.pub_sub import (
+    XSI_TYPE_DEFAULT_DER_CONTROL,
     XSI_TYPE_DER_AVAILABILITY,
     XSI_TYPE_DER_CAPABILITY,
     XSI_TYPE_DER_CONTROL_LIST,
@@ -18,6 +19,7 @@ from envoy_schema.server.schema.sep2.pub_sub import Notification, NotificationSt
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
 from envoy_schema.server.schema.sep2.pub_sub import SubscriptionEncoding, SubscriptionListResponse
 from envoy_schema.server.schema.uri import (
+    DefaultDERControlUri,
     DERAvailabilityUri,
     DERCapabilityUri,
     DERControlListUri,
@@ -25,6 +27,7 @@ from envoy_schema.server.schema.uri import (
     DERStatusUri,
     EndDeviceListUri,
     EndDeviceUri,
+    FunctionSetAssignmentsListUri,
     RateComponentListUri,
     ReadingListUri,
     SubscriptionListUri,
@@ -41,11 +44,19 @@ from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.csip_aus.doe import DERControlMapper
 from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMapper, DERSettingMapper, DERStatusMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
+from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
 from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
 from envoy.server.mapper.sep2.pricing import TimeTariffIntervalMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import (
+    DefaultSiteControl,
+    Site,
+    SiteDERAvailability,
+    SiteDERRating,
+    SiteDERSetting,
+    SiteDERStatus,
+)
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -163,6 +174,18 @@ class SubscriptionMapper:
                 raise InvalidMappingError(f"Subscribing to DERStatus requires resource_id on sub {sub.subscription_id}")
 
             return generate_href(DERStatusUri, scope, site_id=scope.display_site_id, der_id=sub.resource_id)
+        elif sub.resource_type == SubscriptionResource.DEFAULT_SITE_CONTROL:
+
+            if sub.resource_id is None:
+                raise InvalidMappingError(
+                    f"Subscribing to DefaultDERControl requires resource_id on sub {sub.subscription_id}"
+                )
+
+            return generate_href(
+                DefaultDERControlUri, scope, site_id=scope.display_site_id, der_program_id=sub.resource_id
+            )
+        elif sub.resource_type == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
+            return generate_href(FunctionSetAssignmentsListUri, scope, site_id=scope.display_site_id)
         else:
             raise InvalidMappingError(
                 f"Cannot map a resource HREF for resource_type {sub.resource_type} on sub {sub.subscription_id}"
@@ -287,6 +310,32 @@ class SubscriptionMapper:
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERStatus resource")
+
+        # Try DefaultDERControl
+        result = parse(DefaultDERControlUri, href)
+        if result:
+            try:
+                return (
+                    SubscriptionResource.DEFAULT_SITE_CONTROL,
+                    _parse_site_id_from_match(result["site_id"]),
+                    int(result["der_program_id"]),
+                )
+            except ValueError:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DefaultDERControl resource")
+
+        # Try FunctionSetAssignmentsList
+        result = parse(FunctionSetAssignmentsListUri, href)
+        if result:
+            try:
+                return (
+                    SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
+                    _parse_site_id_from_match(result["site_id"]),
+                    None,
+                )
+            except ValueError:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a FunctionSetAssignmentList resource"
+                )
 
         # Try EndDevice
         result = parse(EndDeviceUri, href)
@@ -613,5 +662,55 @@ class NotificationMapper:
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": _map_to_notification_status(notification_type),
                 "resource": resource_model,
+            }
+        )
+
+    @staticmethod
+    def map_function_set_assignments_list_to_response(
+        poll_rate_seconds: int,
+        sub: Subscription,
+        scope: AggregatorRequestScope,
+        notification_type: NotificationType,
+    ) -> Notification:
+        """Turns a poll rate into a notification for a FunctionSetAssignmentsList"""
+
+        fsa_list_href = generate_href(FunctionSetAssignmentsListUri, scope, site_id=scope.display_site_id)
+        return Notification.model_validate(
+            {
+                "subscribedResource": fsa_list_href,
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
+                "status": _map_to_notification_status(notification_type),
+                "resource": {
+                    "type": "FunctionSetAssignmentsList",
+                    "pollRate": poll_rate_seconds,
+                    "all_": 1,
+                    "results": 0,
+                },
+            }
+        )
+
+    @staticmethod
+    def map_default_site_control_response(
+        default_doe: DefaultSiteControl,
+        pow10_multipier: int,
+        sub: Subscription,
+        scope: AggregatorRequestScope,
+        notification_type: NotificationType,
+    ) -> Notification:
+        """Turns a poll rate into a notification for a FunctionSetAssignmentsList"""
+
+        default_der_control_href = generate_href(
+            DefaultDERControlUri, scope, site_id=scope.display_site_id, der_program_id=sub.resource_id
+        )
+
+        resource_model = DERControlMapper.map_to_default_response(scope, default_doe, pow10_multipier)
+        resource_model.type = XSI_TYPE_DEFAULT_DER_CONTROL
+
+        return Notification.model_validate(
+            {
+                "subscribedResource": default_der_control_href,
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
+                "status": _map_to_notification_status(notification_type),
+                "resource": resource_model.model_dump(),
             }
         )

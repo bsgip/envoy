@@ -21,6 +21,8 @@ class SubscriptionResource(IntEnum):
     SITE_DER_RATING = auto()
     SITE_DER_SETTING = auto()
     SITE_DER_STATUS = auto()
+    DEFAULT_SITE_CONTROL = auto()
+    FUNCTION_SET_ASSIGNMENTS = auto()  # This just maps to the pollRate exposed in the FSA List
 
 
 class Subscription(Base):

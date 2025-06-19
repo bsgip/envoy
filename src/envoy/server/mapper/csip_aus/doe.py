@@ -133,6 +133,7 @@ class DERControlMapper:
     ) -> DefaultDERControl:
         """Creates a csip aus compliant DefaultDERControl from the specified defaults"""
         return DefaultDERControl(
+            subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
             mRID=MridMapper.encode_default_doe_mrid(scope),
             setGradW=default_doe.ramp_rate_percent_per_second,
             DERControlBase_=DERControlBase(

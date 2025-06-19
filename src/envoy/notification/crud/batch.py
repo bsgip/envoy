@@ -11,7 +11,12 @@ from envoy.notification.crud.archive import (
     fetch_entities_with_archive_by_id,
     orm_relationship_map_parent_entities,
 )
-from envoy.notification.crud.common import TArchiveResourceModel, TResourceModel
+from envoy.notification.crud.common import (
+    ControlGroupScopedDefaultSiteControl,
+    SiteScopedRuntimeServerConfig,
+    TArchiveResourceModel,
+    TResourceModel,
+)
 from envoy.notification.exception import NotificationError
 from envoy.server.crud.common import localize_start_time_for_entity
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
@@ -27,7 +32,16 @@ from envoy.server.model.archive.site import (
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.server import RuntimeServerConfig
+from envoy.server.model.site import (
+    DefaultSiteControl,
+    Site,
+    SiteDER,
+    SiteDERAvailability,
+    SiteDERRating,
+    SiteDERSetting,
+    SiteDERStatus,
+)
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -90,6 +104,8 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
     SubscriptionResource.SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
     SubscriptionResource.SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
     SubscriptionResource.SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
+    SubscriptionResource.FUNCTION_SET_ASSIGNMENTS: (aggregator_id: int, site_id: int)
+    SubscriptionResource.DEFAULT_SITE_CONTROL: (aggregator_id: int, site_id: int, site_control_group_id: int)
     SubscriptionResource.SUBSCRIPTION: (aggregator_id: int, subscription_id: int)
     """
     if resource == SubscriptionResource.SITE:
@@ -120,6 +136,16 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         status = cast(SiteDERStatus, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (status.site_der.site.aggregator_id, status.site_der.site_id, PUBLIC_SITE_DER_ID)
+    elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
+        default_control = cast(ControlGroupScopedDefaultSiteControl, entity)  # type: ignore
+        return (
+            default_control.original.site.aggregator_id,
+            default_control.original.site_id,
+            default_control.site_control_group_id,
+        )
+    elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
+        server_config = cast(SiteScopedRuntimeServerConfig, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        return (server_config.aggregator_id, server_config.site_id)
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate batch key")
 
@@ -152,6 +178,10 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         # der entities get scoped to the parent der
         return PUBLIC_SITE_DER_ID  # There is only a single site DER per EndDevice - it has a static id
+    elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
+        return 1  # There is no subscriptions to a single FSA
+    elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
+        return cast(ControlGroupScopedDefaultSiteControl, entity).site_control_group_id  # type: ignore
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate primary key")
 
