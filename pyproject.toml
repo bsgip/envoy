@@ -91,7 +91,7 @@ test = [
     "httpx",
     "defusedxml",
     "asgi_lifespan",
-    "assertical",
+    "assertical>=0.3.1",
     "pytest-env",
     "freezegun",
 ]
