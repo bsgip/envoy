@@ -61,6 +61,8 @@ def subscribable_resource_hrefs(site_id: int, pricing_reading_type_id: int) -> l
         f"/edev/{site_id}/der/1/derg",
         f"/edev/{site_id}/tp/1/rc",
         f"/upt/{site_id}/mr/{pricing_reading_type_id}/rs/all/r",
+        f"/edev/{site_id}/fsa",
+        f"/edev/{site_id}/derp/1/dderc",
     ]
 
 

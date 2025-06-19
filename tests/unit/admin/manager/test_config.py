@@ -1,3 +1,4 @@
+import unittest.mock as mock
 from decimal import Decimal
 
 import pytest
@@ -34,9 +35,13 @@ from envoy.server.model.site import DefaultSiteControl
         ),
     ],
 )
+@mock.patch("envoy.admin.manager.config.NotificationManager.notify_changed_deleted_entities")
 @pytest.mark.anyio
 async def test_update_site_control_default_all_vals_update(
-    pg_base_config, site_id: int, control_request: ControlDefaultRequest
+    mock_notify_changed_deleted_entities: mock.MagicMock,
+    pg_base_config,
+    site_id: int,
+    control_request: ControlDefaultRequest,
 ):
     """Tests that the values for existing/new control defaults can be correctly updated"""
     async with generate_async_session(pg_base_config) as session:
@@ -51,3 +56,5 @@ async def test_update_site_control_default_all_vals_update(
         assert saved_result.generation_limit_active_watts == control_request.generation_limit_watts.value
         assert saved_result.load_limit_active_watts == control_request.load_limit_watts.value
         assert saved_result.ramp_rate_percent_per_second == control_request.ramp_rate_percent_per_second.value
+
+    mock_notify_changed_deleted_entities.assert_called_once()

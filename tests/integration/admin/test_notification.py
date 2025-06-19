@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from http import HTTPStatus
 from typing import Union
 from zoneinfo import ZoneInfo
@@ -7,10 +8,18 @@ import pytest
 from assertical.fake.generator import generate_class_instance
 from assertical.fake.http import HTTPMethod, MockedAsyncClient
 from assertical.fixtures.postgres import generate_async_session
+from envoy_schema.admin.schema.config import ControlDefaultRequest, RuntimeServerConfigRequest, UpdateDefaultValue
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
 from envoy_schema.admin.schema.site_control import SiteControlRequest
-from envoy_schema.admin.schema.uri import DoeUri, SiteControlUri, SiteUri, TariffGeneratedRateCreateUri
+from envoy_schema.admin.schema.uri import (
+    DoeUri,
+    ServerConfigRuntimeUri,
+    SiteControlDefaultConfigUri,
+    SiteControlUri,
+    SiteUri,
+    TariffGeneratedRateCreateUri,
+)
 from httpx import AsyncClient
 from sqlalchemy import delete, insert, select
 
@@ -605,3 +614,120 @@ async def test_delete_site_with_active_subscription(
     assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
         notifications_enabled.logged_requests
     ), "Expected unique notification ids for each request"
+
+
+@pytest.mark.anyio
+async def test_update_server_config_fsa_notification(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests that updating server config generates subscription notifications for FSA list"""
+
+    subscription1_uri = "http://my.example:542/uri"
+    subscription2_uri = "https://my.other.example:542/uri"
+
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # Will pickup FSA notifications for site 2
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
+                resource_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        # Will pickup FSA notifications for site 3
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=2,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
+                resource_id=None,
+                scoped_site_id=3,
+                notification_uri=subscription2_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    # Update fsa config
+    config_request = generate_class_instance(RuntimeServerConfigRequest, seed=101, disable_edev_registration=True)
+    resp = await admin_client_auth.post(ServerConfigRuntimeUri, content=config_request.model_dump_json())
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+
+    # Sub 1 got one notification, sub 2 got the other
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription2_uri)] == 1
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+
+
+@pytest.mark.anyio
+async def test_update_site_default_config_notification(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests that updating site default config generates subscription notifications for DefaultDERControl"""
+
+    subscription1_uri = "http://my.example:542/uri"
+
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # Will pickup site default updates for site 2
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.DEFAULT_SITE_CONTROL,
+                resource_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    # now do an update for certain fields
+    config_request = ControlDefaultRequest(
+        import_limit_watts=UpdateDefaultValue(value=None),
+        export_limit_watts=UpdateDefaultValue(value=Decimal("2.34")),
+        generation_limit_watts=None,
+        load_limit_watts=None,
+        ramp_rate_percent_per_second=None,
+    )
+
+    # Update default controls for site 1 and site 2
+    resp = await admin_client_auth.post(
+        SiteControlDefaultConfigUri.format(site_id=1), content=config_request.model_dump_json()
+    )
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    resp = await admin_client_auth.post(
+        SiteControlDefaultConfigUri.format(site_id=2), content=config_request.model_dump_json()
+    )
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
+
+    # Only one request should've generated a notification
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
