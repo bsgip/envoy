@@ -1,10 +1,18 @@
+import asyncio
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.admin.crud.site_reading import count_site_readings_for_site_and_time, select_site_readings_for_site_and_time
+from envoy.admin.crud.site_reading import (
+    count_site_readings_for_site_and_time,
+    select_agg_id_for_site,
+    select_csip_aus_site_type_ids,
+    select_site_readings_for_site_and_time,
+)
 from envoy.admin.mapper.site_reading import AdminSiteReadingMapper
-from envoy_schema.admin.schema.site_reading import AdminSiteReadingPageResponse
+from envoy_schema.admin.schema.site_reading import CSIPAusSiteReadingUnit, CSIPAusSiteReadingPageResponse
+
+from envoy.server.exception import NotFoundError
 
 
 class AdminSiteReadingManager:
@@ -14,32 +22,51 @@ class AdminSiteReadingManager:
     async def get_site_readings_for_site_and_time(
         session: AsyncSession,
         site_id: int,
+        csip_unit: CSIPAusSiteReadingUnit,
         start_time: datetime,
         end_time: datetime,
         start: int = 0,
-        limit: int = 1000,
-    ) -> AdminSiteReadingPageResponse:
+        limit: int = 10000,
+    ) -> CSIPAusSiteReadingPageResponse:
         """Get site readings for specified site within a time range."""
 
-        # Get total count for pagination metadata
-        total_count = await count_site_readings_for_site_and_time(
+        # Convert CSIP unit to UOM for database query
+        uom = AdminSiteReadingMapper.csip_unit_to_uom(csip_unit)
+
+        # Query 1: get the aggregator id from site to help hit the index of SiteReadingType
+        aggregator_ids = await select_agg_id_for_site(session=session, site_id=site_id)
+
+        # Query 2: retrieve the reading type IDs for this site in order to hit index of SiteReading
+        site_type_ids = await select_csip_aus_site_type_ids(
+            session=session, aggregator_ids=aggregator_ids, site_id=site_id, uom=uom
+        )
+
+        if not aggregator_ids:
+            raise NotFoundError(f"Site {site_id} not found")
+
+        if not site_type_ids:
+            raise NotFoundError(f"No readings available for site {site_id} with unit {csip_unit}")
+
+        # Queries 3: Get total count and readings in parallel
+        total_count_task = count_site_readings_for_site_and_time(
             session=session,
-            site_id=site_id,
+            site_type_ids=site_type_ids,
             start_time=start_time,
             end_time=end_time,
         )
 
-        # Get the actual readings
-        site_readings = await select_site_readings_for_site_and_time(
+        site_readings_task = select_site_readings_for_site_and_time(
             session=session,
-            site_id=site_id,
+            site_type_ids=site_type_ids,
             start_time=start_time,
             end_time=end_time,
             start=start,
             limit=limit,
         )
 
-        return AdminSiteReadingMapper.map_to_admin_reading_page_response(
+        total_count, site_readings = await asyncio.gather(total_count_task, site_readings_task)
+
+        return AdminSiteReadingMapper.map_to_csip_aus_reading_page_response(
             site_readings=site_readings,
             total_count=total_count,
             start=start,
@@ -47,4 +74,5 @@ class AdminSiteReadingManager:
             site_id=site_id,
             start_time=start_time,
             end_time=end_time,
+            requested_unit=csip_unit,
         )

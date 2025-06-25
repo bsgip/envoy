@@ -1,44 +1,33 @@
 import logging
 from datetime import datetime
 from http import HTTPStatus
-from envoy_schema.admin.schema.site_reading import AdminSiteReadingPageResponse
+from envoy_schema.admin.schema.site_reading import CSIPAusSiteReadingPageResponse, CSIPAusSiteReadingUnit
+from envoy_schema.admin.schema.uri import CSIPAusSiteReadingUri
 from fastapi import APIRouter, Query
 from fastapi_async_sqlalchemy import db
 from envoy.admin.manager.site_reading import AdminSiteReadingManager
+from envoy.server.api.request import extract_limit_from_paging_param, extract_start_from_paging_param
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-SiteReadingUri = "/site-readings/{site_id}/period/{period_start}/{period_end}"
 
 
-@router.get(SiteReadingUri, status_code=HTTPStatus.OK, response_model=AdminSiteReadingPageResponse)
+@router.get(CSIPAusSiteReadingUri, status_code=HTTPStatus.OK, response_model=CSIPAusSiteReadingPageResponse)
 async def get_site_readings(
     site_id: int,
+    unit_enum: CSIPAusSiteReadingUnit,
     period_start: datetime,
     period_end: datetime,
-    start: int = Query(0),
-    limit: int = Query(1000),
-) -> AdminSiteReadingPageResponse:
-    """Endpoint for a paginated list of AdminSiteReading objects.
-
-    Path Params:
-        site_id: site_id for which to obtain readings
-        period_start: earliest time range of readings
-        period_end: latest time range of readings
-
-    Query Params:
-        start: start index value (for pagination). Default 0.
-        limit: maximum number of objects to return. Default 1000.
-
-    Returns:
-        AdminSiteReadingPageResponse
-    """
+    start: list[int] = Query([0]),
+    limit: list[int] = Query([1000]),
+) -> CSIPAusSiteReadingPageResponse:
     return await AdminSiteReadingManager.get_site_readings_for_site_and_time(
         session=db.session,
         site_id=site_id,
+        csip_unit=unit_enum,
         start_time=period_start,
         end_time=period_end,
-        start=start,
-        limit=limit,
+        start=extract_start_from_paging_param(start),
+        limit=extract_limit_from_paging_param(limit),
     )
