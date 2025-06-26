@@ -189,6 +189,11 @@ class SubscriptionMapper:
         elif sub.resource_type == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
             return generate_href(FunctionSetAssignmentsListUri, scope, site_id=scope.display_site_id)
         elif sub.resource_type == SubscriptionResource.SITE_CONTROL_GROUP:
+            if sub.resource_id is not None:
+                raise InvalidMappingError(
+                    f"Subscribing to SiteControlGroups with a resource_id is unsupported on sub {sub.subscription_id}"
+                )
+
             return generate_href(DERProgramListUri, scope, site_id=scope.display_site_id)
         else:
             raise InvalidMappingError(
