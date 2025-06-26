@@ -21,6 +21,7 @@ from envoy.notification.crud.batch import (
     fetch_rates_by_changed_at,
     fetch_readings_by_changed_at,
     fetch_runtime_config_by_changed_at,
+    fetch_site_control_groups_by_changed_at,
     fetch_sites_by_changed_at,
     get_site_id,
     get_subscription_filter_id,
@@ -29,6 +30,7 @@ from envoy.notification.crud.batch import (
 from envoy.notification.crud.common import (
     ControlGroupScopedDefaultSiteControl,
     SiteScopedRuntimeServerConfig,
+    SiteScopedSiteControlGroup,
     TArchiveResourceModel,
     TResourceModel,
 )
@@ -261,6 +263,14 @@ def entities_to_notification(
             notification_type=notification_type,
             power10_multiplier=config.site_control_pow10_encoding,
         )
+    elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
+        # SITE_CONTROL_GROUP: (aggregator_id: int, site_control_group_id: int)
+        return NotificationMapper.map_site_control_groups_to_response(
+            site_control_groups=[e.original for e in cast(Sequence[SiteScopedSiteControlGroup], entities)],  # type: ignore # noqa: E501
+            sub=sub,
+            scope=scope,
+            notification_type=notification_type,
+        )
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
         (_, _, site_reading_type_id) = batch_key
@@ -346,6 +356,8 @@ async def fetch_batched_entities(
         return await fetch_default_site_controls_by_changed_at(session, timestamp)
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
         return await fetch_runtime_config_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
+        return await fetch_site_control_groups_by_changed_at(session, timestamp)
     else:
         raise NotificationError(f"Unsupported resource type: {resource}")
 

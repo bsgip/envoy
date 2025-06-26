@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import TypeVar
 
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
 from envoy.server.model.archive.site import (
     ArchiveDefaultSiteControl,
     ArchiveSite,
@@ -14,7 +14,7 @@ from envoy.server.model.archive.site import (
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.subscription import ArchiveSubscription
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.server import RuntimeServerConfig
 from envoy.server.model.site import (
     DefaultSiteControl,
@@ -48,6 +48,24 @@ class ArchiveSiteScopedRuntimeServerConfig:
 
 
 @dataclass
+class SiteScopedSiteControlGroup:
+    """SiteControlGroup isn't scoped to a specific Site - for csip-aus it will need to be"""
+
+    aggregator_id: int
+    site_id: int
+    original: SiteControlGroup
+
+
+@dataclass
+class ArchiveSiteScopedSiteControlGroup:
+    """ArchiveSiteControlGroup isn't scoped to a specific Site - for csip-aus it will need to be"""
+
+    aggregator_id: int
+    site_id: int
+    original: ArchiveSiteControlGroup
+
+
+@dataclass
 class ControlGroupScopedDefaultSiteControl:
     """DefaultSiteControl isn't scoped to a specific SiteControlGroup - for csip-aus it will need to be"""
 
@@ -77,6 +95,7 @@ TResourceModel = TypeVar(
     SiteDERStatus,
     Subscription,
     DefaultSiteControl,
+    SiteControlGroup,
     RuntimeServerConfig,
 )
 
@@ -94,4 +113,5 @@ TArchiveResourceModel = TypeVar(
     ArchiveSiteDERStatus,
     ArchiveSubscription,
     ArchiveDefaultSiteControl,
+    ArchiveSiteControlGroup,
 )

@@ -21,7 +21,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.mrid import MridMapper, ResponseSetType
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.site import DefaultSiteControl
 from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
@@ -161,7 +161,9 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def site_control_list_href(request_scope: DeviceOrAggregatorRequestScope, site_control_group_id: int) -> str:
+    def site_control_list_href(
+        request_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope], site_control_group_id: int
+    ) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
             uri.DERControlListUri,
@@ -171,7 +173,9 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def active_control_list_href(request_scope: DeviceOrAggregatorRequestScope, site_control_group_id: int) -> str:
+    def active_control_list_href(
+        request_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope], site_control_group_id: int
+    ) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
             uri.ActiveDERControlListUri,
@@ -181,7 +185,9 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def default_control_href(request_scope: DeviceOrAggregatorRequestScope, site_control_group_id: int) -> str:
+    def default_control_href(
+        request_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope], site_control_group_id: int
+    ) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
             uri.DefaultDERControlUri,
@@ -231,7 +237,9 @@ class DERControlMapper:
 
 class DERProgramMapper:
     @staticmethod
-    def derp_href(rq_scope: DeviceOrAggregatorRequestScope, site_control_group_id: int) -> str:
+    def derp_href(
+        rq_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope], site_control_group_id: int
+    ) -> str:
         """Returns a href for a particular site's DER Program for the specified site control group"""
         return generate_href(
             uri.DERProgramUri,
@@ -247,9 +255,9 @@ class DERProgramMapper:
 
     @staticmethod
     def doe_program_response(
-        rq_scope: DeviceOrAggregatorRequestScope,
-        total_controls: int,
-        site_control_group: SiteControlGroup,
+        rq_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope],
+        total_controls: Optional[int],
+        site_control_group: Union[SiteControlGroup, ArchiveSiteControlGroup],
         default_doe: Optional[DefaultSiteControl],
     ) -> DERProgramResponse:
         """Returns a DERProgram response for a SiteControlGroup"""
@@ -262,6 +270,10 @@ class DERProgramMapper:
                     "href": DERControlMapper.default_control_href(rq_scope, site_control_group.site_control_group_id),
                 }
             )
+
+        active_der_control_count: Optional[int] = None
+        if total_controls is not None:
+            active_der_control_count = 1 if total_controls > 0 else 0
 
         return DERProgramResponse.model_validate(
             {
@@ -277,7 +289,7 @@ class DERProgramMapper:
                         "href": DERControlMapper.active_control_list_href(
                             rq_scope, site_control_group.site_control_group_id
                         ),
-                        "all_": 1 if total_controls > 0 else 0,
+                        "all_": active_der_control_count,
                     }
                 ),
                 "DERControlListLink": ListLink.model_validate(
@@ -306,6 +318,7 @@ class DERProgramMapper:
             {
                 "href": DERProgramMapper.doe_list_href(rq_scope),
                 "pollRate": pollrate_seconds,
+                "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "DERProgram": [
                     DERProgramMapper.doe_program_response(rq_scope, control_count, group, default_doe)
                     for group, control_count in site_control_groups_with_control_count

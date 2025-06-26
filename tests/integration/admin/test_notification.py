@@ -11,11 +11,12 @@ from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.config import ControlDefaultRequest, RuntimeServerConfigRequest, UpdateDefaultValue
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
-from envoy_schema.admin.schema.site_control import SiteControlRequest
+from envoy_schema.admin.schema.site_control import SiteControlGroupRequest, SiteControlRequest
 from envoy_schema.admin.schema.uri import (
     DoeUri,
     ServerConfigRuntimeUri,
     SiteControlDefaultConfigUri,
+    SiteControlGroupListUri,
     SiteControlUri,
     SiteUri,
     TariffGeneratedRateCreateUri,
@@ -731,3 +732,74 @@ async def test_update_site_default_config_notification(
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
     assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
     assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
+
+
+@pytest.mark.anyio
+async def test_create_site_control_groups_with_active_subscription(
+    admin_client_auth: AsyncClient,
+    notifications_enabled: MockedAsyncClient,
+    pg_base_config,
+):
+    """Tests creating site control requests with an active subscription generates notifications via MockedAsyncClient"""
+
+    # Create a subscription to actually pickup these changes
+    subscription2_uri = "https://my.other.example:542/uri"
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # This is scoped to site2
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.SITE_CONTROL_GROUP,
+                resource_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription2_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    primacy = 49
+    site_control_request = SiteControlGroupRequest(description="new group", primacy=primacy)
+
+    resp = await admin_client_auth.post(
+        SiteControlGroupListUri,
+        content=site_control_request.model_dump_json(),
+    )
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
+
+    # SiteControlGroup changes generate 1 notification per site. That means:
+    # sub1: Will get 3 notification batch (site 1, 2 and 4 - all under agg 1)
+    # sub2: Will get 1 notification batch (it's scoped to just site 2)
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription2_uri)] == 1
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+
+    # Do a really simple content check on the outgoing XML to ensure the notifications contain the expected
+    # entities for each subscription
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription2_uri
+                and str(primacy) in r.content
+                and "/edev/1/derp/3" not in r.content
+                and "/edev/2/derp/3" in r.content
+                and "/edev/4/derp/3" not in r.content
+            ]
+        )
+        == 1
+    ), "Only one notification (for sub 2) should be for the new DERP (id 3) for site 2"

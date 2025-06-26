@@ -14,8 +14,10 @@ from envoy.notification.crud.archive import (
 from envoy.notification.crud.common import (
     ArchiveControlGroupScopedDefaultSiteControl,
     ArchiveSiteScopedRuntimeServerConfig,
+    ArchiveSiteScopedSiteControlGroup,
     ControlGroupScopedDefaultSiteControl,
     SiteScopedRuntimeServerConfig,
+    SiteScopedSiteControlGroup,
     TArchiveResourceModel,
     TResourceModel,
 )
@@ -23,7 +25,7 @@ from envoy.notification.exception import NotificationError
 from envoy.server.crud.common import localize_start_time_for_entity
 from envoy.server.crud.server import select_server_config
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
 from envoy.server.model.archive.site import (
     ArchiveDefaultSiteControl,
     ArchiveSite,
@@ -108,6 +110,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
     SubscriptionResource.SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
     SubscriptionResource.SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
     SubscriptionResource.FUNCTION_SET_ASSIGNMENTS: (aggregator_id: int, site_id: int)
+    SubscriptionResource.SITE_CONTROL_GROUP: (aggregator_id: int, site_id: int)
     SubscriptionResource.DEFAULT_SITE_CONTROL: (aggregator_id: int, site_id: int, site_control_group_id: int)
     SubscriptionResource.SUBSCRIPTION: (aggregator_id: int, subscription_id: int)
     """
@@ -149,6 +152,9 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
         server_config = cast(SiteScopedRuntimeServerConfig, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (server_config.aggregator_id, server_config.site_id)
+    elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
+        scgroup = cast(SiteScopedSiteControlGroup, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        return (scgroup.aggregator_id, scgroup.site_id)
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate batch key")
 
@@ -185,6 +191,8 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
         return -1  # There are no subscriptions to a single FSA
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         return cast(ControlGroupScopedDefaultSiteControl, entity).site_control_group_id  # type: ignore
+    elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
+        return cast(SiteScopedSiteControlGroup, entity).original.site_control_group_id  # type: ignore
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate primary key")
 
@@ -211,6 +219,8 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
         return cast(ControlGroupScopedDefaultSiteControl, entity).original.site_id  # type: ignore
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
         return cast(SiteScopedRuntimeServerConfig, entity).site_id  # type: ignore
+    elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
+        return cast(SiteScopedSiteControlGroup, entity).site_id  # type: ignore
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate site id")
 
@@ -694,7 +704,7 @@ async def fetch_runtime_config_by_changed_at(
         )  # type: ignore
 
     # The fsa update will need to vary per Site so we generate an instance per site_id
-    aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id))).all()
+    aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
 
     site_scoped_cfgs = [
         SiteScopedRuntimeServerConfig(agg_id, site_id, runtime_cfg) for agg_id, site_id in aggregator_site_ids
@@ -702,4 +712,38 @@ async def fetch_runtime_config_by_changed_at(
 
     return AggregatorBatchedEntities(
         timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, site_scoped_cfgs, []
+    )  # type: ignore
+
+
+async def fetch_site_control_groups_by_changed_at(
+    session: AsyncSession, timestamp: datetime
+) -> AggregatorBatchedEntities[SiteScopedSiteControlGroup, ArchiveSiteScopedSiteControlGroup]:  # type: ignore # noqa: E501
+    """Fetches all SiteControlGroup instances matching the specified changed_at and returns them keyed by all existing
+    site IDs
+
+    Also fetches any site control group from the archive that was deleted at the specified timestamp"""
+
+    active_groups, deleted_groups = await fetch_entities_with_archive_by_datetime(
+        session, SiteControlGroup, ArchiveSiteControlGroup, timestamp
+    )
+    if len(active_groups) == 0 and len(deleted_groups) == 0:
+        return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE_CONTROL_GROUP, [], [])  # type: ignore
+
+    # The site control group update will need to vary per Site so we generate an instance per site_id
+    aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
+
+    site_scoped_active_groups = [
+        SiteScopedSiteControlGroup(agg_id, site_id, active_group)
+        for agg_id, site_id in aggregator_site_ids
+        for active_group in active_groups
+    ]
+
+    site_scoped_deleted_groups = [
+        ArchiveSiteScopedSiteControlGroup(agg_id, site_id, deleted_group)
+        for agg_id, site_id in aggregator_site_ids
+        for deleted_group in deleted_groups
+    ]
+
+    return AggregatorBatchedEntities(
+        timestamp, SubscriptionResource.SITE_CONTROL_GROUP, site_scoped_active_groups, site_scoped_deleted_groups
     )  # type: ignore

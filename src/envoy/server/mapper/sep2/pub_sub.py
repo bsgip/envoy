@@ -8,9 +8,11 @@ from envoy_schema.server.schema.sep2.pub_sub import (
     XSI_TYPE_DER_AVAILABILITY,
     XSI_TYPE_DER_CAPABILITY,
     XSI_TYPE_DER_CONTROL_LIST,
+    XSI_TYPE_DER_PROGRAM_LIST,
     XSI_TYPE_DER_SETTINGS,
     XSI_TYPE_DER_STATUS,
     XSI_TYPE_END_DEVICE_LIST,
+    XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST,
     XSI_TYPE_READING_LIST,
     XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
 )
@@ -23,6 +25,7 @@ from envoy_schema.server.schema.uri import (
     DERAvailabilityUri,
     DERCapabilityUri,
     DERControlListUri,
+    DERProgramListUri,
     DERSettingsUri,
     DERStatusUri,
     EndDeviceListUri,
@@ -41,13 +44,13 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.common import generate_href, remove_href_prefix
 from envoy.server.mapper.constants import PricingReadingType
-from envoy.server.mapper.csip_aus.doe import DefaultDERControl, DERControlMapper
+from envoy.server.mapper.csip_aus.doe import DefaultDERControl, DERControlMapper, DERProgramMapper
 from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMapper, DERSettingMapper, DERStatusMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
 from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
 from envoy.server.mapper.sep2.pricing import TimeTariffIntervalMapper
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.site import (
     DefaultSiteControl,
     Site,
@@ -185,6 +188,8 @@ class SubscriptionMapper:
             )
         elif sub.resource_type == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
             return generate_href(FunctionSetAssignmentsListUri, scope, site_id=scope.display_site_id)
+        elif sub.resource_type == SubscriptionResource.SITE_CONTROL_GROUP:
+            return generate_href(DERProgramListUri, scope, site_id=scope.display_site_id)
         else:
             raise InvalidMappingError(
                 f"Cannot map a resource HREF for resource_type {sub.resource_type} on sub {sub.subscription_id}"
@@ -336,6 +341,18 @@ class SubscriptionMapper:
                     f"Unable to interpret {href} parsed {result} as a FunctionSetAssignmentList resource"
                 )
 
+        # Try DERProgramList
+        result = parse(DERProgramListUri, href)
+        if result:
+            try:
+                return (
+                    SubscriptionResource.SITE_CONTROL_GROUP,
+                    _parse_site_id_from_match(result["site_id"]),
+                    None,
+                )
+            except ValueError:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
+
         # Try EndDevice
         result = parse(EndDeviceUri, href)
         if result:
@@ -464,6 +481,31 @@ class NotificationMapper:
                     "DERControl": [
                         DERControlMapper.map_to_response(scope, site_control_group_id, d, power10_multiplier, now)
                         for d in does
+                    ],
+                },
+            }
+        )
+
+    @staticmethod
+    def map_site_control_groups_to_response(
+        site_control_groups: Sequence[Union[SiteControlGroup, ArchiveSiteControlGroup]],
+        sub: Subscription,
+        scope: AggregatorRequestScope,
+        notification_type: NotificationType,
+    ) -> Notification:
+        """Turns a list of does into a notification"""
+        group_list_href = generate_href(DERProgramListUri, scope, site_id=scope.display_site_id)
+        return Notification.model_validate(
+            {
+                "subscribedResource": group_list_href,
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
+                "status": _map_to_notification_status(notification_type),
+                "resource": {
+                    "type": XSI_TYPE_DER_PROGRAM_LIST,
+                    "all_": len(site_control_groups),
+                    "results": len(site_control_groups),
+                    "DERProgram": [
+                        DERProgramMapper.doe_program_response(scope, None, scg, None) for scg in site_control_groups
                     ],
                 },
             }
@@ -680,7 +722,7 @@ class NotificationMapper:
                 "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
                 "status": _map_to_notification_status(notification_type),
                 "resource": {
-                    "type": "FunctionSetAssignmentsList",
+                    "type": XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST,
                     "pollRate": poll_rate_seconds,
                     "all_": 1,
                     "results": 0,

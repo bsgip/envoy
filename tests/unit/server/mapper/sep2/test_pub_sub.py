@@ -5,7 +5,7 @@ from typing import Optional, Union, cast
 import pytest
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
-from envoy_schema.server.schema.sep2.der import DERControlResponse
+from envoy_schema.server.schema.sep2.der import DERControlResponse, DERProgramResponse
 from envoy_schema.server.schema.sep2.end_device import EndDeviceResponse
 from envoy_schema.server.schema.sep2.metering import Reading
 from envoy_schema.server.schema.sep2.pricing import TimeTariffIntervalResponse
@@ -14,9 +14,11 @@ from envoy_schema.server.schema.sep2.pub_sub import (
     XSI_TYPE_DER_AVAILABILITY,
     XSI_TYPE_DER_CAPABILITY,
     XSI_TYPE_DER_CONTROL_LIST,
+    XSI_TYPE_DER_PROGRAM_LIST,
     XSI_TYPE_DER_SETTINGS,
     XSI_TYPE_DER_STATUS,
     XSI_TYPE_END_DEVICE_LIST,
+    XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST,
     XSI_TYPE_READING_LIST,
     XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
 )
@@ -29,6 +31,7 @@ from envoy_schema.server.schema.uri import (
     DERAvailabilityUri,
     DERCapabilityUri,
     DERControlListUri,
+    DERProgramListUri,
     DERSettingsUri,
     DERStatusUri,
     EndDeviceListUri,
@@ -48,7 +51,7 @@ from envoy.server.mapper.sep2.pub_sub import (
     SubscriptionMapper,
     _map_to_notification_status,
 )
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.site import (
     DefaultSiteControl,
     Site,
@@ -496,6 +499,9 @@ def test_SubscriptionMapper_map_from_request():
         ("/edev/55/fsa/foo", InvalidMappingError),
         ("/edev/55/fsa", (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, 55, None)),
         (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/fsa", (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, None, None)),
+        ("/edev/55/derp/foo", InvalidMappingError),
+        ("/edev/55/derp", (SubscriptionResource.SITE_CONTROL_GROUP, 55, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp", (SubscriptionResource.SITE_CONTROL_GROUP, None, None)),
         ("/edev/55/der/1/derx", InvalidMappingError),
         ("/", InvalidMappingError),
         ("edev", InvalidMappingError),
@@ -571,6 +577,36 @@ def test_NotificationMapper_map_does_to_response(notification_type: Notification
     assert_entity_hrefs_contain_entity_id_and_prefix(
         [e.href for e in notification.resource.DERControl],
         [doe1.dynamic_operating_envelope_id, doe2.dynamic_operating_envelope_id],
+        scope.href_prefix,
+    )
+
+
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_site_control_groups_to_response(notification_type: NotificationType):
+    scg1 = generate_class_instance(SiteControlGroup, seed=101, optional_is_none=False)
+    scg2 = generate_class_instance(SiteControlGroup, seed=202, optional_is_none=True)
+
+    sub = generate_class_instance(Subscription, seed=303)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
+    )
+
+    notification = NotificationMapper.map_site_control_groups_to_response([scg1, scg2], sub, scope, notification_type)
+    assert isinstance(notification, Notification)
+    assert notification.subscribedResource.startswith("/custom/prefix")
+    assert DERProgramListUri.format(site_id=scope.display_site_id) in notification.subscribedResource
+    assert notification.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification.subscriptionURI
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification.status == NotificationStatus.DEFAULT
+
+    assert notification.resource.type == XSI_TYPE_DER_PROGRAM_LIST
+    assert_list_type(DERProgramResponse, notification.resource.DERProgram, count=2)
+    assert_entity_hrefs_contain_entity_id_and_prefix(
+        [e.href for e in notification.resource.DERProgram],
+        [scg1.site_control_group_id, scg2.site_control_group_id],
         scope.href_prefix,
     )
 
@@ -885,7 +921,7 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(notifi
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
-    assert notification_all_set.resource.type == "FunctionSetAssignmentsList"
+    assert notification_all_set.resource.type == XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST
     assert notification_all_set.resource.pollRate == poll_rate_seconds
 
 
