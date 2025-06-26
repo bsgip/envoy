@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import json
 from http import HTTPStatus
 from typing import Optional
-
+from decimal import Decimal
 import pytest
 from httpx import AsyncClient
 from tests.integration.response import read_response_body_string
@@ -23,7 +23,7 @@ def _build_csip_site_readings_query_string(start: Optional[int], limit: Optional
     if limit is not None:
         params.append(f"limit={limit}")
 
-    return f"&{'&'.join(params)}" if params else ""
+    return f"?{'&'.join(params)}" if params else ""
 
 
 @pytest.mark.parametrize(
@@ -73,50 +73,6 @@ def _build_csip_site_readings_query_string(start: Optional[int], limit: Optional
             0,  # No more readings
             2,  # Total still 2
         ),
-        # Site 1 - REACTIVEPOWER (none exist in pg_data)
-        (
-            1,
-            CSIPAusSiteReadingUnit.REACTIVEPOWER,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
-            None,
-            None,
-            0,
-            0,
-        ),
-        # Site 1 - FREQUENCY (none exist in pg_data)
-        (
-            1,
-            CSIPAusSiteReadingUnit.FREQUENCY,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
-            None,
-            None,
-            0,
-            0,
-        ),
-        # Site 1 - VOLTAGE (none exist in pg_data)
-        (
-            1,
-            CSIPAusSiteReadingUnit.VOLTAGE,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
-            None,
-            None,
-            0,
-            0,
-        ),
-        # Non-existent site
-        (
-            999,
-            CSIPAusSiteReadingUnit.ACTIVEPOWER,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
-            None,
-            None,
-            0,
-            0,
-        ),
     ],
 )
 @pytest.mark.anyio
@@ -158,7 +114,7 @@ async def test_get_csip_aus_site_readings(
     # Validate pagination metadata
     assert reading_page.total_count == expected_total_count
     assert reading_page.start == (start if start is not None else 0)
-    assert reading_page.limit == (limit if limit is not None else 10000)  # Default limit
+    assert reading_page.limit == (limit if limit is not None else 500)
     assert reading_page.site_id == site_id
     assert reading_page.start_time == period_start
     assert reading_page.end_time == period_end
@@ -175,33 +131,75 @@ async def test_get_csip_aus_site_readings(
 
 
 @pytest.mark.parametrize(
-    "unit_enum",
+    "site_id, unit_enum, period_start, period_end, expected_empty_result",
     [
-        CSIPAusSiteReadingUnit.ACTIVEPOWER,
-        CSIPAusSiteReadingUnit.REACTIVEPOWER,
-        CSIPAusSiteReadingUnit.FREQUENCY,
-        CSIPAusSiteReadingUnit.VOLTAGE,
+        # Site 1 - REACTIVEPOWER (none exist in pg_data) - should return empty result
+        (
+            1,
+            CSIPAusSiteReadingUnit.REACTIVEPOWER,
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            True,
+        ),
+        # Site 1 - FREQUENCY (none exist in pg_data) - should return empty result
+        (
+            1,
+            CSIPAusSiteReadingUnit.FREQUENCY,
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            True,
+        ),
+        # Site 1 - VOLTAGE (none exist in pg_data) - should return empty result
+        (
+            1,
+            CSIPAusSiteReadingUnit.VOLTAGE,
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            True,
+        ),
+        # Non-existent site - should return empty result
+        (
+            999,
+            CSIPAusSiteReadingUnit.ACTIVEPOWER,
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            True,
+        ),
     ],
 )
 @pytest.mark.anyio
-async def test_get_csip_aus_site_readings_all_units(
+async def test_get_csip_aus_site_readings_empty_results(
     admin_client_auth: AsyncClient,
+    site_id: int,
     unit_enum: CSIPAusSiteReadingUnit,
+    period_start: datetime,
+    period_end: datetime,
+    expected_empty_result: bool,
 ):
     uri = CSIPAusSiteReadingUri.format(
-        site_id=1,
+        site_id=site_id,
         unit_enum=unit_enum.value,
-        period_start=datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
-        period_end=datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
+        period_start=period_start.isoformat(),
+        period_end=period_end.isoformat(),
     )
 
     response = await admin_client_auth.get(uri)
+
+    # Always expect OK status
     assert response.status_code == HTTPStatus.OK
 
-    body = read_response_body_string(response)
-    reading_page: CSIPAusSiteReadingPageResponse = CSIPAusSiteReadingPageResponse(**json.loads(body))
+    if expected_empty_result:
+        body = read_response_body_string(response)
+        reading_page = CSIPAusSiteReadingPageResponse(**json.loads(body))
 
-    assert all([r.csip_aus_unit == unit_enum for r in reading_page.readings])
+        # Validate empty result structure
+        assert reading_page.total_count == 0
+        assert len(reading_page.readings) == 0
+        assert reading_page.site_id == site_id
+        assert reading_page.start_time == period_start
+        assert reading_page.end_time == period_end
+        assert reading_page.start == 0  # Default start
+        assert reading_page.limit == 500  # Default limit
 
 
 @pytest.mark.anyio
@@ -227,7 +225,7 @@ async def test_get_csip_aus_site_readings_detailed_validation(admin_client_auth:
     for reading in reading_page.readings:
         # Check basic structure
         assert reading.csip_aus_unit == CSIPAusSiteReadingUnit.ACTIVEPOWER
-        assert isinstance(reading.value, (int, float, str))  # Decimal might serialize differently
+        assert isinstance(reading.value, Decimal)
         assert reading.duration_seconds > 0
         assert reading.reading_start_time is not None
 
@@ -264,7 +262,8 @@ async def test_get_csip_aus_site_readings_invalid_unit_enum(admin_client_auth: A
     )
 
     response = await admin_client_auth.get(uri)
-    assert response.status_code in [HTTPStatus.BAD_REQUEST]
+    # FastAPI returns 422 for enum validation errors
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.anyio

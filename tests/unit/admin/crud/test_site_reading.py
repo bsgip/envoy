@@ -92,11 +92,11 @@ async def test_count_site_readings_for_site_and_time(
     "site_type_ids, start_time, end_time, start, limit, expected_count",
     [
         # 2 readings for type 1
-        ([1], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 1000, 2),
+        ([1], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 500, 2),
         # Single reading for type 2
-        ([2], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 1000, 1),
+        ([2], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 500, 1),
         # Multiple types - 3 total readings
-        ([1, 2], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 1000, 3),
+        ([1, 2], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 500, 3),
         # Pagination tests with type 1 (2 readings)
         ([1], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 1, 1),  # First page
         ([1], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 1, 1, 1),  # Second page
@@ -105,11 +105,11 @@ async def test_count_site_readings_for_site_and_time(
         ([1, 2], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 2, 2),
         ([1, 2], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 2, 2, 1),
         # Time filtering - narrow windows (readings at 01:00 and 02:00 Brisbane time)
-        ([1], datetime(2022, 6, 7, 0, 0, tzinfo=TZ), datetime(2022, 6, 7, 1, 30, tzinfo=TZ), 0, 1000, 1),
-        ([1], datetime(2022, 6, 7, 1, 30, tzinfo=TZ), datetime(2022, 6, 7, 3, 0, tzinfo=TZ), 0, 1000, 1),
+        ([1], datetime(2022, 6, 7, 0, 0, tzinfo=TZ), datetime(2022, 6, 7, 1, 30, tzinfo=TZ), 0, 500, 1),
+        ([1], datetime(2022, 6, 7, 1, 30, tzinfo=TZ), datetime(2022, 6, 7, 3, 0, tzinfo=TZ), 0, 500, 1),
         # Edge cases
-        ([999], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 1000, 0),  # Non-existent type
-        ([], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 1000, 0),  # Empty type list
+        ([999], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 500, 0),  # Non-existent type
+        ([], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 500, 0),  # Empty type list
         ([1], datetime(2022, 6, 1, tzinfo=TZ), datetime(2022, 6, 30, tzinfo=TZ), 0, 0, 0),  # Zero limit
     ],
 )
@@ -159,7 +159,7 @@ async def test_count_and_select_consistency(pg_base_config):
         for site_type_ids, start_time, end_time in test_cases:
             count = await count_site_readings_for_site_and_time(session, site_type_ids, start_time, end_time)
             readings = await select_site_readings_for_site_and_time(
-                session, site_type_ids, start_time, end_time, 0, 1000
+                session, site_type_ids, start_time, end_time, 0, 500
             )
             assert count == len(
                 readings

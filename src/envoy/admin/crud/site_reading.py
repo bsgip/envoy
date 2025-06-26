@@ -30,6 +30,10 @@ async def count_site_readings_for_site_and_time(
 ) -> int:
     """Count total site readings for a sequence of site_type_ids within a time range."""
 
+    # Return 0 immediately if no site_type_ids provided
+    if not site_type_ids:
+        return 0
+
     stmt = (
         select(func.count(SiteReading.site_reading_id))
         .where(SiteReading.site_reading_type_id.in_(site_type_ids))
@@ -48,6 +52,10 @@ async def select_csip_aus_site_type_ids(
     uom: int,
 ) -> Sequence[int]:
     """Function to obtain reading_types for a site given a site and aggregator id"""
+
+    # Return empty list immediately if no aggregator_ids provided
+    if not aggregator_ids:
+        return []
 
     stmt = (
         select(SiteReadingType.site_reading_type_id)
@@ -68,9 +76,13 @@ async def select_site_readings_for_site_and_time(
     start_time: datetime,
     end_time: datetime,
     start: int = 0,
-    limit: int = 1000,
+    limit: int = 500,
 ) -> Sequence[SiteReading]:
     """Admin function to retrieve site readings for a sequence of site_type_ids within a time range."""
+
+    # Return empty list immediately if no site_type_ids provided
+    if not site_type_ids:
+        return []
 
     stmt = (
         select(SiteReading)

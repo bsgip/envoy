@@ -12,8 +12,6 @@ from envoy.admin.crud.site_reading import (
 from envoy.admin.mapper.site_reading import AdminSiteReadingMapper
 from envoy_schema.admin.schema.site_reading import CSIPAusSiteReadingUnit, CSIPAusSiteReadingPageResponse
 
-from envoy.server.exception import NotFoundError
-
 
 class AdminSiteReadingManager:
     """Logic layer for admin site reading operations."""
@@ -26,7 +24,7 @@ class AdminSiteReadingManager:
         start_time: datetime,
         end_time: datetime,
         start: int = 0,
-        limit: int = 10000,
+        limit: int = 500,
     ) -> CSIPAusSiteReadingPageResponse:
         """Get site readings for specified site within a time range."""
 
@@ -41,11 +39,18 @@ class AdminSiteReadingManager:
             session=session, aggregator_ids=aggregator_ids, site_id=site_id, uom=uom
         )
 
-        if not aggregator_ids:
-            raise NotFoundError(f"Site {site_id} not found")
-
-        if not site_type_ids:
-            raise NotFoundError(f"No readings available for site {site_id} with unit {csip_unit}")
+        # If no aggregator_ids or site_type_ids found, return empty result i
+        if not aggregator_ids or not site_type_ids:
+            return AdminSiteReadingMapper.map_to_csip_aus_reading_page_response(
+                site_readings=[],
+                total_count=0,
+                start=start,
+                limit=limit,
+                site_id=site_id,
+                start_time=start_time,
+                end_time=end_time,
+                requested_unit=csip_unit,
+            )
 
         # Queries 3: Get total count and readings in parallel
         total_count_task = count_site_readings_for_site_and_time(

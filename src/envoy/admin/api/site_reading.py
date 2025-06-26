@@ -20,7 +20,7 @@ async def get_site_readings(
     period_start: datetime,
     period_end: datetime,
     start: list[int] = Query([0]),
-    limit: list[int] = Query([1000]),
+    limit: list[int] = Query([500]),  # Max 500
 ) -> CSIPAusSiteReadingPageResponse:
     return await AdminSiteReadingManager.get_site_readings_for_site_and_time(
         session=db.session,
