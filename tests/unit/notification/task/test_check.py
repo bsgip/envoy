@@ -775,6 +775,7 @@ async def test_check_db_change_or_delete(
                 DeviceOrAggregatorRequestScope, display_site_id=VIRTUAL_END_DEVICE_SITE_ID, href_prefix=href_prefix
             ),
         ),
+        subscription_id=agg1_sub2.subscription_id,
     )
     assert_task_kicked_with_broker_and_args(
         mock_transmit_notification,
@@ -787,6 +788,7 @@ async def test_check_db_change_or_delete(
                 DeviceOrAggregatorRequestScope, display_site_id=agg2_sub1.scoped_site_id, href_prefix=href_prefix
             ),
         ),
+        subscription_id=agg2_sub1.subscription_id,
     )
 
     mock_fetch_batched_entities.assert_called_once_with(mock_session, resource, timestamp)

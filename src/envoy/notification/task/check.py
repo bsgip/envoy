@@ -444,6 +444,7 @@ async def check_db_change_or_delete(
                 content=content,
                 notification_id=str(n.notification_id),
                 subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, scope),
+                subscription_id=n.subscription.subscription_id,
                 attempt=0,
             )
         except Exception as ex:
