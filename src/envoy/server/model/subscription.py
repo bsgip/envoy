@@ -3,7 +3,7 @@ from enum import IntEnum, auto
 from typing import Optional
 
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
-from sqlalchemy import INTEGER, REAL, VARCHAR, DateTime, ForeignKey, Index, func
+from sqlalchemy import INTEGER, VARCHAR, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base, Site
@@ -100,6 +100,6 @@ class TransmitNotificationLog(Base):
     # should be consulted for values around transmit_time
     transmit_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When did transmission start
     transmit_duration_ms: Mapped[int] = mapped_column(INTEGER)  # How long did transmission take (in milli seconds)
-    notification_size_bytes: Mapped[int] = mapped_column(INTEGER)
+    notification_size_bytes: Mapped[int] = mapped_column(INTEGER)  # Size of notification content body (in bytes)
     attempt: Mapped[int] = mapped_column(INTEGER)  # What was the attempt number being transmitted
     http_status_code: Mapped[int] = mapped_column(INTEGER)  # HTTP Status received (or -1 on other error)
