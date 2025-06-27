@@ -51,7 +51,7 @@ async def safely_log_transmit_result(
     attempt: int,
     subscription_id: int,
     content: str,
-) -> None:
+) -> bool:
     """Attempts to log result into the TransmitNotificationLog via session. Guarantees that no exceptions will be raised
 
     Will commit the session"""
@@ -61,11 +61,13 @@ async def safely_log_transmit_result(
         )
         session.add(log)
         await session.commit()
+        return True
     except Exception as exc:
         try:
             logger.error(f"safely_log_transmit_result: Unable to persist result {result}", exc_info=exc)
         except Exception:
-            pass  # What can we do here?
+            return False
+        return False
 
 
 def attempt_to_retry_delay(attempt: int) -> Optional[timedelta]:
