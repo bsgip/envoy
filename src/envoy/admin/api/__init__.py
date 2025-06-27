@@ -9,6 +9,7 @@ from envoy.admin.api.log import router as log_router
 from envoy.admin.api.pricing import router as price_router
 from envoy.admin.api.site import router as site_router
 from envoy.admin.api.site_control import router as site_control_router
+from envoy.admin.api.site_reading import router as site_reading_router
 
 routers = [
     site_control_router,
@@ -20,4 +21,5 @@ routers = [
     archive_router,
     config_router,
     aggregator_router,
+    site_reading_router,
 ]

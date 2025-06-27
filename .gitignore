@@ -1,6 +1,7 @@
 .vscode
 *.code-workspace
 benchmark/
+full-example/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
