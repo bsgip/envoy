@@ -37,6 +37,7 @@ class EndDeviceMapper:
                 "deviceCategory": f"{site.device_category:x}",  # deviceCategory is a hex string
                 "changedTime": int(site.changed_time.timestamp()),
                 "enabled": True,
+                "postRate": site.post_rate_seconds,
                 "ConnectionPointLink": ConnectionPointLink(href=edev_href + "/cp"),
                 "DERListLink": ListLink(href=der_href, all_=1),  # Always a single DER
                 "SubscriptionListLink": ListLink(href=pubsub_href),
@@ -58,6 +59,7 @@ class EndDeviceMapper:
             aggregator_id=aggregator_id,
             device_category=parse_device_category(end_device.deviceCategory),
             timezone_id=settings.default_timezone,
+            post_rate_seconds=end_device.postRate,
         )
 
 

@@ -3,7 +3,7 @@ from datetime import datetime
 from http import HTTPStatus
 from typing import Optional
 
-from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
+from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse, SiteUpdateRequest
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
 from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri, SiteUri
 from fastapi import APIRouter, HTTPException, Query
@@ -47,6 +47,22 @@ async def delete_single_site(
 
     is_deleted = await SiteManager.delete_single_site(session=db.session, site_id=site_id)
     if not is_deleted:
+        raise HTTPException(HTTPStatus.NOT_FOUND, f"Site with id '{site_id}' not found")
+
+
+@router.post(SiteUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
+async def update_single_site(site_id: int, site_update_request: SiteUpdateRequest) -> None:
+    """Updates the specific site with ID (existing values will be archived). Expects a SiteUpdateRequest model in the
+    request body.
+
+    Returns:
+        No response body - NO_CONTENT if successful or NOT_FOUND if the site doesn't exist
+    """
+
+    is_updated = await SiteManager.update_single_site(
+        session=db.session, site_id=site_id, update_request=site_update_request
+    )
+    if not is_updated:
         raise HTTPException(HTTPStatus.NOT_FOUND, f"Site with id '{site_id}' not found")
 
 

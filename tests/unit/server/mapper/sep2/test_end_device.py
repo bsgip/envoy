@@ -51,6 +51,7 @@ def test_map_to_response(disable_registration: bool):
     result_all_set = EndDeviceMapper.map_to_response(scope, site_all_set, disable_registration)
     assert result_all_set is not None
     assert isinstance(result_all_set, EndDeviceResponse)
+    assert result_all_set.postRate == site_all_set.post_rate_seconds
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
     assert result_all_set.lFDI == site_all_set.lfdi
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
@@ -79,6 +80,7 @@ def test_map_to_response(disable_registration: bool):
     result_optional = EndDeviceMapper.map_to_response(scope, site_optional, disable_registration)
     assert result_optional is not None
     assert isinstance(result_optional, EndDeviceResponse)
+    assert result_optional.postRate is None
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
     assert result_optional.lFDI == site_optional.lfdi
     assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
@@ -161,6 +163,7 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     result_all_set = EndDeviceMapper.map_from_request(end_device_all_set, aggregator_id, changed_time, registration_pin)
     assert result_all_set is not None
     assert isinstance(result_all_set, Site)
+    assert result_all_set.post_rate_seconds == end_device_all_set.postRate
     assert result_all_set.changed_time == changed_time
     assert result_all_set.aggregator_id == aggregator_id
     assert result_all_set.lfdi == end_device_all_set.lFDI
@@ -174,6 +177,7 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     )
     assert result_optional is not None
     assert isinstance(result_optional, Site)
+    assert result_optional.post_rate_seconds is None
     assert result_optional.changed_time == changed_time
     assert result_optional.aggregator_id == aggregator_id
     assert result_optional.lfdi == end_device_optional.lFDI
