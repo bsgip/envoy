@@ -21,6 +21,9 @@ class SiteControlGroup(Base):
     primacy: Mapped[int] = (
         mapped_column()
     )  # The priority level of this group's controls relative to other groups. Lower is higher priority.
+    fsa_id: Mapped[int] = mapped_column(
+        index=True, server_default="1"
+    )  # The function set assignment ID that "groups" this SiteControlGroup with other SiteControlGroups
 
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

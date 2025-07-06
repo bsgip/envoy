@@ -117,6 +117,46 @@ async def get_tariffprofilelist(
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
+            fsa_id=None,  # This endpoint does no function set assignment filtering
+        )
+    except BadRequestError as ex:
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+
+    return XmlResponse(tp_list)
+
+
+@router.head(uri.TariffProfileFSAListUri)
+@router.get(uri.TariffProfileFSAListUri, status_code=HTTPStatus.OK)
+async def get_tariffprofilelist_fsa_scoped(
+    request: Request,
+    site_id: int,
+    fsa_id: int,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> XmlResponse:
+    """Responds with a paginated list of tariff profiles available to the current client. These tariffs
+    will be scoped specifically to the specified site_id and function set assignment id
+
+    Args:
+        site_id: Path parameter - the site that the underlying tariffs will be scoped to
+        fsa_id: Path parameter - the function set assignment ID tariffs will be scoped to
+        start: list query parameter for the start index value. Default 0.
+        after: list query parameter for lists with a datetime primary index. Default 0.
+        limit: list query parameter for the maximum number of objects to return. Default 1.
+
+    Returns:
+        fastapi.Response object.
+
+    """
+    try:
+        tp_list = await TariffProfileManager.fetch_tariff_profile_list(
+            db.session,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit),
+            fsa_id=fsa_id,
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

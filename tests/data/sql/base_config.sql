@@ -46,8 +46,8 @@ INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "creat
 
 SELECT pg_catalog.setval('public.site_site_id_seq', 7, true);
 
-INSERT INTO public.site_control_group("site_control_group_id", "description", "primacy", "created_time", "changed_time") 
-VALUES (1, 'Dynamic Operating Envelopes', 0, '2000-01-01 00:00:00Z', '2021-04-05 10:01:00.500');
+INSERT INTO public.site_control_group("site_control_group_id", "description", "primacy", "fsa_id", "created_time", "changed_time") 
+VALUES (1, 'Dynamic Operating Envelopes', 0, 1, '2000-01-01 00:00:00Z', '2021-04-05 10:01:00.500');
 
 SELECT pg_catalog.setval('public.site_control_group_site_control_group_id_seq', 2, true);
 
@@ -82,9 +82,9 @@ INSERT INTO public.calculation_log_label_value("calculation_log_id", "label_id",
 
 
 
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "created_time", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 36, '2000-01-01 00:00:00Z', '2023-01-02 11:01:02');
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "created_time", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 124, '2000-01-01 00:00:00Z', '2023-01-02 12:01:02');
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "created_time", "changed_time") VALUES (3, 'tariff-3', 'tariff-dnsp-code-3', 840, '2000-01-01 00:00:00Z', '2023-01-02 13:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "created_time", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 36, 1, '2000-01-01 00:00:00Z', '2023-01-02 11:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "created_time", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 124, 1, '2000-01-01 00:00:00Z', '2023-01-02 12:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "created_time", "changed_time") VALUES (3, 'tariff-3', 'tariff-dnsp-code-3', 840, 2, '2000-01-01 00:00:00Z', '2023-01-02 13:01:02');
 
 SELECT pg_catalog.setval('public.tariff_tariff_id_seq', 4, true);
 

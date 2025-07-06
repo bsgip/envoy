@@ -110,8 +110,8 @@ async def test_fetch_tariff_profile_list_no_site(
     response = await TariffProfileManager.fetch_tariff_profile_list_no_site(mock_session, scope, start, changed, limit)
     assert response is mapped_tariffs
 
-    mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit)
-    mock_select_tariff_count.assert_called_once_with(mock_session, changed)
+    mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit, None)
+    mock_select_tariff_count.assert_called_once_with(mock_session, changed, None)
     mock_TariffProfileMapper.map_to_list_nosite_response.assert_called_once_with(scope, tariffs, count)
     assert_mock_session(mock_session)
 
@@ -133,6 +133,7 @@ async def test_fetch_tariff_profile_list(
     start = 111
     changed = datetime.now()
     limit = 222
+    fsa_id = 333
     tariff_count = 33
     tariff_1: Tariff = generate_class_instance(Tariff, seed=101)
     tariff_2: Tariff = generate_class_instance(Tariff, seed=202)
@@ -158,12 +159,12 @@ async def test_fetch_tariff_profile_list(
     mock_count_unique_rate_days.side_effect = count_unique_rate_days_handler
 
     # Act
-    response = await TariffProfileManager.fetch_tariff_profile_list(mock_session, scope, start, changed, limit)
+    response = await TariffProfileManager.fetch_tariff_profile_list(mock_session, scope, start, changed, limit, fsa_id)
 
     # Assert
     assert response is mapped_tariffs
-    mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit)
-    mock_select_tariff_count.assert_called_once_with(mock_session, changed)
+    mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit, fsa_id)
+    mock_select_tariff_count.assert_called_once_with(mock_session, changed, fsa_id)
     assert_mock_session(mock_session)
 
     # We called count_unique_rate_days for each tariff returned
