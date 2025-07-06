@@ -502,6 +502,8 @@ def test_SubscriptionMapper_map_from_request():
         ("/edev/55/derp/foo", InvalidMappingError),
         ("/edev/55/derp", (SubscriptionResource.SITE_CONTROL_GROUP, 55, None)),
         (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp", (SubscriptionResource.SITE_CONTROL_GROUP, None, None)),
+        ("/edev/55/fsa/66/derp", (SubscriptionResource.SITE_CONTROL_GROUP, 55, 66)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/fsa/66/derp", (SubscriptionResource.SITE_CONTROL_GROUP, None, 66)),
         ("/edev/55/der/1/derx", InvalidMappingError),
         ("/", InvalidMappingError),
         ("edev", InvalidMappingError),

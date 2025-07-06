@@ -192,7 +192,7 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         return cast(ControlGroupScopedDefaultSiteControl, entity).site_control_group_id  # type: ignore
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
-        return cast(SiteScopedSiteControlGroup, entity).original.site_control_group_id  # type: ignore
+        return cast(SiteScopedSiteControlGroup, entity).original.fsa_id  # type: ignore
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate primary key")
 
