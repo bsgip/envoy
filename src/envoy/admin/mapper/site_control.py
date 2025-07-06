@@ -17,7 +17,10 @@ class SiteControlGroupListMapper:
     @staticmethod
     def map_from_request(request: SiteControlGroupRequest, changed_time: datetime) -> SiteControlGroup:
         return SiteControlGroup(
-            description=request.description[:32], primacy=request.primacy, changed_time=changed_time
+            description=request.description[:32],
+            primacy=request.primacy,
+            changed_time=changed_time,
+            fsa_id=request.fsa_id,
         )
 
     @staticmethod
@@ -28,6 +31,7 @@ class SiteControlGroupListMapper:
             primacy=site_control_group.primacy,
             created_time=site_control_group.created_time,
             changed_time=site_control_group.changed_time,
+            fsa_id=site_control_group.fsa_id,
         )
 
     @staticmethod
