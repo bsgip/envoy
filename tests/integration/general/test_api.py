@@ -95,6 +95,8 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/lel/1"),
 ]
 # fmt: on
+
+
 @pytest.mark.parametrize("valid_methods,uri", ALL_ENDPOINTS_WITH_SUPPORTED_METHODS)
 @pytest.mark.anyio
 async def test_get_resource_unauthorised(valid_methods: list[HTTPMethod], uri: str, client: AsyncClient):
