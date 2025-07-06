@@ -86,6 +86,7 @@ class DERProgramManager:
             site_control_group_count,
             default_site_control,
             config.derpl_pollrate_seconds,
+            fsa_id,
         )
 
     @staticmethod

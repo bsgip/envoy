@@ -234,6 +234,7 @@ async def test_get_derprogram_list_fsa_scoped(
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response: DERProgramListResponse = DERProgramListResponse.from_xml(body)
+        assert parsed_response.href == uri_derp_list_fsa_format.format(site_id=site_id, fsa_id=fsa_id)
         assert parsed_response.results == len(expected_derp_ids_with_count)
         assert len(parsed_response.DERProgram) == len(expected_derp_ids_with_count)
 

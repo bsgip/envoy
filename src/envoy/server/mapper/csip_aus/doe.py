@@ -249,9 +249,12 @@ class DERProgramMapper:
         )
 
     @staticmethod
-    def doe_list_href(rq_scope: DeviceOrAggregatorRequestScope) -> str:
+    def doe_list_href(rq_scope: DeviceOrAggregatorRequestScope, fsa_id: Optional[int]) -> str:
         """Returns a href for a particular site's DER Program list"""
-        return generate_href(uri.DERProgramListUri, rq_scope, site_id=rq_scope.display_site_id)
+        if fsa_id is None:
+            return generate_href(uri.DERProgramListUri, rq_scope, site_id=rq_scope.display_site_id)
+        else:
+            return generate_href(uri.DERProgramFSAListUri, rq_scope, site_id=rq_scope.display_site_id, fsa_id=fsa_id)
 
     @staticmethod
     def doe_program_response(
@@ -310,13 +313,14 @@ class DERProgramMapper:
         total_site_control_groups: int,
         default_doe: Optional[DefaultSiteControl],
         pollrate_seconds: int,
+        fsa_id: Optional[int],
     ) -> DERProgramListResponse:
         """Returns a list of all DERPrograms.
 
         site_control_groups_with_control_count: List of groups to encode tupled with the count of upcoming controls"""
         return DERProgramListResponse.model_validate(
             {
-                "href": DERProgramMapper.doe_list_href(rq_scope),
+                "href": DERProgramMapper.doe_list_href(rq_scope, fsa_id),
                 "pollRate": pollrate_seconds,
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "DERProgram": [

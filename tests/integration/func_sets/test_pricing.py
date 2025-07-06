@@ -110,6 +110,7 @@ async def test_get_tariffprofilelist(
 
     parsed_response: TariffProfileListResponse = TariffProfileListResponse.from_xml(body)
     assert parsed_response
+    assert parsed_response.href == uri.TariffProfileListUri.format(site_id=site_id)
     assert parsed_response.results == len(expected_tariffs_with_count)
     assert len(parsed_response.TariffProfile) == len(expected_tariffs_with_count)
 
@@ -159,6 +160,7 @@ async def test_get_tariffprofilelist_fsa_scoped(
 
     parsed_response: TariffProfileListResponse = TariffProfileListResponse.from_xml(body)
     assert parsed_response
+    assert parsed_response.href == uri.TariffProfileFSAListUri.format(site_id=site_id, fsa_id=fsa_id)
     assert parsed_response.results == len(expected_tariffs_with_count)
 
     if len(expected_tariffs_with_count) == 0:
