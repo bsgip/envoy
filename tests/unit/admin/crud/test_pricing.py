@@ -64,6 +64,7 @@ async def test_update_single_tariff(pg_base_config):
                 currency_code=36,
                 created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
                 changed_time=datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc),
+                fsa_id=1,
             ),
             archive_data,
         )
