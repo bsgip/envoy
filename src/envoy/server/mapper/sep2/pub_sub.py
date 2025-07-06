@@ -331,6 +331,18 @@ class SubscriptionMapper:
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DefaultDERControl resource")
 
+        # Try DERProgramList (FSA scoped)
+        result = parse(DERProgramFSAListUri, href)
+        if result:
+            try:
+                return (
+                    SubscriptionResource.SITE_CONTROL_GROUP,
+                    _parse_site_id_from_match(result["site_id"]),
+                    int(result["fsa_id"]),
+                )
+            except ValueError:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
+
         # Try FunctionSetAssignmentsList
         result = parse(FunctionSetAssignmentsListUri, href)
         if result:
@@ -353,18 +365,6 @@ class SubscriptionMapper:
                     SubscriptionResource.SITE_CONTROL_GROUP,
                     _parse_site_id_from_match(result["site_id"]),
                     None,
-                )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
-
-        # Try DERProgramList (FSA scoped)
-        result = parse(DERProgramFSAListUri, href)
-        if result:
-            try:
-                return (
-                    SubscriptionResource.SITE_CONTROL_GROUP,
-                    _parse_site_id_from_match(result["site_id"]),
-                    int(result["fsa_id"]),
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
