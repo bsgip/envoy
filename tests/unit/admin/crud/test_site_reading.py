@@ -5,57 +5,40 @@ from assertical.fixtures.postgres import generate_async_session
 from zoneinfo import ZoneInfo
 from envoy.admin.crud.site_reading import (
     count_site_readings_for_site_and_time,
-    select_agg_id_for_site,
     select_csip_aus_site_type_ids,
     select_site_readings_for_site_and_time,
 )
+from envoy_schema.server.schema.sep2.types import UomType
 
 TZ = ZoneInfo("Australia/Brisbane")
 
 
 @pytest.mark.parametrize(
-    "site_id, expected_aggregator_ids",
-    [
-        (1, [1]),  # Site 1: aggregator_id = 1
-        (2, [1]),  # Site 2: aggregator_id = 1
-        (3, [2]),  # Site 3: aggregator_id = 2
-        (5, [0]),  # Site 5: aggregator_id = 0
-        (999, []),  # Non-existent site
-    ],
-)
-@pytest.mark.anyio
-async def test_select_agg_id_for_site(pg_base_config, site_id: int, expected_aggregator_ids: list[int]):
-    async with generate_async_session(pg_base_config) as session:
-        aggregator_ids = await select_agg_id_for_site(session, site_id)
-        assert list(aggregator_ids) == expected_aggregator_ids
-
-
-@pytest.mark.parametrize(
-    "aggregator_ids, site_id, uom, expected_site_type_ids",
+    "aggregator_id, site_id, uom, expected_site_type_ids",
     [
         # Site 1, UOM 38 (ACTIVEPOWER):
         # - ID 1: Site 1, Agg 1, UOM 38, DQ 2 (AVERAGE), Kind 37 (POWER) ✓
         # - ID 3: Site 1, Agg 1, UOM 38, DQ 8 (not AVERAGE/NOT_APPLICABLE) ✗
-        ([1], 1, 38, [1]),
+        (1, 1, UomType.REAL_POWER_WATT, [1]),
         # Site 2, UOM 38:
         # - ID 4: Site 2, Agg 1, UOM 38, DQ 9, Kind 12 (not POWER/NOT_APPLICABLE) ✗
-        ([1], 2, 38, []),
+        (1, 2, UomType.REAL_POWER_WATT, []),
         # Test CSIP units that don't exist in the base config data
-        ([1], 1, 63, []),  # REACTIVEPOWER - no data
-        ([1], 1, 33, []),  # FREQUENCY - no data
-        ([1], 1, 29, []),  # VOLTAGE - no data
+        (1, 1, UomType.REACTIVE_POWER_VAR, []),
+        (1, 1, UomType.FREQUENCY_HZ, []),
+        (1, 1, UomType.VOLTAGE, []),
         # Edge cases
-        ([999], 1, 38, []),  # Non-existent aggregator
-        ([1], 999, 38, []),  # Non-existent site
-        ([1], 1, 999, []),  # Non-existent UOM
+        (999, 1, UomType.REAL_POWER_WATT, []),  # Non-existent aggregator
+        (1, 999, UomType.REAL_POWER_WATT, []),  # Non-existent site
+        (1, 1, UomType.VOLUME_US_GALLON_PER_HOUR, []),  # Non-valid UOM (for this function)
     ],
 )
 @pytest.mark.anyio
 async def test_select_csip_aus_site_type_ids(
-    pg_base_config, aggregator_ids: list[int], site_id: int, uom: int, expected_site_type_ids: list[int]
+    pg_base_config, aggregator_id: int, site_id: int, uom: int, expected_site_type_ids: list[int]
 ):
     async with generate_async_session(pg_base_config) as session:
-        site_type_ids = await select_csip_aus_site_type_ids(session, aggregator_ids, site_id, uom)
+        site_type_ids = await select_csip_aus_site_type_ids(session, aggregator_id, site_id, uom)
         assert list(site_type_ids) == expected_site_type_ids
 
 

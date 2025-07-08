@@ -1,25 +1,12 @@
 from datetime import datetime
 from typing import Sequence
-
+from envoy_schema.server.schema.sep2.types import UomType
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from envoy.server.model.site_reading import SiteReading, SiteReadingType, Site
+from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy_schema.server.schema.sep2.types import DataQualifierType, KindType
-
-
-async def select_agg_id_for_site(
-    session: AsyncSession,
-    site_id: int,
-) -> Sequence[int]:
-    """Function to get aggregator id for a site, usually to help hit an index"""
-
-    stmt = select(Site.aggregator_id).where(Site.site_id == site_id)
-
-    resp = await session.execute(stmt)
-
-    return resp.scalars().all()
 
 
 async def count_site_readings_for_site_and_time(
@@ -47,21 +34,17 @@ async def count_site_readings_for_site_and_time(
 
 async def select_csip_aus_site_type_ids(
     session: AsyncSession,
-    aggregator_ids: Sequence[int],
+    aggregator_id: int,
     site_id: int,
-    uom: int,
+    uom: UomType,
 ) -> Sequence[int]:
     """Function to obtain reading_types for a site given a site and aggregator id"""
 
-    # Return empty list immediately if no aggregator_ids provided
-    if not aggregator_ids:
-        return []
-
     stmt = (
         select(SiteReadingType.site_reading_type_id)
-        .where(SiteReadingType.aggregator_id.in_(aggregator_ids))
+        .where(SiteReadingType.aggregator_id == aggregator_id)
         .where(SiteReadingType.site_id == site_id)
-        .where(SiteReadingType.uom == uom)
+        .where(SiteReadingType.uom == uom.value)
         .where(SiteReadingType.data_qualifier.in_([DataQualifierType.AVERAGE, DataQualifierType.NOT_APPLICABLE]))
         .where(SiteReadingType.kind.in_([KindType.POWER, KindType.NOT_APPLICABLE]))
     )

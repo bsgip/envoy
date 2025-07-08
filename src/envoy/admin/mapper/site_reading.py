@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Sequence
+from envoy_schema.server.schema.sep2.types import UomType
 
 from envoy_schema.admin.schema.site_reading import (
     CSIPAusSiteReading,
@@ -75,12 +76,12 @@ class AdminSiteReadingMapper:
         )
 
     @staticmethod
-    def csip_unit_to_uom(csip_unit: CSIPAusSiteReadingUnit) -> int:
+    def csip_unit_to_uom(csip_unit: CSIPAusSiteReadingUnit) -> UomType:
 
         uom_map = {
-            CSIPAusSiteReadingUnit.ACTIVEPOWER: 38,
-            CSIPAusSiteReadingUnit.REACTIVEPOWER: 63,
-            CSIPAusSiteReadingUnit.FREQUENCY: 33,
-            CSIPAusSiteReadingUnit.VOLTAGE: 29,
+            CSIPAusSiteReadingUnit.ACTIVEPOWER: UomType.REAL_POWER_WATT,
+            CSIPAusSiteReadingUnit.REACTIVEPOWER: UomType.REACTIVE_POWER_VAR,
+            CSIPAusSiteReadingUnit.FREQUENCY: UomType.FREQUENCY_HZ,
+            CSIPAusSiteReadingUnit.VOLTAGE: UomType.VOLTAGE,
         }
         return uom_map[csip_unit]  # Raises KeyError if invalid unit

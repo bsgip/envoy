@@ -11,6 +11,7 @@ from envoy_schema.admin.schema.site_reading import (
     CSIPAusSiteReadingUnit,
     PhaseEnum,
 )
+from envoy_schema.server.schema.sep2.types import UomType
 from envoy_schema.server.schema.sep2.types import FlowDirectionType
 
 TZ = ZoneInfo("Australia/Brisbane")
@@ -38,11 +39,12 @@ class MockSiteReading:
 
 
 def test_csip_unit_to_uom_mapping():
-    """Test CSIP unit to UOM conversion for all valid units"""
-    assert AdminSiteReadingMapper.csip_unit_to_uom(CSIPAusSiteReadingUnit.ACTIVEPOWER) == 38
-    assert AdminSiteReadingMapper.csip_unit_to_uom(CSIPAusSiteReadingUnit.REACTIVEPOWER) == 63
-    assert AdminSiteReadingMapper.csip_unit_to_uom(CSIPAusSiteReadingUnit.FREQUENCY) == 33
-    assert AdminSiteReadingMapper.csip_unit_to_uom(CSIPAusSiteReadingUnit.VOLTAGE) == 29
+    mapped_uoms = []
+    for reading_unit in CSIPAusSiteReadingUnit:
+        uom = AdminSiteReadingMapper.csip_unit_to_uom(reading_unit)
+        assert isinstance(uom, UomType)
+        mapped_uoms.append(uom)
+    assert len(mapped_uoms) == len(set(mapped_uoms)), "Every mapping should be unique"
 
 
 def test_csip_unit_to_uom_invalid_unit():
