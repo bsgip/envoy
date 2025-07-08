@@ -4,6 +4,7 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
     FunctionSetAssignmentsResponse,
 )
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
+from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.mrid import MridMapper
@@ -41,8 +42,9 @@ class FunctionSetAssignmentsMapper:
     ) -> FunctionSetAssignmentsListResponse:
         return FunctionSetAssignmentsListResponse(
             href=generate_href(uri.FunctionSetAssignmentsListUri, scope, site_id=scope.site_id),
+            subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
             pollRate=pollrate_seconds,
             all_=1,
-            results=1,
+            results=len(function_set_assignments),
             FunctionSetAssignments=function_set_assignments,
         )

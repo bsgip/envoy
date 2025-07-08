@@ -17,7 +17,7 @@ from envoy_schema.server.schema.sep2.event import EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
 from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.site import DefaultSiteControl
@@ -203,13 +203,13 @@ def test_map_derc_to_list_response():
     assert result.href != empty_result.href, "The derc list source is different so the hrefs should vary"
 
 
-def test_map_derp_doe_program_response_with_default_doe():
+@pytest.mark.parametrize("total_does", [None, 0, 456])
+def test_map_derp_doe_program_response_with_default_doe(total_does: Optional[int]):
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj (and there is
     a default doe specified)"""
     site_control_group_id = 88776654
     site_control_group = generate_class_instance(SiteControlGroup, site_control_group_id=site_control_group_id)
 
-    total_does = 456
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, display_site_id=54122
     )
@@ -229,7 +229,13 @@ def test_map_derp_doe_program_response_with_default_doe():
     assert result.ActiveDERControlListLink is not None
     assert isinstance(result.ActiveDERControlListLink, ListLink)
     assert result.ActiveDERControlListLink.href
-    assert result.ActiveDERControlListLink.all_ == 1, "Should be 1 active listed as we have total does specified"
+
+    if total_does is None:
+        assert result.ActiveDERControlListLink.all_ is None
+    elif total_does == 0:
+        assert result.ActiveDERControlListLink.all_ == 0, "Should be 0 active listed as we have no DOEs"
+    else:
+        assert result.ActiveDERControlListLink.all_ == 1, "Should be 1 active listed as we have total does specified"
 
     assert result.DefaultDERControlLink is not None
     assert isinstance(result.DefaultDERControlLink, Link)
@@ -247,12 +253,13 @@ def test_map_derp_doe_program_response_with_default_doe():
     assert f"/{site_control_group_id}" in result.ActiveDERControlListLink.href
 
 
-def test_map_derp_doe_program_response_no_default_doe():
+@pytest.mark.parametrize("scg_type", [SiteControlGroup, ArchiveSiteControlGroup])
+def test_map_derp_doe_program_response_no_default_doe(scg_type: type[Union[SiteControlGroup, ArchiveSiteControlGroup]]):
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj (and there is NO
     default doe specified)"""
 
     site_control_group_id = 88776654
-    site_control_group = generate_class_instance(SiteControlGroup, site_control_group_id=site_control_group_id)
+    site_control_group = generate_class_instance(scg_type, site_control_group_id=site_control_group_id)
     total_does = 456
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, display_site_id=54123
