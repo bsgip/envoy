@@ -350,6 +350,7 @@ async def _site_control_groups(
     start: Optional[int],
     changed_after: datetime,
     limit: Optional[int],
+    fsa_id: Optional[int],
 ) -> Union[Sequence[SiteControlGroup], int]:
     """Internal utility for fetching/counting SiteControlGroup's
 
@@ -364,6 +365,9 @@ async def _site_control_groups(
     if changed_after != datetime.min:
         stmt = stmt.where((SiteControlGroup.changed_time >= changed_after))
 
+    if fsa_id is not None:
+        stmt = stmt.where((SiteControlGroup.fsa_id == fsa_id))
+
     if not is_counting:
         stmt = stmt.order_by(SiteControlGroup.primacy.asc(), SiteControlGroup.site_control_group_id.desc())
 
@@ -375,27 +379,26 @@ async def _site_control_groups(
 
 
 async def select_site_control_groups(
-    session: AsyncSession,
-    start: Optional[int],
-    changed_after: datetime,
-    limit: Optional[int],
+    session: AsyncSession, start: Optional[int], changed_after: datetime, limit: Optional[int], fsa_id: Optional[int]
 ) -> Sequence[SiteControlGroup]:
     """Fetches SiteControlGroup with some basic pagination / filtering on change time.
+
+    if fsa_id is specified - only SiteControlGroups with this fsa_id value will be returned
 
     Orders by 2030.5 requirements on DERProgram which is primacy ASC, primary key DESC"""
 
     # Test coverage will ensure that it's an entity list
-    return await _site_control_groups(False, session, start, changed_after, limit)  # type: ignore [return-value]
+    return await _site_control_groups(False, session, start, changed_after, limit, fsa_id)  # type: ignore [return-value] # noqa: E501
 
 
-async def count_site_control_groups(
-    session: AsyncSession,
-    changed_after: datetime,
-) -> int:
-    """Counts SiteControlGroups that have been modified after the specified change time."""
+async def count_site_control_groups(session: AsyncSession, changed_after: datetime, fsa_id: Optional[int]) -> int:
+    """Counts SiteControlGroups that have been modified after the specified change time.
+
+    if fsa_id is specified - only SiteControlGroups with this fsa_id value will be counted
+    """
 
     # Test coverage will ensure that it's an int
-    return await _site_control_groups(True, session, 0, changed_after, None)  # type: ignore [return-value]
+    return await _site_control_groups(True, session, 0, changed_after, None, fsa_id)  # type: ignore [return-value]
 
 
 async def select_site_control_group_by_id(
@@ -406,3 +409,14 @@ async def select_site_control_group_by_id(
     stmt = select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == site_control_group_id).limit(1)
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
+
+
+async def select_site_control_group_fsa_ids(session: AsyncSession, changed_after: datetime) -> Sequence[int]:
+    """Fetches the distinct values for "fsa_id" across all SiteControlGroup instances (optionally filtering
+    on SiteControlGroup.changed_time that were changed after changed_after)"""
+    stmt = select(func.distinct(SiteControlGroup.fsa_id))
+    if changed_after != datetime.min:
+        stmt = stmt.where(SiteControlGroup.changed_time >= changed_after)
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()

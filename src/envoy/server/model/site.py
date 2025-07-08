@@ -53,6 +53,9 @@ class Site(Base):
     registration_pin: Mapped[int] = mapped_column(
         INTEGER, nullable=False
     )  # 5 digit PIN, randomly generated on creation. Used for out of band confirmations.
+    post_rate_seconds: Mapped[Optional[int]] = mapped_column(
+        INTEGER, nullable=True
+    )  # The current post rate set by this EndDevice. If None - it will not be encoded in the mapped EndDevice
 
     assignments: Mapped[list["SiteGroupAssignment"]] = relationship(
         back_populates="site",
@@ -393,7 +396,7 @@ class DefaultSiteControl(Base):
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )  # When this record was created
-    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
     import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
@@ -405,6 +408,6 @@ class DefaultSiteControl(Base):
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )
     load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
-    ramp_rate_percent_per_second: Mapped[Optional[int]] = mapped_column(nullable=True)
+    ramp_rate_percent_per_second: Mapped[Optional[int]] = mapped_column(nullable=True)  # hundredths of percent per sec
 
     site: Mapped["Site"] = relationship(back_populates="default_site_control", lazy="raise")

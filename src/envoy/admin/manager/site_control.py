@@ -36,6 +36,8 @@ class SiteControlGroupManager:
         session.add(new_site_control_group)
         await session.commit()
 
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_CONTROL_GROUP, now)
+
         return new_site_control_group.site_control_group_id
 
     @staticmethod

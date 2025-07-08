@@ -152,6 +152,10 @@ class SubscriptionManager:
             ):
                 if sub.resource_id != PUBLIC_SITE_DER_ID:
                     raise BadRequestError(f"Invalid der_id {sub.resource_id} for site {scope.site_id}")
+            elif sub.resource_type == SubscriptionResource.DEFAULT_SITE_CONTROL:
+                scg = await select_site_control_group_by_id(session, sub.resource_id)
+                if scg is None:
+                    raise BadRequestError(f"Invalid site_control_group_id {sub.resource_id} for site {scope.site_id}")
             else:
                 raise BadRequestError("sub.resource_id is improperly set. Check subscribedResource is valid.")
 

@@ -30,6 +30,7 @@ async def update_single_tariff(session: AsyncSession, updated_tariff: Tariff) ->
     tariff.dnsp_code = updated_tariff.dnsp_code
     tariff.name = updated_tariff.name
     tariff.currency_code = updated_tariff.currency_code
+    tariff.fsa_id = updated_tariff.fsa_id
 
 
 async def upsert_many_tariff_genrate(

@@ -38,6 +38,7 @@ class ArchiveSite(ArchiveBase):
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
     registration_pin: Mapped[int] = mapped_column(INTEGER, nullable=False)
+    post_rate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
 
 
 class ArchiveSiteDER(ArchiveBase):

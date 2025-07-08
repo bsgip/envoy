@@ -14,6 +14,7 @@ class TariffMapper:
             changed_time=changed_time,
             currency_code=tariff.currency_code,
             dnsp_code=tariff.dnsp_code,
+            fsa_id=tariff.fsa_id,
         )
 
     @staticmethod
@@ -25,6 +26,7 @@ class TariffMapper:
             dnsp_code=tariff.dnsp_code,
             currency_code=tariff.currency_code,
             name=tariff.name,
+            fsa_id=tariff.fsa_id,
         )
 
 

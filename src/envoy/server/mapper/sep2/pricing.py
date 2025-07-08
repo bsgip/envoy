@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from itertools import islice, product
-from typing import Iterator, Sequence
+from typing import Iterator, Optional, Sequence
 
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.event import EventStatus
@@ -92,7 +92,10 @@ class TariffProfileMapper:
 
     @staticmethod
     def map_to_list_response(
-        scope: DeviceOrAggregatorRequestScope, tariffs: Iterator[tuple[Tariff, int]], total_tariffs: int
+        scope: DeviceOrAggregatorRequestScope,
+        tariffs: Iterator[tuple[Tariff, int]],
+        total_tariffs: int,
+        fsa_id: Optional[int],
     ) -> TariffProfileListResponse:
         """Returns a list containing multiple sep2 entities. The href's will be to the site specific
         TimeTariffProfile and RateComponentListLink
@@ -108,8 +111,19 @@ class TariffProfileMapper:
             tariff_profiles.append(TariffProfileMapper.map_to_response(scope, tariff, rc_count))
             tariffs_count = tariffs_count + 1
 
+        if fsa_id is None:
+            href = generate_href(uri.TariffProfileListUri, scope, site_id=scope.display_site_id)
+        else:
+            href = generate_href(
+                uri.TariffProfileFSAListUri,
+                scope,
+                site_id=scope.display_site_id,
+                fsa_id=fsa_id,
+            )
+
         return TariffProfileListResponse.model_validate(
             {
+                "href": href,
                 "all_": total_tariffs,
                 "results": tariffs_count,
                 "TariffProfile": tariff_profiles,

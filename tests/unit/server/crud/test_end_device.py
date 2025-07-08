@@ -527,6 +527,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
                 sfdi=1111,
                 device_category=0,
                 registration_pin=11111,
+                post_rate_seconds=111,
             ),
             archive_data,
         )

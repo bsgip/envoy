@@ -14,6 +14,7 @@ from envoy.server.crud.pricing import (
     select_all_tariffs,
     select_single_tariff,
     select_tariff_count,
+    select_tariff_fsa_ids,
     select_tariff_generated_rate_for_scope,
     select_tariff_rate_for_day_time,
     select_tariff_rates_for_day,
@@ -22,20 +23,47 @@ from envoy.server.crud.pricing import (
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 
+@pytest.mark.parametrize(
+    "changed_after, expected_fsa_ids",
+    [
+        (datetime.min, [1, 2]),
+        (datetime(2023, 1, 2, 12, 1, 0, tzinfo=timezone.utc), [1, 2]),
+        (datetime(2023, 1, 2, 12, 2, 0, tzinfo=timezone.utc), [2]),
+        (datetime(2023, 1, 2, 13, 2, 0, tzinfo=timezone.utc), []),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_tariff_fsa_ids(pg_base_config, changed_after: datetime, expected_fsa_ids: list[int]):
+    async with generate_async_session(pg_base_config) as session:
+        actual_ids = await select_tariff_fsa_ids(session, changed_after)
+        assert_list_type(int, actual_ids, len(expected_fsa_ids))
+        assert set(expected_fsa_ids) == set(actual_ids)
+
+
 @pytest.mark.anyio
 async def test_select_tariff_count(pg_base_config):
     """Simple tests to ensure the counts work"""
     async with generate_async_session(pg_base_config) as session:
         # Test the basic config is there and accessible
-        assert await select_tariff_count(session, datetime.min) == 3
+        assert await select_tariff_count(session, datetime.min, None) == 3
+
+        # Check fsa_id
+        assert await select_tariff_count(session, datetime.min, 1) == 2
+        assert await select_tariff_count(session, datetime.min, 2) == 1
+        assert await select_tariff_count(session, datetime.min, 3) == 0
 
         # try with after filter being set
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc)) == 3
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 11, 1, 3, tzinfo=timezone.utc)) == 2
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc)) == 2
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc)) == 1
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 13, 1, 2, tzinfo=timezone.utc)) == 1
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 13, 1, 3, tzinfo=timezone.utc)) == 0
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc), None) == 3
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 11, 1, 3, tzinfo=timezone.utc), None) == 2
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), None) == 2
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc), None) == 1
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 13, 1, 2, tzinfo=timezone.utc), None) == 1
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 13, 1, 3, tzinfo=timezone.utc), None) == 0
+
+        # Combo after and fsa_id filter
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc), 1) == 0
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc), 2) == 1
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc), 3) == 0
 
 
 def assert_tariff_by_id(expected_tariff_id: Optional[int], actual_tariff: Optional[Tariff]):
@@ -56,24 +84,30 @@ def assert_tariff_by_id(expected_tariff_id: Optional[int], actual_tariff: Option
 
 
 @pytest.mark.parametrize(
-    "expected_ids, start, after, limit",
+    "expected_ids, start, after, limit, fsa_id",
     [
-        ([3, 2, 1], 0, datetime.min, 99),
-        ([2, 1], 1, datetime.min, 99),
-        ([1], 2, datetime.min, 99),
-        ([], 99, datetime.min, 99),
-        ([3, 2], 0, datetime.min, 2),
-        ([1], 2, datetime.min, 2),
-        ([], 3, datetime.min, 2),
-        ([3, 2], 0, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), 99),
-        ([2], 1, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), 99),
+        ([3, 2, 1], 0, datetime.min, 99, None),
+        ([2, 1], 0, datetime.min, 99, 1),
+        ([3], 0, datetime.min, 99, 2),
+        ([], 0, datetime.min, 99, 3),
+        ([2, 1], 1, datetime.min, 99, None),
+        ([1], 2, datetime.min, 99, None),
+        ([], 99, datetime.min, 99, None),
+        ([3, 2], 0, datetime.min, 2, None),
+        ([1], 2, datetime.min, 2, None),
+        ([], 3, datetime.min, 2, None),
+        ([3, 2], 0, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), 99, None),
+        ([2], 0, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), 99, 1),
+        ([2], 1, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), 99, None),
     ],
 )
 @pytest.mark.anyio
-async def test_select_all_tariffs(pg_base_config, expected_ids: list[int], start: int, after: datetime, limit: int):
+async def test_select_all_tariffs(
+    pg_base_config, expected_ids: list[int], start: int, after: datetime, limit: int, fsa_id: Optional[int]
+):
     """Tests that the returned tariffs match what's in the DB"""
     async with generate_async_session(pg_base_config) as session:
-        tariffs = await select_all_tariffs(session, start, after, limit)
+        tariffs = await select_all_tariffs(session, start, after, limit, fsa_id)
         assert len(tariffs) == len(expected_ids)
         assert [t.tariff_id for t in tariffs] == expected_ids
 

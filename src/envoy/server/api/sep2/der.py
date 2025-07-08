@@ -352,6 +352,7 @@ async def get_derprogram_list(
             start=extract_start_from_paging_param(start),
             limit=extract_limit_from_paging_param(limit),
             changed_after=extract_datetime_from_paging_param(after),
+            fsa_id=None,  # We won't be scoping this to a specific function set assignment
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

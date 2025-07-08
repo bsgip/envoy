@@ -48,6 +48,7 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/pricing/rt/1"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/fsa/1/tp"),  # FSA scoped link to Tariffs
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1"),  # Tariff - no site scoping
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/tp/1/rc"),  # Tariff - no site scoping
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp/1"),
@@ -60,6 +61,7 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
 
     # derp/derc function set
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp"),
+    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/fsa/1/derp"),  # FSA scoped link to DERPs
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/1"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/1/actderc"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/derp/1/dderc"),

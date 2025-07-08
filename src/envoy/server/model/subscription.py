@@ -21,6 +21,9 @@ class SubscriptionResource(IntEnum):
     SITE_DER_RATING = auto()
     SITE_DER_SETTING = auto()
     SITE_DER_STATUS = auto()
+    DEFAULT_SITE_CONTROL = auto()
+    FUNCTION_SET_ASSIGNMENTS = auto()  # This just maps to the pollRate exposed in the FSA List
+    SITE_CONTROL_GROUP = auto()
 
 
 class Subscription(Base):
@@ -82,3 +85,21 @@ class SubscriptionCondition(Base):
     )  # If set - max of attribute value required to fire notification
 
     subscription: Mapped["Subscription"] = relationship(back_populates="conditions", lazy="raise")
+
+
+class TransmitNotificationLog(Base):
+    """Represents a single attempt to transmit a subscription notification to a remote source. This will be a heavily
+    used table so its been optimised for storage size."""
+
+    __tablename__ = "transmit_notification_log"
+
+    transmit_notification_log_id: Mapped[int] = mapped_column(primary_key=True)
+    subscription_id_snapshot: Mapped[int] = (
+        mapped_column()
+    )  # The moment in time snapshot of the source subscription's ID. For maximum accuracy, the archive_subscription
+    # should be consulted for values around transmit_time
+    transmit_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When did transmission start
+    transmit_duration_ms: Mapped[int] = mapped_column(INTEGER)  # How long did transmission take (in milli seconds)
+    notification_size_bytes: Mapped[int] = mapped_column(INTEGER)  # Size of notification content body (in bytes)
+    attempt: Mapped[int] = mapped_column(INTEGER)  # What was the attempt number being transmitted
+    http_status_code: Mapped[int] = mapped_column(INTEGER)  # HTTP Status received (or -1 on other error)

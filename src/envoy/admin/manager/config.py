@@ -11,11 +11,13 @@ from envoy_schema.admin.schema.config import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.site import select_single_site_no_scoping
+from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.server import select_server_config
 from envoy.server.manager.server import _map_server_config
 from envoy.server.manager.time import utc_now
 from envoy.server.model.server import RuntimeServerConfig as ConfigEntity
 from envoy.server.model.site import DefaultSiteControl
+from envoy.server.model.subscription import SubscriptionResource
 
 
 class ConfigManager:
@@ -58,6 +60,8 @@ class ConfigManager:
             existing_db_config.disable_edev_registration = updated_values.disable_edev_registration
 
         await session.commit()
+
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now)
 
     @staticmethod
     async def fetch_config_response(session: AsyncSession) -> RuntimeServerConfigResponse:
@@ -108,8 +112,8 @@ class ConfigManager:
         if request.generation_limit_watts is not None:
             site.default_site_control.generation_limit_active_watts = request.generation_limit_watts.value
 
-        if request.import_limit_watts is not None:
-            site.default_site_control.import_limit_active_watts = request.import_limit_watts.value
+        if request.load_limit_watts is not None:
+            site.default_site_control.load_limit_active_watts = request.load_limit_watts.value
 
         if request.ramp_rate_percent_per_second is not None:
             ramp_rate_value = (
@@ -120,6 +124,8 @@ class ConfigManager:
             site.default_site_control.ramp_rate_percent_per_second = ramp_rate_value
 
         await session.commit()
+
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.DEFAULT_SITE_CONTROL, now)
 
         return True
 

@@ -53,7 +53,7 @@ dependencies = [
     "tzlocal",
     "pydantic_xml[lxml]>=2.12.0",
     "pydantic!=2.7.0",
-    "pydantic-xml!=2.9.1",        # Known compatibility issue with pydantic
+    "pydantic-xml!=2.9.1,!=2.17.1", # Known compatibility issues with pydantic and typing libs
     "pydantic-settings",
     "python-dateutil",
     "asyncpg",
@@ -64,10 +64,10 @@ dependencies = [
     "pyjwt",
     "cryptography",
     "httpx",
-    "taskiq!=0.11.5,!=0.11.6",    # Known compatibiity issue with pydantic
+    "taskiq!=0.11.5,!=0.11.6",      # Known compatibiity issue with pydantic
     "taskiq-aio-pika",
     "parse",
-    "envoy_schema==0.17.0",
+    "envoy_schema==0.20.1",
 ]
 
 [project.optional-dependencies]
@@ -91,7 +91,7 @@ test = [
     "httpx",
     "defusedxml",
     "asgi_lifespan",
-    "assertical",
+    "assertical>=0.3.1",
     "pytest-env",
     "freezegun",
 ]

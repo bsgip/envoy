@@ -7,7 +7,12 @@ from fastapi_async_sqlalchemy import db
 
 from envoy.server.api import query
 from envoy.server.api.error_handler import LoggedHttpException
-from envoy.server.api.request import extract_request_claims
+from envoy.server.api.request import (
+    extract_datetime_from_paging_param,
+    extract_limit_from_paging_param,
+    extract_request_claims,
+    extract_start_from_paging_param,
+)
 from envoy.server.api.response import XmlResponse
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
 
@@ -51,6 +56,7 @@ async def get_function_set_assignments_list(
     request: Request,
     start: list[int] = query.StartQueryParameter,
     limit: list[int] = query.LimitQueryParameter,
+    after: list[int] = query.AfterQueryParameter,
 ) -> XmlResponse:
     """Responds with a FunctionSetAssignmentsList resource.
 
@@ -63,13 +69,12 @@ async def get_function_set_assignments_list(
         fastapi.Response object.
     """
 
-    # This function accepts the start and limit query parameters because it is a GET request for a List response
-    # however FunctionSetAssignment will only ever return 1 FunctionSetAssignment per site so we ignore `start`
-    # `limit`.
-
     function_set_assignments_list = await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_scope(
         session=db.session,
         scope=extract_request_claims(request).to_site_request_scope(site_id),
+        start=extract_start_from_paging_param(start),
+        changed_after=extract_datetime_from_paging_param(after),
+        limit=extract_limit_from_paging_param(limit),
     )
     if function_set_assignments_list is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")

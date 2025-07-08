@@ -194,6 +194,7 @@ class SiteMapper:
             sfdi=site.sfdi,
             device_category=site.device_category,
             groups=site_groups,
+            post_rate_seconds=site.post_rate_seconds,
             der_availability=SiteMapper.map_to_der_availability_response(availability),
             der_config=SiteMapper.map_to_der_config_response(rating, setting),
             der_status=SiteMapper.map_to_der_status_response(status),

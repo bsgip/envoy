@@ -50,6 +50,48 @@ async def get_derprogram_list(
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
+            fsa_id=None,  # Don't scope to a specific function set assignment
+        )
+    except BadRequestError as ex:
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+    except NotFoundError:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+
+    return XmlResponse(derp_list)
+
+
+@router.head(uri.DERProgramFSAListUri)
+@router.get(uri.DERProgramFSAListUri, status_code=HTTPStatus.OK)
+async def get_derprogram_list_fsa_scoped(
+    request: Request,
+    site_id: int,
+    fsa_id: int,
+    start: list[int] = Query([0], alias="s"),
+    after: list[int] = Query([0], alias="a"),
+    limit: list[int] = Query([1], alias="l"),
+) -> Response:
+    """Responds with a single DERProgramListResponse containing DER programs for the specified site (that have been
+    scoped to belonging to the specified function set assignment id)
+
+    Args:
+        site_id: Path parameter, the target EndDevice's internal registration number.
+        fsa_id: Path parameter, the Function Set Assignment ID that DERP's will be filtered to
+        start: list query parameter for the start index value. Default 0.
+        after: list query parameter for lists with a datetime primary index. Default 0.
+        limit: list query parameter for the maximum number of objects to return. Default 1.
+
+    Returns:
+        fastapi.Response object.
+    """
+    try:
+        derp_list = await DERProgramManager.fetch_list_for_scope(
+            db.session,
+            scope=extract_request_claims(request).to_site_request_scope(site_id),
+            default_doe=extract_default_doe(request),
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit),
+            fsa_id=fsa_id,
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

@@ -12,6 +12,7 @@ from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
 
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
+    fetch_default_site_controls_by_changed_at,
     fetch_der_availability_by_changed_at,
     fetch_der_rating_by_changed_at,
     fetch_der_setting_by_changed_at,
@@ -19,17 +20,25 @@ from envoy.notification.crud.batch import (
     fetch_does_by_changed_at,
     fetch_rates_by_changed_at,
     fetch_readings_by_changed_at,
+    fetch_runtime_config_by_changed_at,
+    fetch_site_control_groups_by_changed_at,
     fetch_sites_by_changed_at,
     get_site_id,
     get_subscription_filter_id,
     select_subscriptions_for_resource,
 )
-from envoy.notification.crud.common import TArchiveResourceModel, TResourceModel
+from envoy.notification.crud.common import (
+    ControlGroupScopedDefaultSiteControl,
+    SiteScopedRuntimeServerConfig,
+    SiteScopedSiteControlGroup,
+    TArchiveResourceModel,
+    TResourceModel,
+)
 from envoy.notification.exception import NotificationError
 from envoy.notification.handler import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
-from envoy.server.manager.server import RuntimeServerConfigManager
+from envoy.server.manager.server import RuntimeServerConfigManager, _map_server_config
 from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper, NotificationType, SubscriptionMapper
 from envoy.server.model.config.server import RuntimeServerConfig
@@ -44,12 +53,13 @@ logger = logging.getLogger(__name__)
 
 MAX_NOTIFICATION_PAGE_SIZE = 100
 
-DER_RESOURCES = set(
+NON_LIST_RESOURCES = set(
     [
         SubscriptionResource.SITE_DER_AVAILABILITY,
         SubscriptionResource.SITE_DER_RATING,
         SubscriptionResource.SITE_DER_SETTING,
         SubscriptionResource.SITE_DER_STATUS,
+        SubscriptionResource.DEFAULT_SITE_CONTROL,
     ]
 )
 
@@ -124,7 +134,7 @@ def get_entity_pages(
                     batch_key=batch_key,
                     pricing_reading_type=price_type,
                 )
-    elif resource in DER_RESOURCES:
+    elif resource in NON_LIST_RESOURCES:
         # DER resources can't be notified as a list - so treat these all as individual notifications
         for entity in entities:
             yield NotificationEntities(
@@ -253,6 +263,14 @@ def entities_to_notification(
             notification_type=notification_type,
             power10_multiplier=config.site_control_pow10_encoding,
         )
+    elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
+        # SITE_CONTROL_GROUP: (aggregator_id: int, site_control_group_id: int)
+        return NotificationMapper.map_site_control_groups_to_response(
+            site_control_groups=[e.original for e in cast(Sequence[SiteScopedSiteControlGroup], entities)],  # type: ignore # noqa: E501
+            sub=sub,
+            scope=scope,
+            notification_type=notification_type,
+        )
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
         (_, _, site_reading_type_id) = batch_key
@@ -287,6 +305,29 @@ def entities_to_notification(
         return NotificationMapper.map_der_status_to_response(
             site_der_id, status, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
+    elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
+        # FUNCTION_SET_ASSIGNMENTS: (aggregator_id: int, site_id: int)
+        (_, site_id) = batch_key
+        site_scoped_server_config = cast(SiteScopedRuntimeServerConfig, entities[0]) if len(entities) > 0 else None
+        poll_rate = _map_server_config(
+            None if site_scoped_server_config is None else site_scoped_server_config.original
+        ).fsal_pollrate_seconds
+        return NotificationMapper.map_function_set_assignments_list_to_response(
+            poll_rate, sub, scope, notification_type
+        )
+
+    elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
+        # DEFAULT_SITE_CONTROL: (aggregator_id: int, site_id: int, site_control_group_id: int)
+        (_, site_id, site_control_group_id) = batch_key
+        default_site_control = cast(ControlGroupScopedDefaultSiteControl, entities[0]) if len(entities) > 0 else None
+
+        return NotificationMapper.map_default_site_control_response(
+            None if default_site_control is None else default_site_control.original,
+            config.site_control_pow10_encoding,
+            sub,
+            scope,
+            notification_type,
+        )
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify way to map entities")
 
@@ -311,6 +352,12 @@ async def fetch_batched_entities(
         return await fetch_der_setting_by_changed_at(session, timestamp)
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         return await fetch_der_status_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
+        return await fetch_default_site_controls_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
+        return await fetch_runtime_config_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
+        return await fetch_site_control_groups_by_changed_at(session, timestamp)
     else:
         raise NotificationError(f"Unsupported resource type: {resource}")
 
@@ -397,6 +444,7 @@ async def check_db_change_or_delete(
                 content=content,
                 notification_id=str(n.notification_id),
                 subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, scope),
+                subscription_id=n.subscription.subscription_id,
                 attempt=0,
             )
         except Exception as ex:

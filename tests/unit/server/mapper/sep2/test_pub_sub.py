@@ -5,17 +5,20 @@ from typing import Optional, Union, cast
 import pytest
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
-from envoy_schema.server.schema.sep2.der import DERControlResponse
+from envoy_schema.server.schema.sep2.der import DERControlResponse, DERProgramResponse
 from envoy_schema.server.schema.sep2.end_device import EndDeviceResponse
 from envoy_schema.server.schema.sep2.metering import Reading
 from envoy_schema.server.schema.sep2.pricing import TimeTariffIntervalResponse
 from envoy_schema.server.schema.sep2.pub_sub import (
+    XSI_TYPE_DEFAULT_DER_CONTROL,
     XSI_TYPE_DER_AVAILABILITY,
     XSI_TYPE_DER_CAPABILITY,
     XSI_TYPE_DER_CONTROL_LIST,
+    XSI_TYPE_DER_PROGRAM_LIST,
     XSI_TYPE_DER_SETTINGS,
     XSI_TYPE_DER_STATUS,
     XSI_TYPE_END_DEVICE_LIST,
+    XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST,
     XSI_TYPE_READING_LIST,
     XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
 )
@@ -24,18 +27,22 @@ from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
 from envoy_schema.server.schema.sep2.pub_sub import SubscriptionListResponse
 from envoy_schema.server.schema.uri import (
+    DefaultDERControlUri,
     DERAvailabilityUri,
     DERCapabilityUri,
     DERControlListUri,
+    DERProgramListUri,
     DERSettingsUri,
     DERStatusUri,
     EndDeviceListUri,
+    FunctionSetAssignmentsListUri,
 )
 
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.constants import PricingReadingType
+from envoy.server.mapper.csip_aus.doe import DERControlMapper
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.pub_sub import (
     NotificationMapper,
@@ -44,8 +51,15 @@ from envoy.server.mapper.sep2.pub_sub import (
     SubscriptionMapper,
     _map_to_notification_status,
 )
-from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
+from envoy.server.model.site import (
+    DefaultSiteControl,
+    Site,
+    SiteDERAvailability,
+    SiteDERRating,
+    SiteDERSetting,
+    SiteDERStatus,
+)
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -229,11 +243,14 @@ def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
     all_hrefs: list[str] = []
     total_fails = 0
 
-    # We filter out the only "non unique" case which is SITE where resource_id has a value (it's nonsensical)
+    # We filter out the only "non unique" case which is SITE/FSA where resource_id has a value (it's nonsensical)
     unique_combos = [
         c
         for c in product(SubscriptionResource, [1, None], [2, None])
-        if c != (SubscriptionResource.SITE, 1, 2) and c != (SubscriptionResource.SITE, None, 2)
+        if c != (SubscriptionResource.SITE, 1, 2)
+        and c != (SubscriptionResource.SITE, None, 2)
+        and c != (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, 1, 2)
+        and c != (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, None, 2)
     ]
 
     for resource, site_id, resource_id in unique_combos:
@@ -476,6 +493,17 @@ def test_SubscriptionMapper_map_from_request():
         (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/der/1/dercap", (SubscriptionResource.SITE_DER_RATING, None, 1)),
         ("/edev/55/der/1/ders", (SubscriptionResource.SITE_DER_STATUS, 55, 1)),
         (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/der/1/ders", (SubscriptionResource.SITE_DER_STATUS, None, 1)),
+        ("/edev/55/derp/2/dderc/foo", InvalidMappingError),
+        ("/edev/55/derp/2/dderc", (SubscriptionResource.DEFAULT_SITE_CONTROL, 55, 2)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp/1/dderc", (SubscriptionResource.DEFAULT_SITE_CONTROL, None, 1)),
+        ("/edev/55/fsa/foo", InvalidMappingError),
+        ("/edev/55/fsa", (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, 55, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/fsa", (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, None, None)),
+        ("/edev/55/derp/foo", InvalidMappingError),
+        ("/edev/55/derp", (SubscriptionResource.SITE_CONTROL_GROUP, 55, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp", (SubscriptionResource.SITE_CONTROL_GROUP, None, None)),
+        ("/edev/55/fsa/66/derp", (SubscriptionResource.SITE_CONTROL_GROUP, 55, 66)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/fsa/66/derp", (SubscriptionResource.SITE_CONTROL_GROUP, None, 66)),
         ("/edev/55/der/1/derx", InvalidMappingError),
         ("/", InvalidMappingError),
         ("edev", InvalidMappingError),
@@ -551,6 +579,36 @@ def test_NotificationMapper_map_does_to_response(notification_type: Notification
     assert_entity_hrefs_contain_entity_id_and_prefix(
         [e.href for e in notification.resource.DERControl],
         [doe1.dynamic_operating_envelope_id, doe2.dynamic_operating_envelope_id],
+        scope.href_prefix,
+    )
+
+
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_site_control_groups_to_response(notification_type: NotificationType):
+    scg1 = generate_class_instance(SiteControlGroup, seed=101, optional_is_none=False)
+    scg2 = generate_class_instance(SiteControlGroup, seed=202, optional_is_none=True)
+
+    sub = generate_class_instance(Subscription, seed=303)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
+    )
+
+    notification = NotificationMapper.map_site_control_groups_to_response([scg1, scg2], sub, scope, notification_type)
+    assert isinstance(notification, Notification)
+    assert notification.subscribedResource.startswith("/custom/prefix")
+    assert DERProgramListUri.format(site_id=scope.display_site_id) in notification.subscribedResource
+    assert notification.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification.subscriptionURI
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification.status == NotificationStatus.DEFAULT
+
+    assert notification.resource.type == XSI_TYPE_DER_PROGRAM_LIST
+    assert_list_type(DERProgramResponse, notification.resource.DERProgram, count=2)
+    assert_entity_hrefs_contain_entity_id_and_prefix(
+        [e.href for e in notification.resource.DERProgram],
+        [scg1.site_control_group_id, scg2.site_control_group_id],
         scope.href_prefix,
     )
 
@@ -839,3 +897,86 @@ def test_NotificationMapper_map_der_status_to_response(notification_type: Notifi
     assert notification_all_set.resource.inverterStatus.dateTime == int(all_set.inverter_status_time.timestamp())
     assert notification_all_set.resource.operationalModeStatus.value == all_set.operational_mode_status
     assert notification_all_set.resource.genConnectStatus.value == to_hex_binary(all_set.generator_connect_status)
+
+
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_function_set_assignments_list_to_response(notification_type: NotificationType):
+    sub = generate_class_instance(Subscription, seed=303)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    poll_rate_seconds = 1234566
+
+    notification_all_set = NotificationMapper.map_function_set_assignments_list_to_response(
+        poll_rate_seconds, sub, scope, notification_type
+    )
+    assert isinstance(notification_all_set, Notification)
+    assert notification_all_set.subscribedResource.startswith("/custom/prefix")
+    assert (
+        FunctionSetAssignmentsListUri.format(site_id=scope.display_site_id) in notification_all_set.subscribedResource
+    )
+    assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification_all_set.subscriptionURI
+    assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification_all_set.status == NotificationStatus.DEFAULT
+
+    # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
+    # mapper unit tests
+    assert notification_all_set.resource.type == XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST
+    assert notification_all_set.resource.pollRate == poll_rate_seconds
+
+
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_default_site_control_response(notification_type: NotificationType):
+    all_set = generate_class_instance(DefaultSiteControl, seed=1, optional_is_none=False)
+
+    sub = generate_class_instance(Subscription, seed=303)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    pow10_mult = -3
+
+    notification_all_set = NotificationMapper.map_default_site_control_response(
+        all_set, pow10_mult, sub, scope, notification_type
+    )
+    assert isinstance(notification_all_set, Notification)
+    assert notification_all_set.subscribedResource.startswith("/custom/prefix")
+    assert (
+        DefaultDERControlUri.format(site_id=scope.display_site_id, der_program_id=sub.resource_id)
+        in notification_all_set.subscribedResource
+    )
+    assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification_all_set.subscriptionURI
+    assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification_all_set.status == NotificationStatus.DEFAULT
+
+    # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
+    # mapper unit tests
+    assert notification_all_set.resource.type == XSI_TYPE_DEFAULT_DER_CONTROL
+    assert notification_all_set.resource.DERControlBase_.opModImpLimW.multiplier == pow10_mult
+    assert (
+        notification_all_set.resource.DERControlBase_.opModImpLimW.value
+        == DERControlMapper.map_to_active_power(all_set.import_limit_active_watts, pow10_mult).value
+    )
+    assert notification_all_set.resource.DERControlBase_.opModExpLimW.multiplier == pow10_mult
+    assert (
+        notification_all_set.resource.DERControlBase_.opModExpLimW.value
+        == DERControlMapper.map_to_active_power(all_set.export_limit_active_watts, pow10_mult).value
+    )
+
+
+def test_NotificationMapper_map_default_site_control_response_none_value():
+
+    sub = generate_class_instance(Subscription, seed=303)
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    pow10_mult = -3
+
+    notification_all_set = NotificationMapper.map_default_site_control_response(
+        None, pow10_mult, sub, scope, NotificationType.ENTITY_DELETED
+    )
+    assert isinstance(notification_all_set, Notification)
+
+    # Resource won't be set if we don't have a value
+    assert notification_all_set.resource is None

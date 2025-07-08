@@ -16,6 +16,7 @@ class ArchiveTariff(ArchiveBase):
     name: Mapped[str] = mapped_column(String(64))
     dnsp_code: Mapped[str] = mapped_column(String(20))
     currency_code: Mapped[CurrencyCode] = mapped_column(Integer)
+    fsa_id: Mapped[int] = mapped_column(Integer)
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

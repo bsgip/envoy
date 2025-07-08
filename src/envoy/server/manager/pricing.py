@@ -62,11 +62,13 @@ class TariffProfileManager:
         start: int,
         changed_after: datetime,
         limit: int,
+        fsa_id: Optional[int],
     ) -> Optional[TariffProfileListResponse]:
-        """Fetches all tariffs accessible to a specific site."""
+        """Fetches all tariffs accessible to a specific site (and optionally scoped to a specific function set
+        assignment id)."""
 
-        tariffs = await select_all_tariffs(session, start, changed_after, limit)
-        tariff_count = await select_tariff_count(session, changed_after)
+        tariffs = await select_all_tariffs(session, start, changed_after, limit, fsa_id)
+        tariff_count = await select_tariff_count(session, changed_after, fsa_id)
 
         # we need the rate counts associated with each Tariff+Site. Those are derived from dates with a Rate
         tariff_rate_counts: list[int] = []
@@ -76,7 +78,7 @@ class TariffProfileManager:
             )
             tariff_rate_counts.append(rate_days * TOTAL_PRICING_READING_TYPES)
 
-        return TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts), tariff_count)
+        return TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts), tariff_count, fsa_id)
 
     @staticmethod
     async def fetch_tariff_profile_no_site(
@@ -100,8 +102,8 @@ class TariffProfileManager:
         any useful RateComponent links due to a lack of a site ID scope.
 
         Its expected that function set assignments will assign appropriate tariff links"""
-        tariffs = await select_all_tariffs(session, start, changed_after, limit)
-        tariff_count = await select_tariff_count(session, changed_after)
+        tariffs = await select_all_tariffs(session, start, changed_after, limit, None)
+        tariff_count = await select_tariff_count(session, changed_after, None)
 
         return TariffProfileMapper.map_to_list_nosite_response(scope, tariffs, tariff_count)
 
