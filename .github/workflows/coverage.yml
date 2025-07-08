@@ -141,6 +141,7 @@ jobs:
             }
             body += "\n</details>\n"
 
+            const fs = require('fs');
             fs.writeFileSync("coverage-report.txt", body);
 
       - name: Upload Coverage Report Artifact
