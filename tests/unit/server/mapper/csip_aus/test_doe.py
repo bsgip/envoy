@@ -15,6 +15,7 @@ from envoy_schema.server.schema.sep2.der import (
 )
 from envoy_schema.server.schema.sep2.event import EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
+from envoy_schema.server.schema.uri import DERProgramFSAListUri, DERProgramListUri
 
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
@@ -277,16 +278,18 @@ def test_map_derp_doe_program_response_no_default_doe(scg_type: type[Union[SiteC
 
 
 @pytest.mark.parametrize(
-    "control_groups_with_counts, total_control_groups, default_doe",
+    "control_groups_with_counts, total_control_groups, default_doe, fsa_id",
     [
-        ([], 0, None),
-        ([], 0, generate_class_instance(DefaultSiteControl)),
+        ([], 0, None, None),
+        ([], 0, None, 123),
+        ([], 0, generate_class_instance(DefaultSiteControl), None),
         (
             [
                 (generate_class_instance(SiteControlGroup, seed=101), 99),
                 (generate_class_instance(SiteControlGroup, seed=202, optional_is_none=True), 77),
             ],
             456,
+            None,
             None,
         ),
         (
@@ -296,6 +299,7 @@ def test_map_derp_doe_program_response_no_default_doe(scg_type: type[Union[SiteC
             ],
             456,
             generate_class_instance(DefaultSiteControl),
+            None,
         ),
         (
             [
@@ -303,6 +307,15 @@ def test_map_derp_doe_program_response_no_default_doe(scg_type: type[Union[SiteC
             ],
             789,
             generate_class_instance(DefaultSiteControl, optional_is_none=True),
+            None,
+        ),
+        (
+            [
+                (generate_class_instance(SiteControlGroup, seed=101), 11),
+            ],
+            789,
+            generate_class_instance(DefaultSiteControl, optional_is_none=True),
+            123,
         ),
     ],
 )
@@ -310,17 +323,23 @@ def test_map_derp_doe_program_list_response(
     control_groups_with_counts: list[tuple[SiteControlGroup, int]],
     total_control_groups: int,
     default_doe: Optional[DefaultSiteControl],
+    fsa_id: Optional[int],
 ):
     """Shows that encoding a list of site_control_groups works with various counts"""
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
-
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, href_prefix="/foo")
+    poll_rate = 3
     result = DERProgramMapper.doe_program_list_response(
-        scope, control_groups_with_counts, total_control_groups, default_doe, 3
+        scope, control_groups_with_counts, total_control_groups, default_doe, poll_rate, fsa_id
     )
     assert result is not None
     assert isinstance(result, DERProgramListResponse)
-    assert result.href
-    assert result.pollRate == 3
+    assert result.pollRate == poll_rate
+
+    assert result.href.startswith(scope.href_prefix)
+    if fsa_id is None:
+        assert result.href.endswith(DERProgramListUri.format(site_id=scope.display_site_id))
+    else:
+        assert result.href.endswith(DERProgramFSAListUri.format(site_id=scope.display_site_id, fsa_id=fsa_id))
 
     assert result.all_ == total_control_groups
     if len(control_groups_with_counts) == 0:

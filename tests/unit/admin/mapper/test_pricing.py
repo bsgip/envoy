@@ -11,6 +11,22 @@ from envoy.admin.mapper.pricing import TariffGeneratedRateListMapper, TariffMapp
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_tariff_mapper_roundtrip(optional_is_none: bool):
+    expected = generate_class_instance(TariffRequest, optional_is_none=optional_is_none)
+    changed_time = datetime(2023, 4, 5, 6, 7, 8, 9)
+    created_time = datetime(2024, 4, 5, 6, 7, 8, 9)
+    mdl = TariffMapper.map_from_request(changed_time, expected)
+    mdl.tariff_id = 123321
+    mdl.created_time = created_time
+    actual = TariffMapper.map_to_response(mdl)
+
+    assert_class_instance_equality(TariffRequest, expected, actual)
+    assert actual.changed_time == changed_time
+    assert actual.created_time == created_time
+    assert actual.tariff_id == 123321
+
+
 def test_tariff_mapper_from_request():
     req = generate_class_instance(TariffRequest)
     changed_time = datetime(2023, 4, 5, 6, 7, 8, 9)

@@ -50,6 +50,7 @@ async def test_program_fetch_list_for_scope(
     now = datetime(2020, 1, 2, tzinfo=timezone.utc)
     start = 111
     limit = 222
+    fsa_id = 333
     changed_after = datetime(2021, 3, 4)
     site_control_group_count = 554
     site_control_groups = [
@@ -71,14 +72,16 @@ async def test_program_fetch_list_for_scope(
     mock_fetch_current_config.return_value = config
 
     # Act
-    result = await DERProgramManager.fetch_list_for_scope(mock_session, scope, default_doe, start, changed_after, limit)
+    result = await DERProgramManager.fetch_list_for_scope(
+        mock_session, scope, default_doe, start, changed_after, limit, fsa_id
+    )
 
     # Assert
     assert result is mapped_list
 
     mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_select_site_control_groups.assert_called_once_with(
-        mock_session, start=start, limit=limit, changed_after=changed_after
+        mock_session, start=start, limit=limit, changed_after=changed_after, fsa_id=fsa_id
     )
 
     # One call to control count for each site control group
@@ -101,6 +104,7 @@ async def test_program_fetch_list_scope_dne(
     """Checks that if the crud layer indicates site doesn't exist then the manager will raise an exception"""
     # Arrange
     default_doe = generate_class_instance(DefaultDoeConfiguration)
+    fsa_id = 11
 
     mock_session = create_mock_session()
     mock_select_site_with_default_site_control.return_value = None
@@ -108,7 +112,7 @@ async def test_program_fetch_list_scope_dne(
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERProgramManager.fetch_list_for_scope(mock_session, scope, default_doe, 1, datetime.min, 2)
+        await DERProgramManager.fetch_list_for_scope(mock_session, scope, default_doe, 1, datetime.min, 2, fsa_id)
 
     # Assert
     mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)

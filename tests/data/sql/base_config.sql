@@ -35,19 +35,19 @@ INSERT INTO public.aggregator_certificate_assignment("assignment_id", "certifica
 
 SELECT pg_catalog.setval('public.aggregator_certificate_assignment_assignment_id_seq', 6, true);
 
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (1, '1111111111', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 04:05:06.500', 'site1-lfdi', 1111, 0, 11111);
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (2, '2222222222', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 05:06:07.500', 'site2-lfdi', 2222, 1, 22222);
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (3, '3333333333', 2, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 08:09:10.500', 'site3-lfdi', 3333, 2, 33333);
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (4, '4444444444', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 11:12:13.500', 'site4-lfdi', 4444, 3, 44444);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin", "post_rate_seconds") VALUES (1, '1111111111', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 04:05:06.500', 'site1-lfdi', 1111, 0, 11111, 111);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin", "post_rate_seconds") VALUES (2, '2222222222', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 05:06:07.500', 'site2-lfdi', 2222, 1, 22222, NULL);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin", "post_rate_seconds") VALUES (3, '3333333333', 2, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 08:09:10.500', 'site3-lfdi', 3333, 2, 33333, 333);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin", "post_rate_seconds") VALUES (4, '4444444444', 1, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 11:12:13.500', 'site4-lfdi', 4444, 3, 44444, 444);
 -- Device registered site - using cert from certificate6.py
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (5, '5555555555', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 14:15:16.500', 'ec80646c5131ffa8ade49ac24be5295a7cfeb69d', 634853966776, 4, 55555);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin", "post_rate_seconds") VALUES (5, '5555555555', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 14:15:16.500', 'ec80646c5131ffa8ade49ac24be5295a7cfeb69d', 634853966776, 4, 55555, 555);
 -- Device registered site - using cert from certificate7.py
-INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin") VALUES (6, '6666666666', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 17:18:19.500', '93a527c16d8fca36e0f7da189fde375d5e494717', 396331899108, 5, 66666);
+INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "created_time", "changed_time", "lfdi", "sfdi", "device_category", "registration_pin", "post_rate_seconds") VALUES (6, '6666666666', 0, 'Australia/Brisbane', '2000-01-01 00:00:00Z', '2022-02-03 17:18:19.500', '93a527c16d8fca36e0f7da189fde375d5e494717', 396331899108, 5, 66666, 666);
 
 SELECT pg_catalog.setval('public.site_site_id_seq', 7, true);
 
-INSERT INTO public.site_control_group("site_control_group_id", "description", "primacy", "created_time", "changed_time") 
-VALUES (1, 'Dynamic Operating Envelopes', 0, '2000-01-01 00:00:00Z', '2021-04-05 10:01:00.500');
+INSERT INTO public.site_control_group("site_control_group_id", "description", "primacy", "fsa_id", "created_time", "changed_time") 
+VALUES (1, 'Dynamic Operating Envelopes', 0, 1, '2000-01-01 00:00:00Z', '2021-04-05 10:01:00.500');
 
 SELECT pg_catalog.setval('public.site_control_group_site_control_group_id_seq', 2, true);
 
@@ -82,9 +82,9 @@ INSERT INTO public.calculation_log_label_value("calculation_log_id", "label_id",
 
 
 
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "created_time", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 36, '2000-01-01 00:00:00Z', '2023-01-02 11:01:02');
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "created_time", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 124, '2000-01-01 00:00:00Z', '2023-01-02 12:01:02');
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "created_time", "changed_time") VALUES (3, 'tariff-3', 'tariff-dnsp-code-3', 840, '2000-01-01 00:00:00Z', '2023-01-02 13:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "created_time", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 36, 1, '2000-01-01 00:00:00Z', '2023-01-02 11:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "created_time", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 124, 1, '2000-01-01 00:00:00Z', '2023-01-02 12:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "created_time", "changed_time") VALUES (3, 'tariff-3', 'tariff-dnsp-code-3', 840, 2, '2000-01-01 00:00:00Z', '2023-01-02 13:01:02');
 
 SELECT pg_catalog.setval('public.tariff_tariff_id_seq', 4, true);
 

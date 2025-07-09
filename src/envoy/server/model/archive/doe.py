@@ -19,6 +19,7 @@ class ArchiveSiteControlGroup(ArchiveBase):
     site_control_group_id: Mapped[int] = mapped_column(INTEGER, index=True)
     description: Mapped[str] = mapped_column(VARCHAR(length=32))
     primacy: Mapped[int] = mapped_column(INTEGER)
+    fsa_id: Mapped[int] = mapped_column(INTEGER)
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))

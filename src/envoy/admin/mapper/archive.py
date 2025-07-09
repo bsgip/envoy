@@ -34,6 +34,7 @@ class ArchiveMapper:
             lfdi=site.lfdi,
             sfdi=site.sfdi,
             device_category=site.device_category,
+            post_rate_seconds=site.post_rate_seconds,
             groups=[],
             der_config=None,
             der_availability=None,

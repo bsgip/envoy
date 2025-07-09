@@ -141,9 +141,11 @@ jobs:
             }
             body += "\n</details>\n"
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            })
+            const fs = require('fs');
+            fs.writeFileSync("coverage-report.txt", body);
+
+      - name: Upload Coverage Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: coverage-report.txt

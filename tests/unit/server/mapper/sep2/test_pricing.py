@@ -1,11 +1,18 @@
 import unittest.mock as mock
 from datetime import date, datetime, time
 from decimal import Decimal
+from itertools import product
+from typing import Optional
 
 import pytest
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
-from envoy_schema.server.schema.sep2.pricing import TariffProfileResponse, TimeTariffIntervalResponse
+from envoy_schema.server.schema.sep2.pricing import (
+    TariffProfileListResponse,
+    TariffProfileResponse,
+    TimeTariffIntervalResponse,
+)
+from envoy_schema.server.schema.uri import TariffProfileFSAListUri, TariffProfileListUri
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.constants import PricingReadingType
@@ -147,7 +154,8 @@ def test_tariff_profile_list_nosite_mapping():
     assert_list_type(TariffProfileResponse, mapped_all_set.TariffProfile, 2)
 
 
-def test_tariff_profile_list_mapping():
+@pytest.mark.parametrize("optional_is_none, fsa_id", product([True, False], [1234321, None]))
+def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: Optional[int]):
     """Non exhaustive test of the tariff profile list mapping - mainly to sanity check important fields and ensure
     that exceptions aren't being raised"""
     tariffs: list[Tariff] = [
@@ -156,19 +164,28 @@ def test_tariff_profile_list_mapping():
     ]
     tariff_rate_counts = [456, 789]
     tariff_count = 123
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001)
+    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
+        DeviceOrAggregatorRequestScope, seed=1001, optional_is_none=optional_is_none, href_prefix="/fake/prefix"
+    )
 
-    mapped_all_set = TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts), tariff_count)
-    assert mapped_all_set
-    assert mapped_all_set.all_ == tariff_count
-    assert mapped_all_set.results == 2
-    assert_list_type(TariffProfileResponse, mapped_all_set.TariffProfile, 2)
-    assert all([f"/{scope.display_site_id}" in tp.href for tp in mapped_all_set.TariffProfile])
-    assert all([f"/{scope.display_site_id}" in tp.RateComponentListLink.href for tp in mapped_all_set.TariffProfile])
+    mapped = TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts), tariff_count, fsa_id)
+    assert isinstance(mapped, TariffProfileListResponse)
+
+    assert mapped.href.startswith(scope.href_prefix)
+    if fsa_id is None:
+        assert mapped.href.endswith(TariffProfileListUri.format(site_id=scope.display_site_id))
+    else:
+        assert mapped.href.endswith(TariffProfileFSAListUri.format(site_id=scope.display_site_id, fsa_id=fsa_id))
+
+    assert mapped.all_ == tariff_count
+    assert mapped.results == 2
+    assert_list_type(TariffProfileResponse, mapped.TariffProfile, 2)
+    assert all([f"/{scope.display_site_id}" in tp.href for tp in mapped.TariffProfile])
+    assert all([f"/{scope.display_site_id}" in tp.RateComponentListLink.href for tp in mapped.TariffProfile])
 
     # Double check our rate component counts get handed down to the child lists correctly
-    assert mapped_all_set.TariffProfile[0].RateComponentListLink.all_ == tariff_rate_counts[0]
-    assert mapped_all_set.TariffProfile[1].RateComponentListLink.all_ == tariff_rate_counts[1]
+    assert mapped.TariffProfile[0].RateComponentListLink.all_ == tariff_rate_counts[0]
+    assert mapped.TariffProfile[1].RateComponentListLink.all_ == tariff_rate_counts[1]
 
 
 @mock.patch("envoy.server.mapper.sep2.pricing.PricingReadingTypeMapper")

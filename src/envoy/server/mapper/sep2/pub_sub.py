@@ -25,6 +25,7 @@ from envoy_schema.server.schema.uri import (
     DERAvailabilityUri,
     DERCapabilityUri,
     DERControlListUri,
+    DERProgramFSAListUri,
     DERProgramListUri,
     DERSettingsUri,
     DERStatusUri,
@@ -190,11 +191,9 @@ class SubscriptionMapper:
             return generate_href(FunctionSetAssignmentsListUri, scope, site_id=scope.display_site_id)
         elif sub.resource_type == SubscriptionResource.SITE_CONTROL_GROUP:
             if sub.resource_id is not None:
-                raise InvalidMappingError(
-                    f"Subscribing to SiteControlGroups with a resource_id is unsupported on sub {sub.subscription_id}"
-                )
-
-            return generate_href(DERProgramListUri, scope, site_id=scope.display_site_id)
+                return generate_href(DERProgramFSAListUri, scope, site_id=scope.display_site_id, fsa_id=sub.resource_id)
+            else:
+                return generate_href(DERProgramListUri, scope, site_id=scope.display_site_id)
         else:
             raise InvalidMappingError(
                 f"Cannot map a resource HREF for resource_type {sub.resource_type} on sub {sub.subscription_id}"
@@ -331,6 +330,18 @@ class SubscriptionMapper:
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DefaultDERControl resource")
+
+        # Try DERProgramList (FSA scoped)
+        result = parse(DERProgramFSAListUri, href)
+        if result:
+            try:
+                return (
+                    SubscriptionResource.SITE_CONTROL_GROUP,
+                    _parse_site_id_from_match(result["site_id"]),
+                    int(result["fsa_id"]),
+                )
+            except ValueError:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
 
         # Try FunctionSetAssignmentsList
         result = parse(FunctionSetAssignmentsListUri, href)

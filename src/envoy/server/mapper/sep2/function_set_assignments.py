@@ -13,9 +13,7 @@ from envoy.server.request_scope import SiteRequestScope
 
 class FunctionSetAssignmentsMapper:
     @staticmethod
-    def map_to_response(
-        scope: SiteRequestScope, fsa_id: int, doe_count: int, tariff_count: int
-    ) -> FunctionSetAssignmentsResponse:
+    def map_to_response(scope: SiteRequestScope, fsa_id: int) -> FunctionSetAssignmentsResponse:
         return FunctionSetAssignmentsResponse.model_validate(
             {
                 "href": generate_href(
@@ -28,23 +26,24 @@ class FunctionSetAssignmentsMapper:
                 "description": "",
                 "TimeLink": Link(href=generate_href(uri.TimeUri, scope)),
                 "TariffProfileListLink": ListLink(
-                    href=generate_href(uri.TariffProfileListUri, scope, site_id=scope.site_id), all_=tariff_count
+                    href=generate_href(uri.TariffProfileFSAListUri, scope, site_id=scope.site_id, fsa_id=fsa_id),
+                    all_=None,
                 ),
                 "DERProgramListLink": ListLink(
-                    href=generate_href(uri.DERProgramListUri, scope, site_id=scope.site_id), all_=doe_count
+                    href=generate_href(uri.DERProgramFSAListUri, scope, site_id=scope.site_id, fsa_id=fsa_id), all_=None
                 ),
             }
         )
 
     @staticmethod
     def map_to_list_response(
-        scope: SiteRequestScope, function_set_assignments: list[FunctionSetAssignmentsResponse], pollrate_seconds: int
+        scope: SiteRequestScope, fsa_ids: list[int], total_fsa_ids: int, pollrate_seconds: int
     ) -> FunctionSetAssignmentsListResponse:
         return FunctionSetAssignmentsListResponse(
             href=generate_href(uri.FunctionSetAssignmentsListUri, scope, site_id=scope.site_id),
             subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
             pollRate=pollrate_seconds,
-            all_=1,
-            results=len(function_set_assignments),
-            FunctionSetAssignments=function_set_assignments,
+            all_=total_fsa_ids,
+            results=len(fsa_ids),
+            FunctionSetAssignments=[FunctionSetAssignmentsMapper.map_to_response(scope, fsa_id) for fsa_id in fsa_ids],
         )

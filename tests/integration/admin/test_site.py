@@ -5,10 +5,12 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 import pytest
+from assertical.asserts.time import assert_nowish
 from assertical.fixtures.postgres import generate_async_session
-from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
+from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse, SiteUpdateRequest
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
 from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri, SiteUri
+from envoy_schema.server.schema.sep2.types import DeviceCategory
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
@@ -16,6 +18,7 @@ from envoy.admin.crud.site import count_all_site_groups, count_all_sites
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
+from envoy.server.model.site import Site
 from tests.integration.response import read_response_body_string
 
 
@@ -350,3 +353,111 @@ async def test_delete_site_archives(
     # Subsequent query will now 404
     response = await admin_client_auth.delete(SiteUri.format(site_id=site_id))
     assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.parametrize(
+    "site_id, update_request, expected_status, expected_nmi, expected_tz, expected_device_category, expected_post_rate",
+    [
+        (
+            1,
+            SiteUpdateRequest(nmi="", timezone_id="Australia/Perth", device_category=None, post_rate_seconds=0),
+            HTTPStatus.NO_CONTENT,
+            None,
+            "Australia/Perth",
+            0,
+            None,
+        ),
+        (
+            1,
+            SiteUpdateRequest(nmi="abc456", timezone_id=None, device_category=None, post_rate_seconds=None),
+            HTTPStatus.NO_CONTENT,
+            "abc456",
+            "Australia/Brisbane",
+            0,
+            111,
+        ),
+        (
+            2,
+            SiteUpdateRequest(
+                nmi="abc123", timezone_id=None, device_category=DeviceCategory.FUEL_CELL, post_rate_seconds=23
+            ),
+            HTTPStatus.NO_CONTENT,
+            "abc123",
+            "Australia/Brisbane",
+            DeviceCategory.FUEL_CELL,
+            23,
+        ),
+        (
+            2,
+            SiteUpdateRequest(nmi="", timezone_id=None, device_category=None, post_rate_seconds=None),
+            HTTPStatus.NO_CONTENT,
+            None,
+            "Australia/Brisbane",
+            1,
+            None,
+        ),
+        (
+            5,
+            SiteUpdateRequest(
+                nmi=None,
+                timezone_id="Australia/Sydney",
+                device_category=DeviceCategory.ELECTRIC_VEHICLE | DeviceCategory.HOT_TUB,
+                post_rate_seconds=-1,
+            ),
+            HTTPStatus.NO_CONTENT,
+            "5555555555",
+            "Australia/Sydney",
+            DeviceCategory.ELECTRIC_VEHICLE | DeviceCategory.HOT_TUB,
+            None,
+        ),
+        (
+            99,
+            SiteUpdateRequest(nmi="", timezone_id=None, device_category=None, post_rate_seconds=456),
+            HTTPStatus.NOT_FOUND,
+            None,
+            None,
+            None,
+            None,
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_update_site_archives(
+    admin_client_auth: AsyncClient,
+    pg_base_config,
+    site_id: int,
+    update_request: SiteUpdateRequest,
+    expected_status: HTTPStatus,
+    expected_nmi: Optional[str],
+    expected_tz: Optional[str],
+    expected_device_category: Optional[DeviceCategory],
+    expected_post_rate: Optional[int],
+):
+    """Tests that updating sites generates archive records"""
+
+    response = await admin_client_auth.post(SiteUri.format(site_id=site_id), content=update_request.model_dump_json())
+    assert response.status_code == expected_status
+
+    if response.status_code == HTTPStatus.NOT_FOUND:
+        expected_archive_count = 0
+        check_site = False
+    else:
+        expected_archive_count = 1
+        check_site = True
+
+    # Count archive rows are generated, check the row updated
+    async with generate_async_session(pg_base_config) as session:
+        actual_archive_site_count = (
+            await session.execute(
+                select(func.count()).select_from(ArchiveSite).where(ArchiveSite.deleted_time.is_(None))
+            )
+        ).scalar_one()
+        assert actual_archive_site_count == expected_archive_count
+
+        if check_site:
+            actual_site = (await session.execute(select(Site).where(Site.site_id == site_id))).scalar_one()
+            assert actual_site.nmi == expected_nmi
+            assert actual_site.post_rate_seconds == expected_post_rate
+            assert actual_site.device_category == expected_device_category
+            assert actual_site.timezone_id == expected_tz
+            assert_nowish(actual_site.changed_time)

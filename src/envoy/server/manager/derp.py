@@ -45,8 +45,10 @@ class DERProgramManager:
         start: int,
         changed_after: datetime,
         limit: int,
+        fsa_id: Optional[int],
     ) -> DERProgramListResponse:
-        """Program lists are static - this will just return a single fixed Dynamic Operating Envelope Program
+        """Returns the list of DERPrograms accessible to a site. This can optionally filter programs to a specific
+        function set assignment ID (fsa_id)
 
         if site_id DNE or is inaccessible to aggregator_id a NotFoundError will be raised"""
 
@@ -60,9 +62,9 @@ class DERProgramManager:
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
         site_control_groups = await select_site_control_groups(
-            session, start=start, limit=limit, changed_after=changed_after
+            session, start=start, limit=limit, changed_after=changed_after, fsa_id=fsa_id
         )
-        site_control_group_count = await count_site_control_groups(session, changed_after)
+        site_control_group_count = await count_site_control_groups(session, changed_after, fsa_id=fsa_id)
         control_counts_by_group: list[tuple[SiteControlGroup, int]] = []
         for group in site_control_groups:
             control_counts_by_group.append(
@@ -84,6 +86,7 @@ class DERProgramManager:
             site_control_group_count,
             default_site_control,
             config.derpl_pollrate_seconds,
+            fsa_id,
         )
 
     @staticmethod

@@ -22,6 +22,9 @@ class Tariff(Base):
     name: Mapped[str] = mapped_column(String(64))  # descriptive name of the tariff
     dnsp_code: Mapped[str] = mapped_column(String(20))  # code assigned by the DNSP for their own internal processes
     currency_code: Mapped[CurrencyCode] = mapped_column(Integer)  # ISO 4217 numerical currency code - eg AUD = 36
+    fsa_id: Mapped[int] = mapped_column(
+        Integer, index=True, server_default="1"
+    )  # Function set assignment ID that will group this Tariff with other Tariffs
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )  # When the tariff was created

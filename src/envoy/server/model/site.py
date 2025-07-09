@@ -53,6 +53,9 @@ class Site(Base):
     registration_pin: Mapped[int] = mapped_column(
         INTEGER, nullable=False
     )  # 5 digit PIN, randomly generated on creation. Used for out of band confirmations.
+    post_rate_seconds: Mapped[Optional[int]] = mapped_column(
+        INTEGER, nullable=True
+    )  # The current post rate set by this EndDevice. If None - it will not be encoded in the mapped EndDevice
 
     assignments: Mapped[list["SiteGroupAssignment"]] = relationship(
         back_populates="site",

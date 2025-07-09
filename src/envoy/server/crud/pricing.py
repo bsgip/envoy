@@ -10,23 +10,39 @@ from envoy.server.model.site import Site
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 
-async def select_tariff_count(session: AsyncSession, after: datetime) -> int:
+async def select_tariff_fsa_ids(session: AsyncSession, changed_after: datetime) -> Sequence[int]:
+    """Fetches the distinct values for "fsa_id" across all Tariff instances (optionally filtering
+    on Tariff.changed_time that were changed after changed_after)"""
+    stmt = select(func.distinct(Tariff.fsa_id))
+    if changed_after != datetime.min:
+        stmt = stmt.where(Tariff.changed_time >= changed_after)
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
+
+
+async def select_tariff_count(session: AsyncSession, after: datetime, fsa_id: Optional[int]) -> int:
     """Fetches the number of tariffs stored
 
-    after: Only tariffs with a changed_time greater than this value will be counted (set to 0 to count everything)"""
+    after: Only tariffs with a changed_time greater than this value will be counted (set to 0 to count everything)
+    fsa_id: If specified - only count Tariffs with this value for fsa_id"""
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    stmt = select(func.count()).where((Tariff.changed_time >= after))
+    stmt = select(func.count()).select_from(Tariff)
+
+    if after != datetime.min:
+        stmt = stmt.where((Tariff.changed_time >= after))
+
+    if fsa_id is not None:
+        stmt = stmt.where((Tariff.fsa_id == fsa_id))
+
     resp = await session.execute(stmt)
     return resp.scalar_one()
 
 
 async def select_all_tariffs(
-    session: AsyncSession,
-    start: int,
-    changed_after: datetime,
-    limit: int,
+    session: AsyncSession, start: int, changed_after: datetime, limit: int, fsa_id: Optional[int]
 ) -> Sequence[Tariff]:
     """Selects tariffs with some basic pagination / filtering based on change time
 
@@ -34,19 +50,26 @@ async def select_all_tariffs(
 
     start: The number of matching entities to skip
     limit: The maximum number of entities to return
-    changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)"""
+    changed_after: removes any entities with a changed_date BEFORE this value (set to datetime.min to not filter)
+    fsa_id: If specified - only include Tariffs with this value for fsa_id"""
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
     stmt = (
         select(Tariff)
-        .where((Tariff.changed_time >= changed_after))
         .offset(start)
         .limit(limit)
         .order_by(
             Tariff.tariff_id.desc(),
         )
     )
+
+    if changed_after != datetime.min:
+        stmt = stmt.where((Tariff.changed_time >= changed_after))
+
+    if fsa_id is not None:
+        stmt = stmt.where((Tariff.fsa_id == fsa_id))
+
     resp = await session.execute(stmt)
     return resp.scalars().all()
 

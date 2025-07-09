@@ -56,6 +56,11 @@ def uri_derp_list_format():
 
 
 @pytest.fixture
+def uri_derp_list_fsa_format():
+    return uri.DERProgramFSAListUri
+
+
+@pytest.fixture
 def uri_derp_doe_format():
     return uri.DERProgramUri
 
@@ -86,54 +91,157 @@ LOS_ANGELES_TZ = ZoneInfo("America/Los_Angeles")
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "site_id, expected_doe_count, expected_status",
+    "start, limit, after, site_id, expected_derp_ids_with_count, expected_status",
     [
-        (1, 3, HTTPStatus.OK),
-        (2, 1, HTTPStatus.OK),
-        (3, None, HTTPStatus.NOT_FOUND),  # Belongs to agg 2
-        (4, 0, HTTPStatus.OK),
-        (5, None, HTTPStatus.NOT_FOUND),  # Belongs to device cert
-        (99, None, HTTPStatus.NOT_FOUND),  # DNE
-        (0, None, HTTPStatus.FORBIDDEN),  # Virtual aggregator device cant access DERPs
+        (None, 99, None, 1, [(1, 3), (2, 0), (3, 0)], HTTPStatus.OK),
+        (None, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, [(2, 0), (3, 0)], HTTPStatus.OK),
+        (0, 2, None, 1, [(1, 3), (2, 0)], HTTPStatus.OK),
+        (1, 99, None, 1, [(2, 0), (3, 0)], HTTPStatus.OK),
+        (None, 99, None, 2, [(1, 1), (2, 0), (3, 0)], HTTPStatus.OK),
+        (None, 99, None, 3, None, HTTPStatus.NOT_FOUND),  # Belongs to agg 2
+        (None, 99, None, 4, [(1, 0), (2, 0), (3, 0)], HTTPStatus.OK),
+        (None, 99, None, 5, None, HTTPStatus.NOT_FOUND),  # Belongs to device cert
+        (None, 99, None, 99, None, HTTPStatus.NOT_FOUND),  # DNE
+        (None, 99, None, 0, None, HTTPStatus.FORBIDDEN),  # Virtual aggregator device cant access DERPs
     ],
 )
 @freeze_time("2010-01-01")  # This endpoint is sensitive to "now" and won't report on "old" DOEs
 async def test_get_derprogram_list(
     client: AsyncClient,
+    pg_base_config,
     uri_derp_list_format,
-    uri_derp_doe_format,
-    uri_derc_list_format,
+    start: Optional[int],
+    limit: Optional[int],
+    after: Optional[datetime],
     site_id: int,
-    expected_doe_count: Optional[int],
+    expected_derp_ids_with_count: Optional[list[tuple[int, int]]],
     expected_status: Optional[HTTPStatus],
     agg_1_headers,
 ):
-    """Tests getting DERPrograms for various sites and validates access constraints
+    """Tests getting DERPrograms for various sites and validates access constraints"""
 
-    Being a virtual entity - we don't go too hard on validating the paging (it'll always
-    be a single element or a 404)"""
+    # preload some extra derps
+    async with generate_async_session(pg_base_config) as session:
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=101,
+                site_control_group_id=2,
+                changed_time=datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc),
+            )
+        )
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=202,
+                site_control_group_id=3,
+                changed_time=datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc),
+            )
+        )
+        await session.commit()
 
-    # Test a known site
-    path = uri_derp_list_format.format(site_id=site_id) + build_paging_params(limit=99)
+    path = uri_derp_list_format.format(site_id=site_id) + build_paging_params(start, limit, after)
     response = await client.get(path, headers=agg_1_headers)
 
-    if expected_doe_count is None:
-        assert_response_header(response, expected_status)
+    assert_response_header(response, expected_status)
+    if expected_derp_ids_with_count is None:
         assert_error_response(response)
     else:
-        assert_response_header(response, expected_status)
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response: DERProgramListResponse = DERProgramListResponse.from_xml(body)
         assert parsed_response.href == uri_derp_list_format.format(site_id=site_id)
-        assert parsed_response.all_ == 1
-        assert parsed_response.results == 1
-        assert len(parsed_response.DERProgram) == 1
-        assert parsed_response.DERProgram[0].href == uri_derp_doe_format.format(site_id=site_id, der_program_id=1)
-        assert parsed_response.DERProgram[0].DERControlListLink.all_ == expected_doe_count
-        assert parsed_response.DERProgram[0].DERControlListLink.href == uri_derc_list_format.format(
-            site_id=site_id, der_program_id=1
+        assert parsed_response.results == len(expected_derp_ids_with_count)
+        assert len(parsed_response.DERProgram) == len(expected_derp_ids_with_count)
+
+        actual_derp_ids_with_count = [
+            (int(derp.href.split("/")[-1]), derp.DERControlListLink.all_) for derp in parsed_response.DERProgram
+        ]
+        assert expected_derp_ids_with_count == actual_derp_ids_with_count
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "start, limit, after, site_id, fsa_id, expected_derp_ids_with_count, expected_status",
+    [
+        (None, 99, None, 1, 1, [(1, 3), (2, 0)], HTTPStatus.OK),
+        (None, 99, None, 1, 2, [(3, 0)], HTTPStatus.OK),
+        (None, 99, None, 1, 3, [(4, 0)], HTTPStatus.OK),
+        (None, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, 1, [(2, 0)], HTTPStatus.OK),
+        (None, 1, None, 1, 1, [(1, 3)], HTTPStatus.OK),
+        (1, 99, None, 1, 1, [(2, 0)], HTTPStatus.OK),
+        (None, 99, None, 3, 1, None, HTTPStatus.NOT_FOUND),  # Belongs to agg 2
+        (None, 99, None, 4, 1, [(1, 0), (2, 0)], HTTPStatus.OK),
+        (None, 99, None, 5, 1, None, HTTPStatus.NOT_FOUND),  # Belongs to device cert
+        (None, 99, None, 99, 1, None, HTTPStatus.NOT_FOUND),  # DNE
+        (None, 99, None, 0, 1, None, HTTPStatus.FORBIDDEN),  # Virtual aggregator device cant access DERPs
+    ],
+)
+@freeze_time("2010-01-01")  # This endpoint is sensitive to "now" and won't report on "old" DOEs
+async def test_get_derprogram_list_fsa_scoped(
+    client: AsyncClient,
+    pg_base_config,
+    uri_derp_list_fsa_format,
+    start: Optional[int],
+    limit: Optional[int],
+    after: Optional[datetime],
+    site_id: int,
+    fsa_id: int,
+    expected_derp_ids_with_count: Optional[list[tuple[int, int]]],
+    expected_status: Optional[HTTPStatus],
+    agg_1_headers,
+):
+    """Tests getting DERPrograms (with FSA filter in place) for various sites and validates access constraints"""
+
+    # preload some extra derps
+    async with generate_async_session(pg_base_config) as session:
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=101,
+                site_control_group_id=2,
+                fsa_id=1,
+                changed_time=datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc),
+            )
         )
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=202,
+                site_control_group_id=3,
+                fsa_id=2,
+                changed_time=datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc),
+            )
+        )
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=303,
+                site_control_group_id=4,
+                fsa_id=3,
+                changed_time=datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc),
+            )
+        )
+        await session.commit()
+
+    path = uri_derp_list_fsa_format.format(site_id=site_id, fsa_id=fsa_id) + build_paging_params(start, limit, after)
+    response = await client.get(path, headers=agg_1_headers)
+
+    assert_response_header(response, expected_status)
+    if expected_derp_ids_with_count is None:
+        assert_error_response(response)
+    else:
+        body = read_response_body_string(response)
+        assert len(body) > 0
+        parsed_response: DERProgramListResponse = DERProgramListResponse.from_xml(body)
+        assert parsed_response.href == uri_derp_list_fsa_format.format(site_id=site_id, fsa_id=fsa_id)
+        assert parsed_response.results == len(expected_derp_ids_with_count)
+        assert len(parsed_response.DERProgram) == len(expected_derp_ids_with_count)
+
+        actual_derp_ids_with_count = [
+            (int(derp.href.split("/")[-1]), derp.DERControlListLink.all_) for derp in parsed_response.DERProgram
+        ]
+        assert expected_derp_ids_with_count == actual_derp_ids_with_count
 
 
 @pytest.mark.anyio

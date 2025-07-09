@@ -53,7 +53,7 @@ class TariffListManager:
     @staticmethod
     async def fetch_many_tariffs(session: AsyncSession, start: int, limit: int) -> list[TariffResponse]:
         """Select many tariff entries from the DB and map to a list of TariffResponse objects"""
-        tariff_list = await select_all_tariffs(session, start, datetime.min, limit)
+        tariff_list = await select_all_tariffs(session, start, datetime.min, limit, None)
         return [TariffMapper.map_to_response(t) for t in tariff_list]
 
 

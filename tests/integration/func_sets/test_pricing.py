@@ -110,6 +110,7 @@ async def test_get_tariffprofilelist(
 
     parsed_response: TariffProfileListResponse = TariffProfileListResponse.from_xml(body)
     assert parsed_response
+    assert parsed_response.href == uri.TariffProfileListUri.format(site_id=site_id)
     assert parsed_response.results == len(expected_tariffs_with_count)
     assert len(parsed_response.TariffProfile) == len(expected_tariffs_with_count)
 
@@ -118,6 +119,60 @@ async def test_get_tariffprofilelist(
     expected_rate_counts = [rate_count for (_, rate_count) in expected_tariffs_with_count]
     assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile]
     assert expected_rate_counts == [tp.RateComponentListLink.all_ for tp in parsed_response.TariffProfile]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "site_id, fsa_id, start, limit, changed_after, expected_tariffs_with_count",
+    [
+        # basic pagination
+        (1, 1, None, None, None, [("/edev/1/tp/2", 0)]),
+        (1, 1, 0, 99, None, [("/edev/1/tp/2", 0), ("/edev/1/tp/1", 8)]),
+        (1, 1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), [("/edev/1/tp/2", 0)]),
+        (1, 1, 1, 1, None, [("/edev/1/tp/1", 8)]),
+        # changing FSA ID
+        (1, 2, 0, 99, None, [("/edev/1/tp/3", 0)]),
+        (1, 2, None, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), [("/edev/1/tp/3", 0)]),
+        (1, 2, None, 99, datetime(2023, 1, 3, 12, 1, 2, tzinfo=timezone.utc), []),
+        # changing site id
+        (2, 1, 0, 99, None, [("/edev/2/tp/2", 0), ("/edev/2/tp/1", 4)]),
+        (3, 1, 0, 99, None, [("/edev/3/tp/2", 0), ("/edev/3/tp/1", 0)]),  # no access to this site
+    ],
+)
+async def test_get_tariffprofilelist_fsa_scoped(
+    client: AsyncClient,
+    agg_1_headers,
+    site_id: int,
+    fsa_id: int,
+    start: Optional[int],
+    limit: Optional[int],
+    changed_after: Optional[datetime],
+    expected_tariffs_with_count: list[tuple[str, int]],
+):
+    """Tests that the list pagination works correctly on the site scoped tariff profile list"""
+    path = uri.TariffProfileFSAListUri.format(site_id=site_id, fsa_id=fsa_id) + build_paging_params(
+        start, limit, changed_after
+    )
+    response = await client.get(path, headers=agg_1_headers)
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    parsed_response: TariffProfileListResponse = TariffProfileListResponse.from_xml(body)
+    assert parsed_response
+    assert parsed_response.href == uri.TariffProfileFSAListUri.format(site_id=site_id, fsa_id=fsa_id)
+    assert parsed_response.results == len(expected_tariffs_with_count)
+
+    if len(expected_tariffs_with_count) == 0:
+        assert parsed_response.TariffProfile is None or len(parsed_response.TariffProfile) == 0
+    else:
+        assert len(parsed_response.TariffProfile) == len(expected_tariffs_with_count)
+
+        # Check that the rate counts and referenced rate component counts match our expectations
+        expected_tariffs = [href for (href, _) in expected_tariffs_with_count]
+        expected_rate_counts = [rate_count for (_, rate_count) in expected_tariffs_with_count]
+        assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile]
+        assert expected_rate_counts == [tp.RateComponentListLink.all_ for tp in parsed_response.TariffProfile]
 
 
 @pytest.mark.anyio
