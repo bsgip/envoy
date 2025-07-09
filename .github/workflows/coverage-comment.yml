@@ -18,11 +18,18 @@ jobs:
       contents: read
 
     steps:
+      - name: Printing Variables
+        run: |
+          echo "REPO: ${{ github.repository }}"
+          echo "RUN ID: ${{ github.event.workflow_run.id }}"
+
       - name: Download Coverage Report Artifact
         uses: actions/download-artifact@v4
         with:
           name: code-coverage-report
           path: coverage-report.txt
+          run-id: ${{ github.event.workflow_run.id }}
+
       
       - name: Read Coverage Report
         id: coverage
