@@ -1,7 +1,7 @@
 """added agg cert unique constraints
 
 Revision ID: 54595fc3f784
-Revises: 8feebfbbfe69
+Revises: 3cf6de23d7c7
 Create Date: 2025-06-18 08:47:59.042643
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "54595fc3f784"
-down_revision = "8feebfbbfe69"
+down_revision = "3cf6de23d7c7"
 branch_labels = None
 depends_on = None
 
