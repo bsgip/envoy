@@ -3,6 +3,8 @@ from typing import Any, Dict, Optional, Union
 from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings
 
+SUPERFLUOUS_CHANGE_TO_DELETE = True
+
 
 def generate_middleware_kwargs(
     database_url: str,
