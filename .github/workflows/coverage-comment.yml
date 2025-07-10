@@ -50,7 +50,7 @@ jobs:
       - name: Create Issue Comment
         uses: actions/github-script@v7
         env:
-          ISSUE_NUMBER: ${{ github.event.workflow_run.id  }}
+          ISSUE_NUMBER: ${{ github.event.number  }}
         with:
           script: |
             const issue_number = process.env.ISSUE_NUMBER;
