@@ -56,7 +56,7 @@ jobs:
       
       - name: Read Coverage Report
         id: coverage
-        run: cat extracted-artifact/coverage-report.txt >> $GITHUB_OUTPUT
+        run: echo "::set-output name=body::$(cat extracted-artifact/coverage-report.txt)"
 
       - name: Create Issue Comment
         uses: actions/github-script@v7
