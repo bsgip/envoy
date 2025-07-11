@@ -866,6 +866,9 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
                     randomize_start_seconds=111,
                     import_limit_active_watts=Decimal("1.11"),
                     export_limit_watts=Decimal("-1.22"),
+                    generation_limit_active_watts=Decimal("1.33"),
+                    load_limit_active_watts=Decimal("-1.44"),
+                    set_point_percentage=Decimal("1.55"),
                     end_time=datetime(2022, 5, 7, 1, 2, 11, 0, tzinfo=timezone(timedelta(hours=10))),  # Generated Col
                 ),
             ],

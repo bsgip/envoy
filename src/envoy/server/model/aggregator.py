@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import VARCHAR, DateTime, ForeignKey, func, UniqueConstraint
+from sqlalchemy import VARCHAR, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
@@ -39,7 +39,7 @@ class AggregatorCertificateAssignment(Base):
     certificate_id: Mapped[int] = mapped_column(ForeignKey("certificate.certificate_id"), nullable=False)
     aggregator_id: Mapped[int] = mapped_column(ForeignKey("aggregator.aggregator_id"), nullable=False)
 
-    __table_args__ = (UniqueConstraint("assignment_id", "certificate_id", name=f"uq_{__tablename__}_cert_id_agg_id"),)
+    __table_args__ = (UniqueConstraint("certificate_id", "aggregator_id", name=f"uq_{__tablename__}_cert_id_agg_id"),)
 
 
 class AggregatorDomain(Base):
