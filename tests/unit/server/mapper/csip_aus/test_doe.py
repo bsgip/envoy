@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from itertools import product
 from typing import Optional, Union
 
@@ -23,6 +24,22 @@ from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.site import DefaultSiteControl
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
+
+
+@pytest.mark.parametrize(
+    "percent, expected",
+    [
+        (Decimal("1.23"), 123),
+        (Decimal("-4.56"), -456),
+        (Decimal("0.000"), 0),
+        (Decimal("100.00"), 10000),
+        (Decimal("-100.00"), -10000),
+    ],
+)
+def test_map_to_signed_percent(percent: Decimal, expected: int):
+    actual = DERControlMapper.map_to_signed_percent(percent)
+    assert isinstance(actual, int)
+    assert actual == expected
 
 
 @pytest.mark.parametrize(
@@ -87,6 +104,9 @@ def test_map_derc_to_response(
     assert result_all_set.DERControlBase_.opModLoadLimW.value == int(doe.load_limit_active_watts * 10000)
     assert result_all_set.DERControlBase_.opModConnect == doe.set_connected
     assert result_all_set.DERControlBase_.opModEnergize == doe.set_energized
+    assert result_all_set.DERControlBase_.opModFixedW == DERControlMapper.map_to_signed_percent(
+        doe.set_point_percentage
+    )
     assert result_all_set.randomizeStart == doe.randomize_start_seconds
 
     # Event status parsing is a little complex - this tries to check all the options
@@ -118,6 +138,7 @@ def test_map_derc_to_response(
     assert result_optional.DERControlBase_.opModLoadLimW is None
     assert result_optional.DERControlBase_.opModConnect is None
     assert result_optional.DERControlBase_.opModEnergize is None
+    assert result_optional.DERControlBase_.opModFixedW is None
     assert result_optional.randomizeStart == randomize_seconds
 
     if isinstance(doe_opt, ArchiveDynamicOperatingEnvelope) and doe_opt.deleted_time is not None:

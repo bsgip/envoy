@@ -43,6 +43,13 @@ class DERControlMapper:
         )
 
     @staticmethod
+    def map_to_signed_percent(p: Decimal) -> int:
+        """Maps to the 2030.5 SignedPercent which is encoded as an integer representing "hundredths" of a percent
+
+        Values should be in the range -10000 - 10000. (10000 = 100%)"""
+        return int(p * 100)
+
+    @staticmethod
     def map_to_response(
         scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],
         site_control_group_id: int,
@@ -123,6 +130,11 @@ class DERControlMapper:
                     ),
                     opModEnergize=doe.set_energized if doe.set_energized is not None else None,
                     opModConnect=doe.set_connected if doe.set_connected is not None else None,
+                    opModFixedW=(
+                        DERControlMapper.map_to_signed_percent(doe.set_point_percentage)
+                        if doe.set_point_percentage is not None
+                        else None
+                    ),
                 ),
             }
         )

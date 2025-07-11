@@ -54,11 +54,19 @@ def assert_doe_for_id(
 
         assert actual_doe.dynamic_operating_envelope_id == expected_doe_id
         assert expected_site_id is None or actual_doe.site_id == expected_site_id
+        assert actual_doe.site_control_group_id == 1
         if check_duration_seconds:
             assert actual_doe.duration_seconds == 10 * expected_doe_id + expected_doe_id
         assert actual_doe.import_limit_active_watts == Decimal(f"{expected_doe_id}.11")
         assert actual_doe.export_limit_watts == Decimal(f"-{expected_doe_id}.22")
-        assert actual_doe.site_control_group_id == 1
+        if expected_doe_id == 2:
+            assert actual_doe.generation_limit_active_watts is None
+            assert actual_doe.load_limit_active_watts is None
+            assert actual_doe.set_point_percentage is None
+        else:
+            assert actual_doe.generation_limit_active_watts == Decimal(f"{expected_doe_id}.33")
+            assert actual_doe.load_limit_active_watts == Decimal(f"-{expected_doe_id}.44")
+            assert actual_doe.set_point_percentage == Decimal(f"{expected_doe_id}.55")
 
         # This is also by convention
         if actual_doe.dynamic_operating_envelope_id in {1, 3, 4}:

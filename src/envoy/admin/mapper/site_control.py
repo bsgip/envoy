@@ -67,6 +67,7 @@ class SiteControlListMapper:
                 load_limit_active_watts=c.load_limit_watts,
                 set_energized=c.set_energized,
                 set_connected=c.set_connect,
+                set_point_percentage=c.set_point_percentage,
                 end_time=c.start_time + timedelta(seconds=c.duration_seconds),
             )
             for c in control_list
@@ -89,6 +90,7 @@ class SiteControlListMapper:
             load_limit_watts=control.load_limit_active_watts,
             set_energized=control.set_energized,
             set_connect=control.set_connected,
+            set_point_percentage=control.set_point_percentage,
         )
 
     @staticmethod

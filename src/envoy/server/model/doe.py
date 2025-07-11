@@ -93,6 +93,9 @@ class DynamicOperatingEnvelope(Base):
     load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
     set_energized: Mapped[Optional[bool]] = mapped_column(nullable=True)
     set_connected: Mapped[Optional[bool]] = mapped_column(nullable=True)
+    set_point_percentage: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )  # Percentage of device max power settings to charge at (if negative) or discharge at (if positive). 100 = 100%
 
     site: Mapped["Site"] = relationship(lazy="raise")
 

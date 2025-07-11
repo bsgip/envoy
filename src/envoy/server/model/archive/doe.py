@@ -55,6 +55,9 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     )
     set_energized: Mapped[Optional[bool]] = mapped_column(nullable=True)
     set_connected: Mapped[Optional[bool]] = mapped_column(nullable=True)
+    set_point_percentage: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
+    )
 
     __table_args__ = (
         Index(
