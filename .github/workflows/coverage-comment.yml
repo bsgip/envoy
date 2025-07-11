@@ -50,10 +50,11 @@ jobs:
       - name: Create Issue Comment
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const comment_body = fs.readFileSync('./extracted-artifact/coverage-report.txt', 'utf8');
-            const issue_number = fs.readFileSync('./extracted-artifact/issue-number.txt', 'utf8');
+            const issue_number = Number(fs.readFileSync('./extracted-artifact/issue-number.txt', 'utf8'));
 
             github.rest.issues.createComment({
               issue_number: issue_number,
