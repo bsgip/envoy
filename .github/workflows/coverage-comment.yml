@@ -50,7 +50,7 @@ jobs:
       - name: Create Issue Comment
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.ISSUE_COMMENT_PAT }}
           script: |
             const fs = require('fs');
             const comment_body = fs.readFileSync('./extracted-artifact/coverage-report.txt', 'utf8');
