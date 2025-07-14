@@ -5,12 +5,22 @@ import pytest_mock
 import psycopg
 import sqlalchemy as sa
 from assertical.fixtures import postgres
-from envoy_schema.admin.schema.certificate import CertificateAssignmentRequest
+from envoy_schema.admin.schema.certificate import CertificateAssignmentRequest, CertificateRequest
 
 from envoy.admin import manager
 from envoy.server.model.aggregator import AggregatorCertificateAssignment
 from envoy.admin import crud
 from envoy.server import exception
+
+
+@pytest.fixture
+def mock_crud(mocker: pytest_mock.MockerFixture) -> pytest_mock.AsyncMockType:
+    return mocker.patch("envoy.admin.crud.certificate", new=mocker.AsyncMock())
+
+
+@pytest.fixture
+def mock_mapper(mocker: pytest_mock.MockerFixture) -> pytest_mock.AsyncMockType:
+    return mocker.patch("envoy.admin.mapper.CertificateMapper", new=mocker.AsyncMock())
 
 
 @pytest.mark.anyio
@@ -121,3 +131,109 @@ async def test_unassign_certificate_invalid_certificate_id(pg_base_config: psyco
     async with postgres.generate_async_session(pg_base_config) as session:
         with pytest.raises(exception.NotFoundError, match="Certificate with id 1111 not found"):
             await manager.certificate.CertificateManager.unassign_certificate_for_aggregator(session, 1, 1111)
+
+
+@pytest.mark.anyio
+async def test_fetch_many_certificates(
+    mocker: pytest_mock.MockerFixture,
+    mock_crud: pytest_mock.AsyncMockType,
+    mock_mapper: pytest_mock.AsyncMockType,
+) -> None:
+    """Confirm correct calls for fetch_many_certificates() method"""
+    async with mocker.AsyncMock() as session:
+        await manager.CertificateManager.fetch_many_certificates(session, 0, 500)
+
+        mock_crud.select_all_certificates.assert_called_once()
+        mock_crud.count_all_certificates.assert_called_once()
+        mock_mapper.map_to_page_response.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_fetch_single_certificate(
+    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType, mock_mapper: pytest_mock.AsyncMockType
+) -> None:
+    """Confirm correct calls with non-None certificate returned"""
+    async with mocker.AsyncMock() as session:
+        await manager.CertificateManager.fetch_single_certificate(session, 1111)
+        mock_crud.select_certificate.assert_called_once()
+        mock_mapper.map_to_response.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_fetch_single_certificate_none_returned(
+    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType, mock_mapper: pytest_mock.AsyncMockType
+) -> None:
+    """Confirm correct calls with None certificate returned"""
+    mock_crud.select_certificate.return_value = None
+
+    async with mocker.AsyncMock() as session:
+        result = await manager.CertificateManager.fetch_single_certificate(session, 1111)
+        mock_crud.select_certificate.assert_called_once()
+        mock_mapper.map_to_response.assert_not_called()
+        assert result is None
+
+
+@pytest.mark.anyio
+async def test_add_new_certificate(
+    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType
+) -> None:
+    """Confirm correct calls for add_new_certificate() method"""
+    async with mocker.AsyncMock() as session:
+        certificate = CertificateRequest(
+            lfdi="SOMEFAKELFDI", expiry=dt.datetime(9999, 9, 9, 9, 9, 9, tzinfo=dt.timezone.utc)
+        )
+        await manager.CertificateManager.add_new_certificate(session, certificate)
+        mock_crud.insert_single_certificate.assert_called_once()
+        session.commit.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_update_existing_certificate(
+    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType
+) -> None:
+    """Confirm correct calls for update_existing_certificate() method"""
+    async with mocker.AsyncMock() as session:
+        certificate = CertificateRequest(
+            lfdi="SOMEFAKELFDI", expiry=dt.datetime(9999, 9, 9, 9, 9, 9, tzinfo=dt.timezone.utc)
+        )
+        await manager.CertificateManager.update_existing_certificate(session, 1111, certificate)
+        mock_crud.select_certificate.assert_called_once()
+        mock_crud.update_single_certificate.assert_called_once()
+        session.commit.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_update_existing_certificate_non_certificate(
+    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType
+) -> None:
+    """Confirm update_existing_certificate() method raises for non-existing certificate"""
+    async with mocker.AsyncMock() as session:
+        certificate = CertificateRequest(
+            lfdi="SOMEFAKELFDI", expiry=dt.datetime(9999, 9, 9, 9, 9, 9, tzinfo=dt.timezone.utc)
+        )
+        mock_crud.select_certificate.return_value = None
+        with pytest.raises(exception.NotFoundError):
+            await manager.CertificateManager.update_existing_certificate(session, 1111, certificate)
+
+
+@pytest.mark.anyio
+async def test_delete_certificate(
+    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType
+) -> None:
+    """Confirm correct calls for delete_certificate() method"""
+    async with mocker.AsyncMock() as session:
+        await manager.CertificateManager.delete_certificate(session, 1111)
+        mock_crud.select_certificate.assert_called_once()
+        mock_crud.delete_single_certificate.assert_called_once()
+        session.commit.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_delete_certificate_non_certificate(
+    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType
+) -> None:
+    """Confirm delete_certificate() method raises for non-existing certificate"""
+    async with mocker.AsyncMock() as session:
+        mock_crud.select_certificate.return_value = None
+        with pytest.raises(exception.NotFoundError):
+            await manager.CertificateManager.delete_certificate(session, 1111)
