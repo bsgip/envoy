@@ -174,9 +174,7 @@ async def test_fetch_single_certificate_none_returned(
 
 
 @pytest.mark.anyio
-async def test_add_new_certificate(
-    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType
-) -> None:
+async def test_add_new_certificate(mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType) -> None:
     """Confirm correct calls for add_new_certificate() method"""
     async with mocker.AsyncMock() as session:
         certificate = CertificateRequest(
@@ -217,9 +215,7 @@ async def test_update_existing_certificate_non_certificate(
 
 
 @pytest.mark.anyio
-async def test_delete_certificate(
-    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType
-) -> None:
+async def test_delete_certificate(mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType) -> None:
     """Confirm correct calls for delete_certificate() method"""
     async with mocker.AsyncMock() as session:
         await manager.CertificateManager.delete_certificate(session, 1111)
