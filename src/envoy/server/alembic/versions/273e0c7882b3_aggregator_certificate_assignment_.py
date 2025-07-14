@@ -1,7 +1,7 @@
 """aggregator_certificate_assignment_cascade_delete
 
 Revision ID: 273e0c7882b3
-Revises: 7bed3b57bae0
+Revises: 869e84606b0b
 Create Date: 2025-07-11 13:45:28.376697
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "273e0c7882b3"
-down_revision = "7bed3b57bae0"
+down_revision = "869e84606b0b"
 branch_labels = None
 depends_on = None
 
