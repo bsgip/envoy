@@ -1,12 +1,10 @@
 from typing import Iterable
 
-import datetime as dt
-
 from envoy_schema.admin.schema.certificate import (
     CertificateResponse,
     CertificatePageResponse,
     CertificateAssignmentRequest,
-    CertificateRequest
+    CertificateRequest,
 )
 
 from envoy.server import model

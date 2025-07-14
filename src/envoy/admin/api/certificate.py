@@ -1,6 +1,5 @@
 import logging
 import http
-import sqlalchemy.exc
 
 from envoy_schema.admin.schema.certificate import (
     CertificatePageResponse,
