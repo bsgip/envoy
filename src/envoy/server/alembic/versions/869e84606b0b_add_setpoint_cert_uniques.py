@@ -1,8 +1,8 @@
 """add_setpoint_cert_uniques
 
-Revision ID: 12dafa5632b6
+Revision ID: 869e84606b0b
 Revises: 3cf6de23d7c7
-Create Date: 2025-07-14 15:47:05.035933
+Create Date: 2025-07-14 16:20:01.034414
 
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "12dafa5632b6"
+revision = "869e84606b0b"
 down_revision = "3cf6de23d7c7"
 branch_labels = None
 depends_on = None
@@ -32,6 +32,7 @@ def upgrade() -> None:
         "dynamic_operating_envelope",
         sa.Column("set_point_percentage", sa.DECIMAL(precision=16, scale=2), nullable=True),
     )
+    op.alter_column("certificate", "created", server_default=sa.text("now()"))
     # ### end Alembic commands ###
 
 
@@ -43,4 +44,5 @@ def downgrade() -> None:
     op.drop_constraint(
         "uq_aggregator_certificate_assignment_cert_id_agg_id", "aggregator_certificate_assignment", type_="unique"
     )
+    op.alter_column("certificate", "created", server_default=None)
     # ### end Alembic commands ###
