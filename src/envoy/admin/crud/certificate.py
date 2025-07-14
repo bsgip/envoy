@@ -66,6 +66,13 @@ async def select_all_certificates(session: AsyncSession, start: int, limit: int)
     return resp.scalars().all()
 
 
+async def count_all_certificates(session: AsyncSession) -> int:
+    """Admin counting of certificates"""
+    stmt = sa.select(sa.func.count()).select_from(base.Certificate)
+    resp = await session.execute(stmt)
+    return resp.scalar_one()
+
+
 async def select_many_certificates_by_id_or_lfdi(
     session: AsyncSession, certificates: list[base.Certificate]
 ) -> Sequence[base.Certificate]:
@@ -144,3 +151,28 @@ async def select_certificate(session: AsyncSession, certificate_id: int) -> base
 
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
+
+
+async def insert_single_certificate(session: AsyncSession, certificate: base.Certificate) -> None:
+    """Create a single certificate"""
+    if certificate.created:
+        del certificate.created
+    session.add(certificate)
+
+
+async def update_single_certificate(session: AsyncSession, certificate: base.Certificate) -> None:
+    """Update a single certificate"""
+    table = base.Certificate.__table__
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    stmt = (
+        sa.update(base.Certificate)
+        .where(base.Certificate.certificate_id == certificate.certificate_id)
+        .values({k: getattr(certificate, k) for k in update_cols})
+    )
+    await session.execute(stmt)
+
+
+async def delete_single_certificate(session: AsyncSession, certificate_id: int) -> None:
+    """Delete a single certificate"""
+    stmt = sa.delete(base.Certificate).where(base.Certificate.certificate_id == certificate_id)
+    await session.execute(stmt)

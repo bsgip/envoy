@@ -1,9 +1,12 @@
 from typing import Iterable
 
+import datetime as dt
+
 from envoy_schema.admin.schema.certificate import (
     CertificateResponse,
     CertificatePageResponse,
     CertificateAssignmentRequest,
+    CertificateRequest
 )
 
 from envoy.server import model
@@ -44,3 +47,11 @@ class CertificateMapper:
             )
             for c in certificates
         ]
+
+    @staticmethod
+    def map_from_request(certificate: CertificateRequest) -> model.Certificate:
+        """Converts request to model instance"""
+        return model.Certificate(
+            lfdi=certificate.lfdi,
+            expiry=certificate.expiry,
+        )

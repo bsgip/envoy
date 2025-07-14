@@ -1,7 +1,12 @@
 import itertools
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from envoy_schema.admin.schema.certificate import CertificatePageResponse, CertificateAssignmentRequest
+from envoy_schema.admin.schema.certificate import (
+    CertificatePageResponse,
+    CertificateAssignmentRequest,
+    CertificateRequest,
+    CertificateResponse,
+)
 
 from envoy.admin import crud
 from envoy.admin import mapper
@@ -106,4 +111,71 @@ class CertificateManager:
             raise exception.NotFoundError(f"Certificate with id {certificate_id} not found")
 
         await crud.aggregator.unassign_many_certificates(session, aggregator_id, [certificate_id])
+        await session.commit()
+
+    @staticmethod
+    async def fetch_many_certificates(session: AsyncSession, start: int, limit: int) -> CertificatePageResponse:
+        """Select many certificates from the DB and map to a list of CertificateResponse objects"""
+        cert_list = await crud.certificate.select_all_certificates(session, start, limit)
+        cert_count = await crud.certificate.count_all_certificates(session)
+        return mapper.CertificateMapper.map_to_page_response(
+            total_count=cert_count, start=start, limit=limit, certificates=cert_list
+        )
+
+    @staticmethod
+    async def fetch_single_certificate(session: AsyncSession, certificate_id: int) -> CertificateResponse | None:
+        """Select a single certificate and return the mapped CertificateResponse object.
+
+        Returns None if the certificate ID does not exist.
+        """
+        certificate = await crud.certificate.select_certificate(session, certificate_id)
+        if certificate is None:
+            return None
+        return mapper.CertificateMapper.map_to_response(certificate)
+
+    @staticmethod
+    async def add_new_certificate(session: AsyncSession, certificate: CertificateRequest) -> int:
+        """Creates a single certificate and returns the certificate_id"""
+        certificate_model = mapper.CertificateMapper.map_from_request(certificate)
+        await crud.certificate.insert_single_certificate(session, certificate_model)
+        await session.commit()
+        return certificate_model.certificate_id
+
+    @staticmethod
+    async def update_existing_certificate(
+        session: AsyncSession,
+        certificate_id: int,
+        certificate: CertificateRequest,
+    ) -> None:
+        """Map a CertificateRequest object to a Certficate model and update DB entry.
+
+        Args:
+            session: DB session
+            certificate_id: ID assigned to certificate by DB
+
+        Raises:
+            NotFoundError: if certificate doesn't exist
+        """
+        if not await crud.certificate.select_certificate(session, certificate_id):
+            raise exception.NotFoundError(f"Certificate with id {certificate_id} not found")
+        certificate_model = mapper.CertificateMapper.map_from_request(certificate)
+        certificate_model.certificate_id = certificate_id
+        await crud.certificate.update_single_certificate(session, certificate_model)
+        await session.commit()
+
+    @staticmethod
+    async def delete_certificate(session: AsyncSession, certificate_id: int) -> None:
+        """Delete a certificate.
+
+        Args:
+            session: DB session
+            certificate_id: ID assigned to certificate by DB
+
+        Raises:
+            NotFoundError: if certificate doesn't exist
+        """
+        # Determine exists first
+        if not await crud.certificate.select_certificate(session, certificate_id):
+            raise exception.NotFoundError(f"Certificate with id {certificate_id} not found")
+        await crud.certificate.delete_single_certificate(session, certificate_id)
         await session.commit()

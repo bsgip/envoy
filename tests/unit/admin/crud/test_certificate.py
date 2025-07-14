@@ -4,9 +4,11 @@ import datetime as dt
 
 import pytest
 import psycopg
+import sqlalchemy as sa
 from assertical.fixtures import postgres as pg_fixtures
 
 from envoy.server.model import base
+from envoy.server import model
 from envoy.admin import crud
 
 
@@ -173,3 +175,84 @@ async def test_select_certificate(pg_base_config: psycopg.Connection) -> None:
 
         assert (await crud.certificate.select_certificate(session, 6)) is None
         assert (await crud.certificate.select_certificate(session, -1)) is None
+
+
+@pytest.mark.anyio
+async def test_count_all_certificates(pg_base_config: psycopg.Connection) -> None:
+    async with pg_fixtures.generate_async_session(pg_base_config) as session:
+        assert (await crud.certificate.count_all_certificates(session)) == 5
+
+
+@pytest.mark.anyio
+async def test_update_single_certificate(pg_base_config: psycopg.Connection) -> None:
+    """Test ensures certificate can be updated"""
+    async with pg_fixtures.generate_async_session(pg_base_config) as session:
+        # retrieve original cert
+        cert = await crud.certificate.select_certificate(session, 1)
+
+    async with pg_fixtures.generate_async_session(pg_base_config) as session:
+        await crud.certificate.update_single_certificate(
+            session,
+            base.Certificate(
+                certificate_id=1,
+                lfdi="SOMENEWFAKELFDI",
+                created=dt.datetime.now(tz=dt.timezone.utc),
+                expiry=dt.datetime(2123, 1, 2, 3, 4, 5, tzinfo=dt.timezone.utc),
+            ),
+        )
+
+        # Get updated cert
+        new_cert = await crud.certificate.select_certificate(session, 1)
+
+        # Confirm certs returned
+        assert cert is not None
+        assert new_cert is not None
+
+        # Assert key fields changed
+        assert cert.lfdi != new_cert.lfdi
+        assert cert.created == new_cert.created
+        assert cert.expiry != new_cert.expiry
+
+
+@pytest.mark.anyio
+async def test_delete_single_certificate(pg_base_config: psycopg.Connection) -> None:
+    """Test ensures single certificate gets deleted along with aggregator assignnments"""
+    async with pg_fixtures.generate_async_session(pg_base_config) as session:
+        await crud.certificate.delete_single_certificate(session, 1)
+        await session.commit()
+
+    async with pg_fixtures.generate_async_session(pg_base_config) as session:
+        # Assert certificate deleted
+        certs = await crud.certificate.select_all_certificates(session, 0, 500)
+        stmt = sa.select(model.AggregatorCertificateAssignment).where(
+            model.AggregatorCertificateAssignment.certificate_id == 1
+        )
+        resp = await session.execute(stmt)
+
+        cert_assignments = resp.scalars().all()
+        cert_ids = [c.certificate_id for c in certs]
+
+        assert 1 not in cert_ids
+        assert len(cert_assignments) == 0
+
+
+@pytest.mark.anyio
+async def test_insert_single_certificate(pg_base_config: psycopg.Connection) -> None:
+    """Test ensures single certificate gets created"""
+    async with pg_fixtures.generate_async_session(pg_base_config) as session:
+        original_certs = await crud.certificate.select_all_certificates(session, 0, 500)
+
+    async with pg_fixtures.generate_async_session(pg_base_config) as session:
+        fake_created = dt.datetime(1234, 12, 3, 4, 5, 6, tzinfo=dt.timezone.utc)
+        cert = base.Certificate(
+            lfdi="SOMEFAKELFDI",
+            expiry=dt.datetime(4321, 12, 3, 4, 5, 6, tzinfo=dt.timezone.utc),
+            # Should reassign this to current time
+            created=fake_created,
+        )
+        await crud.certificate.insert_single_certificate(session, cert)
+        await session.flush()
+
+        assert cert.certificate_id not in [c.certificate_id for c in original_certs]
+        assert cert.created > fake_created
+        assert cert.created.year != fake_created.year
