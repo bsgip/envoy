@@ -15,5 +15,7 @@ class Certificate(Base):
 
     certificate_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     created: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())
-    lfdi: Mapped[str] = mapped_column(sa.VARCHAR(length=42), nullable=False, unique=True)
+    lfdi: Mapped[str] = mapped_column(sa.VARCHAR(length=42), nullable=False)
     expiry: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (sa.UniqueConstraint("lfdi", name="certificate_lfdi_uc"),)
