@@ -9,6 +9,7 @@ from httpx import AsyncClient
 from psycopg import Connection
 from sqlalchemy import select
 
+from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.site import Site
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
@@ -116,7 +117,7 @@ async def test_connectionpoint_update(
     expected_result: HTTPStatus,
     expected_nmi: Optional[str],
 ):
-    """Tests that connection points can be updated / fetched"""
+    """Tests that connection points can be updated / fetched (and that they archive appropriately)"""
 
     # fire off our update
     href = connection_point_uri_format.format(site_id=site_id)
@@ -131,15 +132,26 @@ async def test_connectionpoint_update(
         body = read_response_body_string(response)
         assert read_location_header(response) == href
         assert len(body) == 0
+        archive_expected = True
     else:
         assert_response_header(response, expected_result)
         assert_error_response(response)
+        archive_expected = False
 
     # check whether it updated (or not) in the DB
     async with generate_async_session(pg_base_config) as session:
-        stmt = select(Site).where(Site.site_id == site_id)
-        site = (await session.execute(stmt)).scalar_one()
+        site = (await session.execute(select(Site).where(Site.site_id == site_id))).scalar_one()
         assert site.nmi == expected_nmi
+
+        archived_sites = (
+            (await session.execute(select(ArchiveSite).where(ArchiveSite.site_id == site_id))).scalars().all()
+        )
+        if archive_expected:
+            assert len(archived_sites) == 1
+            assert archived_sites[0].site_id == site_id
+            assert archived_sites[0].nmi == (str(site_id) * 10), "All NMIs in base config are just like 1111111111"
+        else:
+            assert len(archived_sites) == 0
 
 
 @pytest.mark.anyio

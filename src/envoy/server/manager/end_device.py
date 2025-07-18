@@ -13,6 +13,7 @@ from envoy_schema.server.schema.sep2.end_device import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.notification.manager.notification import NotificationManager
+from envoy.server.crud.archive import copy_rows_into_archive
 from envoy.server.crud.end_device import (
     delete_site_for_aggregator,
     get_virtual_site_for_aggregator,
@@ -33,6 +34,7 @@ from envoy.server.mapper.sep2.end_device import (
     RegistrationMapper,
     VirtualEndDeviceMapper,
 )
+from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.site import Site
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import (
@@ -217,6 +219,9 @@ class EndDeviceManager:
         )
         if site is None:
             return False
+
+        # Ensure we archive the existing data
+        await copy_rows_into_archive(session, Site, ArchiveSite, lambda q: q.where(Site.site_id == site.site_id))
 
         site.nmi = nmi
         site.changed_time = changed_time
