@@ -1,6 +1,6 @@
 from typing import Optional
 
-from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorResponse
+from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorResponse, AggregatorRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.aggregator import count_all_aggregators, select_all_aggregators
@@ -25,4 +25,15 @@ class AggregatorManager:
         aggregator = await select_aggregator(session, aggregator_id)
         if aggregator is None:
             return None
+        return AggregatorMapper.map_to_response(aggregator)
+
+
+    @staticmethod
+    async def create_aggregator(session: AsyncSession, req: AggregatorRequest) -> AggregatorResponse:
+        """Map an AggregatorRequest object to an Aggregator model and insert into database."""
+
+        aggregator = AggregatorMapper.map_from_request(req)
+        session.add(aggregator)
+        await session.commit()
+
         return AggregatorMapper.map_to_response(aggregator)

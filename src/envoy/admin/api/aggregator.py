@@ -3,7 +3,7 @@ import http
 import sqlalchemy.exc
 
 from envoy_schema.admin.schema.certificate import CertificatePageResponse, CertificateAssignmentRequest
-from envoy_schema.admin.schema.aggregator import AggregatorResponse, AggregatorPageResponse
+from envoy_schema.admin.schema.aggregator import AggregatorResponse, AggregatorPageResponse, AggregatorRequest
 from envoy_schema.admin.schema import uri
 import fastapi
 from fastapi_async_sqlalchemy import db
@@ -54,6 +54,22 @@ async def get_aggregator(
     agg = await manager.AggregatorManager.fetch_single_aggregator(session=db.session, aggregator_id=aggregator_id)
     if agg is None:
         raise fastapi.HTTPException(http.HTTPStatus.NOT_FOUND, f"Aggregator with ID {aggregator_id} not found")
+    return agg
+
+
+@router.post(uri.AggregatorCreateUri, status_code=http.HTTPStatus.CREATED, response_model=AggregatorResponse)
+async def create_singular_aggregator(req: AggregatorRequest) -> AggregatorResponse:
+    """Creates a singular aggregator.
+
+    Body:
+        aggregator: AggregatorRequest: 
+        name, domains, created_at.
+
+    Returns:
+        AggregatorResponse
+    """
+
+    agg = await manager.AggregatorManager.create_aggregator(db.session, req)
     return agg
 
 
