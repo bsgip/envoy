@@ -172,10 +172,10 @@ async def get_certificates(aggregator_id: int, admin_url: str, auth: Tuple[str, 
         return cert_page.certificates
 
 
-async def create_or_add_client_certificate(aggregator_name: str, aggregator_domain: str, pem_file_path: Path,
+async def add_client_certificate(aggregator_name: str, aggregator_domain: str, pem_file_path: Path,
                                                admin_url: str, auth: Tuple[str, str], create_agg: bool=False) -> None:
     """
-    Creates or adds a client certificate for an aggregator
+    Adds a client certificate to an aggregator, can create the aggregator if it does not exist.
 
     Args:
         aggregator_name (str): Name of the aggregator.
@@ -221,7 +221,7 @@ async def create_or_add_client_certificate(aggregator_name: str, aggregator_doma
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Update client certificate via admin aggregator endpoint.")
+    parser = argparse.ArgumentParser(description="Add client certificate, optionally create aggregator.")
     parser.add_argument("--aggregator-name", required=True, help="Name of the aggregator whose certificate is being added.")
     parser.add_argument("--aggregator-domain", required=True, help="Whitelisted domain for the aggregator.")
     parser.add_argument("--pem", required=True, type=Path, help="Path to the .pem file containing the new certificate.")
@@ -232,7 +232,7 @@ def main():
 
     args = parser.parse_args()
 
-    asyncio.run(create_or_add_client_certificate(
+    asyncio.run(add_client_certificate(
         aggregator_name=args.aggregator_name,
         aggregator_domain=args.aggregator_domain,
         pem_file_path=args.pem,
