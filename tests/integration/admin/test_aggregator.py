@@ -7,7 +7,12 @@ import pytest
 import psycopg
 import sqlalchemy as sa
 from assertical.fixtures.postgres import generate_async_session
-from envoy_schema.admin.schema.aggregator import AggregatorResponse, AggregatorPageResponse, AggregatorDomain
+from envoy_schema.admin.schema.aggregator import (
+    AggregatorResponse,
+    AggregatorPageResponse,
+    AggregatorDomain,
+    AggregatorRequest
+)
 from envoy_schema.admin.schema.certificate import (
     CertificateResponse,
     CertificatePageResponse,
@@ -72,6 +77,43 @@ async def test_get_all_aggregators(
         assert agg_page.start == start
 
     assert [a.aggregator_id for a in agg_page.aggregators] == expected_agg_ids
+
+@pytest.mark.parametrize(
+    "name, domains",
+    [
+        ("Aggregator 4", ["example.com", "another.example.com"]),
+    ],
+)
+@pytest.mark.anyio
+async def test_create_aggregator(
+    admin_client_auth: AsyncClient,
+    name: str,
+    domains: list[str],
+) -> None:
+
+    created_time: dt.datetime = dt.datetime.now()
+    changed_time: dt.datetime = created_time
+    domain_objs = [AggregatorDomain(domain=d, created_time=created_time, changed_time=changed_time) for d in domains]
+    agg_payload = AggregatorRequest(name=name, created_time=created_time,
+                                     changed_time=changed_time, domains=domain_objs).model_dump_json()
+
+    res = await admin_client_auth.post(uri.AggregatorCreateUri, content=agg_payload)
+    assert res.status_code == HTTPStatus.CREATED
+    agg_id = res.json()['aggregator_id']
+
+    # Use id to get createdd aggregator, check name and domains
+    res = await admin_client_auth.get(uri.AggregatorUri.format(aggregator_id=agg_id))
+    assert res.status_code == HTTPStatus.OK
+
+    body = response.read_response_body_string(res)
+    assert len(body) > 0
+    agg: AggregatorResponse = AggregatorResponse(**json.loads(body))
+
+    assert agg.aggregator_id == agg_id
+    assert agg.name == name
+    assert all([isinstance(s, AggregatorDomain) for s in agg.domains])
+    assert sorted(domains) == sorted([d.domain for d in agg.domains])
+
 
 
 @pytest.mark.parametrize(
