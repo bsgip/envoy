@@ -1,10 +1,10 @@
+import os, sys
 import json
-import os
 import argparse
 import httpx
 import asyncio
 from typing import Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
 from cryptography import x509
@@ -12,7 +12,7 @@ from cryptography import x509
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
 
 from envoy_schema.admin.schema import uri
-from envoy_schema.admin.schema.certificate import CertificateAssignmentRequest
+from envoy_schema.admin.schema.certificate import CertificateAssignmentRequest, CertificatePageResponse, CertificateResponse
 from envoy_schema.admin.schema.aggregator import AggregatorRequest, AggregatorDomain
 from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorResponse
 
@@ -52,11 +52,12 @@ def is_intermediate_certificate(cert: x509.Certificate) -> bool:
         return False
 
 
-def check_certificate(pem_file_path: str) -> Tuple[str, datetime]:
+def check_certificate(pem_file_path: Path) -> Tuple[str, datetime]:
     """
-    Checks that the PEM file contains three certificates (client, intermediate,
-    root), extracts expiry date from client certificate, and calculates the LFDI
-    (first 40 hex chars of client cert in base64).
+    Checks that the PEM file naming convention, that it contains three
+    certificates (client, intermediate, root), extracts expiry date from client
+    certificate, and calculates the LFDI (first 40 hex chars of client cert in
+    base64).
     
     Returns:
         lfdi (str): First 40 hex characters of client cert in base64.
@@ -66,9 +67,30 @@ def check_certificate(pem_file_path: str) -> Tuple[str, datetime]:
     with open(pem_file_path, 'rb') as f:
         pem_data = f.read()
 
-    lfdi = LFDIAuthDepends.generate_lfdi_from_pem(pem_data.decode('utf-8'))
     certs = x509.load_pem_x509_certificates(pem_data)
+    cert_expiry = certs[0].not_valid_after_utc
 
+    # Check that file name follows convention
+    parts = pem_file_path.stem.split('-')
+    try:
+        expiry_date = datetime.strptime(parts[-1], '%Y%m%d')
+        if not (
+            cert_expiry.year == expiry_date.year and
+            cert_expiry.month == expiry_date.month and
+            cert_expiry.day == expiry_date.day
+        ):
+            raise ValueError("Certificate expiry does not match date in filename")
+    except Exception:
+        expiry_date = None
+
+    if pem_file_path.suffix != '.pem' or \
+        len(parts) != 4 or \
+        parts[0] != 'edith' or \
+        parts[1] not in ['dev', 'test', 'prod'] or \
+        not expiry_date:
+            raise ValueError("Invalid PEM file name format, should be edith-[prod|test|dev]-<customer>-<expiry_date>.pem")
+
+    # Certificate checks, including expiry dates
     if len(certs) != 3:
         raise ValueError("PEM file must contain exactly three certificates (client, intermediate, root)")
     if not is_intermediate_certificate(certs[1]):
@@ -76,7 +98,14 @@ def check_certificate(pem_file_path: str) -> Tuple[str, datetime]:
     if not is_root_certificate(certs[2]):
         raise ValueError("The last entry in the PEM file must be a valid root certificate")
 
-    return lfdi, certs[0].not_valid_before_utc
+    for c in certs:
+        if not c.not_valid_after_utc > datetime.now(timezone.utc):
+            raise ValueError("Certificates must be valid (not expired)")
+
+    # Calculate LFDI
+    lfdi = LFDIAuthDepends.generate_lfdi_from_pem(pem_data.decode('utf-8'))
+
+    return lfdi, cert_expiry
 
 
 async def create_aggregator(aggregator_name: str, aggregator_domain: str, admin_url: str, auth: Tuple[str, str]) -> int:
@@ -132,10 +161,21 @@ async def get_aggregators(admin_url: str, auth: Tuple[str, str]) -> list[Aggrega
         return agg_page.aggregators
 
 
-async def create_or_update_client_certificate(aggregator_name: str, aggregator_domain: str, pem_file_path: str,
+async def get_certificates(aggregator_id: int, admin_url: str, auth: Tuple[str, str]) -> list[CertificateResponse]:
+
+    async with httpx.AsyncClient() as client:
+        certificate_list_url = admin_url + uri.AggregatorCertificateListUri.format(aggregator_id=aggregator_id)
+        response = await client.get(certificate_list_url, auth=auth)
+        response.raise_for_status()
+
+        cert_page = CertificatePageResponse(**json.loads(response.text))
+        return cert_page.certificates
+
+
+async def create_or_add_client_certificate(aggregator_name: str, aggregator_domain: str, pem_file_path: Path,
                                                admin_url: str, auth: Tuple[str, str], create_agg: bool=False) -> None:
     """
-    Creates or updates a client certificate for an aggregator
+    Creates or adds a client certificate for an aggregator
 
     Args:
         aggregator_name (str): Name of the aggregator.
@@ -144,16 +184,32 @@ async def create_or_update_client_certificate(aggregator_name: str, aggregator_d
         auth (Tuple[str, str]): Tuple containing username and password for basic HTTP authentication.
         create_aggregator (bool, optional): If True, creates a new aggregator before updating the certificate.
     """
+
+    lfdi, cert_expiry = check_certificate(pem_file_path)
+
     aggregators = await get_aggregators(admin_url, auth)
 
     if create_agg:
         aggregator_names = [agg.name for agg in aggregators]
-        assert aggregator_name not in aggregator_names, "Aggregator already exists"
+        if aggregator_name in aggregator_names:
+            raise ValueError(f"Aggregator {aggregator_name} already exists")
 
         agg_id = await create_aggregator(aggregator_name, aggregator_domain, admin_url, auth)
+    else:
+        for agg in aggregators:
+            if agg.name == aggregator_name:
+                agg_id = agg.aggregator_id
+                break
+        else:
+            raise ValueError(f"Aggregator with name {aggregator_name} not found")
 
-    lfdi, cert_expiry = check_certificate(pem_file_path)
+        # Check whether this aggregator already the given certificate
+        existing_certs = await get_certificates(agg_id, admin_url, auth)
+        for c in existing_certs:
+            if c.lfdi == lfdi:
+                raise ValueError(f"Certificate with LFDI {lfdi} already exists for aggregator {aggregator_name}")
 
+    # Add certificate to aggregator
     async with httpx.AsyncClient() as client:
         cert = CertificateAssignmentRequest(lfdi=lfdi, expiry=cert_expiry)
         response = await client.post(
@@ -168,7 +224,7 @@ def main():
     parser = argparse.ArgumentParser(description="Update client certificate via admin aggregator endpoint.")
     parser.add_argument("--aggregator-name", required=True, help="Name of the aggregator whose certificate is being added.")
     parser.add_argument("--aggregator-domain", required=True, help="Whitelisted domain for the aggregator.")
-    parser.add_argument("--pem", required=True, help="Path to the .pem file containing the new certificate.")
+    parser.add_argument("--pem", required=True, type=Path, help="Path to the .pem file containing the new certificate.")
     parser.add_argument("--admin-url", default='http://127.0.0.1:9999', help="Base URL of the admin endpoint.")
     parser.add_argument("--username", default=DEFAULT_USERNAME, help="Username for basic HTTP authentication (default from .env).")
     parser.add_argument("--password", default=DEFAULT_PASSWORD, help="Password for basic HTTP authentication (default from .env).")
@@ -176,7 +232,7 @@ def main():
 
     args = parser.parse_args()
 
-    asyncio.run(create_or_update_client_certificate(
+    asyncio.run(create_or_add_client_certificate(
         aggregator_name=args.aggregator_name,
         aggregator_domain=args.aggregator_domain,
         pem_file_path=args.pem,
@@ -185,6 +241,8 @@ def main():
         create_agg=args.create,
     ))
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
