@@ -58,6 +58,9 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     set_point_percentage: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
+    ramp_time_seconds: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
+    )
 
     __table_args__ = (
         Index(

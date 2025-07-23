@@ -43,10 +43,12 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def map_to_signed_percent(p: Decimal) -> int:
-        """Maps to the 2030.5 SignedPercent which is encoded as an integer representing "hundredths" of a percent
+    def map_to_hundredths(p: Decimal) -> int:
+        """Maps to the 2030.5 SignedPercent (or any other type represented in hundredths)
 
-        Values should be in the range -10000 - 10000. (10000 = 100%)"""
+        Percent values should be in the range -10000 - 10000. (10000 = 100%)
+
+        Other values can be interpreted as (123.45 = 12345)"""
         return int(p * 100)
 
     @staticmethod
@@ -131,8 +133,13 @@ class DERControlMapper:
                     opModEnergize=doe.set_energized if doe.set_energized is not None else None,
                     opModConnect=doe.set_connected if doe.set_connected is not None else None,
                     opModFixedW=(
-                        DERControlMapper.map_to_signed_percent(doe.set_point_percentage)
+                        DERControlMapper.map_to_hundredths(doe.set_point_percentage)
                         if doe.set_point_percentage is not None
+                        else None
+                    ),
+                    rampTms=(
+                        DERControlMapper.map_to_hundredths(doe.ramp_time_seconds)
+                        if doe.ramp_time_seconds is not None
                         else None
                     ),
                 ),

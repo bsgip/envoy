@@ -97,6 +97,10 @@ class DynamicOperatingEnvelope(Base):
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Percentage of device max power settings to charge at (if negative) or discharge at (if positive). 100 = 100%
 
+    ramp_time_seconds: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )  # Ramp time for this control - corresponds to rampTms. 100 corresponds to 100 seconds.
+
     site: Mapped["Site"] = relationship(lazy="raise")
 
     site_control_group: Mapped["SiteControlGroup"] = relationship(

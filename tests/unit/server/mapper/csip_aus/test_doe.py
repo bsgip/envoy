@@ -36,8 +36,8 @@ from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorReque
         (Decimal("-100.00"), -10000),
     ],
 )
-def test_map_to_signed_percent(percent: Decimal, expected: int):
-    actual = DERControlMapper.map_to_signed_percent(percent)
+def test_map_to_hundredths(percent: Decimal, expected: int):
+    actual = DERControlMapper.map_to_hundredths(percent)
     assert isinstance(actual, int)
     assert actual == expected
 
@@ -104,10 +104,9 @@ def test_map_derc_to_response(
     assert result_all_set.DERControlBase_.opModLoadLimW.value == int(doe.load_limit_active_watts * 10000)
     assert result_all_set.DERControlBase_.opModConnect == doe.set_connected
     assert result_all_set.DERControlBase_.opModEnergize == doe.set_energized
-    assert result_all_set.DERControlBase_.opModFixedW == DERControlMapper.map_to_signed_percent(
-        doe.set_point_percentage
-    )
+    assert result_all_set.DERControlBase_.opModFixedW == DERControlMapper.map_to_hundredths(doe.set_point_percentage)
     assert result_all_set.randomizeStart == doe.randomize_start_seconds
+    assert result_all_set.DERControlBase_.rampTms == DERControlMapper.map_to_hundredths(doe.ramp_time_seconds)
 
     # Event status parsing is a little complex - this tries to check all the options
     if isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None:
@@ -140,6 +139,7 @@ def test_map_derc_to_response(
     assert result_optional.DERControlBase_.opModEnergize is None
     assert result_optional.DERControlBase_.opModFixedW is None
     assert result_optional.randomizeStart == randomize_seconds
+    assert result_optional.DERControlBase_.rampTms is None
 
     if isinstance(doe_opt, ArchiveDynamicOperatingEnvelope) and doe_opt.deleted_time is not None:
         if randomize_seconds:

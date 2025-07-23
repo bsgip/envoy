@@ -69,6 +69,7 @@ class SiteControlListMapper:
                 set_connected=c.set_connect,
                 set_point_percentage=c.set_point_percentage,
                 end_time=c.start_time + timedelta(seconds=c.duration_seconds),
+                ramp_time_seconds=c.ramp_time_seconds,
             )
             for c in control_list
         ]
@@ -91,6 +92,7 @@ class SiteControlListMapper:
             set_energized=control.set_energized,
             set_connect=control.set_connected,
             set_point_percentage=control.set_point_percentage,
+            ramp_time_seconds=control.ramp_time_seconds,
         )
 
     @staticmethod

@@ -63,10 +63,12 @@ def assert_doe_for_id(
             assert actual_doe.generation_limit_active_watts is None
             assert actual_doe.load_limit_active_watts is None
             assert actual_doe.set_point_percentage is None
+            assert actual_doe.ramp_time_seconds is None
         else:
             assert actual_doe.generation_limit_active_watts == Decimal(f"{expected_doe_id}.33")
             assert actual_doe.load_limit_active_watts == Decimal(f"-{expected_doe_id}.44")
             assert actual_doe.set_point_percentage == Decimal(f"{expected_doe_id}.55")
+            assert actual_doe.ramp_time_seconds == Decimal(f"{expected_doe_id}.66")
 
         # This is also by convention
         if actual_doe.dynamic_operating_envelope_id in {1, 3, 4}:
