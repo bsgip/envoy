@@ -3,8 +3,8 @@ import json
 import argparse
 import httpx
 import asyncio
+import datetime as dt
 from typing import Tuple
-from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
 from cryptography import x509
@@ -52,7 +52,7 @@ def is_intermediate_certificate(cert: x509.Certificate) -> bool:
         return False
 
 
-def check_certificate(pem_file_path: Path) -> Tuple[str, datetime]:
+def check_certificate(pem_file_path: Path) -> Tuple[str, dt.datetime]:
     """
     Checks that the PEM file naming convention, that it contains three
     certificates (client, intermediate, root), extracts expiry date from client
@@ -73,7 +73,7 @@ def check_certificate(pem_file_path: Path) -> Tuple[str, datetime]:
     # Check that file name follows convention
     parts = pem_file_path.stem.split('-')
     try:
-        expiry_date = datetime.strptime(parts[-1], '%Y%m%d')
+        expiry_date = dt.datetime.strptime(parts[-1], '%Y%m%d')
         if not (
             cert_expiry.year == expiry_date.year and
             cert_expiry.month == expiry_date.month and
@@ -99,7 +99,7 @@ def check_certificate(pem_file_path: Path) -> Tuple[str, datetime]:
         raise ValueError("The last entry in the PEM file must be a valid root certificate")
 
     for c in certs:
-        if not c.not_valid_after_utc > datetime.now(timezone.utc):
+        if not c.not_valid_after_utc > dt.datetime.now(dt.timezone.utc):
             raise ValueError("Certificates must be valid (not expired)")
 
     # Calculate LFDI
@@ -121,7 +121,7 @@ async def create_aggregator(aggregator_name: str, aggregator_domain: str, admin_
         int: aggregator id
     """
 
-    created_time = datetime.now()
+    created_time = dt.datetime.now()
     changed_time = created_time
     domains = [AggregatorDomain(domain=aggregator_domain,
                                  created_time=created_time, changed_time=changed_time)]
