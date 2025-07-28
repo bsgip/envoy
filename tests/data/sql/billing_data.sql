@@ -49,18 +49,18 @@ INSERT INTO public.tariff_generated_rate("tariff_id", "site_id", "calculation_lo
 VALUES (1, 3, 5, '2000-01-01 00:00:00Z', '2023-09-01 11:22:33', '2023-09-10 00:00+10', 300, 7.1, -7.2, 7.3, -7.4);
 
 
-INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 1, NULL, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, '2023-09-10 00:05+10', 1.11, -1.22);
-INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 1, 4, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:05+10', 300, '2023-09-10 00:10+10', 2.11, -2.22);
-INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 1, 5, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-11 00:00+10', 300, '2023-09-11 00:05+10', 3.11, -3.22);
-INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 1, 6, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-11 00:05+10', 300, '2023-09-11 00:10+10', 4.11, -4.22);
-INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 2, 5, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, '2023-09-10 00:05+10', 5.11, -5.22);
-INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "import_limit_active_watts", "export_limit_watts")
-VALUES (1, 3, 5, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, '2023-09-10 00:05+10', 6.11, -6.22);
+INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "superseded", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 1, NULL, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, '2023-09-10 00:05+10', FALSE, 1.11, -1.22);
+INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "superseded", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 1, 4, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:05+10', 300, '2023-09-10 00:10+10', FALSE, 2.11, -2.22);
+INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "superseded", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 1, 5, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-11 00:00+10', 300, '2023-09-11 00:05+10', FALSE, 3.11, -3.22);
+INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "superseded", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 1, 6, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-11 00:05+10', 300, '2023-09-11 00:10+10', FALSE, 4.11, -4.22);
+INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "superseded", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 2, 5, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, '2023-09-10 00:05+10', FALSE, 5.11, -5.22);
+INSERT INTO public.dynamic_operating_envelope("site_control_group_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "end_time", "superseded", "import_limit_active_watts", "export_limit_watts")
+VALUES (1, 3, 5, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:00+10', 300, '2023-09-10 00:05+10', FALSE, 6.11, -6.22);
 
 
 -- Real Energy - site 1

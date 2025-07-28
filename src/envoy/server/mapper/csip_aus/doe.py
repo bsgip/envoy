@@ -73,6 +73,9 @@ class DERControlMapper:
                 else EventStatusType.CancelledWithRandomization
             )
             event_status_time = doe.deleted_time
+        elif doe.superseded:
+            event_status = EventStatusType.Superseded
+            event_status_time = doe.changed_time
         else:
             # This is either a schedule / active DOE
             event_status = EventStatusType.Active if is_intersecting_now else EventStatusType.Scheduled

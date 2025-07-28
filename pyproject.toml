@@ -68,6 +68,7 @@ dependencies = [
     "taskiq-aio-pika",
     "parse",
     "envoy_schema==0.22.0",
+    "intervaltree",
 ]
 
 [project.optional-dependencies]

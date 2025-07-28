@@ -11,12 +11,12 @@ from envoy_schema.admin.schema.site_control import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.doe import (
+    cancel_then_insert_does,
     count_all_does,
     count_all_site_control_groups,
     delete_does_with_start_time_in_range,
     select_all_does,
     select_all_site_control_groups,
-    upsert_many_doe,
 )
 from envoy.admin.mapper.site_control import SiteControlGroupListMapper, SiteControlListMapper
 from envoy.notification.manager.notification import NotificationManager
@@ -100,7 +100,7 @@ class SiteControlListManager:
 
         changed_time = utc_now()
         doe_models = SiteControlListMapper.map_from_request(site_control_group_id, changed_time, control_list)
-        await upsert_many_doe(session, doe_models, changed_time)
+        await cancel_then_insert_does(session, doe_models, changed_time)
         await session.commit()
 
         await NotificationManager.notify_changed_deleted_entities(

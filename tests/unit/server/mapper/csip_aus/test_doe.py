@@ -116,7 +116,9 @@ def test_map_derc_to_response(
             assert result_all_set.EventStatus_.currentStatus == EventStatusType.Cancelled
         assert result_all_set.EventStatus_.dateTime == int(doe.deleted_time.timestamp())
     else:
-        if is_active:
+        if doe.superseded:
+            assert result_all_set.EventStatus_.currentStatus == EventStatusType.Superseded
+        elif is_active:
             assert result_all_set.EventStatus_.currentStatus == EventStatusType.Active
         else:
             assert result_all_set.EventStatus_.currentStatus == EventStatusType.Scheduled
@@ -148,7 +150,9 @@ def test_map_derc_to_response(
             assert result_optional.EventStatus_.currentStatus == EventStatusType.Cancelled
         assert result_optional.EventStatus_.dateTime == int(doe_opt.deleted_time.timestamp())
     else:
-        if is_active:
+        if doe_opt.superseded:
+            assert result_optional.EventStatus_.currentStatus == EventStatusType.Superseded
+        elif is_active:
             assert result_optional.EventStatus_.currentStatus == EventStatusType.Active
         else:
             assert result_optional.EventStatus_.currentStatus == EventStatusType.Scheduled

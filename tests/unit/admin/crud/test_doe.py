@@ -12,12 +12,12 @@ from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import func, select
 
 from envoy.admin.crud.doe import (
+    cancel_then_insert_does,
     count_all_does,
     count_all_site_control_groups,
     delete_does_with_start_time_in_range,
     select_all_does,
     select_all_site_control_groups,
-    upsert_many_doe,
 )
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
@@ -34,7 +34,7 @@ async def _select_latest_dynamic_operating_envelope(session) -> DynamicOperating
 
 
 @pytest.mark.anyio
-async def test_upsert_many_doe_inserts(pg_base_config):
+async def test_cancel_then_insert_does_inserts(pg_base_config):
     """Assert that we are able to successfully insert a valid DOERequest into a db"""
     deleted_time = datetime(2022, 11, 4, 7, 4, 2, tzinfo=timezone.utc)
     async with generate_async_session(pg_base_config) as session:
@@ -44,7 +44,7 @@ async def test_upsert_many_doe_inserts(pg_base_config):
         # clean up generated instance to ensure it doesn't clash with base_config
         del doe_in.dynamic_operating_envelope_id
 
-        await upsert_many_doe(session, [doe_in], deleted_time)
+        await cancel_then_insert_does(session, [doe_in], deleted_time)
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
@@ -72,7 +72,7 @@ async def test_upsert_many_doe_inserts(pg_base_config):
         )
 
         # See if any errors get raised
-        await upsert_many_doe(session, [doe_in, doe_in_1], deleted_time)
+        await cancel_then_insert_does(session, [doe_in, doe_in_1], deleted_time)
 
         # Because the scond upsert included_doe_in again, it will archive the old version
         assert (
@@ -81,7 +81,7 @@ async def test_upsert_many_doe_inserts(pg_base_config):
 
 
 @pytest.mark.anyio
-async def test_upsert_many_doe_update(pg_base_config):
+async def test_cancel_then_insert_does_update(pg_base_config):
     """Assert that we are able to successfully update a valid DOERequest in the db"""
     deleted_time = datetime(2022, 11, 4, 7, 4, 2, tzinfo=timezone.utc)
     original_doe_copy: DynamicOperatingEnvelope
@@ -99,7 +99,7 @@ async def test_upsert_many_doe_update(pg_base_config):
         doe_to_update.changed_time = datetime(2026, 1, 3, tzinfo=timezone.utc)
         doe_to_update.created_time = datetime(2027, 1, 3, tzinfo=timezone.utc)
 
-        await upsert_many_doe(session, [doe_to_update], deleted_time)
+        await cancel_then_insert_does(session, [doe_to_update], deleted_time)
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:

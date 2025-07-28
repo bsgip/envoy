@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DECIMAL, VARCHAR, BigInteger, DateTime, ForeignKey, Index, UniqueConstraint, func
+from sqlalchemy import BOOLEAN, DECIMAL, VARCHAR, BigInteger, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model.base import Base
@@ -84,6 +84,11 @@ class DynamicOperatingEnvelope(Base):
     # added in postgres 16 so we'd be cutting off large chunks of postgresql servers - instead we just manually populate
     # this as we go.
 
+    superseded: Mapped[bool] = mapped_column(
+        BOOLEAN
+    )  # True if this control has had another control appear at a higher priority (thus invalidating it). This value is
+    # considered "sticky" - if the superseding control is later cancelled - it will not affect this flag being set.
+
     # NOTE: We've decided to include these 'non-DOE' related fields (that map to DERControl elements) here and
     # eventually generalise this to capture specifically the DERControl that are of interest to CSIP-AUS (i.e. not
     # necessarily everything in core IEEE2030.5).
@@ -108,13 +113,13 @@ class DynamicOperatingEnvelope(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "site_control_group_id", "start_time", "site_id", name="site_control_group_id_start_time_site_id_uc"
-        ),
+        Index(
+            "ix_site_control_site_control_group_id_start_time_site_id", "site_control_group_id", "start_time", "site_id"
+        ),  # Used by admin server endpoints for fetching controls within a date range
         Index(
             "ix_site_control_group_dynamic_operating_envelope_end_time_site",
             "site_control_group_id",
             "end_time",
             "site_id",
-        ),
+        ),  # Used by the primary csip-aus DERControl list endpoint
     )

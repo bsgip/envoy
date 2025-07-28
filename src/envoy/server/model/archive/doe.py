@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime, Index
+from sqlalchemy import BOOLEAN, DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
@@ -47,6 +47,9 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     )
 
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    superseded: Mapped[bool] = mapped_column(BOOLEAN)
+
     generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )

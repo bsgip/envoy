@@ -69,12 +69,15 @@ def test_site_control_mapper_roundtrip(optional_is_none: bool):
     assert mdl.changed_time == changed_time
     assert mdl.created_time is None, "Must be set in the DB"
     assert mdl.dynamic_operating_envelope_id is None, "Must be set in the DB"
+    assert mdl.superseded is False, "Must default to False"
     mdl.created_time = datetime(2022, 1, 2, 3, 4, 5)
     mdl.dynamic_operating_envelope_id = 213123
 
+    mdl.superseded = optional_is_none  # Ensure this field varies for different test cases
     actual_req = SiteControlListMapper.map_to_response(mdl)
+    assert actual_req.superseded is optional_is_none
 
-    assert_class_instance_equality(SiteControlRequest, original_req, actual_req)
+    assert_class_instance_equality(SiteControlRequest, original_req, actual_req, ignored_properties={"superseded"})
 
 
 @pytest.mark.parametrize("optional_is_none", [True, False])

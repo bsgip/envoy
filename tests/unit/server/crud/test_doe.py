@@ -11,7 +11,7 @@ from assertical.fake.generator import clone_class_instance, generate_class_insta
 from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import select, update
 
-from envoy.admin.crud.doe import upsert_many_doe
+from envoy.admin.crud.doe import cancel_then_insert_does
 from envoy.server.crud.doe import (
     count_active_does_include_deleted,
     count_does_at_timestamp,
@@ -60,11 +60,13 @@ def assert_doe_for_id(
         assert actual_doe.import_limit_active_watts == Decimal(f"{expected_doe_id}.11")
         assert actual_doe.export_limit_watts == Decimal(f"-{expected_doe_id}.22")
         if expected_doe_id == 2:
+            assert actual_doe.superseded is True
             assert actual_doe.generation_limit_active_watts is None
             assert actual_doe.load_limit_active_watts is None
             assert actual_doe.set_point_percentage is None
             assert actual_doe.ramp_time_seconds is None
         else:
+            assert actual_doe.superseded is False
             assert actual_doe.generation_limit_active_watts == Decimal(f"{expected_doe_id}.33")
             assert actual_doe.load_limit_active_watts == Decimal(f"-{expected_doe_id}.44")
             assert actual_doe.set_point_percentage == Decimal(f"{expected_doe_id}.55")
@@ -391,7 +393,7 @@ async def test_select_active_does_include_deleted_via_roundtrip(pg_base_config):
         calculation_log_id=None,
     )
     async with generate_async_session(pg_base_config) as session:
-        await upsert_many_doe(session, [doe_to_replace, doe_to_insert], now)
+        await cancel_then_insert_does(session, [doe_to_replace, doe_to_insert], now)
         await session.commit()
 
     # Now refetch everything using select_active_does_include_deleted - This will include three DOEs consisting of:

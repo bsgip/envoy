@@ -31,6 +31,7 @@ class DoeListMapper:
                 import_limit_active_watts=doe.import_limit_active_watts,
                 export_limit_watts=doe.export_limit_watts,
                 end_time=doe.start_time + timedelta(seconds=doe.duration_seconds),
+                superseded=False,  # Set to False - we won't be checking against existing DOEs here
             )
             for doe in doe_list
         ]
