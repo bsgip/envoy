@@ -88,10 +88,9 @@ async def supersede_then_insert_does(
         return
 
     # start by caching all primacy values from the parent SiteControlGroup's
-    group_id_primacy_values = (
-        await session.execute(select(SiteControlGroup.site_control_group_id, SiteControlGroup.primacy))
-    ).all()
-    primacy_by_group_id = dict((row.tuple() for row in group_id_primacy_values))
+    primacy_by_group_id = dict(
+        (await session.execute(select(SiteControlGroup.site_control_group_id, SiteControlGroup.primacy))).tuples().all()
+    )
 
     # Organise the incoming DOE's by site_id to better chunk the lookups (and utilise existing indexes)
     does_by_site_id: dict[int, list[DynamicOperatingEnvelope]] = {}
@@ -103,8 +102,8 @@ async def supersede_then_insert_does(
             existing.append(doe)
 
     # Start making the requests to the database to update the existing DOEs as superseded
-    for site_id, doe_list in does_by_site_id.items():
-        await supersede_matching_does_for_site(session, doe_list, site_id, primacy_by_group_id, changed_time)
+    for site_id, site_doe_list in does_by_site_id.items():
+        await supersede_matching_does_for_site(session, site_doe_list, site_id, primacy_by_group_id, changed_time)
 
     # Now we can do the inserts
     table = DynamicOperatingEnvelope.__table__
@@ -148,19 +147,6 @@ async def supersede_matching_does_for_site(
 
     # Now go to the database to find existing controls that *might* overlap with the controls in doe_list
     # We deliberately avoid fetching the full models to avoid polluting the session with a ton of entities
-    bacon = select(
-        DynamicOperatingEnvelope.dynamic_operating_envelope_id,
-        DynamicOperatingEnvelope.site_control_group_id,
-        DynamicOperatingEnvelope.start_time,
-        DynamicOperatingEnvelope.end_time,
-    ).where(
-        # We include site_control_group to ensure we can utilise our indexes
-        (DynamicOperatingEnvelope.site_control_group_id.in_(primacy_by_group_id.keys()))
-        & (DynamicOperatingEnvelope.site_id == site_id)
-        & (DynamicOperatingEnvelope.end_time > min_date)
-        & (DynamicOperatingEnvelope.start_time < max_date)
-        & (DynamicOperatingEnvelope.superseded is False)  # Can't supersede something twice
-    )
     potential_matches = (
         (
             await session.execute(

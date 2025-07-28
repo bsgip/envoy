@@ -1,3 +1,4 @@
+import unittest.mock as mock
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
@@ -19,6 +20,7 @@ from envoy.admin.crud.doe import (
     select_all_does,
     select_all_site_control_groups,
     supersede_matching_does_for_site,
+    supersede_then_insert_does,
 )
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
@@ -187,6 +189,22 @@ def doe(start_time: datetime, end_time: datetime, scg_id: int = 1, site_id: int 
             ],
             [1],  # doe 2 is already superseded so won't be updated by this
         ),
+        (
+            [
+                doe(
+                    datetime(2022, 5, 7, 1, 2, 1, tzinfo=AEST), datetime(2022, 5, 7, 1, 2, 10, tzinfo=AEST), scg_id=2
+                ),  # encapsulated by doe 1
+            ],
+            [],  # site control group 2 is higher primacy and therefore won't supersede the existing doe
+        ),
+        (
+            [
+                doe(
+                    datetime(2022, 5, 7, 1, 2, 1, tzinfo=AEST), datetime(2022, 5, 7, 1, 2, 10, tzinfo=AEST), scg_id=3
+                ),  # encapsulated by doe 1
+            ],
+            [1],  # site control group 3 is lower primacy and will therefore supersede
+        ),
     ],
 )
 @pytest.mark.anyio
@@ -211,7 +229,7 @@ async def test_supersede_matching_does_for_site(
     if len(doe_list) > 0:
         site_id = doe_list[0].site_id
 
-    primacy_by_group_id = {1: 0, 2: 22, 3: 33}
+    primacy_by_group_id = {1: 11, 2: 22, 3: 1}
     changed_time = datetime(2021, 11, 4, 2, 3, 4, tzinfo=timezone.utc)
 
     async with generate_async_session(pg_base_config) as session:
@@ -237,6 +255,86 @@ async def test_supersede_matching_does_for_site(
             assert doe.superseded == original_superseded_values[doe.dynamic_operating_envelope_id]
             assert doe.dynamic_operating_envelope_id in expected_doe_update_ids
             assert doe.deleted_time is None, "Should be an update - not a delete"
+
+
+@mock.patch("envoy.admin.crud.doe.supersede_matching_does_for_site")
+@pytest.mark.anyio
+async def test_supersede_then_insert_does_many_sites(
+    mock_supersede_matching_does_for_site: mock.MagicMock, pg_base_config
+):
+    async with generate_async_session(pg_base_config) as session:
+        original_doe_count = (
+            await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))
+        ).scalar_one()
+        session.add(generate_class_instance(SiteControlGroup, seed=1, site_control_group_id=2, primacy=22))
+        session.add(generate_class_instance(SiteControlGroup, seed=2, site_control_group_id=3, primacy=33))
+        await session.commit()
+
+    expected_primacy_by_group_id = {1: 0, 2: 22, 3: 33}
+    changed_time = datetime(2021, 11, 4, 2, 3, 4, tzinfo=timezone.utc)
+    does = [
+        generate_class_instance(
+            DynamicOperatingEnvelope,
+            seed=101,
+            dynamic_operating_envelope_id=None,
+            site_id=1,
+            calculation_log_id=None,
+            site_control_group_id=1,
+        ),
+        generate_class_instance(
+            DynamicOperatingEnvelope,
+            seed=202,
+            dynamic_operating_envelope_id=None,
+            site_id=1,
+            calculation_log_id=None,
+            site_control_group_id=2,
+        ),
+        generate_class_instance(
+            DynamicOperatingEnvelope,
+            seed=303,
+            dynamic_operating_envelope_id=None,
+            site_id=2,
+            calculation_log_id=None,
+            site_control_group_id=3,
+        ),
+        generate_class_instance(
+            DynamicOperatingEnvelope,
+            seed=404,
+            dynamic_operating_envelope_id=None,
+            site_id=1,
+            calculation_log_id=None,
+            site_control_group_id=1,
+        ),
+        generate_class_instance(
+            DynamicOperatingEnvelope,
+            seed=505,
+            dynamic_operating_envelope_id=None,
+            site_id=3,
+            calculation_log_id=None,
+            site_control_group_id=2,
+        ),
+    ]
+
+    async with generate_async_session(pg_base_config) as session:
+        await supersede_then_insert_does(session, does, changed_time)
+        await session.commit()
+
+        # Assert that each doe is grouped under the site and then processed in batches of that size
+        mock_supersede_matching_does_for_site.assert_has_calls(
+            [
+                mock.call(session, [does[0], does[1], does[3]], 1, expected_primacy_by_group_id, changed_time),
+                mock.call(session, [does[2]], 2, expected_primacy_by_group_id, changed_time),
+                mock.call(session, [does[4]], 3, expected_primacy_by_group_id, changed_time),
+            ],
+            any_order=True,
+        )
+
+    # check our records were inserted
+    async with generate_async_session(pg_base_config) as session:
+        after_doe_count = (
+            await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))
+        ).scalar_one()
+        assert after_doe_count == original_doe_count + len(does)
 
 
 @pytest.mark.parametrize(

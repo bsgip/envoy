@@ -17,6 +17,7 @@ from envoy.admin.crud.doe import (
     delete_does_with_start_time_in_range,
     select_all_does,
     select_all_site_control_groups,
+    supersede_then_insert_does,
 )
 from envoy.admin.mapper.site_control import SiteControlGroupListMapper, SiteControlListMapper
 from envoy.notification.manager.notification import NotificationManager
@@ -100,7 +101,7 @@ class SiteControlListManager:
 
         changed_time = utc_now()
         doe_models = SiteControlListMapper.map_from_request(site_control_group_id, changed_time, control_list)
-        await cancel_then_insert_does(session, doe_models, changed_time)
+        await supersede_then_insert_does(session, doe_models, changed_time)
         await session.commit()
 
         await NotificationManager.notify_changed_deleted_entities(
