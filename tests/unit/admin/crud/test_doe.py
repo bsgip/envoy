@@ -18,9 +18,12 @@ from envoy.admin.crud.doe import (
     delete_does_with_start_time_in_range,
     select_all_does,
     select_all_site_control_groups,
+    supersede_matching_does_for_site,
 )
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
+
+AEST = ZoneInfo("Australia/Brisbane")
 
 
 async def _select_latest_dynamic_operating_envelope(session) -> DynamicOperatingEnvelope:
@@ -123,6 +126,117 @@ async def test_cancel_then_insert_does_update(pg_base_config):
         )
         assert_nowish(archive_data.archive_time)
         assert archive_data.deleted_time == deleted_time
+
+
+def doe(start_time: datetime, end_time: datetime, scg_id: int = 1, site_id: int = 1) -> DynamicOperatingEnvelope:
+    return generate_class_instance(
+        DynamicOperatingEnvelope,
+        dynamic_operating_envelope_id=None,
+        start_time=start_time,
+        end_time=end_time,
+        site_id=site_id,
+        site_control_group_id=scg_id,
+    )
+
+
+@pytest.mark.parametrize(
+    "doe_list, expected_doe_update_ids",
+    [
+        ([], []),
+        (
+            [doe(datetime(1980, 1, 2, tzinfo=timezone.utc), datetime(1999, 1, 2, tzinfo=timezone.utc))],
+            [],
+        ),  # Complete miss of all DOEs
+        (
+            [doe(datetime(2050, 1, 2, tzinfo=timezone.utc), datetime(2051, 1, 2, tzinfo=timezone.utc))],
+            [],
+        ),  # Complete miss of all DOEs
+        (
+            [
+                doe(datetime(1980, 1, 2, tzinfo=timezone.utc), datetime(1999, 1, 2, tzinfo=timezone.utc)),
+                doe(datetime(2050, 1, 2, tzinfo=timezone.utc), datetime(2051, 1, 2, tzinfo=timezone.utc)),
+            ],
+            [],
+        ),  # Complete miss of all DOEs
+        (
+            [
+                doe(datetime(1980, 1, 2, tzinfo=timezone.utc), datetime(1999, 1, 2, tzinfo=timezone.utc)),
+                doe(datetime(2050, 1, 2, tzinfo=timezone.utc), datetime(2051, 1, 2, tzinfo=timezone.utc)),
+                doe(
+                    datetime(2000, 1, 2, tzinfo=timezone.utc), datetime(2025, 1, 2, tzinfo=timezone.utc)
+                ),  # Will overlap everything
+            ],
+            [1, 4],  # doe 2 is already superseded so won't be updated by this
+        ),  #
+        (
+            [
+                doe(
+                    datetime(2022, 5, 7, 1, 2, 1, tzinfo=AEST), datetime(2022, 5, 7, 1, 2, 10, tzinfo=AEST)
+                ),  # encapsulated by doe 1
+                doe(
+                    datetime(2000, 1, 2, tzinfo=timezone.utc), datetime(2025, 1, 2, tzinfo=timezone.utc)
+                ),  # Will overlap everything
+            ],
+            [1, 4],  # doe 2 is already superseded so won't be updated by this
+        ),
+        (
+            [
+                doe(
+                    datetime(2022, 5, 7, 1, 2, 1, tzinfo=AEST), datetime(2022, 5, 7, 1, 2, 10, tzinfo=AEST)
+                ),  # encapsulated by doe 1
+            ],
+            [1],  # doe 2 is already superseded so won't be updated by this
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_supersede_matching_does_for_site(
+    pg_base_config, doe_list: list[DynamicOperatingEnvelope], expected_doe_update_ids: list[int]
+):
+    async with generate_async_session(pg_base_config) as session:
+        original_superseded_values = dict(
+            (
+                await session.execute(
+                    select(DynamicOperatingEnvelope.dynamic_operating_envelope_id, DynamicOperatingEnvelope.superseded)
+                )
+            )
+            .tuples()
+            .all()
+        )
+        session.add(generate_class_instance(SiteControlGroup, seed=1, site_control_group_id=2, primacy=22))
+        session.add(generate_class_instance(SiteControlGroup, seed=2, site_control_group_id=3, primacy=33))
+        await session.commit()
+
+    site_id = 99
+    if len(doe_list) > 0:
+        site_id = doe_list[0].site_id
+
+    primacy_by_group_id = {1: 0, 2: 22, 3: 33}
+    changed_time = datetime(2021, 11, 4, 2, 3, 4, tzinfo=timezone.utc)
+
+    async with generate_async_session(pg_base_config) as session:
+        await supersede_matching_does_for_site(session, doe_list, site_id, primacy_by_group_id, changed_time)
+        await session.commit()
+
+    # Assert
+    async with generate_async_session(pg_base_config) as session:
+        actual_does = (await session.execute(select(DynamicOperatingEnvelope))).scalars().all()
+        for doe in actual_does:
+            if doe.dynamic_operating_envelope_id in expected_doe_update_ids:
+                # If this is an updated doe - make sure the changed_time / superseded updated
+                assert doe.changed_time == changed_time
+                assert doe.superseded is True
+            else:
+                # Otherwise make sure the columns didn't change
+                assert doe.changed_time != changed_time
+                assert doe.superseded == original_superseded_values[doe.dynamic_operating_envelope_id]
+
+        # Make sure that the only archive records are for the updated does
+        archive_does = (await session.execute(select(ArchiveDynamicOperatingEnvelope))).scalars().all()
+        for doe in archive_does:
+            assert doe.superseded == original_superseded_values[doe.dynamic_operating_envelope_id]
+            assert doe.dynamic_operating_envelope_id in expected_doe_update_ids
+            assert doe.deleted_time is None, "Should be an update - not a delete"
 
 
 @pytest.mark.parametrize(

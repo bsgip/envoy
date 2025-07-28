@@ -77,8 +77,12 @@ async def cancel_then_insert_does(
 
 
 async def supersede_then_insert_does(
-    session: AsyncSession, doe_list: list[DynamicOperatingEnvelope], site_id: int, changed_time: datetime
+    session: AsyncSession, doe_list: list[DynamicOperatingEnvelope], changed_time: datetime
 ) -> None:
+    """Inserts the specified list of doe's. Any existing doe in the database will have their superseded flag updated
+    if they overlap in time (taking into account primacy / creation time)
+
+    Will generate archive records for updated controls"""
 
     if len(doe_list) == 0:
         return
@@ -133,12 +137,6 @@ async def supersede_matching_does_for_site(
     if len(doe_list) == 0:
         return
 
-    # start by caching all primacy values from the parent SiteControlGroup's
-    group_id_primacy_values = (
-        await session.execute(select(SiteControlGroup.site_control_group_id, SiteControlGroup.primacy))
-    ).all()
-    primacy_by_group_id = dict((row.tuple() for row in group_id_primacy_values))
-
     # Figure out the date range of the incoming controls so we can narrow our search space
     min_date = datetime.max.replace(tzinfo=timezone.utc)
     max_date = datetime.min.replace(tzinfo=timezone.utc)
@@ -150,22 +148,40 @@ async def supersede_matching_does_for_site(
 
     # Now go to the database to find existing controls that *might* overlap with the controls in doe_list
     # We deliberately avoid fetching the full models to avoid polluting the session with a ton of entities
+    bacon = select(
+        DynamicOperatingEnvelope.dynamic_operating_envelope_id,
+        DynamicOperatingEnvelope.site_control_group_id,
+        DynamicOperatingEnvelope.start_time,
+        DynamicOperatingEnvelope.end_time,
+    ).where(
+        # We include site_control_group to ensure we can utilise our indexes
+        (DynamicOperatingEnvelope.site_control_group_id.in_(primacy_by_group_id.keys()))
+        & (DynamicOperatingEnvelope.site_id == site_id)
+        & (DynamicOperatingEnvelope.end_time > min_date)
+        & (DynamicOperatingEnvelope.start_time < max_date)
+        & (DynamicOperatingEnvelope.superseded is False)  # Can't supersede something twice
+    )
     potential_matches = (
-        await session.execute(
-            select(
-                DynamicOperatingEnvelope.dynamic_operating_envelope_id,
-                DynamicOperatingEnvelope.site_control_group_id,
-                DynamicOperatingEnvelope.start_time,
-                DynamicOperatingEnvelope.end_time,
-            ).where(
-                # We include site_control_group to ensure we can utilise our indexes
-                (DynamicOperatingEnvelope.site_control_group_id.in_(primacy_by_group_id.keys()))
-                & (DynamicOperatingEnvelope.site_id == site_id)
-                & (DynamicOperatingEnvelope.end_time > min_date)
-                & (DynamicOperatingEnvelope.start_time < max_date)
+        (
+            await session.execute(
+                select(
+                    DynamicOperatingEnvelope.dynamic_operating_envelope_id,
+                    DynamicOperatingEnvelope.site_control_group_id,
+                    DynamicOperatingEnvelope.start_time,
+                    DynamicOperatingEnvelope.end_time,
+                ).where(
+                    # We include site_control_group to ensure we can utilise our indexes
+                    (DynamicOperatingEnvelope.site_control_group_id.in_(primacy_by_group_id.keys()))
+                    & (DynamicOperatingEnvelope.site_id == site_id)
+                    & (DynamicOperatingEnvelope.end_time > min_date)
+                    & (DynamicOperatingEnvelope.start_time < max_date)
+                    & (DynamicOperatingEnvelope.superseded.is_(False))  # Can't supersede something twice
+                )
             )
         )
-    ).tuples()
+        .tuples()
+        .all()
+    )
 
     # Build an efficient tree for quick lookups based on start/end time
     doe_list_tree = IntervalTree((Interval(doe.start_time, doe.end_time, doe) for doe in doe_list))
@@ -175,7 +191,8 @@ async def supersede_matching_does_for_site(
     superseded_doe_ids: list[int] = []
     for existing_doe_id, existing_site_control_id, existing_start_time, existing_end_time in potential_matches:
         existing_doe_primacy = primacy_by_group_id[existing_site_control_id]
-        for incoming_doe in cast(set[DynamicOperatingEnvelope], doe_list_tree[existing_start_time, existing_end_time]):
+        for interval in cast(set[Interval], doe_list_tree[existing_start_time:existing_end_time]):  # type: ignore
+            incoming_doe: DynamicOperatingEnvelope = interval.data
             # At this point we know this incoming DOE intersects our existing_doe - next step is to work out whether
             # its at a lower/higher priority
             incoming_doe_primacy = primacy_by_group_id[incoming_doe.site_control_group_id]
