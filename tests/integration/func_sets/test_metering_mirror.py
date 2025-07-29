@@ -158,6 +158,31 @@ async def test_get_mirror_usage_point_list_errors(
             ),
             "/mup/6",
         ),
+        # Create a new mup (uppercase lfdi)
+        (
+            MirrorUsagePointRequest.model_validate(
+                {
+                    "mRID": "123",
+                    "deviceLFDI": "SITE1-lfdi",
+                    "serviceCategoryKind": ServiceKind.ELECTRICITY,
+                    "roleFlags": "1",
+                    "status": 0,
+                    "mirrorMeterReadings": [
+                        {
+                            "mRID": "123abc",
+                            "readingType": {
+                                "powerOfTenMultiplier": 5,
+                                "kind": KindType.POWER,
+                                "uom": UomType.DISPLACEMENT_POWER_FACTOR_COSTHETA,
+                                "phase": PhaseCode.PHASE_CA,
+                                "flowDirection": FlowDirectionType.REVERSE,
+                            },
+                        }
+                    ],
+                }
+            ),
+            "/mup/6",
+        ),
         # Create a new mup with powerOfTenMultiplier = 0
         (
             MirrorUsagePointRequest.model_validate(
@@ -211,6 +236,34 @@ async def test_get_mirror_usage_point_list_errors(
             ),
             "/mup/1",
         ),
+        # Case insensitive lfdi lookup
+        (
+            MirrorUsagePointRequest.model_validate(
+                {
+                    "mRID": "456",
+                    "deviceLFDI": "SITE1-LFdi",
+                    "serviceCategoryKind": ServiceKind.ELECTRICITY,
+                    "roleFlags": "1",
+                    "status": 0,
+                    "mirrorMeterReadings": [
+                        {
+                            "mRID": "456abc",
+                            "readingType": {
+                                "powerOfTenMultiplier": 3,
+                                "kind": KindType.POWER,
+                                "uom": UomType.REAL_POWER_WATT,
+                                "phase": PhaseCode.PHASE_B,
+                                "flowDirection": FlowDirectionType.FORWARD,
+                                "dataQualifier": DataQualifierType.AVERAGE,
+                                "accumulationBehaviour": AccumulationBehaviourType.CUMULATIVE,
+                                "intervalLength": None,
+                            },
+                        }
+                    ],
+                }
+            ),
+            "/mup/1",
+        ),
     ],
 )
 @pytest.mark.anyio
@@ -235,8 +288,9 @@ async def test_create_update_mup(client: AsyncClient, mup: MirrorUsagePointReque
     parsed_response: MirrorUsagePoint = MirrorUsagePoint.from_xml(body)
     assert parsed_response.href == expected_href
     assert_class_instance_equality(
-        MirrorUsagePoint, mup, parsed_response, ignored_properties=set(["href", "mRID", "postRate"])
+        MirrorUsagePoint, mup, parsed_response, ignored_properties=set(["href", "mRID", "postRate", "deviceLFDI"])
     )
+    assert parsed_response.deviceLFDI == mup.deviceLFDI.lower(), "LFDIs should be mapped to lowercase"
 
     # see if the list endpoint can fetch it via the updated time
     response = await client.get(

@@ -13,6 +13,7 @@ from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.crud.common import sum_digits
+from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href, parse_device_category
 from envoy.server.model.site import Site
 from envoy.server.request_scope import BaseRequestScope
@@ -51,8 +52,10 @@ class EndDeviceMapper:
     def map_from_request(
         end_device: EndDeviceRequest, aggregator_id: int, changed_time: datetime, registration_pin: int
     ) -> Site:
+        if not end_device.lFDI:
+            raise InvalidMappingError("No lfdi was specified for EndDevice.")
         return Site(
-            lfdi=end_device.lFDI,
+            lfdi=end_device.lFDI.lower(),  # Always store it lower case
             sfdi=end_device.sFDI,
             registration_pin=registration_pin,
             changed_time=changed_time,

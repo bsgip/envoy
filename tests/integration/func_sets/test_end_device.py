@@ -334,9 +334,9 @@ async def test_create_end_device_shinehub(client: AsyncClient, edev_base_uri: st
 async def test_create_end_device_specified_sfdi(client: AsyncClient, edev_base_uri: str):
     """When creating an end_device check to see if it persists and is correctly assigned to the aggregator"""
 
-    insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
-    insert_request.postRate = 123
-    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
+    insert_request: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest, postRate=123, deviceCategory="{0:x}".format(int(DeviceCategory.HOT_TUB)), lFDI="123ABCdef"
+    )
     response = await client.post(
         edev_base_uri,
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
@@ -355,7 +355,7 @@ async def test_create_end_device_specified_sfdi(client: AsyncClient, edev_base_u
     assert_nowish(parsed_response.changedTime)
     assert parsed_response.href == inserted_href
     assert parsed_response.enabled == 1
-    assert parsed_response.lFDI == insert_request.lFDI
+    assert parsed_response.lFDI == insert_request.lFDI.lower()
     assert parsed_response.sFDI == insert_request.sFDI
     assert parsed_response.deviceCategory == insert_request.deviceCategory
 
@@ -580,6 +580,7 @@ async def test_update_end_device_bad_device_category(
     [
         (UNREGISTERED_CERT.decode(), UNREGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI), HTTPStatus.CREATED),
         (UNREGISTERED_CERT_LFDI, UNREGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI), HTTPStatus.CREATED),
+        (UNREGISTERED_CERT_LFDI, UNREGISTERED_CERT_LFDI.upper(), int(UNREGISTERED_CERT_SFDI), HTTPStatus.CREATED),
         # Trying bad combos of lfdi/sfdi
         (UNREGISTERED_CERT_LFDI, REGISTERED_CERT_LFDI, int(UNREGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),
         (UNREGISTERED_CERT_LFDI, UNREGISTERED_CERT_LFDI, int(REGISTERED_CERT_SFDI), HTTPStatus.FORBIDDEN),

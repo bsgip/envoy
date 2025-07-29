@@ -66,24 +66,28 @@ async def test_create_or_fetch_mirror_usage_point_aggregator(
 @mock.patch("envoy.server.manager.metering.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.metering.upsert_site_reading_type_for_aggregator")
 @mock.patch("envoy.server.manager.metering.MirrorUsagePointMapper")
-@pytest.mark.parametrize("scope_site_id", [None, 123])
+@pytest.mark.parametrize("scope_site_id, request_lfdi", product([None, 123], ["abc123DEF", "abc123def"]))
 async def test_create_or_fetch_mirror_usage_point_device(
     mock_MirrorUsagePointMapper: mock.MagicMock,
     mock_upsert_site_reading_type_for_aggregator: mock.MagicMock,
     mock_select_single_site_with_lfdi: mock.MagicMock,
     scope_site_id: Optional[int],
+    request_lfdi: str,
 ):
     """Check that the manager will handle interacting with the DB and its responses (when handling a valid device
     cert)"""
 
     # Arrange
     mock_session = create_mock_session()
-    mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint)
+    mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, deviceLFDI=request_lfdi)
     existing_site: Site = generate_class_instance(Site)
     mapped_srt: SiteReadingType = generate_class_instance(SiteReadingType)
     srt_id = 3
     scope: MUPRequestScope = generate_class_instance(
-        MUPRequestScope, source=CertificateType.DEVICE_CERTIFICATE, site_id=scope_site_id, lfdi=mup.deviceLFDI
+        MUPRequestScope,
+        source=CertificateType.DEVICE_CERTIFICATE,
+        site_id=scope_site_id,
+        lfdi=request_lfdi.lower(),  # scope lfdis are always lowercase
     )
 
     mock_select_single_site_with_lfdi.return_value = existing_site
@@ -97,7 +101,7 @@ async def test_create_or_fetch_mirror_usage_point_device(
     assert result == srt_id
     assert_mock_session(mock_session, committed=True)
     mock_select_single_site_with_lfdi.assert_called_once_with(
-        session=mock_session, lfdi=mup.deviceLFDI, aggregator_id=scope.aggregator_id
+        session=mock_session, lfdi=mup.deviceLFDI.lower(), aggregator_id=scope.aggregator_id
     )
     mock_upsert_site_reading_type_for_aggregator.assert_called_once_with(
         session=mock_session, aggregator_id=scope.aggregator_id, site_reading_type=mapped_srt

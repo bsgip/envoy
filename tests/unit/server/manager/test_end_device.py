@@ -370,6 +370,26 @@ async def test_delete_enddevice_for_scope(
     )
 
 
+@pytest.mark.parametrize(
+    "lhs, rhs, expected",
+    [
+        (None, None, True),
+        (None, "abc123", False),
+        (None, "", False),
+        ("abc123", None, False),
+        ("abc123", "abc123456", False),
+        ("abc123", "abc123", True),
+        ("abc123", "ABC123", True),
+        ("ABC123", "abc123", True),
+        ("AbC123", "ABC123", True),
+    ],
+)
+def test_lfdi_matches(lhs: Optional[str], rhs: Optional[str], expected: bool):
+    actual = EndDeviceManager.lfdi_matches(lhs, rhs)
+    assert isinstance(actual, bool)
+    assert actual is expected
+
+
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.end_device.NotificationManager")
 @mock.patch("envoy.server.manager.end_device.upsert_site_for_aggregator")
@@ -593,6 +613,50 @@ async def test_add_or_update_enddevice_for_scope_device(
     end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     end_device.sFDI = scope.sfdi
     end_device.lFDI = scope.lfdi
+    mapped_site: Site = generate_class_instance(Site)
+    now: datetime = datetime(2020, 1, 2, 3, 4)
+
+    mock_generate_registration_pin.return_value = 55312
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
+    mock_upsert_site_for_aggregator.return_value = 4321
+    mock_utc_now.return_value = now
+
+    # Act
+    returned_site_id = await EndDeviceManager.add_or_update_enddevice_for_scope(mock_session, scope, end_device)
+    assert returned_site_id == mock_upsert_site_for_aggregator.return_value
+
+    # Assert
+    assert_mock_session(mock_session, committed=True)
+    mock_generate_registration_pin.assert_called_once()
+    mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now, 55312)
+    mock_upsert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
+    mock_utc_now.assert_called_once()
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.NotificationManager")
+@mock.patch("envoy.server.manager.end_device.upsert_site_for_aggregator")
+@mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
+@mock.patch("envoy.server.manager.end_device.utc_now")
+@mock.patch("envoy.server.manager.end_device.RegistrationManager.generate_registration_pin")
+async def test_add_or_update_enddevice_for_scope_device_lfdi_case_insensitive(
+    mock_generate_registration_pin: mock.MagicMock,
+    mock_utc_now: mock.MagicMock,
+    mock_EndDeviceMapper: mock.MagicMock,
+    mock_upsert_site_for_aggregator: mock.MagicMock,
+    mock_NotificationManager: mock.MagicMock,
+):
+    """Checks that lfdi/sfdi from the scope are compared against a lower case version of the requested lfdi"""
+    # Arrange
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE, lfdi="abc123def"
+    )
+    mock_session = create_mock_session()
+    end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    end_device.sFDI = scope.sfdi
+    end_device.lFDI = "abc123DEF"  # Upper case variant - should still match
     mapped_site: Site = generate_class_instance(Site)
     now: datetime = datetime(2020, 1, 2, 3, 4)
 

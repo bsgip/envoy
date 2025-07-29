@@ -41,14 +41,15 @@ class MirrorMeteringManager:
         or updated mup. Raises InvalidIdError if the underlying site cannot be fetched
 
         Will commit the underlying session on success"""
+
+        mup_lfdi = mup.deviceLFDI.lower()  # Always compare on lowercase
+
         if scope.source == CertificateType.DEVICE_CERTIFICATE:
             # device certs are limited to the LFDI of the device cert
-            if mup.deviceLFDI != scope.lfdi:
+            if mup_lfdi != scope.lfdi:
                 raise ForbiddenError(f"deviceLFDI '{mup.deviceLFDI}' doesn't match client certificate '{scope.lfdi}'")
 
-        site = await select_single_site_with_lfdi(
-            session=session, lfdi=mup.deviceLFDI, aggregator_id=scope.aggregator_id
-        )
+        site = await select_single_site_with_lfdi(session=session, lfdi=mup_lfdi, aggregator_id=scope.aggregator_id)
         if site is None:
             raise InvalidIdError(f"deviceLFDI {mup.deviceLFDI} doesn't match a known site.")
 

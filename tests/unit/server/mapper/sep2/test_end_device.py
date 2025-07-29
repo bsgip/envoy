@@ -148,14 +148,29 @@ def test_list_map_to_response():
 
 
 @mock.patch("envoy.server.mapper.sep2.end_device.settings")
+@pytest.mark.parametrize("lfdi", ["", None])
+def test_map_from_request_missing_lfdi(mock_settings: mock.MagicMock, lfdi: Optional[str]):
+    """A None lfdi is an error and should raise an appropriate exception."""
+    mock_settings.default_timezone = "abc/123"
+
+    end_device: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest, seed=101, optional_is_none=False, lFDI=lfdi, deviceCategory=None
+    )
+    with pytest.raises(InvalidMappingError):
+        EndDeviceMapper.map_from_request(end_device, 1, generate_value(datetime, 303), 12345)
+
+
+@mock.patch("envoy.server.mapper.sep2.end_device.settings")
 def test_map_from_request(mock_settings: mock.MagicMock):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
     mock_settings.default_timezone = "abc/123"
 
-    end_device_all_set: EndDeviceRequest = generate_class_instance(EndDeviceRequest, seed=101, optional_is_none=False)
-    end_device_all_set.deviceCategory = "c0ffee"  # needs to be a hex string
-    end_device_optional: EndDeviceRequest = generate_class_instance(EndDeviceRequest, seed=202, optional_is_none=True)
-    end_device_optional.deviceCategory = None
+    end_device_all_set: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest, seed=101, optional_is_none=False, lFDI="abcDEF", deviceCategory="c0ffee"
+    )
+    end_device_optional: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest, seed=202, optional_is_none=True, lFDI="defABC", deviceCategory=None
+    )
     changed_time: datetime = generate_value(datetime, 303)
     aggregator_id: int = 404
     registration_pin: int = 505
@@ -166,7 +181,7 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     assert result_all_set.post_rate_seconds == end_device_all_set.postRate
     assert result_all_set.changed_time == changed_time
     assert result_all_set.aggregator_id == aggregator_id
-    assert result_all_set.lfdi == end_device_all_set.lFDI
+    assert result_all_set.lfdi == end_device_all_set.lFDI.lower(), "We encode LFDI as all lower case"
     assert isinstance(result_all_set.device_category, DeviceCategory)
     assert result_all_set.device_category == int("c0ffee", 16)
     assert result_all_set.timezone_id == "abc/123"
@@ -180,7 +195,7 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     assert result_optional.post_rate_seconds is None
     assert result_optional.changed_time == changed_time
     assert result_optional.aggregator_id == aggregator_id
-    assert result_optional.lfdi == end_device_optional.lFDI
+    assert result_optional.lfdi == end_device_optional.lFDI.lower(), "We encode LFDI as all lower case"
     assert isinstance(result_all_set.device_category, DeviceCategory)
     assert result_optional.device_category == DeviceCategory(0)
     assert result_optional.timezone_id == "abc/123"

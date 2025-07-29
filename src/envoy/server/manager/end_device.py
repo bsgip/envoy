@@ -157,6 +157,11 @@ class EndDeviceManager:
         raise UnableToGenerateIdError(f"Unable to generate a unique sfdi within {MAX_ATTEMPTS} attempts. Failing.")
 
     @staticmethod
+    def lfdi_matches(a: Optional[str], b: Optional[str]) -> bool:
+        """Case insensitive matching of LFDIs"""
+        return (None if a is None else a.lower()) == (None if b is None else b.lower())
+
+    @staticmethod
     async def add_or_update_enddevice_for_scope(
         session: AsyncSession, scope: UnregisteredRequestScope, end_device: EndDeviceRequest
     ) -> int:
@@ -172,7 +177,7 @@ class EndDeviceManager:
             # In this case - the client is restricted to ONLY interact with the site with the same sfdi/lfdi
             if end_device.sFDI != scope.sfdi:
                 raise ForbiddenError(f"sfdi mismatch. POST body: {end_device.sFDI} cert: {scope.sfdi}")
-            if end_device.lFDI != scope.lfdi:
+            if not EndDeviceManager.lfdi_matches(end_device.lFDI, scope.lfdi):
                 raise ForbiddenError(f"lfdi mismatch. POST body: '{end_device.lFDI}' cert: '{scope.lfdi}'")
 
         # Generate the sfdi if required (never do this for device certs)

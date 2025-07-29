@@ -26,7 +26,7 @@ class BaseRequestScope:
     """The common fields for ALL request scopes. A request scope is a narrowed form of auth that outline very
     precise restrictions on what a request can interact with. A scope is created from a RawRequestClaims."""
 
-    lfdi: str  # The lfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
+    lfdi: str  # The lowercase lfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
     sfdi: int  # The sfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
     href_prefix: Optional[str]  # If set - all outgoing href's should be prefixed with this value
     iana_pen: int  # The IANA Private Enterprise Number of the org hosting this utility server instance
