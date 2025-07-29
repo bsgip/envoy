@@ -194,14 +194,16 @@ async def test_create_does_with_active_subscription(
     [(DynamicOperatingEnvelopeRequest, DoeUri), (SiteControlRequest, SiteControlUri.format(group_id=1))],
 )
 @pytest.mark.anyio
-async def test_replace_doe_with_active_subscription(
+async def test_supersede_doe_with_active_subscription(
     admin_client_auth: AsyncClient,
     notifications_enabled: MockedAsyncClient,
     pg_base_config,
     body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
     uri: str,
 ):
-    """Tests replacing a DOEs with an active subscription generates notifications for the deleted and inserted entity"""
+    """Tests superseding a DOE with an active subscription generates notifications for the superseded and inserted
+    entity"""
+
     # Create a subscription to actually pickup these changes
     subscription1_uri = "http://my.example:542/uri"
     async with generate_async_session(pg_base_config) as session:
@@ -223,7 +225,7 @@ async def test_replace_doe_with_active_subscription(
 
         await session.commit()
 
-    # This will replace DOE 1 and generate a delete for the original and an insert for the new value
+    # This will supersede DOE 1 and generate an insert for the new value
     doe_1 = generate_class_instance(
         body_type,
         seed=10001,
@@ -240,11 +242,11 @@ async def test_replace_doe_with_active_subscription(
     assert resp.status_code == HTTPStatus.CREATED
 
     # Give the notifications a chance to propagate
-    assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
 
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
-    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
-    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 2
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
 
     assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
     assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
@@ -259,25 +261,15 @@ async def test_replace_doe_with_active_subscription(
                 r
                 for r in notifications_enabled.logged_requests
                 if r.uri == subscription1_uri
-                and f"{doe_1.export_limit_watts}" in r.content
-                and "<status>0</status>" in r.content
+                and f"<value>{doe_1.export_limit_watts * 100}</value>" in r.content  # Value of new DERControl
+                and "<currentStatus>0</currentStatus>" in r.content  # One DERControl is "scheduled"
+                and "<value>111</value>" in r.content  # Value of superseded DERControl
+                and "<currentStatus>4</currentStatus>" in r.content  # One DERControl is "superseded"
+                and "<status>0</status>" in r.content  # NotificationStatus DEFAULT
             ]
         )
         == 1
-    ), "Only one notification for the insertion"
-
-    assert (
-        len(
-            [
-                r
-                for r in notifications_enabled.logged_requests
-                if r.uri == subscription1_uri
-                and "<value>111</value>" in r.content
-                and "<status>4</status>" in r.content
-            ]
-        )
-        == 1
-    ), "Only one notification for the deletion"
+    ), "Only one notification for the insertion and superseded record"
 
 
 @pytest.mark.parametrize(

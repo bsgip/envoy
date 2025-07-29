@@ -11,7 +11,6 @@ from envoy_schema.admin.schema.site_control import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.doe import (
-    cancel_then_insert_does,
     count_all_does,
     count_all_site_control_groups,
     delete_does_with_start_time_in_range,

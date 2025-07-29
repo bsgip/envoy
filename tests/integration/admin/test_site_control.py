@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+from decimal import Decimal
 from http import HTTPStatus
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -151,20 +152,21 @@ async def test_create_site_controls_bad_group_id(admin_client_auth: AsyncClient)
 
 
 @pytest.mark.anyio
-async def test_update_site_control(pg_base_config, admin_client_auth: AsyncClient):
-    """Checks that updating a site control will update in place and not insert a new record"""
+async def test_supersede_site_control(pg_base_config, admin_client_auth: AsyncClient):
+    """Checks that creating a new site control that overlaps at existing one (with priority) will mark the old
+    record as superseded"""
     # Check the DB
     async with generate_async_session(pg_base_config) as session:
         stmt = select(func.count()).select_from(DynamicOperatingEnvelope)
         resp = await session.execute(stmt)
         initial_count = resp.scalar_one()
 
-    # This should be updating doe 1
+    # This should be superseding doe 1 (doe1 fully encapsulates it)
     updated_rate = SiteControlRequest(
         site_id=1,
-        start_time=datetime(2022, 5, 7, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
-        duration_seconds=11131,
-        calculation_log_id=3,
+        start_time=datetime(2022, 5, 7, 1, 2, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
+        duration_seconds=5,
+        calculation_log_id=3,  # This is how we'll look this record up in the DB later
         export_limit_watts=44,
         import_limit_watts=55,
     )
@@ -178,22 +180,38 @@ async def test_update_site_control(pg_base_config, admin_client_auth: AsyncClien
 
     # Check the DB
     async with generate_async_session(pg_base_config) as session:
-        stmt = select(func.count()).select_from(DynamicOperatingEnvelope)
-        resp = await session.execute(stmt)
-        after_count = resp.scalar_one()
+        after_count = (await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))).scalar_one()
 
-        assert initial_count == after_count, "This should've been an update, not an insert"
+        assert (initial_count + 1) == after_count, "This should've been an insert"
 
-        stmt = select(DynamicOperatingEnvelope).where(DynamicOperatingEnvelope.calculation_log_id == 3)
-        db_doe = (await session.execute(stmt)).scalar_one()
+        # doe_1 should be marked as superseded but otherwise unchanged
+        doe_1 = (
+            await session.execute(
+                select(DynamicOperatingEnvelope).where(DynamicOperatingEnvelope.dynamic_operating_envelope_id == 1)
+            )
+        ).scalar_one()
+        assert doe_1.import_limit_active_watts == Decimal("1.11"), "unchanged"
+        assert doe_1.export_limit_watts == Decimal("-1.22"), "unchanged"
+        assert doe_1.superseded is True
+        assert_nowish(doe_1.changed_time)
+        assert doe_1.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "unchanged"
 
-        assert db_doe.calculation_log_id == updated_rate.calculation_log_id
-        assert db_doe.start_time == updated_rate.start_time
-        assert db_doe.duration_seconds == updated_rate.duration_seconds
-        assert_nowish(db_doe.changed_time)
-        assert_nowish(db_doe.created_time)  # The update deletes the old and inserts a new record
-        assert db_doe.import_limit_active_watts == updated_rate.import_limit_watts
-        assert db_doe.export_limit_watts == updated_rate.export_limit_watts
+        inserted_doe = (
+            await session.execute(
+                select(DynamicOperatingEnvelope).where(DynamicOperatingEnvelope.calculation_log_id == 3)
+            )
+        ).scalar_one()
+
+        assert inserted_doe.calculation_log_id == updated_rate.calculation_log_id
+        assert inserted_doe.start_time == updated_rate.start_time
+        assert inserted_doe.duration_seconds == updated_rate.duration_seconds
+        assert_nowish(inserted_doe.changed_time)
+        assert_nowish(inserted_doe.created_time)
+        assert inserted_doe.import_limit_active_watts == updated_rate.import_limit_watts
+        assert inserted_doe.export_limit_watts == updated_rate.export_limit_watts
+        assert inserted_doe.superseded is False
+
+        assert inserted_doe.changed_time == doe_1.changed_time, "Changed in the same operation"
 
         assert (
             await session.execute(select(func.count()).select_from(ArchiveDynamicOperatingEnvelope))

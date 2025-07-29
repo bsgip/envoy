@@ -205,6 +205,14 @@ def doe(start_time: datetime, end_time: datetime, scg_id: int = 1, site_id: int 
             ],
             [1],  # site control group 3 is lower primacy and will therefore supersede
         ),
+        (
+            [
+                doe(
+                    datetime(2022, 5, 7, 1, 2, 1, tzinfo=AEST), datetime(2022, 5, 7, 1, 2, 10, tzinfo=AEST), site_id=3
+                ),  # encapsulated by doe 1
+            ],
+            [],  # site 3 doesn't have a doe at this time - there's nothing to supersede
+        ),
     ],
 )
 @pytest.mark.anyio

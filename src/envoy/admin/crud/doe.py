@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Callable, Optional, Sequence, cast
 
-from intervaltree import Interval, IntervalTree
+from intervaltree import Interval, IntervalTree  # type: ignore
 from sqlalchemy import Delete, and_, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 

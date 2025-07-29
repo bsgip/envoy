@@ -245,6 +245,7 @@ async def test_get_response_for_device_cert(
                 end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=timezone.utc),
                 import_limit_active_watts=100,
                 export_limit_watts=200,
+                superseded=False,
             )
         )
 
@@ -421,6 +422,7 @@ async def test_get_response_list_pagination_for_device_cert(
                 duration_seconds=300,
                 import_limit_active_watts=100,
                 export_limit_watts=200,
+                superseded=False,
             )
         )
 

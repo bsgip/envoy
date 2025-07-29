@@ -4,7 +4,7 @@ from typing import Optional
 from envoy_schema.admin.schema.doe import DoePageResponse, DynamicOperatingEnvelopeRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.admin.crud.doe import cancel_then_insert_does, count_all_does, select_all_does
+from envoy.admin.crud.doe import count_all_does, select_all_does, supersede_then_insert_does
 from envoy.admin.mapper.doe import DEFAULT_DOE_SITE_CONTROL_GROUP_ID, DoeListMapper
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.manager.time import utc_now
@@ -14,11 +14,11 @@ from envoy.server.model.subscription import SubscriptionResource
 class DoeListManager:
     @staticmethod
     async def add_many_doe(session: AsyncSession, doe_list: list[DynamicOperatingEnvelopeRequest]) -> None:
-        """Insert a single DOE into the db. Returns the ID of the inserted DOE."""
+        """Inserts multiple DOE into the db as a batch."""
 
         changed_time = utc_now()
         doe_models = DoeListMapper.map_from_request(changed_time, doe_list)
-        await cancel_then_insert_does(session, doe_models, changed_time)
+        await supersede_then_insert_does(session, doe_models, changed_time)
         await session.commit()
 
         await NotificationManager.notify_changed_deleted_entities(
