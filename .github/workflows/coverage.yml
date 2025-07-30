@@ -15,7 +15,7 @@ jobs:
     outputs:
       source_raw: ${{ steps.extract.outputs.raw }}
     steps:
-      - name: Checkout (source)
+      - name: Checkout (source branch)
         uses: actions/checkout@v3.1.0
 
       - name: Setup Python
@@ -28,7 +28,7 @@ jobs:
           sudo apt install -y postgresql
           pip install --ignore-installed .[dev,test]
 
-      - name: Coverage (source)
+      - name: Coverage (source branch)
         run: |
           coverage run --data-file=.coverage-source -m pytest
 
@@ -44,7 +44,7 @@ jobs:
     outputs:
       target_raw: ${{ steps.extract.outputs.raw }}
     steps:
-      - name: Checkout (target)
+      - name: Checkout (target branch)
         uses: actions/checkout@v3.1.0
         with:
           ref: ${{ github.base_ref }}
@@ -59,7 +59,7 @@ jobs:
           sudo apt install -y postgresql
           pip install --ignore-installed .[dev,test]
 
-      - name: Coverage (target)
+      - name: Coverage (target branch)
         run: |
           coverage run --data-file=.coverage-target -m pytest
 
