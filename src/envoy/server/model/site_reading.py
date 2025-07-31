@@ -38,6 +38,9 @@ class SiteReadingType(Base):
         VARCHAR(length=32)
     )  # lowercase hex string (should be case insensitive). Uniquely identifies this SiteReadingType for a specific site
     group_id: Mapped[int] = mapped_column(INTEGER)  # Means for virtually grouping this entity under a MUP
+    group_mrid: Mapped[str] = mapped_column(
+        VARCHAR(length=32)
+    )  # lowercase hex string (should be case insensitive). Uniquely identifies the parent MUP
 
     uom: Mapped[UomType] = mapped_column(INTEGER)
     data_qualifier: Mapped[DataQualifierType] = mapped_column(INTEGER)
@@ -66,6 +69,9 @@ class SiteReadingType(Base):
             "mrid",
             name="site_reading_type_aggregator_id_site_id_mrid_uc",
         ),
+        Index(
+            "site_reading_type_aggregator_id_group_mrid_ix", "aggregator_id", "group_mrid", unique=False
+        ),  # To support aggregator cert lookups
         Index(
             "site_reading_type_aggregator_id_group_id_ix", "aggregator_id", "group_id", unique=False
         ),  # To support aggregator cert lookups

@@ -29,6 +29,10 @@ def upgrade() -> None:
     op.execute("UPDATE archive_site_reading_type SET mrid = cast (site_reading_type_id as varchar);")
     op.alter_column("archive_site_reading_type", "mrid", nullable=False)
 
+    op.add_column("archive_site_reading_type", sa.Column("group_mrid", sa.VARCHAR(length=32), nullable=True))
+    op.execute("UPDATE archive_site_reading_type SET group_mrid = cast (site_reading_type_id as varchar);")
+    op.alter_column("archive_site_reading_type", "group_mrid", nullable=False)
+
     op.add_column("archive_site_reading_type", sa.Column("group_id", sa.INTEGER(), nullable=True))
     op.execute("UPDATE archive_site_reading_type SET group_id = site_reading_type_id;")
     op.alter_column("archive_site_reading_type", "group_id", nullable=False)
@@ -37,10 +41,20 @@ def upgrade() -> None:
     op.execute("UPDATE site_reading_type SET mrid = cast (site_reading_type_id as varchar);")
     op.alter_column("site_reading_type", "mrid", nullable=False)
 
+    op.add_column("site_reading_type", sa.Column("group_mrid", sa.VARCHAR(length=32), nullable=True))
+    op.execute("UPDATE site_reading_type SET group_mrid = cast (site_reading_type_id as varchar);")
+    op.alter_column("site_reading_type", "group_mrid", nullable=False)
+
     op.add_column("site_reading_type", sa.Column("group_id", sa.INTEGER(), nullable=True))
     op.execute("UPDATE site_reading_type SET group_id = site_reading_type_id;")
     op.alter_column("site_reading_type", "group_id", nullable=False)
 
+    op.create_index(
+        "site_reading_type_aggregator_id_group_mrid_ix",
+        "site_reading_type",
+        ["aggregator_id", "group_mrid"],
+        unique=False,
+    )
     op.create_index(
         "site_reading_type_aggregator_id_group_id_ix", "site_reading_type", ["aggregator_id", "group_id"], unique=False
     )
@@ -62,6 +76,7 @@ def downgrade() -> None:
     op.drop_constraint("site_reading_type_aggregator_id_site_id_mrid_uc", "site_reading_type", type_="unique")
     op.drop_index("site_reading_type_aggregator_id_group_id_ix", table_name="site_reading_type")
     op.drop_index("site_reading_type_aggregator_id_site_id_group_id_ix", table_name="site_reading_type")
+    op.drop_index("site_reading_type_aggregator_id_group_mrid_ix", table_name="site_reading_type")
     op.create_unique_constraint(
         op.f("site_reading_type_all_values_uc"),
         "site_reading_type",
@@ -80,7 +95,9 @@ def downgrade() -> None:
         ],
     )
     op.drop_column("site_reading_type", "group_id")
+    op.drop_column("site_reading_type", "group_mrid")
     op.drop_column("site_reading_type", "mrid")
     op.drop_column("archive_site_reading_type", "group_id")
+    op.drop_column("archive_site_reading_type", "group_mrid")
     op.drop_column("archive_site_reading_type", "mrid")
     # ### end Alembic commands ###

@@ -7,10 +7,9 @@ import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.asserts.type import assert_iterable_type, assert_list_type
-from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.types import QualityFlagsType
-from sqlalchemy import func, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.site_reading import (
@@ -20,8 +19,8 @@ from envoy.server.crud.site_reading import (
     fetch_grouped_site_reading_details,
     fetch_site_reading_type_for_mrid,
     fetch_site_reading_types_for_group,
+    fetch_site_reading_types_for_group_mrid,
     generate_site_reading_type_group_id,
-    upsert_site_reading_type_for_aggregator,
     upsert_site_readings,
 )
 from envoy.server.manager.time import utc_now
@@ -63,6 +62,7 @@ async def test_generate_site_reading_type_group_id(pg_base_config):
         (0, 5, 1, []),
         (1, None, 1, [1, 5]),
         (3, 1, 2, [2]),
+        (1, 1, 99, []),
     ],
 )
 @pytest.mark.anyio
@@ -75,9 +75,34 @@ async def test_fetch_site_reading_types_for_group(
         assert [r.site_reading_type_id for r in results] == expected_srt_ids
 
 
-def g(group_id: int, site_id: int, site_lfdi: str, role_flags: int) -> GroupedSiteReadingTypeDetails:
+@pytest.mark.parametrize(
+    "agg_id, site_id, group_mrid, expected_srt_ids",
+    [
+        (1, 1, "10000000000000000000000000000def", [1, 5]),
+        (2, 1, "10000000000000000000000000000def", []),
+        (1, 3, "10000000000000000000000000000def", []),
+        (1, 1, "20000000000000000000000000000def", []),
+        (0, 5, "10000000000000000000000000000def", []),
+        (1, None, "10000000000000000000000000000def", [1, 5]),
+        (3, 1, "20000000000000000000000000000def", [2]),
+        (1, 1, "abc123", []),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_site_reading_types_for_group_mrid(
+    pg_base_config, agg_id: int, site_id: Optional[int], group_mrid: int, expected_srt_ids: list[int]
+):
+    async with generate_async_session(pg_base_config) as session:
+        results = await fetch_site_reading_types_for_group_mrid(session, agg_id, site_id, group_mrid)
+        assert_iterable_type(SiteReadingType, results, len(expected_srt_ids))
+        assert [r.site_reading_type_id for r in results] == expected_srt_ids
+
+
+def g(group_id: int, group_mrid: str, site_id: int, site_lfdi: str, role_flags: int) -> GroupedSiteReadingTypeDetails:
     """Just to make the test definition a bit more concise"""
-    return GroupedSiteReadingTypeDetails(group_id=group_id, site_id=site_id, site_lfdi=site_lfdi, role_flags=role_flags)
+    return GroupedSiteReadingTypeDetails(
+        group_id=group_id, group_mrid=group_mrid, site_id=site_id, site_lfdi=site_lfdi, role_flags=role_flags
+    )
 
 
 @pytest.mark.parametrize(
@@ -89,7 +114,11 @@ def g(group_id: int, site_id: int, site_lfdi: str, role_flags: int) -> GroupedSi
             0,
             99,
             datetime.min,
-            [g(1, 1, "site1-lfdi", 1), g(3, 1, "site1-lfdi", 3), g(4, 2, "site2-lfdi", 4)],
+            [
+                g(1, "10000000000000000000000000000def", 1, "site1-lfdi", 1),
+                g(3, "30000000000000000000000000000def", 1, "site1-lfdi", 3),
+                g(4, "40000000000000000000000000000def", 2, "site2-lfdi", 4),
+            ],
             3,
         ),
         (
@@ -98,7 +127,10 @@ def g(group_id: int, site_id: int, site_lfdi: str, role_flags: int) -> GroupedSi
             1,
             99,
             datetime.min,
-            [g(3, 1, "site1-lfdi", 3), g(4, 2, "site2-lfdi", 4)],
+            [
+                g(3, "30000000000000000000000000000def", 1, "site1-lfdi", 3),
+                g(4, "40000000000000000000000000000def", 2, "site2-lfdi", 4),
+            ],
             3,
         ),
         (
@@ -107,11 +139,25 @@ def g(group_id: int, site_id: int, site_lfdi: str, role_flags: int) -> GroupedSi
             0,
             2,
             datetime.min,
-            [g(1, 1, "site1-lfdi", 1), g(3, 1, "site1-lfdi", 3)],
+            [
+                g(1, "10000000000000000000000000000def", 1, "site1-lfdi", 1),
+                g(3, "30000000000000000000000000000def", 1, "site1-lfdi", 3),
+            ],
             3,
         ),
-        (1, 1, 0, 99, datetime.min, [g(1, 1, "site1-lfdi", 1), g(3, 1, "site1-lfdi", 3)], 2),
-        (1, 2, 0, 99, datetime.min, [g(4, 2, "site2-lfdi", 4)], 1),
+        (
+            1,
+            1,
+            0,
+            99,
+            datetime.min,
+            [
+                g(1, "10000000000000000000000000000def", 1, "site1-lfdi", 1),
+                g(3, "30000000000000000000000000000def", 1, "site1-lfdi", 3),
+            ],
+            2,
+        ),
+        (1, 2, 0, 99, datetime.min, [g(4, "40000000000000000000000000000def", 2, "site2-lfdi", 4)], 1),
         (1, 3, 0, 99, datetime.min, [], 0),
         (2, 1, 0, 99, datetime.min, [], 0),
         (
@@ -120,7 +166,10 @@ def g(group_id: int, site_id: int, site_lfdi: str, role_flags: int) -> GroupedSi
             0,
             99,
             datetime(2022, 5, 6, 14, 22, 33, tzinfo=timezone.utc),
-            [g(1, 1, "site1-lfdi", 1), g(4, 2, "site2-lfdi", 4)],
+            [
+                g(1, "10000000000000000000000000000def", 1, "site1-lfdi", 1),
+                g(4, "40000000000000000000000000000def", 2, "site2-lfdi", 4),
+            ],
             2,
         ),
         (1, None, 0, 99, datetime(2022, 5, 6, 15, 22, 34, tzinfo=timezone.utc), [], 0),
@@ -205,166 +254,6 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
 
     resp = await session.execute(stmt)
     return resp.scalars().all()
-
-
-@pytest.mark.anyio
-async def test_upsert_site_reading_type_for_aggregator_insert(pg_base_config):
-    """Tests that the upsert can do inserts"""
-    # Do the insert in a session separate to the database
-    inserted_id: int
-    aggregator_id = 1
-    site_id = 1
-    new_srt: SiteReadingType = generate_class_instance(SiteReadingType)
-    new_srt.aggregator_id = 1
-    new_srt.site_id = site_id
-
-    del new_srt.site_reading_type_id  # Don't set the primary key - we expect the DB to set that
-    async with generate_async_session(pg_base_config) as session:
-        found_srts = await fetch_site_reading_types(session, aggregator_id)
-        assert len(found_srts) == 3
-
-        inserted_id = await upsert_site_reading_type_for_aggregator(session, aggregator_id, new_srt)
-        assert inserted_id
-        await session.commit()
-
-    # Validate the state of the DB in a new session
-    async with generate_async_session(pg_base_config) as session:
-        found_srts = await fetch_site_reading_types(session, aggregator_id)
-        assert len(found_srts) == 4
-
-        actual_srt = found_srts[-1]  # should be the highest ID
-        assert_class_instance_equality(
-            SiteReadingType, new_srt, actual_srt, ignored_properties={"site_reading_type_id", "created_time"}
-        )
-        assert_nowish(actual_srt.created_time)
-
-        # This is an inserted row - nothing should be added to the archive
-        assert (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one() == 0
-
-
-@pytest.mark.parametrize("srt_id_to_update, aggregator_id", [(3, 1), (1, 1)])
-@pytest.mark.anyio
-async def test_upsert_site_reading_type_for_aggregator_non_indexed(
-    pg_base_config, srt_id_to_update: int, aggregator_id: int
-):
-    """Tests that the upsert can do updates to fields that aren't unique constrained"""
-
-    # We want the site object we upsert to be a "fresh" Site instance that hasn't been anywhere near
-    # a SQL Alchemy session but shares the appropriate indexed values
-    srt_to_upsert: SiteReadingType = generate_class_instance(SiteReadingType)
-    async with generate_async_session(pg_base_config) as session:
-        existing_srt = await fetch_site_reading_type(session, aggregator_id, srt_id_to_update)
-        assert existing_srt
-
-        # Copy across the indexed values as we don't want to update those
-        srt_to_upsert.aggregator_id = existing_srt.aggregator_id
-        srt_to_upsert.site_id = existing_srt.site_id
-        srt_to_upsert.uom = existing_srt.uom
-        srt_to_upsert.data_qualifier = existing_srt.data_qualifier
-        srt_to_upsert.flow_direction = existing_srt.flow_direction
-        srt_to_upsert.accumulation_behaviour = existing_srt.accumulation_behaviour
-        srt_to_upsert.kind = existing_srt.kind
-        srt_to_upsert.phase = existing_srt.phase
-        srt_to_upsert.power_of_ten_multiplier = existing_srt.power_of_ten_multiplier
-        srt_to_upsert.default_interval_seconds = existing_srt.default_interval_seconds
-        srt_to_upsert.role_flags = existing_srt.role_flags
-
-    # Perform the upsert in a new session
-    async with generate_async_session(pg_base_config) as session:
-        updated_id = await upsert_site_reading_type_for_aggregator(session, aggregator_id, srt_to_upsert)
-        assert updated_id == srt_id_to_update
-        await session.commit()
-
-    # Validate the state of the DB in a new session
-    async with generate_async_session(pg_base_config) as session:
-        # check it exists
-        actual_srt = await fetch_site_reading_type(session, aggregator_id, srt_id_to_update)
-        assert_class_instance_equality(
-            SiteReadingType, srt_to_upsert, actual_srt, {"site_reading_type_id", "created_time"}
-        )
-        assert_datetime_equal(
-            datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc), actual_srt.created_time
-        )  # created_time doesn't update
-
-        # Sanity check the count
-        assert len(await fetch_site_reading_types(session, aggregator_id)) == 3
-
-        # This is an updated row - therefore we should have a new archived record containing the original data
-        assert (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one() == 1
-        archive_data = (await session.execute(select(ArchiveSiteReadingType))).scalar_one()
-
-        # This is comparing the archive data against what was originally in the DB
-        if srt_id_to_update == 1:
-            assert_class_instance_equality(
-                SiteReadingType,
-                SiteReadingType(
-                    site_reading_type_id=1,
-                    aggregator_id=1,
-                    site_id=1,
-                    uom=38,
-                    data_qualifier=2,
-                    flow_direction=1,
-                    accumulation_behaviour=3,
-                    kind=37,
-                    phase=64,
-                    power_of_ten_multiplier=3,
-                    default_interval_seconds=0,
-                    role_flags=1,
-                    created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                    changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
-                ),
-                archive_data,
-            )
-        elif srt_id_to_update == 3:
-            assert_class_instance_equality(
-                SiteReadingType,
-                SiteReadingType(
-                    site_reading_type_id=3,
-                    aggregator_id=1,
-                    site_id=1,
-                    uom=38,
-                    data_qualifier=8,
-                    flow_direction=1,
-                    accumulation_behaviour=3,
-                    kind=37,
-                    phase=64,
-                    power_of_ten_multiplier=0,
-                    default_interval_seconds=3600,
-                    role_flags=3,
-                    created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                    changed_time=datetime(2022, 5, 6, 13, 22, 33, 500000, tzinfo=timezone.utc),
-                ),
-                archive_data,
-            )
-        assert_nowish(archive_data.archive_time)
-        assert archive_data.deleted_time is None
-
-
-@pytest.mark.anyio
-async def test_upsert_site_reading_type_for_aggregator_cant_change_agg_id(pg_base_config):
-    """Tests that attempting to sneak through a mismatched agg_id results in an exception with no changes"""
-    site_id_to_update = 1
-    aggregator_id = 1
-
-    original_srt: SiteReadingType
-    update_attempt_srt: SiteReadingType
-    async with generate_async_session(pg_base_config) as session:
-        original_srt = await fetch_site_reading_type(session, aggregator_id, site_id_to_update)
-        assert original_srt
-
-        update_attempt_srt = clone_class_instance(original_srt, ignored_properties=set(["site"]))
-        update_attempt_srt.aggregator_id = 3
-        update_attempt_srt.changed_time = datetime.now(tz=timezone.utc)
-
-    async with generate_async_session(pg_base_config) as session:
-        with pytest.raises(ValueError):
-            await upsert_site_reading_type_for_aggregator(session, aggregator_id, update_attempt_srt)
-
-        # db should be unmodified
-        db_srt = await fetch_site_reading_type(session, aggregator_id, site_id_to_update)
-        assert db_srt
-        assert_datetime_equal(db_srt.changed_time, datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc))
-        assert (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one() == 0
 
 
 @pytest.mark.anyio

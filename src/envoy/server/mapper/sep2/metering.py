@@ -112,6 +112,7 @@ class MirrorUsagePointMapper:
         aggregator_id: int,
         site_id: int,
         group_id: int,
+        group_mrid: str,
         role_flags: RoleFlagsType,
         changed_time: datetime,
     ) -> SiteReadingType:
@@ -157,6 +158,9 @@ class MirrorUsagePointMapper:
         if len(mmr.mRID) > 32:
             raise InvalidMappingError(f"mrid {mmr.mRID} is too long (should be 32 chars)")
 
+        if len(group_mrid) > 32:
+            raise InvalidMappingError(f"group mrid {mmr.mRID} is too long (should be 32 chars)")
+
         return SiteReadingType(
             aggregator_id=aggregator_id,
             site_id=site_id,
@@ -172,6 +176,7 @@ class MirrorUsagePointMapper:
             changed_time=changed_time,
             mrid=mmr.mRID,
             group_id=group_id,
+            group_mrid=group_mrid,
         )
 
     @staticmethod
@@ -191,7 +196,7 @@ class MirrorUsagePointMapper:
                 "roleFlags": to_hex_binary(group.role_flags),
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
                 "status": 0,
-                "mRID": MridMapper.encode_mirror_usage_point_mrid(scope, group.group_id),
+                "mRID": group.group_mrid,
                 "mirrorMeterReadings": [
                     {
                         "mRID": srt.mrid,

@@ -20,6 +20,7 @@ class GroupedSiteReadingTypeDetails:
     a group of SiteReadingType instances into something that approximates a MirrorUsagePoint"""
 
     group_id: int
+    group_mrid: str
     site_id: int
     site_lfdi: str
     role_flags: int
@@ -28,6 +29,22 @@ class GroupedSiteReadingTypeDetails:
 async def generate_site_reading_type_group_id(session: AsyncSession) -> int:
     """Creates a new, unique value from the underlying sequence responsible for creating new group ids"""
     return (await session.execute(SITE_READING_TYPE_GROUP_ID_SEQUENCE.next_value())).scalar_one()
+
+
+async def fetch_site_reading_types_for_group_mrid(
+    session: AsyncSession, aggregator_id: int, site_id: Optional[int], group_mrid: str
+) -> Sequence[SiteReadingType]:
+    """Fetches all SiteReadingTypes for the specified group mrid filter conditions
+
+    if site_id is None - it will not be included in the search filter"""
+    stmt = select(SiteReadingType).where(
+        (SiteReadingType.aggregator_id == aggregator_id) & (SiteReadingType.group_mrid == group_mrid)
+    )
+    if site_id is not None:
+        stmt = stmt.where(SiteReadingType.site_id == site_id)
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
 
 
 async def fetch_site_reading_types_for_group(
@@ -70,12 +87,13 @@ async def _fetch_site_reading_type_groups(
     limit: Optional[int],
 ) -> Union[int, list[GroupedSiteReadingTypeDetails]]:
 
-    select_clause: Union[Select[tuple[int]], Select[tuple[int, int, RoleFlagsType, str]]]
+    select_clause: Union[Select[tuple[int]], Select[tuple[int, str, int, RoleFlagsType, str]]]
     if only_count:
         select_clause = select(func.count(distinct(SiteReadingType.group_id))).select_from(SiteReadingType)
     else:
         select_clause = select(
             SiteReadingType.group_id,
+            func.max(SiteReadingType.group_mrid),
             func.max(SiteReadingType.site_id),
             func.max(SiteReadingType.role_flags),
             func.max(Site.lfdi),
@@ -94,7 +112,7 @@ async def _fetch_site_reading_type_groups(
         return resp.scalar_one()
     else:
         resp = await session.execute(select_clause.limit(limit).offset(start).group_by(SiteReadingType.group_id))
-        return [GroupedSiteReadingTypeDetails(row[0], row[1], row[3], row[2]) for row in resp.tuples().all()]
+        return [GroupedSiteReadingTypeDetails(row[0], row[1], row[2], row[4], row[3]) for row in resp.tuples().all()]
 
 
 async def fetch_grouped_site_reading_details(
@@ -118,67 +136,6 @@ async def count_grouped_site_reading_details(
         int,
         await _fetch_site_reading_type_groups(True, session, aggregator_id, site_id, None, changed_after, None),
     )
-
-
-async def upsert_site_reading_type_for_aggregator(
-    session: AsyncSession, aggregator_id: int, site_reading_type: SiteReadingType
-) -> int:
-    """Creates or updates the specified site reading type. If site's aggregator_id doesn't match aggregator_id then
-    this will raise an error without modifying the DB. Returns the site_reading_type_id of the inserted/existing site
-
-    The current value (if any) for the SiteReadingType will be archived
-
-    Returns the site_reading_type_id of the created/updated SiteReadingType"""
-
-    if aggregator_id != site_reading_type.aggregator_id:
-        raise ValueError(
-            f"Specified aggregator_id {aggregator_id} mismatches site.aggregator_id {site_reading_type.aggregator_id}"
-        )
-
-    # "Save" any existing records with the same data to the archive table
-    await copy_rows_into_archive(
-        session,
-        SiteReadingType,
-        ArchiveSiteReadingType,
-        lambda q: q.where(
-            (SiteReadingType.aggregator_id == aggregator_id)
-            & (SiteReadingType.site_id == site_reading_type.site_id)
-            & (SiteReadingType.uom == site_reading_type.uom)
-            & (SiteReadingType.data_qualifier == site_reading_type.data_qualifier)
-            & (SiteReadingType.flow_direction == site_reading_type.flow_direction)
-            & (SiteReadingType.accumulation_behaviour == site_reading_type.accumulation_behaviour)
-            & (SiteReadingType.kind == site_reading_type.kind)
-            & (SiteReadingType.phase == site_reading_type.phase)
-            & (SiteReadingType.power_of_ten_multiplier == site_reading_type.power_of_ten_multiplier)
-            & (SiteReadingType.default_interval_seconds == site_reading_type.default_interval_seconds)
-            & (SiteReadingType.role_flags == site_reading_type.role_flags)
-        ),
-    )
-
-    # Perform the upsert
-    table = SiteReadingType.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
-    stmt = psql_insert(SiteReadingType).values(**{k: getattr(site_reading_type, k) for k in update_cols})
-
-    resp = await session.execute(
-        stmt.on_conflict_do_update(
-            index_elements=[
-                SiteReadingType.aggregator_id,
-                SiteReadingType.site_id,
-                SiteReadingType.uom,
-                SiteReadingType.data_qualifier,
-                SiteReadingType.flow_direction,
-                SiteReadingType.accumulation_behaviour,
-                SiteReadingType.kind,
-                SiteReadingType.phase,
-                SiteReadingType.power_of_ten_multiplier,
-                SiteReadingType.default_interval_seconds,
-                SiteReadingType.role_flags,
-            ],
-            set_={k: getattr(stmt.excluded, k) for k in update_cols},
-        ).returning(SiteReadingType.site_reading_type_id)
-    )
-    return resp.scalar_one()
 
 
 async def upsert_site_readings(session: AsyncSession, now: datetime, site_readings: list[SiteReading]) -> None:

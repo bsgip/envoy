@@ -50,10 +50,13 @@ def test_MirrorUsagePointMapper_map_from_request_no_uom(mmr: MirrorUsagePoint):
     aggregator_id = 123
     site_id = 456
     group_id = 789
+    group_mrid = "abc123"
     changed_time = datetime.now()
 
     with pytest.raises(InvalidMappingError):
-        MirrorUsagePointMapper.map_from_request(mmr, aggregator_id, site_id, group_id, RoleFlagsType.NONE, changed_time)
+        MirrorUsagePointMapper.map_from_request(
+            mmr, aggregator_id, site_id, group_id, group_mrid, RoleFlagsType.NONE, changed_time
+        )
 
 
 def test_MirrorUsagePointMapper_map_from_request_long_mrid():
@@ -61,13 +64,33 @@ def test_MirrorUsagePointMapper_map_from_request_long_mrid():
     aggregator_id = 123
     site_id = 456
     group_id = 789
+    group_mrid = "abc123"
     changed_time = datetime.now()
     mmr = generate_class_instance(
         MirrorMeterReading, mRID="a" * 33, readingType=generate_class_instance(ReadingType, uom=None)
     )
 
     with pytest.raises(InvalidMappingError):
-        MirrorUsagePointMapper.map_from_request(mmr, aggregator_id, site_id, group_id, RoleFlagsType.NONE, changed_time)
+        MirrorUsagePointMapper.map_from_request(
+            mmr, aggregator_id, site_id, group_id, group_mrid, RoleFlagsType.NONE, changed_time
+        )
+
+
+def test_MirrorUsagePointMapper_map_from_request_long_group_mrid():
+    """mrid has a 32 character limit"""
+    aggregator_id = 123
+    site_id = 456
+    group_id = 789
+    group_mrid = "a" * 33
+    changed_time = datetime.now()
+    mmr = generate_class_instance(
+        MirrorMeterReading, mRID="abc", readingType=generate_class_instance(ReadingType, uom=None)
+    )
+
+    with pytest.raises(InvalidMappingError):
+        MirrorUsagePointMapper.map_from_request(
+            mmr, aggregator_id, site_id, group_id, group_mrid, RoleFlagsType.NONE, changed_time
+        )
 
 
 @pytest.mark.parametrize(
@@ -178,6 +201,7 @@ def test_MirrorUsagePointMapper_map_from_request():
     aggregator_id = 123
     site_id = 456
     group_id = 789
+    group_mrid = "abc123"
     changed_time = datetime.now()
     role_flags = RoleFlagsType.IS_PEV
     mmr_all_set = generate_class_instance(MirrorMeterReading, seed=202)
@@ -189,13 +213,14 @@ def test_MirrorUsagePointMapper_map_from_request():
     mmr_optional.readingType = generate_class_instance(ReadingType, seed=606, optional_is_none=True, uom=UomType.JOULES)
 
     result_all_set = MirrorUsagePointMapper.map_from_request(
-        mmr_all_set, aggregator_id, site_id, group_id, role_flags, changed_time
+        mmr_all_set, aggregator_id, site_id, group_id, group_mrid, role_flags, changed_time
     )
     assert result_all_set is not None
     assert isinstance(result_all_set, SiteReadingType)
     assert result_all_set.aggregator_id == aggregator_id
     assert result_all_set.site_id == site_id
     assert result_all_set.group_id == group_id
+    assert result_all_set.group_mrid == group_mrid
     assert result_all_set.mrid == mmr_all_set.mRID
     assert result_all_set.changed_time == changed_time
     assert result_all_set.uom == UomType.APPARENT_POWER_VA
@@ -209,13 +234,14 @@ def test_MirrorUsagePointMapper_map_from_request():
     assert result_all_set.role_flags == role_flags
 
     result_optional = MirrorUsagePointMapper.map_from_request(
-        mmr_optional, aggregator_id, site_id, group_id, role_flags, changed_time
+        mmr_optional, aggregator_id, site_id, group_id, group_mrid, role_flags, changed_time
     )
     assert result_optional is not None
     assert isinstance(result_optional, SiteReadingType)
     assert result_optional.aggregator_id == aggregator_id
     assert result_optional.site_id == site_id
     assert result_optional.group_id == group_id
+    assert result_optional.group_mrid == group_mrid
     assert result_optional.mrid == mmr_optional.mRID
     assert result_optional.changed_time == changed_time
     assert result_optional.uom == UomType.JOULES
@@ -247,9 +273,7 @@ def test_MirrorUsagePointMapper_map_to_response():
     assert result.href.startswith(href_prefix)
     assert result.href.endswith(uris.MirrorUsagePointUri.format(mup_id=group.group_id))
     assert isinstance(result.mRID, str)
-    assert result.mRID == MridMapper.encode_mirror_usage_point_mrid(
-        scope, group.group_id
-    ), "Should be a full mrid based on group id"
+    assert result.mRID == group.group_mrid
     assert result.mirrorMeterReadings
     assert len(result.mirrorMeterReadings) == len(srts)
     for mmr, srt in zip(result.mirrorMeterReadings, srts):

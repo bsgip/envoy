@@ -10,7 +10,7 @@ from envoy_schema.server.schema.sep2.metering_mirror import (
     MirrorUsagePointListResponse,
     MirrorUsagePointRequest,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi_async_sqlalchemy import db
 
 from envoy.server.api.error_handler import LoggedHttpException
@@ -90,7 +90,9 @@ async def post_mirror_usage_point_list(
     """
     scope = extract_request_claims(request).to_mup_request_scope()
     try:
-        mup_id = await MirrorMeteringManager.create_or_update_mirror_usage_point(db.session, scope=scope, mup=payload)
+        mup_result = await MirrorMeteringManager.create_or_update_mirror_usage_point(
+            db.session, scope=scope, mup=payload
+        )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
     except ForbiddenError as ex:
@@ -99,8 +101,8 @@ async def post_mirror_usage_point_list(
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
 
     return Response(
-        status_code=HTTPStatus.CREATED,
-        headers={LOCATION_HEADER_NAME: generate_href(uri.MirrorUsagePointUri, scope, mup_id=mup_id)},
+        status_code=HTTPStatus.CREATED if mup_result.created else HTTPStatus.NO_CONTENT,
+        headers={LOCATION_HEADER_NAME: generate_href(uri.MirrorUsagePointUri, scope, mup_id=mup_result.mup_id)},
     )
 
 

@@ -27,6 +27,7 @@ class ArchiveSiteReadingType(ArchiveBase):
     site_id: Mapped[int] = mapped_column(INTEGER)
     mrid: Mapped[str] = mapped_column(VARCHAR(length=32))
     group_id: Mapped[int] = mapped_column(INTEGER)
+    group_mrid: Mapped[str] = mapped_column(VARCHAR(length=32))
     uom: Mapped[UomType] = mapped_column(INTEGER)
     data_qualifier: Mapped[DataQualifierType] = mapped_column(INTEGER)
     flow_direction: Mapped[FlowDirectionType] = mapped_column(INTEGER)
