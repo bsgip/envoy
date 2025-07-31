@@ -11,7 +11,7 @@ from envoy_schema.server.schema.sep2.types import (
     RoleFlagsType,
     UomType,
 )
-from sqlalchemy import INTEGER, BigInteger, DateTime
+from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
@@ -25,6 +25,8 @@ class ArchiveSiteReadingType(ArchiveBase):
     site_reading_type_id: Mapped[int] = mapped_column(INTEGER, index=True)
     aggregator_id: Mapped[int] = mapped_column(INTEGER)
     site_id: Mapped[int] = mapped_column(INTEGER)
+    mrid: Mapped[str] = mapped_column(VARCHAR(length=32))
+    group_id: Mapped[int] = mapped_column(INTEGER)
     uom: Mapped[UomType] = mapped_column(INTEGER)
     data_qualifier: Mapped[DataQualifierType] = mapped_column(INTEGER)
     flow_direction: Mapped[FlowDirectionType] = mapped_column(INTEGER)

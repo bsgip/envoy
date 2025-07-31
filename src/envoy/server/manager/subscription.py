@@ -9,7 +9,6 @@ from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.crud.doe import select_site_control_group_by_id
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.pricing import select_single_tariff
-from envoy.server.crud.site_reading import fetch_site_reading_type_for_aggregator
 from envoy.server.crud.subscription import (
     count_subscriptions_for_site,
     delete_subscription_for_site,

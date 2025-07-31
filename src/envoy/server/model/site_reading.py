@@ -11,14 +11,19 @@ from envoy_schema.server.schema.sep2.types import (
     RoleFlagsType,
     UomType,
 )
-from sqlalchemy import INTEGER, BigInteger, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, Index, Sequence, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base, Site
 
+# Used for creating unique values for SiteReadingType.group_id as required
+# We could've done this via a parent table group but it would just be unnecessary overhead
+# This is the most lightweight way of implementing it
+SITE_READING_TYPE_GROUP_ID_SEQUENCE = Sequence("site_reading_type_group_id_seq")
+
 
 class SiteReadingType(Base):
-    """Aggregates SiteReading by the shared common data type (analogous to sep2 ReadingType)."""
+    """Aggregates SiteReading by the shared common data type (analogous to sep2 MirrorMeterReading/ReadingType)."""
 
     __tablename__ = "site_reading_type"
 
@@ -29,8 +34,11 @@ class SiteReadingType(Base):
     site_id: Mapped[int] = mapped_column(
         ForeignKey("site.site_id")
     )  # Tracks the site that the underlying readings belong to
+    mrid: Mapped[str] = mapped_column(
+        VARCHAR(length=32)
+    )  # lowercase hex string (should be case insensitive). Uniquely identifies this SiteReadingType for a specific site
+    group_id: Mapped[int] = mapped_column(INTEGER)  # Means for virtually grouping this entity under a MUP
 
-    # These and the above PK/FK all form the unique constraint
     uom: Mapped[UomType] = mapped_column(INTEGER)
     data_qualifier: Mapped[DataQualifierType] = mapped_column(INTEGER)
     flow_direction: Mapped[FlowDirectionType] = mapped_column(INTEGER)
@@ -43,7 +51,6 @@ class SiteReadingType(Base):
     )  # If a batch of readings is received without an interval - this length will be used to describe the batch length
     role_flags: Mapped[RoleFlagsType] = mapped_column(INTEGER)
 
-    # These are the properties that can change via upsert
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )  # When the reading set was created
@@ -51,23 +58,20 @@ class SiteReadingType(Base):
 
     site: Mapped["Site"] = relationship(lazy="raise")
 
-    # We want to minimise duplicated reading types - we do this by essentially making the entire entity
-    # into one big unique index
+    # Uniqueness is managed by the client controlled mrid
     __table_args__ = (
         UniqueConstraint(
             "aggregator_id",
             "site_id",
-            "uom",
-            "data_qualifier",
-            "flow_direction",
-            "accumulation_behaviour",
-            "kind",
-            "phase",
-            "power_of_ten_multiplier",
-            "default_interval_seconds",
-            "role_flags",
-            name="site_reading_type_all_values_uc",
+            "mrid",
+            name="site_reading_type_aggregator_id_site_id_mrid_uc",
         ),
+        Index(
+            "site_reading_type_aggregator_id_group_id_ix", "aggregator_id", "group_id", unique=False
+        ),  # To support aggregator cert lookups
+        Index(
+            "site_reading_type_aggregator_id_site_id_group_id_ix", "aggregator_id", "site_id", "group_id", unique=False
+        ),  # To support device cert lookups
     )
 
 

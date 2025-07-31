@@ -1,9 +1,10 @@
-import unittest.mock as mock
 from datetime import datetime, timezone
+from typing import Optional
 
 import envoy_schema.server.schema.uri as uris
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
+from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.metering import Reading, ReadingType
 from envoy_schema.server.schema.sep2.metering_mirror import (
@@ -20,9 +21,11 @@ from envoy_schema.server.schema.sep2.types import (
     KindType,
     PhaseCode,
     QualityFlagsType,
+    RoleFlagsType,
     UomType,
 )
 
+from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.metering import (
@@ -30,81 +33,190 @@ from envoy.server.mapper.sep2.metering import (
     MirrorUsagePointListMapper,
     MirrorUsagePointMapper,
 )
-from envoy.server.model.site import Site
+from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.request_scope import BaseRequestScope
 
 
-def _no_uom_test_cases():
-    mup_no_mmr: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=101, roleFlags="00")
-    mup_no_mmr.mirrorMeterReadings = None
-
-    mup_empty_mmr: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=202, roleFlags="00")
-    mup_empty_mmr.mirrorMeterReadings = []
-
-    mup_no_rt: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=303, roleFlags="00")
-    mup_no_rt.mirrorMeterReadings = [generate_class_instance(MirrorMeterReading, seed=505)]
-    mup_no_rt.mirrorMeterReadings[0].readingType = None
-
-    mup_no_uom: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=606, roleFlags="00")
-    mup_no_uom.mirrorMeterReadings = [generate_class_instance(MirrorMeterReading, seed=707)]
-    mup_no_uom.mirrorMeterReadings[0].readingType = generate_class_instance(ReadingType, seed=808)
-    mup_no_uom.mirrorMeterReadings[0].readingType.uom = None
-
-    return [(mup_no_mmr), (mup_empty_mmr), (mup_no_rt), (mup_no_uom)]
-
-
-@pytest.mark.parametrize("mup", _no_uom_test_cases())
-def test_MirrorUsagePointMapper_map_from_request_no_uom(mup: MirrorUsagePoint):
+@pytest.mark.parametrize(
+    "mmr",
+    [
+        generate_class_instance(MirrorMeterReading, readingType=None),
+        generate_class_instance(MirrorMeterReading, readingType=generate_class_instance(ReadingType, uom=None)),
+    ],
+)
+def test_MirrorUsagePointMapper_map_from_request_no_uom(mmr: MirrorUsagePoint):
     """uom is an important field - test the various ways it can go missing"""
     aggregator_id = 123
     site_id = 456
+    group_id = 789
     changed_time = datetime.now()
 
     with pytest.raises(InvalidMappingError):
-        MirrorUsagePointMapper.map_from_request(mup, aggregator_id, site_id, changed_time)
+        MirrorUsagePointMapper.map_from_request(mmr, aggregator_id, site_id, group_id, RoleFlagsType.NONE, changed_time)
+
+
+def test_MirrorUsagePointMapper_map_from_request_long_mrid():
+    """mrid has a 32 character limit"""
+    aggregator_id = 123
+    site_id = 456
+    group_id = 789
+    changed_time = datetime.now()
+    mmr = generate_class_instance(
+        MirrorMeterReading, mRID="a" * 33, readingType=generate_class_instance(ReadingType, uom=None)
+    )
+
+    with pytest.raises(InvalidMappingError):
+        MirrorUsagePointMapper.map_from_request(mmr, aggregator_id, site_id, group_id, RoleFlagsType.NONE, changed_time)
+
+
+@pytest.mark.parametrize(
+    "role_flags_str, expected",
+    [
+        ("05", RoleFlagsType.IS_MIRROR | RoleFlagsType.IS_PEV),
+        (
+            "0f",
+            RoleFlagsType.IS_MIRROR
+            | RoleFlagsType.IS_PREMISES_AGGREGATION_POINT
+            | RoleFlagsType.IS_PEV
+            | RoleFlagsType.IS_DER,
+        ),
+        (
+            "0F",
+            RoleFlagsType.IS_MIRROR
+            | RoleFlagsType.IS_PREMISES_AGGREGATION_POINT
+            | RoleFlagsType.IS_PEV
+            | RoleFlagsType.IS_DER,
+        ),
+        ("", RoleFlagsType.NONE),
+        (None, RoleFlagsType.NONE),
+        ("not valid", None),
+    ],
+)
+def test_MirrorUsagePointMapper_extract_role_flags(role_flags_str: Optional[str], expected: Optional[RoleFlagsType]):
+    mup = generate_class_instance(MirrorUsagePoint, roleFlags=role_flags_str)
+    if expected is None:
+        with pytest.raises(InvalidMappingError):
+            MirrorUsagePointMapper.extract_role_flags(mup)
+    else:
+        result = MirrorUsagePointMapper.extract_role_flags(mup)
+        assert isinstance(result, RoleFlagsType)
+        assert result == expected
+
+
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_MirrorUsagePointMapper_merge_site_reading_type_identical(optional_is_none: bool):
+    target = generate_class_instance(SiteReadingType, seed=101, optional_is_none=optional_is_none)
+    src = generate_class_instance(SiteReadingType, seed=101, optional_is_none=optional_is_none)
+    changed_time = datetime(2022, 11, 3, tzinfo=timezone.utc)
+    assert MirrorUsagePointMapper.merge_site_reading_type(target, src, changed_time) is False
+
+    assert_class_instance_equality(
+        SiteReadingType, target, generate_class_instance(SiteReadingType, seed=101, optional_is_none=optional_is_none)
+    )
+
+
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_MirrorUsagePointMapper_are_site_reading_types_equivalent(optional_is_none: bool):
+    a = generate_class_instance(SiteReadingType, seed=101, optional_is_none=optional_is_none)
+    b = generate_class_instance(SiteReadingType, seed=101, optional_is_none=optional_is_none)
+    c = generate_class_instance(SiteReadingType, seed=202, optional_is_none=optional_is_none)
+
+    assert MirrorUsagePointMapper.are_site_reading_types_equivalent(a, b) is True
+    assert MirrorUsagePointMapper.are_site_reading_types_equivalent(a, c) is False
+
+
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_MirrorUsagePointMapper_merge_site_reading_type_changes(optional_is_none: bool):
+    mrid = "my-mrid"
+    site_reading_type_id = 123
+    agg_id = 456
+    site_id = 789
+    group_id = 1001
+    created_time = datetime(2011, 2, 3, tzinfo=timezone.utc)
+    target = generate_class_instance(
+        SiteReadingType,
+        seed=101,
+        optional_is_none=optional_is_none,
+        mrid=mrid,
+        site_reading_type_id=site_reading_type_id,
+        site_id=site_id,
+        group_id=group_id,
+        aggregator_id=agg_id,
+        created_time=created_time,
+    )
+    src = generate_class_instance(SiteReadingType, seed=202, optional_is_none=optional_is_none)
+    changed_time = datetime(2022, 11, 3, tzinfo=timezone.utc)
+    assert MirrorUsagePointMapper.merge_site_reading_type(target, src, changed_time) is True
+
+    assert_class_instance_equality(
+        SiteReadingType,
+        target,
+        generate_class_instance(SiteReadingType, seed=202, optional_is_none=optional_is_none),
+        ignored_properties={
+            "changed_time",
+            "aggregator_id",
+            "site_reading_type_id",
+            "site_id",
+            "created_time",
+            "group_id",
+            "mrid",
+            "role_flags",
+        },
+    )
+    assert target.changed_time == changed_time
+    assert target.created_time == created_time
+    assert target.mrid == mrid
+    assert target.site_reading_type_id == site_reading_type_id
+    assert target.aggregator_id == agg_id
+    assert target.site_id == site_id
+    assert target.group_id == group_id
 
 
 def test_MirrorUsagePointMapper_map_from_request():
     """Tests map_from_request doesn't raise any obvious errors"""
     aggregator_id = 123
     site_id = 456
+    group_id = 789
     changed_time = datetime.now()
-    mup_all_set = generate_class_instance(MirrorUsagePoint, seed=101, optional_is_none=False, roleFlags="7a")
-    mup_all_set.mirrorMeterReadings = [generate_class_instance(MirrorMeterReading, seed=202)]
-    mup_all_set.mirrorMeterReadings[0].readingType = generate_class_instance(
-        ReadingType, seed=303, optional_is_none=False
+    role_flags = RoleFlagsType.IS_PEV
+    mmr_all_set = generate_class_instance(MirrorMeterReading, seed=202)
+    mmr_all_set.readingType = generate_class_instance(
+        ReadingType, seed=303, optional_is_none=False, uom=UomType.APPARENT_POWER_VA
     )
-    mup_all_set.mirrorMeterReadings[0].readingType.uom = UomType.APPARENT_POWER_VA  # This must always be set
 
-    mup_optional = generate_class_instance(MirrorUsagePoint, seed=404, optional_is_none=True, roleFlags="10")
-    mup_optional.mirrorMeterReadings = [generate_class_instance(MirrorMeterReading, seed=505)]
-    mup_optional.mirrorMeterReadings[0].readingType = generate_class_instance(
-        ReadingType, seed=606, optional_is_none=True
+    mmr_optional = generate_class_instance(MirrorMeterReading, seed=505)
+    mmr_optional.readingType = generate_class_instance(ReadingType, seed=606, optional_is_none=True, uom=UomType.JOULES)
+
+    result_all_set = MirrorUsagePointMapper.map_from_request(
+        mmr_all_set, aggregator_id, site_id, group_id, role_flags, changed_time
     )
-    mup_optional.mirrorMeterReadings[0].readingType.uom = UomType.JOULES  # This must always be set
-
-    result_all_set = MirrorUsagePointMapper.map_from_request(mup_all_set, aggregator_id, site_id, changed_time)
     assert result_all_set is not None
     assert isinstance(result_all_set, SiteReadingType)
     assert result_all_set.aggregator_id == aggregator_id
     assert result_all_set.site_id == site_id
+    assert result_all_set.group_id == group_id
+    assert result_all_set.mrid == mmr_all_set.mRID
     assert result_all_set.changed_time == changed_time
     assert result_all_set.uom == UomType.APPARENT_POWER_VA
-    assert result_all_set.power_of_ten_multiplier == mup_all_set.mirrorMeterReadings[0].readingType.powerOfTenMultiplier
-    assert result_all_set.kind == mup_all_set.mirrorMeterReadings[0].readingType.kind
-    assert result_all_set.phase == mup_all_set.mirrorMeterReadings[0].readingType.phase
-    assert result_all_set.data_qualifier == mup_all_set.mirrorMeterReadings[0].readingType.dataQualifier
-    assert result_all_set.accumulation_behaviour == mup_all_set.mirrorMeterReadings[0].readingType.accumulationBehaviour
-    assert result_all_set.flow_direction == mup_all_set.mirrorMeterReadings[0].readingType.flowDirection
-    assert result_all_set.default_interval_seconds == mup_all_set.mirrorMeterReadings[0].readingType.intervalLength
-    assert result_all_set.role_flags == 122, "This is the 7a converted from hexbinary"
+    assert result_all_set.power_of_ten_multiplier == mmr_all_set.readingType.powerOfTenMultiplier
+    assert result_all_set.kind == mmr_all_set.readingType.kind
+    assert result_all_set.phase == mmr_all_set.readingType.phase
+    assert result_all_set.data_qualifier == mmr_all_set.readingType.dataQualifier
+    assert result_all_set.accumulation_behaviour == mmr_all_set.readingType.accumulationBehaviour
+    assert result_all_set.flow_direction == mmr_all_set.readingType.flowDirection
+    assert result_all_set.default_interval_seconds == mmr_all_set.readingType.intervalLength
+    assert result_all_set.role_flags == role_flags
 
-    result_optional = MirrorUsagePointMapper.map_from_request(mup_optional, aggregator_id, site_id, changed_time)
+    result_optional = MirrorUsagePointMapper.map_from_request(
+        mmr_optional, aggregator_id, site_id, group_id, role_flags, changed_time
+    )
     assert result_optional is not None
     assert isinstance(result_optional, SiteReadingType)
     assert result_optional.aggregator_id == aggregator_id
     assert result_optional.site_id == site_id
+    assert result_optional.group_id == group_id
+    assert result_optional.mrid == mmr_optional.mRID
     assert result_optional.changed_time == changed_time
     assert result_optional.uom == UomType.JOULES
     assert result_optional.power_of_ten_multiplier == 0, "Not set in mup_optional"
@@ -114,79 +226,77 @@ def test_MirrorUsagePointMapper_map_from_request():
     assert result_optional.accumulation_behaviour == AccumulationBehaviourType.NOT_APPLICABLE, "Not set in mup_optional"
     assert result_optional.flow_direction == FlowDirectionType.NOT_APPLICABLE, "Not set in mup_optional"
     assert result_optional.default_interval_seconds == 0, "Not set in mup_optional"
-    assert result_optional.role_flags == 16, "This is the 10 converted from hexbinary"
+    assert result_optional.role_flags == role_flags
 
 
 def test_MirrorUsagePointMapper_map_to_response():
     """Tests that no exceptions are raised when mapping some common SiteReadingType's"""
-    site: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
-    srt_all_set: SiteReadingType = generate_class_instance(SiteReadingType, seed=202, optional_is_none=False)
-    srt_optional: SiteReadingType = generate_class_instance(SiteReadingType, seed=303, optional_is_none=True)
-    scope = generate_class_instance(BaseRequestScope, optional_is_none=True)
+    group = generate_class_instance(GroupedSiteReadingTypeDetails)
+    srts = [
+        generate_class_instance(SiteReadingType, seed=101, optional_is_none=False),
+        generate_class_instance(SiteReadingType, seed=202, optional_is_none=True),
+    ]
 
-    result_all_set = MirrorUsagePointMapper.map_to_response(scope, srt_all_set, site, 13)
-    assert result_all_set is not None
-    assert isinstance(result_all_set, MirrorUsagePoint)
-    assert result_all_set.href == uris.MirrorUsagePointUri.format(mup_id=srt_all_set.site_reading_type_id)
-    assert isinstance(result_all_set.mRID, str)
-    assert len(result_all_set.mRID) == 32, "Expected 128 bits of hex chars"
-    assert len(result_all_set.mirrorMeterReadings) == 1
-    assert result_all_set.mirrorMeterReadings[0].mRID != result_all_set.mRID
-    assert result_all_set.mirrorMeterReadings[0].readingType
-    assert result_all_set.mirrorMeterReadings[0].readingType.phase == srt_all_set.phase
-    assert result_all_set.mirrorMeterReadings[0].readingType.uom == srt_all_set.uom
-    assert result_all_set.mirrorMeterReadings[0].readingType.powerOfTenMultiplier == srt_all_set.power_of_ten_multiplier
-    assert result_all_set.postRate == 13
-    assert result_all_set.roleFlags == to_hex_binary(srt_all_set.role_flags)
+    href_prefix = "/abc/123"
+    scope = generate_class_instance(BaseRequestScope, href_prefix=href_prefix, optional_is_none=True)
+    post_rate_seconds = 1214
+    result = MirrorUsagePointMapper.map_to_response(scope, group, srts, post_rate_seconds)
 
-    result_optional = MirrorUsagePointMapper.map_to_response(scope, srt_optional, site, 13)
-    assert result_optional is not None
-    assert isinstance(result_optional, MirrorUsagePoint)
-    assert result_optional.href == uris.MirrorUsagePointUri.format(mup_id=srt_optional.site_reading_type_id)
-    assert isinstance(result_optional.mRID, str)
-    assert len(result_optional.mRID) == 32, "Expected 128 bits of hex chars"
-    assert len(result_optional.mirrorMeterReadings) == 1
-    assert result_optional.mirrorMeterReadings[0].mRID != result_optional.mRID
-    assert result_optional.mirrorMeterReadings[0].readingType
-    assert result_optional.mirrorMeterReadings[0].readingType.phase == srt_optional.phase
-    assert result_optional.mirrorMeterReadings[0].readingType.uom == srt_optional.uom
-    assert (
-        result_optional.mirrorMeterReadings[0].readingType.powerOfTenMultiplier == srt_optional.power_of_ten_multiplier
-    )
-    assert result_optional.roleFlags == to_hex_binary(srt_optional.role_flags)
+    assert result is not None
+    assert isinstance(result, MirrorUsagePoint)
+    assert result.href.startswith(href_prefix)
+    assert result.href.endswith(uris.MirrorUsagePointUri.format(mup_id=group.group_id))
+    assert isinstance(result.mRID, str)
+    assert result.mRID == MridMapper.encode_mirror_usage_point_mrid(
+        scope, group.group_id
+    ), "Should be a full mrid based on group id"
+    assert result.mirrorMeterReadings
+    assert len(result.mirrorMeterReadings) == len(srts)
+    for mmr, srt in zip(result.mirrorMeterReadings, srts):
+        assert mmr.mRID == srt.mrid
+        assert mmr.readingType
+        assert mmr.readingType.phase == srt.phase
+        assert mmr.readingType.uom == srt.uom
+        assert mmr.readingType.powerOfTenMultiplier == srt.power_of_ten_multiplier
 
-    assert result_all_set.mRID != result_all_set.mirrorMeterReadings[0].mRID, "mrid should be unique"
-    assert result_optional.mRID != result_optional.mirrorMeterReadings[0].mRID, "mrid should be unique"
-    assert result_all_set.mRID != result_optional.mRID, "mrid should be unique"
-    assert (
-        result_all_set.mirrorMeterReadings[0].mRID != result_optional.mirrorMeterReadings[0].mRID
-    ), "mrid should be unique"
-    assert result_all_set.postRate == 13
+    assert result.postRate == post_rate_seconds
+    assert result.roleFlags == to_hex_binary(group.role_flags)
 
 
-@mock.patch("envoy.server.mapper.sep2.metering.MirrorUsagePointMapper")
-def test_MirrorUsagePointMapper_map_to_list_response(mock_MirrorUsagePointMapper: mock.MagicMock):
-    """Builds on the assumption that test_MirrorUsagePointMapper_map_to_response will cover the individual entity
-    mapping. This just ensures the top level list properties are set correctly"""
-    site: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
-    srt_count = 252
-    srt_all_set: SiteReadingType = generate_class_instance(SiteReadingType, seed=202, optional_is_none=False)
-    srt_all_set.site = site
-    mapped_mup: MirrorUsagePoint = generate_class_instance(MirrorUsagePoint, seed=303)
-    scope = generate_class_instance(BaseRequestScope, optional_is_none=True)
+def test_MirrorUsagePointMapper_map_to_list_response():
+    group_count = 252
 
-    mock_MirrorUsagePointMapper.map_to_response = mock.Mock(return_value=mapped_mup)
+    groups = [
+        (
+            generate_class_instance(GroupedSiteReadingTypeDetails, seed=101),
+            [
+                generate_class_instance(SiteReadingType, seed=202, optional_is_none=False),
+                generate_class_instance(SiteReadingType, seed=303, optional_is_none=True),
+            ],
+        ),
+        (
+            generate_class_instance(GroupedSiteReadingTypeDetails, seed=404),
+            [
+                generate_class_instance(SiteReadingType, seed=505, optional_is_none=False),
+            ],
+        ),
+    ]
+    href_prefix = "/my/prefix"
+    scope = generate_class_instance(BaseRequestScope, href_prefix=href_prefix)
+    post_rate_seconds = 132
 
-    result_all_set = MirrorUsagePointListMapper.map_to_list_response(scope, [srt_all_set], srt_count, 1)
+    result_all_set = MirrorUsagePointListMapper.map_to_list_response(scope, group_count, groups, post_rate_seconds)
     assert result_all_set is not None
     assert isinstance(result_all_set, MirrorUsagePointListResponse)
-    assert result_all_set.all_ == srt_count
-    assert result_all_set.results == 1
-    assert len(result_all_set.mirrorUsagePoints) == 1
-    assert result_all_set.mirrorUsagePoints[0] == mapped_mup
+    assert result_all_set.href.startswith(href_prefix)
+    assert result_all_set.all_ == group_count
+    assert result_all_set.results == len(groups)
+    assert len(result_all_set.mirrorUsagePoints) == len(groups)
+    assert len(result_all_set.mirrorUsagePoints[0].mirrorMeterReadings) == 2
+    assert len(result_all_set.mirrorUsagePoints[1].mirrorMeterReadings) == 1
 
-    # Ensure we depend on the underlying individual entity map_to_response
-    mock_MirrorUsagePointMapper.map_to_response.assert_called_once_with(scope, srt_all_set, site, 1)
+    assert result_all_set.mirrorUsagePoints[0].deviceLFDI == groups[0][0].site_lfdi
+    assert result_all_set.mirrorUsagePoints[1].deviceLFDI == groups[1][0].site_lfdi
 
 
 def test_MirrorMeterReadingMapper_map_reading_from_request_no_time_period():
@@ -236,72 +346,113 @@ def test_MirrorMeterReadingMapper_map_reading_from_request():
     assert result_optional.time_period_seconds == 123
 
 
+def test_MirrorMeterReadingMapper_map_from_request_empty_variants():
+    mrid = "abc123"
+    srt_map = {mrid: generate_class_instance(SiteReadingType)}
+    changed_time = datetime(2011, 5, 6, 1, tzinfo=timezone.utc)
+
+    assert_list_type(SiteReading, MirrorMeterReadingMapper.map_from_request([], srt_map, changed_time), 0)
+    assert_list_type(
+        SiteReading,
+        MirrorMeterReadingMapper.map_from_request(
+            [generate_class_instance(MirrorMeterReading, seed=101, optional_is_none=True, mRID=mrid)],
+            srt_map,
+            changed_time,
+        ),
+        0,
+    )
+    assert_list_type(
+        SiteReading,
+        MirrorMeterReadingMapper.map_from_request(
+            [generate_class_instance(MirrorMeterReading, seed=101, mirrorReadingSets=[], reading=None, mRID=mrid)],
+            srt_map,
+            changed_time,
+        ),
+        0,
+    )
+    assert_list_type(
+        SiteReading,
+        MirrorMeterReadingMapper.map_from_request(
+            [
+                generate_class_instance(
+                    MirrorMeterReading,
+                    seed=101,
+                    mRID=mrid,
+                    mirrorReadingSets=[generate_class_instance(MirrorReadingSet, readings=None)],
+                ),
+                generate_class_instance(
+                    MirrorMeterReading,
+                    seed=101,
+                    mRID=mrid,
+                    mirrorReadingSets=[generate_class_instance(MirrorReadingSet, readings=[])],
+                ),
+            ],
+            srt_map,
+            changed_time,
+        ),
+        0,
+    )
+
+
+def test_MirrorMeterReadingMapper_map_from_request_bad_mrid():
+    mrid = "abc123"
+    srt_map = {mrid: generate_class_instance(SiteReadingType)}
+    changed_time = datetime(2011, 5, 6, 1, tzinfo=timezone.utc)
+
+    with pytest.raises(InvalidMappingError):
+        MirrorMeterReadingMapper.map_from_request(
+            [generate_class_instance(MirrorMeterReading, seed=101, optional_is_none=True, mRID=mrid + "foo")],
+            srt_map,
+            changed_time,
+        )
+
+
 def test_MirrorMeterReadingMapper_map_from_request():
-    reading1: Reading = generate_class_instance(Reading, seed=1)
-    reading1.timePeriod = generate_class_instance(DateTimeIntervalType)
-    reading1.qualityFlags = None
-    reading1.localID = None
-    reading2: Reading = generate_class_instance(Reading, seed=2)
-    reading2.timePeriod = generate_class_instance(DateTimeIntervalType)
-    reading2.qualityFlags = None
-    reading2.localID = None
+    reading1 = generate_class_instance(
+        Reading, seed=1, timePeriod=generate_class_instance(DateTimeIntervalType), optional_is_none=True
+    )
+    reading2 = generate_class_instance(
+        Reading, seed=2, timePeriod=generate_class_instance(DateTimeIntervalType), optional_is_none=True
+    )
+    reading3 = generate_class_instance(
+        Reading, seed=3, timePeriod=generate_class_instance(DateTimeIntervalType), optional_is_none=True
+    )
+    reading4 = generate_class_instance(
+        Reading, seed=4, timePeriod=generate_class_instance(DateTimeIntervalType), optional_is_none=True
+    )
+
+    mrid1 = "abc123"
+    mrid2 = "def456"
+
+    srt_map = {
+        mrid1: generate_class_instance(SiteReadingType, seed=101, site_reading_type_id=1),
+        mrid2: generate_class_instance(SiteReadingType, seed=202, site_reading_type_id=2),
+    }
 
     changed_time = datetime.now()
 
-    mmr_all_set = generate_class_instance(MirrorMeterReading, seed=101, optional_is_none=False)
-    mmr_all_set.mirrorReadingSets = [
-        MirrorReadingSet.model_validate(
-            {"mRID": "a", "timePeriod": generate_class_instance(DateTimeIntervalType), "readings": [reading1, reading2]}
-        )
-    ]
-    mmr_optional = generate_class_instance(MirrorMeterReading, seed=202, optional_is_none=True)
-    mmr_optional.mirrorReadingSets = [
-        MirrorReadingSet.model_validate(
-            {"mRID": "a", "timePeriod": generate_class_instance(DateTimeIntervalType), "readings": [reading1, reading2]}
-        )
-    ]
-    mmr_split = generate_class_instance(MirrorMeterReading, seed=101, optional_is_none=False)
-    mmr_split.mirrorReadingSets = [
-        MirrorReadingSet.model_validate(
-            {"mRID": "a", "timePeriod": generate_class_instance(DateTimeIntervalType), "readings": [reading1]}
+    mmrs = [
+        generate_class_instance(MirrorMeterReading, seed=101, reading=reading1, mRID=mrid1),
+        generate_class_instance(MirrorMeterReading, seed=202, reading=reading2, mRID=mrid2),
+        generate_class_instance(
+            MirrorMeterReading,
+            seed=303,
+            mirrorReadingSets=[generate_class_instance(MirrorReadingSet, readings=[])],
+            mRID=mrid2,
         ),
-        MirrorReadingSet.model_validate(
-            {"mRID": "b", "timePeriod": generate_class_instance(DateTimeIntervalType), "readings": [reading2]}
+        generate_class_instance(
+            MirrorMeterReading,
+            seed=404,
+            mirrorReadingSets=[generate_class_instance(MirrorReadingSet, readings=[reading3, reading4])],
+            mRID=mrid1,
         ),
     ]
 
-    readings_all_set = MirrorMeterReadingMapper.map_from_request(mmr_all_set, 1, 2, changed_time)
-    assert len(readings_all_set) == 2
-    assert all([r.site_reading_type_id == 2 for r in readings_all_set])
-    assert all([isinstance(r, SiteReading) for r in readings_all_set])
+    readings = MirrorMeterReadingMapper.map_from_request(mmrs, srt_map, changed_time)
+    assert_list_type(SiteReading, readings, 4)
 
-    readings_optional = MirrorMeterReadingMapper.map_from_request(mmr_optional, 3, 4, changed_time)
-    assert len(readings_optional) == 2
-    assert all([r.site_reading_type_id == 4 for r in readings_optional])
-    assert all([isinstance(r, SiteReading) for r in readings_optional])
-
-    readings_split = MirrorMeterReadingMapper.map_from_request(mmr_optional, 5, 6, changed_time)
-    assert len(readings_split) == 2
-    assert all([r.site_reading_type_id == 6 for r in readings_split])
-    assert all([isinstance(r, SiteReading) for r in readings_split])
-
-
-def test_MirrorMeterReadingMapper_without_MirrorReadingSet():
-    """Check that single reading values without MirrorReadingSet will return valid MirrorMeterReading"""
-    mmr_no_readingset = generate_class_instance(MirrorMeterReading, seed=123, optional_is_none=False)
-    mmr_no_readingset.mirrorReadingSets = None
-    mmr_no_readingset.reading = generate_class_instance(Reading, seed=1, optional_is_none=True)
-    mmr_no_readingset.reading.localID = "5"
-    mmr_no_readingset.reading.timePeriod = generate_class_instance(DateTimeIntervalType)
-
-    reading_only = MirrorMeterReadingMapper.map_from_request(mmr_no_readingset, 9, 7, datetime.now())
-    site = reading_only[0]
-    assert len(reading_only) == 1
-    assert site.site_reading_type_id == 7
-    assert isinstance(site, SiteReading)
-    assert site.local_id == 5
-    with pytest.raises(AttributeError):
-        _ = site.mirrorReadingSets
+    assert [r.site_reading_type_id for r in readings] == [1, 2, 1, 1]
+    assert [r.value for r in readings] == [reading1.value, reading2.value, reading3.value, reading4.value]
 
 
 def test_MirrorMeterReadingMapper_map_to_response():

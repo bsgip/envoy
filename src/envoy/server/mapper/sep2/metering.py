@@ -19,11 +19,11 @@ from envoy_schema.server.schema.sep2.types import (
     ServiceKind,
 )
 
+from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.mrid import MridMapper
-from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.request_scope import BaseRequestScope
 
@@ -32,16 +32,97 @@ READING_SET_ALL_ID = "all"  # string key identifying a reading set that includes
 
 class MirrorUsagePointMapper:
     @staticmethod
-    def map_from_request(
-        mup: MirrorUsagePoint, aggregator_id: int, site_id: int, changed_time: datetime
-    ) -> SiteReadingType:
-        """Takes a MirrorUsagePoint, validates it and creates an equivalent SiteReadingType"""
-        if not mup.mirrorMeterReadings or len(mup.mirrorMeterReadings) == 0:
-            raise InvalidMappingError("No MirrorMeterReading / ReadingType specified")
-        rt = mup.mirrorMeterReadings[0].readingType
+    def are_site_reading_types_equivalent(a: SiteReadingType, b: SiteReadingType) -> bool:
+        """Checks if any updatable fields have different values across instances a and b.
 
+        Returns True if the SiteReadingTypes are functionally identical"""
+
+        return (
+            a.uom == b.uom
+            and a.flow_direction == b.flow_direction
+            and a.data_qualifier == b.data_qualifier
+            and a.accumulation_behaviour == b.accumulation_behaviour
+            and a.kind == b.kind
+            and a.phase == b.phase
+            and a.power_of_ten_multiplier == b.power_of_ten_multiplier
+            and a.default_interval_seconds == b.default_interval_seconds
+        )
+
+    @staticmethod
+    def merge_site_reading_type(target: SiteReadingType, src: SiteReadingType, changed_time: datetime) -> bool:
+        """Copies all the "updatable" fields from src into target (but only if different). If at least one field
+        is copied across - changed_time will be applied to target.
+
+        Updatable fields are those on ReadingType - roleFlags (exists on MUP), site/agg/mrid details are never copied
+
+        Returns True if any fields are updated. False otherwise"""
+
+        any_changes = False
+
+        if target.uom != src.uom:
+            any_changes = True
+            target.uom = src.uom
+
+        if target.flow_direction != src.flow_direction:
+            any_changes = True
+            target.flow_direction = src.flow_direction
+
+        if target.data_qualifier != src.data_qualifier:
+            any_changes = True
+            target.data_qualifier = src.data_qualifier
+
+        if target.accumulation_behaviour != src.accumulation_behaviour:
+            any_changes = True
+            target.accumulation_behaviour = src.accumulation_behaviour
+
+        if target.kind != src.kind:
+            any_changes = True
+            target.kind = src.kind
+
+        if target.phase != src.phase:
+            any_changes = True
+            target.phase = src.phase
+
+        if target.power_of_ten_multiplier != src.power_of_ten_multiplier:
+            any_changes = True
+            target.power_of_ten_multiplier = src.power_of_ten_multiplier
+
+        if target.default_interval_seconds != src.default_interval_seconds:
+            any_changes = True
+            target.default_interval_seconds = src.default_interval_seconds
+
+        if any_changes:
+            target.changed_time = changed_time
+
+        return any_changes
+
+    @staticmethod
+    def extract_role_flags(mup: MirrorUsagePoint) -> RoleFlagsType:
+        if not mup.roleFlags:
+            return RoleFlagsType.NONE
+        else:
+            try:
+                return RoleFlagsType(int(mup.roleFlags, 16))
+            except Exception:
+                raise InvalidMappingError(f"Unable to map {mup.roleFlags} to a RoleFlagsType")
+
+    @staticmethod
+    def map_from_request(
+        mmr: MirrorMeterReading,
+        aggregator_id: int,
+        site_id: int,
+        group_id: int,
+        role_flags: RoleFlagsType,
+        changed_time: datetime,
+    ) -> SiteReadingType:
+        """Takes a MirrorMeterReading, validates it and creates an equivalent SiteReadingType.
+
+        Will raise an InvalidMappingError if mmr has no readingType"""
+
+        rt = mmr.readingType
         if not rt:
-            raise InvalidMappingError("ReadingType was not specified")
+            raise InvalidMappingError(f"No ReadingType specified on MirrorMeterReading {mmr.mRID}")
+
         if not rt.uom:
             raise InvalidMappingError("ReadingType.uom was not specified")
         if rt.kind is None:
@@ -72,10 +153,9 @@ class MirrorUsagePointMapper:
             default_interval_seconds = 0
         else:
             default_interval_seconds = rt.intervalLength
-        if mup.roleFlags is None:
-            role_flags = RoleFlagsType.NONE
-        else:
-            role_flags = int(mup.roleFlags, 16)
+
+        if len(mmr.mRID) > 32:
+            raise InvalidMappingError(f"mrid {mmr.mRID} is too long (should be 32 chars)")
 
         return SiteReadingType(
             aggregator_id=aggregator_id,
@@ -90,26 +170,31 @@ class MirrorUsagePointMapper:
             default_interval_seconds=default_interval_seconds,
             role_flags=role_flags,
             changed_time=changed_time,
+            mrid=mmr.mRID,
+            group_id=group_id,
         )
 
     @staticmethod
     def map_to_response(
-        scope: BaseRequestScope, srt: SiteReadingType, site: Site, postrate_seconds: int
+        scope: BaseRequestScope,
+        group: GroupedSiteReadingTypeDetails,
+        srts: Sequence[SiteReadingType],
+        postrate_seconds: int,
     ) -> MirrorUsagePoint:
-        """Maps a SiteReadingType and associated Site into a MirrorUsagePoint"""
+        """Maps a set of SiteReadingTypes with a common group into a MirrorUsagePoint"""
 
         return MirrorUsagePoint.model_validate(
             {
-                "href": generate_href(uris.MirrorUsagePointUri, scope, mup_id=srt.site_reading_type_id),
-                "deviceLFDI": site.lfdi,
+                "href": generate_href(uris.MirrorUsagePointUri, scope, mup_id=group.group_id),
+                "deviceLFDI": group.site_lfdi,
                 "postRate": postrate_seconds,
-                "roleFlags": to_hex_binary(srt.role_flags),
+                "roleFlags": to_hex_binary(group.role_flags),
                 "serviceCategoryKind": ServiceKind.ELECTRICITY,
                 "status": 0,
-                "mRID": MridMapper.encode_mirror_usage_point_mrid(scope, srt.site_reading_type_id),
+                "mRID": MridMapper.encode_mirror_usage_point_mrid(scope, group.group_id),
                 "mirrorMeterReadings": [
                     {
-                        "mRID": MridMapper.encode_mirror_meter_reading_mrid(scope, srt.site_reading_type_id),
+                        "mRID": srt.mrid,
                         "readingType": {
                             "accumulationBehaviour": srt.accumulation_behaviour,
                             "dataQualifier": srt.data_qualifier,
@@ -121,6 +206,7 @@ class MirrorUsagePointMapper:
                             "uom": srt.uom,
                         },
                     }
+                    for srt in srts
                 ],
             }
         )
@@ -129,17 +215,20 @@ class MirrorUsagePointMapper:
 class MirrorUsagePointListMapper:
     @staticmethod
     def map_to_list_response(
-        scope: BaseRequestScope, srts: Sequence[SiteReadingType], srt_count: int, postrate_seconds: int
+        scope: BaseRequestScope,
+        group_count: int,
+        grouped_srts: list[tuple[GroupedSiteReadingTypeDetails, Sequence[SiteReadingType]]],
+        postrate_seconds: int,
     ) -> MirrorUsagePointListResponse:
-        """Maps a set of SiteReadingType (requires the associated site relationship being populated for each
-        SiteReadingType)"""
+        """Maps a set of SiteReadingTypes, grouped under their parent group_id to a MirrorUsagePointList)"""
         return MirrorUsagePointListResponse.model_validate(
             {
                 "href": generate_href(uris.MirrorUsagePointListUri, scope),
-                "all_": srt_count,
-                "results": len(srts),
+                "all_": group_count,
+                "results": len(grouped_srts),
                 "mirrorUsagePoints": [
-                    MirrorUsagePointMapper.map_to_response(scope, srt, srt.site, postrate_seconds) for srt in srts
+                    MirrorUsagePointMapper.map_to_response(scope, group, srts, postrate_seconds)
+                    for group, srts in grouped_srts
                 ],
             }
         )
@@ -175,31 +264,36 @@ class MirrorMeterReadingMapper:
 
     @staticmethod
     def map_from_request(
-        mmr: MirrorMeterReading, aggregator_id: int, site_reading_type_id: int, changed_time: datetime
+        mmrs: list[MirrorMeterReading], srt_by_mrid: dict[str, SiteReadingType], changed_time: datetime
     ) -> list[SiteReading]:
-        """Takes a set of MirrorMeterReading for a given site_reading_type and creates the equivalent set of
-        SiteReading"""
+        """Takes a set of MirrorMeterReadings and generates SiteReading entries for every reading found. Those
+        readings will be mapped to a SiteReadingType by mrid lookup into srt_by_mrid"""
 
-        mrs = mmr.mirrorReadingSets
         readings: list[SiteReading] = []
-        # If no MirrorReadingSet specified, check for a reading value to use, else return an error
-        if mrs is None:
+
+        for mmr in mmrs:
+            srt = srt_by_mrid.get(mmr.mRID, None)
+            if srt is None:
+                raise InvalidMappingError(f"Couldn't map {mmr.mRID} to an existing SiteReadingType.")
+
             if mmr.reading:
-                readings = [
-                    MirrorMeterReadingMapper.map_reading_from_request(mmr.reading, site_reading_type_id, changed_time)
-                ]
-                return readings
-            else:
-                raise InvalidMappingError("No MirrorReadingSet or Reading specified")
+                readings.append(
+                    MirrorMeterReadingMapper.map_reading_from_request(
+                        mmr.reading, srt.site_reading_type_id, changed_time
+                    )
+                )
 
-        if mmr.reading:
-            raise InvalidMappingError("Both a reading and MirrorReadingList are specified. Please submit only one")
-
-        for mr in mrs:
-            readings.extend(
-                MirrorMeterReadingMapper.map_reading_from_request(r, site_reading_type_id, changed_time)
-                for r in mr.readings  # type: ignore [union-attr] # The if mr.readings prevent None from appearing here
-            )
+            if mmr.mirrorReadingSets:
+                for mrs in mmr.mirrorReadingSets:
+                    if mrs.readings:
+                        readings.extend(
+                            (
+                                MirrorMeterReadingMapper.map_reading_from_request(
+                                    r, srt.site_reading_type_id, changed_time
+                                )
+                                for r in mrs.readings
+                            )
+                        )
 
         return readings
 

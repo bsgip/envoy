@@ -4,7 +4,7 @@ from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityRe
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.end_device import select_aggregator_site_count, select_single_site_with_lfdi
-from envoy.server.crud.site_reading import count_site_reading_types_for_aggregator  # is this mup?
+from envoy.server.crud.site_reading import count_grouped_site_reading_details  # is this mup?
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.mapper.sep2.device_capability import DeviceCapabilityMapper
 from envoy.server.request_scope import CertificateType, UnregisteredRequestScope
@@ -27,14 +27,14 @@ class DeviceCapabilityManager:
                 return DeviceCapabilityMapper.map_to_unregistered_response(scope=scope)
             else:
                 edev_cnt = 1
-                mup_cnt = await count_site_reading_types_for_aggregator(
+                mup_cnt = await count_grouped_site_reading_details(
                     session, scope.aggregator_id, existing_device_site.site_id, datetime.min
                 )
         else:
             # Aggregator certificate
             edev_cnt = await select_aggregator_site_count(session, scope.aggregator_id, datetime.min)
             edev_cnt += 1  # Adjust the count to include the virtual aggregator end device at "edev/0"
-            mup_cnt = await count_site_reading_types_for_aggregator(session, scope.aggregator_id, None, datetime.min)
+            mup_cnt = await count_grouped_site_reading_details(session, scope.aggregator_id, None, datetime.min)
 
         # fetch runtime server config
         config = await RuntimeServerConfigManager.fetch_current_config(session)

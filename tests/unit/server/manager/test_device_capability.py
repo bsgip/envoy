@@ -16,11 +16,11 @@ from envoy.server.request_scope import CertificateType, UnregisteredRequestScope
 @mock.patch("envoy.server.manager.device_capability.DeviceCapabilityMapper.map_to_unregistered_response")
 @mock.patch("envoy.server.manager.device_capability.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.device_capability.select_aggregator_site_count")
-@mock.patch("envoy.server.manager.device_capability.count_site_reading_types_for_aggregator")
+@mock.patch("envoy.server.manager.device_capability.count_grouped_site_reading_details")
 @mock.patch("envoy.server.manager.device_capability.RuntimeServerConfigManager.fetch_current_config")
 async def test_device_capability_manager_aggregator_scope(
     mock_fetch_current_config: mock.Mock,
-    mock_count_site_reading_types_for_aggregator: mock.Mock,
+    mock_count_grouped_site_reading_details: mock.Mock,
     mock_select_aggregator_site_count: mock.Mock,
     mock_select_single_site_with_lfdi: mock.Mock,
     mock_map_to_unregistered_response: mock.Mock,
@@ -35,7 +35,7 @@ async def test_device_capability_manager_aggregator_scope(
         UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
     )
     mock_select_aggregator_site_count.return_value = 11
-    mock_count_site_reading_types_for_aggregator.return_value = 22
+    mock_count_grouped_site_reading_details.return_value = 22
 
     config = RuntimeServerConfig()
     mock_fetch_current_config.return_value = config
@@ -51,7 +51,7 @@ async def test_device_capability_manager_aggregator_scope(
     mock_select_single_site_with_lfdi.assert_not_called()
 
     mock_select_aggregator_site_count.assert_called_once_with(mock_session, scope.aggregator_id, datetime.min)
-    mock_count_site_reading_types_for_aggregator.assert_called_once_with(
+    mock_count_grouped_site_reading_details.assert_called_once_with(
         mock_session, scope.aggregator_id, None, datetime.min
     )
     mock_map_to_response.assert_called_once_with(
@@ -64,9 +64,9 @@ async def test_device_capability_manager_aggregator_scope(
 @mock.patch("envoy.server.manager.device_capability.DeviceCapabilityMapper.map_to_unregistered_response")
 @mock.patch("envoy.server.manager.device_capability.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.device_capability.select_aggregator_site_count")
-@mock.patch("envoy.server.manager.device_capability.count_site_reading_types_for_aggregator")
+@mock.patch("envoy.server.manager.device_capability.count_grouped_site_reading_details")
 async def test_device_capability_manager_unregistered_device_scope(
-    mock_count_site_reading_types_for_aggregator: mock.Mock,
+    mock_count_grouped_site_reading_details: mock.Mock,
     mock_select_aggregator_site_count: mock.Mock,
     mock_select_single_site_with_lfdi: mock.Mock,
     mock_map_to_unregistered_response: mock.Mock,
@@ -93,7 +93,7 @@ async def test_device_capability_manager_unregistered_device_scope(
     mock_select_single_site_with_lfdi.assert_called_once_with(mock_session, scope.lfdi, scope.aggregator_id)
     mock_map_to_response.assert_not_called()
     mock_select_aggregator_site_count.assert_not_called()
-    mock_count_site_reading_types_for_aggregator.assert_not_called()
+    mock_count_grouped_site_reading_details.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -101,11 +101,11 @@ async def test_device_capability_manager_unregistered_device_scope(
 @mock.patch("envoy.server.manager.device_capability.DeviceCapabilityMapper.map_to_unregistered_response")
 @mock.patch("envoy.server.manager.device_capability.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.device_capability.select_aggregator_site_count")
-@mock.patch("envoy.server.manager.device_capability.count_site_reading_types_for_aggregator")
+@mock.patch("envoy.server.manager.device_capability.count_grouped_site_reading_details")
 @mock.patch("envoy.server.manager.device_capability.RuntimeServerConfigManager.fetch_current_config")
 async def test_device_capability_manager_registered_device_scope(
     mock_fetch_current_config: mock.Mock,
-    mock_count_site_reading_types_for_aggregator: mock.Mock,
+    mock_count_grouped_site_reading_details: mock.Mock,
     mock_select_aggregator_site_count: mock.Mock,
     mock_select_single_site_with_lfdi: mock.Mock,
     mock_map_to_unregistered_response: mock.Mock,
@@ -117,7 +117,7 @@ async def test_device_capability_manager_registered_device_scope(
     mock_session = create_mock_session()
     existing_site: Site = generate_class_instance(Site, seed=1001)
     mock_select_single_site_with_lfdi.return_value = existing_site
-    mock_count_site_reading_types_for_aggregator.return_value = 99
+    mock_count_grouped_site_reading_details.return_value = 99
     mock_map_to_response.return_value = mock.Mock()
     scope: UnregisteredRequestScope = generate_class_instance(
         UnregisteredRequestScope, source=CertificateType.DEVICE_CERTIFICATE
@@ -136,7 +136,7 @@ async def test_device_capability_manager_registered_device_scope(
     mock_map_to_unregistered_response.assert_not_called()
     mock_select_single_site_with_lfdi.assert_called_once_with(mock_session, scope.lfdi, scope.aggregator_id)
     mock_select_aggregator_site_count.assert_not_called()  # We don't count - just having the edev means we have 1 site
-    mock_count_site_reading_types_for_aggregator.assert_called_once_with(
+    mock_count_grouped_site_reading_details.assert_called_once_with(
         mock_session, scope.aggregator_id, existing_site.site_id, datetime.min
     )
     mock_map_to_response.assert_called_once_with(

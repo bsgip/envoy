@@ -64,10 +64,12 @@ VALUES (1, 3, 5, '2000-01-01 00:00:00Z', '2022-05-06 11:22:33', '2023-09-10 00:0
 
 
 -- Real Energy - site 1
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "mrid", "group_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
 VALUES (1006, -- site_reading_type_id
     1, -- aggregator_id
     1, -- site_id
+    '10060000000000000000000000000000', -- mrid
+    1006, -- group id
     72, -- uom
     2, -- data_qualifier
     1, -- flow_direction
@@ -82,10 +84,12 @@ VALUES (1006, -- site_reading_type_id
     );
 
 -- Reactive Energy - site 1
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "mrid", "group_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
 VALUES (1007, -- site_reading_type_id
     1, -- aggregator_id
     1, -- site_id
+    '10070000000000000000000000000000', -- mrid
+    1007, -- group id
     73, -- uom
     2, -- data_qualifier
     1, -- flow_direction
@@ -100,10 +104,12 @@ VALUES (1007, -- site_reading_type_id
     );
 
 -- Real Watt Power - site 1
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "mrid", "group_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
 VALUES (1008, -- site_reading_type_id
     1, -- aggregator_id
     1, -- site_id
+    '10080000000000000000000000000000', -- mrid
+    1008, -- group id
     38, -- uom
     2, -- data_qualifier
     1, -- flow_direction
@@ -118,10 +124,12 @@ VALUES (1008, -- site_reading_type_id
     );
 
 -- Real Energy - site 2
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "mrid", "group_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
 VALUES (1009, -- site_reading_type_id
     1, -- aggregator_id
     2, -- site_id
+    '10090000000000000000000000000000', -- mrid
+    1009, -- group id
     72, -- uom
     2, -- data_qualifier
     1, -- flow_direction
@@ -136,10 +144,12 @@ VALUES (1009, -- site_reading_type_id
     );
 
 -- Real Energy - site 3
-INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
+INSERT INTO public.site_reading_type("site_reading_type_id", "aggregator_id", "site_id", "mrid", "group_id", "uom", "data_qualifier", "flow_direction", "accumulation_behaviour", "kind", "phase", "power_of_ten_multiplier", "default_interval_seconds", "role_flags", "created_time", "changed_time")
 VALUES (1010, -- site_reading_type_id
     2, -- aggregator_id
     3, -- site_id
+    '10100000000000000000000000000000', -- mrid
+    1010, -- group id
     72, -- uom
     2, -- data_qualifier
     1, -- flow_direction
@@ -155,7 +165,7 @@ VALUES (1010, -- site_reading_type_id
 
 
 SELECT pg_catalog.setval('public.site_reading_type_site_reading_type_id_seq', 1011, true);
-
+SELECT pg_catalog.setval('public.site_reading_type_group_id_seq', 1011, true);
 
 INSERT INTO public.site_reading("site_reading_type_id", "created_time", "changed_time", "local_id", "quality_flags", "time_period_start", "time_period_seconds", "value")
 VALUES (

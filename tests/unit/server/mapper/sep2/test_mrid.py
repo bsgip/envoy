@@ -246,21 +246,6 @@ def test_encode_mirror_usage_point_mrid():
     assert all(decode_mrid_type(m) == MridType.MIRROR_USAGE_POINT for m in all_generated_mrids)
 
 
-def test_encode_mirror_meter_reading_mrid():
-    scope1 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=123)
-    scope2 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=456)
-
-    all_generated_mrids = []
-
-    for scope in [scope1, scope2]:
-        assert_and_append_mrid(MridMapper.encode_mirror_meter_reading_mrid(scope, 0), all_generated_mrids)
-        assert_and_append_mrid(MridMapper.encode_mirror_meter_reading_mrid(scope, 123), all_generated_mrids)
-        assert_and_append_mrid(MridMapper.encode_mirror_meter_reading_mrid(scope, MAX_INT_32), all_generated_mrids)
-
-    assert len(all_generated_mrids) == len(set(all_generated_mrids)), "Each MRID should be unique"
-    assert all(decode_mrid_type(m) == MridType.MIRROR_METER_READING for m in all_generated_mrids)
-
-
 def test_encode_tariff_profile_mrid():
     scope1 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=123)
     scope2 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=456)

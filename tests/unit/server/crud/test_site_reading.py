@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal, assert_nowish
-from assertical.asserts.type import assert_iterable_type
+from assertical.asserts.type import assert_iterable_type, assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.types import QualityFlagsType
@@ -14,10 +14,13 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.site_reading import (
-    count_site_reading_types_for_aggregator,
-    delete_site_reading_type_for_aggregator,
-    fetch_site_reading_type_for_aggregator,
-    fetch_site_reading_types_page_for_aggregator,
+    GroupedSiteReadingTypeDetails,
+    count_grouped_site_reading_details,
+    delete_site_reading_type_group,
+    fetch_grouped_site_reading_details,
+    fetch_site_reading_type_for_mrid,
+    fetch_site_reading_types_for_group,
+    generate_site_reading_type_group_id,
     upsert_site_reading_type_for_aggregator,
     upsert_site_readings,
 )
@@ -26,6 +29,150 @@ from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from tests.unit.server.crud.test_end_device import SnapshotTableCount, count_table_rows
+
+
+@pytest.mark.anyio
+async def test_generate_site_reading_type_group_id(pg_base_config):
+    values: list[int] = []
+    async with generate_async_session(pg_base_config) as session:
+        values.append(await generate_site_reading_type_group_id(session))
+        values.append(await generate_site_reading_type_group_id(session))
+        await session.rollback()
+
+    async with generate_async_session(pg_base_config) as session:
+        values.append(await generate_site_reading_type_group_id(session))
+        values.append(await generate_site_reading_type_group_id(session))
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        values.append(await generate_site_reading_type_group_id(session))
+        values.append(await generate_site_reading_type_group_id(session))
+
+    assert len(values) == 6
+    assert all((isinstance(v, int) for v in values))
+    assert len(values) == len(set(values)), "All distinct values"
+
+
+@pytest.mark.parametrize(
+    "agg_id, site_id, group_id, expected_srt_ids",
+    [
+        (1, 1, 1, [1, 5]),
+        (2, 1, 1, []),
+        (1, 3, 1, []),
+        (1, 1, 2, []),
+        (0, 5, 1, []),
+        (1, None, 1, [1, 5]),
+        (3, 1, 2, [2]),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_site_reading_types_for_group(
+    pg_base_config, agg_id: int, site_id: Optional[int], group_id: int, expected_srt_ids: list[int]
+):
+    async with generate_async_session(pg_base_config) as session:
+        results = await fetch_site_reading_types_for_group(session, agg_id, site_id, group_id)
+        assert_iterable_type(SiteReadingType, results, len(expected_srt_ids))
+        assert [r.site_reading_type_id for r in results] == expected_srt_ids
+
+
+def g(group_id: int, site_id: int, site_lfdi: str, role_flags: int) -> GroupedSiteReadingTypeDetails:
+    """Just to make the test definition a bit more concise"""
+    return GroupedSiteReadingTypeDetails(group_id=group_id, site_id=site_id, site_lfdi=site_lfdi, role_flags=role_flags)
+
+
+@pytest.mark.parametrize(
+    "agg_id, site_id, start, limit, changed_after, expected_groups, expected_count",
+    [
+        (
+            1,
+            None,
+            0,
+            99,
+            datetime.min,
+            [g(1, 1, "site1-lfdi", 1), g(3, 1, "site1-lfdi", 3), g(4, 2, "site2-lfdi", 4)],
+            3,
+        ),
+        (
+            1,
+            None,
+            1,
+            99,
+            datetime.min,
+            [g(3, 1, "site1-lfdi", 3), g(4, 2, "site2-lfdi", 4)],
+            3,
+        ),
+        (
+            1,
+            None,
+            0,
+            2,
+            datetime.min,
+            [g(1, 1, "site1-lfdi", 1), g(3, 1, "site1-lfdi", 3)],
+            3,
+        ),
+        (1, 1, 0, 99, datetime.min, [g(1, 1, "site1-lfdi", 1), g(3, 1, "site1-lfdi", 3)], 2),
+        (1, 2, 0, 99, datetime.min, [g(4, 2, "site2-lfdi", 4)], 1),
+        (1, 3, 0, 99, datetime.min, [], 0),
+        (2, 1, 0, 99, datetime.min, [], 0),
+        (
+            1,
+            None,
+            0,
+            99,
+            datetime(2022, 5, 6, 14, 22, 33, tzinfo=timezone.utc),
+            [g(1, 1, "site1-lfdi", 1), g(4, 2, "site2-lfdi", 4)],
+            2,
+        ),
+        (1, None, 0, 99, datetime(2022, 5, 6, 15, 22, 34, tzinfo=timezone.utc), [], 0),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_count_grouped_site_reading_details(
+    pg_base_config,
+    agg_id: int,
+    site_id: Optional[int],
+    start: int,
+    limit: int,
+    changed_after: datetime,
+    expected_groups: list[GroupedSiteReadingTypeDetails],
+    expected_count: int,
+):
+    async with generate_async_session(pg_base_config) as session:
+        actual_groups = await fetch_grouped_site_reading_details(session, agg_id, site_id, start, changed_after, limit)
+        assert actual_groups == expected_groups
+        assert_list_type(GroupedSiteReadingTypeDetails, actual_groups, len(expected_groups))
+
+        actual_count = await count_grouped_site_reading_details(session, agg_id, site_id, changed_after)
+        assert isinstance(actual_count, int)
+        assert actual_count == expected_count
+
+
+@pytest.mark.parametrize(
+    "agg_id, site_id, mrid, expected_srt_id",
+    [
+        (1, 1, "10000000000000000000000000000abc", 1),
+        (3, 1, "20000000000000000000000000000abc", 2),
+        (1, 2, "40000000000000000000000000000abc", 4),
+        (2, 1, "10000000000000000000000000000abc", None),
+        (1, 2, "10000000000000000000000000000abc", None),
+        (1, 1, "20000000000000000000000000000abc", None),
+        (1, 1, "200", None),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_site_reading_type_for_mrid(
+    pg_base_config, agg_id: int, site_id: int, mrid: str, expected_srt_id: Optional[int]
+):
+    async with generate_async_session(pg_base_config) as session:
+        actual = await fetch_site_reading_type_for_mrid(session, agg_id, site_id, mrid)
+        if expected_srt_id is not None:
+            assert isinstance(actual, SiteReadingType)
+            assert expected_srt_id == actual.site_reading_type_id
+        else:
+            assert actual is None
+
+
+########
 
 
 async def fetch_site_reading_types(session, aggregator_id: int) -> Sequence[SiteReadingType]:
@@ -58,118 +205,6 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
 
     resp = await session.execute(stmt)
     return resp.scalars().all()
-
-
-@pytest.mark.parametrize(
-    "aggregator_id, site_id, site_reading_type_id, expected",
-    [
-        (
-            1,
-            None,
-            1,
-            SiteReadingType(
-                site_reading_type_id=1,
-                aggregator_id=1,
-                site_id=1,
-                uom=38,
-                data_qualifier=2,
-                flow_direction=1,
-                accumulation_behaviour=3,
-                kind=37,
-                phase=64,
-                power_of_ten_multiplier=3,
-                default_interval_seconds=0,
-                role_flags=1,
-                changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
-                created_time=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            ),
-        ),
-        (
-            1,
-            1,
-            1,
-            SiteReadingType(
-                site_reading_type_id=1,
-                aggregator_id=1,
-                site_id=1,
-                uom=38,
-                data_qualifier=2,
-                flow_direction=1,
-                accumulation_behaviour=3,
-                kind=37,
-                phase=64,
-                power_of_ten_multiplier=3,
-                default_interval_seconds=0,
-                role_flags=1,
-                changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
-                created_time=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            ),
-        ),
-        (
-            3,
-            None,
-            2,
-            SiteReadingType(
-                site_reading_type_id=2,
-                aggregator_id=3,
-                site_id=1,
-                uom=61,
-                data_qualifier=2,
-                flow_direction=1,
-                accumulation_behaviour=3,
-                kind=37,
-                phase=64,
-                power_of_ten_multiplier=0,
-                default_interval_seconds=0,
-                role_flags=2,
-                changed_time=datetime(2022, 5, 6, 12, 22, 33, 500000, tzinfo=timezone.utc),
-                created_time=datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            ),
-        ),
-        (2, None, 1, None),  # Wrong aggregator
-        (1, None, 99, None),  # Wrong site_reading_type_id
-        (1, 99, 1, None),  # Wrong site_id
-        (1, 2, 1, None),  # Wrong site_id
-    ],
-)
-@pytest.mark.anyio
-async def test_fetch_site_reading_type_for_aggregator(
-    pg_base_config,
-    aggregator_id: int,
-    site_id: Optional[int],
-    site_reading_type_id: int,
-    expected: Optional[SiteReadingType],
-):
-    """Tests the contents of the returned SiteReadingType"""
-    for include_site_relation in [True, False]:
-        async with generate_async_session(pg_base_config) as session:
-            actual = await fetch_site_reading_type_for_aggregator(
-                session, aggregator_id, site_reading_type_id, site_id, include_site_relation=include_site_relation
-            )
-            assert_class_instance_equality(SiteReadingType, expected, actual, ignored_properties=set(["site"]))
-
-
-@pytest.mark.anyio
-async def test_fetch_site_reading_type_for_aggregator_relationship(pg_base_config):
-    """Tests the relationship fetching behaviour"""
-    async with generate_async_session(pg_base_config) as session:
-        # test with no site relation (ensure raise loading is enabled)
-        actual_no_relation = await fetch_site_reading_type_for_aggregator(
-            session, 1, 1, None, include_site_relation=False
-        )
-        with pytest.raises(Exception):
-            actual_no_relation.site.lfdi
-
-        # Test site relation can be navigated for different sites
-        actual_with_relation = await fetch_site_reading_type_for_aggregator(
-            session, 1, 1, None, include_site_relation=True
-        )
-        assert actual_with_relation.site.lfdi == "site1-lfdi"
-
-        actual_4_with_relation = await fetch_site_reading_type_for_aggregator(
-            session, 1, 4, None, include_site_relation=True
-        )
-        assert actual_4_with_relation.site.lfdi == "site2-lfdi"
 
 
 @pytest.mark.anyio
@@ -433,44 +468,8 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         assert_nowish(archive_records[0].archive_time)
 
 
-@pytest.mark.parametrize(
-    "aggregator_id, site_id, start, limit, after, expected_ids, expected_count",
-    [
-        (1, None, 0, 99, datetime.min, [1, 3, 4], 3),
-        (1, None, 1, 1, datetime.min, [3], 3),
-        (1, None, 99, 1, datetime.min, [], 3),
-        (1, 1, 0, 99, datetime.min, [1, 3], 2),
-        (1, None, 0, 99, datetime(2022, 5, 6, 12, 22, 33, tzinfo=timezone.utc), [3, 4], 2),
-        (1, 1, 0, 99, datetime(2022, 5, 6, 12, 22, 33, tzinfo=timezone.utc), [3], 1),
-        (99, None, 0, 99, datetime.min, [], 0),  # bad agg id
-        (1, 99, 0, 99, datetime.min, [], 0),  # bad site id
-        (1, None, 0, 99, datetime(2035, 11, 12), [], 0),  # bad changed after
-    ],
-)
-@pytest.mark.anyio
-async def test_fetch_site_reading_type_pages(
-    pg_base_config,
-    aggregator_id: int,
-    site_id: Optional[int],
-    start: int,
-    limit: int,
-    after: datetime,
-    expected_ids: list[int],
-    expected_count: int,
-):
-    """Tests the contents of the returned SiteReadingType"""
-    async with generate_async_session(pg_base_config) as session:
-        actual = await fetch_site_reading_types_page_for_aggregator(
-            session, aggregator_id, site_id, start, limit, after
-        )
-        assert_iterable_type(SiteReadingType, actual, count=len(expected_ids))
-
-        actual_count = await count_site_reading_types_for_aggregator(session, aggregator_id, site_id, after)
-        assert actual_count == expected_count
-
-
 async def snapshot_all_srt_tables(
-    session: AsyncSession, agg_id: int, site_id: Optional[int], srt_id: int
+    session: AsyncSession, agg_id: int, site_id: Optional[int], srt_ids: list[int]
 ) -> list[SnapshotTableCount]:
     """Snapshots the site reading type table and all downstream child tables"""
     snapshot: list[SnapshotTableCount] = []
@@ -483,7 +482,7 @@ async def snapshot_all_srt_tables(
             ArchiveSiteReadingType,
             lambda q: q.where(SiteReadingType.aggregator_id == agg_id)
             .where(or_(site_id is None, SiteReadingType.site_id == site_id))
-            .where(SiteReadingType.site_reading_type_id == srt_id),
+            .where(SiteReadingType.site_reading_type_id.in_(srt_ids)),
         )
     )
 
@@ -493,7 +492,7 @@ async def snapshot_all_srt_tables(
             SiteReading,
             None,
             ArchiveSiteReading,
-            lambda q: q.where(SiteReading.site_reading_type_id == srt_id),
+            lambda q: q.where(SiteReading.site_reading_type_id.in_(srt_ids)),
         )
     )
 
@@ -501,37 +500,42 @@ async def snapshot_all_srt_tables(
 
 
 @pytest.mark.parametrize(
-    "agg_id, site_id, srt_id, expected_delete, commit",
+    "agg_id, site_id, group_id, srt_ids, commit",
     [
-        (a, s, i, d, c)
-        for (a, s, i, d), c in product(
+        (a, s, i, srts, c)
+        for (a, s, i, srts), c in product(
             [
-                (1, 1, 1, True),  # Delete site reading type 1
-                (1, None, 1, True),  # Delete site reading type 1
-                (3, 1, 2, True),  # Delete site reading type 2
-                (3, None, 2, True),  # Delete site reading type 2
-                (1, 1, 3, True),  # Delete site reading type 3
-                (1, None, 3, True),  # Delete site reading type 3
-                (1, 2, 4, True),  # Delete site reading type 4
-                (1, None, 4, True),  # Delete site reading type 4
-                (0, 1, 1, False),  # Wrong aggregator ID
-                (0, None, 1, False),  # Wrong aggregator ID
-                (2, 1, 1, False),  # Wrong aggregator ID
-                (3, 1, 1, False),  # Wrong aggregator ID
-                (99, 1, 1, False),  # Wrong aggregator ID
-                (99, None, 1, False),  # Wrong aggregator ID
-                (1, 2, 1, False),  # Wrong site ID
-                (1, 99, 1, False),  # Wrong site ID
-                (1, 1, 99, False),  # Wrong site reading type id
-                (1, None, 99, False),  # Wrong site reading type id
+                (1, 1, 1, [1, 5]),  # Delete group 1
+                (1, None, 1, [1, 5]),  # Delete group 1
+                (3, 1, 2, [2]),  # Delete group 2
+                (3, None, 2, [2]),  # Delete group 2
+                (1, 1, 3, [3]),  # Delete group 3
+                (1, None, 3, [3]),  # Delete group 3
+                (1, 2, 4, [4]),  # Delete group 4
+                (1, None, 4, [4]),  # Delete group 4
+                (0, 1, 1, []),  # Wrong aggregator ID
+                (0, None, 1, []),  # Wrong aggregator ID
+                (2, 1, 1, []),  # Wrong aggregator ID
+                (3, 1, 1, []),  # Wrong aggregator ID
+                (99, 1, 1, []),  # Wrong aggregator ID
+                (99, None, 1, []),  # Wrong aggregator ID
+                (1, 2, 1, []),  # Wrong site ID
+                (1, 99, 1, []),  # Wrong site ID
+                (1, 1, 99, []),  # Wrong site reading type id
+                (1, None, 99, []),  # Wrong site reading type id
             ],
             [True, False],  # Run every test case with a commit = True and commit = False
         )
     ],
 )
 @pytest.mark.anyio
-async def test_delete_site_reading_type_for_site(
-    pg_base_config, agg_id: int, site_id: Optional[int], srt_id: int, commit: bool, expected_delete: int
+async def test_delete_site_reading_type_group(
+    pg_base_config,
+    agg_id: int,
+    site_id: Optional[int],
+    group_id: int,
+    srt_ids: list[int],
+    commit: bool,
 ):
     """Tests that deleting an entire site reading type cleans up and archives all associated data correctly. Also tests
     that the operation correctly runs inside a session transaction and can be wound back (if required)
@@ -542,16 +546,17 @@ async def test_delete_site_reading_type_for_site(
         2) Archives the correct records
         3) Doesn't delete anything else it shouldn't
     """
+    expected_delete = bool(srt_ids)
 
     # Count everything before the delete
     async with generate_async_session(pg_base_config) as session:
-        snapshot_before = await snapshot_all_srt_tables(session, agg_id=agg_id, site_id=site_id, srt_id=srt_id)
+        snapshot_before = await snapshot_all_srt_tables(session, agg_id=agg_id, site_id=site_id, srt_ids=srt_ids)
 
     # Perform the delete
     now = utc_now()
     deleted_time = datetime(2014, 11, 15, 2, 4, 5, 755, tzinfo=timezone.utc)
     async with generate_async_session(pg_base_config) as session:
-        actual = await delete_site_reading_type_for_aggregator(session, agg_id, site_id, srt_id, deleted_time)
+        actual = await delete_site_reading_type_group(session, agg_id, site_id, group_id, deleted_time)
         assert expected_delete == actual
 
         if commit:
@@ -562,7 +567,7 @@ async def test_delete_site_reading_type_for_site(
 
     # Now check the DB / Archive to ensure everything moved as expected
     async with generate_async_session(pg_base_config) as session:
-        snapshot_after = await snapshot_all_srt_tables(session, agg_id=agg_id, site_id=site_id, srt_id=srt_id)
+        snapshot_after = await snapshot_all_srt_tables(session, agg_id=agg_id, site_id=site_id, srt_ids=srt_ids)
 
     # Compare our before/after snapshots based on whether a delete occurred (or didn't)
     for before, after in zip(snapshot_before, snapshot_after):
@@ -591,14 +596,14 @@ async def test_delete_site_reading_type_for_site(
             assert after.total_count == before.total_count, f"{before.t} Nothing should've persisted/deleted"
 
     async with generate_async_session(pg_base_config) as session:
-        srt = await fetch_site_reading_type_for_aggregator(
-            session, site_id=site_id, aggregator_id=agg_id, site_reading_type_id=srt_id, include_site_relation=False
+        srts = await fetch_site_reading_types_for_group(
+            session, site_id=site_id, aggregator_id=agg_id, group_id=group_id
         )
         if commit:
-            assert srt is None, "SiteReadingType should NOT be fetchable if the deleted was committed"
+            assert len(srts) == 0, "SiteReadingTypes should NOT be fetchable if the deleted was committed"
         elif expected_delete:
-            assert srt is not None, "If the delete was NOT committed - the SiteReadingType should still exist"
+            assert len(srts) == len(srt_ids), "If the delete was NOT committed - the SiteReadingType should still exist"
         else:
             assert (
-                srt is None
+                len(srts) == 0
             ), "If the delete was NOT committed but the SiteReadingType DNE - it should continue to not exist"

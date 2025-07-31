@@ -82,8 +82,7 @@ async def post_mirror_usage_point_list(
     request: Request,
     payload: MirrorUsagePointRequest = Depends(XmlRequest(MirrorUsagePointRequest)),
 ) -> Response:
-    """Creates a mirror usage point for the current client. If the mup aligns with an existing mup for the specified
-    site / aggregator then that will be returned instead
+    """Creates a mirror usage point for the current client.
 
     Returns:
         fastapi.Response object.
@@ -130,7 +129,7 @@ async def get_mirror_usage_point(
         mup_list = await MirrorMeteringManager.fetch_mirror_usage_point(
             db.session,
             scope=extract_request_claims(request).to_mup_request_scope(),
-            site_reading_type_id=mup_id,
+            mup_id=mup_id,
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -165,7 +164,7 @@ async def delete_mirror_usage_point(
     removed = await MirrorMeteringManager.delete_mirror_usage_point(
         db.session,
         scope=extract_request_claims(request).to_mup_request_scope(),
-        site_reading_type_id=mup_id,
+        mup_id=mup_id,
     )
     return Response(status_code=HTTPStatus.NO_CONTENT if removed else HTTPStatus.NOT_FOUND)
 
@@ -182,6 +181,9 @@ async def post_mirror_usage_point(
     """Allows the submission of readings for a particular MirrorUsagePoint with a specified mup_id. Returns HTTP 201 on
     success or a HTTP 404 if the client doesn't have access to this MirrorUsagePoint
 
+    MirrorMeterReading / ReadingType can be updated by sending a new set of values with the same mrid
+    MirrorMeterReading's can be created if mrid is new AND the ReadingType is specified
+
     Args:
         mup_id: The MirrorUsagePoint id to submit readings for
 
@@ -189,16 +191,12 @@ async def post_mirror_usage_point(
         fastapi.Response object.
     """
 
-    # we dont support sending a list mmr for now
-    if isinstance(payload, MirrorMeterReadingListRequest):
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Request body must be a MirrorMeterReading")
-
     try:
         await MirrorMeteringManager.add_or_update_readings(
             db.session,
             scope=extract_request_claims(request).to_mup_request_scope(),
-            site_reading_type_id=mup_id,
-            mmr=payload,
+            mup_id=mup_id,
+            request=payload,
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

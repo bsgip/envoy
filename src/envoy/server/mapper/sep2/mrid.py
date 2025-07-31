@@ -128,13 +128,6 @@ class MridMapper:
         return encode_mrid(MridType.MIRROR_USAGE_POINT, site_reading_type_id & MAX_INT_32, scope.iana_pen)
 
     @staticmethod
-    def encode_mirror_meter_reading_mrid(scope: BaseRequestScope, site_reading_type_id: int) -> str:
-        """Encodes a valid MRID for a specific mirror meter reading.
-
-        site_reading_type_id: max value is expected to be a 32 bit unsigned int."""
-        return encode_mrid(MridType.MIRROR_METER_READING, site_reading_type_id & MAX_INT_32, scope.iana_pen)
-
-    @staticmethod
     def encode_tariff_profile_mrid(scope: BaseRequestScope, tariff_id: int) -> str:
         """Encodes a valid MRID for a specific tariff profile.
 
