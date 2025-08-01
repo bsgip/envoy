@@ -103,7 +103,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
 
     SubscriptionResource.SITE: (aggregator_id: int, site_id: int)
     SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int, site_control_group_id: int)
-    SubscriptionResource.READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
+    SubscriptionResource.READING: (aggregator_id: int, site_id: int, group_id: int)
     SubscriptionResource.TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
     SubscriptionResource.SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
     SubscriptionResource.SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
@@ -125,7 +125,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
         return (
             reading.site_reading_type.aggregator_id,
             reading.site_reading_type.site_id,
-            reading.site_reading_type.site_reading_type_id,
+            reading.site_reading_type.group_id,
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         rate = cast(TariffGeneratedRate, entity)  # type: ignore # Pretty sure this is a mypy quirk
@@ -171,7 +171,7 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
         return cast(DynamicOperatingEnvelope, entity).site_control_group_id  # type: ignore # mypy quirk
     elif resource == SubscriptionResource.READING:
         # Reading subscriptions can be scoped to the overarching type
-        return cast(SiteReading, entity).site_reading_type_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(SiteReading, entity).site_reading_type.group_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         # rate subscriptions can be scoped to a single tariff
         return cast(TariffGeneratedRate, entity).tariff_id  # type: ignore # Pretty sure this is a mypy quirk

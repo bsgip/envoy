@@ -563,7 +563,7 @@ async def test_submit_conditional_reading(client: AsyncClient, notifications_ena
     # We submit two readings - only one will pass the subscription conditions on Subscription 5
     mmr: MirrorMeterReading = MirrorMeterReading.model_validate(
         {
-            "mRID": "1234",
+            "mRID": "10000000000000000000000000000abc",
             "mirrorReadingSets": [
                 {
                     "mRID": "1234abc",

@@ -529,7 +529,7 @@ class NotificationMapper:
 
     @staticmethod
     def map_readings_to_response(
-        site_reading_type_id: int,
+        mup_id: int,
         readings: Sequence[SiteReading],
         sub: Subscription,
         scope: AggregatorRequestScope,
@@ -540,7 +540,7 @@ class NotificationMapper:
             ReadingListUri,
             scope,
             site_id=scope.display_site_id,
-            site_reading_type_id=site_reading_type_id,
+            site_reading_type_id=mup_id,
             reading_set_id=READING_SET_ALL_ID,  # Can't correlate this back to anything else - all will be fine
         )
         return Notification.model_validate(

@@ -273,9 +273,9 @@ def entities_to_notification(
         )
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
-        (_, _, site_reading_type_id) = batch_key
+        (_, _, group_id) = batch_key
         return NotificationMapper.map_readings_to_response(
-            site_reading_type_id, cast(Sequence[SiteReading], entities), sub, scope, notification_type  # type: ignore
+            group_id, cast(Sequence[SiteReading], entities), sub, scope, notification_type  # type: ignore
         )
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)

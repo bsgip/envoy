@@ -194,10 +194,10 @@ def test_get_batch_key_invalid():
             SubscriptionResource.READING,
             SiteReading(
                 site_reading_id=99,
-                site_reading_type=SiteReadingType(aggregator_id=1, site_id=2, site_reading_type_id=3),
+                site_reading_type=SiteReadingType(aggregator_id=1, site_id=2, site_reading_type_id=3, group_id=4),
                 site_reading_type_id=3,
             ),
-            (1, 2, 3),
+            (1, 2, 4),
         ),
         (
             SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
@@ -317,8 +317,9 @@ def test_get_subscription_filter_id_invalid():
             SiteReading(
                 site_reading_id=99,
                 site_reading_type_id=3,
+                site_reading_type=SiteReadingType(site_reading_type_id=3, group_id=4),
             ),
-            3,
+            4,
         ),
         (
             SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,

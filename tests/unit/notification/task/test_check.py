@@ -249,10 +249,18 @@ def test_get_entity_pages_der(resource: SubscriptionResource, notification_type:
             Subscription(resource_type=SubscriptionResource.READING, scoped_site_id=2, conditions=[]),
             SubscriptionResource.READING,
             [
-                SiteReading(site_reading_id=1, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=2)),
-                SiteReading(site_reading_id=2, site_reading_type_id=1, site_reading_type=SiteReadingType(site_id=2)),
-                SiteReading(site_reading_id=3, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=1)),
-                SiteReading(site_reading_id=4, site_reading_type_id=1, site_reading_type=SiteReadingType(site_id=1)),
+                SiteReading(
+                    site_reading_id=1, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=2, group_id=11)
+                ),
+                SiteReading(
+                    site_reading_id=2, site_reading_type_id=1, site_reading_type=SiteReadingType(site_id=2, group_id=22)
+                ),
+                SiteReading(
+                    site_reading_id=3, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=1, group_id=11)
+                ),
+                SiteReading(
+                    site_reading_id=4, site_reading_type_id=3, site_reading_type=SiteReadingType(site_id=1, group_id=44)
+                ),
             ],
             [0, 1],
         ),
@@ -287,13 +295,21 @@ def test_get_entity_pages_der(resource: SubscriptionResource, notification_type:
             [0, 2],
         ),
         (
-            Subscription(resource_type=SubscriptionResource.READING, resource_id=2, conditions=[]),
+            Subscription(resource_type=SubscriptionResource.READING, resource_id=11, conditions=[]),
             SubscriptionResource.READING,
             [
-                SiteReading(site_reading_id=1, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=2)),
-                SiteReading(site_reading_id=2, site_reading_type_id=1, site_reading_type=SiteReadingType(site_id=2)),
-                SiteReading(site_reading_id=3, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=1)),
-                SiteReading(site_reading_id=4, site_reading_type_id=1, site_reading_type=SiteReadingType(site_id=1)),
+                SiteReading(
+                    site_reading_id=1, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=2, group_id=11)
+                ),
+                SiteReading(
+                    site_reading_id=2, site_reading_type_id=1, site_reading_type=SiteReadingType(site_id=2, group_id=22)
+                ),
+                SiteReading(
+                    site_reading_id=3, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=1, group_id=11)
+                ),
+                SiteReading(
+                    site_reading_id=4, site_reading_type_id=3, site_reading_type=SiteReadingType(site_id=1, group_id=44)
+                ),
             ],
             [0, 2],
         ),
@@ -317,13 +333,21 @@ def test_get_entity_pages_der(resource: SubscriptionResource, notification_type:
         # Combo resource/site id filtering
         #
         (
-            Subscription(resource_type=SubscriptionResource.READING, resource_id=2, scoped_site_id=2, conditions=[]),
+            Subscription(resource_type=SubscriptionResource.READING, resource_id=11, scoped_site_id=2, conditions=[]),
             SubscriptionResource.READING,
             [
-                SiteReading(site_reading_id=1, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=2)),
-                SiteReading(site_reading_id=2, site_reading_type_id=1, site_reading_type=SiteReadingType(site_id=2)),
-                SiteReading(site_reading_id=3, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=1)),
-                SiteReading(site_reading_id=4, site_reading_type_id=1, site_reading_type=SiteReadingType(site_id=1)),
+                SiteReading(
+                    site_reading_id=1, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=2, group_id=11)
+                ),
+                SiteReading(
+                    site_reading_id=2, site_reading_type_id=1, site_reading_type=SiteReadingType(site_id=2, group_id=22)
+                ),
+                SiteReading(
+                    site_reading_id=3, site_reading_type_id=2, site_reading_type=SiteReadingType(site_id=1, group_id=11)
+                ),
+                SiteReading(
+                    site_reading_id=4, site_reading_type_id=3, site_reading_type=SiteReadingType(site_id=1, group_id=44)
+                ),
             ],
             [0],
         ),
