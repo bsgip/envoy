@@ -5,6 +5,7 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
+import pytest_mock
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.asserts.type import assert_list_type
@@ -343,6 +344,17 @@ async def test_supersede_then_insert_does_many_sites(
             await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))
         ).scalar_one()
         assert after_doe_count == original_doe_count + len(does)
+
+
+@pytest.mark.anyio
+async def test_supersede_then_insert_does_empty_list(mocker: pytest_mock.MockerFixture) -> None:
+    """Ensure proper return for empty doe list supplied"""
+    async with mocker.AsyncMock() as session:
+        await supersede_then_insert_does(session, [], datetime.now())
+
+        # Ensure no calls to session or its methods
+        # Should mean early return
+        session.assert_not_called()
 
 
 @pytest.mark.parametrize(
