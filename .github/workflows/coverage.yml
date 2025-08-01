@@ -1,4 +1,5 @@
 name: Coverage Comparison
+
 on:
   pull_request:
     branches: [main]
@@ -9,11 +10,12 @@ permissions:
   pull-requests: write
 
 jobs:
-  # This run coverage on the target and source branches before comparing
-  coverage:
+  coverage_source:
     runs-on: ubuntu-latest
+    outputs:
+      source_raw: ${{ steps.extract.outputs.raw }}
     steps:
-      - name: Checkout
+      - name: Checkout (source branch)
         uses: actions/checkout@v3.1.0
 
       - name: Setup Python
@@ -29,16 +31,28 @@ jobs:
       - name: Coverage (source branch)
         run: |
           coverage run --data-file=.coverage-source -m pytest
-          {
-            echo 'SOURCE_RAW<<EOF'
-            coverage report --data-file=.coverage-source --omit='tests/**'
-            echo EOF
-          } >> "$GITHUB_ENV"
 
-      - name: Checkout
+      - name: Extract Coverage
+        id: extract
+        run: |
+          echo 'raw<<EOF' >> $GITHUB_OUTPUT
+          coverage report --data-file=.coverage-source --omit='tests/**' >> $GITHUB_OUTPUT
+          echo EOF >> $GITHUB_OUTPUT
+
+  coverage_target:
+    runs-on: ubuntu-latest
+    outputs:
+      target_raw: ${{ steps.extract.outputs.raw }}
+    steps:
+      - name: Checkout (target branch)
         uses: actions/checkout@v3.1.0
         with:
           ref: ${{ github.base_ref }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4.2.0
+        with:
+          python-version: "3.11"
 
       - name: Install Dependencies
         run: |
@@ -48,15 +62,23 @@ jobs:
       - name: Coverage (target branch)
         run: |
           coverage run --data-file=.coverage-target -m pytest
-          {
-            echo 'TARGET_RAW<<EOF'
-            coverage report --data-file=.coverage-target --omit='tests/**'
-            echo EOF
-          } >> "$GITHUB_ENV"
 
+      - name: Extract Coverage
+        id: extract
+        run: |
+          echo 'raw<<EOF' >> $GITHUB_OUTPUT
+          coverage report --data-file=.coverage-target --omit='tests/**' >> $GITHUB_OUTPUT
+          echo EOF >> $GITHUB_OUTPUT
+
+  compare_coverage:
+    runs-on: ubuntu-latest
+    needs: [coverage_source, coverage_target]
+    env:
+      SOURCE_RAW: ${{ needs.coverage_source.outputs.source_raw }}
+      TARGET_RAW: ${{ needs.coverage_target.outputs.target_raw }}
+      ISSUE_NUMBER: ${{ github.event.number }}
+    steps:
       - uses: actions/github-script@v7
-        env: 
-          ISSUE_NUMBER: ${{ github.event.number }}
         with:
           script: |
             const { SOURCE_RAW, TARGET_RAW, GITHUB_BASE_REF, GITHUB_HEAD_REF, ISSUE_NUMBER } = process.env
