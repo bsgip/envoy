@@ -23,7 +23,6 @@ from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.der import to_hex_binary
-from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.request_scope import BaseRequestScope
 

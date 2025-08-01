@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import product
 from typing import Optional
 
@@ -24,8 +24,9 @@ from sqlalchemy import func, select
 
 from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import BadRequestError, ForbiddenError, InvalidIdError, NotFoundError
-from envoy.server.manager.metering import MirrorMeteringManager
-from envoy.server.model.archive.site_reading import ArchiveSiteReadingType
+from envoy.server.manager.metering import MirrorMeteringManager, UpsertMupResult
+from envoy.server.mapper.sep2.metering import MirrorUsagePointMapper
+from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
@@ -93,17 +94,370 @@ async def test_create_or_update_mirror_usage_point_no_site(pg_base_config, scope
 
 
 @pytest.mark.anyio
-async def test_create_or_update_mirror_usage_point_created(pg_base_config, scope):
-    """Submitting an empty MUP is an error"""
-    mmrs = [generate_class_instance(MirrorMeterReading)]
+async def test_create_or_update_mirror_usage_point_missing_reading_type(pg_base_config):
+    """Submitting a new MUP without a reading type is an error"""
+
+    mmr1 = generate_class_instance(
+        MirrorMeterReading,
+        mRID="111abc",
+        readingType=generate_class_instance(ReadingType, seed=404),
+        reading=None,
+    )
+
+    mmr2 = generate_class_instance(
+        MirrorMeterReading,
+        mRID="222abc",
+        readingType=None,
+    )
+
+    mup = generate_class_instance(
+        MirrorUsagePoint,
+        seed=505,
+        mRID="333abc",
+        roleFlags="12",
+        deviceLFDI="site1-lfdi",
+        mirrorMeterReadings=[mmr1, mmr2],
+    )
+
+    async with generate_async_session(pg_base_config) as session:
+        with pytest.raises(BadRequestError):
+            await MirrorMeteringManager.create_or_update_mirror_usage_point(
+                session,
+                generate_class_instance(
+                    MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, aggregator_id=1, site_id=None
+                ),
+                mup,
+            )
+
+
+@pytest.mark.anyio
+async def test_create_or_update_mirror_usage_point_created_no_readings(pg_base_config):
+    """Submitting a new MUP should insert everything associated with that mup under a new group ID (even if there
+    are no readings)"""
+
+    mmr1 = generate_class_instance(
+        MirrorMeterReading,
+        mRID="111abc",
+        readingType=generate_class_instance(ReadingType, seed=404),
+    )
+
+    mmr2 = generate_class_instance(
+        MirrorMeterReading,
+        mRID="222abc",
+        readingType=generate_class_instance(ReadingType, seed=505),
+    )
+
+    mup = generate_class_instance(
+        MirrorUsagePoint,
+        seed=505,
+        mRID="333abc",
+        roleFlags="12",
+        deviceLFDI="site2-lfdi",
+        mirrorMeterReadings=[mmr1, mmr2],
+    )
+    async with generate_async_session(pg_base_config) as session:
+        original_count_of_srts = (await session.execute(select(func.count()).select_from(SiteReadingType))).scalar_one()
+
     async with generate_async_session(pg_base_config) as session:
         result = await MirrorMeteringManager.create_or_update_mirror_usage_point(
             session,
-            scope,
-            1,
-            generate_class_instance(MirrorUsagePoint, deviceLFDI="ABC123", mirrorMeterReadings=mmrs),
+            generate_class_instance(
+                MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, aggregator_id=1, site_id=None
+            ),
+            mup,
         )
-    raise NotImplementedError()
+        assert isinstance(result, UpsertMupResult)
+        assert result.created is True
+        assert isinstance(result.mup_id, int)
+
+    # Check the DB
+    async with generate_async_session(pg_base_config) as session:
+        new_count_of_srts = (await session.execute(select(func.count()).select_from(SiteReadingType))).scalar_one()
+        assert new_count_of_srts == original_count_of_srts + 2, "Should've added two SiteReadingTypes for our 2 MMRs"
+
+        assert 0 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
+        assert 0 == (await session.execute(select(func.count()).select_from(ArchiveSiteReading))).scalar_one()
+
+        srt1 = (await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr1.mRID))).scalar_one()
+        srt2 = (await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr2.mRID))).scalar_one()
+
+        # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
+        for db_srt, mmr in zip([srt1, srt2], [mmr1, mmr2]):
+            assert db_srt.group_mrid == mup.mRID
+            assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
+            assert db_srt.group_id == result.mup_id
+            assert_nowish(db_srt.changed_time)
+            assert_nowish(db_srt.created_time)
+            assert db_srt.accumulation_behaviour == mmr.readingType.accumulationBehaviour
+            assert db_srt.uom == mmr.readingType.uom
+            assert db_srt.aggregator_id == 1
+            assert db_srt.site_id == 2
+
+        # new SiteReadingType's should be stamped with a new group_id
+        count_of_srts_in_group = (
+            await session.execute(
+                select(func.count()).select_from(SiteReadingType).where(SiteReadingType.group_id == result.mup_id)
+            )
+        ).scalar_one()
+        assert count_of_srts_in_group == 2, "The new SRT's should be the only types in this group"
+
+
+@pytest.mark.anyio
+async def test_create_or_update_mirror_usage_point_created_with_readings(pg_base_config):
+    """Submitting a new MUP should insert everything associated with that mup under a new group ID"""
+    reading1 = generate_class_instance(
+        Reading,
+        seed=1,
+        qualityFlags="",
+        localID="ab",
+        timePeriod=generate_class_instance(DateTimeIntervalType, seed=101),
+    )
+    reading2 = generate_class_instance(
+        Reading,
+        seed=2,
+        qualityFlags="",
+        localID="02",
+        timePeriod=generate_class_instance(DateTimeIntervalType, seed=202),
+    )
+    reading3 = generate_class_instance(
+        Reading,
+        seed=3,
+        qualityFlags="",
+        localID="c1",
+        timePeriod=generate_class_instance(DateTimeIntervalType, seed=303),
+    )
+
+    mmr1 = generate_class_instance(
+        MirrorMeterReading,
+        mRID="111abc",
+        readingType=generate_class_instance(ReadingType, seed=404),
+        reading=reading1,
+    )
+
+    mmr2 = generate_class_instance(
+        MirrorMeterReading,
+        mRID="222abc",
+        readingType=generate_class_instance(ReadingType, seed=505),
+        mirrorReadingSets=[generate_class_instance(MirrorReadingSet, readings=[reading2, reading3])],
+    )
+
+    mup = generate_class_instance(
+        MirrorUsagePoint,
+        seed=505,
+        mRID="333abc",
+        roleFlags="12",
+        deviceLFDI="site1-lfdi",
+        mirrorMeterReadings=[mmr1, mmr2],
+    )
+    async with generate_async_session(pg_base_config) as session:
+        original_count_of_srts = (await session.execute(select(func.count()).select_from(SiteReadingType))).scalar_one()
+
+    async with generate_async_session(pg_base_config) as session:
+        result = await MirrorMeteringManager.create_or_update_mirror_usage_point(
+            session,
+            generate_class_instance(
+                MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, aggregator_id=1, site_id=None
+            ),
+            mup,
+        )
+        assert isinstance(result, UpsertMupResult)
+        assert result.created is True
+        assert isinstance(result.mup_id, int)
+
+    # Check the DB
+    async with generate_async_session(pg_base_config) as session:
+        new_count_of_srts = (await session.execute(select(func.count()).select_from(SiteReadingType))).scalar_one()
+        assert new_count_of_srts == original_count_of_srts + 2, "Should've added two SiteReadingTypes for our 2 MMRs"
+
+        assert 0 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
+        assert 0 == (await session.execute(select(func.count()).select_from(ArchiveSiteReading))).scalar_one()
+
+        srt1 = (await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr1.mRID))).scalar_one()
+        srt2 = (await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr2.mRID))).scalar_one()
+
+        # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
+        for db_srt, mmr in zip([srt1, srt2], [mmr1, mmr2]):
+            assert db_srt.group_mrid == mup.mRID
+            assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
+            assert db_srt.group_id == result.mup_id
+            assert_nowish(db_srt.changed_time)
+            assert_nowish(db_srt.created_time)
+            assert db_srt.accumulation_behaviour == mmr.readingType.accumulationBehaviour
+            assert db_srt.uom == mmr.readingType.uom
+            assert db_srt.aggregator_id == 1
+            assert db_srt.site_id == 1
+
+        # new SiteReadingType's should be stamped with a new group_id
+        count_of_srts_in_group = (
+            await session.execute(
+                select(func.count()).select_from(SiteReadingType).where(SiteReadingType.group_id == result.mup_id)
+            )
+        ).scalar_one()
+        assert count_of_srts_in_group == 2, "The new SRT's should be the only types in this group"
+
+        # Readings should've made it in
+        new_readings = (
+            (await session.execute(select(SiteReading).order_by(SiteReading.site_reading_id.desc()).limit(3)))
+            .scalars()
+            .all()
+        )
+        assert len(new_readings) == 3
+        for db_reading, src_reading in zip(new_readings, [reading3, reading2, reading1]):
+            assert_nowish(db_reading.changed_time)
+            assert_nowish(db_reading.created_time)
+            assert db_reading.value == src_reading.value
+            assert db_reading.local_id == int(src_reading.localID, 16)
+
+
+@pytest.mark.parametrize("update_role_flags", [True, False])
+@pytest.mark.anyio
+async def test_create_or_update_mirror_usage_point_update(pg_base_config, update_role_flags: bool):
+    """Submitting a new MUP should insert everything associated with that mup under a new group ID"""
+    reading1 = generate_class_instance(
+        Reading,
+        seed=1,
+        qualityFlags="",
+        localID="ab",
+        timePeriod=generate_class_instance(DateTimeIntervalType, seed=101),
+    )
+    reading2 = generate_class_instance(
+        Reading,
+        seed=2,
+        qualityFlags="",
+        localID="02",
+        timePeriod=generate_class_instance(DateTimeIntervalType, seed=202),
+    )
+    reading3 = generate_class_instance(
+        Reading,
+        seed=3,
+        qualityFlags="",
+        localID="c1",
+        timePeriod=generate_class_instance(DateTimeIntervalType, seed=303),
+    )
+
+    # Identical to SiteReadingType #1
+    mmr1 = generate_class_instance(
+        MirrorMeterReadingRequest,
+        mRID="10000000000000000000000000000abc",  # matches SiteReadingType 1
+        readingType=generate_class_instance(
+            ReadingType,
+            dataQualifier=2,
+            uom=38,
+            flowDirection=1,
+            accumulationBehaviour=3,
+            kind=37,
+            phase=64,
+            powerOfTenMultiplier=3,
+            intervalLength=0,
+        ),  # Matches SiteReadingType #1 perfectly so no update required
+        reading=reading1,
+    )
+
+    # Brand new SiteReadingType
+    mmr_new = generate_class_instance(
+        MirrorMeterReading,
+        mRID="abc123def",
+        readingType=generate_class_instance(ReadingType, seed=404),
+        reading=reading2,
+    )
+
+    # Updates SiteReadingType #5
+    mmr5 = generate_class_instance(
+        MirrorMeterReading,
+        mRID="50000000000000000000000000000abc",
+        readingType=generate_class_instance(ReadingType, seed=505),
+        reading=reading3,
+    )
+
+    mup = generate_class_instance(
+        MirrorUsagePoint,
+        seed=505,
+        mRID="10000000000000000000000000000def",  # For updating group #1
+        roleFlags="12" if update_role_flags else "1",
+        deviceLFDI="site1-lfdi",
+        mirrorMeterReadings=[mmr1, mmr_new, mmr5],
+    )
+    async with generate_async_session(pg_base_config) as session:
+        original_count_of_srts = (await session.execute(select(func.count()).select_from(SiteReadingType))).scalar_one()
+
+    async with generate_async_session(pg_base_config) as session:
+        result = await MirrorMeteringManager.create_or_update_mirror_usage_point(
+            session,
+            generate_class_instance(
+                MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, aggregator_id=1, site_id=None
+            ),
+            mup,
+        )
+        assert isinstance(result, UpsertMupResult)
+        assert result.created is False
+        assert isinstance(result.mup_id, int)
+        assert result.mup_id == 1, "We are updating group 1"
+
+    # Check the DB
+    async with generate_async_session(pg_base_config) as session:
+        new_count_of_srts = (await session.execute(select(func.count()).select_from(SiteReadingType))).scalar_one()
+        assert new_count_of_srts == original_count_of_srts + 1, "Should've added one SiteReadingType for our 3 MMRs"
+
+        if update_role_flags:
+            # We're lazy and archive the two current MMRs in place for the roleFlags
+            # and then another time for the updated SiteReadingType on mmr5
+            assert 3 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
+        else:
+            # Just the updated SiteReadingType on mmr5
+            assert 1 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
+
+        srt1 = (await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr1.mRID))).scalar_one()
+        srt_new = (
+            await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr_new.mRID))
+        ).scalar_one()
+        srt5 = (await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr5.mRID))).scalar_one()
+
+        assert srt1.changed_time == datetime(
+            2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc
+        ), "Unchanged from base config"
+        assert srt1.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "Unchanged from base config"
+        assert_nowish(srt_new.changed_time)
+        assert_nowish(srt_new.created_time)
+        assert_nowish(srt5.changed_time)
+        assert srt5.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "Unchanged from base config"
+
+        # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
+        for db_srt, mmr in zip([srt1, srt_new, srt5], [mmr1, mmr_new, mmr5]):
+            assert db_srt.group_mrid == mup.mRID
+            assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
+            assert db_srt.group_id == result.mup_id
+            assert db_srt.accumulation_behaviour == mmr.readingType.accumulationBehaviour
+            assert db_srt.uom == mmr.readingType.uom
+            assert db_srt.aggregator_id == 1
+            assert db_srt.site_id == 1
+
+        # new SiteReadingType's should be stamped with a new group_id
+        count_of_srts_in_group = (
+            await session.execute(
+                select(func.count()).select_from(SiteReadingType).where(SiteReadingType.group_id == srt1.group_id)
+            )
+        ).scalar_one()
+        assert count_of_srts_in_group == 3, "The new SRT's should be the only types in this group"
+
+        # Readings should've made it in
+        db_reading1 = (
+            await session.execute(select(SiteReading).where(SiteReading.value == reading1.value))
+        ).scalar_one()
+        db_reading2 = (
+            await session.execute(select(SiteReading).where(SiteReading.value == reading2.value))
+        ).scalar_one()
+        db_reading3 = (
+            await session.execute(select(SiteReading).where(SiteReading.value == reading3.value))
+        ).scalar_one()
+
+        assert db_reading1.site_reading_type_id == srt1.site_reading_type_id
+        assert db_reading2.site_reading_type_id == srt_new.site_reading_type_id
+        assert db_reading3.site_reading_type_id == srt5.site_reading_type_id
+        for db_reading, src_reading in zip([db_reading1, db_reading2, db_reading3], [reading1, reading2, reading3]):
+            assert_nowish(db_reading.changed_time)
+            assert_nowish(db_reading.created_time)
+            assert db_reading.value == src_reading.value
+            assert db_reading.local_id == int(src_reading.localID, 16)
 
 
 @pytest.mark.anyio

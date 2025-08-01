@@ -33,7 +33,6 @@ from envoy.server.mapper.sep2.metering import (
     MirrorUsagePointListMapper,
     MirrorUsagePointMapper,
 )
-from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.request_scope import BaseRequestScope
 

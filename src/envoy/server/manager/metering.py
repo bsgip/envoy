@@ -9,6 +9,7 @@ from envoy_schema.server.schema.sep2.metering_mirror import (
     MirrorUsagePoint,
     MirrorUsagePointListResponse,
 )
+from envoy_schema.server.schema.sep2.types import RoleFlagsType
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.notification.manager.notification import NotificationManager
@@ -69,13 +70,13 @@ class MirrorMeteringManager:
         site = await select_single_site_with_lfdi(session=session, lfdi=mup_lfdi, aggregator_id=scope.aggregator_id)
         if site is None:
             raise InvalidIdError(f"deviceLFDI {mup.deviceLFDI} doesn't match a known site.")
-
+        site_id = site.site_id
         role_flags = MirrorUsagePointMapper.extract_role_flags(mup)
 
         changed_time = utc_now()
 
         group_srts = await fetch_site_reading_types_for_group_mrid(
-            session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, group_mrid=mup.mRID
+            session, aggregator_id=scope.aggregator_id, site_id=site_id, group_mrid=mup.mRID
         )
         srt_by_mrid = {srt.mrid: srt for srt in group_srts}
 
@@ -89,7 +90,7 @@ class MirrorMeteringManager:
                 srt = MirrorUsagePointMapper.map_from_request(
                     mmr=mmr,
                     aggregator_id=scope.aggregator_id,
-                    site_id=site.site_id,
+                    site_id=site_id,
                     group_id=group_id,
                     group_mrid=mup.mRID,
                     role_flags=role_flags,
@@ -101,6 +102,20 @@ class MirrorMeteringManager:
         else:
             created = False
             group_id = group_srts[0].group_id
+
+            # Certain properties exist at the MUP level - changing them will require updating ALL existing
+            # SiteReadingTypes in the group
+            if role_flags != group_srts[0].role_flags:
+                group_srt_ids = [srt.site_reading_type_id for srt in group_srts]
+                await copy_rows_into_archive(
+                    session,
+                    SiteReadingType,
+                    ArchiveSiteReadingType,
+                    lambda q: q.where(SiteReadingType.site_reading_type_id.in_(group_srt_ids)),
+                )
+                for srt in group_srts:
+                    srt.role_flags = role_flags
+                await session.flush()
 
         await MirrorMeteringManager.sync_mirror_meter_readings(
             session,
@@ -114,7 +129,7 @@ class MirrorMeteringManager:
         )
         await session.commit()
 
-        logger.info(f"MUP Upsert for site {site.site_id} group_id {group_id}. Created {created}")
+        logger.info(f"MUP Upsert for site {site_id} group_id {group_id}. Created {created}")
         return UpsertMupResult(mup_id=group_id, created=created)
 
     @staticmethod
@@ -131,6 +146,7 @@ class MirrorMeteringManager:
         site_id = srts[0].site_id  # We can assume that all SiteReadingType's under a group share a site_id
         role_flags = srts[0].role_flags  # We know that these will be shared across all SiteReadingTypes under a group
         group_mrid = srts[0].group_mrid  # We know that these will be shared across all SiteReadingTypes under a group
+
         site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=scope.aggregator_id)
         if site is None:
             # This really shouldn't be happening under normal circumstances
@@ -259,7 +275,7 @@ class MirrorMeteringManager:
         srts_by_mrid: dict[str, SiteReadingType],
         site_id: int,
         group_id: int,
-        role_flags: int,
+        role_flags: RoleFlagsType,
         group_mrid: str,
     ) -> None:
         """Adds or updates a set of MirrorMeterReadings for a given group id. Expects every entry in srts_by_mrid to
@@ -306,7 +322,7 @@ class MirrorMeteringManager:
         # Start inserting/updating the new site reading types
         for mmr in mmrs_to_insert:
             new_srt = MirrorUsagePointMapper.map_from_request(
-                mmr, scope.aggregator_id, site_id, mup_id, group_mrid, role_flags, changed_time
+                mmr, scope.aggregator_id, site_id, group_id, group_mrid, role_flags, changed_time
             )
             session.add(new_srt)
             srts_by_mrid[mmr.mRID] = new_srt  # Log this new site reading type

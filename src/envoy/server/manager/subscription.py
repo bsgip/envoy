@@ -9,6 +9,7 @@ from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.crud.doe import select_site_control_group_by_id
 from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.pricing import select_single_tariff
+from envoy.server.crud.site_reading import fetch_site_reading_types_for_group
 from envoy.server.crud.subscription import (
     count_subscriptions_for_site,
     delete_subscription_for_site,
@@ -134,11 +135,11 @@ class SubscriptionManager:
                 if scg is None:
                     raise BadRequestError(f"Invalid site_control_group_id {sub.resource_id} for site {scope.site_id}")
             elif sub.resource_type == SubscriptionResource.READING:
-                srt = await fetch_site_reading_type_for_aggregator(
-                    session, scope.aggregator_id, sub.resource_id, scope.site_id, include_site_relation=False
+                srts = await fetch_site_reading_types_for_group(
+                    session, scope.aggregator_id, scope.site_id, sub.resource_id
                 )
-                if srt is None:
-                    raise BadRequestError(f"Invalid site_reading_type_id {sub.resource_id} for site {scope.site_id}")
+                if not srts:
+                    raise BadRequestError(f"Invalid mup {sub.resource_id} for site {scope.site_id}")
             elif sub.resource_type == SubscriptionResource.TARIFF_GENERATED_RATE:
                 tp = await select_single_tariff(session, sub.resource_id)
                 if tp is None:

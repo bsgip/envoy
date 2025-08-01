@@ -196,13 +196,13 @@ async def test_delete_subscription_for_site(
 @mock.patch("envoy.server.manager.subscription.utc_now")
 @mock.patch("envoy.server.manager.subscription.select_aggregator")
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
-@mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.subscription.fetch_site_reading_types_for_group")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
 @mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_bad_agg_lookup(
     mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+    mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
     mock_select_aggregator: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
@@ -225,7 +225,7 @@ async def test_add_subscription_for_site_bad_agg_lookup(
     mock_select_aggregator.assert_called_once_with(mock_session, scope.aggregator_id)
     mock_SubscriptionMapper.map_from_request.assert_not_called()
     mock_select_single_tariff.assert_not_called()
-    mock_fetch_site_reading_type_for_aggregator.assert_not_called()
+    mock_fetch_site_reading_types_for_group.assert_not_called()
     mock_upsert_subscription.assert_not_called()
 
 
@@ -233,13 +233,13 @@ async def test_add_subscription_for_site_bad_agg_lookup(
 @mock.patch("envoy.server.manager.subscription.utc_now")
 @mock.patch("envoy.server.manager.subscription.select_aggregator")
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
-@mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.subscription.fetch_site_reading_types_for_group")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
 @mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_bad_site_id(
     mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+    mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
     mock_select_aggregator: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
@@ -257,7 +257,7 @@ async def test_add_subscription_for_site_bad_site_id(
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
     mock_upsert_subscription.return_value = 98765
-    mock_fetch_site_reading_type_for_aggregator.return_value = SiteReadingType(site_id=scope.site_id)
+    mock_fetch_site_reading_types_for_group.return_value = [SiteReadingType(site_id=scope.site_id)]
 
     # Act
     with pytest.raises(BadRequestError):
@@ -273,7 +273,7 @@ async def test_add_subscription_for_site_bad_site_id(
         changed_time=now,
     )
     mock_select_single_tariff.assert_not_called()
-    mock_fetch_site_reading_type_for_aggregator.assert_not_called()
+    mock_fetch_site_reading_types_for_group.assert_not_called()
     mock_upsert_subscription.assert_not_called()
 
 
@@ -281,13 +281,13 @@ async def test_add_subscription_for_site_bad_site_id(
 @mock.patch("envoy.server.manager.subscription.utc_now")
 @mock.patch("envoy.server.manager.subscription.select_aggregator")
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
-@mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.subscription.fetch_site_reading_types_for_group")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
 @mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_TARIFF_RATE(
     mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+    mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
     mock_select_aggregator: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
@@ -321,7 +321,7 @@ async def test_add_subscription_for_site_TARIFF_RATE(
         changed_time=now,
     )
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
-    mock_fetch_site_reading_type_for_aggregator.assert_not_called()
+    mock_fetch_site_reading_types_for_group.assert_not_called()
     mock_upsert_subscription.assert_called_once_with(mock_session, mapped_sub)
 
 
@@ -329,13 +329,13 @@ async def test_add_subscription_for_site_TARIFF_RATE(
 @mock.patch("envoy.server.manager.subscription.utc_now")
 @mock.patch("envoy.server.manager.subscription.select_aggregator")
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
-@mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.subscription.fetch_site_reading_types_for_group")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
 @mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_TARIFF_RATE_missing(
     mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+    mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
     mock_select_aggregator: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
@@ -369,7 +369,7 @@ async def test_add_subscription_for_site_TARIFF_RATE_missing(
         changed_time=now,
     )
     mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
-    mock_fetch_site_reading_type_for_aggregator.assert_not_called()
+    mock_fetch_site_reading_types_for_group.assert_not_called()
     mock_upsert_subscription.assert_not_called()
 
 
@@ -377,13 +377,13 @@ async def test_add_subscription_for_site_TARIFF_RATE_missing(
 @mock.patch("envoy.server.manager.subscription.utc_now")
 @mock.patch("envoy.server.manager.subscription.select_aggregator")
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
-@mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.subscription.fetch_site_reading_types_for_group")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
 @mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_READING(
     mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+    mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
     mock_select_aggregator: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
@@ -391,17 +391,17 @@ async def test_add_subscription_for_site_READING(
     mock_session: AsyncSession = create_mock_session()
     scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope)
     now = datetime(2014, 4, 5, 6, 7, 8)
-    site_reading_type_id = 5432
+    mup_id = 5432
     sub = generate_class_instance(Sep2Subscription)
     mapped_sub = Subscription(
-        resource_type=SubscriptionResource.READING, scoped_site_id=scope.site_id, resource_id=site_reading_type_id
+        resource_type=SubscriptionResource.READING, scoped_site_id=scope.site_id, resource_id=mup_id
     )
 
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
     mock_upsert_subscription.return_value = 98765
-    mock_fetch_site_reading_type_for_aggregator.return_value = SiteReadingType(site_id=scope.site_id)
+    mock_fetch_site_reading_types_for_group.return_value = [SiteReadingType(site_id=scope.site_id)]
 
     # Act
     actual_result = await SubscriptionManager.add_subscription_for_site(mock_session, scope, sub)
@@ -417,8 +417,8 @@ async def test_add_subscription_for_site_READING(
         changed_time=now,
     )
     mock_select_single_tariff.assert_not_called()
-    mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
-        mock_session, scope.aggregator_id, site_reading_type_id, scope.site_id, include_site_relation=False
+    mock_fetch_site_reading_types_for_group.assert_called_once_with(
+        mock_session, scope.aggregator_id, scope.site_id, mup_id
     )
     mock_upsert_subscription.assert_called_once_with(mock_session, mapped_sub)
     assert mapped_sub.scoped_site_id == scope.site_id, "Site scope should be left alone"
@@ -428,13 +428,13 @@ async def test_add_subscription_for_site_READING(
 @mock.patch("envoy.server.manager.subscription.utc_now")
 @mock.patch("envoy.server.manager.subscription.select_aggregator")
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
-@mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.subscription.fetch_site_reading_types_for_group")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
 @mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_READING_unscoped(
     mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+    mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
     mock_select_aggregator: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
@@ -442,19 +442,15 @@ async def test_add_subscription_for_site_READING_unscoped(
     mock_session: AsyncSession = create_mock_session()
     scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=None)
     now = datetime(2014, 4, 5, 6, 7, 8)
-    site_reading_type_id = 5432
+    mup_id = 5432
     sub = generate_class_instance(Sep2Subscription)
-    mapped_sub = Subscription(
-        resource_type=SubscriptionResource.READING, scoped_site_id=None, resource_id=site_reading_type_id
-    )
+    mapped_sub = Subscription(resource_type=SubscriptionResource.READING, scoped_site_id=None, resource_id=mup_id)
 
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
     mock_upsert_subscription.return_value = 98765
-    mock_fetch_site_reading_type_for_aggregator.return_value = SiteReadingType(
-        site_id=1234321
-    )  # Ensure this differs from scope
+    mock_fetch_site_reading_types_for_group.return_value = [SiteReadingType(site_id=1234321)]
 
     # Act
     actual_result = await SubscriptionManager.add_subscription_for_site(mock_session, scope, sub)
@@ -470,8 +466,8 @@ async def test_add_subscription_for_site_READING_unscoped(
         changed_time=now,
     )
     mock_select_single_tariff.assert_not_called()
-    mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
-        mock_session, scope.aggregator_id, site_reading_type_id, scope.site_id, include_site_relation=False
+    mock_fetch_site_reading_types_for_group.assert_called_once_with(
+        mock_session, scope.aggregator_id, scope.site_id, mup_id
     )
     mock_upsert_subscription.assert_called_once_with(mock_session, mapped_sub)
     assert mapped_sub.scoped_site_id is None, "Site scope should've been removed"
@@ -481,13 +477,13 @@ async def test_add_subscription_for_site_READING_unscoped(
 @mock.patch("envoy.server.manager.subscription.utc_now")
 @mock.patch("envoy.server.manager.subscription.select_aggregator")
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
-@mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.subscription.fetch_site_reading_types_for_group")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
 @mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_READING_missing(
     mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+    mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
     mock_select_aggregator: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
@@ -495,17 +491,17 @@ async def test_add_subscription_for_site_READING_missing(
     mock_session: AsyncSession = create_mock_session()
     scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=None)
     now = datetime(2014, 4, 5, 6, 7, 8)
-    site_reading_type_id = 5432
+    mup_id = 5432
     sub = generate_class_instance(Sep2Subscription)
     mapped_sub = Subscription(
-        resource_type=SubscriptionResource.READING, scoped_site_id=scope.site_id, resource_id=site_reading_type_id
+        resource_type=SubscriptionResource.READING, scoped_site_id=scope.site_id, resource_id=mup_id
     )
 
     mock_utc_now.return_value = now
     mock_select_aggregator.return_value = Aggregator(domains=[AggregatorDomain(domain="domain.value1")])
     mock_SubscriptionMapper.map_from_request = mock.Mock(return_value=mapped_sub)
     mock_upsert_subscription.return_value = 98765
-    mock_fetch_site_reading_type_for_aggregator.return_value = None
+    mock_fetch_site_reading_types_for_group.return_value = []
 
     # Act
     with pytest.raises(BadRequestError):
@@ -521,8 +517,8 @@ async def test_add_subscription_for_site_READING_missing(
         changed_time=now,
     )
     mock_select_single_tariff.assert_not_called()
-    mock_fetch_site_reading_type_for_aggregator.assert_called_once_with(
-        mock_session, scope.aggregator_id, site_reading_type_id, scope.site_id, include_site_relation=False
+    mock_fetch_site_reading_types_for_group.assert_called_once_with(
+        mock_session, scope.aggregator_id, scope.site_id, mup_id
     )
     mock_upsert_subscription.assert_not_called()
 
@@ -531,13 +527,13 @@ async def test_add_subscription_for_site_READING_missing(
 @mock.patch("envoy.server.manager.subscription.utc_now")
 @mock.patch("envoy.server.manager.subscription.select_aggregator")
 @mock.patch("envoy.server.manager.subscription.SubscriptionMapper")
-@mock.patch("envoy.server.manager.subscription.fetch_site_reading_type_for_aggregator")
+@mock.patch("envoy.server.manager.subscription.fetch_site_reading_types_for_group")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
 @mock.patch("envoy.server.manager.subscription.upsert_subscription")
 async def test_add_subscription_for_site_SITE(
     mock_upsert_subscription: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
-    mock_fetch_site_reading_type_for_aggregator: mock.MagicMock,
+    mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_SubscriptionMapper: mock.MagicMock,
     mock_select_aggregator: mock.MagicMock,
     mock_utc_now: mock.MagicMock,
@@ -569,7 +565,7 @@ async def test_add_subscription_for_site_SITE(
         changed_time=now,
     )
     mock_select_single_tariff.assert_not_called()
-    mock_fetch_site_reading_type_for_aggregator.assert_not_called()
+    mock_fetch_site_reading_types_for_group.assert_not_called()
     mock_upsert_subscription.assert_called_once_with(mock_session, mapped_sub)
 
 

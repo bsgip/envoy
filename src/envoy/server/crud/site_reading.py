@@ -4,11 +4,9 @@ from typing import Optional, Sequence, Union, cast
 
 from envoy_schema.server.schema.sep2.types import RoleFlagsType
 from sqlalchemy import Select, and_, distinct, func, insert, or_, select
-from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
+from envoy.server.crud.archive import delete_rows_into_archive
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SITE_READING_TYPE_GROUP_ID_SEQUENCE, SiteReading, SiteReadingType
