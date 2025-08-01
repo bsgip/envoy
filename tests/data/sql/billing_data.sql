@@ -70,6 +70,7 @@ VALUES (1006, -- site_reading_type_id
     1, -- site_id
     '10060000000000000000000000000000', -- mrid
     1006, -- group id
+    '10060000000000000000000000000def', -- group_mrid
     72, -- uom
     2, -- data_qualifier
     1, -- flow_direction

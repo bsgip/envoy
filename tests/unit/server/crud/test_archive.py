@@ -361,7 +361,7 @@ async def test_delete_rows_into_archive_cascade_deletes(pg_base_config):
         )
 
         assert 1 == (await session.execute(select(func.count()).select_from(SiteReadingType))).scalar_one()
-        assert 3 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
+        assert 4 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
 
         assert 1 == (await session.execute(select(func.count()).select_from(SiteReading))).scalar_one()
         assert 3 == (await session.execute(select(func.count()).select_from(ArchiveSiteReading))).scalar_one()

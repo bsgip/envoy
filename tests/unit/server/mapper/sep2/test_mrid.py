@@ -152,8 +152,6 @@ def test_all_default_encodings_unique():
     assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope1, 0, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_doe_mrid(scope1, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_function_set_assignment_mrid(scope1, 0, 0), all_generated_mrids)
-    assert_and_append_mrid(MridMapper.encode_mirror_usage_point_mrid(scope1, 0), all_generated_mrids)
-    assert_and_append_mrid(MridMapper.encode_mirror_meter_reading_mrid(scope1, 0), all_generated_mrids)
     for prt in PricingReadingType:
         assert_and_append_mrid(
             MridMapper.encode_rate_component_mrid(scope1, 0, 0, datetime.min.replace(tzinfo=timezone.utc), prt),
@@ -372,8 +370,6 @@ def test_decode_and_validate_mrid_type():
     do_test(lambda s: MridMapper.encode_doe_program_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_doe_mrid(s, 1))
     do_test(lambda s: MridMapper.encode_function_set_assignment_mrid(s, 1, 2))
-    do_test(lambda s: MridMapper.encode_mirror_usage_point_mrid(s, 1))
-    do_test(lambda s: MridMapper.encode_mirror_meter_reading_mrid(s, 1))
     do_test(
         lambda s: MridMapper.encode_rate_component_mrid(
             s, 1, 2, datetime(2021, 2, 3, tzinfo=timezone.utc), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH
@@ -393,17 +389,6 @@ def test_decode_doe_mrid(doe_id: int):
 
     assert isinstance(decoded_id, int)
     assert decoded_id == doe_id
-
-
-@pytest.mark.parametrize("mup_id", [0, MAX_INT_32, 123, 4])
-def test_decode_mirror_usage_point_mrid(mup_id: int):
-    scope = generate_class_instance(BaseRequestScope)
-    mrid = MridMapper.encode_mirror_usage_point_mrid(scope, mup_id)
-    assert_mrid(mrid)
-    decoded_id = MridMapper.decode_mirror_usage_point_mrid(mrid)
-
-    assert isinstance(decoded_id, int)
-    assert decoded_id == mup_id
 
 
 @pytest.mark.parametrize("rate_id, prt", product([0, MAX_INT_32, MAX_INT_64, 123, 4], PricingReadingType))

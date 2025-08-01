@@ -155,6 +155,7 @@ def test_MirrorUsagePointMapper_merge_site_reading_type_changes(optional_is_none
     agg_id = 456
     site_id = 789
     group_id = 1001
+    group_mrid = "abc-123"
     created_time = datetime(2011, 2, 3, tzinfo=timezone.utc)
     target = generate_class_instance(
         SiteReadingType,
@@ -164,6 +165,7 @@ def test_MirrorUsagePointMapper_merge_site_reading_type_changes(optional_is_none
         site_reading_type_id=site_reading_type_id,
         site_id=site_id,
         group_id=group_id,
+        group_mrid=group_mrid,
         aggregator_id=agg_id,
         created_time=created_time,
     )
@@ -182,6 +184,7 @@ def test_MirrorUsagePointMapper_merge_site_reading_type_changes(optional_is_none
             "site_id",
             "created_time",
             "group_id",
+            "group_mrid",
             "mrid",
             "role_flags",
         },
@@ -193,6 +196,7 @@ def test_MirrorUsagePointMapper_merge_site_reading_type_changes(optional_is_none
     assert target.aggregator_id == agg_id
     assert target.site_id == site_id
     assert target.group_id == group_id
+    assert target.group_mrid == group_mrid
 
 
 def test_MirrorUsagePointMapper_map_from_request():

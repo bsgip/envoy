@@ -1,14 +1,15 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 from assertical.fixtures.postgres import generate_async_session
-from zoneinfo import ZoneInfo
+from envoy_schema.server.schema.sep2.types import UomType
+
 from envoy.admin.crud.site_reading import (
     count_site_readings_for_site_and_time,
     select_csip_aus_site_type_ids,
     select_site_readings_for_site_and_time,
 )
-from envoy_schema.server.schema.sep2.types import UomType
 
 TZ = ZoneInfo("Australia/Brisbane")
 
@@ -19,7 +20,7 @@ TZ = ZoneInfo("Australia/Brisbane")
         # Site 1, UOM 38 (ACTIVEPOWER):
         # - ID 1: Site 1, Agg 1, UOM 38, DQ 2 (AVERAGE), Kind 37 (POWER) ✓
         # - ID 3: Site 1, Agg 1, UOM 38, DQ 8 (not AVERAGE/NOT_APPLICABLE) ✗
-        (1, 1, UomType.REAL_POWER_WATT, [1]),
+        (1, 1, UomType.REAL_POWER_WATT, [1, 5]),
         # Site 2, UOM 38:
         # - ID 4: Site 2, Agg 1, UOM 38, DQ 9, Kind 12 (not POWER/NOT_APPLICABLE) ✗
         (1, 2, UomType.REAL_POWER_WATT, []),
