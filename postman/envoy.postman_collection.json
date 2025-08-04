@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "5f4005bf-e832-427e-8182-55e96f01d4b5",
+		"_postman_id": "a64eca7c-5241-4bcf-8d98-83554285b4d3",
 		"name": "envoy",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "24300585"
+		"_exporter_id": "39071715"
 	},
 	"item": [
 		{
@@ -12,6 +12,9 @@
 				{
 					"name": "/edev (EndDeviceList)",
 					"request": {
+						"auth": {
+							"type": "noauth"
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -26,12 +29,115 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev",
+							"raw": "{{HOST}}/edev?l=10",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
 								"edev"
+							],
+							"query": [
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1 (Single EndDevice)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/rp (EndDevice registration)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"rp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1 (Delete EndDevice)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}"
 							]
 						}
 					},
@@ -92,7 +198,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<ConnectionPoint xmlns=\"http://csipaus.org/ns\">\n    <id>1111111111</csipaus:id>\n</ConnectionPoint>\n",
+							"raw": "<ConnectionPoint xmlns=\"https://csipaus.org/ns\">\n    <connectionPointId>1111111111</connectionPointId>\n</ConnectionPoint>\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -136,7 +242,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <sFDI>1234</sFDI>\r\n    <lFDI>01020304</lFDI>\r\n    <deviceCategory>0f</deviceCategory>\r\n</EndDevice>\r\n",
+							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <sFDI>333026821598</sFDI>\r\n    <lFDI>12</lFDI>\r\n    <deviceCategory>0f</deviceCategory>\r\n</EndDevice>\r\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -297,6 +403,54 @@
 			"name": "Meter Mirroring",
 			"item": [
 				{
+					"name": "/mup/1 (MirrorUsagePoint)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/mup/{{MUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup",
+								"{{MUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/mup/1 (DELETE MirrorUsagePoint)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/mup/{{MUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup",
+								"{{MUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "/mup (MirrorUsagePointList)",
 					"request": {
 						"method": "GET",
@@ -352,7 +506,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0600006CC8</mRID>\r\n\t<description>Max Watts</description>\r\n\t<roleFlags>9</roleFlags>\r\n\t<serviceCategoryKind>0</serviceCategoryKind>\r\n\t<status>1</status>\r\n\t<deviceLFDI>site1-lfdi</deviceLFDI>\r\n\t<MirrorMeterReading>\r\n\t\t<mRID>0700006CC8</mRID>\r\n\t\t<ReadingType>\r\n\t\t\t<accumulationBehaviour>9</accumulationBehaviour>\r\n\t\t\t<commodity>1</commodity>\r\n\t\t\t<dataQualifier>8</dataQualifier>\r\n\t\t\t<flowDirection>1</flowDirection>\r\n\t\t\t<powerOfTenMultiplier>3</powerOfTenMultiplier>\r\n\t\t\t<uom>38</uom>\r\n\t\t\t<intervalLength>300</intervalLength>\r\n\t\t</ReadingType>\r\n\t</MirrorMeterReading>\r\n</MirrorUsagePoint>\r\n",
+							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0600006CC8</mRID>\r\n\t<description>Max Watts</description>\r\n\t<roleFlags>9</roleFlags>\r\n\t<serviceCategoryKind>0</serviceCategoryKind>\r\n\t<status>1</status>\r\n\t<deviceLFDI>12</deviceLFDI>\r\n\t<MirrorMeterReading>\r\n\t\t<mRID>0700006CC8</mRID>\r\n\t\t<ReadingType>\r\n\t\t\t<accumulationBehaviour>9</accumulationBehaviour>\r\n\t\t\t<commodity>1</commodity>\r\n\t\t\t<dataQualifier>8</dataQualifier>\r\n\t\t\t<flowDirection>1</flowDirection>\r\n\t\t\t<powerOfTenMultiplier>3</powerOfTenMultiplier>\r\n\t\t\t<uom>38</uom>\r\n\t\t\t<intervalLength>300</intervalLength>\r\n\t\t</ReadingType>\r\n\t</MirrorMeterReading>\r\n</MirrorUsagePoint>\r\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -372,7 +526,7 @@
 					"response": []
 				},
 				{
-					"name": "/mup/0 (MirrorMeterReadingList Add)",
+					"name": "/mup (Update MeterUsagePoint) \\",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -394,23 +548,27 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0800006CC8</mRID>\r\n\t<MirrorReadingSet>\r\n\t\t<mRID>0900006CC8</mRID>\r\n\t\t<timePeriod>\r\n\t\t\t<duration>3600</duration>\r\n\t\t\t<start>1341579365</start>\r\n\t\t</timePeriod>\r\n\t\t<Reading>\r\n\t\t\t<value>9</value>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579365</start>\r\n\t\t\t</timePeriod>\r\n\t\t</Reading>\r\n\t\t<Reading>\r\n\t\t\t<value>11</value>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579665</start>\r\n\t\t\t</timePeriod>\r\n\t\t</Reading>\r\n\t\t<Reading>\r\n\t\t\t<value>10</value>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579965</start>\r\n\t\t\t</timePeriod>\r\n\t\t</Reading>\r\n\t</MirrorReadingSet>\r\n</MirrorMeterReading>"
+							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0600006CC8</mRID> <!-- This MRID should match a previously submitted MUP mrid to update -->\r\n\t<description>Max Watts</description>\r\n\t<roleFlags>9</roleFlags>\r\n\t<serviceCategoryKind>0</serviceCategoryKind>\r\n\t<status>1</status>\r\n\t<deviceLFDI>854d10a201ca99e5e90d3c3e1f9bc1c3bd075f3b</deviceLFDI>\r\n</MirrorUsagePoint>\r\n",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
 						},
 						"url": {
-							"raw": "{{HOST}}/mup/{{MUP_ID}}",
+							"raw": "{{HOST}}/mup",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"mup",
-								"{{MUP_ID}}"
+								"mup"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "/mup/0 (Mirror Metering MirrorMeterReading)",
+					"name": "/mup/0 (MirrorMeterReading Add)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -432,7 +590,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <mRID>0800006CC8</mRID>\r\n    <MirrorReadingSet>\r\n        <mRID>0900006CC8</mRID>\r\n        <timePeriod>\r\n            <duration>86400</duration>\r\n            <start>1341579365</start>\r\n        </timePeriod>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>00</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>01</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>02</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>13</value>\r\n            <localID>03</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>12</value>\r\n            <localID>04</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>05</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>06</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>16</value>\r\n            <localID>07</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>08</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>7</value>\r\n            <localID>09</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>6</value>\r\n            <localID>0A</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>5</value>\r\n            <localID>0B</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>8</value>\r\n            <localID>0C</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>9</value>\r\n            <localID>0D</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>0E</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>12</value>\r\n            <localID>0F</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>14</value>\r\n            <localID>10</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>13</value>\r\n            <localID>11</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>11</value>\r\n            <localID>12</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>7</value>\r\n            <localID>13</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>8</value>\r\n            <localID>14</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>15</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>16</localID>\r\n        </Reading>\r\n        <Reading>\r\n            <value>10</value>\r\n            <localID>17</localID>\r\n        </Reading>\r\n    </MirrorReadingSet>\r\n</MirrorMeterReading>"
+							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0700006CC8</mRID>\r\n\t<MirrorReadingSet>\r\n\t\t<mRID>0900006CC8</mRID>\r\n\t\t<timePeriod>\r\n\t\t\t<duration>3600</duration>\r\n\t\t\t<start>1341579365</start>\r\n\t\t</timePeriod>\r\n\t\t<Reading>\r\n\t\t\t<value>9</value>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579365</start>\r\n\t\t\t</timePeriod>\r\n\t\t</Reading>\r\n\t\t<Reading>\r\n\t\t\t<value>11</value>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579665</start>\r\n\t\t\t</timePeriod>\r\n\t\t</Reading>\r\n\t\t<Reading>\r\n\t\t\t<value>10</value>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579965</start>\r\n\t\t\t</timePeriod>\r\n\t\t</Reading>\r\n\t</MirrorReadingSet>\r\n</MirrorMeterReading>"
 						},
 						"url": {
 							"raw": "{{HOST}}/mup/{{MUP_ID}}",
@@ -585,7 +743,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/3/tp (TariffProfileList Site Scoped)",
+					"name": "/pricing/rt/1 (Pricing ReadingType) Copy",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -601,20 +759,14 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/tp?l=10",
+							"raw": "{{HOST}}/pricing/rt/{{PRICING_RT}}",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"tp"
-							],
-							"query": [
-								{
-									"key": "l",
-									"value": "10"
-								}
+								"pricing",
+								"rt",
+								"{{PRICING_RT}}"
 							]
 						}
 					},
@@ -694,7 +846,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/tp/1/rc/YYYY-MM-DD/1 (RateComponent)",
+					"name": "edev/1/fsa/1/tp (TariffProfileList FSA scope)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -710,18 +862,46 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/tp/{{TP_ID}}/rc/{{DATE}}/{{PRICING_RT}}",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa/{{FSA_ID}}/tp",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
 								"edev",
 								"{{EDEV_ID}}",
-								"tp",
-								"{{TP_ID}}",
-								"rc",
-								"{{DATE}}",
-								"{{PRICING_RT}}"
+								"fsa",
+								"{{FSA_ID}}",
+								"tp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "edev/1/tp (TariffProfile List)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/tp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"tp"
 							]
 						}
 					},
@@ -908,434 +1088,6 @@
 			]
 		},
 		{
-			"name": "DOEs",
-			"item": [
-				{
-					"name": "/edev/1/derp (DERProgramList)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"derp"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1/derp/doe (DERProgram - DOE)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/doe",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"derp",
-								"doe"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1/derp/doe/derc (DERControls - DOE)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/doe/derc?s=0&l=1",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"derp",
-								"doe",
-								"derc"
-							],
-							"query": [
-								{
-									"key": "s",
-									"value": "0"
-								},
-								{
-									"key": "l",
-									"value": "1"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1/derp/doe/derc/date (DERControls - DOE by Date)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/doe/derc/2022-05-07?s=0&l=10",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"derp",
-								"doe",
-								"derc",
-								"2022-05-07"
-							],
-							"query": [
-								{
-									"key": "s",
-									"value": "0"
-								},
-								{
-									"key": "l",
-									"value": "10"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Metering",
-			"item": [
-				{
-					"name": "/upt (Metering UsagePointList)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/upt",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"upt"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/upt/1 (Mirror Metering MeterReadingList)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr?s=0&l=10",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"upt",
-								"{{UPT_ID}}",
-								"mr"
-							],
-							"query": [
-								{
-									"key": "s",
-									"value": "0"
-								},
-								{
-									"key": "l",
-									"value": "10"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/upt/1 (Mirror Metering ReadingType)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rt",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"upt",
-								"{{UPT_ID}}",
-								"mr",
-								"1",
-								"rt"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/upt/1 (Metering ReadingSetList)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs?s=0&l=1",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"upt",
-								"{{UPT_ID}}",
-								"mr",
-								"1",
-								"rs"
-							],
-							"query": [
-								{
-									"key": "s",
-									"value": "0"
-								},
-								{
-									"key": "l",
-									"value": "1"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/upt/1 (Mirror Metering ReadingList)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs/32/r?s=0&l=24",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"upt",
-								"{{UPT_ID}}",
-								"mr",
-								"1",
-								"rs",
-								"32",
-								"r"
-							],
-							"query": [
-								{
-									"key": "s",
-									"value": "0"
-								},
-								{
-									"key": "l",
-									"value": "24"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/upt/1 (Mirror Metering ReadingSetList)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs?s=0&l=1",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"upt",
-								"{{UPT_ID}}",
-								"mr",
-								"1",
-								"rs"
-							],
-							"query": [
-								{
-									"key": "s",
-									"value": "0"
-								},
-								{
-									"key": "l",
-									"value": "1"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/upt/1 (Mirror Metering ReadingList)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/upt/{{UPT_ID}}/mr/1/rs/33/r?s=0&l=24 HTTP/1.1",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"upt",
-								"{{UPT_ID}}",
-								"mr",
-								"1",
-								"rs",
-								"33",
-								"r"
-							],
-							"query": [
-								{
-									"key": "s",
-									"value": "0"
-								},
-								{
-									"key": "l",
-									"value": "24 HTTP/1.1"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
 			"name": "Pub Sub",
 			"item": [
 				{
@@ -1448,7 +1200,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<Subscription xmlns=\"urn:ieee:std:2030.5:ns\">\n    <subscribedResource>/edev/1/derp/doe/derc</subscribedResource>\n\t<encoding>0</encoding>\n    <level>+S1</level>\n    <limit>100</limit>\n    <notificationURI>http://example.com/my/path?q=123</notificationURI>\n</Subscription>\n",
+							"raw": "<Subscription xmlns=\"urn:ieee:std:2030.5:ns\">\n    <subscribedResource>/edev/1/derp/1/derc</subscribedResource>\n\t<encoding>0</encoding>\n    <level>+S1</level>\n    <limit>100</limit>\n    <notificationURI>http://example.com/my/path?q=123</notificationURI>\n</Subscription>\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -1658,7 +1410,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERCapability\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesSupported>0</modesSupported>\n\t<rtgAbnormalCategory>1</rtgAbnormalCategory>\n\t<type>5</type>\n\t<csipaus:doeModesSupported>1</csipaus:doeModesSupported>\n</DERCapability>",
+							"raw": "<DERCapability\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"https://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesSupported>1</modesSupported>\n    <rtgMaxW><value>4</value><multiplier>0</multiplier></rtgMaxW>\n\t<rtgAbnormalCategory>1</rtgAbnormalCategory>\n\t<type>5</type>\n\t<csipaus:doeModesSupported>1</csipaus:doeModesSupported>\n</DERCapability>",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -1731,7 +1483,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERSettings\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesEnabled>0</modesEnabled>\n\t<updatedTime>1715060552</updatedTime>\n\t<setMaxW>\n\t<setGradW>1001</setGradW>\n\t<setMaxW>\n\t\t<value>1001</value>\n\t\t<multiplier>1</multiplier>\n\t</setMaxW>\n\t<csipaus:doeModesEnabled>1</csipaus:doeModesEnabled>\n</DERSettings>",
+							"raw": "<DERSettings\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"https://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesEnabled>0</modesEnabled>\n\t<updatedTime>1715060552</updatedTime>\n\t<setMaxW>\n\t\t<value>1001</value>\n\t\t<multiplier>1</multiplier>\n\t</setMaxW>\n    <setGradW>1001</setGradW>\n\t<csipaus:doeModesEnabled>1</csipaus:doeModesEnabled>\n</DERSettings>",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -1826,6 +1578,782 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "/edev/1/der/1/derp (GET Associated DERProgram)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1/derp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"der",
+								"1",
+								"derp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/derp (DERProgramList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "DERP",
+			"item": [
+				{
+					"name": "/edev/1/derp (GET DERProgram)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/fsa/1/derp (GET DERProgram FSA scope)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa/{{FSA_ID}}/derp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"fsa",
+								"{{FSA_ID}}",
+								"derp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/derp/1 (GET DERProgram DOE)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp",
+								"{{DERP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/derp/1/derc (GET DERControl List)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}/derc",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp",
+								"{{DERP_ID}}",
+								"derc"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/derp/1/actderc (GET Active DERControl List)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}/actderc",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp",
+								"{{DERP_ID}}",
+								"actderc"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/derp/1/actderc (GET Default DERControl List)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}/dderc",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp",
+								"{{DERP_ID}}",
+								"dderc"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/derp/1/derc/1 (GET DERControl by id)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}/derc/{{DERC_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"derp",
+								"{{DERP_ID}}",
+								"derc",
+								"{{DERC_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "/status/health",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/status/health",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"status",
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/status/dynamicprices",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/status/dynamicprices",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"status",
+								"dynamicprices"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/status/doe",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/status/doe",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"status",
+								"doe"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/status/version",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/status/version",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"status",
+								"version"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Log",
+			"item": [
+				{
+					"name": "/edev/1/lel/1 (Log event)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/lel/{{LOG_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"lel",
+								"{{LOG_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/lel (Log event list)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/lel",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"lel"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Response",
+			"item": [
+				{
+					"name": "/edev/1/rsps (Response Set List)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"rsps"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/rsps/price (Response Set)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/{{RSP_LIST_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"rsps",
+								"{{RSP_LIST_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/rsps/price/rsp/1 (Response)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/{{RSP_LIST_ID}}/rsp{{RSP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"rsps",
+								"{{RSP_LIST_ID}}",
+								"rsp{{RSP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/rsps/price/rsp (Response List)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/{{RSP_LIST_ID}}/rsp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"rsps",
+								"{{RSP_LIST_ID}}",
+								"rsp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/1/rsps/price/rsp (POST Response)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<DERControlResponse xmlns=\"urn:ieee:std:2030.5:ns\">\n <createdDateTime>1341507000</createdDateTime>\n <endDeviceLFDI>854d10a201ca99e5e90d3c3e1f9bc1c3bd075f3b</endDeviceLFDI>\n <status>1</status>\n <subject>a0000000000000000000000100000000</subject>  <!-- This MRID should match am existing DOE mrid. This example is illustrative of structure only -->\n</DERControlResponse>",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/{{RSP_LIST_ID}}/rsp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"rsps",
+								"{{RSP_LIST_ID}}",
+								"rsp"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}
@@ -1856,7 +2384,7 @@
 	"variable": [
 		{
 			"key": "HOST",
-			"value": "localhost:8000",
+			"value": "localhost:8443",
 			"type": "default"
 		},
 		{
@@ -1910,6 +2438,36 @@
 		{
 			"key": "SUB_ID",
 			"value": "1"
+		},
+		{
+			"key": "SITE_ID",
+			"value": "E",
+			"type": "default"
+		},
+		{
+			"key": "DERP_ID",
+			"value": "DERP_ID",
+			"type": "default"
+		},
+		{
+			"key": "DERC_ID",
+			"value": "1",
+			"type": "default"
+		},
+		{
+			"key": "LOG_ID",
+			"value": "LOG_ID",
+			"type": "default"
+		},
+		{
+			"key": "RSP_ID",
+			"value": "1",
+			"type": "default"
+		},
+		{
+			"key": "RSP_LIST_ID",
+			"value": "price",
+			"type": "default"
 		}
 	]
 }
