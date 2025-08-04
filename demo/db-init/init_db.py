@@ -9,8 +9,9 @@ from sqlalchemy import func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
-from envoy.server.model.aggregator import Aggregator, AggregatorCertificateAssignment
+from envoy.server.model.aggregator import Aggregator, AggregatorCertificateAssignment, AggregatorDomain
 from envoy.server.model.base import Certificate
+from envoy.server.model.doe import SiteControlGroup
 
 
 # There are two types of clients: aggregators and devices
@@ -46,7 +47,11 @@ async def main() -> None:
 
             # load aggregator cert only
             agg_cert = load_cert(AGG_CERT_PATH, now)
+
+            # add client aggregator
             agg = Aggregator(name="Test", created_time=now, changed_time=now)
+            domain = AggregatorDomain(domain="example.com", created_time=now, changed_time=now)
+            agg.domains = [domain]
 
             # Add our client aggregator and special "NULL" aggregator (used for device clients) - the NULL aggregator
             # should not be linked to any certificates.
@@ -61,6 +66,12 @@ async def main() -> None:
             session.add(
                 AggregatorCertificateAssignment(certificate_id=agg_cert.certificate_id, aggregator_id=agg.aggregator_id)
             )
+
+            site_control_group = SiteControlGroup(
+                description="Default control group", primacy=1, fsa_id=1, created_time=now, changed_time=now
+            )
+            session.add(site_control_group)
+
             await session.commit()
 
 
