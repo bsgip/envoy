@@ -79,7 +79,7 @@ class ResponseMapper:
             endDeviceLFDI=rate_response.site.lfdi,
             status=rate_response.response_type,
             subject=MridMapper.encode_time_tariff_interval_mrid(
-                scope, rate_response.tariff_generated_rate_id, rate_response.pricing_reading_type
+                scope, rate_response.tariff_generated_rate_id_snapshot, rate_response.pricing_reading_type
             ),
         )
 
@@ -94,7 +94,7 @@ class ResponseMapper:
 
         # createdTime will be managed by the DB itself
         return TariffGeneratedRateResponse(
-            tariff_generated_rate_id=tariff_generated_rate.tariff_generated_rate_id,
+            tariff_generated_rate_id_snapshot=tariff_generated_rate.tariff_generated_rate_id,
             site_id=tariff_generated_rate.site_id,
             response_type=r.status,
             pricing_reading_type=pricing_reading_type,
@@ -112,7 +112,7 @@ class ResponseMapper:
             createdDateTime=int(doe_response.created_time.timestamp()),
             endDeviceLFDI=doe_response.site.lfdi,
             status=doe_response.response_type,
-            subject=MridMapper.encode_doe_mrid(scope, doe_response.dynamic_operating_envelope_id),
+            subject=MridMapper.encode_doe_mrid(scope, doe_response.dynamic_operating_envelope_id_snapshot),
         )
 
     @staticmethod
@@ -124,7 +124,7 @@ class ResponseMapper:
 
         # createdTime will be managed by the DB itself
         return DynamicOperatingEnvelopeResponse(
-            dynamic_operating_envelope_id=dynamic_operating_envelope.dynamic_operating_envelope_id,
+            dynamic_operating_envelope_id_snapshot=dynamic_operating_envelope.dynamic_operating_envelope_id,
             site_id=dynamic_operating_envelope.site_id,
             response_type=r.status,
         )

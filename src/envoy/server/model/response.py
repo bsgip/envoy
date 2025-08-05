@@ -7,9 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.model.base import Base
-from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site
-from envoy.server.model.tariff import TariffGeneratedRate
 
 
 class DynamicOperatingEnvelopeResponse(Base):
@@ -21,9 +19,7 @@ class DynamicOperatingEnvelopeResponse(Base):
     dynamic_operating_envelope_response_id: Mapped[int] = mapped_column(
         BigInteger, primary_key=True, autoincrement=True
     )
-    dynamic_operating_envelope_id: Mapped[int] = mapped_column(
-        ForeignKey("dynamic_operating_envelope.dynamic_operating_envelope_id", ondelete="CASCADE")
-    )  # The doe that this response applies to
+    dynamic_operating_envelope_id_snapshot: Mapped[int] = mapped_column(INTEGER)  # The doe this response applies to
     site_id: Mapped[int] = mapped_column(
         ForeignKey("site.site_id", ondelete="CASCADE")
     )  # The parent site that ultimately owns the DOE. Redundant, but included for select query performance
@@ -34,7 +30,6 @@ class DynamicOperatingEnvelopeResponse(Base):
 
     response_type: Mapped[Optional[ResponseType]] = mapped_column(INTEGER, nullable=True)
 
-    dynamic_operating_envelope: Mapped[DynamicOperatingEnvelope] = relationship(lazy="raise")
     site: Mapped[Site] = relationship(lazy="raise")
 
     __table_args__ = (
@@ -49,9 +44,7 @@ class TariffGeneratedRateResponse(Base):
 
     __tablename__ = "tariff_generated_rate_response"
     tariff_generated_rate_response_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    tariff_generated_rate_id: Mapped[int] = mapped_column(
-        ForeignKey("tariff_generated_rate.tariff_generated_rate_id", ondelete="CASCADE")
-    )  # The rate that this response applies to
+    tariff_generated_rate_id_snapshot: Mapped[int] = mapped_column(INTEGER)  # The rate this response applies to
     site_id: Mapped[int] = mapped_column(
         ForeignKey("site.site_id", ondelete="CASCADE")
     )  # The parent site that ultimately owns the rate. Redundant, but included for select query performance
@@ -65,7 +58,6 @@ class TariffGeneratedRateResponse(Base):
         SMALLINT
     )  # The specific price component being responded to (eg: is it for the active price in a TariffGeneratedRate)
 
-    tariff_generated_rate: Mapped[TariffGeneratedRate] = relationship(lazy="raise")
     site: Mapped[Site] = relationship(lazy="raise")
 
     __table_args__ = (

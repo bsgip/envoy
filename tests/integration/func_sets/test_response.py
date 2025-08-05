@@ -270,7 +270,7 @@ async def test_get_response_for_device_cert(
         await session.execute(
             insert(DynamicOperatingEnvelopeResponse).values(
                 dynamic_operating_envelope_response_id=1001,
-                dynamic_operating_envelope_id=101,
+                dynamic_operating_envelope_id_snapshot=101,
                 site_id=5,
                 response_type=7,
             )
@@ -280,7 +280,7 @@ async def test_get_response_for_device_cert(
         await session.execute(
             insert(TariffGeneratedRateResponse).values(
                 tariff_generated_rate_response_id=1002,
-                tariff_generated_rate_id=102,
+                tariff_generated_rate_id_snapshot=102,
                 site_id=5,
                 pricing_reading_type=PricingReadingType.IMPORT_ACTIVE_POWER_KWH,
                 response_type=8,
@@ -447,7 +447,7 @@ async def test_get_response_list_pagination_for_device_cert(
         await session.execute(
             insert(DynamicOperatingEnvelopeResponse).values(
                 dynamic_operating_envelope_response_id=1001,
-                dynamic_operating_envelope_id=101,
+                dynamic_operating_envelope_id_snapshot=101,
                 site_id=5,
                 response_type=7,
             )
@@ -457,7 +457,7 @@ async def test_get_response_list_pagination_for_device_cert(
         await session.execute(
             insert(TariffGeneratedRateResponse).values(
                 tariff_generated_rate_response_id=1002,
-                tariff_generated_rate_id=102,
+                tariff_generated_rate_id_snapshot=102,
                 site_id=5,
                 pricing_reading_type=PricingReadingType.IMPORT_ACTIVE_POWER_KWH,
                 response_type=8,
