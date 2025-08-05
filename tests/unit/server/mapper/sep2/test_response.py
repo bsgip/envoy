@@ -93,7 +93,7 @@ def test_ResponseMapper_map_from_price_request(optional_is_none: bool, response_
         assert result.tariff_generated_rate_response_id is None, "Assigned by the database"
         assert result.created_time is None, "Assigned by the database"
         assert result.site_id == tariff_generated_rate.site_id
-        assert result.tariff_generated_rate_id == tariff_generated_rate.tariff_generated_rate_id
+        assert result.tariff_generated_rate_id_snapshot == tariff_generated_rate.tariff_generated_rate_id
         assert result.pricing_reading_type == prt
 
 
@@ -137,7 +137,7 @@ def test_ResponseMapper_map_from_doe_request(
     assert result.dynamic_operating_envelope_response_id is None, "Assigned by the database"
     assert result.created_time is None, "Assigned by the database"
     assert result.site_id == doe.site_id
-    assert result.dynamic_operating_envelope_id == doe.dynamic_operating_envelope_id
+    assert result.dynamic_operating_envelope_id_snapshot == doe.dynamic_operating_envelope_id
 
 
 @pytest.mark.parametrize(
