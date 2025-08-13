@@ -1,16 +1,16 @@
 {
 	"info": {
-		"_postman_id": "876e900f-dfd8-4c09-941a-8d3dbef6e918",
+		"_postman_id": "591a4b1f-59fa-4eac-835e-34bf30dca08a",
 		"name": "envoy (admin server)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "24300585"
+		"_exporter_id": "39071715"
 	},
 	"item": [
 		{
 			"name": "Aggregator",
 			"item": [
 				{
-					"name": "GET Aggregators",
+					"name": "GET Aggregator List",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -53,6 +53,138 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "GET Aggregator Certificate List",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator/{{AGGREGATOR_ID}}/certificate",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator",
+								"{{AGGREGATOR_ID}}",
+								"certificate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Aggregator Certificate Assignment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n        \"certificate_id\": 1\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/aggregator/{{AGGREGATOR_ID}}/certificate",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator",
+								"{{AGGREGATOR_ID}}",
+								"certificate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Aggregator Certificate Assignment",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator/{{AGGREGATOR_ID}}/certificate/1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator",
+								"{{AGGREGATOR_ID}}",
+								"certificate",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Archive",
+			"item": [
+				{
+					"name": "GET Archived sites for period",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/archive/{{PERIOD_START}}/{{PERIOD_END}}/sites",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"archive",
+								"{{PERIOD_START}}",
+								"{{PERIOD_END}}",
+								"sites"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Archived does for period",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/archive/{{PERIOD_START}}/{{PERIOD_END}}/does",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"archive",
+								"{{PERIOD_START}}",
+								"{{PERIOD_END}}",
+								"does"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Archived tariffs for period",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/archive/{{PERIOD_START}}/{{PERIOD_END}}/tariff_generated_rates",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"archive",
+								"{{PERIOD_START}}",
+								"{{PERIOD_END}}",
+								"tariff_generated_rates"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -89,7 +221,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{HOST}}/billing/calculation_log/1/tariff/{TARIFF_ID}",
+							"raw": "{{HOST}}/billing/calculation_log/1/tariff/{{TARIFF_ID}}",
 							"host": [
 								"{{HOST}}"
 							],
@@ -99,6 +231,263 @@
 								"1",
 								"tariff",
 								"{{TARIFF_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Get sites billing data",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"period_start\": \"2025-04-28T00:10:00Z\",\n    \"period_end\": \"2025-04-29T00:10:00Z\",\n    \"site_ids\": [1],\n    \"tariff_id\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/billing/site/period",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"billing",
+								"site",
+								"period"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Certificate",
+			"item": [
+				{
+					"name": "GET Certificate List",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/certificate",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"certificate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create certificate",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"lfdi\": \"7c0fe9a2ff72f7cd4d1d6a62e33925e07a27b431\",\n    \"expiry\": \"2026-08-30T23:45:55Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/certificate",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"certificate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE certificate",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"lfdi\": \"7c0fe9a2ff72f7cd4d1d6a62e33925e07a27b431\",\n    \"expiry\": \"2026-08-30T23:45:55Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/certificate/{{CERTIFICATE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"certificate",
+								"{{CERTIFICATE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Update certificate",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"lfdi\": \"7c0fe9a2ff72f7cd4d1d6a62e33925e07a27b431\",\n    \"expiry\": \"2027-08-30T23:45:55Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/certificate/{{CERTIFICATE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"certificate",
+								"{{CERTIFICATE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Certificate",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/certificate/{{CERTIFICATE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"certificate",
+								"{{CERTIFICATE_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Config",
+			"item": [
+				{
+					"name": "GET Server runtime config",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/server_config/run_time",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"server_config",
+								"run_time"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Update site control default",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"import_limit_watts\": {\"value\": 500},\n    \"export_limit_watts\": {\"value\": 500},\n    \"generation_limit_watts\": {\"value\": 500},\n    \"load_limit_watts\": {\"value\": 500},\n    \"ramp_rate_percent_per_second\": {\"value\": 500}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/site/{{SITE_ID}}/control_default",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site",
+								"{{SITE_ID}}",
+								"control_default"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET site control default",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"import_limit_watts\" 500,\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/site/{{SITE_ID}}/control_default",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site",
+								"{{SITE_ID}}",
+								"control_default"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Update server runtime config",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"dcap_pollrate_seconds\": 300\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/server_config/run_time",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"server_config",
+								"run_time"
 							]
 						}
 					},
@@ -113,6 +502,35 @@
 					"name": "Add DOEs",
 					"request": {
 						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n    \"site_id\": 1,\n    \"duration_seconds\": 300,\n    \"import_limit_active_watts\": 1111,\n    \"export_limit_watts\": -2222,\n    \"start_time\": \"2024-02-28T00:10:00Z\",\n    \"calculation_log_id\": null\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/doe",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"doe"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all does",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
 						"header": [],
 						"body": {
 							"mode": "raw",
@@ -147,7 +565,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"calculation_interval_start\": \"2010-01-02T00:00:01Z\",\n  \"calculation_interval_duration_seconds\": 2,\n  \"topology_id\": \"feeder-123\",\n  \"external_id\": \"abc123\",\n  \"description\": \"Description of log\",\n  \"power_forecast_creation_time\": \"2010-01-07T00:00:06Z\",\n  \"weather_forecast_creation_time\": \"2010-01-08T00:00:07Z\",\n  \"weather_forecast_location_id\": \"Ashby, Perth\",\n  \"power_forecast_logs\": [\n    {\n      \"interval_start\": \"2010-01-02T00:00:01Z\",\n      \"interval_duration_seconds\": 2,\n      \"external_device_id\": \"aaa\",\n      \"site_id\": 1,\n      \"active_power_watts\": 5,\n      \"reactive_power_var\": 6\n    }\n  ],\n  \"power_target_logs\": [\n    {\n      \"interval_start\": \"2010-01-02T00:00:01Z\",\n      \"interval_duration_seconds\": 2,\n      \"external_device_id\": \"111\",\n      \"site_id\": 1,\n      \"target_active_power_watts\": 5,\n      \"target_reactive_power_var\": 6\n    }\n  ],\n  \"power_flow_logs\": [\n    {\n      \"interval_start\": \"2010-01-02T00:00:01Z\",\n      \"interval_duration_seconds\": 2,\n      \"external_device_id\": \"111\",\n      \"site_id\": 1,\n      \"solve_name\": \"PRE\",\n      \"pu_voltage_min\": \"6\",\n      \"pu_voltage_max\": \"7\",\n      \"pu_voltage\": \"8\",\n      \"thermal_max_percent\": \"9\"\n    }\n  ],\n  \"weather_forecast_logs\": [\n    {\n      \"air_temperature_degrees_c\": \"1\",\n      \"apparent_temperature_degrees_c\": \"2\",\n      \"dew_point_degrees_c\": \"3\",\n      \"humidity_percent\": \"4\",\n      \"cloud_cover_percent\": \"5\",\n      \"rain_probability_percent\": \"6\",\n      \"rain_mm\": \"7\",\n      \"rain_rate_mm\": \"8\",\n      \"global_horizontal_irradiance_watts_m2\": \"9\",\n      \"wind_speed_50m_km_h\": \"10\",\n      \"interval_start\": \"2010-01-12T00:00:11Z\",\n      \"interval_duration_seconds\": 12\n    }\n  ]\n}",
+							"raw": "{\n  \"calculation_range_start\": \"2010-01-02T00:00:01Z\",\n  \"calculation_range_duration_seconds\": 2,\n  \"interval_width_seconds\": 300,\n  \"topology_id\": \"feeder-123\",\n  \"external_id\": \"abc123\",\n  \"description\": \"Description of log\",\n  \"power_forecast_creation_time\": \"2010-01-07T00:00:06Z\",\n  \"weather_forecast_creation_time\": \"2010-01-08T00:00:07Z\",\n  \"weather_forecast_location_id\": \"Ashby, Perth\",\n  \"variable_metadata\": [\n    {\n      \"variable_id\": 1,\n      \"name\": \"variable 1\",\n      \"description\": \"aaa\"\n    }\n  ],\n  \"variable_values\": \n    {\n      \"variable_ids\": [1],\n      \"site_ids\": [1],\n      \"interval_periods\": [1],\n      \"values\": [1.24]\n    },\n  \"label_metadata\": [\n    {\n      \"label_id\": 6,\n      \"name\": \"nice label\",\n      \"description\": \"nice\"\n    }\n  ],\n  \"label_values\":     \n  {\n      \"label_ids\": [6],\n      \"site_ids\": [1],\n      \"values\": [\"some exog or something?\"]\n  }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -261,7 +679,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "[{\n    \"name\": \"Tariff Name\",\n    \"dnsp_code\": \"ABC123\",\n    \"currency_code\": \"AUD\"\n}]",
+							"raw": "{\n    \"name\": \"Tariff Name\",\n    \"dnsp_code\": \"ABC123\",\n    \"currency_code\": 36\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -287,7 +705,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "[{\n    \"tariff_id\": 1,\n    \"site_id\": 1,\n    \"start_time\": \"2024-02-03T00:00:00\",\n    \"duration_seconds\": 300,\n    \"import_active_price\": 0.4,\n    \"export_active_price\": -0.4,\n    \"import_reactive_price\": 0,\n    \"export_reactive_price\": 0\n}]",
+							"raw": "[{\n    \"tariff_id\": 1,\n    \"site_id\": 1,\n    \"start_time\": \"2024-02-03T00:00:00\",\n    \"duration_seconds\": 300,\n    \"import_active_price\": 0.4,\n    \"export_active_price\": -0.4,\n    \"import_reactive_price\": 0,\n    \"export_reactive_price\": 0,\n    \"calculation_log_id\": null\n}]",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -313,7 +731,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "[{\n    \"name\": \"Tariff Name\",\n    \"dnsp_code\": \"ABC123\",\n    \"currency_code\": \"AUD\"\n}]",
+							"raw": "{\n    \"name\": \"Tariff Name\",\n    \"dnsp_code\": \"ABC1234\",\n    \"currency_code\": 36\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -328,6 +746,207 @@
 							"path": [
 								"tariff",
 								"{{TARIFF_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Site Control",
+			"item": [
+				{
+					"name": "GET Site control group list",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_control_group",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Site control group",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group",
+								"{{GROUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Site controls",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n    \"site_id\": 1,\n    \"calculation_log_id\": 1,\n    \"duration_seconds\": 300,\n    \"start_time\": \"2024-02-28T00:10:00Z\",\n    \"import_limit_watts\": 500\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/controls",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group",
+								"{{GROUP_ID}}",
+								"controls"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all site controls",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n    \"site_id\": 1,\n    \"calculation_log_id\": 1,\n    \"duration_seconds\": 300,\n    \"start_time\": \"2024-02-28T00:10:00Z\",\n    \"import_limit_watts\": 500\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/controls?after=2024-02-28T00:10:00",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group",
+								"{{GROUP_ID}}",
+								"controls"
+							],
+							"query": [
+								{
+									"key": "after",
+									"value": "2024-02-28T00:10:00"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete site controls in range",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n    \"site_id\": 1,\n    \"calculation_log_id\": 1,\n    \"duration_seconds\": 300,\n    \"start_time\": \"2024-02-28T00:10:00Z\",\n    \"import_limit_watts\": 500\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/controls/{{PERIOD_START}}/{{PERIOD_END}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group",
+								"{{GROUP_ID}}",
+								"controls",
+								"{{PERIOD_START}}",
+								"{{PERIOD_END}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create site control group",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"description\": \"cntl 1\",\n    \"primacy\": 1,\n    \"fsa_id\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/site_control_group",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Site reading",
+			"item": [
+				{
+					"name": "Get site readings",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n    \"site_id\": 1,\n    \"calculation_log_id\": 1,\n    \"duration_seconds\": 300,\n    \"start_time\": \"2024-02-28T00:10:00Z\",\n    \"import_limit_watts\": 500\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/site_readings/{{SITE_ID}}/csip_aus_unit/1/period/{{PERIOD_START}}/{{PERIOD_END}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_readings",
+								"{{SITE_ID}}",
+								"csip_aus_unit",
+								"1",
+								"period",
+								"{{PERIOD_START}}",
+								"{{PERIOD_END}}"
 							]
 						}
 					},
@@ -356,6 +975,69 @@
 									"key": "group",
 									"value": "cohort-1"
 								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Single site",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site/{{SITE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site",
+								"{{SITE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Single site",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site/{{SITE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site",
+								"{{SITE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UPDATE Single site",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nmi\": \"12345677\",\n    \"post_rate_seconds\": 2\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/site/{{SITE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site",
+								"{{SITE_ID}}"
 							]
 						}
 					},
@@ -474,6 +1156,16 @@
 		{
 			"key": "SITE_GROUP_NAME",
 			"value": "group1"
+		},
+		{
+			"key": "GROUP_ID",
+			"value": "1",
+			"type": "default"
+		},
+		{
+			"key": "SITE_ID",
+			"value": "1",
+			"type": "default"
 		}
 	]
 }
