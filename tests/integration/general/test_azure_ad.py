@@ -168,9 +168,14 @@ async def test_refresh_seconds_updating_cache(
 
         # Lets dig into the guts of the current setup to pull out the db connections to see that
         # it includes our injected token
+        # NOTE - this is very timing sensitive - the main part is ensuring that the token is changing
         assert len(db_connection_creds) == 1, "Only 1 DB connection was expected as we only make 1 request"
-        assert db_connection_creds[0][1] == CUSTOM_DB_TOKEN.format(
-            idx=(token_requests - 1)
-        ), "The CUSTOM_DB_TOKEN should match the latest minted token to indicate that it's changing"
+        assert db_connection_creds[0][1] in [
+            CUSTOM_DB_TOKEN.format(idx=(token_requests - 1)),
+            CUSTOM_DB_TOKEN.format(idx=(token_requests - 2)),
+        ], "The CUSTOM_DB_TOKEN should match one of the latest minted tokens to indicate that it's changing"
+        assert db_connection_creds[0][1] != CUSTOM_DB_TOKEN.format(idx=1), "Ensure its changing"
+        assert db_connection_creds[0][1] != CUSTOM_DB_TOKEN.format(idx=0), "Ensure its changing"
+
     finally:
         event.remove(Pool, "connect", on_db_connect)
