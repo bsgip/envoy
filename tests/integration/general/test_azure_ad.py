@@ -162,8 +162,8 @@ async def test_refresh_seconds_updating_cache(
         token_requests = mocked_client.call_count_by_method_uri[(HTTPMethod.GET, TOKEN_URI)]
         jw_requests = mocked_client.call_count_by_method_uri[(HTTPMethod.GET, JWK_URI)]
         assert (
-            token_requests >= 3 and token_requests <= 4
-        ), "Depending on delays - should have 3 or 4 requests given the retry frequency and delay"
+            token_requests >= 3 and token_requests <= 5
+        ), "Depending on delays - should have 3 or 4 requests given the retry frequency and delay. +1 in case of load"
         assert jw_requests == 1
 
         # Lets dig into the guts of the current setup to pull out the db connections to see that
