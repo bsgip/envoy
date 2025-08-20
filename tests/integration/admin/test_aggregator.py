@@ -299,9 +299,7 @@ async def test_create_aggregator(admin_client_auth: AsyncClient) -> None:
 @pytest.mark.anyio
 async def test_update_aggregator(admin_client_auth: AsyncClient) -> None:
     aggregator = generate_class_instance(AggregatorRequest)
-    resp = await admin_client_auth.put(
-        uri.AggregatorUri.format(aggregator_id=1), content=aggregator.model_dump_json()
-    )
+    resp = await admin_client_auth.put(uri.AggregatorUri.format(aggregator_id=1), content=aggregator.model_dump_json())
 
     assert resp.status_code == HTTPStatus.OK
 
