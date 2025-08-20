@@ -1,11 +1,12 @@
 from itertools import product
+import datetime as dt
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.aggregator import AggregatorDomain as AggregatorDomainResponse
-from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorResponse
+from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorResponse, AggregatorRequest
 
 from envoy.admin.mapper.aggregator import AggregatorMapper
 from envoy.server.model.aggregator import Aggregator
@@ -49,3 +50,15 @@ def test_aggregator_to_page_response():
     assert mdl.limit == limit
     assert mdl.start == start
     assert mdl.total_count == total_count
+
+
+def test_aggregator_from_request() -> None:
+    """Tests mapping from a request"""
+    req = AggregatorRequest(name="Some new aggregator")
+
+    change_time = dt.datetime(1234, 5, 6, 7, 8, 9, tzinfo=dt.timezone.utc)
+    agg = AggregatorMapper.map_from_request(change_time, req)
+
+    assert isinstance(agg, Aggregator)
+    assert agg.name == "Some new aggregator"
+    assert agg.changed_time == change_time

@@ -1,6 +1,13 @@
 from typing import Iterable
 
-from envoy_schema.admin.schema.aggregator import AggregatorDomain, AggregatorPageResponse, AggregatorResponse
+import datetime as dt
+
+from envoy_schema.admin.schema.aggregator import (
+    AggregatorDomain,
+    AggregatorPageResponse,
+    AggregatorResponse,
+    AggregatorRequest,
+)
 
 from envoy.server.model.aggregator import Aggregator
 
@@ -33,4 +40,11 @@ class AggregatorMapper:
             start=start,
             limit=limit,
             aggregators=[AggregatorMapper.map_to_response(a) for a in aggregators],
+        )
+
+    @staticmethod
+    def map_from_request(changed_time: dt.datetime, aggregator: AggregatorRequest) -> Aggregator:
+        return Aggregator(
+            name=aggregator.name,
+            changed_time=changed_time,
         )

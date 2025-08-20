@@ -3,7 +3,7 @@ import http
 import sqlalchemy.exc
 
 from envoy_schema.admin.schema.certificate import CertificatePageResponse, CertificateAssignmentRequest
-from envoy_schema.admin.schema.aggregator import AggregatorResponse, AggregatorPageResponse
+from envoy_schema.admin.schema.aggregator import AggregatorResponse, AggregatorPageResponse, AggregatorRequest
 from envoy_schema.admin.schema import uri
 import fastapi
 from fastapi_async_sqlalchemy import db
@@ -55,6 +55,22 @@ async def get_aggregator(
     if agg is None:
         raise fastapi.HTTPException(http.HTTPStatus.NOT_FOUND, f"Aggregator with ID {aggregator_id} not found")
     return agg
+
+
+@router.post(uri.AggregatorListUri, status_code=http.HTTPStatus.CREATED, response_model=None)
+async def create_aggregator(aggregator: AggregatorRequest, response: fastapi.Response) -> None:
+    """Create an aggregator"""
+    aggregator_id = await manager.AggregatorManager.add_new_aggregator(db.session, aggregator)
+    response.headers["Location"] = uri.AggregatorUri.format(aggregator_id=aggregator_id)
+
+
+@router.put(uri.AggregatorUri, status_code=http.HTTPStatus.OK, response_model=None)
+async def update_aggregator(aggregator_id: int, aggregator: AggregatorRequest) -> None:
+    """Endpoint for updating an Aggregator"""
+    try:
+        await manager.AggregatorManager.update_existing_aggregator(db.session, aggregator_id, aggregator)
+    except exception.NotFoundError as err:
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}")
 
 
 @router.get(

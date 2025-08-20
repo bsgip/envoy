@@ -7,7 +7,13 @@ import pytest
 import psycopg
 import sqlalchemy as sa
 from assertical.fixtures.postgres import generate_async_session
-from envoy_schema.admin.schema.aggregator import AggregatorResponse, AggregatorPageResponse, AggregatorDomain
+from assertical.fake.generator import generate_class_instance
+from envoy_schema.admin.schema.aggregator import (
+    AggregatorResponse,
+    AggregatorPageResponse,
+    AggregatorDomain,
+    AggregatorRequest,
+)
 from envoy_schema.admin.schema.certificate import (
     CertificateResponse,
     CertificatePageResponse,
@@ -274,3 +280,37 @@ async def test_delete_aggregator_certificate_assignments(
     certs = cert_page.certificates
 
     assert [c.certificate_id for c in certs] == expected_ids
+
+
+@pytest.mark.anyio
+async def test_create_aggregator(admin_client_auth: AsyncClient) -> None:
+    aggregator = generate_class_instance(AggregatorRequest)
+    resp = await admin_client_auth.post(uri.AggregatorListUri, content=aggregator.model_dump_json())
+
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Confirm location header set correctly
+    [agg_list_uri, aggregator_id] = resp.headers["Location"].rsplit("/", maxsplit=1)
+    assert agg_list_uri == uri.AggregatorListUri
+    assert int(aggregator_id)
+    assert int(aggregator_id) > 3
+
+
+@pytest.mark.anyio
+async def test_update_aggregator(admin_client_auth: AsyncClient) -> None:
+    aggregator = generate_class_instance(AggregatorRequest)
+    resp = await admin_client_auth.put(
+        uri.AggregatorUri.format(aggregator_id=1), content=aggregator.model_dump_json()
+    )
+
+    assert resp.status_code == HTTPStatus.OK
+
+
+@pytest.mark.anyio
+async def test_update_aggregator_invalid_id(admin_client_auth: AsyncClient) -> None:
+    aggregator = generate_class_instance(AggregatorRequest)
+    resp = await admin_client_auth.put(
+        uri.AggregatorUri.format(aggregator_id=1111), content=aggregator.model_dump_json()
+    )
+
+    assert resp.status_code == HTTPStatus.NOT_FOUND

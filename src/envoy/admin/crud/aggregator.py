@@ -34,6 +34,25 @@ async def select_all_aggregators(session: AsyncSession, start: int, limit: int) 
     return resp.scalars().all()
 
 
+async def insert_single_aggregator(session: AsyncSession, aggregator: Aggregator) -> None:
+    """Inserts a single aggregator entry into the DB. Returns None"""
+    if aggregator.created_time:
+        del aggregator.created_time
+    session.add(aggregator)
+
+
+async def update_single_aggregator(session: AsyncSession, updated_aggregator: Aggregator) -> None:
+    """Updates a single existing aggregator entry in the DB."""
+
+    resp = await session.execute(
+        sa.select(Aggregator).where(Aggregator.aggregator_id == updated_aggregator.aggregator_id)
+    )
+    aggregator = resp.scalar_one()
+
+    aggregator.changed_time = updated_aggregator.changed_time
+    aggregator.name = updated_aggregator.name
+
+
 async def assign_many_certificates(session: AsyncSession, aggregator_id: int, certificate_ids: Iterable[int]) -> None:
     """Assigns certificates to an aggregator.
 

@@ -1,12 +1,15 @@
+import datetime as dt
+
 import psycopg
 import pytest
 from assertical.fixtures.postgres import generate_async_session
-from sqlalchemy import select
+import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
 
 from envoy.admin.crud.certificate import select_all_certificates_for_aggregator
-from envoy.server.model.aggregator import Aggregator, AggregatorDomain, AggregatorCertificateAssignment
+from envoy.server import model
 from envoy.admin import crud
+from envoy.server.crud.aggregator import select_aggregator
 
 
 @pytest.mark.anyio
@@ -42,7 +45,7 @@ async def test_select_aggregators(
     async with generate_async_session(pg_base_config) as session:
         aggs = await crud.aggregator.select_all_aggregators(session, start, limit)
         assert len(aggs) == len(expected_aggregator_ids)
-        assert all([isinstance(s, Aggregator) for s in aggs])
+        assert all([isinstance(s, model.Aggregator) for s in aggs])
         assert expected_aggregator_ids == [a.aggregator_id for a in aggs]
         assert expected_domain_ids == sorted([d.aggregator_domain_id for a in aggs for d in a.domains])
 
@@ -52,7 +55,7 @@ async def test_select_aggregators(
 async def test_select_aggregators_no_domains(pg_base_config: psycopg.Connection, agg_id_to_delete: int) -> None:
 
     async with generate_async_session(pg_base_config) as session:
-        stmt = select(AggregatorDomain).where(AggregatorDomain.aggregator_id == agg_id_to_delete)
+        stmt = sa.select(model.AggregatorDomain).where(model.AggregatorDomain.aggregator_id == agg_id_to_delete)
         resp = await session.execute(stmt)
 
         for domain_to_delete in resp.scalars().all():
@@ -68,7 +71,7 @@ async def test_select_aggregators_no_domains(pg_base_config: psycopg.Connection,
 @pytest.mark.anyio
 async def test_assign_many_certificates(pg_base_config: psycopg.Connection) -> None:
     async with generate_async_session(pg_base_config) as session:
-        prior_assigns_q = await session.execute(select(AggregatorCertificateAssignment))
+        prior_assigns_q = await session.execute(sa.select(model.AggregatorCertificateAssignment))
         prior_assigns = prior_assigns_q.scalars().all()
         await crud.aggregator.assign_many_certificates(session, 1, range(4, 6))
 
@@ -77,7 +80,7 @@ async def test_assign_many_certificates(pg_base_config: psycopg.Connection) -> N
         assert [c.certificate_id for c in resp] == [1, 2, 3, 4, 5]
 
         # ensure new entry in table
-        after_assigns_q = await session.execute(select(AggregatorCertificateAssignment))
+        after_assigns_q = await session.execute(sa.select(model.AggregatorCertificateAssignment))
         after_assigns = after_assigns_q.scalars().all()
         assert len(prior_assigns) < len(after_assigns)
 
@@ -138,3 +141,57 @@ async def test_unassign_many_certificates_no_cross_contamination(
         assert [a.certificate_id for a in actual_ones] == one_certs
         assert [a.certificate_id for a in actual_twos] == two_certs
         assert [a.certificate_id for a in actual_threes] == three_certs
+
+
+@pytest.mark.anyio
+async def test_update_single_aggregator(pg_base_config: psycopg.Connection) -> None:
+    """Test ensures aggregator can be updated"""
+    async with generate_async_session(pg_base_config) as session:
+        # retrieve original cert
+        agg = await select_aggregator(session, 1)
+
+    async with generate_async_session(pg_base_config) as session:
+        await crud.aggregator.update_single_aggregator(
+            session,
+            model.Aggregator(
+                aggregator_id=1,
+                name="Some_new_name",
+                changed_time=dt.datetime.now(tz=dt.timezone.utc),
+                created_time=dt.datetime.now(tz=dt.timezone.utc),
+            ),
+        )
+
+        # Get updated cert
+        new_agg = await select_aggregator(session, 1)
+
+        # Confirm agg returned
+        assert agg is not None
+        assert new_agg is not None
+
+        # Assert key fields changed
+        assert agg.name != new_agg.name
+        assert agg.created_time == new_agg.created_time
+        assert agg.changed_time < new_agg.changed_time
+
+
+@pytest.mark.anyio
+async def test_insert_single_aggregator(pg_base_config: psycopg.Connection) -> None:
+    """Test ensures single aggregator gets created"""
+    async with generate_async_session(pg_base_config) as session:
+        original_aggregators = await crud.aggregator.select_all_aggregators(session, 0, 500)
+
+    async with generate_async_session(pg_base_config) as session:
+        fake_time = dt.datetime(1234, 12, 3, 4, 5, 6, tzinfo=dt.timezone.utc)
+        agg = model.Aggregator(
+            name="SOMEFAKEAGG",
+            changed_time=fake_time,
+            # Should reassign this to current time
+            created_time=fake_time,
+        )
+        await crud.aggregator.insert_single_aggregator(session, agg)
+        await session.flush()
+
+        assert agg.aggregator_id not in [a.aggregator_id for a in original_aggregators]
+        assert agg.created_time > fake_time
+        assert agg.created_time.year != fake_time.year
+        assert agg.changed_time == fake_time
