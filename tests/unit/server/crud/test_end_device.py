@@ -160,27 +160,31 @@ async def test_select_all_sites_with_aggregator_id_filters(pg_base_config):
 
 @pytest.mark.parametrize(
     "aggregator_id, aggregator_lfdi, timezone_id",
+    "post_rate_seconds",
     [
         (
             1,  # Aggregator 1 has 3 sites
             "9dfdd56f6128cdc894a1e42c690cab197184a8e9",
             "Australia/Brisbane",  # Values for first site under aggregator 1
+            99,
         ),
         (
             2,  # Aggregator 2 has 1 site
             "403ba02aa36fa072c47eb3299daaafe94399adad",
             "Australia/Brisbane",  # Values for first site under aggregator 2
+            None,
         ),
         (
             3,  # Aggregator 3 has no sites
             "8ad1d4ce1d3b353ebee21230a89e4172b18f520e",
             "Australia/Brisbane",  # Default timezone if aggregator has no sites
+            0,
         ),
     ],
 )
 @pytest.mark.anyio
 async def test_get_virtual_site_for_aggregator(
-    pg_base_config, aggregator_id: int, aggregator_lfdi: str, timezone_id: str
+    pg_base_config, aggregator_id: int, aggregator_lfdi: str, timezone_id: str, post_rate_seconds: Optional[int]
 ):
     """Tests that get_virtual_site_for_aggregator creates a suitable virtual site for an aggregator"""
 
@@ -188,7 +192,7 @@ async def test_get_virtual_site_for_aggregator(
 
     async with generate_async_session(pg_base_config) as session:
         virtual_site = await get_virtual_site_for_aggregator(
-            session, aggregator_id=aggregator_id, aggregator_lfdi=aggregator_lfdi
+            session, aggregator_id=aggregator_id, aggregator_lfdi=aggregator_lfdi, post_rate_seconds=post_rate_seconds
         )
 
         assert virtual_site.site_id == 0  # Virtual sites always have a site_id of 0
@@ -200,6 +204,7 @@ async def test_get_virtual_site_for_aggregator(
         assert virtual_site.sfdi
         assert virtual_site.device_category == DeviceCategory(0)
         assert virtual_site.timezone_id == timezone_id
+        assert virtual_site.post_rate_seconds is post_rate_seconds
 
         assert virtual_site.registration_pin == 0, "This is a nonsensical concept for the aggregator end device"
 
@@ -218,7 +223,9 @@ async def test_get_virtual_site_for_aggregator__raises_exception_with_invalid_lf
 ):
     with pytest.raises(ValueError):
         async with generate_async_session(pg_base_config) as session:
-            _ = await get_virtual_site_for_aggregator(session, aggregator_id=1, aggregator_lfdi=aggregator_lfdi)
+            _ = await get_virtual_site_for_aggregator(
+                session, aggregator_id=1, aggregator_lfdi=aggregator_lfdi, post_rate_seconds=None
+            )
 
 
 @pytest.mark.parametrize("aggregator_id", [4, 99])
@@ -228,7 +235,7 @@ async def test_get_virtual_site_for_aggregator__no_aggregator(pg_base_config, ag
     aggregator_lfdi = "9dfdd56f6128cdc894a1e42c690cab197184a8e9"
     async with generate_async_session(pg_base_config) as session:
         virtual_site = await get_virtual_site_for_aggregator(
-            session, aggregator_id=aggregator_id, aggregator_lfdi=aggregator_lfdi
+            session, aggregator_id=aggregator_id, aggregator_lfdi=aggregator_lfdi, post_rate_seconds=None
         )
         assert virtual_site is None
 

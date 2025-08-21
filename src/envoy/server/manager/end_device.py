@@ -92,12 +92,14 @@ class EndDeviceManager:
     async def fetch_enddevice_for_scope(
         session: AsyncSession, scope: DeviceOrAggregatorRequestScope
     ) -> Optional[EndDeviceResponse]:
+
         # site_id of 0 refers to a virtual end-device (associated with the aggregator)
         if scope.site_id is None:
             site = await get_virtual_site_for_aggregator(
                 session=session,
                 aggregator_id=scope.aggregator_id,
                 aggregator_lfdi=scope.lfdi,
+                post_rate_seconds=None,
             )
             if site is None:
                 return None
@@ -263,6 +265,7 @@ class EndDeviceManager:
                         session=session,
                         aggregator_id=scope.aggregator_id,
                         aggregator_lfdi=scope.lfdi,
+                        post_rate_seconds=None,
                     )
 
                 # Adjust limit to account for the virtual site

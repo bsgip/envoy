@@ -299,7 +299,7 @@ async def test_end_device_manager_fetch_enddevice_for_scope_virtual(
     assert result is mapped_ed
     assert_mock_session(mock_session, committed=False)
     mock_get_virtual_site_for_aggregator.assert_called_once_with(
-        session=mock_session, aggregator_id=scope.aggregator_id, aggregator_lfdi=scope.lfdi
+        session=mock_session, aggregator_id=scope.aggregator_id, aggregator_lfdi=scope.lfdi, post_rate_seconds=None
     )
     mock_VirtualEndDeviceMapper.map_to_response.assert_called_once_with(scope, raw_site)
 
@@ -796,9 +796,7 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
 
     if includes_virtual_edev:
         mock_get_virtual_site_for_aggregator.assert_called_once_with(
-            session=mock_session,
-            aggregator_id=scope.aggregator_id,
-            aggregator_lfdi=scope.lfdi,
+            session=mock_session, aggregator_id=scope.aggregator_id, aggregator_lfdi=scope.lfdi, post_rate_seconds=None
         )
     else:
         mock_get_virtual_site_for_aggregator.assert_not_called()

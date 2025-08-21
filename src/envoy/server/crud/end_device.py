@@ -89,7 +89,7 @@ async def select_all_sites_with_aggregator_id(
 
 
 async def get_virtual_site_for_aggregator(
-    session: AsyncSession, aggregator_id: int, aggregator_lfdi: str
+    session: AsyncSession, aggregator_id: int, aggregator_lfdi: str, post_rate_seconds: Optional[int]
 ) -> Optional[Site]:
     """Returns a virtual site to represent the aggregator.
 
@@ -135,6 +135,7 @@ async def get_virtual_site_for_aggregator(
         aggregator_id=aggregator_id,
         device_category=device_category,
         timezone_id=timezone_id,
+        post_rate_seconds=post_rate_seconds,
         registration_pin=0,  # This is a nonsensical concept for the aggregator end device
     )
 

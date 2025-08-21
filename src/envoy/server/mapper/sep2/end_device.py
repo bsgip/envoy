@@ -80,6 +80,7 @@ class VirtualEndDeviceMapper:
                 "deviceCategory": f"{site.device_category:x}",  # deviceCategory is a hex string
                 "changedTime": int(site.changed_time.timestamp()),
                 "enabled": True,
+                "postRate": site.post_rate_seconds,
                 "SubscriptionListLink": ListLink(href=pubsub_href),
             }
         )
