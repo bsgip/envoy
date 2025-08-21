@@ -159,8 +159,7 @@ async def test_select_all_sites_with_aggregator_id_filters(pg_base_config):
 
 
 @pytest.mark.parametrize(
-    "aggregator_id, aggregator_lfdi, timezone_id",
-    "post_rate_seconds",
+    "aggregator_id, aggregator_lfdi, timezone_id, post_rate_seconds",
     [
         (
             1,  # Aggregator 1 has 3 sites
