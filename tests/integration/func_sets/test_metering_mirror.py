@@ -148,7 +148,7 @@ async def test_get_mirror_usage_point_list_errors(
                     "mRID": "123",
                     "deviceLFDI": "site1-lfdi",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                    "roleFlags": "1",
+                    "roleFlags": "01",
                     "status": 0,
                     "mirrorMeterReadings": [
                         {
@@ -174,7 +174,7 @@ async def test_get_mirror_usage_point_list_errors(
                     "mRID": "123",
                     "deviceLFDI": "SITE1-lfdi",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                    "roleFlags": "1",
+                    "roleFlags": "01",
                     "status": 0,
                     "mirrorMeterReadings": [
                         {
@@ -618,7 +618,7 @@ async def test_device_cert_mup_creation(client: AsyncClient):
             "mRID": "456",
             "deviceLFDI": DEVICE_5_LFDI,
             "serviceCategoryKind": ServiceKind.ELECTRICITY,
-            "roleFlags": "0",
+            "roleFlags": "00",
             "status": 0,
             "mirrorMeterReadings": [
                 {

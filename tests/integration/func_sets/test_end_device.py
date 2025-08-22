@@ -571,7 +571,7 @@ async def test_update_end_device_bad_device_category(
     response_body = read_response_body_string(response)
     assert len(response_body) > 0
     parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
-    assert parsed_response.deviceCategory == "0"  # Default value from the DB base config
+    assert parsed_response.deviceCategory == "00"  # Default value from the DB base config
 
 
 @pytest.mark.anyio

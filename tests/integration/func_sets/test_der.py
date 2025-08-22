@@ -317,8 +317,8 @@ async def test_roundtrip_upsert_der_capability(
     # Capability
     capability_uri = uri.DERCapabilityUri.format(site_id=site_id, der_id=der_id)
     capability: DERCapability = generate_class_instance(DERCapability, seed=3001, generate_relationships=True)
-    capability.modesSupported = "0"
-    capability.doeModesSupported = "3"
+    capability.modesSupported = "00"
+    capability.doeModesSupported = "03"
     response = await client.put(
         capability_uri,
         headers=valid_headers,
@@ -374,8 +374,8 @@ async def test_roundtrip_upsert_der_setting(
     # Setting
     setting_uri = uri.DERSettingsUri.format(site_id=site_id, der_id=der_id)
     settings: DERSettings = generate_class_instance(DERSettings, seed=4001, generate_relationships=True)
-    settings.modesEnabled = "0"
-    settings.doeModesEnabled = "4"
+    settings.modesEnabled = "00"
+    settings.doeModesEnabled = "04"
     response = await client.put(
         setting_uri,
         headers=valid_headers,
@@ -432,9 +432,9 @@ async def test_roundtrip_upsert_der_status(
     # Status
     status_uri = uri.DERStatusUri.format(site_id=site_id, der_id=der_id)
     status: DERStatus = generate_class_instance(DERStatus, seed=13, generate_relationships=True)
-    status.alarmStatus = "1"
-    status.genConnectStatus.value = "2"
-    status.storConnectStatus.value = "4"
+    status.alarmStatus = "01"
+    status.genConnectStatus.value = "02"
+    status.storConnectStatus.value = "04"
     status.manufacturerStatus.value = "sts"
     response = await client.put(
         status_uri,

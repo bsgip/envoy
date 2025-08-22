@@ -7,7 +7,7 @@ from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, Subscrib
 
 def test_roundtrip_identified_object():
     """Test to test a detected issue with mrid encoding"""
-    initial: IdentifiedObject = generate_class_instance(IdentifiedObject)
+    initial: IdentifiedObject = generate_class_instance(IdentifiedObject, mRID="abc123")
     output: IdentifiedObject = IdentifiedObject.from_xml(initial.to_xml())
 
     assert initial.mRID == output.mRID
