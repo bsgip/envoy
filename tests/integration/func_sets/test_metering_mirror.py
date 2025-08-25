@@ -80,6 +80,7 @@ HREF_PREFIX = "/prefix"
         # Changed cert
         (0, None, 99, AGG_2_VALID_CERT, 0, []),
         (0, None, 99, DEVICE_5_CERT, 0, []),
+        (0, None, 99, UNREGISTERED_CERT, 0, []),  # An unregistered device should still return an empty list
     ],
 )
 @pytest.mark.anyio

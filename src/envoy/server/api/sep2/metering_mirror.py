@@ -58,7 +58,7 @@ async def get_mirror_usage_point_list(
     try:
         mup_list = await MirrorMeteringManager.list_mirror_usage_points(
             db.session,
-            scope=extract_request_claims(request).to_mup_request_scope(),
+            scope=extract_request_claims(request).to_mup_list_request_scope(),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),

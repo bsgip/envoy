@@ -9,6 +9,7 @@ from envoy.server.request_scope import (
     AggregatorRequestScope,
     CertificateType,
     DeviceOrAggregatorRequestScope,
+    MUPListRequestScope,
     MUPRequestScope,
     RawRequestClaims,
     SiteRequestScope,
@@ -373,6 +374,55 @@ def test_RawRequestClaims_to_unregistered_scope(
     else:
         actual = raw_scope.to_unregistered_request_scope()
         assert isinstance(actual, UnregisteredRequestScope)
+        assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "raw_scope, expected",
+    [
+        (
+            RawRequestClaims(CertificateType.AGGREGATOR_CERTIFICATE, "lfdi_val", 1234, "/my/prefix", 4567, 11, 22),
+            MUPListRequestScope("lfdi_val", 1234, "/my/prefix", 4567, CertificateType.AGGREGATOR_CERTIFICATE, 11, 22),
+        ),
+        (
+            RawRequestClaims(CertificateType.DEVICE_CERTIFICATE, "lfdi_val", 1234, "/my/prefix", 4567, 11, 22),
+            HTTPException,
+        ),  # Can't have a device cert referencing something outside the Null Aggregator ID
+        (
+            RawRequestClaims(CertificateType.AGGREGATOR_CERTIFICATE, "lfdi_val", 1234, "/my/prefix", 4567, None, None),
+            MUPListRequestScope(
+                "lfdi_val", 1234, "/my/prefix", 4567, CertificateType.AGGREGATOR_CERTIFICATE, NULL_AGGREGATOR_ID, None
+            ),
+        ),
+        (
+            RawRequestClaims(CertificateType.DEVICE_CERTIFICATE, "lfdi_val", 1234, "/my/prefix", 4567, None, None),
+            MUPListRequestScope(
+                "lfdi_val", 1234, "/my/prefix", 4567, CertificateType.DEVICE_CERTIFICATE, NULL_AGGREGATOR_ID, None
+            ),
+        ),
+        (
+            RawRequestClaims(CertificateType.AGGREGATOR_CERTIFICATE, "lfdi_val", 1234, "/my/prefix", 4567, None, 11),
+            MUPListRequestScope(
+                "lfdi_val", 1234, "/my/prefix", 4567, CertificateType.AGGREGATOR_CERTIFICATE, NULL_AGGREGATOR_ID, 11
+            ),
+        ),
+        (
+            RawRequestClaims(CertificateType.DEVICE_CERTIFICATE, "lfdi_val", 1234, "/my/prefix", 4567, None, 11),
+            MUPListRequestScope(
+                "lfdi_val", 1234, "/my/prefix", 4567, CertificateType.DEVICE_CERTIFICATE, NULL_AGGREGATOR_ID, 11
+            ),
+        ),
+    ],
+)
+def test_RawRequestClaims_to_mup_list_scope(raw_scope: RawRequestClaims, expected: Union[MUPListRequestScope, type]):
+
+    if isinstance(expected, type):
+        with pytest.raises(expected):
+            raw_scope.to_unregistered_request_scope()
+
+    else:
+        actual = raw_scope.to_mup_list_request_scope()
+        assert isinstance(actual, MUPListRequestScope)
         assert actual == expected
 
 

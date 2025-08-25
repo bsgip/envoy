@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Sequence, Union
+from typing import Optional, Sequence, Union
 
 from envoy_schema.server.schema.sep2.metering_mirror import (
     MirrorMeterReading,
@@ -36,7 +36,7 @@ from envoy.server.mapper.sep2.metering import (
 from envoy.server.model.archive.site_reading import ArchiveSiteReadingType
 from envoy.server.model.site_reading import SiteReadingType
 from envoy.server.model.subscription import SubscriptionResource
-from envoy.server.request_scope import CertificateType, MUPRequestScope
+from envoy.server.request_scope import CertificateType, MUPListRequestScope, MUPRequestScope
 
 logger = logging.getLogger(__name__)
 
@@ -234,34 +234,45 @@ class MirrorMeteringManager:
 
     @staticmethod
     async def list_mirror_usage_points(
-        session: AsyncSession, scope: MUPRequestScope, start: int, limit: int, changed_after: datetime
+        session: AsyncSession, scope: MUPListRequestScope, start: int, limit: int, changed_after: datetime
     ) -> MirrorUsagePointListResponse:
         """Fetches a paginated set of MirrorUsagePoint accessible to the specified aggregator"""
+
+        # fetch runtime server config
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
+
+        site_id: Optional[int]
+        if scope.source == CertificateType.AGGREGATOR_CERTIFICATE:
+            site_id = None  # No scoping required
+        else:
+            # This is now a device certificate
+            if scope.device_site_id is None:
+                # This is a special case - return an empty list if there isn't anything registered for this site
+                return MirrorUsagePointListMapper.map_to_list_response(scope, 0, [], config.mup_postrate_seconds)
+            else:
+                site_id = scope.device_site_id
 
         # Start by fetching the top level MirrorUsagePoint info
         groups = await fetch_grouped_site_reading_details(
             session,
             aggregator_id=scope.aggregator_id,
-            site_id=scope.site_id,
+            site_id=site_id,
             start=start,
             changed_after=changed_after,
             limit=limit,
         )
 
         groups_count = await count_grouped_site_reading_details(
-            session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, changed_after=changed_after
+            session, aggregator_id=scope.aggregator_id, site_id=site_id, changed_after=changed_after
         )
 
         # Now fetch the MirrorMeterReading data for the above groups
         grouped_site_reading_types: list[tuple[GroupedSiteReadingTypeDetails, Sequence[SiteReadingType]]] = []
         for group in groups:
             srts = await fetch_site_reading_types_for_group(
-                session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, group_id=group.group_id
+                session, aggregator_id=scope.aggregator_id, site_id=site_id, group_id=group.group_id
             )
             grouped_site_reading_types.append((group, srts))
-
-        # fetch runtime server config
-        config = await RuntimeServerConfigManager.fetch_current_config(session)
 
         return MirrorUsagePointListMapper.map_to_list_response(
             scope, groups_count, grouped_site_reading_types, config.mup_postrate_seconds

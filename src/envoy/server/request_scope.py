@@ -80,6 +80,25 @@ class RawRequestClaims:
             aggregator_id=self.aggregator_id_scope if self.aggregator_id_scope is not None else NULL_AGGREGATOR_ID,
         )
 
+    def to_mup_list_request_scope(self) -> "MUPListRequestScope":
+        """Attempt to convert these raw claims into a MUPListRequestScope. If the request doesn't match the
+        client credentials, this will raise a HTTPException"""
+        if self.source == CertificateType.DEVICE_CERTIFICATE and self.aggregator_id_scope is not None:
+            raise HTTPException(
+                status_code=HTTPStatus.FORBIDDEN,
+                detail=f"{self.lfdi} is improperly scoped to aggregator '{self.aggregator_id_scope}'.",
+            )
+
+        return MUPListRequestScope(
+            lfdi=self.lfdi,
+            sfdi=self.sfdi,
+            href_prefix=self.href_prefix,
+            iana_pen=self.iana_pen,
+            source=self.source,
+            aggregator_id=self.aggregator_id_scope if self.aggregator_id_scope is not None else NULL_AGGREGATOR_ID,
+            device_site_id=self.site_id_scope,
+        )
+
     def to_mup_request_scope(self) -> "MUPRequestScope":
         """Attempt to convert these raw claims into a MUPRequestScope. If the request doesn't match the
         client credentials, this will raise a HTTPException"""
@@ -233,6 +252,28 @@ class DeviceOrAggregatorRequestScope(BaseRequestScope):
 
     # If specified - What specific site_id is this request scoped to (otherwise no site scope)
     site_id: Optional[int]
+
+
+@dataclass(frozen=True)
+class MUPListRequestScope(BaseRequestScope):
+    """This is a unique scope that allows for accessing the MirrorUsagePoint list resource. It allows any combination
+    of aggregator / device certificates irrespective of their current EndDevice registration status. This should NOT
+    be used outside of the MUPListResource as it's a pretty wide open scope.
+
+    This should support the following usecases:
+        Aggregator cert accessing the MUP List
+        Device cert accessing the MUP list (when registered)
+        Device cert accessing the MUP list (when not registered)
+    """
+
+    source: CertificateType  # What created this certificate?
+
+    # The aggregator id that a request is scoped to (sourced from auth dependencies)
+    aggregator_id: int
+
+    # If specified - What specific site_id is this request scoped to. This is only applicable to device certificates
+    # This can be None for a device certificate indicating that NO EndDevice has been registered.
+    device_site_id: Optional[int]
 
 
 @dataclass(frozen=True)
