@@ -19,7 +19,7 @@ HEALTH_DYNAMIC_PRICE_URI = "/status/dynamicprices"
 
 @router.head(HEALTH_URI)
 @router.get(HEALTH_URI, status_code=HTTPStatus.OK)
-async def get_health() -> Response:
+async def get_health(check_data: bool = True) -> Response:
     """Responds with a HTTP 200 if the server diagnostics report everything is OK. HTTP 500 otherwise.
 
     Response will be a plaintext encoding of the passing/failing health checks
@@ -34,7 +34,7 @@ async def get_health() -> Response:
 
     if not check.database_connectivity:
         status_code = HTTPStatus.INTERNAL_SERVER_ERROR
-    elif not check.database_has_data:
+    elif check_data and not check.database_has_data:
         status_code = HTTPStatus.INTERNAL_SERVER_ERROR
     else:
         status_code = HTTPStatus.OK

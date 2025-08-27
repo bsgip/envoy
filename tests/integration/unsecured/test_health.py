@@ -37,6 +37,15 @@ async def test_get_health_detects_no_data(client_empty_db: AsyncClient):
 
 
 @pytest.mark.anyio
+async def test_get_health_detects_no_data_not_checking(client_empty_db: AsyncClient):
+    """Checks the health check will pass if the DB is empty and we aren't checking for data"""
+
+    response = await client_empty_db.request(method="GET", url=HEALTH_URI + "?check_data=false")
+    assert response.status_code == HTTPStatus.OK
+    assert read_response_body_string(response), "Expected a response with some content"
+
+
+@pytest.mark.anyio
 async def test_get_price_health_fails_no_future_prices(client: AsyncClient):
     """Checks HEALTH_DYNAMIC_PRICE_URI returns HTTP 500 if there are no future prices (the default for
     pg_base_config)"""

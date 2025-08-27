@@ -6,6 +6,7 @@ from envoy.admin.api.billing import router as billing_router
 from envoy.admin.api.certificate import router as certificate_router
 from envoy.admin.api.config import router as config_router
 from envoy.admin.api.doe import router as doe_router
+from envoy.admin.api.health import router as health_router
 from envoy.admin.api.log import router as log_router
 from envoy.admin.api.pricing import router as price_router
 from envoy.admin.api.site import router as site_router
@@ -25,3 +26,5 @@ routers = [
     site_reading_router,
     certificate_router,
 ]
+
+unsecured_routers = [health_router]

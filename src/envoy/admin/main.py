@@ -4,7 +4,7 @@ import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 
-from envoy.admin.api import routers
+from envoy.admin.api import routers, unsecured_routers
 from envoy.admin.api.depends import AdminAuthDepends
 from envoy.admin.settings import AppSettings, settings
 from envoy.notification.handler import enable_notification_client
@@ -48,13 +48,11 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
         new_settings.read_only_user,
         new_settings.read_only_keys,
     )
-    new_app = FastAPI(
-        **new_settings.fastapi_kwargs,
-        dependencies=[Depends(admin_auth)],
-        lifespan=generate_combined_lifespan_manager(lifespan_managers),
-    )
+    new_app = FastAPI(**new_settings.fastapi_kwargs, lifespan=generate_combined_lifespan_manager(lifespan_managers))
     new_app.add_middleware(SQLAlchemyMiddleware, **new_settings.db_middleware_kwargs)
     for router in routers:
+        new_app.include_router(router, dependencies=[Depends(admin_auth)])
+    for router in unsecured_routers:
         new_app.include_router(router)
 
     return new_app

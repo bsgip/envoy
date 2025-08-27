@@ -5,10 +5,11 @@ from http import HTTPStatus
 import pytest
 from httpx import AsyncClient
 
+from envoy.admin.api.health import HEALTH_URI
 from tests.integration.http import HTTPMethod
 from tests.integration.response import assert_response_header
 
-NO_AUTH_ROUTES = ["/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"]
+NO_AUTH_ROUTES = ["/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc", HEALTH_URI]
 
 
 @pytest.mark.anyio

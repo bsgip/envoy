@@ -58,6 +58,19 @@ def valid_headers_with_azure_ad():
 
 
 @pytest.fixture(scope="function")
+async def admin_client_empty_db(pg_empty_config: Connection):
+    """Creates an AsyncClient for a test that is configured to talk to the admin server app (base config not loaded)"""
+    settings = admin_gen_settings()
+    basic_auth = (settings.admin_username, settings.admin_password)
+
+    # We want a new app instance for every test - otherwise connection pools get shared and we hit problems
+    # when trying to run multiple tests sequentially
+    app = admin_gen_app(settings)
+    async with start_app_with_client(app, client_auth=basic_auth) as c:
+        yield c
+
+
+@pytest.fixture(scope="function")
 async def admin_client_auth(pg_base_config: Connection):
     """Creates an AsyncClient for a test that is configured to talk to the admin server app"""
     settings = admin_gen_settings()
