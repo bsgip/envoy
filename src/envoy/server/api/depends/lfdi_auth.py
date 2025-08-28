@@ -2,8 +2,10 @@ import base64
 import hashlib
 import logging
 import urllib.parse
+import re
 from http import HTTPStatus
 from typing import Any, Optional
+from cryptography.x509 import load_pem_x509_certificate
 
 from fastapi import Request
 from fastapi_async_sqlalchemy import db
@@ -17,6 +19,30 @@ from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.request_scope import CertificateType
 
 logger = logging.getLogger(__name__)
+
+
+def is_valid_base64_in_pem(pem_str: str) -> bool:
+    """
+    Various checks for PEM format validity.
+
+    1. Properly formatted with BEGIN/END markers.
+    2. Uses base64 encoding
+    3. Can be loaded by cryptography.x509.load_pem_x509_certificate
+    """
+
+    pem_str = urllib.parse.unquote(pem_str)
+    match = re.search(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", pem_str, re.DOTALL)
+    if not match:
+        return False
+
+    base64_content = "".join(match.group(1).split())
+    try:
+        load_pem_x509_certificate(pem_str.encode("utf-8"))
+        base64.b64decode(base64_content, validate=True)
+    except Exception:
+        return False
+
+    return True
 
 
 async def update_client_id_details_cache(_: Any) -> dict[str, ExpiringValue[ClientIdDetails]]:
@@ -64,6 +90,13 @@ class LFDIAuthDepends:
             )
 
         if cert_header_val.startswith("-----BEGIN"):
+            if not is_valid_base64_in_pem(cert_header_val):
+                raise LoggedHttpException(
+                    logger,
+                    exc=None,
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail="Invalid certificate PEM format.",
+                )
             lfdi = LFDIAuthDepends.generate_lfdi_from_pem(cert_header_val)
         else:
             lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_header_val)
