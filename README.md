@@ -18,7 +18,7 @@ envoy has a full demo server for quickly evaluating its capabilities. See the [d
 
 To install envoy for local development, clone this repository and then run:
 
-`pip install -e .[dev, test]`
+`pip install -e .[dev,test]`
 
 To ensure everything is setup correctly, tests can be run with:
 
@@ -118,7 +118,7 @@ To run Envoy locally as a development environment you'll need to setup a local p
 
 1. Install dependencies for main server + tests
 
-`pip install -e .[test, dev]`
+`pip install -e .[test,dev]`
 
 2. Create an "envoy" database
 
@@ -132,7 +132,7 @@ postgres=# grant all privileges on database envoydb to envoyuser;
 Note: for postgres>=15, create privileges on the public schema are no longer created by default. 
 To enable table creation with the envoyuser, grant ownership of the database (local development only)
 ```
-postgres=# ALTER DATABASE envoydb TO OWNER envoyuser;
+postgres=# ALTER DATABASE envoydb OWNER TO envoyuser;
 ```
 
 3. Create `.env` file
@@ -153,6 +153,7 @@ We recommend adding these to a `.env` file in the root directory so that they ar
 ln -s $PWD/.env $PWD/src/envoy/server/.env
 cd src/envoy/server/
 alembic upgrade head
+cd -
 ```
 
 5. You may want to put some aggregators along with their associated lFDIs into the database created in Step 3. We can use the base config from the testing environment for this purpose:
