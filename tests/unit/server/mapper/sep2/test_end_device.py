@@ -181,7 +181,7 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     assert result_all_set.post_rate_seconds == end_device_all_set.postRate
     assert result_all_set.changed_time == changed_time
     assert result_all_set.aggregator_id == aggregator_id
-    assert result_all_set.lfdi == end_device_all_set.lFDI.lower(), "We encode LFDI as all lower case"
+    assert result_all_set.lfdi == end_device_all_set.lFDI
     assert isinstance(result_all_set.device_category, DeviceCategory)
     assert result_all_set.device_category == int("c0ffee", 16)
     assert result_all_set.timezone_id == "abc/123"
@@ -195,7 +195,7 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     assert result_optional.post_rate_seconds is None
     assert result_optional.changed_time == changed_time
     assert result_optional.aggregator_id == aggregator_id
-    assert result_optional.lfdi == end_device_optional.lFDI.lower(), "We encode LFDI as all lower case"
+    assert result_optional.lfdi == end_device_optional.lFDI
     assert isinstance(result_all_set.device_category, DeviceCategory)
     assert result_optional.device_category == DeviceCategory(0)
     assert result_optional.timezone_id == "abc/123"

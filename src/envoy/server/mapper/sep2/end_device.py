@@ -55,7 +55,7 @@ class EndDeviceMapper:
         if not end_device.lFDI:
             raise InvalidMappingError("No lfdi was specified for EndDevice.")
         return Site(
-            lfdi=end_device.lFDI.lower(),  # Always store it lower case
+            lfdi=end_device.lFDI,
             sfdi=end_device.sFDI,
             registration_pin=registration_pin,
             changed_time=changed_time,
