@@ -1,3 +1,4 @@
+import os
 import urllib.parse
 from datetime import datetime, timezone
 from http import HTTPStatus
@@ -665,6 +666,46 @@ async def test_create_end_device_device_registration_disabled(
 
     async with generate_async_session(pg_base_config) as session:
         assert site_count_before == await count_all_sites(session, None, None)
+
+
+@pytest.mark.parametrize("static_pin_raw, expected_pin", [("123", 1236), ("55221", 552215)])
+@pytest.mark.anyio
+async def test_create_end_device_device_static_registration_pin(
+    preserved_environment,
+    edev_base_uri,
+    client: AsyncClient,
+    pg_base_config,
+    static_pin_raw: str,
+    expected_pin: str,
+):
+    """If the registration PIN is forced to be static (by config) - Ensure it's being set"""
+
+    os.environ["STATIC_REGISTRATION_PIN"] = static_pin_raw
+
+    insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    insert_request.postRate = 123
+    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
+    insert_request.lFDI = UNREGISTERED_CERT_LFDI
+    insert_request.sFDI = int(UNREGISTERED_CERT_SFDI)
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(UNREGISTERED_CERT)},
+        content=EndDeviceRequest.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    edev_location = read_location_header(response)
+
+    # Now fetch the Registration - it should be the static value
+    response = await client.get(edev_location + "/rg", headers={cert_header: urllib.parse.quote(UNREGISTERED_CERT)})
+    assert_response_header(response, HTTPStatus.OK)
+    parsed_response: RegistrationResponse = RegistrationResponse.from_xml(read_response_body_string(response))
+    assert parsed_response.pIN == expected_pin
+
+    # The registration PIN for other sites should be what's in the DB (and not static)
+    response = await client.get("/edev/1/rg", headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.OK)
+    parsed_response: RegistrationResponse = RegistrationResponse.from_xml(read_response_body_string(response))
+    assert parsed_response.pIN == 111115, "This is defined in base_config.sql for site 1"
 
 
 @pytest.mark.anyio

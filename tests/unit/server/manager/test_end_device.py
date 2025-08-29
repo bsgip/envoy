@@ -1,3 +1,4 @@
+import os
 import unittest.mock as mock
 from datetime import datetime, timedelta
 from typing import Optional, Union
@@ -879,6 +880,24 @@ def test_generate_registration_pin():
     assert sorted(values_attempt_1) != sorted(
         values_attempt_2
     ), "If this is failing, either you're incredible unlucky or something is wrong"
+
+
+@pytest.mark.parametrize(
+    "env, expected",
+    [
+        ("77441", 77441),
+        ("0", 0),
+        ("0031", 31),
+        ("04-54", 0),  # Bad value
+        ("123ab", 0),  # Bad value
+        ("12 34", 0),  # Bad value
+    ],
+)
+def test_generate_registration_pin_static(preserved_environment, env, expected):
+    os.environ["STATIC_REGISTRATION_PIN"] = env
+    assert RegistrationManager.generate_registration_pin() == expected
+    assert RegistrationManager.generate_registration_pin() == expected
+    assert isinstance(RegistrationManager.generate_registration_pin(), int)
 
 
 @pytest.mark.anyio

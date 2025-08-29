@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime
 from secrets import randbelow, token_bytes
 from typing import Optional, Sequence
@@ -300,6 +301,16 @@ class RegistrationManager:
     def generate_registration_pin() -> int:
         """Generates a random integer from 0 -> 99999 (5 digits) that can be used as a end device registration PIN.
         No guarantees about uniqueness are made"""
+        raw_static_pin = os.environ.get("STATIC_REGISTRATION_PIN", "")
+        if raw_static_pin:
+            try:
+                return int(raw_static_pin)
+            except ValueError as exc:
+                logger.error(
+                    f"Failure reading STATIC_REGISTRATION_PIN env variable '{raw_static_pin}' as an in", exc_info=exc
+                )
+                return 0
+
         return randbelow(MAX_REGISTRATION_PIN + 1)  # The upper bound is exclusive so +1 allows us to generate 99999
 
     @staticmethod
