@@ -81,7 +81,7 @@ async def test_delete_site_generates_notification(
                 r
                 for r in notifications_enabled.logged_requests
                 if r.uri == subscription1_uri
-                and "site1-lfdi" in r.content  # unique to site 1
+                and "site1-lfdi".upper() in r.content  # unique to site 1
                 and "<status>4</status>" in r.content  # This is a deletion notification
             ]
         )
