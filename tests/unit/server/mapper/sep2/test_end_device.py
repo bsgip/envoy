@@ -160,6 +160,22 @@ def test_map_from_request_missing_lfdi(mock_settings: mock.MagicMock, lfdi: Opti
         EndDeviceMapper.map_from_request(end_device, 1, generate_value(datetime, 303), 12345)
 
 
+def test_map_from_request_does_not_manipulate_lfdi():
+    """Asserts that the LFDI is not manipulated during mapping."""
+    original_lfdi:str = "29830E8C4092F4A343B5427E5F4A693E12345678"
+    end_device: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest, seed=101, optional_is_none=False, lFDI=original_lfdi, deviceCategory="c0ffee"
+    )    
+    aggregator_id: int = 404
+    changed_time: datetime = generate_value(datetime, 303)
+    registration_pin: int = 505
+
+    result = EndDeviceMapper.map_from_request(end_device, aggregator_id, changed_time, registration_pin)
+    assert result is not None
+    assert isinstance(result, Site)
+    assert result.lfdi == original_lfdi
+
+
 @mock.patch("envoy.server.mapper.sep2.end_device.settings")
 def test_map_from_request(mock_settings: mock.MagicMock):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
