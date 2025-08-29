@@ -238,7 +238,7 @@ async def test_get_enddevice(
         parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(body)
         assert parsed_response.href == uri
         assert parsed_response.enabled == 1
-        assert parsed_response.lFDI == expected_lfdi
+        assert parsed_response.lFDI == expected_lfdi.upper(), "CSIP Aus requires upper case LFDI hex chars"
         assert parsed_response.sFDI == expected_sfdi
 
         if site_id == 0:
@@ -356,7 +356,7 @@ async def test_create_end_device_specified_sfdi(client: AsyncClient, edev_base_u
     assert_nowish(parsed_response.changedTime)
     assert parsed_response.href == inserted_href
     assert parsed_response.enabled == 1
-    assert parsed_response.lFDI == insert_request.lFDI.lower()
+    assert parsed_response.lFDI == insert_request.lFDI.upper()
     assert parsed_response.sFDI == insert_request.sFDI
     assert parsed_response.deviceCategory == insert_request.deviceCategory
 

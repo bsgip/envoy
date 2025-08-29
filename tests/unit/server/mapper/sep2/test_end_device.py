@@ -53,7 +53,7 @@ def test_map_to_response(disable_registration: bool):
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.postRate == site_all_set.post_rate_seconds
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
-    assert result_all_set.lFDI == site_all_set.lfdi
+    assert result_all_set.lFDI == site_all_set.lfdi.upper(), "CSIP Aus expects uppercase hex characters"
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_all_set.ConnectionPointLink, ConnectionPointLink)
     assert isinstance(result_all_set.DERListLink, ListLink)
@@ -82,7 +82,7 @@ def test_map_to_response(disable_registration: bool):
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.postRate is None
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
-    assert result_optional.lFDI == site_optional.lfdi
+    assert result_optional.lFDI == site_optional.lfdi.upper(), "CSIP Aus expects uppercase hex characters"
     assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_optional.ConnectionPointLink, ConnectionPointLink)
     assert isinstance(result_optional.DERListLink, ListLink)
@@ -228,7 +228,7 @@ def test_virtual_end_device_map_to_response():
     assert result_all_set is not None
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
-    assert result_all_set.lFDI == site_all_set.lfdi
+    assert result_all_set.lFDI == site_all_set.lfdi.upper(), "CSIP Aus expects uppercase hex characters"
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
     assert result_all_set.postRate == site_all_set.post_rate_seconds
 
@@ -236,7 +236,7 @@ def test_virtual_end_device_map_to_response():
     assert result_optional is not None
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
-    assert result_optional.lFDI == site_optional.lfdi
+    assert result_optional.lFDI == site_optional.lfdi.upper(), "CSIP Aus expects uppercase hex characters"
     assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
     assert result_optional.postRate == site_optional.post_rate_seconds
 

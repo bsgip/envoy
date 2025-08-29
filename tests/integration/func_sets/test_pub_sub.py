@@ -552,7 +552,7 @@ async def test_create_end_device_subscription(client: AsyncClient, notifications
 
     # Simple check on the notification content
     assert inserted_href in notifications_enabled.logged_requests[0].content
-    assert insert_request.lFDI in notifications_enabled.logged_requests[0].content
+    assert insert_request.lFDI.upper() in notifications_enabled.logged_requests[0].content
     assert str(insert_request.sFDI) in notifications_enabled.logged_requests[0].content
 
 
