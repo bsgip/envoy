@@ -377,7 +377,7 @@ class DERCapabilityMapper:
                     value_name="displacement",
                 ),
                 "rtgOverExcitedW": get_value_multiplier(
-                    der_rating.over_excited_w_value, der_rating.over_excited_pf_multiplier
+                    der_rating.over_excited_w_value, der_rating.over_excited_w_multiplier
                 ),
                 "rtgReactiveSusceptance": get_value_multiplier(
                     der_rating.reactive_susceptance_value, der_rating.reactive_susceptance_multiplier
@@ -544,6 +544,7 @@ class DERSettingMapper:
         )
         (m.max_v_value, m.max_v_multiplier) = set_value_multiplier(der_setting.setMaxV)
         (m.max_var_value, m.max_var_multiplier) = set_value_multiplier(der_setting.setMaxVar)
+        (m.max_va_value, m.max_va_multiplier) = set_value_multiplier(der_setting.setMaxVA)
         (m.max_var_neg_value, m.max_var_neg_multiplier) = set_value_multiplier(der_setting.setMaxVarNeg)
         (m.max_w_value, m.max_w_multiplier) = cast(tuple[int, int], set_value_multiplier(der_setting.setMaxW))
         (m.max_wh_value, m.max_wh_multiplier) = set_value_multiplier(der_setting.setMaxWh)

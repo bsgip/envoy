@@ -1,9 +1,10 @@
 from datetime import datetime
+from typing import Any
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal
-from assertical.fake.generator import generate_class_instance
+from assertical.fake.generator import enumerate_class_properties, generate_class_instance
 from envoy_schema.server.schema.sep2.der import (
     DER,
     AlarmStatusType,
@@ -28,6 +29,29 @@ from envoy.server.mapper.sep2.der import (
 )
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
+
+
+def assert_der_info_type_equal(t: type, expected: Any, actual: Any):
+    """assert_class_instance_equality will only compare the "simple" types. It won't do a proper check on the
+    ActivePower, ApparentPower (etc) types. This function does a deeper inspection"""
+
+    ignored_props = {"href", "readingTime", "subscribable", "type", "updatedTime"}
+
+    # Check the basic properties
+    assert_class_instance_equality(
+        t,
+        expected,
+        actual,
+        ignored_properties=ignored_props,
+    )
+
+    # Check the various "complex" types of ActivePower/ApparentPower etc
+    for prop in enumerate_class_properties(t):
+        if prop.name in ignored_props:
+            continue
+        expected_value = getattr(expected, prop.name, None)
+        actual_value = getattr(actual, prop.name, None)
+        assert expected_value == actual_value, f"Property '{prop.name}'"
 
 
 def test_der_mapping():
@@ -110,12 +134,7 @@ def test_der_avail_roundtrip(optional_is_none: bool):
     actual = DERAvailabilityMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERAvailability)
 
-    assert_class_instance_equality(
-        DERAvailability,
-        expected,
-        actual,
-        ignored_properties=set(["href", "readingTime", "subscribable", "type"]),
-    )
+    assert_der_info_type_equal(DERAvailability, expected, actual)
     assert actual.href.startswith("/my/prefix")
     assert f"/{entity_site_id}" in actual.href
     assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
@@ -154,12 +173,7 @@ def test_der_status_roundtrip(optional_is_none: bool):
     actual = DERStatusMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERStatus)
 
-    assert_class_instance_equality(
-        DERStatus,
-        expected,
-        actual,
-        ignored_properties=set(["href", "readingTime", "subscribable", "type"]),
-    )
+    assert_der_info_type_equal(DERStatus, expected, actual)
     assert actual.href.startswith("/my/prefix")
     assert f"/{entity_site_id}" in actual.href
     assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
@@ -188,12 +202,7 @@ def test_der_capability_roundtrip(optional_is_none: bool):
     actual = DERCapabilityMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERCapability)
 
-    assert_class_instance_equality(
-        DERCapability,
-        expected,
-        actual,
-        ignored_properties=set(["href", "subscribable", "type"]),
-    )
+    assert_der_info_type_equal(DERCapability, expected, actual)
     assert actual.href.startswith("/my/prefix")
     assert f"/{entity_site_id}" in actual.href
     assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
@@ -221,12 +230,7 @@ def test_der_settings_roundtrip(optional_is_none: bool):
     actual = DERSettingMapper.map_to_response(scope, mapped, entity_site_id)
     assert isinstance(actual, DERSettings)
 
-    assert_class_instance_equality(
-        DERSettings,
-        expected,
-        actual,
-        ignored_properties=set(["href", "subscribable", "type", "updatedTime"]),
-    )
+    assert_der_info_type_equal(DERSettings, expected, actual)
     assert actual.href.startswith("/my/prefix")
     assert f"/{entity_site_id}" in actual.href
     assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
