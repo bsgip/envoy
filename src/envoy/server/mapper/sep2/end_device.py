@@ -32,7 +32,7 @@ class EndDeviceMapper:
         return EndDeviceResponse.model_validate(
             {
                 "href": edev_href,
-                "lFDI": site.lfdi.upper(),  # CSIP Aus expects uppercase hex characters for LFDI
+                "lFDI": site.lfdi,
                 "sFDI": site.sfdi,
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "deviceCategory": f"{site.device_category:x}",  # deviceCategory is a hex string
@@ -55,7 +55,7 @@ class EndDeviceMapper:
         if not end_device.lFDI:
             raise InvalidMappingError("No lfdi was specified for EndDevice.")
         return Site(
-            lfdi=end_device.lFDI.lower(),  # Always store it lower case
+            lfdi=end_device.lFDI,
             sfdi=end_device.sFDI,
             registration_pin=registration_pin,
             changed_time=changed_time,
@@ -74,7 +74,7 @@ class VirtualEndDeviceMapper:
         return EndDeviceResponse.model_validate(
             {
                 "href": edev_href,
-                "lFDI": site.lfdi.upper(),  # CSIP Aus expects uppercase hex characters for LFDI
+                "lFDI": site.lfdi,
                 "sFDI": site.sfdi,
                 "subscribable": SubscribableType.resource_does_not_support_subscriptions,
                 "deviceCategory": f"{site.device_category:x}",  # deviceCategory is a hex string

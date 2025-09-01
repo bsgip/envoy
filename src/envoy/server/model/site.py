@@ -47,7 +47,10 @@ class Site(Base):
         DateTime(timezone=True), server_default=func.now()
     )  # When the site was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)  # When the site was updated
-    lfdi: Mapped[str] = mapped_column(VARCHAR(length=42), nullable=False, unique=True)
+    lfdi: Mapped[str] = mapped_column(
+        VARCHAR(length=42, collation="case_insensitive"), nullable=False, unique=True
+    )  # Case insensitive long form device identifier - expected to be 40 hexadecimal characters
+    # NOTE: The case_insensitive collation is managed manually in the alembic migration "add_ci_lfdis"
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
     registration_pin: Mapped[int] = mapped_column(

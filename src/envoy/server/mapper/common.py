@@ -1,6 +1,7 @@
+from collections import abc
 from decimal import Decimal
 from itertools import chain
-from typing import Any, Optional
+from typing import Any, Generic, Iterator, Optional, TypeVar
 
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
@@ -81,3 +82,53 @@ def pow10_to_decimal_value(value: Optional[int], pow10_multiplier: Optional[int]
         return Decimal(value)
     else:
         return Decimal(value) * (Decimal("10") ** pow10_multiplier)
+
+
+ValueType = TypeVar("ValueType")
+
+
+class CaseInsensitiveDict(abc.MutableMapping, Generic[ValueType]):
+    """A simple "case insensitive" dictionary of objects. Designed to be a pretty close equivalent to dict
+    that uses casefolded comparisons for keys."""
+
+    _raw_dict: dict[str, tuple[str, ValueType]]
+
+    def __init__(self, data: Any = None, **kwargs: Any) -> None:
+        self._raw_dict = dict()
+        if data is None:
+            data = {}
+        self.update(data, **kwargs)
+
+    def __setitem__(self, key: str, value: ValueType) -> None:
+        self._raw_dict[key.casefold()] = (key, value)
+
+    def __getitem__(self, key: str) -> ValueType:
+        return self._raw_dict[key.casefold()][1]
+
+    def __delitem__(self, key: str) -> None:
+        del self._raw_dict[key.casefold()]
+
+    def __iter__(self) -> Iterator[str]:
+        return (orig_key for orig_key, _ in self._raw_dict.values())
+
+    def __len__(self) -> int:
+        return len(self._raw_dict)
+
+    def lower_items(self) -> Iterator[tuple[str, ValueType]]:
+        """Similar to iteritems(), but with all casefolded keys."""
+        return ((orig_key, keyval[1]) for (orig_key, keyval) in self._raw_dict.items())
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, abc.Mapping):
+            other = CaseInsensitiveDict(other)
+        else:
+            raise NotImplementedError()
+        # Compare insensitively
+        return dict(self.lower_items()) == dict(other.lower_items())
+
+    # Copy is required
+    def copy(self) -> "CaseInsensitiveDict":
+        return CaseInsensitiveDict(self._raw_dict.values())
+
+    def __repr__(self) -> str:
+        return "%s(%r)" % (self.__class__.__name__, dict(self.items()))

@@ -281,7 +281,7 @@ async def test_create_update_mup(
     assert_class_instance_equality(
         MirrorUsagePoint, mup, parsed_response, ignored_properties=set(["href", "mRID", "postRate", "deviceLFDI"])
     )
-    assert parsed_response.deviceLFDI == mup.deviceLFDI.lower(), "LFDIs should be mapped to lowercase"
+    assert parsed_response.deviceLFDI.lower() == mup.deviceLFDI.lower(), "The returned LFDI should be case insensitive"
 
     # see if the list endpoint can fetch it via the updated time
     response = await client.get(

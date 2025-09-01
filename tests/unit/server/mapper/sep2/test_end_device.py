@@ -44,8 +44,8 @@ def test_device_category_round_trip(disable_registration: bool):
 @pytest.mark.parametrize("disable_registration", [True, False])
 def test_map_to_response(disable_registration: bool):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
-    site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
-    site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
+    site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False, lfdi="123abcDEF")
+    site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True, lfdi="456AAAaaa")
     scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
 
     result_all_set = EndDeviceMapper.map_to_response(scope, site_all_set, disable_registration)
@@ -53,7 +53,7 @@ def test_map_to_response(disable_registration: bool):
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.postRate == site_all_set.post_rate_seconds
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
-    assert result_all_set.lFDI == site_all_set.lfdi.upper(), "CSIP Aus expects uppercase hex characters"
+    assert result_all_set.lFDI == site_all_set.lfdi
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_all_set.ConnectionPointLink, ConnectionPointLink)
     assert isinstance(result_all_set.DERListLink, ListLink)
@@ -82,7 +82,7 @@ def test_map_to_response(disable_registration: bool):
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.postRate is None
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
-    assert result_optional.lFDI == site_optional.lfdi.upper(), "CSIP Aus expects uppercase hex characters"
+    assert result_optional.lFDI == site_optional.lfdi
     assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_optional.ConnectionPointLink, ConnectionPointLink)
     assert isinstance(result_optional.DERListLink, ListLink)
@@ -166,10 +166,10 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     mock_settings.default_timezone = "abc/123"
 
     end_device_all_set: EndDeviceRequest = generate_class_instance(
-        EndDeviceRequest, seed=101, optional_is_none=False, lFDI="abcDEF", deviceCategory="c0ffee"
+        EndDeviceRequest, seed=101, optional_is_none=False, lFDI="abcDEF456", deviceCategory="c0ffee"
     )
     end_device_optional: EndDeviceRequest = generate_class_instance(
-        EndDeviceRequest, seed=202, optional_is_none=True, lFDI="defABC", deviceCategory=None
+        EndDeviceRequest, seed=202, optional_is_none=True, lFDI="defABC123", deviceCategory=None
     )
     changed_time: datetime = generate_value(datetime, 303)
     aggregator_id: int = 404
@@ -181,7 +181,7 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     assert result_all_set.post_rate_seconds == end_device_all_set.postRate
     assert result_all_set.changed_time == changed_time
     assert result_all_set.aggregator_id == aggregator_id
-    assert result_all_set.lfdi == end_device_all_set.lFDI.lower(), "We encode LFDI as all lower case"
+    assert result_all_set.lfdi == end_device_all_set.lFDI
     assert isinstance(result_all_set.device_category, DeviceCategory)
     assert result_all_set.device_category == int("c0ffee", 16)
     assert result_all_set.timezone_id == "abc/123"
@@ -195,7 +195,7 @@ def test_map_from_request(mock_settings: mock.MagicMock):
     assert result_optional.post_rate_seconds is None
     assert result_optional.changed_time == changed_time
     assert result_optional.aggregator_id == aggregator_id
-    assert result_optional.lfdi == end_device_optional.lFDI.lower(), "We encode LFDI as all lower case"
+    assert result_optional.lfdi == end_device_optional.lFDI
     assert isinstance(result_all_set.device_category, DeviceCategory)
     assert result_optional.device_category == DeviceCategory(0)
     assert result_optional.timezone_id == "abc/123"
@@ -220,15 +220,15 @@ def test_map_from_request_invalid_device_category():
 
 def test_virtual_end_device_map_to_response():
     """Simple sanity check on the virtual end device mapper to ensure things don't break with a variety of values."""
-    site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
-    site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
+    site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False, lfdi="123AABbaa")
+    site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True, lfdi="456AAAaaa")
     scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
 
     result_all_set = VirtualEndDeviceMapper.map_to_response(scope, site_all_set)
     assert result_all_set is not None
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
-    assert result_all_set.lFDI == site_all_set.lfdi.upper(), "CSIP Aus expects uppercase hex characters"
+    assert result_all_set.lFDI == site_all_set.lfdi
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
     assert result_all_set.postRate == site_all_set.post_rate_seconds
 
@@ -236,7 +236,7 @@ def test_virtual_end_device_map_to_response():
     assert result_optional is not None
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
-    assert result_optional.lFDI == site_optional.lfdi.upper(), "CSIP Aus expects uppercase hex characters"
+    assert result_optional.lFDI == site_optional.lfdi
     assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
     assert result_optional.postRate == site_optional.post_rate_seconds
 

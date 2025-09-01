@@ -19,7 +19,7 @@ class DynamicOperatingEnvelopeResponse(Base):
     dynamic_operating_envelope_response_id: Mapped[int] = mapped_column(
         BigInteger, primary_key=True, autoincrement=True
     )
-    dynamic_operating_envelope_id_snapshot: Mapped[int] = mapped_column(INTEGER)  # The doe this response applies to
+    dynamic_operating_envelope_id_snapshot: Mapped[int] = mapped_column(BigInteger)  # The doe this response applies to
     site_id: Mapped[int] = mapped_column(
         ForeignKey("site.site_id", ondelete="CASCADE")
     )  # The parent site that ultimately owns the DOE. Redundant, but included for select query performance
@@ -44,7 +44,7 @@ class TariffGeneratedRateResponse(Base):
 
     __tablename__ = "tariff_generated_rate_response"
     tariff_generated_rate_response_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    tariff_generated_rate_id_snapshot: Mapped[int] = mapped_column(INTEGER)  # The rate this response applies to
+    tariff_generated_rate_id_snapshot: Mapped[int] = mapped_column(BigInteger)  # The rate this response applies to
     site_id: Mapped[int] = mapped_column(
         ForeignKey("site.site_id", ondelete="CASCADE")
     )  # The parent site that ultimately owns the rate. Redundant, but included for select query performance

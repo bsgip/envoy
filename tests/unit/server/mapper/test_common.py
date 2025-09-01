@@ -5,7 +5,13 @@ import pytest
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import generate_href, parse_device_category, pow10_to_decimal_value, remove_href_prefix
+from envoy.server.mapper.common import (
+    CaseInsensitiveDict,
+    generate_href,
+    parse_device_category,
+    pow10_to_decimal_value,
+    remove_href_prefix,
+)
 from envoy.server.request_scope import BaseRequestScope
 
 
@@ -134,3 +140,50 @@ def test_parse_device_category__raises_valueerror(device_category_str):
     """Test parse_device_category raises ValueError for values that don't represent a valid hex strings"""
     with pytest.raises(ValueError):
         parse_device_category(device_category_str)
+
+
+def test_CaseInsensitiveDict():
+    """Really simple tests - covering a few basic empty dict use cases"""
+    d: CaseInsensitiveDict[int] = CaseInsensitiveDict()
+
+    with pytest.raises(KeyError):
+        d["abc"]
+
+    d["aBc"] = 123
+    d["def"] = 456
+    assert d["abc"] == 123
+    assert d["aBc"] == 123
+    assert d["ABC"] == 123
+    assert d["dEF"] == 456
+
+    with pytest.raises(KeyError):
+        d["abcd"]
+    with pytest.raises(KeyError):
+        d["ab"]
+
+    assert d.get("abc") == 123
+    assert d.get("abc", None) == 123
+    assert d.get("abcd", None) is None
+
+    del d["abc"]
+    with pytest.raises(KeyError):
+        d["abc"]
+    with pytest.raises(KeyError):
+        d["aBc"]
+
+    assert d["dEF"] == 456
+
+
+def test_CaseInsensitiveDict_constructor():
+    d1: CaseInsensitiveDict[int] = CaseInsensitiveDict({"abC": 12, "DEf": 34})
+    d2: CaseInsensitiveDict[int] = CaseInsensitiveDict([("abC", 12), ("DEf", 34)])
+
+    assert d1["abc"] == 12
+    assert d1["ABC"] == 12
+    with pytest.raises(KeyError):
+        d1["abcdef"]
+
+    assert d1 == d2
+    assert d1 == {"abc": 12, "def": 34}
+    assert d1 != {"abc": 12, "def": 34, "xyz": 12}
+    assert d1 != {"abc": 12}

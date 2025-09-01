@@ -27,6 +27,7 @@ from envoy_schema.server.schema.sep2.types import (
 
 from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import InvalidMappingError
+from envoy.server.mapper.common import CaseInsensitiveDict
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.metering import (
     MirrorMeterReadingMapper,
@@ -375,7 +376,7 @@ def test_MirrorMeterReadingMapper_map_reading_from_request():
 
 def test_MirrorMeterReadingMapper_map_from_request_empty_variants():
     mrid = "abc123"
-    srt_map = {mrid: generate_class_instance(SiteReadingType)}
+    srt_map = CaseInsensitiveDict({mrid: generate_class_instance(SiteReadingType)})
     changed_time = datetime(2011, 5, 6, 1, tzinfo=timezone.utc)
 
     assert_list_type(SiteReading, MirrorMeterReadingMapper.map_from_request([], srt_map, changed_time), 0)
@@ -423,7 +424,7 @@ def test_MirrorMeterReadingMapper_map_from_request_empty_variants():
 
 def test_MirrorMeterReadingMapper_map_from_request_bad_mrid():
     mrid = "abc123"
-    srt_map = {mrid: generate_class_instance(SiteReadingType)}
+    srt_map = CaseInsensitiveDict({mrid: generate_class_instance(SiteReadingType)})
     changed_time = datetime(2011, 5, 6, 1, tzinfo=timezone.utc)
 
     with pytest.raises(InvalidMappingError):
@@ -451,10 +452,12 @@ def test_MirrorMeterReadingMapper_map_from_request():
     mrid1 = "abc123"
     mrid2 = "def456"
 
-    srt_map = {
-        mrid1: generate_class_instance(SiteReadingType, seed=101, site_reading_type_id=1),
-        mrid2: generate_class_instance(SiteReadingType, seed=202, site_reading_type_id=2),
-    }
+    srt_map = CaseInsensitiveDict(
+        {
+            mrid1: generate_class_instance(SiteReadingType, seed=101, site_reading_type_id=1),
+            mrid2: generate_class_instance(SiteReadingType, seed=202, site_reading_type_id=2),
+        }
+    )
 
     changed_time = datetime.now()
 

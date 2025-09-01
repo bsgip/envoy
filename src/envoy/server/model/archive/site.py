@@ -34,7 +34,7 @@ class ArchiveSite(ArchiveBase):
     timezone_id: Mapped[str] = mapped_column(VARCHAR(length=64), nullable=False)
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    lfdi: Mapped[str] = mapped_column(VARCHAR(length=42), nullable=False)
+    lfdi: Mapped[str] = mapped_column(VARCHAR(length=42, collation="case_insensitive"), nullable=False)
     sfdi: Mapped[int] = mapped_column(BigInteger, nullable=False)
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
     registration_pin: Mapped[int] = mapped_column(INTEGER, nullable=False)

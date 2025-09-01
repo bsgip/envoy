@@ -309,9 +309,18 @@ async def test_create_or_update_mirror_usage_point_created_with_readings(pg_base
             assert db_reading.local_id == int(src_reading.localID, 16)
 
 
-@pytest.mark.parametrize("update_role_flags", [True, False])
+def force_case(force_upper_case: bool, val: str) -> str:
+    if force_upper_case:
+        return val.upper()
+    else:
+        return val.lower()
+
+
+@pytest.mark.parametrize("update_role_flags, force_upper_case", product([True, False], [True, False]))
 @pytest.mark.anyio
-async def test_create_or_update_mirror_usage_point_update(pg_base_config, update_role_flags: bool):
+async def test_create_or_update_mirror_usage_point_update(
+    pg_base_config, update_role_flags: bool, force_upper_case: bool
+):
     """Submitting a new MUP should insert everything associated with that mup under a new group ID"""
     reading1 = generate_class_instance(
         Reading,
@@ -338,7 +347,7 @@ async def test_create_or_update_mirror_usage_point_update(pg_base_config, update
     # Identical to SiteReadingType #1
     mmr1 = generate_class_instance(
         MirrorMeterReadingRequest,
-        mRID="10000000000000000000000000000abc",  # matches SiteReadingType 1
+        mRID=force_case(force_upper_case, "10000000000000000000000000000aBc"),  # matches SiteReadingType 1
         readingType=generate_class_instance(
             ReadingType,
             dataQualifier=2,
@@ -356,7 +365,7 @@ async def test_create_or_update_mirror_usage_point_update(pg_base_config, update
     # Brand new SiteReadingType
     mmr_new = generate_class_instance(
         MirrorMeterReading,
-        mRID="abc123def",
+        mRID=force_case(force_upper_case, "abc123DEF"),
         readingType=generate_class_instance(ReadingType, seed=404),
         reading=reading2,
     )
@@ -364,7 +373,7 @@ async def test_create_or_update_mirror_usage_point_update(pg_base_config, update
     # Updates SiteReadingType #5
     mmr5 = generate_class_instance(
         MirrorMeterReading,
-        mRID="50000000000000000000000000000abc",
+        mRID=force_case(force_upper_case, "50000000000000000000000000000Abc"),
         readingType=generate_class_instance(ReadingType, seed=505),
         reading=reading3,
     )
@@ -372,9 +381,9 @@ async def test_create_or_update_mirror_usage_point_update(pg_base_config, update
     mup = generate_class_instance(
         MirrorUsagePoint,
         seed=505,
-        mRID="10000000000000000000000000000def",  # For updating group #1
+        mRID=force_case(force_upper_case, "10000000000000000000000000000Def"),  # For updating group #1
         roleFlags="12" if update_role_flags else "1",
-        deviceLFDI="site1-lfdi",
+        deviceLFDI=force_case(force_upper_case, "site1-lfdi"),
         mirrorMeterReadings=[mmr1, mmr_new, mmr5],
     )
     async with generate_async_session(pg_base_config) as session:
@@ -423,7 +432,7 @@ async def test_create_or_update_mirror_usage_point_update(pg_base_config, update
 
         # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
         for db_srt, mmr in zip([srt1, srt_new, srt5], [mmr1, mmr_new, mmr5]):
-            assert db_srt.group_mrid == mup.mRID
+            assert db_srt.group_mrid.casefold() == mup.mRID.casefold()
             assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
             assert db_srt.group_id == result.mup_id
             assert db_srt.accumulation_behaviour == mmr.readingType.accumulationBehaviour

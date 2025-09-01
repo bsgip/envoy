@@ -21,7 +21,7 @@ from envoy_schema.server.schema.sep2.types import (
 
 from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import generate_href
+from envoy.server.mapper.common import CaseInsensitiveDict, generate_href
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.request_scope import BaseRequestScope
@@ -268,7 +268,7 @@ class MirrorMeterReadingMapper:
 
     @staticmethod
     def map_from_request(
-        mmrs: list[MirrorMeterReading], srt_by_mrid: dict[str, SiteReadingType], changed_time: datetime
+        mmrs: list[MirrorMeterReading], srt_by_mrid: CaseInsensitiveDict[SiteReadingType], changed_time: datetime
     ) -> list[SiteReading]:
         """Takes a set of MirrorMeterReadings and generates SiteReading entries for every reading found. Those
         readings will be mapped to a SiteReadingType by mrid lookup into srt_by_mrid"""

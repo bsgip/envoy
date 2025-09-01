@@ -35,12 +35,14 @@ class SiteReadingType(Base):
         ForeignKey("site.site_id")
     )  # Tracks the site that the underlying readings belong to
     mrid: Mapped[str] = mapped_column(
-        VARCHAR(length=32)
-    )  # lowercase hex string (should be case insensitive). Uniquely identifies this SiteReadingType for a specific site
+        VARCHAR(length=32, collation="case_insensitive")
+    )  # hex string (should be case insensitive). Uniquely identifies this SiteReadingType for a specific site
+    # NOTE: The case_insensitive collation is managed manually in the alembic migration "add_ci_lfdis"
     group_id: Mapped[int] = mapped_column(INTEGER)  # Means for virtually grouping this entity under a MUP
     group_mrid: Mapped[str] = mapped_column(
-        VARCHAR(length=32)
-    )  # lowercase hex string (should be case insensitive). Uniquely identifies the parent MUP
+        VARCHAR(length=32, collation="case_insensitive")
+    )  # hex string (should be case insensitive). Uniquely identifies the parent MUP
+    # NOTE: The case_insensitive collation is managed manually in the alembic migration "add_ci_lfdis"
 
     uom: Mapped[UomType] = mapped_column(INTEGER)
     data_qualifier: Mapped[DataQualifierType] = mapped_column(INTEGER)
