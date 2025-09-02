@@ -1,12 +1,14 @@
 import base64
+import binascii
 import hashlib
 import logging
 import urllib.parse
 import re
 from http import HTTPStatus
 from typing import Any, Optional
-from cryptography.x509 import load_pem_x509_certificate
 
+from cryptography.x509 import load_pem_x509_certificate
+from cryptography.hazmat.primitives import hashes
 from fastapi import Request
 from fastapi_async_sqlalchemy import db
 
@@ -21,13 +23,21 @@ from envoy.server.request_scope import CertificateType
 logger = logging.getLogger(__name__)
 
 
+def is_valid_sha256(sha256_str: str) -> bool:
+    """Check if string is valid SHA256 format i.e. 64 characters long and hexadecimal (case-insensitive)."""
+    if not isinstance(sha256_str, str):
+        return False
+    return bool(re.fullmatch(r"[a-fA-F0-9]{64}", sha256_str))
+
+
 def is_valid_base64_in_pem(pem_str: str) -> bool:
     """
     Various checks for PEM format validity.
 
     1. Properly formatted with BEGIN/END markers.
     2. Uses base64 encoding
-    3. Can be loaded by cryptography.x509.load_pem_x509_certificate
+    3. Ignores content before and after markers.
+    4. Accepts certificate with or without newlines.
     """
 
     pem_str = urllib.parse.unquote(pem_str)
@@ -37,9 +47,9 @@ def is_valid_base64_in_pem(pem_str: str) -> bool:
 
     base64_content = "".join(match.group(1).split())
     try:
-        load_pem_x509_certificate(pem_str.encode("utf-8"))
         base64.b64decode(base64_content, validate=True)
-    except Exception:
+    except (binascii.Error, ValueError) as exc:
+        logger.debug(exc)
         return False
 
     return True
@@ -89,17 +99,19 @@ class LFDIAuthDepends:
                 detail="Missing certificate PEM header/fingerprint from gateway.",
             )
 
-        if cert_header_val.startswith("-----BEGIN"):
-            if not is_valid_base64_in_pem(cert_header_val):
-                raise LoggedHttpException(
-                    logger,
-                    exc=None,
-                    status_code=HTTPStatus.BAD_REQUEST,
-                    detail="Invalid certificate PEM format.",
-                )
+        if is_valid_base64_in_pem(cert_header_val):
+            logger.debug(f"{self.cert_header} contains a valid PEM.")
             lfdi = LFDIAuthDepends.generate_lfdi_from_pem(cert_header_val)
-        else:
+        elif is_valid_sha256(cert_header_val):
+            logger.debug(f"{self.cert_header} contains a valid SHA-256 fingerprint.")
             lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_header_val)
+        else:
+            raise LoggedHttpException(
+                logger,
+                exc=None,
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="Invalid certificate format.",
+            )
 
         try:
             sfdi = convert_lfdi_to_sfdi(lfdi)
@@ -192,12 +204,5 @@ class LFDIAuthDepends:
         # Replace %xx escapes with their single-character equivalent
         cert_pem_b64 = urllib.parse.unquote(cert_pem_b64)
 
-        # remove header/footer
-        cert_pem_b64 = "\n".join(cert_pem_b64.splitlines()[1:-1])
-
-        # decode base64
-        cert_pem_bytes = base64.b64decode(cert_pem_b64)
-
-        # sha256 hash
-        hashing_obj = hashlib.sha256(cert_pem_bytes)
-        return hashing_obj.hexdigest()
+        # generate fingerprint for certificate
+        return load_pem_x509_certificate(cert_pem_b64.encode("utf-8")).fingerprint(hashes.SHA256()).hex()
