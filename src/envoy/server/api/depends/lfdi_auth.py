@@ -23,6 +23,9 @@ from envoy.server.request_scope import CertificateType
 logger = logging.getLogger(__name__)
 
 
+class LFDIAuthException(Exception): ...
+
+
 def is_valid_sha256(sha256_str: str) -> bool:
     """Check if string is valid SHA256 format i.e. 64 characters long and hexadecimal (case-insensitive)."""
     if not isinstance(sha256_str, str):
@@ -30,14 +33,16 @@ def is_valid_sha256(sha256_str: str) -> bool:
     return bool(re.fullmatch(r"[a-fA-F0-9]{64}", sha256_str))
 
 
-def is_valid_base64_in_pem(pem_str: str) -> bool:
+def is_valid_pem(pem_str: str) -> bool:
     """
     Various checks for PEM format validity.
 
     1. Properly formatted with BEGIN/END markers.
     2. Uses base64 encoding
-    3. Ignores content before and after markers.
-    4. Accepts certificate with or without newlines.
+
+    NOTE:
+    1. Content before and after markers will be ignored.
+    2. Certificate string is accepted with or without newlines.
     """
 
     pem_str = urllib.parse.unquote(pem_str)
@@ -94,23 +99,30 @@ class LFDIAuthDepends:
         if not cert_header_val:
             raise LoggedHttpException(
                 logger,
-                exc=None,
+                exc=LFDIAuthException(
+                    "Missing certificate PEM/fingerprint header from gateway.",
+                ),
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail="Missing certificate PEM header/fingerprint from gateway.",
+                detail="Internal Server Error.",
             )
 
-        if is_valid_base64_in_pem(cert_header_val):
+        if is_valid_pem(cert_header_val):
             logger.debug(f"{self.cert_header} contains a valid PEM.")
             lfdi = LFDIAuthDepends.generate_lfdi_from_pem(cert_header_val)
         elif is_valid_sha256(cert_header_val):
             logger.debug(f"{self.cert_header} contains a valid SHA-256 fingerprint.")
             lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_header_val)
         else:
+
+            # NOTE: Respond with INTERNAL_SERVER_ERROR due to missing or malformed certificate data.
+            # TLS termination is handled by a reverse proxy upstream of envoy. The proxy is expected to forward a custom header
+            # containing either the full client certificate PEM or its fingerprint. If the request reaches envoy, TLS validation
+            # has succeeded, so invalid data in this header is the upstream proxy's fault, not the client.
             raise LoggedHttpException(
                 logger,
-                exc=None,
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail="Invalid certificate format.",
+                exc=LFDIAuthException("Issue with certificate PEM/fingerprint header value from gateway."),
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail="Internal Server Error.",
             )
 
         try:
@@ -200,7 +212,10 @@ class LFDIAuthDepends:
     @staticmethod
     def _cert_pem_to_cert_fingerprint(cert_pem_b64: str) -> str:
         """The certificate fingerprint is the result of performing a SHA256 operation over the whole DER-encoded
-        certificate and is used to derive the SFDI and LFDI"""
+        certificate and is used to derive the SFDI and LFDI
+
+        NOTE: This method assumes that the input has already been validated by `is_valid_pem()`.
+        """
         # Replace %xx escapes with their single-character equivalent
         cert_pem_b64 = urllib.parse.unquote(cert_pem_b64)
 

@@ -7,7 +7,7 @@ from assertical.fake.generator import generate_class_instance
 from fastapi import HTTPException, Request
 from starlette.datastructures import Headers
 
-from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends, is_valid_base64_in_pem, is_valid_sha256
+from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends, is_valid_pem, is_valid_sha256
 from envoy.server.crud.auth import ClientIdDetails
 from envoy.server.main import settings
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
@@ -67,12 +67,15 @@ async def test_lfdiauthdepends_request_with_no_certpemheader_expect_500_response
     "bad_cert_header",
     ["test-abc123", TEST_CERTIFICATE_PEM_1.decode("utf-8")[4:], TEST_CERTIFICATE_LFDI_1[2:], TEST_CERTIFICATE_SFDI_1],
 )
-async def test_lfdiauthdepends_malformed_cert_fails_with_bad_request(
+async def test_lfdiauthdepends_malformed_cert_fails_with_internal_server_error(
     mock_db: mock.MagicMock,
     mock_select_all_client_id_details: mock.MagicMock,
     mock_select_single_site_with_sfdi: mock.MagicMock,
     bad_cert_header: str,
 ):
+    """If certificate header has malformed data, that is the TLS termination proxy's fault, so
+    we should raise 500 to the client.
+    """
     # Arrange
     req = Request(
         {
@@ -88,7 +91,7 @@ async def test_lfdiauthdepends_malformed_cert_fails_with_bad_request(
         await lfdi_dep(req)
 
     # Assert
-    assert exc.value.status_code == 400
+    assert exc.value.status_code == 500
     mock_select_all_client_id_details.assert_not_called()
     mock_select_single_site_with_sfdi.assert_not_called()
 
@@ -291,8 +294,8 @@ async def test_lfdiauthdepends_aggregator_specific_cert_thats_expired(
         (TEST_CERTIFICATE_PEM_1.decode().replace("A", "&"), False),
     ],
 )
-def test_is_valid_base64_in_pem(pem_str, expected):
-    assert is_valid_base64_in_pem(pem_str) == expected
+def test_is_valid_pem(pem_str, expected):
+    assert is_valid_pem(pem_str) == expected
 
 
 @pytest.mark.parametrize(
