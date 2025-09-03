@@ -166,46 +166,6 @@ class EndDeviceManager:
         return (None if a is None else a.lower()) == (None if b is None else b.lower())
 
     @staticmethod
-    async def update_enddevice_for_scope(
-        session: AsyncSession, scope: UnregisteredRequestScope, end_device: EndDeviceRequest, site_id: int
-    ) -> int:
-        """This will add/update the specified end_device in the database.
-
-        If the sfdi is unspecified they will be populated using generate_unique_device_id.
-
-        This request uses the raw request scope but will ensure that the scope has permission to access the supplied
-        site, raising ForbiddenError otherwise"""
-        is_device_cert = scope.source == CertificateType.DEVICE_CERTIFICATE
-        if is_device_cert:
-            # This will happen for a site registration from a device cert
-            # In this case - the client is restricted to ONLY interact with the site with the same sfdi/lfdi
-            if end_device.sFDI != scope.sfdi:
-                raise ForbiddenError(f"sfdi mismatch. POST body: {end_device.sFDI} cert: {scope.sfdi}")
-            if not EndDeviceManager.lfdi_matches(end_device.lFDI, scope.lfdi):
-                raise ForbiddenError(f"lfdi mismatch. POST body: '{end_device.lFDI}' cert: '{scope.lfdi}'")
-
-        # Generate the sfdi if required (never do this for device certs)
-        if end_device.sFDI is None or end_device.sFDI == 0 and not is_device_cert:
-            (sfdi, lfdi) = await EndDeviceManager.generate_unique_device_id(session, scope.aggregator_id)
-            end_device.sFDI = sfdi
-            if not end_device.lFDI:
-                end_device.lFDI = lfdi  # Only update LFDI if not specified (i.e preserve what they send)
-            logger.info(f"add_or_update_enddevice_for_aggregator: generated sfdi {sfdi} and lfdi {lfdi}")
-
-        logger.info(
-            f"add_or_update_enddevice_for_aggregator: upserting sfdi {end_device.sFDI} and lfdi {end_device.lFDI} for aggregator {scope.aggregator_id}"  # noqa e501
-        )
-        changed_time = utc_now()
-        registration_pin = RegistrationManager.generate_registration_pin()  # This will only apply to INSERTED sites
-        site = EndDeviceMapper.map_from_request(end_device, scope.aggregator_id, changed_time, registration_pin)
-        result = await upsert_site_for_aggregator(session, scope.aggregator_id, site)
-        await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, changed_time)
-
-        return result
-
-    @staticmethod
     async def add_enddevice_for_scope(
         session: AsyncSession, scope: UnregisteredRequestScope, end_device: EndDeviceRequest
     ) -> int:

@@ -107,29 +107,6 @@ async def get_enddevice_list(
     )
 
 
-@router.put(uri.EndDeviceUri, status_code=HTTPStatus.OK)
-async def update_end_device(
-    site_id: int,
-    request: Request,
-    payload: EndDeviceRequest = Depends(XmlRequest(EndDeviceRequest)),
-) -> Response:
-    """
-    Updates an existing EndDevice resource identified by `site_id`.
-
-    This PUT endpoint supports updates only — it does not allow creation of new resources.
-    If the specified EndDevice does not exist, a 404 Not Found error will be raised.
-    """
-    scope = extract_request_claims(request).to_unregistered_request_scope()
-    try:
-        site_id = await EndDeviceManager.update_enddevice_for_scope(db.session, scope, payload, site_id)
-        location_href = generate_href(uri.EndDeviceUri, scope, site_id=site_id)
-        return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
-    except BadRequestError as exc:
-        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)
-    except ForbiddenError as exc:
-        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.FORBIDDEN)
-
-
 @router.post(uri.EndDeviceListUri, status_code=HTTPStatus.CREATED)
 async def create_end_device(
     request: Request,
