@@ -64,3 +64,9 @@ class UnableToGenerateIdError(Exception):
     These errors should typically be treated a 5XX response"""
 
     pass
+
+
+class ConflictError(Exception):
+    """Raised when operation conflicts system state. Equivalent to HTTP 409 code."""
+
+    pass

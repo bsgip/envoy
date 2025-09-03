@@ -168,6 +168,46 @@ async def select_single_site_with_lfdi(session: AsyncSession, lfdi: str, aggrega
     return resp.scalar_one_or_none()
 
 
+async def update_site_for_aggregator(session: AsyncSession, aggregator_id: int, site: Site, site_id: int) -> int:
+    """Inserts the specified site. If site's aggregator_id doesn't match aggregator_id then this will
+    raise an error without modifying the DB. Returns the site_id of the inserted/updated site
+
+    Inserts will be based on matches on the agg_id / sfdi index. Attempts to mutate agg_id/sfdi will result
+    in inserting a new record.
+
+    The site registration_pin will only be settable on insert. Attempts to update an existing registration_pin will
+    be ignored.
+
+    The current value (if any) for the site will be archived"""
+
+    if aggregator_id != site.aggregator_id:
+        raise ValueError(f"Specified aggregator_id {aggregator_id} mismatches site.aggregator_id {site.aggregator_id}")
+
+    session.get_one(site, site_id)
+    await session.flush()
+    return site.site_id
+
+
+async def insert_site_for_aggregator(session: AsyncSession, aggregator_id: int, site: Site) -> int:
+    """Inserts the specified site. If site's aggregator_id doesn't match aggregator_id then this will
+    raise an error without modifying the DB. Returns the site_id of the inserted/updated site
+
+    Inserts will be based on matches on the agg_id / sfdi index. Attempts to mutate agg_id/sfdi will result
+    in inserting a new record.
+
+    The site registration_pin will only be settable on insert. Attempts to update an existing registration_pin will
+    be ignored.
+
+    The current value (if any) for the site will be archived"""
+
+    if aggregator_id != site.aggregator_id:
+        raise ValueError(f"Specified aggregator_id {aggregator_id} mismatches site.aggregator_id {site.aggregator_id}")
+
+    session.add(site)
+    await session.flush()
+    return site.site_id
+
+
 async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, site: Site) -> int:
     """Inserts or updates the specified site. If site's aggregator_id doesn't match aggregator_id then this will
     raise an error without modifying the DB. Returns the site_id of the inserted/updated site
