@@ -1,6 +1,5 @@
 import base64
 import binascii
-import hashlib
 import logging
 import urllib.parse
 import re
@@ -23,7 +22,15 @@ from envoy.server.request_scope import CertificateType
 logger = logging.getLogger(__name__)
 
 
-class LFDIAuthException(Exception): ...
+class LFDIAuthException(Exception): ...  # noqa: E701
+
+
+# NOTE: The below `is_valid_x` functions are ONLY checking format validity, nothing else.
+def is_valid_lfdi(lfdi_str: str) -> bool:
+    """Checks if string has valid lfdi format - 40 char long and hexadecimal (case-insensitive)"""
+    if not isinstance(lfdi_str, str):
+        return False
+    return bool(re.fullmatch(r"[a-fA-F0-9]{40}", lfdi_str))
 
 
 def is_valid_sha256(sha256_str: str) -> bool:
@@ -80,7 +87,7 @@ class LFDIAuthDepends:
 
     Definition of LFDI can be found in the IEEE Std 2030.5-2018 on page 40.
 
-    This auth can be configured to receive EITHER a full client cert PEM or just the sha256 fingerprint
+    This auth can be configured to receive EITHER a full client cert PEM or SHA256 fingerprint or the LFDI itself.
     """
 
     cert_header: str
@@ -112,12 +119,16 @@ class LFDIAuthDepends:
         elif is_valid_sha256(cert_header_val):
             logger.debug(f"{self.cert_header} contains a valid SHA-256 fingerprint.")
             lfdi = LFDIAuthDepends.generate_lfdi_from_fingerprint(cert_header_val)
+        elif is_valid_lfdi(cert_header_val):
+            logger.debug(f"{self.cert_header} contains a valid lFDI.")
+            lfdi = cert_header_val
         else:
 
             # NOTE: Respond with INTERNAL_SERVER_ERROR due to missing or malformed certificate data.
-            # TLS termination is handled by a reverse proxy upstream of envoy. The proxy is expected to forward a custom header
-            # containing either the full client certificate PEM or its fingerprint. If the request reaches envoy, TLS validation
-            # has succeeded, so invalid data in this header is the upstream proxy's fault, not the client.
+            # TLS termination is handled by a reverse proxy upstream of envoy. The proxy is expected to forward a
+            # custom header containing either the full client certificate PEM or its fingerprint. If the request
+            # reaches envoy, TLS validation has succeeded, so invalid data in this header is the upstream proxy's
+            # fault, not the client.
             raise LoggedHttpException(
                 logger,
                 exc=LFDIAuthException("Issue with certificate PEM/fingerprint header value from gateway."),

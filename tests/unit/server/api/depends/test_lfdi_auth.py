@@ -7,7 +7,7 @@ from assertical.fake.generator import generate_class_instance
 from fastapi import HTTPException, Request
 from starlette.datastructures import Headers
 
-from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends, is_valid_pem, is_valid_sha256
+from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends, is_valid_lfdi, is_valid_pem, is_valid_sha256
 from envoy.server.crud.auth import ClientIdDetails
 from envoy.server.main import settings
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
@@ -326,3 +326,20 @@ def test_is_valid_sha256(sha256_str, expected):
 )
 def test_cert_pem_to_cert_fingerprint(pem_bytes: bytes, sha256: str):
     assert LFDIAuthDepends._cert_pem_to_cert_fingerprint(pem_bytes.decode("utf-8")) == sha256
+
+
+@pytest.mark.parametrize(
+    "lfdi_str,expected",
+    [
+        ("996fb92427ae41e4649b934ca495991b7852b855", True),  # valid lowercase
+        ("996FB92427AE41E4649B934CA495991B7852B855", True),  # valid uppercase
+        ("996fb92427ae41e4649b934ca495991b7852b85", False),  # too short
+        ("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b8555", False),  # too long
+        ("g996fb92427ae41e4649b934ca495991b7852b855", False),  # not hex
+        ("", False),
+        (None, False),
+        (1234567890, False),  # not string
+    ],
+)
+def test_is_valid_lfdi(lfdi_str, expected):
+    assert is_valid_lfdi(lfdi_str) == expected
