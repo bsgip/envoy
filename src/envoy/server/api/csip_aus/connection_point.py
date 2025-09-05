@@ -39,7 +39,6 @@ async def get_connectionpoint(site_id: int, request: Request) -> Response:
 
 
 @router.put(uri.ConnectionPointUri, status_code=HTTPStatus.CREATED)
-@router.post(uri.ConnectionPointUri, status_code=HTTPStatus.CREATED)
 async def update_connectionpoint(
     site_id: int,
     request: Request,

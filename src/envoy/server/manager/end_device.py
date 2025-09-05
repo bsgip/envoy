@@ -240,6 +240,10 @@ class EndDeviceManager:
         if site is None:
             return False
 
+        # We treat this as a successful update - avoiding uneccessary writes.
+        if site.nmi == nmi:
+            return True
+
         # Ensure we archive the existing data
         await copy_rows_into_archive(session, Site, ArchiveSite, lambda q: q.where(Site.site_id == site.site_id))
 
