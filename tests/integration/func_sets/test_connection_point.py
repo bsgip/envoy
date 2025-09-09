@@ -122,7 +122,7 @@ async def test_connectionpoint_update(
     # fire off our update
     href = connection_point_uri_format.format(site_id=site_id)
     new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id=update_nmi_value)
-    response = await client.post(
+    response = await client.put(
         url=href, headers={cert_header: urllib.parse.quote(cert)}, content=new_cp_specified.to_xml()
     )
 
@@ -161,7 +161,7 @@ async def test_connectionpoint_update_and_fetch_legacy_csip(client: AsyncClient,
     # fire off our first update
     href = connection_point_uri_format.format(site_id=1)
     new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id_v11="1212121212")
-    response = await client.post(
+    response = await client.put(
         url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
@@ -186,7 +186,7 @@ async def test_connectionpoint_update_and_fetch_href_prefix(client: AsyncClient,
     # fire off our first update
     href = connection_point_uri_format.format(site_id=1)
     new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id="1212121212")
-    response = await client.post(
+    response = await client.put(
         url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
     )
     assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
@@ -211,7 +211,7 @@ async def test_connectionpoint_update_bad_xml(client: AsyncClient, connection_po
     bad_xml = """<ConnectionPoint xmlns="http://csipaus.org/ns"><id>1111111111</csipaus:id></ConnectionPoint>"""
 
     href = connection_point_uri_format.format(site_id=1)
-    response = await client.post(url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=bad_xml)
+    response = await client.put(url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=bad_xml)
     assert_response_header(response, HTTPStatus.BAD_REQUEST)
     assert_error_response(response)
 
@@ -224,7 +224,7 @@ async def test_connectionpoint_update_aggregator_edev_returns_403(
 
     href = connection_point_uri_format.format(site_id=0)
     new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id="1212121212")
-    response = await client.post(
+    response = await client.put(
         url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
     )
     assert response.status_code == HTTPStatus.FORBIDDEN
