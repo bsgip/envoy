@@ -37,7 +37,7 @@ from envoy.notification.crud.common import (
 from envoy.notification.exception import NotificationError
 from envoy.notification.handler import broker_dependency, href_prefix_dependency, session_dependency
 from envoy.notification.task.transmit import transmit_notification
-from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
+from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.server import RuntimeServerConfigManager, _map_server_config
 from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper, NotificationType, SubscriptionMapper

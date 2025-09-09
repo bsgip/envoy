@@ -21,7 +21,7 @@ from freezegun import freeze_time
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
+from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.doe import DERControlMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope

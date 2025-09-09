@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.archive import copy_rows_into_archive
-from envoy.server.crud.end_device import select_single_site_with_lfdi, select_single_site_with_site_id
+from envoy.server.crud.site import select_single_site_with_lfdi, select_single_site_with_site_id
 from envoy.server.crud.site_reading import (
     GroupedSiteReadingTypeDetails,
     count_grouped_site_reading_details,

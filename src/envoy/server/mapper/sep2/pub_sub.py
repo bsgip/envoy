@@ -40,7 +40,7 @@ from envoy_schema.server.schema.uri import (
 )
 from parse import parse  # type: ignore
 
-from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
+from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import InvalidMappingError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.common import generate_href, remove_href_prefix

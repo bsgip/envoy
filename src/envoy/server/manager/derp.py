@@ -19,7 +19,7 @@ from envoy.server.crud.doe import (
     select_site_control_group_by_id,
     select_site_control_groups,
 )
-from envoy.server.crud.end_device import select_single_site_with_site_id, select_site_with_default_site_control
+from envoy.server.crud.site import select_single_site_with_site_id, select_site_with_default_site_control
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now

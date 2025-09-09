@@ -41,7 +41,7 @@ from envoy.notification.crud.common import (
     TResourceModel,
 )
 from envoy.notification.exception import NotificationError
-from envoy.server.crud.end_device import Site
+from envoy.server.crud.site import Site
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.archive.base import ArchiveBase

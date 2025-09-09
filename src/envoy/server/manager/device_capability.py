@@ -3,7 +3,7 @@ from datetime import datetime
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.crud.end_device import select_aggregator_site_count, select_single_site_with_lfdi
+from envoy.server.crud.site import select_aggregator_site_count, select_single_site_with_lfdi
 from envoy.server.crud.site_reading import count_grouped_site_reading_details  # is this mup?
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.mapper.sep2.device_capability import DeviceCapabilityMapper

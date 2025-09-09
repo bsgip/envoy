@@ -15,7 +15,7 @@ from envoy_schema.server.schema.sep2.pricing import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.api.request import extract_date_from_iso_string
-from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.crud.pricing import (
     count_tariff_rates_for_day,
     count_unique_rate_days,

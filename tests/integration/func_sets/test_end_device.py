@@ -427,39 +427,69 @@ async def test_create_end_device_href_prefix(client: AsyncClient, edev_base_uri:
 
 
 @pytest.mark.anyio
+async def test_create_end_device_existing_sfdi_different_client(client: AsyncClient, edev_base_uri: str):
+    """Using a different aggregator cert, create an enddevice with a match sFDI to another aggregator.
+    This is allowed as sFDI's are not expected to be globally unique - only uniqueness per aggregator
+    is enforced.
+    """
+    # Arrange
+    # NOTE: AGG_1_VALID_CERT has an enddevice with sfdi=1111 in base_config.sql
+    insert_request: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest, sFDI=1111, deviceCategory="{0:x}".format(int(DeviceCategory.HOT_TUB))
+    )
+
+    # Act
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(AGG_2_VALID_CERT)},
+        content=EndDeviceRequest.to_xml(insert_request),
+    )
+
+    # Assert
+    assert response.status_code == HTTPStatus.CREATED
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
-    "site_id, cert, lfdi, sfdi, expected_status",
+    "cert, lfdi, sfdi, expected_status",
     [
         (
-            1,
+            AGG_1_VALID_CERT,
+            "site1-lfdi",
+            2111,
+            HTTPStatus.CONFLICT,
+        ),  # existing lfdi
+        (
+            AGG_1_VALID_CERT,
+            "siteN-lfdi",
+            1111,
+            HTTPStatus.CONFLICT,
+        ),  # existing sfdi
+        (
             AGG_1_VALID_CERT,
             "site1-lfdi",
             1111,
-            HTTPStatus.CREATED,
-        ),  # Agg cert updating aggregator
+            HTTPStatus.CONFLICT,
+        ),  # existing lfdi+sfdi
         (
-            1,
             AGG_2_VALID_CERT,
             "site1-lfdi",
-            1111,
+            2111,
             HTTPStatus.CONFLICT,
-        ),  # LFDI belongs to agg 1
+        ),  # LFDI-only belongs to agg 1
         (
-            6,
             REGISTERED_CERT.decode(),
             REGISTERED_CERT_LFDI,
             int(REGISTERED_CERT_SFDI),
-            HTTPStatus.CREATED,
+            HTTPStatus.CONFLICT,
         ),  # Device cert updating its device
         (
-            5,
             REGISTERED_CERT.decode(),
             OTHER_REGISTERED_CERT_LFDI,
             int(OTHER_REGISTERED_CERT_SFDI),
             HTTPStatus.FORBIDDEN,
         ),  # Device cert cant update a seperate DeviceCert
         (
-            1,
             REGISTERED_CERT.decode(),
             "site1-lfdi",
             1111,
@@ -467,85 +497,32 @@ async def test_create_end_device_href_prefix(client: AsyncClient, edev_base_uri:
         ),  # Device cert cant update a seperate Aggregator device
     ],
 )
-async def test_update_end_device(
+async def test_insert_existing_enddevice_error_response(
     client: AsyncClient,
-    pg_base_config,
     edev_base_uri: str,
-    site_id: int,
     cert: str,
     lfdi: str,
     sfdi: int,
     expected_status: HTTPStatus,
 ):
-    """Test that an aggregator can update its own end_device but another aggregator cannot"""
-
-    async with generate_async_session(pg_base_config) as session:
-        stmt = select(Site).where(Site.site_id == site_id)
-        db_site = (await session.execute(stmt)).scalar_one()
-        old_device_category = db_site.device_category
-        old_changed_time = db_site.changed_time
-        old_created_time = db_site.created_time
-
-    UPDATED_DEVICE_CATEGORY = int(DeviceCategory.INTERIOR_LIGHTING | DeviceCategory.STRIP_HEATERS)
+    """Test that a client cannot insert enddevice with existing lfdi or aggregator_id+sfdi."""
 
     # Fire off an update that will succeed
-    update_request: EndDeviceRequest = generate_class_instance(
-        EndDeviceRequest, lFDI=lfdi, sFDI=sfdi, deviceCategory="{0:x}".format(UPDATED_DEVICE_CATEGORY)
+    request: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest, lFDI=lfdi, sFDI=sfdi, deviceCategory="{0:x}".format(int(DeviceCategory.HOT_TUB))
     )
     response = await client.post(
         edev_base_uri,
         headers={cert_header: urllib.parse.quote(cert)},
-        content=EndDeviceRequest.to_xml(update_request),
+        content=EndDeviceRequest.to_xml(request),
     )
 
-    if expected_status != HTTPStatus.CREATED:
-        assert_error_response(response)
-    else:
-        assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
-        assert len(read_response_body_string(response)) == 0
-        inserted_href = read_location_header(response)
-        assert inserted_href.endswith(f"/{site_id}")
-
-    # Now validate the site in the DB
-    async with generate_async_session(pg_base_config) as session:
-        stmt = select(Site).where(Site.site_id == site_id)
-        db_site = (await session.execute(stmt)).scalar_one()
-
-        if expected_status != HTTPStatus.CREATED:
-            assert db_site.device_category == old_device_category
-            assert_datetime_equal(old_created_time, db_site.created_time)
-            assert_datetime_equal(old_changed_time, db_site.changed_time)
-        else:
-            assert db_site.device_category == UPDATED_DEVICE_CATEGORY
-            assert_datetime_equal(old_created_time, db_site.created_time)
-            assert_nowish(db_site.changed_time)
+    assert expected_status == response.status_code
+    assert_error_response(response)
 
 
 @pytest.mark.anyio
-@pytest.mark.href_prefix(HREF_PREFIX)
-async def test_update_end_device_href_prefix(client: AsyncClient, edev_base_uri: str):
-    """Test that an aggregator end_device and the Location header includes HREF_PREFIX"""
-
-    # Fire off an update that will succeed
-    updated_device_category = "{0:x}".format(int(DeviceCategory.INTERIOR_LIGHTING))
-    update_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
-    update_request.lFDI = "site1-lfdi"
-    update_request.sFDI = 1111
-    update_request.deviceCategory = updated_device_category  # update device category
-    response = await client.post(
-        edev_base_uri,
-        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
-        content=EndDeviceRequest.to_xml(update_request),
-    )
-    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
-    assert len(read_response_body_string(response)) == 0
-    inserted_href = read_location_header(response)
-    assert inserted_href.endswith("/1"), "Updating site 1"
-    assert inserted_href.startswith(HREF_PREFIX)
-
-
-@pytest.mark.anyio
-async def test_update_end_device_bad_device_category(
+async def test_insert_end_device_bad_device_category(
     client: AsyncClient, edev_base_uri: str, edev_fetch_uri_format: str
 ):
     """Test that specifying a bad DeviceCategory returns a HTTP BadRequest"""

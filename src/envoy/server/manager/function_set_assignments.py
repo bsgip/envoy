@@ -9,7 +9,7 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.doe import select_site_control_group_fsa_ids
-from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.crud.pricing import select_tariff_fsa_ids
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper

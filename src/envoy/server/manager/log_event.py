@@ -4,7 +4,7 @@ from datetime import datetime
 from envoy_schema.server.schema.sep2.log_events import LogEvent, LogEventList
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.crud.log_event import count_site_log_events, select_log_event_for_scope, select_site_log_events
 from envoy.server.exception import NotFoundError
 from envoy.server.mapper.sep2.log_event import LogEventListMapper, LogEventMapper

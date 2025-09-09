@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.crud.doe import select_site_control_group_by_id
-from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
+from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.pricing import select_single_tariff
 from envoy.server.crud.site_reading import fetch_site_reading_types_for_group
 from envoy.server.crud.subscription import (

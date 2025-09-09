@@ -12,7 +12,7 @@ from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.cache import AsyncCache, ExpiringValue
 from envoy.server.crud.auth import ClientIdDetails, select_all_client_id_details
 from envoy.server.crud.common import convert_lfdi_to_sfdi
-from envoy.server.crud.end_device import select_single_site_with_sfdi
+from envoy.server.crud.site import select_single_site_with_sfdi
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.request_scope import CertificateType
 

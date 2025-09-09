@@ -10,7 +10,7 @@ from assertical.fake.http import MockedAsyncClient
 from assertical.fixtures.postgres import generate_async_session
 from httpx import AsyncClient, Response
 
-from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.crud.site import select_single_site_with_site_id
 from tests.integration.http import HTTPMethod
 from tests.integration.response import (
     assert_error_response,

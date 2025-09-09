@@ -27,7 +27,7 @@ from envoy.server.manager.time import utc_now
 from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from tests.unit.server.crud.test_end_device import SnapshotTableCount, count_table_rows
+from tests.unit.server.crud.test_site import SnapshotTableCount, count_table_rows
 
 
 @pytest.mark.anyio

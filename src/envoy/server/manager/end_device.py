@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.archive import copy_rows_into_archive
-from envoy.server.crud.end_device import (
+from envoy.server.crud.site import (
     delete_site_for_aggregator,
     get_virtual_site_for_aggregator,
     insert_site_for_aggregator,

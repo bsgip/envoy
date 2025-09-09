@@ -15,7 +15,7 @@ from envoy.admin.crud.site import (
 from envoy.admin.mapper.site import SiteGroupMapper, SiteMapper
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.archive import copy_rows_into_archive
-from envoy.server.crud.end_device import delete_site_for_aggregator
+from envoy.server.crud.site import delete_site_for_aggregator
 from envoy.server.manager.time import utc_now
 from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.site import Site

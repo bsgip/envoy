@@ -23,7 +23,7 @@ from envoy.server.crud.doe import (
     select_site_control_group_fsa_ids,
     select_site_control_groups,
 )
-from envoy.server.crud.end_device import select_single_site_with_site_id
+from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.manager.time import utc_now
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope as ArchiveDOE
 from envoy.server.model.doe import DynamicOperatingEnvelope as DOE

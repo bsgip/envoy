@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
+from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 
 

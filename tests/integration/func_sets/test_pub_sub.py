@@ -21,7 +21,7 @@ from envoy_schema.server.schema.uri import EndDeviceListUri
 from httpx import AsyncClient
 from sqlalchemy import delete, func, select
 
-from envoy.server.crud.end_device import VIRTUAL_END_DEVICE_SITE_ID
+from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.subscription import select_subscription_by_id
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.subscription import Subscription

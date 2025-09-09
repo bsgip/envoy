@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -13,10 +14,12 @@ from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
-from envoy.server.crud.end_device import (
+from envoy.server.crud.site import (
     delete_site_for_aggregator,
     get_virtual_site_for_aggregator,
+    insert_site_for_aggregator,
     select_aggregator_site_count,
     select_all_sites_with_aggregator_id,
     select_first_site_under_aggregator,
@@ -896,3 +899,123 @@ async def test_select_site_with_default_site_control(
             assert default_site_control.generation_limit_active_watts == generation_limit_active_watts
             assert default_site_control.load_limit_active_watts == load_limit_active_watts
             assert default_site_control.ramp_rate_percent_per_second == ramp_rate_percent_per_second
+
+
+@pytest.mark.anyio
+async def test_insert_site_for_aggregator(pg_base_config):
+    """Tests that the insert can do inserts"""
+
+    # Do the insert in a session separate to the database
+    inserted_id: int
+    new_site: Site = generate_class_instance(Site, created_time=None)
+    del new_site.site_id  # Don't set the primary key - we expect the DB to set that
+    async with generate_async_session(pg_base_config) as session:
+        inserted_id = await insert_site_for_aggregator(session, 1, new_site)
+        assert inserted_id
+        session.expunge(new_site)  # expunge here to reuse in assertions
+        await session.commit()
+
+    # Validate the state of the DB in a new session
+    async with generate_async_session(pg_base_config) as session:
+        # check it exists
+        inserted_site = await select_single_site_with_site_id(session, inserted_id, 1)
+        assert inserted_site
+        assert_nowish(inserted_site.created_time)  # This should be set by the DB
+        assert_class_instance_equality(Site, new_site, inserted_site, ignored_properties={"site_id", "created_time"})
+
+        # Sanity check another site in the same aggregator
+        site_1 = await select_single_site_with_site_id(session, 1, 1)
+        assert isinstance(site_1, Site)
+        assert site_1.site_id == 1
+        assert site_1.nmi == "1111111111"
+        assert site_1.aggregator_id == 1
+        assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc))
+        assert site_1.lfdi == "site1-lfdi"
+        assert site_1.sfdi == 1111
+        assert site_1.device_category == DeviceCategory(0)
+        assert site_1.registration_pin == 11111
+
+        # Sanity check the site count
+        assert await select_aggregator_site_count(session, 1, datetime.min) == 4
+        assert await select_aggregator_site_count(session, 2, datetime.min) == 1
+        assert await select_aggregator_site_count(session, 3, datetime.min) == 0
+
+        # This is a new row - therefore nothing should be copied to the archive
+        assert (await session.execute(select(func.count()).select_from(ArchiveSite))).scalar_one() == 0
+
+
+@pytest.mark.anyio
+async def test_insert_site_for_aggregator_unique_constraints(pg_base_config):
+    """Tests that the insert raises integrity error on expected constraints. Unique constraints for this
+    table are: (a) lfdi, (b) sfdi+aggregator_id"""
+
+    # We want the site object we insert to be a "fresh" Site instance that hasn't been anywhere near
+    # a SQL Alchemy session but shares the appropriate indexed values
+    site_id_to_update = 1
+    aggregator_id = 1
+    site_to_insert: Site = generate_class_instance(Site)
+    async with generate_async_session(pg_base_config) as session:
+        existing_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
+        assert existing_site
+
+        # Copy across the UC values which cause the integrityerror
+        site_to_insert.lfdi = existing_site.lfdi
+        site_to_insert.sfdi = existing_site.sfdi
+        site_to_insert.aggregator_id = existing_site.aggregator_id
+        site_to_insert.site_id = existing_site.site_id
+
+    # Perform the insert in a new session
+    # check UC(a)+(B)
+    async with generate_async_session(pg_base_config) as session:
+        with pytest.raises(IntegrityError):
+            await insert_site_for_aggregator(session, aggregator_id, site_to_insert)
+
+    # check UC(a)
+    site_to_insert.sfdi = 2111  # NOTE: make sure this is not used in base_config.sql
+    async with generate_async_session(pg_base_config) as session:
+        with pytest.raises(IntegrityError):
+            await insert_site_for_aggregator(session, aggregator_id, site_to_insert)
+
+    # check UC(b)
+    site_to_insert.sfdi = existing_site.sfdi
+    site_to_insert.lfdi = "siteN-lfdi"  # NOTE: make sure this is not used in base_config.sql
+    async with generate_async_session(pg_base_config) as session:
+        with pytest.raises(IntegrityError):
+            await insert_site_for_aggregator(session, aggregator_id, site_to_insert)
+
+
+@pytest.mark.anyio
+async def test_insert_site_for_aggregator_cant_change_agg_id(pg_base_config):
+    """Tests that attempting to sneak through a mismatched agg_id results in an exception with no changes"""
+    site_id_to_update = 1
+    aggregator_id = 1
+
+    original_site: Site
+    update_attempt_site: Site
+    original_registration_pin: int
+    async with generate_async_session(pg_base_config) as session:
+        original_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
+        assert original_site
+        original_registration_pin = original_site.registration_pin
+
+        update_attempt_site = clone_class_instance(
+            original_site, ignored_properties=set(["assignments", "site_ders", "default_site_control"])
+        )
+        update_attempt_site.aggregator_id = 3
+        update_attempt_site.nmi = "new-nmi"
+
+    async with generate_async_session(pg_base_config) as session:
+        with pytest.raises(ValueError):
+            await insert_site_for_aggregator(session, aggregator_id, update_attempt_site)
+
+        # db should be unmodified
+        site_db = await select_single_site_with_site_id(session, update_attempt_site.site_id, aggregator_id)
+        assert site_db
+        assert site_db.nmi == original_site.nmi, "nmi should NOT have changed"
+        assert site_db.aggregator_id == original_site.aggregator_id, "aggregator_id should NOT have changed"
+        assert site_db.registration_pin == original_registration_pin, "registration_pin should NOT have changed"
+
+        # Sanity check the site count hasn't changed
+        assert await select_aggregator_site_count(session, 1, datetime.min) == 3
+        assert await select_aggregator_site_count(session, 2, datetime.min) == 1
+        assert await select_aggregator_site_count(session, 3, datetime.min) == 0
