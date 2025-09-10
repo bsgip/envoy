@@ -24,7 +24,6 @@ from envoy.server.crud.site import (
     select_single_site_with_lfdi,
     select_single_site_with_sfdi,
     select_single_site_with_site_id,
-    upsert_site_for_aggregator,
 )
 from envoy.server.exception import ForbiddenError, NotFoundError, UnableToGenerateIdError, ConflictError
 from envoy.server.manager.server import RuntimeServerConfigManager
@@ -207,7 +206,8 @@ class EndDeviceManager:
         except IntegrityError as exc:
             logger.debug(exc)
             raise ConflictError(
-                f"EndDevice with provided sFDI ({site.sfdi}) or lFDI ({site.lfdi}) already exists for aggregator ({site.aggregator_id})."
+                f"EndDevice with provided sFDI ({site.sfdi}) or lFDI ({site.lfdi})"
+                f"already exists for aggregator ({site.aggregator_id})."
             )
 
         await session.commit()
