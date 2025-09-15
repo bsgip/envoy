@@ -115,7 +115,9 @@ def find_paired_archive_classes() -> list[tuple[type, type]]:
         if m is None or a is None:
             continue
         pairings.append((m, a))
-    return pairings
+
+    # We sort so that we have a deterministic test ordering
+    return list(sorted(pairings, key=lambda t: t[0].__name__ + t[1].__name__))
 
 
 def test_archive_base_columns():

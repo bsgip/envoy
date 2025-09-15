@@ -81,10 +81,12 @@ dev = [
     "types-tzlocal",
     "black",
     "coverage",
+    "pytest-cov",
 ]
 test = [
     "pytest",
     "pytest-asyncio",
+    "pytest-xdist",
     "anyio",
     "pytest-mock",
     "pytest-postgresql",

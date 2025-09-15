@@ -114,7 +114,7 @@ jobs:
 
       - name: Run Pytest
         run: |
-          pytest --junit-xml=.test_report_py${{ matrix.pyver }}.xml
+          pytest -n auto --junit-xml=.test_report_py${{ matrix.pyver }}.xml
       - name: Upload Results
         uses: test-summary/action@v1
         with:

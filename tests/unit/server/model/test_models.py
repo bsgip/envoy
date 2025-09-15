@@ -24,6 +24,10 @@ ARCHIVE_MODELS = [
     if issubclass(t, ArchiveBase) and t != ArchiveBase
 ]
 
+# Force a deterministic sorting
+BASE_MODELS.sort(key=lambda t: t.__name__)
+ARCHIVE_MODELS.sort(key=lambda t: t.__name__)
+
 
 @pytest.mark.parametrize("model_type", BASE_MODELS + ARCHIVE_MODELS)
 def test_validate_model_definitions(model_type: type):

@@ -27,10 +27,13 @@ jobs:
         run: |
           sudo apt install -y postgresql
           pip install --ignore-installed .[dev,test]
+          pip install pytest-cov pytest-xdist
 
       - name: Coverage (source branch)
         run: |
-          coverage run --data-file=.coverage-source -m pytest
+          echo "[run]" > .coveragecfg
+          echo "data_file=.coverage-source" >> .coveragecfg
+          pytest -n auto --cov=envoy --cov-config=.coveragecfg .
 
       - name: Extract Coverage
         id: extract
@@ -58,10 +61,13 @@ jobs:
         run: |
           sudo apt install -y postgresql
           pip install --ignore-installed .[dev,test]
+          pip install pytest-cov pytest-xdist
 
       - name: Coverage (target branch)
         run: |
-          coverage run --data-file=.coverage-target -m pytest
+          echo "[run]" > .coveragecfg
+          echo "data_file=.coverage-target" >> .coveragecfg
+          pytest -n auto --cov=envoy --cov-config=.coveragecfg .
 
       - name: Extract Coverage
         id: extract
