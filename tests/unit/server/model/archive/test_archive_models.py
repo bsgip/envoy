@@ -102,6 +102,7 @@ def find_paired_unpaired_archive_classes() -> set[Optional[type], Optional[type]
     return pairings
 
 
+# Don't merge this
 def find_paired_archive_classes() -> list[tuple[type, type]]:
     """Returns a list of types from the archive submodule paired with the "same" type from the original models
     submodule.
