@@ -128,7 +128,7 @@ async def get_virtual_site_for_aggregator(
     # Since the site is virtual we create the Site in-place here and return it
     return Site(
         site_id=VIRTUAL_END_DEVICE_SITE_ID,
-        lfdi=aggregator_lfdi,
+        lfdi=aggregator_lfdi.upper(),  # We always force an uppercase LFDI representation (as per CSIP-Aus preferences)
         sfdi=aggregator_sfdi,
         changed_time=changed_time,
         created_time=changed_time,

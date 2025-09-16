@@ -12,8 +12,8 @@ from assertical.fake.generator import clone_class_instance, generate_class_insta
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from sqlalchemy import Select, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.site import (
     delete_site_for_aggregator,
@@ -170,6 +170,12 @@ async def test_select_all_sites_with_aggregator_id_filters(pg_base_config):
             99,
         ),
         (
+            1,  # Aggregator 1 has 3 sites
+            "9DFDD56F6128CDC894A1E42C690CAB197184A8E9",
+            "Australia/Brisbane",  # Values for first site under aggregator 1
+            99,
+        ),
+        (
             2,  # Aggregator 2 has 1 site
             "403ba02aa36fa072c47eb3299daaafe94399adad",
             "Australia/Brisbane",  # Values for first site under aggregator 2
@@ -201,7 +207,7 @@ async def test_get_virtual_site_for_aggregator(
         assert_nowish(virtual_site.changed_time)  # Virtual sites have a changed time set to when they are requested
 
         # Virtual sites inherit these values from the first site under the aggregator
-        assert virtual_site.lfdi == aggregator_lfdi
+        assert virtual_site.lfdi == aggregator_lfdi.upper(), "Must be uppercase"
         assert virtual_site.sfdi
         assert virtual_site.device_category == DeviceCategory(0)
         assert virtual_site.timezone_id == timezone_id

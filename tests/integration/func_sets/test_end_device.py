@@ -194,7 +194,7 @@ async def test_get_end_device_list_pagination(
     "cert,site_id, expected_status, expected_lfdi, expected_sfdi",
     [
         (AGG_1_VALID_CERT, 2, HTTPStatus.OK, "site2-lfdi", 2222),
-        (AGG_1_VALID_CERT, 0, HTTPStatus.OK, AGG_1_LFDI_FROM_VALID_CERT, int(AGG_1_SFDI_FROM_VALID_CERT)),
+        (AGG_1_VALID_CERT, 0, HTTPStatus.OK, AGG_1_LFDI_FROM_VALID_CERT.upper(), int(AGG_1_SFDI_FROM_VALID_CERT)),
         (REGISTERED_CERT.decode(), 6, HTTPStatus.OK, REGISTERED_CERT_LFDI, int(REGISTERED_CERT_SFDI)),
         (
             REGISTERED_CERT.decode(),
