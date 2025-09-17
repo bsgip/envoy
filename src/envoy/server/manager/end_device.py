@@ -11,8 +11,8 @@ from envoy_schema.server.schema.sep2.end_device import (
     EndDeviceResponse,
     RegistrationResponse,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.archive import copy_rows_into_archive
@@ -26,7 +26,7 @@ from envoy.server.crud.site import (
     select_single_site_with_sfdi,
     select_single_site_with_site_id,
 )
-from envoy.server.exception import ForbiddenError, NotFoundError, UnableToGenerateIdError, ConflictError
+from envoy.server.exception import ConflictError, ForbiddenError, NotFoundError, UnableToGenerateIdError
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
@@ -227,7 +227,7 @@ class EndDeviceManager:
         )
         if site is None:
             return None
-        return ConnectionPointMapper.map_to_response(site)
+        return ConnectionPointMapper.map_to_response(scope, site)
 
     @staticmethod
     async def update_nmi_for_site(session: AsyncSession, scope: SiteRequestScope, nmi: Optional[str]) -> bool:
