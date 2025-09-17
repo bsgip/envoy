@@ -159,24 +159,54 @@ def test_map_derc_to_response(
         assert result_optional.EventStatus_.dateTime == int(doe_opt.changed_time.timestamp())
 
 
-def test_map_default_to_response():
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_map_default_to_response(optional_is_none: bool):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
-    doe_default: DefaultDoeConfiguration = generate_class_instance(
-        DefaultDoeConfiguration, seed=101, optional_is_none=True
-    )
-    scope = generate_class_instance(BaseRequestScope)
+    doe_default = generate_class_instance(DefaultSiteControl, seed=101, optional_is_none=optional_is_none)
+    scope = generate_class_instance(BaseRequestScope, href_prefix="/my/prefix/")
+    pow_10 = 1
+    derp_id = 2
+    site_id = 3
 
-    result_all_set = DERControlMapper.map_to_default_response(scope, doe_default, 1)
-    assert result_all_set is not None
-    assert isinstance(result_all_set, DefaultDERControl)
-    assert isinstance(result_all_set.DERControlBase_, DERControlBase)
-    assert isinstance(result_all_set.mRID, str)
-    assert len(result_all_set.mRID) == 32, "Expected 128 bits encoded as hex"
-    assert result_all_set.DERControlBase_.opModImpLimW is None
-    assert result_all_set.DERControlBase_.opModExpLimW is None
-    assert result_all_set.DERControlBase_.opModLoadLimW is None
-    assert result_all_set.DERControlBase_.opModGenLimW is None
-    assert result_all_set.setGradW is None
+    result = DERControlMapper.map_to_default_response(scope, doe_default, site_id, derp_id, pow_10)
+    assert result is not None
+    assert isinstance(result, DefaultDERControl)
+    assert isinstance(result.DERControlBase_, DERControlBase)
+    assert isinstance(result.mRID, str)
+    assert len(result.mRID) == 32, "Expected 128 bits encoded as hex"
+    assert result.href.startswith("/my/prefix/")
+    assert f"/{site_id}/" in result.href
+    assert f"/{derp_id}/" in result.href
+
+    if doe_default.export_limit_active_watts is None:
+        assert result.DERControlBase_.opModExpLimW is None
+    else:
+        assert result.DERControlBase_.opModExpLimW == DERControlMapper.map_to_active_power(
+            doe_default.export_limit_active_watts, pow_10
+        )
+
+    if doe_default.import_limit_active_watts is None:
+        assert result.DERControlBase_.opModImpLimW is None
+    else:
+        assert result.DERControlBase_.opModImpLimW == DERControlMapper.map_to_active_power(
+            doe_default.import_limit_active_watts, pow_10
+        )
+
+    if doe_default.load_limit_active_watts is None:
+        assert result.DERControlBase_.opModLoadLimW is None
+    else:
+        assert result.DERControlBase_.opModLoadLimW == DERControlMapper.map_to_active_power(
+            doe_default.load_limit_active_watts, pow_10
+        )
+
+    if doe_default.generation_limit_active_watts is None:
+        assert result.DERControlBase_.opModGenLimW is None
+    else:
+        assert result.DERControlBase_.opModGenLimW == DERControlMapper.map_to_active_power(
+            doe_default.generation_limit_active_watts, pow_10
+        )
+
+    assert result.setGradW == doe_default.ramp_rate_percent_per_second
 
 
 def test_map_derc_to_list_response():

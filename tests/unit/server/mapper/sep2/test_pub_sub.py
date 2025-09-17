@@ -932,18 +932,18 @@ def test_NotificationMapper_map_default_site_control_response(notification_type:
     all_set = generate_class_instance(DefaultSiteControl, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    scope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
     pow10_mult = -3
+    derp_id = 21315415
+
+    expected_dderc_href = DefaultDERControlUri.format(site_id=scope.display_site_id, der_program_id=derp_id)
 
     notification_all_set = NotificationMapper.map_default_site_control_response(
-        all_set, pow10_mult, sub, scope, notification_type
+        all_set, derp_id, pow10_mult, sub, scope, notification_type
     )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
-    assert (
-        DefaultDERControlUri.format(site_id=scope.display_site_id, der_program_id=sub.resource_id)
-        in notification_all_set.subscribedResource
-    )
+    assert expected_dderc_href in notification_all_set.subscribedResource
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
@@ -951,6 +951,9 @@ def test_NotificationMapper_map_default_site_control_response(notification_type:
         assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
     else:
         assert notification_all_set.status == NotificationStatus.DEFAULT
+
+    assert expected_dderc_href in notification_all_set.resource.href
+    assert notification_all_set.resource.href.startswith("/custom/prefix")
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
@@ -972,11 +975,14 @@ def test_NotificationMapper_map_default_site_control_response_none_value():
     sub = generate_class_instance(Subscription, seed=303)
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
     pow10_mult = -3
+    derp_id = 142
 
     notification_all_set = NotificationMapper.map_default_site_control_response(
-        None, pow10_mult, sub, scope, NotificationType.ENTITY_DELETED
+        None, derp_id, pow10_mult, sub, scope, NotificationType.ENTITY_DELETED
     )
     assert isinstance(notification_all_set, Notification)
 
     # Resource won't be set if we don't have a value
     assert notification_all_set.resource is None
+    assert f"/{derp_id}/" in notification_all_set.subscribedResource
+    assert f"/{scope.display_site_id}/" in notification_all_set.subscribedResource

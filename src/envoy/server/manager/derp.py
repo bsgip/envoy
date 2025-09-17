@@ -226,7 +226,9 @@ class DERControlManager:
         # fetch runtime server config
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
-        return DERControlMapper.map_to_default_response(scope, default_site_control, config.site_control_pow10_encoding)
+        return DERControlMapper.map_to_default_response(
+            scope, default_site_control, scope.display_site_id, der_program_id, config.site_control_pow10_encoding
+        )
 
     @staticmethod
     def _resolve_default_site_control(

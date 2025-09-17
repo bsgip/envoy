@@ -151,10 +151,16 @@ class DERControlMapper:
 
     @staticmethod
     def map_to_default_response(
-        scope: BaseRequestScope, default_doe: DefaultSiteControl, pow10_multipier: int
+        scope: BaseRequestScope,
+        default_doe: DefaultSiteControl,
+        display_site_id: int,
+        der_program_id: int,
+        pow10_multipier: int,
     ) -> DefaultDERControl:
         """Creates a csip aus compliant DefaultDERControl from the specified defaults"""
+
         return DefaultDERControl(
+            href=DERControlMapper.default_control_href(scope, display_site_id, der_program_id),
             subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
             mRID=MridMapper.encode_default_doe_mrid(scope),
             setGradW=default_doe.ramp_rate_percent_per_second,
@@ -207,14 +213,12 @@ class DERControlMapper:
         )
 
     @staticmethod
-    def default_control_href(
-        request_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope], site_control_group_id: int
-    ) -> str:
+    def default_control_href(request_scope: BaseRequestScope, site_id: int, site_control_group_id: int) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
             uri.DefaultDERControlUri,
             request_scope,
-            site_id=request_scope.display_site_id,
+            site_id=site_id,
             der_program_id=site_control_group_id,
         )
 
@@ -292,7 +296,9 @@ class DERProgramMapper:
         if default_doe is not None:
             default_der_link = Link.model_validate(
                 {
-                    "href": DERControlMapper.default_control_href(rq_scope, site_control_group.site_control_group_id),
+                    "href": DERControlMapper.default_control_href(
+                        rq_scope, rq_scope.display_site_id, site_control_group.site_control_group_id
+                    ),
                 }
             )
 
