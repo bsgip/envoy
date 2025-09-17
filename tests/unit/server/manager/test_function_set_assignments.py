@@ -20,6 +20,7 @@ from envoy.server.request_scope import SiteRequestScope
 @mock.patch("envoy.server.manager.function_set_assignments.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.function_set_assignments.select_site_control_group_fsa_ids")
 @mock.patch("envoy.server.manager.function_set_assignments.select_tariff_fsa_ids")
+@mock.patch("envoy.server.manager.function_set_assignments.count_site_control_groups_by_fsa_id")
 @pytest.mark.parametrize(
     "scg_fsa_ids, tariff_fsa_ids, fsa_id, expected_null",
     [
@@ -33,6 +34,7 @@ from envoy.server.request_scope import SiteRequestScope
     ],
 )
 async def test_fetch_function_set_assignments_for_scope(
+    mock_count_site_control_groups_by_fsa_id: mock.MagicMock,
     mock_select_tariff_fsa_ids: mock.MagicMock,
     mock_select_site_control_group_fsa_ids: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
@@ -49,11 +51,13 @@ async def test_fetch_function_set_assignments_for_scope(
     mapped_fsa = generate_class_instance(FunctionSetAssignmentsResponse)
     site = generate_class_instance(Site)
     scope = generate_class_instance(SiteRequestScope)
+    derp_counts_by_fsa_id = {}
 
     mock_select_single_site_with_site_id.return_value = site
     mock_map_to_response.return_value = mapped_fsa
     mock_select_tariff_fsa_ids.return_value = tariff_fsa_ids
     mock_select_site_control_group_fsa_ids.return_value = scg_fsa_ids
+    mock_count_site_control_groups_by_fsa_id.return_value = derp_counts_by_fsa_id
 
     # Act
     result = await FunctionSetAssignmentsManager.fetch_function_set_assignments_for_scope(
@@ -66,7 +70,9 @@ async def test_fetch_function_set_assignments_for_scope(
         mock_map_to_response.assert_not_called()
     else:
         assert result is mapped_fsa
-        mock_map_to_response.assert_called_once_with(scope=scope, fsa_id=fsa_id)
+        mock_map_to_response.assert_called_once_with(
+            scope=scope, fsa_id=fsa_id, total_tp_links=None, total_derp_links=None
+        )
 
     assert_mock_session(mock_session)
     mock_select_single_site_with_site_id.assert_called_once_with(
@@ -85,7 +91,9 @@ async def test_fetch_function_set_assignments_for_scope(
 @mock.patch("envoy.server.manager.function_set_assignments.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.function_set_assignments.select_site_control_group_fsa_ids")
 @mock.patch("envoy.server.manager.function_set_assignments.select_tariff_fsa_ids")
+@mock.patch("envoy.server.manager.function_set_assignments.count_site_control_groups_by_fsa_id")
 async def test_fetch_function_set_assignments_for_scope_no_site(
+    mock_count_site_control_groups_by_fsa_id: mock.MagicMock,
     mock_select_tariff_fsa_ids: mock.MagicMock,
     mock_select_site_control_group_fsa_ids: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
@@ -113,6 +121,7 @@ async def test_fetch_function_set_assignments_for_scope_no_site(
     )
     mock_select_site_control_group_fsa_ids.assert_not_called()
     mock_select_tariff_fsa_ids.assert_not_called()
+    mock_count_site_control_groups_by_fsa_id.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -121,6 +130,7 @@ async def test_fetch_function_set_assignments_for_scope_no_site(
 @mock.patch("envoy.server.manager.function_set_assignments.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.function_set_assignments.select_site_control_group_fsa_ids")
 @mock.patch("envoy.server.manager.function_set_assignments.select_tariff_fsa_ids")
+@mock.patch("envoy.server.manager.function_set_assignments.count_site_control_groups_by_fsa_id")
 @pytest.mark.parametrize(
     "scg_fsa_ids, tariff_fsa_ids, start, limit, expected_fsa_ids, expected_count",
     [
@@ -134,6 +144,7 @@ async def test_fetch_function_set_assignments_for_scope_no_site(
     ],
 )
 async def test_fetch_function_set_assignments_list_for_scope(
+    mock_count_site_control_groups_by_fsa_id: mock.MagicMock,
     mock_select_tariff_fsa_ids: mock.MagicMock,
     mock_select_site_control_group_fsa_ids: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
@@ -155,12 +166,15 @@ async def test_fetch_function_set_assignments_list_for_scope(
     scope = generate_class_instance(SiteRequestScope)
     config = RuntimeServerConfig()
 
+    derp_count_by_fsa_id = {1: 44, 5: 66}
+
     changed_after = datetime(2022, 11, 14, tzinfo=timezone.utc)
     mock_select_single_site_with_site_id.return_value = site
     mock_map_to_list_response.return_value = mapped_fsal
     mock_fetch_current_config.return_value = config
     mock_select_tariff_fsa_ids.return_value = tariff_fsa_ids
     mock_select_site_control_group_fsa_ids.return_value = scg_fsa_ids
+    mock_count_site_control_groups_by_fsa_id.return_value = derp_count_by_fsa_id
 
     # Act
     result = await FunctionSetAssignmentsManager.fetch_function_set_assignments_list_for_scope(
@@ -178,10 +192,12 @@ async def test_fetch_function_set_assignments_list_for_scope(
         fsa_ids=expected_fsa_ids,
         total_fsa_ids=expected_count,
         pollrate_seconds=config.fsal_pollrate_seconds,
+        derp_counts_by_fsa_id=derp_count_by_fsa_id,
     )
     mock_select_site_control_group_fsa_ids.assert_called_once_with(mock_session, changed_after)
     mock_select_tariff_fsa_ids.assert_called_once_with(mock_session, changed_after)
     mock_fetch_current_config.assert_called_once()
+    mock_count_site_control_groups_by_fsa_id.assert_called_once_with(mock_session)
 
 
 @pytest.mark.anyio

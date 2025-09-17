@@ -8,7 +8,7 @@ from envoy_schema.server.schema.sep2.function_set_assignments import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.crud.doe import select_site_control_group_fsa_ids
+from envoy.server.crud.doe import count_site_control_groups_by_fsa_id, select_site_control_group_fsa_ids
 from envoy.server.crud.pricing import select_tariff_fsa_ids
 from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.manager.server import RuntimeServerConfigManager
@@ -35,7 +35,10 @@ class FunctionSetAssignmentsManager:
         ):
             return None
 
-        return FunctionSetAssignmentsMapper.map_to_response(scope=scope, fsa_id=fsa_id)
+        derp_counts_by_fsa_id = await count_site_control_groups_by_fsa_id(session)
+        return FunctionSetAssignmentsMapper.map_to_response(
+            scope=scope, fsa_id=fsa_id, total_tp_links=None, total_derp_links=derp_counts_by_fsa_id.get(fsa_id)
+        )
 
     @staticmethod
     async def fetch_distinct_function_set_assignment_ids(session: AsyncSession, changed_after: datetime) -> list[int]:
@@ -58,6 +61,8 @@ class FunctionSetAssignmentsManager:
         if site is None:
             return None
 
+        derp_counts_by_fsa_id = await count_site_control_groups_by_fsa_id(session)
+
         # Combine the IDs into a sorted, distinct list
         distinct_fsa_ids = await FunctionSetAssignmentsManager.fetch_distinct_function_set_assignment_ids(
             session, changed_after
@@ -73,4 +78,5 @@ class FunctionSetAssignmentsManager:
             fsa_ids=paginated_fsa_ids,
             total_fsa_ids=len(distinct_fsa_ids),
             pollrate_seconds=config.fsal_pollrate_seconds,
+            derp_counts_by_fsa_id=derp_counts_by_fsa_id,
         )

@@ -413,6 +413,17 @@ async def count_site_control_groups(session: AsyncSession, changed_after: dateti
     return await _site_control_groups(True, session, 0, changed_after, None, fsa_id)  # type: ignore [return-value]
 
 
+async def count_site_control_groups_by_fsa_id(session: AsyncSession) -> dict[int, int]:
+    """Returns a dictionary keyed by the SiteControlGroup.fsa_id with a value indicating the count
+    of SiteControlGroup's with that fsa_id"""
+    kvps = (
+        (await session.execute(select(SiteControlGroup.fsa_id, func.count()).group_by(SiteControlGroup.fsa_id)))
+        .tuples()
+        .all()
+    )
+    return dict(kvps)
+
+
 async def select_site_control_group_by_id(
     session: AsyncSession, site_control_group_id: int
 ) -> Optional[SiteControlGroup]:

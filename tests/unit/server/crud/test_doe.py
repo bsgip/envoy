@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal
-from assertical.asserts.type import assert_list_type
+from assertical.asserts.type import assert_dict_type, assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import select, update
@@ -16,6 +16,7 @@ from envoy.server.crud.doe import (
     count_active_does_include_deleted,
     count_does_at_timestamp,
     count_site_control_groups,
+    count_site_control_groups_by_fsa_id,
     select_active_does_include_deleted,
     select_doe_include_deleted,
     select_does_at_timestamp,
@@ -710,6 +711,21 @@ async def test_select_and_count_site_control_groups(
         actual_count = await count_site_control_groups(session, changed_after, fsa_id)
         assert isinstance(actual_count, int)
         assert actual_count == expected_count
+
+
+@pytest.mark.anyio
+async def test_count_site_control_groups_by_fsa_id(extra_site_control_groups):
+    async with generate_async_session(extra_site_control_groups) as session:
+        result = await count_site_control_groups_by_fsa_id(session)
+        assert_dict_type(int, int, result, 2)
+        assert result == {1: 3, 3: 1}
+
+
+@pytest.mark.anyio
+async def test_count_site_control_groups_by_fsa_id_empty_db(pg_empty_config):
+    async with generate_async_session(pg_empty_config) as session:
+        result = await count_site_control_groups_by_fsa_id(session)
+        assert_dict_type(int, int, result, 0)
 
 
 @pytest.mark.parametrize(
