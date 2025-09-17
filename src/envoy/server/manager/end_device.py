@@ -47,6 +47,7 @@ from envoy.server.request_scope import (
     SiteRequestScope,
     UnregisteredRequestScope,
 )
+from envoy.server.settings import settings
 
 MAX_REGISTRATION_PIN = 99999
 
@@ -252,6 +253,12 @@ class EndDeviceManager:
         # We treat this as a successful update - avoiding uneccessary writes.
         if site.nmi == nmi:
             return True
+
+        # if enabled - validate nmi format
+        if settings.nmi_validation.nmi_validation_enabled:
+            validator = settings.nmi_validation.validator
+            if not validator.validate(nmi):
+                raise ValueError("Invalid NMI format.")
 
         # Ensure we archive the existing data
         await copy_rows_into_archive(session, Site, ArchiveSite, lambda q: q.where(Site.site_id == site.site_id))
