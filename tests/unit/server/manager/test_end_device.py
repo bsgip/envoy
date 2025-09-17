@@ -830,7 +830,7 @@ async def test_end_device_manager_fetch_existing_connection_point(
     mock_select_single_site_with_site_id.assert_called_once_with(
         session=mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
     )
-    mock_ConnectionPointMapper.map_to_response.assert_called_once_with(raw_site)
+    mock_ConnectionPointMapper.map_to_response.assert_called_once_with(scope, raw_site)
 
 
 @pytest.mark.anyio
