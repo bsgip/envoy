@@ -241,7 +241,11 @@ async def test_end_device_manager_generate_unique_device_id(
 @mock.patch("envoy.server.manager.end_device.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
 @mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
+@mock.patch("envoy.server.manager.end_device.FunctionSetAssignmentsManager.fetch_distinct_function_set_assignment_ids")
+@mock.patch("envoy.server.manager.end_device.count_subscriptions_for_site")
 async def test_end_device_manager_fetch_existing_device(
+    mock_count_subscriptions_for_site: mock.MagicMock,
+    mock_fetch_distinct_function_set_assignment_ids: mock.MagicMock,
     mock_fetch_current_config: mock.MagicMock,
     mock_EndDeviceMapper: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
@@ -254,8 +258,10 @@ async def test_end_device_manager_fetch_existing_device(
     mapped_ed: EndDeviceResponse = generate_class_instance(EndDeviceResponse)
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     runtime_config = generate_class_instance(RuntimeServerConfig)
+    fsa_ids = [1, 2, 99]
 
     # Just do a simple passthrough
+    mock_fetch_distinct_function_set_assignment_ids.return_value = fsa_ids
     mock_fetch_current_config.return_value = runtime_config
     mock_select_single_site_with_site_id.return_value = raw_site
     mock_EndDeviceMapper.map_to_response = mock.Mock(return_value=mapped_ed)
@@ -271,15 +277,21 @@ async def test_end_device_manager_fetch_existing_device(
     )
     mock_fetch_current_config.assert_called_once_with(mock_session)
     mock_EndDeviceMapper.map_to_response.assert_called_once_with(
-        scope, raw_site, runtime_config.disable_edev_registration
+        scope, raw_site, runtime_config.disable_edev_registration, len(fsa_ids)
     )
+    mock_count_subscriptions_for_site.assert_not_called()
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.end_device.get_virtual_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.VirtualEndDeviceMapper")
+@mock.patch("envoy.server.manager.end_device.FunctionSetAssignmentsManager.fetch_distinct_function_set_assignment_ids")
+@mock.patch("envoy.server.manager.end_device.count_subscriptions_for_site")
 async def test_end_device_manager_fetch_enddevice_for_scope_virtual(
-    mock_VirtualEndDeviceMapper: mock.MagicMock, mock_get_virtual_site_for_aggregator: mock.MagicMock
+    mock_count_subscriptions_for_site: mock.MagicMock,
+    mock_fetch_distinct_function_set_assignment_ids: mock.MagicMock,
+    mock_VirtualEndDeviceMapper: mock.MagicMock,
+    mock_get_virtual_site_for_aggregator: mock.MagicMock,
 ):
     """Check that the manager will handle requests for the virtual end device"""
 
@@ -292,6 +304,7 @@ async def test_end_device_manager_fetch_enddevice_for_scope_virtual(
     # Just do a simple passthrough
     mock_get_virtual_site_for_aggregator.return_value = raw_site
     mock_VirtualEndDeviceMapper.map_to_response = mock.Mock(return_value=mapped_ed)
+    mock_count_subscriptions_for_site.return_value = 1234321
 
     # Act
     result = await EndDeviceManager.fetch_enddevice_for_scope(mock_session, scope)
@@ -302,7 +315,8 @@ async def test_end_device_manager_fetch_enddevice_for_scope_virtual(
     mock_get_virtual_site_for_aggregator.assert_called_once_with(
         session=mock_session, aggregator_id=scope.aggregator_id, aggregator_lfdi=scope.lfdi, post_rate_seconds=None
     )
-    mock_VirtualEndDeviceMapper.map_to_response.assert_called_once_with(scope, raw_site)
+    mock_VirtualEndDeviceMapper.map_to_response.assert_called_once_with(scope, raw_site, 1234321)
+    mock_fetch_distinct_function_set_assignment_ids.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -684,7 +698,11 @@ async def test_add_enddevice_for_scope_device_lfdi_case_insensitive(
 @mock.patch("envoy.server.manager.end_device.fetch_sites_and_count_for_claims")
 @mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
 @mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
+@mock.patch("envoy.server.manager.end_device.FunctionSetAssignmentsManager.fetch_distinct_function_set_assignment_ids")
+@mock.patch("envoy.server.manager.end_device.count_subscriptions_for_site")
 async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
+    mock_count_subscriptions_for_site: mock.Mock,
+    mock_fetch_distinct_function_set_assignment_ids: mock.Mock,
     mock_fetch_current_config: mock.Mock,
     mock_EndDeviceListMapper: mock.MagicMock,
     mock_fetch_sites_and_count_for_claims: mock.MagicMock,
@@ -708,6 +726,9 @@ async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
     mock_EndDeviceListMapper.map_to_response = mock.Mock(return_value=mapped_ed_list)
     mock_fetch_sites_and_count_for_claims.return_value = (returned_sites, returned_site_count)
 
+    fsa_ids = [1, 2, 99, 100]
+    mock_fetch_distinct_function_set_assignment_ids.return_value = fsa_ids
+
     config = RuntimeServerConfig()
     mock_fetch_current_config.return_value = config
 
@@ -727,8 +748,12 @@ async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
         virtual_site=None,
         disable_registration=config.disable_edev_registration,
         pollrate_seconds=config.edevl_pollrate_seconds,
+        total_fsa_links=len(fsa_ids),
+        total_subscription_links=0,
     )
     mock_fetch_sites_and_count_for_claims.assert_called_once_with(mock_session, scope, start - 1, after, limit)
+    mock_count_subscriptions_for_site.assert_not_called()  # Don't need sub count if we are missing aggregator EndDevice
+    mock_fetch_distinct_function_set_assignment_ids.assert_called_once_with(mock_session, datetime.min)
 
 
 @pytest.mark.parametrize(
@@ -740,7 +765,11 @@ async def test_fetch_enddevicelist_for_scope_aggregator_skipping_virtual_edev(
 @mock.patch("envoy.server.manager.end_device.EndDeviceListMapper")
 @mock.patch("envoy.server.manager.end_device.get_virtual_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
+@mock.patch("envoy.server.manager.end_device.FunctionSetAssignmentsManager.fetch_distinct_function_set_assignment_ids")
+@mock.patch("envoy.server.manager.end_device.count_subscriptions_for_site")
 async def test_fetch_enddevicelist_for_scope_aggregator(
+    mock_count_subscriptions_for_site: mock.Mock,
+    mock_fetch_distinct_function_set_assignment_ids: mock.Mock,
     mock_fetch_current_config: mock.Mock,
     mock_get_virtual_site_for_aggregator: mock.MagicMock,
     mock_EndDeviceListMapper: mock.MagicMock,
@@ -773,6 +802,12 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
     config = RuntimeServerConfig()
     mock_fetch_current_config.return_value = config
 
+    fsa_ids = [1, 3, 16, 100, 101]
+    mock_fetch_distinct_function_set_assignment_ids.return_value = fsa_ids
+
+    sub_count = 5432
+    mock_count_subscriptions_for_site.return_value = sub_count
+
     # Act
     result: EndDeviceListResponse = await EndDeviceManager.fetch_enddevicelist_for_scope(
         mock_session, scope, start, after, input_limit
@@ -783,6 +818,7 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
     assert_mock_session(mock_session, committed=False)
 
     expected_virtual_site = returned_virtual_site if includes_virtual_edev else None
+    expected_sub_count = sub_count if includes_virtual_edev else 0
     mock_EndDeviceListMapper.map_to_response.assert_called_once_with(
         scope=scope,
         site_list=returned_sites,
@@ -790,6 +826,8 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
         virtual_site=expected_virtual_site,
         disable_registration=config.disable_edev_registration,
         pollrate_seconds=config.edevl_pollrate_seconds,
+        total_fsa_links=len(fsa_ids),
+        total_subscription_links=expected_sub_count,
     )
     mock_fetch_sites_and_count_for_claims.assert_called_once_with(
         mock_session, scope, start, after, expected_query_limit
@@ -799,8 +837,12 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
         mock_get_virtual_site_for_aggregator.assert_called_once_with(
             session=mock_session, aggregator_id=scope.aggregator_id, aggregator_lfdi=scope.lfdi, post_rate_seconds=None
         )
+        mock_count_subscriptions_for_site.assert_called_once_with(mock_session, scope.aggregator_id, None, datetime.min)
     else:
         mock_get_virtual_site_for_aggregator.assert_not_called()
+        mock_count_subscriptions_for_site.assert_not_called()  # Don't need sub count if we are missing agg EndDevice
+
+    mock_fetch_distinct_function_set_assignment_ids.assert_called_once_with(mock_session, datetime.min)
 
 
 @pytest.mark.anyio

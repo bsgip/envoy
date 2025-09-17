@@ -103,11 +103,10 @@ async def count_subscriptions_for_site(
 ) -> int:
     """Similar to select_subscriptions_for_site but instead returns a count"""
 
-    stmt = (
-        select(func.count())
-        .select_from(Subscription)
-        .where((Subscription.aggregator_id == aggregator_id) & (Subscription.changed_time >= changed_after))
-    )
+    stmt = select(func.count()).select_from(Subscription).where((Subscription.aggregator_id == aggregator_id))
+
+    if changed_after > datetime.min:
+        stmt = stmt.where(Subscription.changed_time >= changed_after)
 
     if site_id is not None:
         stmt = stmt.where(Subscription.scoped_site_id == site_id)

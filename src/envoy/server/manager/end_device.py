@@ -26,7 +26,9 @@ from envoy.server.crud.site import (
     select_single_site_with_sfdi,
     select_single_site_with_site_id,
 )
+from envoy.server.crud.subscription import count_subscriptions_for_site
 from envoy.server.exception import ConflictError, ForbiddenError, NotFoundError, UnableToGenerateIdError
+from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
@@ -97,6 +99,10 @@ class EndDeviceManager:
 
         # site_id of 0 refers to a virtual end-device (associated with the aggregator)
         if scope.site_id is None:
+            subscription_count = await count_subscriptions_for_site(
+                session, scope.aggregator_id, scope.site_id, datetime.min
+            )
+
             site = await get_virtual_site_for_aggregator(
                 session=session,
                 aggregator_id=scope.aggregator_id,
@@ -105,7 +111,7 @@ class EndDeviceManager:
             )
             if site is None:
                 return None
-            return VirtualEndDeviceMapper.map_to_response(scope, site)
+            return VirtualEndDeviceMapper.map_to_response(scope, site, subscription_count)
         else:
             site = await select_single_site_with_site_id(
                 session=session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
@@ -113,8 +119,12 @@ class EndDeviceManager:
             if site is None:
                 return None
 
+            fsa_count = len(
+                await FunctionSetAssignmentsManager.fetch_distinct_function_set_assignment_ids(session, datetime.min)
+            )
+
             config = await RuntimeServerConfigManager.fetch_current_config(session)
-            return EndDeviceMapper.map_to_response(scope, site, config.disable_edev_registration)
+            return EndDeviceMapper.map_to_response(scope, site, config.disable_edev_registration, fsa_count)
 
     @staticmethod
     async def delete_enddevice_for_scope(session: AsyncSession, scope: SiteRequestScope) -> bool:
@@ -273,6 +283,10 @@ class EndDeviceManager:
         """
         virtual_site: Optional[Site] = None
         includes_virtual_site = scope.source == CertificateType.AGGREGATOR_CERTIFICATE
+        subscription_count = 0  # This is lazily evaluated
+        fsa_count = len(
+            await FunctionSetAssignmentsManager.fetch_distinct_function_set_assignment_ids(session, datetime.min)
+        )  # The count of function set assignments is invariant to the EndDevice (in our implementation)
 
         # Include the aggregator virtual site?
         if includes_virtual_site:
@@ -284,6 +298,9 @@ class EndDeviceManager:
                         aggregator_id=scope.aggregator_id,
                         aggregator_lfdi=scope.lfdi,
                         post_rate_seconds=None,
+                    )
+                    subscription_count = await count_subscriptions_for_site(
+                        session, scope.aggregator_id, None, datetime.min
                     )
 
                 # Adjust limit to account for the virtual site
@@ -309,6 +326,8 @@ class EndDeviceManager:
             virtual_site=virtual_site,
             disable_registration=config.disable_edev_registration,
             pollrate_seconds=config.edevl_pollrate_seconds,
+            total_fsa_links=fsa_count,
+            total_subscription_links=subscription_count,
         )
 
 

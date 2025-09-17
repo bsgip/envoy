@@ -466,7 +466,7 @@ class NotificationMapper:
                     "type": XSI_TYPE_END_DEVICE_LIST,
                     "all_": len(sites),
                     "results": len(sites),
-                    "EndDevice": [EndDeviceMapper.map_to_response(scope, s, disable_registration) for s in sites],
+                    "EndDevice": [EndDeviceMapper.map_to_response(scope, s, disable_registration, 0) for s in sites],
                 },
             }
         )

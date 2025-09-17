@@ -22,11 +22,15 @@ from envoy.server.settings import settings
 
 class EndDeviceMapper:
     @staticmethod
-    def map_to_response(scope: BaseRequestScope, site: Site, disable_registration: bool) -> EndDeviceResponse:
+    def map_to_response(
+        scope: BaseRequestScope,
+        site: Site,
+        disable_registration: bool,
+        total_fsa_links: int,
+    ) -> EndDeviceResponse:
         edev_href = generate_href(uri.EndDeviceUri, scope, site_id=site.site_id)
         fsa_href = generate_href(uri.FunctionSetAssignmentsListUri, scope, site_id=site.site_id)
         der_href = generate_href(uri.DERListUri, scope, site_id=site.site_id)
-        pubsub_href = generate_href(uri.SubscriptionListUri, scope, site_id=site.site_id)
         registration_href = generate_href(uri.RegistrationUri, scope, site_id=site.site_id)
         logevent_href = generate_href(uri.LogEventListUri, scope, site_id=site.site_id)
         return EndDeviceResponse.model_validate(
@@ -41,8 +45,7 @@ class EndDeviceMapper:
                 "postRate": site.post_rate_seconds,
                 "ConnectionPointLink": ConnectionPointLink(href=edev_href + "/cp"),
                 "DERListLink": ListLink(href=der_href, all_=1),  # Always a single DER
-                "SubscriptionListLink": ListLink(href=pubsub_href),
-                "FunctionSetAssignmentsListLink": ListLink(href=fsa_href),
+                "FunctionSetAssignmentsListLink": ListLink(href=fsa_href, all_=total_fsa_links),
                 "RegistrationLink": None if disable_registration else Link(href=registration_href),
                 "LogEventListLink": ListLink(href=logevent_href),
             }
@@ -68,7 +71,7 @@ class EndDeviceMapper:
 
 class VirtualEndDeviceMapper:
     @staticmethod
-    def map_to_response(scope: BaseRequestScope, site: Site) -> EndDeviceResponse:
+    def map_to_response(scope: BaseRequestScope, site: Site, total_subscription_links: int) -> EndDeviceResponse:
         edev_href = generate_href(uri.EndDeviceUri, scope, site_id=site.site_id)
         pubsub_href = generate_href(uri.SubscriptionListUri, scope, site_id=site.site_id)
         return EndDeviceResponse.model_validate(
@@ -81,7 +84,7 @@ class VirtualEndDeviceMapper:
                 "changedTime": int(site.changed_time.timestamp()),
                 "enabled": True,
                 "postRate": site.post_rate_seconds,
-                "SubscriptionListLink": ListLink(href=pubsub_href),
+                "SubscriptionListLink": ListLink(href=pubsub_href, all_=total_subscription_links),
             }
         )
 
@@ -94,9 +97,13 @@ class EndDeviceListMapper:
         site_count: int,
         pollrate_seconds: int,
         disable_registration: bool,
+        total_fsa_links: int,
+        total_subscription_links: int,
         virtual_site: Optional[Site] = None,
     ) -> EndDeviceListResponse:
-        end_devices = [EndDeviceMapper.map_to_response(scope, site, disable_registration) for site in site_list]
+        end_devices = [
+            EndDeviceMapper.map_to_response(scope, site, disable_registration, total_fsa_links) for site in site_list
+        ]
         result_count = len(end_devices)
 
         # Add the virtual site to the results if present
@@ -105,7 +112,7 @@ class EndDeviceListMapper:
             # The virtual site has a changed_time matching when the call to `get_virtual_site_for_aggregator` was made.
             # We assume the virtual site will *always* be the most recent site and therefore we add the
             # virtual site to the front of the list of sites.
-            end_devices.insert(0, VirtualEndDeviceMapper.map_to_response(scope, virtual_site))
+            end_devices.insert(0, VirtualEndDeviceMapper.map_to_response(scope, virtual_site, total_subscription_links))
             result_count += 1
 
         return EndDeviceListResponse(

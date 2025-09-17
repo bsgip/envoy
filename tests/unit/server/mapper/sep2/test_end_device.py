@@ -35,7 +35,7 @@ def test_device_category_round_trip(disable_registration: bool):
         site.device_category = dc
         scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
 
-        end_device = EndDeviceMapper.map_to_response(scope, site, disable_registration)
+        end_device = EndDeviceMapper.map_to_response(scope, site, disable_registration, 11)
 
         roundtrip_site = EndDeviceMapper.map_from_request(end_device, 1, datetime.now(), 2)
         assert roundtrip_site.device_category == site.device_category
@@ -44,11 +44,12 @@ def test_device_category_round_trip(disable_registration: bool):
 @pytest.mark.parametrize("disable_registration", [True, False])
 def test_map_to_response(disable_registration: bool):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
+    total_fsa_links = 111
     site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False, lfdi="123abcDEF")
     site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True, lfdi="456AAAaaa")
     scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
 
-    result_all_set = EndDeviceMapper.map_to_response(scope, site_all_set, disable_registration)
+    result_all_set = EndDeviceMapper.map_to_response(scope, site_all_set, disable_registration, total_fsa_links)
     assert result_all_set is not None
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.postRate == site_all_set.post_rate_seconds
@@ -57,13 +58,13 @@ def test_map_to_response(disable_registration: bool):
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_all_set.ConnectionPointLink, ConnectionPointLink)
     assert isinstance(result_all_set.DERListLink, ListLink)
-    assert isinstance(result_all_set.SubscriptionListLink, ListLink)
+    assert result_all_set.FunctionSetAssignmentsListLink.all_ == total_fsa_links
+    assert result_all_set.SubscriptionListLink is None, "This should only be set on an Aggregator EndDevice"
 
     # Validate the links are unique and all extend the edev base href
     all_child_hrefs = [
         result_all_set.ConnectionPointLink.href,
         result_all_set.DERListLink.href,
-        result_all_set.SubscriptionListLink.href,
     ]
 
     if disable_registration:
@@ -77,7 +78,7 @@ def test_map_to_response(disable_registration: bool):
         assert child_href != result_all_set.href, "Children must NOT match base href"
         assert child_href.startswith(result_all_set.href), "Children must extend base href"
 
-    result_optional = EndDeviceMapper.map_to_response(scope, site_optional, disable_registration)
+    result_optional = EndDeviceMapper.map_to_response(scope, site_optional, disable_registration, total_fsa_links + 1)
     assert result_optional is not None
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.postRate is None
@@ -86,13 +87,13 @@ def test_map_to_response(disable_registration: bool):
     assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_optional.ConnectionPointLink, ConnectionPointLink)
     assert isinstance(result_optional.DERListLink, ListLink)
-    assert isinstance(result_optional.SubscriptionListLink, ListLink)
+    assert result_optional.FunctionSetAssignmentsListLink.all_ == total_fsa_links + 1
+    assert result_optional.SubscriptionListLink is None, "This should only be set on an Aggregator EndDevice"
 
     # Validate the links are unique and all extend the edev base href
     all_child_hrefs = [
         result_optional.ConnectionPointLink.href,
         result_optional.DERListLink.href,
-        result_optional.SubscriptionListLink.href,
     ]
     if disable_registration:
         assert result_optional.RegistrationLink is None
@@ -108,17 +109,26 @@ def test_map_to_response(disable_registration: bool):
 
 def test_list_map_to_response():
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
+
     site1: Site = generate_class_instance(Site, seed=303, optional_is_none=False, generate_relationships=False)
     site2: Site = generate_class_instance(Site, seed=404, optional_is_none=False, generate_relationships=True)
     site3: Site = generate_class_instance(Site, seed=505, optional_is_none=True, generate_relationships=False)
     site4: Site = generate_class_instance(Site, seed=606, optional_is_none=True, generate_relationships=True)
     site_count = 199
+    sub_count = 299
+    fsa_count = 399
     scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
 
     all_sites = [site1, site2, site3, site4]
 
     result = EndDeviceListMapper.map_to_response(
-        scope, all_sites, site_count, disable_registration=False, pollrate_seconds=10
+        scope,
+        all_sites,
+        site_count,
+        disable_registration=False,
+        pollrate_seconds=10,
+        total_fsa_links=fsa_count,
+        total_subscription_links=sub_count,
     )
     assert result is not None
     assert isinstance(result, EndDeviceListResponse)
@@ -131,7 +141,13 @@ def test_list_map_to_response():
     ), f"Expected {len(all_sites)} unique LFDI's in the children"
 
     empty_result = EndDeviceListMapper.map_to_response(
-        scope, [], site_count, disable_registration=False, pollrate_seconds=11
+        scope,
+        [],
+        site_count,
+        disable_registration=False,
+        pollrate_seconds=11,
+        total_fsa_links=fsa_count,
+        total_subscription_links=sub_count,
     )
     assert empty_result is not None
     assert isinstance(empty_result, EndDeviceListResponse)
@@ -139,7 +155,15 @@ def test_list_map_to_response():
     assert empty_result.pollRate == 11
     assert_list_type(EndDeviceResponse, empty_result.EndDevice, 0)
 
-    no_result = EndDeviceListMapper.map_to_response(scope, [], 0, disable_registration=False, pollrate_seconds=12)
+    no_result = EndDeviceListMapper.map_to_response(
+        scope,
+        [],
+        0,
+        disable_registration=False,
+        pollrate_seconds=12,
+        total_fsa_links=fsa_count,
+        total_subscription_links=sub_count,
+    )
     assert no_result is not None
     assert isinstance(no_result, EndDeviceListResponse)
     assert no_result.all_ == 0
@@ -222,17 +246,20 @@ def test_virtual_end_device_map_to_response():
     """Simple sanity check on the virtual end device mapper to ensure things don't break with a variety of values."""
     site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False, lfdi="123AABbaa")
     site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True, lfdi="456AAAaaa")
+    sub_count = 123
+    fsa_count = 456
     scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
 
-    result_all_set = VirtualEndDeviceMapper.map_to_response(scope, site_all_set)
+    result_all_set = VirtualEndDeviceMapper.map_to_response(scope, site_all_set, sub_count)
     assert result_all_set is not None
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
     assert result_all_set.lFDI == site_all_set.lfdi
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
     assert result_all_set.postRate == site_all_set.post_rate_seconds
+    assert result_all_set.SubscriptionListLink.all_ == sub_count
 
-    result_optional = EndDeviceMapper.map_to_response(scope, site_optional, False)
+    result_optional = EndDeviceMapper.map_to_response(scope, site_optional, False, fsa_count)
     assert result_optional is not None
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
