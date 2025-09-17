@@ -166,14 +166,17 @@ def test_map_default_to_response(optional_is_none: bool):
     scope = generate_class_instance(BaseRequestScope, href_prefix="/my/prefix/")
     pow_10 = 1
     derp_id = 2
+    site_id = 3
 
-    result = DERControlMapper.map_to_default_response(scope, doe_default, derp_id, pow_10)
+    result = DERControlMapper.map_to_default_response(scope, doe_default, site_id, derp_id, pow_10)
     assert result is not None
     assert isinstance(result, DefaultDERControl)
     assert isinstance(result.DERControlBase_, DERControlBase)
     assert isinstance(result.mRID, str)
     assert len(result.mRID) == 32, "Expected 128 bits encoded as hex"
     assert result.href.startswith("/my/prefix/")
+    assert f"/{site_id}/" in result.href
+    assert f"/{derp_id}/" in result.href
 
     if doe_default.export_limit_active_watts is None:
         assert result.DERControlBase_.opModExpLimW is None

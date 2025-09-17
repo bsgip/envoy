@@ -153,13 +153,14 @@ class DERControlMapper:
     def map_to_default_response(
         scope: BaseRequestScope,
         default_doe: DefaultSiteControl,
+        display_site_id: int,
         der_program_id: int,
         pow10_multipier: int,
     ) -> DefaultDERControl:
         """Creates a csip aus compliant DefaultDERControl from the specified defaults"""
 
         return DefaultDERControl(
-            href=DERControlMapper.default_control_href(scope, default_doe.site_id, der_program_id),
+            href=DERControlMapper.default_control_href(scope, display_site_id, der_program_id),
             subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
             mRID=MridMapper.encode_default_doe_mrid(scope),
             setGradW=default_doe.ramp_rate_percent_per_second,

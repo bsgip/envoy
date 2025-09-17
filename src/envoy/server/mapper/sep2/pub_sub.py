@@ -767,7 +767,7 @@ class NotificationMapper:
         resource_model: Optional[DefaultDERControl] = None
         if default_control is not None:
             resource_model = DERControlMapper.map_to_default_response(
-                scope, default_control, der_program_id, pow10_multipier
+                scope, default_control, scope.display_site_id, der_program_id, pow10_multipier
             )
             resource_model.type = XSI_TYPE_DEFAULT_DER_CONTROL
 
