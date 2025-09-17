@@ -99,9 +99,7 @@ class EndDeviceManager:
 
         # site_id of 0 refers to a virtual end-device (associated with the aggregator)
         if scope.site_id is None:
-            subscription_count = await count_subscriptions_for_site(
-                session, scope.aggregator_id, scope.site_id, datetime.min
-            )
+            subscription_count = await count_subscriptions_for_site(session, scope.aggregator_id, scope.site_id, None)
 
             site = await get_virtual_site_for_aggregator(
                 session=session,
@@ -299,9 +297,7 @@ class EndDeviceManager:
                         aggregator_lfdi=scope.lfdi,
                         post_rate_seconds=None,
                     )
-                    subscription_count = await count_subscriptions_for_site(
-                        session, scope.aggregator_id, None, datetime.min
-                    )
+                    subscription_count = await count_subscriptions_for_site(session, scope.aggregator_id, None, None)
 
                 # Adjust limit to account for the virtual site
                 limit = max(0, limit - 1)

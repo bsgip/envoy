@@ -72,7 +72,7 @@ async def select_subscriptions_for_site(
     aggregator_id: int,
     site_id: Optional[int],
     start: int,
-    changed_after: datetime,
+    changed_after: Optional[datetime],
     limit: Optional[int],
 ) -> Sequence[Subscription]:
     """Selects subscriptions that are scoped to a single site within an aggregator. Will include Conditions
@@ -81,12 +81,15 @@ async def select_subscriptions_for_site(
 
     stmt = (
         select(Subscription)
-        .where((Subscription.aggregator_id == aggregator_id) & (Subscription.changed_time >= changed_after))
+        .where((Subscription.aggregator_id == aggregator_id))
         .options(selectinload(Subscription.conditions))
         .order_by(Subscription.subscription_id)
         .offset(start)
         .limit(limit)
     )
+
+    if changed_after is not None:
+        stmt = stmt.where(Subscription.changed_time >= changed_after)
 
     if site_id is not None:
         stmt = stmt.where(Subscription.scoped_site_id == site_id)
@@ -99,13 +102,13 @@ async def count_subscriptions_for_site(
     session: AsyncSession,
     aggregator_id: int,
     site_id: Optional[int],
-    changed_after: datetime,
+    changed_after: Optional[datetime],
 ) -> int:
     """Similar to select_subscriptions_for_site but instead returns a count"""
 
     stmt = select(func.count()).select_from(Subscription).where((Subscription.aggregator_id == aggregator_id))
 
-    if changed_after > datetime.min:
+    if changed_after is not None:
         stmt = stmt.where(Subscription.changed_time >= changed_after)
 
     if site_id is not None:

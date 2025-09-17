@@ -178,6 +178,7 @@ async def test_select_subscriptions_for_aggregator_content_only(pg_base_config):
         (1, 2, 0, None, datetime.min, [2]),
         (2, 3, 0, None, datetime.min, [3]),
         (1, 4, 0, None, datetime.min, [4, 5]),
+        (1, 4, 0, None, None, [4, 5]),
         (1, 5, 0, None, datetime.min, []),
         # Test the aggregator end device query
         (1, None, 0, None, datetime.min, [1, 2, 4, 5]),
@@ -207,7 +208,7 @@ async def test_select_count_subscriptions_for_site(
     site_id: Optional[int],
     start: int,
     limit: Optional[int],
-    changed_after: datetime,
+    changed_after: Optional[datetime],
     expected_sub_ids: list[int],
 ):
     """Simple tests to ensure the select/counts work for various filters"""

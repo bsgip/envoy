@@ -837,7 +837,7 @@ async def test_fetch_enddevicelist_for_scope_aggregator(
         mock_get_virtual_site_for_aggregator.assert_called_once_with(
             session=mock_session, aggregator_id=scope.aggregator_id, aggregator_lfdi=scope.lfdi, post_rate_seconds=None
         )
-        mock_count_subscriptions_for_site.assert_called_once_with(mock_session, scope.aggregator_id, None, datetime.min)
+        mock_count_subscriptions_for_site.assert_called_once_with(mock_session, scope.aggregator_id, None, None)
     else:
         mock_get_virtual_site_for_aggregator.assert_not_called()
         mock_count_subscriptions_for_site.assert_not_called()  # Don't need sub count if we are missing agg EndDevice
