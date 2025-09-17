@@ -927,15 +927,6 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(notifi
     assert notification_all_set.resource.pollRate == poll_rate_seconds
 
 
-def test_NotificationMapper_map_default_site_control_response_bad_sub():
-    """Ensures we properly highlight a problem with a subscription if it's missing a resource id"""
-    all_set = generate_class_instance(DefaultSiteControl, seed=1, optional_is_none=False)
-    scope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
-    sub = generate_class_instance(Subscription, seed=303, resource_id=None)
-    with pytest.raises(InvalidMappingError):
-        NotificationMapper.map_default_site_control_response(all_set, 1, sub, scope, NotificationType.ENTITY_CHANGED)
-
-
 @pytest.mark.parametrize("notification_type", list(NotificationType))
 def test_NotificationMapper_map_default_site_control_response(notification_type: NotificationType):
     all_set = generate_class_instance(DefaultSiteControl, seed=1, optional_is_none=False)
@@ -943,16 +934,16 @@ def test_NotificationMapper_map_default_site_control_response(notification_type:
     sub = generate_class_instance(Subscription, seed=303)
     scope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
     pow10_mult = -3
+    derp_id = 21315415
+
+    expected_dderc_href = DefaultDERControlUri.format(site_id=scope.display_site_id, der_program_id=derp_id)
 
     notification_all_set = NotificationMapper.map_default_site_control_response(
-        all_set, pow10_mult, sub, scope, notification_type
+        all_set, derp_id, pow10_mult, sub, scope, notification_type
     )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
-    assert (
-        DefaultDERControlUri.format(site_id=scope.display_site_id, der_program_id=sub.resource_id)
-        in notification_all_set.subscribedResource
-    )
+    assert expected_dderc_href in notification_all_set.subscribedResource
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
@@ -960,6 +951,9 @@ def test_NotificationMapper_map_default_site_control_response(notification_type:
         assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
     else:
         assert notification_all_set.status == NotificationStatus.DEFAULT
+
+    assert expected_dderc_href in notification_all_set.resource.href
+    assert notification_all_set.resource.href.startswith("/custom/prefix")
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests

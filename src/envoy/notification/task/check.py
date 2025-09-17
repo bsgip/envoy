@@ -323,6 +323,7 @@ def entities_to_notification(
 
         return NotificationMapper.map_default_site_control_response(
             None if default_site_control is None else default_site_control.original,
+            site_control_group_id,
             config.site_control_pow10_encoding,
             sub,
             scope,

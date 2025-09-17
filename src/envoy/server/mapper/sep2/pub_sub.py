@@ -749,16 +749,13 @@ class NotificationMapper:
     @staticmethod
     def map_default_site_control_response(
         default_control: Optional[DefaultSiteControl],
+        der_program_id: int,
         pow10_multipier: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
     ) -> Notification:
         """Turns a poll rate into a notification for a FunctionSetAssignmentsList"""
-
-        der_program_id = sub.resource_id
-        if der_program_id is None:
-            raise InvalidMappingError("Subscription MUST include resource_id for der_program_id")
 
         default_der_control_href = generate_href(
             DefaultDERControlUri, scope, site_id=scope.display_site_id, der_program_id=der_program_id
