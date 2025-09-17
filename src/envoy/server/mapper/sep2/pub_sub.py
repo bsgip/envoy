@@ -756,13 +756,19 @@ class NotificationMapper:
     ) -> Notification:
         """Turns a poll rate into a notification for a FunctionSetAssignmentsList"""
 
+        der_program_id = sub.resource_id
+        if der_program_id is None:
+            raise InvalidMappingError("Subscription MUST include resource_id for der_program_id")
+
         default_der_control_href = generate_href(
-            DefaultDERControlUri, scope, site_id=scope.display_site_id, der_program_id=sub.resource_id
+            DefaultDERControlUri, scope, site_id=scope.display_site_id, der_program_id=der_program_id
         )
 
         resource_model: Optional[DefaultDERControl] = None
         if default_control is not None:
-            resource_model = DERControlMapper.map_to_default_response(scope, default_control, pow10_multipier)
+            resource_model = DERControlMapper.map_to_default_response(
+                scope, default_control, der_program_id, pow10_multipier
+            )
             resource_model.type = XSI_TYPE_DEFAULT_DER_CONTROL
 
         return Notification.model_validate(

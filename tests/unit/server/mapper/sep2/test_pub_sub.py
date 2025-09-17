@@ -927,12 +927,21 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(notifi
     assert notification_all_set.resource.pollRate == poll_rate_seconds
 
 
+def test_NotificationMapper_map_default_site_control_response_bad_sub():
+    """Ensures we properly highlight a problem with a subscription if it's missing a resource id"""
+    all_set = generate_class_instance(DefaultSiteControl, seed=1, optional_is_none=False)
+    scope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    sub = generate_class_instance(Subscription, seed=303, resource_id=None)
+    with pytest.raises(InvalidMappingError):
+        NotificationMapper.map_default_site_control_response(all_set, 1, sub, scope, NotificationType.ENTITY_CHANGED)
+
+
 @pytest.mark.parametrize("notification_type", list(NotificationType))
 def test_NotificationMapper_map_default_site_control_response(notification_type: NotificationType):
     all_set = generate_class_instance(DefaultSiteControl, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    scope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
     pow10_mult = -3
 
     notification_all_set = NotificationMapper.map_default_site_control_response(

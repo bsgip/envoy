@@ -613,6 +613,7 @@ async def test_get_site_specific_default_doe(client: AsyncClient, uri_derc_defau
 
     parsed_response: DefaultDERControl = DefaultDERControl.from_xml(body)
 
+    assert parsed_response.href == path
     assert (
         parsed_response.DERControlBase_.opModImpLimW.value
         != DERControlMapper.map_to_active_power(
