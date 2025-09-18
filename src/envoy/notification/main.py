@@ -1,4 +1,7 @@
+import json
 import logging
+import logging.config
+import os
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -10,8 +13,17 @@ from envoy.notification.settings import generate_settings
 from envoy.server.api.auth.azure import AzureADResourceTokenConfig
 from envoy.server.database import HandlerDetails, install_handler, remove_handler
 
-logger = logging.getLogger(__name__)
+# Force the loading of a LOG_CONFIG environment variable - it will be expecting a JSON encoded file
+logging_config_file = os.environ.get("LOG_CONFIG", None)
+if logging_config_file:
+    try:
+        with open(logging_config_file) as fp:
+            logging_config = json.load(fp)
+        logging.config.dictConfig(logging_config)
+    except Exception:
+        pass
 
+logger = logging.getLogger(__name__)
 
 logger.info("Initialising Notification TaskIQ Worker")
 
