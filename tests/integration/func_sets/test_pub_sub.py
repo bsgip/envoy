@@ -510,7 +510,7 @@ async def test_create_subscription_site_id_mismatches_subscription(client: Async
     """When creating a sub check that the subscribed resource owns the requesting edev"""
 
     # Requests to /edev/0/* must have subbed resource be underneath /edev/0/*
-    for subbed_resource in subscribable_resource_hrefs(site_id=1, pricing_reading_type_id=1):
+    for subbed_resource in subscribable_resource_hrefs(site_id=99, pricing_reading_type_id=1):
         insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
         insert_request.encoding = SubscriptionEncoding.XML
         insert_request.notificationURI = "https://example.com/456?foo=bar"
