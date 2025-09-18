@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.crud.doe import select_site_control_group_by_id
-from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.pricing import select_single_tariff
+from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID, select_single_site_with_site_id
 from envoy.server.crud.site_reading import fetch_site_reading_types_for_group
 from envoy.server.crud.subscription import (
     count_subscriptions_for_site,
@@ -21,6 +21,7 @@ from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.pub_sub import SubscriptionListMapper, SubscriptionMapper
+from envoy.server.model.subscription import Subscription as MappedSubscription
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import AggregatorRequestScope
 
@@ -96,37 +97,34 @@ class SubscriptionManager:
         return removed
 
     @staticmethod
-    async def add_subscription_for_site(
-        session: AsyncSession, scope: AggregatorRequestScope, subscription: Subscription
-    ) -> int:
-        """This will add the specified subscription to the database underneath site_id. Returns the inserted
-        subscription id"""
+    async def validate_subscription_site_scope(
+        session: AsyncSession, scope: AggregatorRequestScope, sub: MappedSubscription
+    ) -> None:
+        """Validates the scope / mapped subscription for bad site id references. Raises BadRequestError on error,
+        does nothing otherwise"""
+        if scope.site_id is None:
+            # If this is an unscoped context
+            if sub.scoped_site_id is not None:
+                # Validate that the site being referenced belongs to the current aggregator
+                referenced_site = await select_single_site_with_site_id(
+                    session, site_id=sub.scoped_site_id, aggregator_id=scope.aggregator_id
+                )
+                if referenced_site is None:
+                    raise BadRequestError(
+                        f"subscribedResource references EndDevice id {sub.scoped_site_id} which doesn't exist"
+                    )
+        else:
+            # This context is scoped specifically to use a single site (which has already been validated)
+            if sub.scoped_site_id != scope.site_id:
+                raise BadRequestError(
+                    f"Mismatch on subscribedResource EndDevice id {sub.scoped_site_id} expected {scope.site_id}"
+                )
 
-        changed_time = utc_now()
-
-        # We need the valid domains for the aggregator to validate our subscription
-        aggregator = await select_aggregator(session, scope.aggregator_id)
-        if aggregator is None:
-            raise NotFoundError(f"No aggregator with ID {scope.aggregator_id} to receive subscription")
-        valid_domains = set((d.domain for d in aggregator.domains))
-
-        # We map - but we still need to validate the mapped subscription to ensure it's valid
-        sub = SubscriptionMapper.map_from_request(
-            subscription=subscription,
-            scope=scope,
-            aggregator_domains=valid_domains,
-            changed_time=changed_time,
-        )
-
-        # If the subscription is for the virtual end device - we interpret that as not having a site id scope
-        if sub.scoped_site_id == VIRTUAL_END_DEVICE_SITE_ID:
-            sub.scoped_site_id = None
-
-        # Validate site_id came through OK
-        if sub.scoped_site_id != scope.site_id:
-            raise BadRequestError(
-                f"Mismatch on subscribedResource EndDevice id {sub.scoped_site_id} expected {scope.site_id}"
-            )
+    @staticmethod
+    async def validate_subscription_linked_resource(
+        session: AsyncSession, scope: AggregatorRequestScope, sub: MappedSubscription
+    ) -> None:
+        """Validates the resource_id of sub to ensure if falls within scope - raises BadRequestError on error"""
 
         # Lookup the linked entity (if any) to ensure it's accessible to this site
         if sub.resource_id is not None:
@@ -158,6 +156,36 @@ class SubscriptionManager:
                     raise BadRequestError(f"Invalid site_control_group_id {sub.resource_id} for site {scope.site_id}")
             else:
                 raise BadRequestError("sub.resource_id is improperly set. Check subscribedResource is valid.")
+
+    @staticmethod
+    async def add_subscription_for_site(
+        session: AsyncSession, scope: AggregatorRequestScope, subscription: Subscription
+    ) -> int:
+        """This will add the specified subscription to the database underneath site_id. Returns the inserted
+        subscription id"""
+
+        changed_time = utc_now()
+
+        # We need the valid domains for the aggregator to validate our subscription
+        aggregator = await select_aggregator(session, scope.aggregator_id)
+        if aggregator is None:
+            raise NotFoundError(f"No aggregator with ID {scope.aggregator_id} to receive subscription")
+        valid_domains = set((d.domain for d in aggregator.domains))
+
+        # We map - but we still need to validate the mapped subscription to ensure it's valid
+        sub = SubscriptionMapper.map_from_request(
+            subscription=subscription,
+            scope=scope,
+            aggregator_domains=valid_domains,
+            changed_time=changed_time,
+        )
+
+        # If the subscription is for the virtual end device - we interpret that as not having a site id scope
+        if sub.scoped_site_id == VIRTUAL_END_DEVICE_SITE_ID:
+            sub.scoped_site_id = None
+
+        await SubscriptionManager.validate_subscription_site_scope(session, scope, sub)
+        await SubscriptionManager.validate_subscription_linked_resource(session, scope, sub)
 
         # Insert the subscription
         new_sub_id = await upsert_subscription(session, sub)

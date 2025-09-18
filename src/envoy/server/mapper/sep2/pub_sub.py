@@ -99,20 +99,20 @@ class SubscriptionMapper:
         """Calculates the href for a Subscription.subscribedResource based on what the subscription is tracking
 
         Some combos of resource_type/scoped_site_id/resource_id may be invalid and will raise InvalidMappingError"""
+        href_site_id = sub.scoped_site_id if sub.scoped_site_id is not None else scope.display_site_id
+
         if sub.resource_type == SubscriptionResource.SITE:
             if sub.scoped_site_id is None:
                 return generate_href(EndDeviceListUri, scope)
             else:
-                return generate_href(EndDeviceUri, scope, site_id=scope.display_site_id)
+                return generate_href(EndDeviceUri, scope, site_id=href_site_id)
         elif sub.resource_type == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DOEs without a resource_id is unsupported on sub {sub.subscription_id}"
                 )
 
-            return generate_href(
-                DERControlListUri, scope, site_id=scope.display_site_id, der_program_id=sub.resource_id
-            )
+            return generate_href(DERControlListUri, scope, site_id=href_site_id, der_program_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.READING:
             if sub.resource_id is None:
                 raise InvalidMappingError(
@@ -122,7 +122,7 @@ class SubscriptionMapper:
             return generate_href(
                 ReadingListUri,
                 scope,
-                site_id=scope.display_site_id,
+                site_id=href_site_id,
                 site_reading_type_id=sub.resource_id,
                 reading_set_id=READING_SET_ALL_ID,
             )
@@ -145,7 +145,7 @@ class SubscriptionMapper:
             return generate_href(
                 RateComponentListUri,
                 scope,
-                site_id=scope.display_site_id,
+                site_id=href_site_id,
                 tariff_id=sub.resource_id,
             )
         elif sub.resource_type == SubscriptionResource.SITE_DER_AVAILABILITY:
@@ -154,7 +154,7 @@ class SubscriptionMapper:
                     f"Subscribing to DERAvailability requires resource_id on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERAvailabilityUri, scope, site_id=scope.display_site_id, der_id=sub.resource_id)
+            return generate_href(DERAvailabilityUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_RATING:
 
             if sub.resource_id is None:
@@ -162,7 +162,7 @@ class SubscriptionMapper:
                     f"Subscribing to DERCapability requires resource_id on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERCapabilityUri, scope, site_id=scope.display_site_id, der_id=sub.resource_id)
+            return generate_href(DERCapabilityUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_SETTING:
 
             if sub.resource_id is None:
@@ -170,13 +170,13 @@ class SubscriptionMapper:
                     f"Subscribing to DERSettings requires resource_id on sub {sub.subscription_id}"
                 )
 
-            return generate_href(DERSettingsUri, scope, site_id=scope.display_site_id, der_id=sub.resource_id)
+            return generate_href(DERSettingsUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_STATUS:
 
             if sub.resource_id is None:
                 raise InvalidMappingError(f"Subscribing to DERStatus requires resource_id on sub {sub.subscription_id}")
 
-            return generate_href(DERStatusUri, scope, site_id=scope.display_site_id, der_id=sub.resource_id)
+            return generate_href(DERStatusUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.DEFAULT_SITE_CONTROL:
 
             if sub.resource_id is None:
@@ -184,16 +184,14 @@ class SubscriptionMapper:
                     f"Subscribing to DefaultDERControl requires resource_id on sub {sub.subscription_id}"
                 )
 
-            return generate_href(
-                DefaultDERControlUri, scope, site_id=scope.display_site_id, der_program_id=sub.resource_id
-            )
+            return generate_href(DefaultDERControlUri, scope, site_id=href_site_id, der_program_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
-            return generate_href(FunctionSetAssignmentsListUri, scope, site_id=scope.display_site_id)
+            return generate_href(FunctionSetAssignmentsListUri, scope, site_id=href_site_id)
         elif sub.resource_type == SubscriptionResource.SITE_CONTROL_GROUP:
             if sub.resource_id is not None:
-                return generate_href(DERProgramFSAListUri, scope, site_id=scope.display_site_id, fsa_id=sub.resource_id)
+                return generate_href(DERProgramFSAListUri, scope, site_id=href_site_id, fsa_id=sub.resource_id)
             else:
-                return generate_href(DERProgramListUri, scope, site_id=scope.display_site_id)
+                return generate_href(DERProgramListUri, scope, site_id=href_site_id)
         else:
             raise InvalidMappingError(
                 f"Cannot map a resource HREF for resource_type {sub.resource_type} on sub {sub.subscription_id}"

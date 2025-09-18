@@ -135,9 +135,7 @@ async def delete_subscription_for_site(
         .select_from(Subscription)
         .where((Subscription.subscription_id == subscription_id) & (Subscription.aggregator_id == aggregator_id))
     )
-    if site_id is None:
-        fetch_count_stmt = fetch_count_stmt.where(Subscription.scoped_site_id.is_(None))
-    else:
+    if site_id is not None:
         fetch_count_stmt = fetch_count_stmt.where(Subscription.scoped_site_id == site_id)
     if (await session.execute(fetch_count_stmt)).scalar_one() != 1:
         return False

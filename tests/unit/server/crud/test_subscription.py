@@ -552,15 +552,18 @@ async def test_upsert_subscription_update_subscription(pg_base_config, sub: Subs
     "agg_id, site_id, sub_id, expected_deletion, condition_count",
     [
         (1, None, 1, True, 0),
-        (1, None, 5, True, 2),
+        (1, 1, 1, False, 0),  # Sub 1 is site unscoped and can't be deleted by EndDevice 1
+        (1, None, 2, True, 0),
         (1, 2, 2, True, 0),
+        (2, None, 3, True, 0),
         (2, 3, 3, True, 0),
+        (1, None, 4, True, 0),
+        (1, 4, 4, True, 0),
+        (1, None, 5, True, 2),
+        (1, 1, 5, False, 2),  # Sub 5 is site unscoped and can't be deleted by EndDevice 1
         (2, None, 1, False, 0),  # Bad Aggregator ID
         (99, None, 1, False, 0),  # Bad Aggregator ID
-        (2, 2, 2, False, 0),  # Bad Aggregator ID
-        (99, 2, 2, False, 0),  # Bad Aggregator ID
-        (1, 1, 1, False, 0),  # Site ID is wrong
-        (1, None, 2, False, 0),  # Site ID missing
+        (1, 2, 1, False, 0),  # Site ID is wrong
         (1, None, 99, False, 0),  # Sub ID is wrong
         (1, 1, 5, False, 2),  # Site ID is wrong (but also has child conditions)
         (2, None, 5, False, 2),  # Agg ID is wrong (but also has child conditions)

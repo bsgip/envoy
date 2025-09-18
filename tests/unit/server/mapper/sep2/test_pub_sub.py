@@ -113,7 +113,7 @@ def test_SubscriptionMapper_calculate_resource_href_at_least_one_supported_combo
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, display_site_id=display_site_id, href_prefix="/foo/bar"
     )
-    for site_id, resource_id in product([1, None], [2, None]):
+    for site_id, resource_id in product([1129414, None], [82521517, None]):
         sub: Subscription = generate_class_instance(Subscription)
         sub.resource_type = resource
         sub.scoped_site_id = site_id
@@ -124,7 +124,10 @@ def test_SubscriptionMapper_calculate_resource_href_at_least_one_supported_combo
             assert href and isinstance(href, str)
             assert href.startswith(scope.href_prefix)
             if resource != SubscriptionResource.SITE:
-                assert f"/{display_site_id}" in href, "Validating the display_site_id is being used over site_id"
+                if sub.scoped_site_id is None:
+                    assert f"/{display_site_id}" in href, "display_site_id is being used if site_id not specified"
+                else:
+                    assert f"/{site_id}" in href
 
             hrefs.append(href)
         except InvalidMappingError:
@@ -174,7 +177,7 @@ def test_SubscriptionMapper_calculate_resource_href_encodes_site_id(
 
     sub: Subscription = generate_class_instance(Subscription)
     sub.resource_type = resource
-    sub.scoped_site_id = 8912491  # We want to ignore this value and use the display_site_id from the scope
+    sub.scoped_site_id = 8912491  # This should be used
     sub.resource_id = None
 
     try:
@@ -183,7 +186,7 @@ def test_SubscriptionMapper_calculate_resource_href_encodes_site_id(
         sub.resource_id = 888
         href = SubscriptionMapper.calculate_resource_href(sub, scope)
 
-    assert f"/{scope.display_site_id}" in href, "Expected display site id in href"
+    assert f"/{sub.scoped_site_id}" in href
 
 
 @pytest.mark.parametrize("resource, site_id, resource_id", product(SubscriptionResource, [1, None], [2, None]))

@@ -195,18 +195,30 @@ async def test_get_subscription_list_by_page(
 
 
 @pytest.mark.parametrize(
-    "cert, site_id, sub_id, expected_404",
+    "cert, site_id, sub_id, expected_subscribed_resource",
     [
-        (AGG_1_VALID_CERT, 4, 4, False),
-        (AGG_2_VALID_CERT, 3, 3, False),
-        (AGG_3_VALID_CERT, 3, 3, True),  # Inaccessible to this aggregator
-        (AGG_1_VALID_CERT, 99, 1, True),  # invalid site id
-        (AGG_1_VALID_CERT, 1, 1, True),  # wrong site id
+        (AGG_1_VALID_CERT, 1, 99, None),  # sub DNE
+        (AGG_1_VALID_CERT, 0, 1, "/edev"),
+        (AGG_1_VALID_CERT, 2, 1, None),  # Wrong site id
+        (AGG_2_VALID_CERT, 1, 1, None),  # Wrong aggregator
+        (AGG_1_VALID_CERT, 0, 2, "/edev/2/derp/1/derc"),
+        (AGG_1_VALID_CERT, 1, 2, None),
+        (AGG_1_VALID_CERT, 2, 2, "/edev/2/derp/1/derc"),
+        (AGG_2_VALID_CERT, 1, 2, None),  # Wrong aggregator
+        (AGG_2_VALID_CERT, 0, 3, "/edev/3/tp/3/rc"),
+        (AGG_1_VALID_CERT, 0, 4, "/edev/4"),
+        (AGG_1_VALID_CERT, 4, 4, "/edev/4"),
+        (AGG_1_VALID_CERT, 0, 5, "/upt/0/mr/1/rs/all/r"),
     ],
 )
 @pytest.mark.anyio
 async def test_get_subscription_by_aggregator(
-    client: AsyncClient, sub_id: int, cert: str, site_id: int, expected_404: bool, sub_uri_format
+    client: AsyncClient,
+    sub_id: int,
+    cert: str,
+    site_id: int,
+    expected_subscribed_resource: Optional[str],
+    sub_uri_format,
 ):
     """Simple test of a valid get for different aggregator certs - validates that the response looks like XML
     and that it contains the expected subscription associated with each aggregator/site"""
@@ -216,7 +228,7 @@ async def test_get_subscription_by_aggregator(
         headers={cert_header: urllib.parse.quote(cert)},
     )
 
-    if expected_404:
+    if expected_subscribed_resource is None:
         assert_response_header(response, HTTPStatus.NOT_FOUND)
         assert_error_response(response)
     else:
@@ -224,17 +236,21 @@ async def test_get_subscription_by_aggregator(
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response: Sep2Subscription = Sep2Subscription.from_xml(body)
+        assert parsed_response.subscribedResource == expected_subscribed_resource
         assert int(parsed_response.href[-1]) == sub_id
 
 
 @pytest.mark.parametrize(
     "cert, site_id, sub_id, expected_404",
     [
+        (AGG_1_VALID_CERT, 0, 4, False),
         (AGG_1_VALID_CERT, 4, 4, False),
+        (AGG_2_VALID_CERT, 0, 3, False),
         (AGG_2_VALID_CERT, 3, 3, False),
         (AGG_3_VALID_CERT, 3, 3, True),  # Inaccessible to this aggregator
         (AGG_1_VALID_CERT, 99, 1, True),  # invalid site id
         (AGG_1_VALID_CERT, 1, 1, True),  # wrong site id
+        (AGG_1_VALID_CERT, 0, 1, False),
     ],
 )
 @pytest.mark.anyio
@@ -276,7 +292,7 @@ async def test_create_doe_subscription(
     insert_request.notificationURI = "https://example.com/456?foo=bar"
     insert_request.subscribedResource = f"/edev/{edev_id}/derp/1/derc"
     response = await client.post(
-        sub_list_uri_format.format(site_id=edev_id),
+        sub_list_uri_format.format(site_id=0),  # All subscriptions should be made to /edev/0/sub
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
         content=Sep2Subscription.to_xml(insert_request),
     )
@@ -413,19 +429,17 @@ async def test_create_subscription_site_id_outside_aggregator(
 ):
     """When creating a sub check that the edev belongs to the requesting aggregator"""
 
-    # Test for both the aggregator end device AND the regular end device
-    for edev_id in [VIRTUAL_END_DEVICE_SITE_ID, 1]:
-        insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
-        insert_request.encoding = SubscriptionEncoding.XML
-        insert_request.notificationURI = "https://example.com/456?foo=bar"
-        insert_request.subscribedResource = invalid_resource
-        response = await client.post(
-            sub_list_uri_format.format(site_id=edev_id),
-            headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
-            content=Sep2Subscription.to_xml(insert_request),
-        )
-        assert_response_header(response, HTTPStatus.BAD_REQUEST)
-        assert_error_response(response)
+    insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
+    insert_request.encoding = SubscriptionEncoding.XML
+    insert_request.notificationURI = "https://example.com/456?foo=bar"
+    insert_request.subscribedResource = invalid_resource
+    response = await client.post(
+        sub_list_uri_format.format(site_id=VIRTUAL_END_DEVICE_SITE_ID),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=Sep2Subscription.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.BAD_REQUEST)
+    assert_error_response(response)
 
 
 @pytest.mark.parametrize("sub_href", subscribable_resource_hrefs(site_id=1, pricing_reading_type_id=1))
@@ -435,14 +449,13 @@ async def test_create_site_scoped_subscription_entry_added_to_db(
 ):
     """Simple test that subscription creation works across endpoints from subscribable_resource_hrefs
     (when the subscription is going to be scoped to a single site)"""
-    edev_id = 1
 
     insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
     insert_request.encoding = SubscriptionEncoding.XML
     insert_request.notificationURI = "https://example.com/456?foo=bar"
     insert_request.subscribedResource = sub_href
     response = await client.post(
-        sub_list_uri_format.format(site_id=edev_id),
+        sub_list_uri_format.format(site_id=VIRTUAL_END_DEVICE_SITE_ID),
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
         content=Sep2Subscription.to_xml(insert_request),
     )
@@ -455,7 +468,7 @@ async def test_create_site_scoped_subscription_entry_added_to_db(
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(Subscription).where(Subscription.subscription_id == sub_id).limit(1))
         created_sub = resp.scalars().first()
-        assert created_sub.scoped_site_id == edev_id, "Expected a site scoped sub"
+        assert created_sub.scoped_site_id == 1, "Expected a site scoped sub"
         assert_nowish(created_sub.changed_time)
 
 
