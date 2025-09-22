@@ -246,7 +246,7 @@ class EndDeviceManager:
 
     @staticmethod
     async def update_nmi_for_site(
-        session: AsyncSession, scope: SiteRequestScope, nmi: Optional[str], nmi_validator: Optional[NmiValidator]
+        session: AsyncSession, scope: SiteRequestScope, nmi: Optional[str], nmi_validator: Optional[NmiValidator] = None
     ) -> None:
         """Attempts to update the NMI for a designated site. Returns True if the update proceeded successfully,
         False if the Site doesn't exist / belongs to another aggregator_id"""
