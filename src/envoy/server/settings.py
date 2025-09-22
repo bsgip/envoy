@@ -1,25 +1,38 @@
+from functools import cached_property
 import importlib.metadata
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Self
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
-from envoy.server.manager.nmi_validator import NmiValidator, DNSPParticipantId, PatternGroups
+from envoy.server.manager.nmi_validator import NmiValidator, DNSPParticipantId
 from envoy.settings import CommonSettings
 
 
 class NmiValidationSettings(BaseSettings):
     nmi_validation_enabled: bool = False
     nmi_validation_participant_id: DNSPParticipantId | None = None
-    _validator: NmiValidator | None = None
 
-    @property
+    @model_validator(mode="after")
+    def check_participant_id_required(self) -> Self:
+        if self.nmi_validation_enabled and not self.nmi_validation_participant_id:
+            raise ValueError("NMI validation is enabled, but no DNSPParticipantId was provided.")
+        return self
+
+    @cached_property
     def validator(self) -> NmiValidator:
-        if self._validator is None:
-            self._validator = NmiValidator(
-                participant_id=self.nmi_validation_participant_id,
-            )
-        return self._validator
+        """Returns an NmiValidator instance configured for the specified participant ID.
+
+        Raises:
+            RuntimeError: If NMI validation is disabled via configuration.
+        """
+        if not self.nmi_validation_enabled or not self.nmi_validation_participant_id:
+            raise RuntimeError("NMI validation is disabled or unconfigured.")
+
+        return NmiValidator(
+            participant_id=self.nmi_validation_participant_id,
+        )
 
 
 class AppSettings(CommonSettings):

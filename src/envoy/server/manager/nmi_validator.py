@@ -1,11 +1,23 @@
+"""Validation logic for ConnectionPoint.id
+
+NOTE: it may have been more consistent to embed this in the pydantic model
+but the pattern for runtime model configurations is clunky so a custom approach
+was taken.
+"""
+
 from enum import StrEnum
+import logging
 import re
+
+
+logger = logging.getLogger(__name__)
 
 
 class PatternGroup(tuple[str, ...]):
     """Represents a group of regex patterns that must all match (AND logic)."""
 
-    def __new__(cls, *patterns: str):
+    def __new__(cls, *patterns: str) -> "PatternGroup":
+        """Create a PatternGroup, ensuring all items are strings."""
         if not all(isinstance(p, str) for p in patterns):
             raise TypeError("All elements of a PatternGroup must be strings")
         return super().__new__(cls, patterns)
@@ -28,6 +40,7 @@ class MultiPatternRegexValidator:
 
     @staticmethod
     def _match_pattern_group(target: str, pattern_group: PatternGroup) -> bool:
+        """Check if all patterns in a group match the target string."""
         if not isinstance(pattern_group, PatternGroup):
             raise TypeError(f"Expecting {PatternGroup.__class__}")
         # Must match all within a single group
@@ -37,7 +50,10 @@ class MultiPatternRegexValidator:
         return True
 
     def validate(self, target: str) -> bool:
+        """Validate the target string against inclusion and exclusion rules.
 
+        Returns True if it matches at least one include group and no exclude groups.
+        """
         # if empty includes list, then defaulting to matched=True
         inclusion_matched: bool = True
         for pattern_group in self.includes:
@@ -45,6 +61,7 @@ class MultiPatternRegexValidator:
                 inclusion_matched = True
                 break
             inclusion_matched = False
+        logger.debug(f"includes matched: {inclusion_matched}")
 
         # empty excludes, defaulting to matched=False
         exclusion_matched: bool = False
@@ -52,6 +69,7 @@ class MultiPatternRegexValidator:
             if self._match_pattern_group(target, pattern_group):
                 exclusion_matched = True
                 break
+        logger.debug(f"excludes matched: {exclusion_matched}")
         return inclusion_matched and not exclusion_matched
 
 
@@ -90,6 +108,8 @@ class DNSPParticipantId(StrEnum):
 
 
 class NmiValidator(MultiPatternRegexValidator):
+    """NMI validation based on the AEMO NMI Allocation list."""
+
     GLOBAL_EXCLUDES = [
         PatternGroup(
             r"\s",  # no whitespace
@@ -101,10 +121,7 @@ class NmiValidator(MultiPatternRegexValidator):
 
     # NOTE:Based on AEMO's NMI Allocation List Version 13 - November 2022
     # (https://www.aemo.com.au/-/media/Files/Electricity/NEM/Retail_and_Metering/Metering-Procedures/NMI-Allocation-List.pdf)
-    # Skipped any that require TNI (Transmission Node Identifier) as there are no easily referencable+reliable sources,
-    # this would excludes TNSPs primarily which are unlikely to be needed anyway.
-    NSP_PATTERNS = {
-        # ACT
+    DNSP_PATTERNS = {
         DNSPParticipantId.EvoEnergy: {
             "includes": [PatternGroup(r"^NGGG[0-9A-Z]{6}$"), PatternGroup(r"^7001\d{6}$")],
             "excludes": [
@@ -112,9 +129,8 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  # Evoenergy
-        # NSW
-        DNSPParticipantId.EssentialEnergy: {  # Essential Energy
+        },
+        DNSPParticipantId.EssentialEnergy: {
             "includes": [
                 PatternGroup(r"^NAAA[0-9A-Z]{6}$"),
                 PatternGroup(r"^NBBB[0-9A-Z]{6}$"),
@@ -138,7 +154,7 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  # Ausgrid
+        },
         DNSPParticipantId.EndeavourEnergy: {
             "includes": [
                 PatternGroup(r"^NDDD[0-9A-Z]{6}$"),
@@ -149,8 +165,7 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  #  Endeavour Energy
-        # NT
+        },
         DNSPParticipantId.PowerAndWaterCorporation: {
             "includes": [
                 PatternGroup(
@@ -158,9 +173,8 @@ class NmiValidator(MultiPatternRegexValidator):
                 )
             ],
             "excludes": [],
-        },  # Power and Water Corporation
-        # QLD
-        DNSPParticipantId.ErgonEnergy: {  # Ergon Energy Corporation
+        },
+        DNSPParticipantId.ErgonEnergy: {
             "includes": [
                 PatternGroup(r"^QAAA[0-9A-Z]{6}$"),
                 PatternGroup(r"^QCCC[0-9A-Z]{6}$"),
@@ -183,8 +197,7 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  # ENERGEX Limited
-        # SA
+        },
         DNSPParticipantId.SAPN: {
             "includes": [
                 PatternGroup(r"^SAAA[0-9A-Z]{6}$"),
@@ -196,8 +209,7 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  # SAPN
-        # TAS
+        },
         DNSPParticipantId.TasNetworks: {
             "includes": [
                 PatternGroup(
@@ -205,8 +217,7 @@ class NmiValidator(MultiPatternRegexValidator):
                 )
             ],
             "excludes": [],
-        },  # TASNetworks
-        # VIC
+        },
         DNSPParticipantId.CitiPower: {
             "includes": [PatternGroup(r"^VAAA[0-9A-Z]{6}$"), PatternGroup(r"^610[2-3]\d{6}$")],
             "excludes": [
@@ -214,7 +225,7 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  # CitiPower Pty
+        },
         DNSPParticipantId.AusnetServices: {
             "includes": [PatternGroup(r"^VBBB[0-9A-Z]{6}$"), PatternGroup(r"^630[5-6]\d{6}$")],
             "excludes": [
@@ -222,7 +233,7 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  # Ausnet Services DNSP
+        },
         DNSPParticipantId.Powercor: {
             "includes": [PatternGroup(r"^VCCC[0-9A-Z]{6}$"), PatternGroup(r"^620[3-4]\d{6}$")],
             "excludes": [
@@ -230,7 +241,7 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  # Powercor Australia
+        },
         DNSPParticipantId.Jemena: {
             "includes": [PatternGroup(r"^VDDD[0-9A-Z]{6}$"), PatternGroup(r"^6001\d{6}$")],
             "excludes": [
@@ -238,7 +249,7 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  # Jemena Electricity Networks
+        },
         DNSPParticipantId.UnitedEnergy: {
             "includes": [PatternGroup(r"^VEEE[0-9A-Z]{6}$"), PatternGroup(r"^640[7-8]\d{6}$")],
             "excludes": [
@@ -246,8 +257,7 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  # United Energy Distribution Pty Ltd
-        # WA
+        },
         DNSPParticipantId.WesternPower: {
             "includes": [
                 PatternGroup(r"^WAAA[0-9A-Z]{6}$"),
@@ -259,7 +269,7 @@ class NmiValidator(MultiPatternRegexValidator):
                     r"^.{4}W",
                 )
             ],
-        },  # Western Power
+        },
         DNSPParticipantId.HorizonPower: {
             "includes": [
                 PatternGroup(
@@ -267,17 +277,24 @@ class NmiValidator(MultiPatternRegexValidator):
                 )
             ],
             "excludes": [],
-        },  # Horizon Power
+        },
     }
 
     def __init__(
         self,
-        participant_id: str | None = None,
+        participant_id: DNSPParticipantId,
         extra_includes: PatternGroups | None = None,
         extra_excludes: PatternGroups | None = None,
     ) -> None:
-        self.participant_id = participant_id.upper() if participant_id else None
-        nsp_config = self.NSP_PATTERNS.get(participant_id, {})
+        """Init validator for a specific DNSP participant, can provide custom validation rules.
+
+        Parameters:
+        - participant_id: The DNSPParticipantId to validate against.
+        - extra_includes: Additional include pattern groups.
+        - extra_excludes: Additional exclude pattern groups.
+        """
+        self.participant_id = participant_id
+        nsp_config = self.DNSP_PATTERNS[participant_id]
         self._resolved_includes = (extra_includes or []) + nsp_config.get("includes", [])
         self._resolved_excludes = (extra_excludes or []) + nsp_config.get("excludes", [])
 
@@ -287,8 +304,9 @@ class NmiValidator(MultiPatternRegexValidator):
         )
 
     def validate(self, nmi: str) -> bool:
-        # TODO: are we enforcing 11 character NMI?
+        """Validate an 11-character NMI against structure, pattern, and checksum."""
         if len(nmi) != 11:
+            logger.debug("Failed validation - expected 11 characters.")
             return False
 
         if not super().validate(nmi[:10]):
@@ -297,17 +315,19 @@ class NmiValidator(MultiPatternRegexValidator):
 
     @classmethod
     def _validate_checksum(cls, nmi: str) -> bool:
-
-        checksum_digit = nmi[-1]
-        if not checksum_digit.isdigit():
+        """Validate the NMI checksum character using Luhn-10 logic."""
+        checksum_char = nmi[-1]
+        if not checksum_char.isdigit():
+            logger.debug("Failed validation - expected digit checksum.")
             return False
-        checksum_digit = int(checksum_digit)
+        checksum_digit = int(checksum_char)
 
         return checksum_digit == cls._luhn_10_using_ascii_codes(nmi[:10])
 
     @staticmethod
     def _luhn_10_using_ascii_codes(nmi_10: str) -> int:
-        """As described in Appendix 2. of AEMO's National Metering Identifier Procedure V5.1 Document
+        """Calculate the Luhn-10 checksum for a 10-character NMI string based on ASCII values. As described in
+        Appendix 2. of AEMO's National Metering Identifier Procedure V5.1 Document
             found here:
         (https://www.aemo.com.au/Electricity/National-Electricity-Market-NEM/Retail-and-metering/-/media/EBA9363B984841079712B3AAD374A859.ashx)
         """
