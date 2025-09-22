@@ -1,7 +1,7 @@
 from functools import cached_property
 import importlib.metadata
 from decimal import Decimal
-from typing import Any, Dict, Optional, Self
+from typing import Any, Dict, Optional
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
