@@ -35,6 +35,7 @@ from envoy.server.exception import (
     UnableToGenerateIdError,
 )
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
+from envoy.server.manager.nmi_validator import NmiValidator
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
@@ -53,7 +54,6 @@ from envoy.server.request_scope import (
     SiteRequestScope,
     UnregisteredRequestScope,
 )
-from envoy.server.settings import settings
 
 MAX_REGISTRATION_PIN = 99999
 
@@ -245,7 +245,9 @@ class EndDeviceManager:
         return ConnectionPointMapper.map_to_response(scope, site)
 
     @staticmethod
-    async def update_nmi_for_site(session: AsyncSession, scope: SiteRequestScope, nmi: Optional[str]) -> None:
+    async def update_nmi_for_site(
+        session: AsyncSession, scope: SiteRequestScope, nmi: Optional[str], nmi_validator: Optional[NmiValidator]
+    ) -> None:
         """Attempts to update the NMI for a designated site. Returns True if the update proceeded successfully,
         False if the Site doesn't exist / belongs to another aggregator_id"""
 
@@ -261,10 +263,9 @@ class EndDeviceManager:
             return
 
         # if enabled - validate nmi format
-        if settings.nmi_validation.nmi_validation_enabled:
-            validator = settings.nmi_validation.validator
-            if not nmi or not validator.validate(nmi):
-                logger.debug(f"NMI ({nmi}) failed validation for participant ({validator.participant_id})")
+        if nmi_validator:
+            if not nmi or not nmi_validator.validate(nmi):
+                logger.debug(f"NMI ({nmi}) failed validation for participant ({nmi_validator.participant_id})")
                 raise NmiValidationError("Invalid NMI format.")
 
         # Ensure we archive the existing data

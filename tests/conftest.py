@@ -85,6 +85,13 @@ def pg_empty_config(
     else:
         os.environ["ALLOW_DEVICE_REGISTRATION"] = "True"
 
+    nmi_validation_marker = request.node.get_closest_marker("nmi_validation_enabled")
+    if nmi_validation_marker is not None:
+        os.environ["nmi_validation_enabled"] = "true"
+        os.environ["nmi_validation_participant_id"] = nmi_validation_marker.args[0]
+    else:
+        os.environ["nmi_validation_enabled"] = "false"
+
     # This will install all of the alembic migrations - DB is accessed from the DATABASE_URL env variable
     upgrade()
 

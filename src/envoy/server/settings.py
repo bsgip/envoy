@@ -3,7 +3,7 @@ import importlib.metadata
 from decimal import Decimal
 from typing import Any, Dict, Optional, Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
 from envoy.server.manager.nmi_validator import NmiValidator, DNSPParticipantId
@@ -59,7 +59,7 @@ class AppSettings(CommonSettings):
 
     allow_device_registration: bool = False  # True: LFDI auth will allow unknown certs to register single EndDevices
 
-    nmi_validation: NmiValidationSettings = NmiValidationSettings()
+    nmi_validation: NmiValidationSettings = Field(default_factory=NmiValidationSettings)
 
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:
