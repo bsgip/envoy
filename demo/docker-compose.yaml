@@ -97,7 +97,7 @@ services:
         condition: service_healthy
 
   envoy-db:
-    image: timescale/timescaledb:latest-pg10
+    image: postgres:16
     ports:
       - 127.0.0.1:8003:5432
     volumes:
@@ -142,5 +142,5 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: ./tls-termination/test_certs/
+      device: "${PWD}/tls-termination/test_certs/"
       o: bind

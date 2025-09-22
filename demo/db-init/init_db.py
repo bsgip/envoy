@@ -18,7 +18,7 @@ from envoy.server.model.doe import SiteControlGroup
 # Aggregators have their certificates recorded in public.certificate
 # while devices do not - envoy does not keep a record of non-aggregator
 # device certificates.
-AGG_CERT_PATH = "/test_certs/testaggregator.crt"  # Aggregator Client
+AGG_CERT_PATH = os.environ.get("AGG_CERT_PATH", "/test_certs/testaggregator.crt")  # Aggregator Client
 
 
 def load_cert(cert_path: str, now: datetime) -> Certificate:
