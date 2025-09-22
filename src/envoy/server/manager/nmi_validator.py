@@ -5,7 +5,7 @@ but the pattern for runtime model configurations is clunky so a custom approach
 was taken.
 """
 
-from enum import StrEnum
+from enum import Enum
 import logging
 import re
 
@@ -73,7 +73,7 @@ class MultiPatternRegexValidator:
         return inclusion_matched and not exclusion_matched
 
 
-class DNSPParticipantId(StrEnum):
+class DNSPParticipantId(str, Enum):
     # ACT
     EvoEnergy = "ACTEWP"
 
