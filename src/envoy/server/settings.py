@@ -15,7 +15,7 @@ class NmiValidationSettings(BaseSettings):
     nmi_validation_participant_id: DNSPParticipantId | None = None
 
     @model_validator(mode="after")
-    def check_participant_id_required(self) -> Self:
+    def check_participant_id_required(self) -> "NmiValidationSettings":
         if self.nmi_validation_enabled and not self.nmi_validation_participant_id:
             raise ValueError("NMI validation is enabled, but no DNSPParticipantId was provided.")
         return self

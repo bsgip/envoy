@@ -25,7 +25,7 @@ def test_nmi_validation_settings(preserved_environment):
     settings = NmiValidationSettings()
 
     # Assert
-    assert settings.nmi_validation_enabled == True
+    assert settings.nmi_validation_enabled
     assert settings.nmi_validation_participant_id == DNSPParticipantId.Ausgrid
     assert isinstance(settings.validator, NmiValidator)
 
