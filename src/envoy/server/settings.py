@@ -1,8 +1,38 @@
+from functools import cached_property
 import importlib.metadata
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
+from pydantic import Field, model_validator
+from pydantic_settings import BaseSettings
+
+from envoy.server.manager.nmi_validator import NmiValidator, DNSPParticipantId
 from envoy.settings import CommonSettings
+
+
+class NmiValidationSettings(BaseSettings):
+    nmi_validation_enabled: bool = False
+    nmi_validation_participant_id: DNSPParticipantId | None = None
+
+    @model_validator(mode="after")
+    def check_participant_id_required(self) -> "NmiValidationSettings":
+        if self.nmi_validation_enabled and not self.nmi_validation_participant_id:
+            raise ValueError("NMI validation is enabled, but no DNSPParticipantId was provided.")
+        return self
+
+    @cached_property
+    def validator(self) -> NmiValidator:
+        """Returns an NmiValidator instance configured for the specified participant ID.
+
+        Raises:
+            RuntimeError: If NMI validation is disabled via configuration.
+        """
+        if not self.nmi_validation_enabled or not self.nmi_validation_participant_id:
+            raise RuntimeError("NMI validation is disabled or unconfigured.")
+
+        return NmiValidator(
+            participant_id=self.nmi_validation_participant_id,
+        )
 
 
 class AppSettings(CommonSettings):
@@ -28,6 +58,8 @@ class AppSettings(CommonSettings):
     default_doe_ramp_rate_percent_per_second: Optional[int] = None  # Constant default DERControl ramp rate setpoint.
 
     allow_device_registration: bool = False  # True: LFDI auth will allow unknown certs to register single EndDevices
+
+    nmi_validation: NmiValidationSettings = Field(default_factory=NmiValidationSettings)
 
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:

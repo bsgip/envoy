@@ -70,3 +70,9 @@ class ConflictError(Exception):
     """Raised when operation conflicts system state. Equivalent to HTTP 409 code."""
 
     pass
+
+
+class NmiValidationError(Exception):
+    """Raised on failed NMI validation check. Expected to respond with HTTP 422"""
+
+    pass

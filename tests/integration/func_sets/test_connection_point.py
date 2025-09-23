@@ -9,6 +9,7 @@ from httpx import AsyncClient
 from psycopg import Connection
 from sqlalchemy import select
 
+from envoy.server.manager.nmi_validator import DNSPParticipantId
 from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.site import Site
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
@@ -231,3 +232,43 @@ async def test_connectionpoint_update_aggregator_edev_returns_403(
         url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
     )
     assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+@pytest.mark.nmi_validation_enabled(DNSPParticipantId.Ausgrid.value)
+@pytest.mark.parametrize(
+    "site_id, cert, update_nmi_value, expected_result",
+    [
+        (1, AGG_1_VALID_CERT, "41020000002", HTTPStatus.CREATED),
+        (1, AGG_1_VALID_CERT, "NCCC1234564", HTTPStatus.CREATED),
+        (1, AGG_1_VALID_CERT, "41020000003", HTTPStatus.UNPROCESSABLE_ENTITY),  # Invalid
+        (11, AGG_1_VALID_CERT, "41020000003", HTTPStatus.NOT_FOUND),  # Valid, not found
+        (11, AGG_1_VALID_CERT, "41020000003", HTTPStatus.NOT_FOUND),  # Invalid, not found
+    ],
+)
+@pytest.mark.anyio
+async def test_connectionpoint_put_with_nmi_validation(
+    client: AsyncClient,
+    connection_point_uri_format: str,
+    site_id: int,
+    cert: str,
+    update_nmi_value: str,
+    expected_result: HTTPStatus,
+):
+    """Tests that connection points can be PUT with appropriate NMI validation checks."""
+
+    # fire off our update
+    href = connection_point_uri_format.format(site_id=site_id)
+    new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id=update_nmi_value)
+    response = await client.put(
+        url=href, headers={cert_header: urllib.parse.quote(cert)}, content=new_cp_specified.to_xml()
+    )
+
+    # Validate response
+    if expected_result == HTTPStatus.CREATED:
+        assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+        body = read_response_body_string(response)
+        assert read_location_header(response) == href
+        assert len(body) == 0
+    else:
+        assert_response_header(response, expected_result)
+        assert_error_response(response)

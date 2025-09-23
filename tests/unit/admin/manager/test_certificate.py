@@ -19,8 +19,8 @@ def mock_crud(mocker: pytest_mock.MockerFixture) -> pytest_mock.AsyncMockType:
 
 
 @pytest.fixture
-def mock_mapper(mocker: pytest_mock.MockerFixture) -> pytest_mock.AsyncMockType:
-    return mocker.patch("envoy.admin.mapper.CertificateMapper", new=mocker.AsyncMock())
+def mock_mapper(mocker: pytest_mock.MockerFixture) -> pytest_mock.MockType:
+    return mocker.patch("envoy.admin.mapper.CertificateMapper", new=mocker.Mock())
 
 
 @pytest.mark.anyio
@@ -137,7 +137,7 @@ async def test_unassign_certificate_invalid_certificate_id(pg_base_config: psyco
 async def test_fetch_many_certificates(
     mocker: pytest_mock.MockerFixture,
     mock_crud: pytest_mock.AsyncMockType,
-    mock_mapper: pytest_mock.AsyncMockType,
+    mock_mapper: pytest_mock.MockType,
 ) -> None:
     """Confirm correct calls for fetch_many_certificates() method"""
     async with mocker.AsyncMock() as session:
@@ -150,7 +150,7 @@ async def test_fetch_many_certificates(
 
 @pytest.mark.anyio
 async def test_fetch_single_certificate(
-    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType, mock_mapper: pytest_mock.AsyncMockType
+    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType, mock_mapper: pytest_mock.MockType
 ) -> None:
     """Confirm correct calls with non-None certificate returned"""
     async with mocker.AsyncMock() as session:
@@ -161,7 +161,7 @@ async def test_fetch_single_certificate(
 
 @pytest.mark.anyio
 async def test_fetch_single_certificate_none_returned(
-    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType, mock_mapper: pytest_mock.AsyncMockType
+    mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType, mock_mapper: pytest_mock.MockType
 ) -> None:
     """Confirm correct calls with None certificate returned"""
     mock_crud.select_certificate.return_value = None

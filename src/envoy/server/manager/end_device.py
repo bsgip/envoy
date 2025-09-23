@@ -27,8 +27,15 @@ from envoy.server.crud.site import (
     select_single_site_with_site_id,
 )
 from envoy.server.crud.subscription import count_subscriptions_for_site
-from envoy.server.exception import ConflictError, ForbiddenError, NotFoundError, UnableToGenerateIdError
+from envoy.server.exception import (
+    ConflictError,
+    ForbiddenError,
+    NmiValidationError,
+    NotFoundError,
+    UnableToGenerateIdError,
+)
 from envoy.server.manager.function_set_assignments import FunctionSetAssignmentsManager
+from envoy.server.manager.nmi_validator import NmiValidator
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
@@ -238,7 +245,9 @@ class EndDeviceManager:
         return ConnectionPointMapper.map_to_response(scope, site)
 
     @staticmethod
-    async def update_nmi_for_site(session: AsyncSession, scope: SiteRequestScope, nmi: Optional[str]) -> bool:
+    async def update_nmi_for_site(
+        session: AsyncSession, scope: SiteRequestScope, nmi: Optional[str], nmi_validator: Optional[NmiValidator] = None
+    ) -> None:
         """Attempts to update the NMI for a designated site. Returns True if the update proceeded successfully,
         False if the Site doesn't exist / belongs to another aggregator_id"""
 
@@ -247,11 +256,17 @@ class EndDeviceManager:
             session=session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
         )
         if site is None:
-            return False
+            raise NotFoundError("Site does not exist.")
 
         # We treat this as a successful update - avoiding uneccessary writes.
         if site.nmi == nmi:
-            return True
+            return
+
+        # if enabled - validate nmi format
+        if nmi_validator:
+            if not nmi or not nmi_validator.validate(nmi):
+                logger.debug(f"NMI ({nmi}) failed validation for participant ({nmi_validator.participant_id})")
+                raise NmiValidationError("Invalid NMI format.")
 
         # Ensure we archive the existing data
         await copy_rows_into_archive(session, Site, ArchiveSite, lambda q: q.where(Site.site_id == site.site_id))
@@ -261,8 +276,6 @@ class EndDeviceManager:
         await session.commit()
 
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, changed_time)
-
-        return True
 
     @staticmethod
     async def fetch_enddevicelist_for_scope(

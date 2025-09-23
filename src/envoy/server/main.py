@@ -11,6 +11,7 @@ from envoy.notification.handler import enable_notification_client
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
 from envoy.server.api.depends.default_doe import DefaultDoeDepends
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
+from envoy.server.api.depends.nmi_validator import NMI_VALIDATOR_ATTR
 from envoy.server.api.depends.request_state_settings import RequestStateSettingsDepends
 from envoy.server.api.error_handler import (
     general_exception_handler,
@@ -81,6 +82,12 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
         new_app.include_router(router, dependencies=global_dependencies)
     for router in unsecured_routers:
         new_app.include_router(router)
+
+    # Manually inject configured NMI validator into app state
+    if new_settings.nmi_validation and new_settings.nmi_validation.nmi_validation_enabled:
+        setattr(new_app.state, NMI_VALIDATOR_ATTR, new_settings.nmi_validation.validator)
+    else:
+        setattr(new_app.state, NMI_VALIDATOR_ATTR, None)
 
     new_app.add_exception_handler(HTTPException, http_exception_handler)
     new_app.add_exception_handler(ValidationError, validation_exception_handler)
