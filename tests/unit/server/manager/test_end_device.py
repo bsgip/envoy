@@ -1005,11 +1005,11 @@ async def test_registration_manager_fetch_registration_for_scope_bad_site_id(
 @mock.patch("envoy.server.manager.end_device.NotificationManager")
 @mock.patch("envoy.server.manager.end_device.copy_rows_into_archive")
 @pytest.mark.parametrize(
-    "site, nmi, expected_retval",
+    "site, nmi",
     [
-        (generate_class_instance(Site, site_id=1, nmi="123"), "321", True),  # normal update
-        (generate_class_instance(Site, site_id=1, nmi="123"), "123", True),  # lazy update
-        (None, "123", False),  # failed update
+        (generate_class_instance(Site, site_id=1, nmi="123"), "321"),  # normal update
+        (generate_class_instance(Site, site_id=1, nmi="123"), "123"),  # lazy update
+        (None, "123"),  # failed update
     ],
 )
 async def test_end_device_manager_update_nmi_for_site(
@@ -1018,7 +1018,6 @@ async def test_end_device_manager_update_nmi_for_site(
     mock_select_single_site_with_site_id: mock.AsyncMock,
     site: Site | None,
     nmi: str,
-    expected_retval: bool,
 ):
     """check method will handle updates to nmi for a site appropriately."""
     # Arrange
@@ -1030,10 +1029,11 @@ async def test_end_device_manager_update_nmi_for_site(
     # Act
     if site:
         og_nmi = site.nmi
-    retval = await EndDeviceManager.update_nmi_for_site(mock_session, scope, nmi)
-
+        await EndDeviceManager.update_nmi_for_site(mock_session, scope, nmi)
+    else:
+        with pytest.raises(NotFoundError):
+            await EndDeviceManager.update_nmi_for_site(mock_session, scope, nmi)
     # Assert
-    assert retval == expected_retval
     mock_select_single_site_with_site_id.assert_awaited_once()
     if site and og_nmi != nmi:
         assert_mock_session(mock_session, committed=True)
