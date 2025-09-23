@@ -239,7 +239,10 @@ async def test_connectionpoint_update_aggregator_edev_returns_403(
     "site_id, cert, update_nmi_value, expected_result",
     [
         (1, AGG_1_VALID_CERT, "41020000002", HTTPStatus.CREATED),
+        (1, AGG_1_VALID_CERT, "NCCC1234564", HTTPStatus.CREATED),
         (1, AGG_1_VALID_CERT, "41020000003", HTTPStatus.UNPROCESSABLE_ENTITY),  # Invalid
+        (11, AGG_1_VALID_CERT, "41020000003", HTTPStatus.NOT_FOUND),  # Valid, not found
+        (11, AGG_1_VALID_CERT, "41020000003", HTTPStatus.NOT_FOUND),  # Invalid, not found
     ],
 )
 @pytest.mark.anyio
