@@ -15,7 +15,7 @@ markers = [
     "azure_ad_db_refresh_secs: marks tests to set the config value azure_ad_db_refresh_secs (requires azure_ad_db)",
     "admin_ro_user: marks tests that install the admin server 'Read Only' user/passwords",
     "disable_device_registration: marks tests that disable NULL Aggregator and disable unrecognised devices from registering (equivalent to allow_device_registration = False)",
-    "nmi_validation_enabled: marks tests that enables NMI validation logic for the PUT ConnectionPoint endpoint."
+    "nmi_validation_enabled: marks tests that enables NMI validation logic for the PUT ConnectionPoint endpoint.",
 ]
 
 # (for pytests only) Using pytest-env to set placeholder values for required settings.
@@ -45,7 +45,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "envoy"
-version = "0.16.0"
 requires-python = ">=3.9,<4.0"
 dependencies = [
     "fastapi>=0.94.1",
@@ -102,3 +101,7 @@ test = [
 
 [tool.setuptools.package-data]
 "envoy" = ["py.typed", "server/alembic.ini"]
+
+[tool.setuptools.dynamic]
+version = { attr = "envoy.__version__" }
+readme = { file = ["README.md"], content-type = "text/markdown" }
