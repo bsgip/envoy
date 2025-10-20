@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "a64eca7c-5241-4bcf-8d98-83554285b4d3",
+		"_postman_id": "6a2cf32a-a80f-45fd-8c50-2fa92c486d58",
 		"name": "envoy",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "39071715"
@@ -242,7 +242,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <sFDI>333026821598</sFDI>\r\n    <lFDI>12</lFDI>\r\n    <deviceCategory>0f</deviceCategory>\r\n</EndDevice>\r\n",
+							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <lFDI>A9993E364706816ABA3E25717850C26C9CD0D89D</lFDI>\r\n    <sFDI>234561178</sFDI>\r\n    <changedTime>1759733047</changedTime>\r\n</EndDevice>",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -506,7 +506,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0600006CC8</mRID>\r\n\t<description>Max Watts</description>\r\n\t<roleFlags>9</roleFlags>\r\n\t<serviceCategoryKind>0</serviceCategoryKind>\r\n\t<status>1</status>\r\n\t<deviceLFDI>12</deviceLFDI>\r\n\t<MirrorMeterReading>\r\n\t\t<mRID>0700006CC8</mRID>\r\n\t\t<ReadingType>\r\n\t\t\t<accumulationBehaviour>9</accumulationBehaviour>\r\n\t\t\t<commodity>1</commodity>\r\n\t\t\t<dataQualifier>8</dataQualifier>\r\n\t\t\t<flowDirection>1</flowDirection>\r\n\t\t\t<powerOfTenMultiplier>3</powerOfTenMultiplier>\r\n\t\t\t<uom>38</uom>\r\n\t\t\t<intervalLength>300</intervalLength>\r\n\t\t</ReadingType>\r\n\t</MirrorMeterReading>\r\n</MirrorUsagePoint>\r\n",
+							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0600006C</mRID>\r\n\t<description>Max Watts</description>\r\n\t<roleFlags>1234</roleFlags>\r\n\t<serviceCategoryKind>0</serviceCategoryKind>\r\n\t<status>1</status>\r\n\t<deviceLFDI>3E4F45AB31EDFE5B67E343E5E4562E3100000000</deviceLFDI>\r\n\t<MirrorMeterReading>\r\n\t\t<mRID>0700006C</mRID>\r\n\t\t<ReadingType>\r\n\t\t\t<accumulationBehaviour>9</accumulationBehaviour>\r\n\t\t\t<commodity>1</commodity>\r\n\t\t\t<dataQualifier>8</dataQualifier>\r\n\t\t\t<flowDirection>1</flowDirection>\r\n            <intervalLength>300</intervalLength>\r\n\t\t\t<powerOfTenMultiplier>3</powerOfTenMultiplier>\r\n\t\t\t<uom>38</uom>\r\n\t\t</ReadingType>\r\n\t</MirrorMeterReading>\r\n</MirrorUsagePoint>\r\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -590,7 +590,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0700006CC8</mRID>\r\n\t<MirrorReadingSet>\r\n\t\t<mRID>0900006CC8</mRID>\r\n\t\t<timePeriod>\r\n\t\t\t<duration>3600</duration>\r\n\t\t\t<start>1341579365</start>\r\n\t\t</timePeriod>\r\n\t\t<Reading>\r\n\t\t\t<value>9</value>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579365</start>\r\n\t\t\t</timePeriod>\r\n\t\t</Reading>\r\n\t\t<Reading>\r\n\t\t\t<value>11</value>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579665</start>\r\n\t\t\t</timePeriod>\r\n\t\t</Reading>\r\n\t\t<Reading>\r\n\t\t\t<value>10</value>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579965</start>\r\n\t\t\t</timePeriod>\r\n\t\t</Reading>\r\n\t</MirrorReadingSet>\r\n</MirrorMeterReading>"
+							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0700006C</mRID>\r\n\t<MirrorReadingSet>\r\n\t\t<mRID>12345678</mRID>\r\n\t\t<timePeriod>\r\n\t\t\t<duration>3600</duration>\r\n\t\t\t<start>1341579365</start>\r\n\t\t</timePeriod>\r\n\t\t<Reading>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579365</start>\r\n\t\t\t</timePeriod>\r\n            <value>9</value>\r\n\t\t</Reading>\r\n\t\t<Reading>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579665</start>\r\n\t\t\t</timePeriod>\r\n            <value>11</value>\r\n\t\t</Reading>\r\n\t\t<Reading>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579965</start>\r\n\t\t\t</timePeriod>\r\n            <value>10</value>\r\n\t\t</Reading>\r\n\t</MirrorReadingSet>\r\n</MirrorMeterReading>"
 						},
 						"url": {
 							"raw": "{{HOST}}/mup/{{MUP_ID}}",
@@ -1410,7 +1410,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERCapability\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"https://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesSupported>1</modesSupported>\n    <rtgMaxW><value>4</value><multiplier>0</multiplier></rtgMaxW>\n\t<rtgAbnormalCategory>1</rtgAbnormalCategory>\n\t<type>5</type>\n\t<csipaus:doeModesSupported>1</csipaus:doeModesSupported>\n</DERCapability>",
+							"raw": "<DERCapability\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"https://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesSupported>12345678</modesSupported>\n    <rtgAbnormalCategory>1</rtgAbnormalCategory>\n    <rtgMaxW>\n        <multiplier>0</multiplier>\n        <value>4</value>\n    </rtgMaxW>\n\t<type>5</type>\n\t<csipaus:doeModesSupported>12</csipaus:doeModesSupported>\n</DERCapability>",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -1483,7 +1483,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERSettings\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"https://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesEnabled>0</modesEnabled>\n\t<updatedTime>1715060552</updatedTime>\n\t<setMaxW>\n\t\t<value>1001</value>\n\t\t<multiplier>1</multiplier>\n\t</setMaxW>\n    <setGradW>1001</setGradW>\n\t<csipaus:doeModesEnabled>1</csipaus:doeModesEnabled>\n</DERSettings>",
+							"raw": "<DERSettings\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"https://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesEnabled>0000</modesEnabled>\n    <setGradW>1001</setGradW>\n\t<setMaxW>\n\t\t<multiplier>1</multiplier>\n        \t<value>1001</value>\n\t</setMaxW>\n    <updatedTime>1715060552</updatedTime>\n\t<csipaus:doeModesEnabled>01</csipaus:doeModesEnabled>\n</DERSettings>",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -1556,7 +1556,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
+							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>12345678</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>12</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
 							"options": {
 								"raw": {
 									"language": "xml"
