@@ -1,7 +1,8 @@
+from http import HTTPMethod
 import logging
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 from lxml.etree import XMLSyntaxError  # type: ignore # nosec: This will need to be addressed with pydantic-xml
 from pydantic_core import ValidationError
@@ -27,6 +28,26 @@ from envoy.server.settings import AppSettings, settings
 # Setup logs
 logging.basicConfig(style="{", level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def apply_disable_endpoints_filter_on_routers(
+    api_routers: list[APIRouter], disable_endpoints: set[tuple[HTTPMethod, str]]
+) -> list[APIRouter]:
+    """Filters routers using a set of endpoints (defined as tuple of HTTPMethod and URI string)"""
+    logger.info(f"Disabling the following endpoints from routers: {disable_endpoints}")
+    endpoints = disable_endpoints.copy()
+    for router in api_routers:
+        filtered_routes = []
+        for route in router.routes:
+            if hasattr(route, "path") and hasattr(route, "method"):
+                endpoint = (route.method, route.path)
+                if endpoint in endpoints:
+                    endpoints.discard(endpoint)
+                else:
+                    filtered_routes.append(route)
+        router.routes = filtered_routes
+    if len(endpoints) != 0:
+        raise ValueError(f"disable_endpoints configuration has invalid endpoints: {endpoint}")
 
 
 def generate_app(new_settings: AppSettings) -> FastAPI:
@@ -78,6 +99,9 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     new_app = FastAPI(**new_settings.fastapi_kwargs, lifespan=generate_combined_lifespan_manager(lifespan_managers))
     new_app.add_middleware(SQLAlchemyMiddleware, **new_settings.db_middleware_kwargs)
 
+    # install routers
+    if new_settings.disable_endpoints:
+        routers = apply_disable_endpoints_filter_on_routers(routers, new_settings.disable_endpoints)
     for router in routers:
         new_app.include_router(router, dependencies=global_dependencies)
     for router in unsecured_routers:

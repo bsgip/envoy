@@ -1,4 +1,5 @@
 from functools import cached_property
+from http import HTTPMethod
 import importlib.metadata
 from decimal import Decimal
 from typing import Any, Dict, Optional
@@ -60,6 +61,8 @@ class AppSettings(CommonSettings):
     allow_device_registration: bool = False  # True: LFDI auth will allow unknown certs to register single EndDevices
 
     nmi_validation: NmiValidationSettings = Field(default_factory=NmiValidationSettings)
+
+    disable_endpoints: Optional[set[tuple[HTTPMethod, str]]] = None
 
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:
