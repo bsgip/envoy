@@ -16,6 +16,7 @@ markers = [
     "admin_ro_user: marks tests that install the admin server 'Read Only' user/passwords",
     "disable_device_registration: marks tests that disable NULL Aggregator and disable unrecognised devices from registering (equivalent to allow_device_registration = False)",
     "nmi_validation_enabled: marks tests that enables NMI validation logic for the PUT ConnectionPoint endpoint.",
+    "exclude_endpoints: marks test that excludes endpoints from the application"
 ]
 
 # (for pytests only) Using pytest-env to set placeholder values for required settings.

@@ -1,5 +1,4 @@
 from functools import cached_property
-from http import HTTPMethod
 import importlib.metadata
 from decimal import Decimal
 from typing import Any, Dict, Optional
@@ -7,6 +6,7 @@ from typing import Any, Dict, Optional
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
+from envoy.server.endpoint_exclusion import EndpointExclusionSet
 from envoy.server.manager.nmi_validator import NmiValidator, DNSPParticipantId
 from envoy.settings import CommonSettings
 
@@ -62,7 +62,7 @@ class AppSettings(CommonSettings):
 
     nmi_validation: NmiValidationSettings = Field(default_factory=NmiValidationSettings)
 
-    disable_endpoints: Optional[set[tuple[HTTPMethod, str]]] = None
+    exclude_endpoints: Optional[EndpointExclusionSet] = None
 
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:

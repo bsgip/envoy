@@ -1,3 +1,4 @@
+import json
 import os
 from decimal import Decimal
 from typing import Generator
@@ -91,6 +92,10 @@ def pg_empty_config(
         os.environ["nmi_validation_participant_id"] = nmi_validation_marker.args[0]
     else:
         os.environ["nmi_validation_enabled"] = "false"
+
+    exclude_endpoints_marker = request.node.get_closest_marker("exclude_endpoints")
+    if exclude_endpoints_marker is not None:
+        os.environ["exclude_endpoints"] = json.dumps(exclude_endpoints_marker.args[0])
 
     # This will install all of the alembic migrations - DB is accessed from the DATABASE_URL env variable
     upgrade()
