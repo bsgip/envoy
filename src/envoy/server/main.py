@@ -8,6 +8,7 @@ from pydantic_core import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from envoy.notification.handler import enable_notification_client
+from envoy.server.api.depends.allow_nmi_updates import ALLOW_NMI_UPDATES_ATTR
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
 from envoy.server.api.depends.default_doe import DefaultDoeDepends
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
@@ -88,6 +89,9 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
         setattr(new_app.state, NMI_VALIDATOR_ATTR, new_settings.nmi_validation.validator)
     else:
         setattr(new_app.state, NMI_VALIDATOR_ATTR, None)
+
+    # Inject allow nmi updates setting
+    setattr(new_app.state, ALLOW_NMI_UPDATES_ATTR, new_settings.allow_nmi_updates)
 
     new_app.add_exception_handler(HTTPException, http_exception_handler)
     new_app.add_exception_handler(ValidationError, validation_exception_handler)

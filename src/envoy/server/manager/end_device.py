@@ -245,8 +245,12 @@ class EndDeviceManager:
         return ConnectionPointMapper.map_to_response(scope, site)
 
     @staticmethod
-    async def update_nmi_for_site(
-        session: AsyncSession, scope: SiteRequestScope, nmi: Optional[str], nmi_validator: Optional[NmiValidator] = None
+    async def insert_or_update_nmi_for_site(
+        session: AsyncSession,
+        scope: SiteRequestScope,
+        nmi: Optional[str],
+        allow_nmi_updates: bool,
+        nmi_validator: Optional[NmiValidator] = None,
     ) -> None:
         """Attempts to update the NMI for a designated site. Returns True if the update proceeded successfully,
         False if the Site doesn't exist / belongs to another aggregator_id"""
@@ -257,6 +261,9 @@ class EndDeviceManager:
         )
         if site is None:
             raise NotFoundError("Site does not exist.")
+
+        if not allow_nmi_updates and site.nmi is not None:
+            raise ConflictError("NMI already exists for this site.")
 
         # We treat this as a successful update - avoiding uneccessary writes.
         if site.nmi == nmi:

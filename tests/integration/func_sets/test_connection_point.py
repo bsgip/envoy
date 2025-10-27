@@ -272,3 +272,17 @@ async def test_connectionpoint_put_with_nmi_validation(
     else:
         assert_response_header(response, expected_result)
         assert_error_response(response)
+
+
+@pytest.mark.allow_nmi_updates("false")
+@pytest.mark.anyio
+async def test_connectionpoint_put_disallow_updates(client: AsyncClient, connection_point_uri_format: str):
+    # Attempt update
+    href = connection_point_uri_format.format(site_id=1)  # existing site with NMI
+    new_cp_specified: ConnectionPointRequest = ConnectionPointRequest(id="123")
+    response = await client.put(
+        url=href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}, content=new_cp_specified.to_xml()
+    )
+
+    # Expect Conflict response
+    assert response.status_code == HTTPStatus.CONFLICT

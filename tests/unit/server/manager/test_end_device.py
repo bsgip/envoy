@@ -18,7 +18,7 @@ from envoy_schema.server.schema.sep2.end_device import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.exception import ForbiddenError, NotFoundError, UnableToGenerateIdError
+from envoy.server.exception import ConflictError, ForbiddenError, NotFoundError, UnableToGenerateIdError
 from envoy.server.manager.end_device import (
     MAX_REGISTRATION_PIN,
     EndDeviceManager,
@@ -1005,19 +1005,20 @@ async def test_registration_manager_fetch_registration_for_scope_bad_site_id(
 @mock.patch("envoy.server.manager.end_device.NotificationManager")
 @mock.patch("envoy.server.manager.end_device.copy_rows_into_archive")
 @pytest.mark.parametrize(
-    "site, nmi",
+    "site, nmi, allow",
     [
-        (generate_class_instance(Site, site_id=1, nmi="123"), "321"),  # normal update
-        (generate_class_instance(Site, site_id=1, nmi="123"), "123"),  # lazy update
-        (None, "123"),  # failed update
+        (generate_class_instance(Site, site_id=1, nmi="123"), "321", True),  # normal update
+        (generate_class_instance(Site, site_id=1, nmi="123"), "123", True),  # lazy update
+        (None, "123", True),  # failed update
     ],
 )
-async def test_end_device_manager_update_nmi_for_site(
+async def test_end_device_manager_insert_or_update_nmi_for_site(
     mock_copy_rows_into_archive: mock.AsyncMock,
     mock_NotificationManager: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.AsyncMock,
     site: Site | None,
     nmi: str,
+    allow: bool,
 ):
     """check method will handle updates to nmi for a site appropriately."""
     # Arrange
@@ -1029,13 +1030,60 @@ async def test_end_device_manager_update_nmi_for_site(
     # Act
     if site:
         og_nmi = site.nmi
-        await EndDeviceManager.update_nmi_for_site(mock_session, scope, nmi)
+        await EndDeviceManager.insert_or_update_nmi_for_site(mock_session, scope, nmi, allow)
     else:
         with pytest.raises(NotFoundError):
-            await EndDeviceManager.update_nmi_for_site(mock_session, scope, nmi)
+            await EndDeviceManager.insert_or_update_nmi_for_site(mock_session, scope, nmi, allow)
     # Assert
     mock_select_single_site_with_site_id.assert_awaited_once()
     if site and og_nmi != nmi:
+        assert_mock_session(mock_session, committed=True)
+        mock_copy_rows_into_archive.assert_awaited_once()
+        mock_NotificationManager.notify_changed_deleted_entities.assert_awaited()
+    else:
+        assert_mock_session(mock_session, committed=False)
+        mock_copy_rows_into_archive.assert_not_awaited()
+        mock_NotificationManager.notify_changed_deleted_entities.assert_not_awaited()
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.select_single_site_with_site_id")
+@mock.patch("envoy.server.manager.end_device.NotificationManager")
+@mock.patch("envoy.server.manager.end_device.copy_rows_into_archive")
+@pytest.mark.parametrize(
+    "site, nmi, allow, success",
+    [
+        (generate_class_instance(Site, site_id=1, nmi=None), "123", True, True),  # Inserting
+        (generate_class_instance(Site, site_id=1, nmi=None), "123", False, True),  # Inserting
+        (generate_class_instance(Site, site_id=1, nmi="123"), "123", False, False),  # failed update
+    ],
+)
+async def test_end_device_manager_insert_or_update_nmi_for_site_insert_only(
+    mock_copy_rows_into_archive: mock.AsyncMock,
+    mock_NotificationManager: mock.MagicMock,
+    mock_select_single_site_with_site_id: mock.AsyncMock,
+    site: Site,
+    nmi: str,
+    allow: bool,
+    success: bool,
+):
+    """check method will block updates to nmi for a site appropriately."""
+    # Arrange
+    mock_NotificationManager.notify_changed_deleted_entities = mock.AsyncMock()
+    mock_session = create_mock_session()
+    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
+    mock_select_single_site_with_site_id.return_value = site
+
+    # Act
+    if success:
+        await EndDeviceManager.insert_or_update_nmi_for_site(mock_session, scope, nmi, allow)
+    else:
+        with pytest.raises(ConflictError):
+            await EndDeviceManager.insert_or_update_nmi_for_site(mock_session, scope, nmi, allow)
+
+    # Assert
+    mock_select_single_site_with_site_id.assert_awaited_once()
+    if success:
         assert_mock_session(mock_session, committed=True)
         mock_copy_rows_into_archive.assert_awaited_once()
         mock_NotificationManager.notify_changed_deleted_entities.assert_awaited()
