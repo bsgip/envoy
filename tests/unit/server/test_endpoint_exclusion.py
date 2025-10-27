@@ -1,9 +1,9 @@
-from http import HTTPMethod
 import pytest
 from fastapi import APIRouter, FastAPI
 from envoy.server.endpoint_exclusion import (
     ExcludeEndpointException,
     generate_routers_with_excluded_endpoints,
+    HTTPMethod,
 )
 
 
