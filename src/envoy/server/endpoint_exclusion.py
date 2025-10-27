@@ -2,7 +2,7 @@ from copy import deepcopy
 import logging
 from http import HTTPMethod
 
-from starlette.routing import Route
+from starlette.routing import BaseRoute, Route
 from fastapi import APIRouter
 
 
@@ -10,14 +10,14 @@ logging.basicConfig(style="{", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class ExcludeEndpointException(Exception): ...
+class ExcludeEndpointException(Exception): ...  # noqa: E701
 
 
 EndpointExclusionSet = set[tuple[HTTPMethod, str]]
 
 
 def generate_routers_with_excluded_endpoints(
-    api_routers: list[APIRouter], exclude_endpoints: set[tuple[HTTPMethod, str]]
+    api_routers: list[APIRouter], exclude_endpoints: EndpointExclusionSet
 ) -> list[APIRouter]:
     """Generates a new list of api routers with endpoint filters applied. Endpoint filters are defined as tuple
     of HTTPMethod and URI string). A route is removed entirely if all it's available methods are removed. Validates all
@@ -38,22 +38,23 @@ def generate_routers_with_excluded_endpoints(
     endpoint_filters = deepcopy(exclude_endpoints)
 
     for router in routers:
-        remaining_routes: list[Route] = []
+        remaining_routes: list[BaseRoute] = []
         for route in router.routes:
-            if hasattr(route, "path") and hasattr(route, "methods"):
+            if isinstance(route, Route) and route.methods:
                 remaining_methods: list[str] = []
 
                 # filtering route methods
                 for method in route.methods:
-                    endpoint = (method, route.path)
+                    endpoint = (HTTPMethod(method), route.path)
                     if endpoint in endpoint_filters:
                         endpoint_filters.discard(endpoint)  # tracking which filters have been applied.
                     else:
                         remaining_methods.append(method)
+
                 # mutating route methods
                 route.methods = set(remaining_methods)
-            if route.methods:
-                remaining_routes.append(route)
+                if route.methods:
+                    remaining_routes.append(route)
         router.routes = remaining_routes
 
     if endpoint_filters:
