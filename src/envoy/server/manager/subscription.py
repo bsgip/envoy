@@ -154,6 +154,8 @@ class SubscriptionManager:
                 scg = await select_site_control_group_by_id(session, sub.resource_id)
                 if scg is None:
                     raise BadRequestError(f"Invalid site_control_group_id {sub.resource_id} for site {scope.site_id}")
+            elif sub.resource_type == SubscriptionResource.SITE_CONTROL_GROUP:
+                return  # FSA is not scoped to particular aggregator, so just pass
             else:
                 raise BadRequestError("sub.resource_id is improperly set. Check subscribedResource is valid.")
 
