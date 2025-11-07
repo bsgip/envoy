@@ -404,6 +404,31 @@ async def test_roundtrip_upsert_der_setting(
         )
 
 
+@pytest.mark.anyio
+async def test_bad_der_setting_payload_400(
+    pg_base_config,
+    client: AsyncClient,
+    valid_headers: dict,
+):
+    """Simple test of insert/update on DER Setting."""
+
+    der_id = PUBLIC_SITE_DER_ID
+    site_id = 1
+
+    # Setting
+    setting_uri = uri.DERSettingsUri.format(site_id=site_id, der_id=der_id)
+    settings: DERSettings = generate_class_instance(DERSettings, seed=4001, generate_relationships=True)
+    settings.modesEnabled = "00"
+    settings.doeModesEnabled = "NN"  # Invalid hexbinary
+    response = await client.put(
+        setting_uri,
+        headers=valid_headers,
+        content=settings.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+    )
+    assert_response_header(response, HTTPStatus.BAD_REQUEST)
+    assert_error_response(response)
+
+
 @pytest.mark.parametrize(
     "site_id, expected_not_found, expected_update",
     [
