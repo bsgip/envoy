@@ -193,7 +193,7 @@ async def test_get_end_device_list_pagination(
 @pytest.mark.parametrize(
     "cert,site_id, expected_status, expected_lfdi, expected_sfdi",
     [
-        (AGG_1_VALID_CERT, 2, HTTPStatus.OK, "site2-lfdi", 2222),
+        (AGG_1_VALID_CERT, 2, HTTPStatus.OK, "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b", 2222),
         (AGG_1_VALID_CERT, 0, HTTPStatus.OK, AGG_1_LFDI_FROM_VALID_CERT.upper(), int(AGG_1_SFDI_FROM_VALID_CERT)),
         (REGISTERED_CERT.decode(), 6, HTTPStatus.OK, REGISTERED_CERT_LFDI, int(REGISTERED_CERT_SFDI)),
         (
@@ -455,25 +455,25 @@ async def test_create_end_device_existing_sfdi_different_client(client: AsyncCli
     [
         (
             AGG_1_VALID_CERT,
-            "site1-lfdi",
+            "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
             2111,
             HTTPStatus.CONFLICT,
         ),  # existing lfdi
         (
             AGG_1_VALID_CERT,
-            "siteN-lfdi",
+            "ffffffffffffffffffffffffffffffffffffffff",
             1111,
             HTTPStatus.CONFLICT,
         ),  # existing sfdi
         (
             AGG_1_VALID_CERT,
-            "site1-lfdi",
+            "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
             1111,
             HTTPStatus.CONFLICT,
         ),  # existing lfdi+sfdi
         (
             AGG_2_VALID_CERT,
-            "site1-lfdi",
+            "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
             2111,
             HTTPStatus.CONFLICT,
         ),  # LFDI-only belongs to agg 1
@@ -491,7 +491,7 @@ async def test_create_end_device_existing_sfdi_different_client(client: AsyncCli
         ),  # Device cert cant update a seperate DeviceCert
         (
             REGISTERED_CERT.decode(),
-            "site1-lfdi",
+            "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
             1111,
             HTTPStatus.FORBIDDEN,
         ),  # Device cert cant update a seperate Aggregator device
@@ -529,7 +529,7 @@ async def test_insert_end_device_bad_device_category(
 
     # Fire off an update that will bad request due to a bad device
     update_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
-    update_request.lFDI = "site1-lfdi"
+    update_request.lFDI = "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
     update_request.sFDI = 1111
     update_request.deviceCategory = "efffffff"  # bad value
     response = await client.post(

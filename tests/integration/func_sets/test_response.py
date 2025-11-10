@@ -44,7 +44,9 @@ from tests.integration.response import (
 
 DOE_HREF = response_set_type_to_href(ResponseSetType.SITE_CONTROLS)  # Shorthand for brevity
 RATE_HREF = response_set_type_to_href(ResponseSetType.TARIFF_GENERATED_RATES)  # Shorthand for brevity
-TEST_SCOPE = generate_class_instance(BaseRequestScope, href_prefix=None, iana_pen=TEST_IANA_PEN)
+TEST_SCOPE = generate_class_instance(
+    BaseRequestScope, lfdi="ffffffffffffffffffffffffffffffffffffffff", href_prefix=None, iana_pen=TEST_IANA_PEN
+)
 
 
 @pytest.fixture
@@ -616,6 +618,7 @@ async def test_create_response_for_aggregator(
         ).scalar_one()
 
     request_body = generate_class_instance(request_type, subject=subject, status=ResponseType.REJECTED_INVALID_EVENT)
+    request_body.endDeviceLFDI = "ffffffffffffffffffffffffffffffffffffffff"
 
     response = await client.post(
         response_list_uri_format.format(site_id=site_id, response_list_id=response_set_id),

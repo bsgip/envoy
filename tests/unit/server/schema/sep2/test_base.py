@@ -18,6 +18,7 @@ def test_roundtrip_identified_object():
 def test_roundtrip_abstract_device():
     """Test to test a detected issue with mrid encoding"""
     initial: AbstractDevice = generate_class_instance(AbstractDevice)
+    initial.deviceCategory = "E2"  # Handle assertical not generating valid hexbinary8
     output: AbstractDevice = AbstractDevice.from_xml(initial.to_xml())
 
     assert initial.deviceCategory == output.deviceCategory
@@ -30,6 +31,7 @@ def test_roundtrip_csip_aus_der_control():
     initial: DERControlResponse = generate_class_instance(DERControlResponse, generate_relationships=True)
     initial.responseRequired = "3C"  # Handle assertical not generating valid hexbinary8
     initial.deviceCategory = "E2"  # Handle assertical not generating valid hexbinary8
+    initial.mRID = "abcdef1234abcde"  # Handle assertical not generating valid hexbinary8
     initial.subscribable = SubscribableType.resource_does_not_support_subscriptions
     initial.interval = DateTimeIntervalType.model_validate({"duration": 111, "start": 222})
     initial.DERControlBase_ = DERControlBase.model_validate(

@@ -491,7 +491,7 @@ async def test_select_subscriptions_for_resource_conditions(
                     timezone_id="Australia/Brisbane",
                     created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
                     changed_time=datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc),
-                    lfdi="site1-lfdi",
+                    lfdi="1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                     sfdi=1111,
                     device_category=0,
                 ),

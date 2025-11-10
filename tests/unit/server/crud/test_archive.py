@@ -155,7 +155,10 @@ async def test_copy_rows_into_archive_complex_filter(pg_base_config):
 
         # Validate the archive values (partially)
         assert (await fetch_single_column(session, ArchiveSite, "site_id")) == [1, 3]
-        assert (await fetch_single_column(session, ArchiveSite, "lfdi")) == ["site1-lfdi", "site3-lfdi"]
+        assert (await fetch_single_column(session, ArchiveSite, "lfdi")) == [
+            "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+            "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c",
+        ]
         assert (await fetch_single_column(session, ArchiveSite, "sfdi")) == [1111, 3333]
 
         # Validate the archive specific metadata

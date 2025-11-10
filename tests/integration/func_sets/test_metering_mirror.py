@@ -92,7 +92,7 @@ async def test_get_mirror_usage_point_list_pagination(
     cert: str,
     expected_count: int,
     expected_mup_hrefs: list[int],
-):
+) -> None:
     """Simple test of pagination of MUPs for a given aggregator"""
     response = await client.get(
         uris.MirrorUsagePointListUri + build_paging_params(limit=limit, start=start, changed_after=changed_after),
@@ -122,7 +122,7 @@ async def test_get_mirror_usage_point_list_pagination(
             MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "123",
-                    "deviceLFDI": "site1-lfdi",
+                    "deviceLFDI": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
                     "roleFlags": "01",
                     "status": 0,
@@ -148,7 +148,7 @@ async def test_get_mirror_usage_point_list_pagination(
             MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "123",
-                    "deviceLFDI": "SITE1-lfdi",
+                    "deviceLFDI": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a".upper(),
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
                     "roleFlags": "01",
                     "status": 0,
@@ -174,7 +174,7 @@ async def test_get_mirror_usage_point_list_pagination(
             MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "123",
-                    "deviceLFDI": "site1-lfdi",
+                    "deviceLFDI": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
                     "roleFlags": "7a",
                     "status": 0,
@@ -200,7 +200,7 @@ async def test_get_mirror_usage_point_list_pagination(
             MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "10000000000000000000000000000def",
-                    "deviceLFDI": "site1-lfdi",
+                    "deviceLFDI": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
                     "roleFlags": "18",
                     "status": 0,
@@ -208,7 +208,7 @@ async def test_get_mirror_usage_point_list_pagination(
                     "description": "MUP Description Update",
                     "mirrorMeterReadings": [
                         {
-                            "mRID": "new-mmr",
+                            "mRID": "1234abcdef123456",
                             "readingType": {
                                 "powerOfTenMultiplier": 3,
                                 "kind": KindType.POWER,
@@ -231,7 +231,7 @@ async def test_get_mirror_usage_point_list_pagination(
             MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "10000000000000000000000000000def",
-                    "deviceLFDI": "site1-lfdi",
+                    "deviceLFDI": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
                     "roleFlags": "18",
                     "status": 1,
@@ -239,7 +239,7 @@ async def test_get_mirror_usage_point_list_pagination(
                     "description": "MUP Description",
                     "mirrorMeterReadings": [
                         {
-                            "mRID": "new-mmr",
+                            "mRID": "1234abcdef123456",
                             "readingType": {
                                 "powerOfTenMultiplier": 3,
                                 "kind": KindType.POWER,
@@ -262,13 +262,13 @@ async def test_get_mirror_usage_point_list_pagination(
             MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "10000000000000000000000000000def",
-                    "deviceLFDI": "site1-LFDI",
+                    "deviceLFDI": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a".upper(),
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
                     "roleFlags": "18",
                     "status": 0,
                     "mirrorMeterReadings": [
                         {
-                            "mRID": "new-mmr",
+                            "mRID": "1234abcdef123456",
                             "readingType": {
                                 "powerOfTenMultiplier": 3,
                                 "kind": KindType.POWER,
@@ -337,7 +337,7 @@ async def test_create_update_mup(
             MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "123",
-                    "deviceLFDI": "site1-lfdi",
+                    "deviceLFDI": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
                     "roleFlags": "0",
                     "status": 0,
@@ -363,7 +363,7 @@ async def test_create_update_mup(
             MirrorUsagePointRequest.model_validate(
                 {
                     "mRID": "10000000000000000000000000000def",
-                    "deviceLFDI": "site1-lfdi",
+                    "deviceLFDI": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
                     "roleFlags": "1",
                     "status": 0,
@@ -421,7 +421,7 @@ async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config, 
             "mRID": "10000000000000000000000000000abc",
             "mirrorReadingSets": [
                 {
-                    "mRID": "1234abc",
+                    "mRID": "1234abcdef123456",
                     "timePeriod": {
                         "duration": 603,
                         "start": 1341579365,
@@ -526,7 +526,7 @@ async def test_submit_multiple_mirror_meter_readings(client: AsyncClient, pg_bas
                     },
                 },
                 {
-                    "mRID": "newmrid",
+                    "mRID": "abcde12345abcdef",
                     "reading": {
                         "value": 789,
                         "timePeriod": {"duration": 302, "start": 1341579366},

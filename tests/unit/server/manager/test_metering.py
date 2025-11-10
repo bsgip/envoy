@@ -68,11 +68,11 @@ async def test_create_or_update_mirror_usage_point_no_mmrs(pg_base_config, mirro
                 source=CertificateType.AGGREGATOR_CERTIFICATE,
                 aggregator_id=99,
             ),
-            "site1-lfdi",
+            "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
         ),
         (
             generate_class_instance(MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, aggregator_id=2),
-            "site1-lfdi",
+            "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
         ),
         (
             generate_class_instance(MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, aggregator_id=1),
@@ -115,7 +115,7 @@ async def test_create_or_update_mirror_usage_point_missing_reading_type(pg_base_
         seed=505,
         mRID="333abc",
         roleFlags="12",
-        deviceLFDI="site1-lfdi",
+        deviceLFDI="1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
         mirrorMeterReadings=[mmr1, mmr2],
     )
 
@@ -152,7 +152,7 @@ async def test_create_or_update_mirror_usage_point_created_no_readings(pg_base_c
         seed=505,
         mRID="333abc",
         roleFlags="12",
-        deviceLFDI="site2-lfdi",
+        deviceLFDI="2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
         mirrorMeterReadings=[mmr1, mmr2],
     )
     async with generate_async_session(pg_base_config) as session:
@@ -246,7 +246,7 @@ async def test_create_or_update_mirror_usage_point_created_with_readings(pg_base
         seed=505,
         mRID="333abc",
         roleFlags="12",
-        deviceLFDI="site1-lfdi",
+        deviceLFDI="1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
         mirrorMeterReadings=[mmr1, mmr2],
     )
     async with generate_async_session(pg_base_config) as session:
@@ -389,7 +389,7 @@ async def test_create_or_update_mirror_usage_point_update(
         description="MUP 1",
         version=102,
         status=1,
-        deviceLFDI=force_case(force_upper_case, "site1-lfdi"),
+        deviceLFDI=force_case(force_upper_case, "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"),
         mirrorMeterReadings=[mmr1, mmr_new, mmr5],
     )
     async with generate_async_session(pg_base_config) as session:
@@ -535,7 +535,7 @@ async def test_create_or_update_mirror_usage_point_update_non_role_flags(
         description="UPDATED MUP 1" if update_description else "MUP 1",
         version=123 if update_version else 102,
         status=2 if update_status else 1,
-        deviceLFDI="site1-lfdi",
+        deviceLFDI="1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
         mirrorMeterReadings=[mmr1, mmr5],
     )
     has_any_update = update_description or update_status or update_version

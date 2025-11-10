@@ -336,10 +336,15 @@ def test_MirrorUsagePointMapper_map_from_request():
 @pytest.mark.parametrize("group_has_nones", [True, False])
 def test_MirrorUsagePointMapper_map_to_response(group_has_nones: bool):
     """Tests that no exceptions are raised when mapping some common SiteReadingType's"""
-    group = generate_class_instance(GroupedSiteReadingTypeDetails, optional_is_none=group_has_nones)
+    group = generate_class_instance(
+        GroupedSiteReadingTypeDetails,
+        optional_is_none=group_has_nones,
+        group_mrid="aa11bb22cc33dd44",
+        site_lfdi="1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+    )
     srts = [
-        generate_class_instance(SiteReadingType, seed=101, optional_is_none=False),
-        generate_class_instance(SiteReadingType, seed=202, optional_is_none=True),
+        generate_class_instance(SiteReadingType, seed=101, optional_is_none=False, mrid="abcdef1234567890"),
+        generate_class_instance(SiteReadingType, seed=202, optional_is_none=True, mrid="1234567890abcdef"),
     ]
 
     href_prefix = "/abc/123"
@@ -380,21 +385,38 @@ def test_MirrorUsagePointMapper_map_to_list_response():
 
     groups = [
         (
-            generate_class_instance(GroupedSiteReadingTypeDetails, seed=101),
+            generate_class_instance(
+                GroupedSiteReadingTypeDetails,
+                seed=101,
+                group_mrid="1ab2c3d4e5f67890",
+                site_lfdi="2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+            ),
             [
-                generate_class_instance(SiteReadingType, seed=202, optional_is_none=False),
-                generate_class_instance(SiteReadingType, seed=303, optional_is_none=True),
+                generate_class_instance(
+                    SiteReadingType,
+                    seed=202,
+                    optional_is_none=False,
+                    mrid="abcdef1234567890",
+                ),
+                generate_class_instance(SiteReadingType, seed=303, optional_is_none=True, mrid="1234567890abcdef"),
             ],
         ),
         (
-            generate_class_instance(GroupedSiteReadingTypeDetails, seed=404),
+            generate_class_instance(
+                GroupedSiteReadingTypeDetails,
+                seed=404,
+                group_mrid="09876f5e4d3c2b1a",
+                site_lfdi="3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c",
+            ),
             [
-                generate_class_instance(SiteReadingType, seed=505, optional_is_none=False),
+                generate_class_instance(SiteReadingType, seed=505, optional_is_none=False, mrid="11aa22bb33cc44dd"),
             ],
         ),
     ]
     href_prefix = "/my/prefix"
-    scope = generate_class_instance(BaseRequestScope, href_prefix=href_prefix)
+    scope = generate_class_instance(
+        BaseRequestScope, lfdi="ffffffffffffffffffffffffffffffffffffffff", href_prefix=href_prefix
+    )
     post_rate_seconds = 132
 
     result_all_set = MirrorUsagePointListMapper.map_to_list_response(scope, group_count, groups, post_rate_seconds)

@@ -97,7 +97,7 @@ async def test_select_all_sites_with_aggregator_id_contents(pg_base_config):
         assert site_3.nmi == "3333333333"
         assert site_3.aggregator_id == 2
         assert_datetime_equal(site_3.changed_time, datetime(2022, 2, 3, 8, 9, 10, 500000, tzinfo=timezone.utc))
-        assert site_3.lfdi == "site3-lfdi"
+        assert site_3.lfdi == "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c"
         assert site_3.sfdi == 3333
         assert site_3.device_category == DeviceCategory(2)
 
@@ -282,7 +282,7 @@ async def test_select_first_site_under_aggregator__no_aggregator(pg_base_config,
             2,
             (
                 "3333333333",
-                "site3-lfdi",
+                "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c",
                 3333,
                 DeviceCategory(2),
                 datetime(2022, 2, 3, 8, 9, 10, 500000, tzinfo=timezone.utc),
@@ -293,7 +293,7 @@ async def test_select_first_site_under_aggregator__no_aggregator(pg_base_config,
             1,
             (
                 "1111111111",
-                "site1-lfdi",
+                "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                 1111,
                 DeviceCategory(0),
                 datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc),
@@ -340,7 +340,7 @@ async def test_select_single_site_with_site_id(
             (
                 3,
                 "3333333333",
-                "site3-lfdi",
+                "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c",
                 DeviceCategory(2),
                 datetime(2022, 2, 3, 8, 9, 10, 500000, tzinfo=timezone.utc),
             ),
@@ -351,7 +351,7 @@ async def test_select_single_site_with_site_id(
             (
                 1,
                 "1111111111",
-                "site1-lfdi",
+                "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                 DeviceCategory(0),
                 datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc),
             ),
@@ -394,34 +394,34 @@ async def test_select_single_site_with_lfdi(pg_base_config):
     """Tests that the returned objects match the DB contents (and handle lookup misses)"""
     async with generate_async_session(pg_base_config) as session:
         # Site 3 for Agg 2
-        site_3 = await select_single_site_with_lfdi(session, "site3-lfdi", 2)
+        site_3 = await select_single_site_with_lfdi(session, "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c", 2)
         assert isinstance(site_3, Site)
         assert site_3.site_id == 3
         assert site_3.nmi == "3333333333"
         assert site_3.aggregator_id == 2
         assert_datetime_equal(site_3.changed_time, datetime(2022, 2, 3, 8, 9, 10, 500000, tzinfo=timezone.utc))
-        assert site_3.lfdi == "site3-lfdi"
+        assert site_3.lfdi == "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c"
         assert site_3.sfdi == 3333
         assert site_3.device_category == DeviceCategory(2)
 
         # Site 1 for Agg 1
-        site_1 = await select_single_site_with_lfdi(session, "site1-lfdi", 1)
+        site_1 = await select_single_site_with_lfdi(session, "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a", 1)
         assert isinstance(site_1, Site)
         assert site_1.site_id == 1
         assert site_1.nmi == "1111111111"
         assert site_1.aggregator_id == 1
         assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc))
-        assert site_1.lfdi == "site1-lfdi"
+        assert site_1.lfdi == "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
         assert site_1.sfdi == 1111
         assert site_1.device_category == DeviceCategory(0)
 
         # test mismatched ids
-        assert await select_single_site_with_lfdi(session, "site1-lfdi", 2) is None
-        assert await select_single_site_with_lfdi(session, "site3-lfdi", 1) is None
-        assert await select_single_site_with_lfdi(session, "site3-lfdi", 3) is None
+        assert await select_single_site_with_lfdi(session, "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a", 2) is None
+        assert await select_single_site_with_lfdi(session, "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c", 1) is None
+        assert await select_single_site_with_lfdi(session, "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c", 3) is None
 
         # test bad ids
-        assert await select_single_site_with_lfdi(session, "site1-lfdi", 99) is None
+        assert await select_single_site_with_lfdi(session, "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a", 99) is None
         assert await select_single_site_with_lfdi(session, "site99-lfdi", 1) is None
         assert await select_single_site_with_lfdi(session, "", -1) is None
 
@@ -454,7 +454,7 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
         assert site_1.nmi == "1111111111"
         assert site_1.aggregator_id == 1
         assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc))
-        assert site_1.lfdi == "site1-lfdi"
+        assert site_1.lfdi == "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
         assert site_1.sfdi == 1111
         assert site_1.device_category == DeviceCategory(0)
         assert site_1.registration_pin == 11111
@@ -514,7 +514,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
         assert site_2.nmi == "2222222222"
         assert site_2.aggregator_id == aggregator_id
         assert_datetime_equal(site_2.changed_time, datetime(2022, 2, 3, 5, 6, 7, 500000, tzinfo=timezone.utc))
-        assert site_2.lfdi == "site2-lfdi"
+        assert site_2.lfdi == "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b"
         assert site_2.sfdi == 2222
         assert site_2.device_category == DeviceCategory(1)
         assert site_2.registration_pin == 22222
@@ -537,7 +537,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
                 timezone_id="Australia/Brisbane",
                 created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
                 changed_time=datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc),
-                lfdi="site1-lfdi",
+                lfdi="1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                 sfdi=1111,
                 device_category=0,
                 registration_pin=11111,
@@ -935,7 +935,7 @@ async def test_insert_site_for_aggregator(pg_base_config):
         assert site_1.nmi == "1111111111"
         assert site_1.aggregator_id == 1
         assert_datetime_equal(site_1.changed_time, datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc))
-        assert site_1.lfdi == "site1-lfdi"
+        assert site_1.lfdi == "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
         assert site_1.sfdi == 1111
         assert site_1.device_category == DeviceCategory(0)
         assert site_1.registration_pin == 11111

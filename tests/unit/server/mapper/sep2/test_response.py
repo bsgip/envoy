@@ -66,6 +66,7 @@ def test_ResponseMapper_map_to_price_response(href_prefix: Optional[str], option
     # Arrange
     scope = generate_class_instance(BaseRequestScope, optional_is_none=optional_is_none, href_prefix=href_prefix)
     site = generate_class_instance(Site, seed=101, optional_is_none=optional_is_none)
+    site.lfdi = "ffffffffffffffffffffffffffffffffffffffff"
     response = generate_class_instance(
         TariffGeneratedRateResponse, seed=202, optional_is_none=optional_is_none, site=site, site_id=site.site_id
     )  # Includes the site relationship
@@ -103,6 +104,7 @@ def test_ResponseMapper_map_to_doe_response(href_prefix: Optional[str], optional
     # Arrange
     scope = generate_class_instance(BaseRequestScope, optional_is_none=optional_is_none, href_prefix=href_prefix)
     site = generate_class_instance(Site, seed=101, optional_is_none=optional_is_none)
+    site.lfdi = "ffffffffffffffffffffffffffffffffffffffff"
     response = generate_class_instance(
         DynamicOperatingEnvelopeResponse, seed=202, optional_is_none=optional_is_none, site=site, site_id=site.site_id
     )  # Includes the site relationship
@@ -179,6 +181,7 @@ def test_ResponseListMapper_map_to_price_response(
         display_site_id=display_site_id,
     )
     site = generate_class_instance(Site, optional_is_none=optional_is_none)
+    site.lfdi = "ffffffffffffffffffffffffffffffffffffffff"
     responses: list[TariffGeneratedRateResponse] = [
         generate_class_instance(
             TariffGeneratedRateResponse, seed=101 * (i + 1), optional_is_none=optional_is_none, site=site
@@ -221,7 +224,9 @@ def test_ResponseListMapper_map_to_doe_response(
         href_prefix=href_prefix,
         display_site_id=display_site_id,
     )
-    site = generate_class_instance(Site, optional_is_none=optional_is_none)
+    site = generate_class_instance(
+        Site, lfdi="ffffffffffffffffffffffffffffffffffffffff", optional_is_none=optional_is_none
+    )
     responses: list[DynamicOperatingEnvelopeResponse] = [
         generate_class_instance(
             DynamicOperatingEnvelopeResponse, seed=101 * (i + 1), optional_is_none=optional_is_none, site=site
