@@ -70,7 +70,7 @@ dependencies = [
     "taskiq!=0.11.5,!=0.11.6",      # Known compatibiity issue with pydantic
     "taskiq-aio-pika",
     "parse",
-    "envoy_schema @ git+https://github.com/synergy-au/envoy-schema.git@anu/joe-bad-hexbinary-validation",
+    "envoy_schema==0.28.0",
     "intervaltree",
 ]
 
