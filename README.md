@@ -80,6 +80,7 @@ Typically settings are set by setting an environment variable with the same name
 | `nmi_validation_enabled` | `bool` | If `true` - all updates of `ConnectionPoint` resource will trigger validation on `ConnectionPoint.id` against on AEMO's NMI Allocation List (Version 13 – November 2022). Defaults to `false`.  |  
 | `nmi_validation_participant_id` | `str` | Specifies the Participant ID (DNSP-only) as defined in AEMO’s NMI Allocation List (Version 13 – November 2022). For entities without an official Participant ID, a custom identifier is used - refer to DNSPParticipantId for details. This setting is required if `nmi_validation_enabled` is `true`.  |
 | `allow_nmi_updates` | `bool` | If `true`, updates to the ConnectionPoint resource are allowed. If `false`, an HTTP 409 Conflict will be returned. Defaults to `true`. |
+| `exclude_endpoints` | `string` | JSON-encoded set of tuples of the form (HTTP Method, URI), each defining an endpoint which should be excluded from the App at runtime e.g. `[["GET", "/tm"], ["HEAD", "/tm"]]`. Optional. | 
 
 **Additional Admin Server Settings (admin)**
 

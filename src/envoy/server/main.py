@@ -23,6 +23,7 @@ from envoy.server.api.error_handler import (
 from envoy.server.api.router import routers, unsecured_routers
 from envoy.server.database import enable_dynamic_azure_ad_database_credentials
 from envoy.server.lifespan import generate_combined_lifespan_manager
+from envoy.server.endpoint_exclusion import generate_routers_with_excluded_endpoints
 from envoy.server.settings import AppSettings, settings
 
 # Setup logs
@@ -79,7 +80,13 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     new_app = FastAPI(**new_settings.fastapi_kwargs, lifespan=generate_combined_lifespan_manager(lifespan_managers))
     new_app.add_middleware(SQLAlchemyMiddleware, **new_settings.db_middleware_kwargs)
 
-    for router in routers:
+    # install routers
+    if new_settings.exclude_endpoints:
+        routers_to_include = generate_routers_with_excluded_endpoints(routers, new_settings.exclude_endpoints)
+    else:
+        routers_to_include = routers
+
+    for router in routers_to_include:
         new_app.include_router(router, dependencies=global_dependencies)
     for router in unsecured_routers:
         new_app.include_router(router)

@@ -76,7 +76,7 @@ In the root repository directory under `postman/` you'll find Postman collection
 You'll need to import them and then do the following:
 1. File -> Settings -> Certificates -> Client Certificates -> Add Certificate
     * Set the certificate host to `https://localhost:8443`
-    * Set the PFX file to `testclient.p12` (see table above for passphrase and other info)
+    * Set the PFX file to `testdevice.p12` (see table above for passphrase and other info)
 2. envoy collection -> Variables
     * Set HOST to `localhost:8443`
 

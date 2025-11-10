@@ -7,6 +7,7 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
 from envoy.server.api.depends.allow_nmi_updates import DEFAULT_ALLOW_NMI_UPDATES
+from envoy.server.endpoint_exclusion import EndpointExclusionSet
 from envoy.server.manager.nmi_validator import NmiValidator, DNSPParticipantId
 from envoy.settings import CommonSettings
 
@@ -63,6 +64,7 @@ class AppSettings(CommonSettings):
     nmi_validation: NmiValidationSettings = Field(default_factory=NmiValidationSettings)
 
     allow_nmi_updates: bool = DEFAULT_ALLOW_NMI_UPDATES
+    exclude_endpoints: Optional[EndpointExclusionSet] = None
 
     @property
     def fastapi_kwargs(self) -> Dict[str, Any]:

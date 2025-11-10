@@ -281,6 +281,15 @@ async def test_validate_subscription_site_scope(
             None,
             True,
         ),
+        (
+            123,
+            456,
+            SubscriptionResource.SITE_CONTROL_GROUP,
+            generate_class_instance(SiteControlGroup),
+            None,
+            None,
+            True,
+        ),
         (None, None, None, None, None, None, True),  # No resource id - will validate fine
         (123, None, None, None, None, None, True),  # No resource id - will validate fine
     ],
