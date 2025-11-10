@@ -41,6 +41,14 @@ jobs:
           echo 'raw<<EOF' >> $GITHUB_OUTPUT
           coverage report --data-file=.coverage-source --omit='tests/**' >> $GITHUB_OUTPUT
           echo EOF >> $GITHUB_OUTPUT
+          coverage html --data-file=.coverage-source --omit='tests/**'
+
+      - name: Upload Target Coverage HTML Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-code-coverage-html
+          path: htmlcov/
+          overwrite: true
 
   coverage_target:
     runs-on: ubuntu-latest
@@ -75,6 +83,14 @@ jobs:
           echo 'raw<<EOF' >> $GITHUB_OUTPUT
           coverage report --data-file=.coverage-target --omit='tests/**' >> $GITHUB_OUTPUT
           echo EOF >> $GITHUB_OUTPUT
+          coverage html --data-file=.coverage-target --omit='tests/**'
+
+      - name: Upload Target Coverage HTML Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: target-code-coverage-html
+          path: htmlcov/
+          overwrite: true
 
   compare_coverage:
     runs-on: ubuntu-latest
