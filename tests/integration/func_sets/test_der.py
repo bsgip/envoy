@@ -429,6 +429,31 @@ async def test_bad_der_setting_payload_400(
     assert_error_response(response)
 
 
+@pytest.mark.anyio
+async def test_missing_doe_modes_supported_400(
+    pg_base_config,
+    client: AsyncClient,
+    valid_headers: dict,
+):
+    """Test to make sure the expected response code (400) is sent for missing doeModesSupported."""
+
+    der_id = PUBLIC_SITE_DER_ID
+    site_id = 1
+
+    # Setting
+    capability_uri = uri.DERCapabilityUri.format(site_id=site_id, der_id=der_id)
+    capabilities: DERCapability = generate_class_instance(DERCapability, seed=4001, generate_relationships=True)
+    capabilities.modesSupported = "00"
+    capabilities.doeModesSupported = None  # type: ignore
+    response = await client.put(
+        capability_uri,
+        headers=valid_headers,
+        content=capabilities.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+    )
+    assert_response_header(response, HTTPStatus.BAD_REQUEST)
+    assert_error_response(response)
+
+
 @pytest.mark.parametrize(
     "site_id, expected_not_found, expected_update",
     [
