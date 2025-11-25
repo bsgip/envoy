@@ -453,6 +453,7 @@ class NotificationMapper:
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
         disable_registration: bool,
+        poll_rate_seconds: int,
     ) -> Notification:
         """Turns a list of sites into a notification"""
         return Notification.model_validate(
@@ -462,6 +463,7 @@ class NotificationMapper:
                 "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_END_DEVICE_LIST,
+                    "pollRate": poll_rate_seconds,
                     "all_": len(sites),
                     "results": len(sites),
                     "EndDevice": [EndDeviceMapper.map_to_response(scope, s, disable_registration, 0) for s in sites],

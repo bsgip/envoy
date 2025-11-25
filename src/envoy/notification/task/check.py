@@ -235,7 +235,7 @@ def entities_to_notification(
     scope = scope_for_subscription(sub, href_prefix)
     if resource == SubscriptionResource.SITE:
         return NotificationMapper.map_sites_to_response(
-            cast(Sequence[Site], entities), sub, scope, notification_type, config.disable_edev_registration  # type: ignore # mypy quirk # noqa: E501
+            cast(Sequence[Site], entities), sub, scope, notification_type, config.disable_edev_registration, config.edevl_pollrate_seconds  # type: ignore # mypy quirk # noqa: E501
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         if pricing_reading_type is None:
@@ -406,10 +406,27 @@ async def check_db_change_or_delete(
             if entity_limit > MAX_NOTIFICATION_PAGE_SIZE:
                 entity_limit = MAX_NOTIFICATION_PAGE_SIZE
 
-            entities_to_notify = entities_serviced_by_subscription(sub, resource, entities)
-            all_notifications.extend(
-                get_entity_pages(resource, sub, batch_key, entity_limit, entities_to_notify, notification_type)
-            )
+            if entities:
+                # Normally we're going to have a batch of entities that should be sent out via notifications
+                entities_to_notify = entities_serviced_by_subscription(sub, resource, entities)
+                all_notifications.extend(
+                    get_entity_pages(resource, sub, batch_key, entity_limit, entities_to_notify, notification_type)
+                )
+            else:
+                # But we can end up in this state if the subscription is at the List and an attribute on the list has
+                # changed (eg pollRate) - i.e. there are no child list items to indicate as changed - JUST the list.
+                if sub.resource_type == resource:
+                    # All we need is a match on the type of subscription to generate the subscription
+                    all_notifications.append(
+                        NotificationEntities(
+                            entities=[],  # No entities - we're just wanting the parent List to notify as empty
+                            subscription=sub,
+                            notification_id=uuid4(),
+                            notification_type=NotificationType.ENTITY_CHANGED,
+                            batch_key=batch_key,
+                            pricing_reading_type=None,
+                        )
+                    )
 
     # Finally time to enqueue the outgoing notifications
     logger.info(

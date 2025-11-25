@@ -35,13 +35,18 @@ class ConfigManager:
         else:
             existing_db_config.changed_time = now
 
+        changed_fsal_pollrate = False
+        changed_edevl_pollrate = False
+
         if updated_values.dcap_pollrate_seconds is not None:
             existing_db_config.dcap_pollrate_seconds = updated_values.dcap_pollrate_seconds
 
         if updated_values.edevl_pollrate_seconds is not None:
+            changed_edevl_pollrate = existing_db_config.edevl_pollrate_seconds != updated_values.edevl_pollrate_seconds
             existing_db_config.edevl_pollrate_seconds = updated_values.edevl_pollrate_seconds
 
         if updated_values.fsal_pollrate_seconds is not None:
+            changed_fsal_pollrate = existing_db_config.fsal_pollrate_seconds != updated_values.fsal_pollrate_seconds
             existing_db_config.fsal_pollrate_seconds = updated_values.fsal_pollrate_seconds
 
         if updated_values.derpl_pollrate_seconds is not None:
@@ -61,7 +66,13 @@ class ConfigManager:
 
         await session.commit()
 
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now)
+        if changed_fsal_pollrate:
+            await NotificationManager.notify_changed_deleted_entities(
+                SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now
+            )
+
+        if changed_edevl_pollrate:
+            await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, now)
 
     @staticmethod
     async def fetch_config_response(session: AsyncSession) -> RuntimeServerConfigResponse:

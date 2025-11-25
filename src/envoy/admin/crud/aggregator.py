@@ -1,4 +1,4 @@
-from typing import Sequence, Iterable
+from typing import Iterable, Sequence
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +14,7 @@ async def count_all_aggregators(session: AsyncSession) -> int:
     return resp.scalar_one()
 
 
-async def select_all_aggregators(session: AsyncSession, start: int, limit: int) -> Sequence[Aggregator]:
+async def select_all_aggregators(session: AsyncSession, start: int | None, limit: int | None) -> Sequence[Aggregator]:
     """Admin selecting of aggregators - will include domains relationship (the NULL_AGGREGATOR is not included)"""
 
     stmt = (

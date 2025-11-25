@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from decimal import Decimal
 from http import HTTPStatus
@@ -26,6 +27,7 @@ from httpx import AsyncClient
 from sqlalchemy import delete, insert, select
 
 from envoy.notification.task.transmit import HEADER_NOTIFICATION_ID
+from envoy.server.model.server import RuntimeServerConfig
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import PRICE_DECIMAL_POWER
 
@@ -611,6 +613,55 @@ async def test_delete_site_with_active_subscription(
 
 
 @pytest.mark.anyio
+async def test_update_server_config_edev_list_notification(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests that updating server config generates subscription notifications for EndDeviceList"""
+
+    subscription1_uri = "http://my.example:542/uri"
+
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # Will pickup site notifications
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.SITE,
+                resource_id=None,
+                scoped_site_id=None,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+        await session.commit()
+
+    # Update edev list config
+    edev_list_poll_rate = 131009115
+    config_request = generate_class_instance(
+        RuntimeServerConfigRequest, optional_is_none=True, edevl_pollrate_seconds=edev_list_poll_rate
+    )
+    resp = await admin_client_auth.post(ServerConfigRuntimeUri, content=config_request.model_dump_json())
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
+
+    # Sub 1 got one notification, sub 2 got the other
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+    assert f'pollRate="{edev_list_poll_rate}"' in notifications_enabled.logged_requests[0].content
+
+
+@pytest.mark.anyio
 async def test_update_server_config_fsa_notification(
     admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
 ):
@@ -669,6 +720,68 @@ async def test_update_server_config_fsa_notification(
     assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
         notifications_enabled.logged_requests
     ), "Expected unique notification ids for each request"
+
+
+@pytest.mark.parametrize("none_fsa_value", [True, False])
+@pytest.mark.anyio
+async def test_update_server_config_fsa_notification_no_change(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config, none_fsa_value: bool
+):
+    """Tests that updating server config (with no changed value for FSA) generates 0 notifications"""
+
+    subscription1_uri = "http://my.example:542/uri"
+    fsa_poll_rate = 123
+
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # Force the server FSA pollrate config to a known value
+        await session.execute(delete(RuntimeServerConfig))
+        await session.execute(
+            insert(RuntimeServerConfig).values(
+                changed_time=datetime.now(),
+                dcap_pollrate_seconds=None,
+                edevl_pollrate_seconds=None,
+                fsal_pollrate_seconds=fsa_poll_rate,
+                derpl_pollrate_seconds=None,
+                derl_pollrate_seconds=None,
+                mup_postrate_seconds=None,
+                site_control_pow10_encoding=None,
+                disable_edev_registration=False,
+            )
+        )
+
+        # Will pickup FSA notifications for site 2
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
+                resource_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    # Update config with the subscriptions now live
+    config_request = generate_class_instance(
+        RuntimeServerConfigRequest,
+        optional_is_none=True,
+        disable_edev_registration=True,
+        fsal_pollrate_seconds=None if none_fsa_value else fsa_poll_rate,
+    )
+    resp = await admin_client_auth.post(ServerConfigRuntimeUri, content=config_request.model_dump_json())
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    # Give any notifications a chance to propagate
+    await asyncio.sleep(3)
+
+    # No notifications should've been generated as we aren't actually changing any values associated with the FSA
+    assert len(notifications_enabled.logged_requests) == 0
 
 
 @pytest.mark.anyio

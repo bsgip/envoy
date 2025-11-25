@@ -532,7 +532,7 @@ def test_NotificationMapper_map_sites_to_response(notification_type: Notificatio
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
 
-    notification = NotificationMapper.map_sites_to_response([site1, site2], sub, scope, notification_type, False)
+    notification = NotificationMapper.map_sites_to_response([site1, site2], sub, scope, notification_type, False, 9876)
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
     assert EndDeviceListUri in notification.subscribedResource
@@ -544,6 +544,7 @@ def test_NotificationMapper_map_sites_to_response(notification_type: Notificatio
         assert notification.status == NotificationStatus.DEFAULT
 
     assert notification.resource.type == XSI_TYPE_END_DEVICE_LIST
+    assert notification.resource.pollRate == 9876
     assert_list_type(EndDeviceResponse, notification.resource.EndDevice, count=2)
     assert_entity_hrefs_contain_entity_id_and_prefix(
         [e.href for e in notification.resource.EndDevice], [site1.site_id, site2.site_id], scope.href_prefix

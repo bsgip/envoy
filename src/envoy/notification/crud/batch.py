@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from envoy.admin.crud.aggregator import select_all_aggregators
 from envoy.notification.crud.archive import (
     fetch_entities_with_archive_by_datetime,
     fetch_entities_with_archive_by_id,
@@ -25,6 +26,7 @@ from envoy.notification.exception import NotificationError
 from envoy.server.crud.common import localize_start_time_for_entity
 from envoy.server.crud.server import select_server_config
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
+from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
 from envoy.server.model.archive.site import (
     ArchiveDefaultSiteControl,
@@ -90,6 +92,21 @@ class AggregatorBatchedEntities(Generic[TResourceModel, TArchiveResourceModel]):
         self.models_by_batch_key = AggregatorBatchedEntities._generate_batch_dict(resource, models)
         self.deleted_by_batch_key = AggregatorBatchedEntities._generate_batch_dict(resource, deleted_models)
 
+    @staticmethod
+    def aggregator_id_instance(
+        timestamp: datetime, resource: SubscriptionResource, aggregators: Sequence[Aggregator]
+    ) -> "AggregatorBatchedEntities":
+        """This will generate an instance with the models_by_batch_key loaded with a key for each aggregator instance
+        (key being a single tuple[aggregator_id: int]). Each of the entries will be an empty list.
+
+        This will be a mechanism for prepping an "empty list" notification for representing things like a pollRate
+        change"""
+
+        batch = AggregatorBatchedEntities(timestamp, resource, [], [])
+        for agg in aggregators:
+            batch.models_by_batch_key[(agg.aggregator_id,)] = []
+        return batch
+
 
 def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tuple:
     """
@@ -101,7 +118,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
 
     Given the SubscriptionResource - it's safe to rely on the ordering of the batch key tuple entries:
 
-    SubscriptionResource.SITE: (aggregator_id: int, site_id: int)
+    SubscriptionResource.SITE: (aggregator_id: int, site_id: int) OR (aggregator_id: int)
     SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int, site_control_group_id: int)
     SubscriptionResource.READING: (aggregator_id: int, site_id: int, group_id: int)
     SubscriptionResource.TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
@@ -247,10 +264,21 @@ async def fetch_sites_by_changed_at(
 ) -> AggregatorBatchedEntities[Site, ArchiveSite]:
     """Fetches all sites matching the specified changed_at and returns them keyed by their aggregator/site id
 
-    Also fetches any site from the archive that was deleted at the specified timestamp"""
+    Also fetches any site from the archive that was deleted at the specified timestamp.
 
+    This will also consider runtime config for the EndDeviceList.pollRate - If this is altered, it will instead
+    generate a notification for EVERY EndDevice"""
+
+    # If run time config has been marked as a "Site" update - it's because it has had a change in poll rate
+    # In this circumstance - we generate a special kind of update that will result in an "Empty List" Notification
+    # that will just show the pollRate change.
+    runtime_cfg = await select_server_config(session)
+    if runtime_cfg is not None and runtime_cfg.changed_time == timestamp:
+        aggregators = await select_all_aggregators(session, None, None)
+        return AggregatorBatchedEntities.aggregator_id_instance(timestamp, SubscriptionResource.SITE, aggregators)
+
+    # Otherwise - we proceed as if sites are the table that is changing
     active_sites, deleted_sites = await fetch_entities_with_archive_by_datetime(session, Site, ArchiveSite, timestamp)
-
     return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE, active_sites, deleted_sites)
 
 
@@ -691,7 +719,7 @@ async def fetch_default_site_controls_by_changed_at(
 async def fetch_runtime_config_by_changed_at(
     session: AsyncSession, timestamp: datetime
 ) -> AggregatorBatchedEntities[SiteScopedRuntimeServerConfig, ArchiveSiteScopedRuntimeServerConfig]:  # type: ignore # noqa: E501
-    """Fetches all RuntimeServerCOnfig instances matching the specified changed_at and returns them keyed by their
+    """Fetches all RuntimeServerConfig instances matching the specified changed_at and returns them keyed by their
     aggregator/site id"""
 
     runtime_cfg = await select_server_config(session)

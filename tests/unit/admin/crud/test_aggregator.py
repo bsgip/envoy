@@ -2,13 +2,13 @@ import datetime as dt
 
 import psycopg
 import pytest
-from assertical.fixtures.postgres import generate_async_session
 import sqlalchemy as sa
+from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy.exc import IntegrityError
 
+from envoy.admin import crud
 from envoy.admin.crud.certificate import select_all_certificates_for_aggregator
 from envoy.server import model
-from envoy.admin import crud
 from envoy.server.crud.aggregator import select_aggregator
 
 
@@ -27,8 +27,10 @@ async def test_count_all_aggregators_empty(pg_empty_config: psycopg.Connection) 
 @pytest.mark.parametrize(
     "start, limit, expected_aggregator_ids, expected_domain_ids",
     [
+        (None, None, [1, 2, 3], [1, 2, 3, 4]),
         (0, 500, [1, 2, 3], [1, 2, 3, 4]),
         (0, 1, [1], [1, 4]),
+        (None, 1, [1], [1, 4]),
         (1, 1, [2], [2]),
         (2, 1, [3], [3]),
         (3, 1, [], []),
