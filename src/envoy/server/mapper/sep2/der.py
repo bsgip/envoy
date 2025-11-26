@@ -336,7 +336,6 @@ class DERCapabilityMapper:
                 "href": generate_href(
                     uri.DERCapabilityUri, scope, site_id=der_rating_site_id, der_id=der_rating.site_der_id
                 ),
-                "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "modesSupported": to_hex_binary(der_rating.modes_supported),
                 "rtgAbnormalCategory": der_rating.abnormal_category,
                 "rtgMaxA": get_value_multiplier(der_rating.max_a_value, der_rating.max_a_multiplier),
