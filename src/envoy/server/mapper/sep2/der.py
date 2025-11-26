@@ -101,9 +101,6 @@ class DERMapper:
                 "DERStatusLink": {
                     "href": generate_href(uri.DERStatusUri, scope, site_id=der.site_id, der_id=der.site_der_id)
                 },
-                "DERCapabilityLink": {
-                    "href": generate_href(uri.DERCapabilityUri, scope, site_id=der.site_id, der_id=der.site_der_id)
-                },
                 "DERSettingsLink": {
                     "href": generate_href(uri.DERSettingsUri, scope, site_id=der.site_id, der_id=der.site_der_id)
                 },

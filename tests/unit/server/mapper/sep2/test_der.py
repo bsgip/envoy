@@ -69,7 +69,6 @@ def test_der_mapping():
     assert isinstance(mapped_all_set.AssociatedDERProgramListLink, Link)
     assert isinstance(mapped_all_set.CurrentDERProgramLink, Link)
     assert isinstance(mapped_all_set.DERAvailabilityLink, Link)
-    assert isinstance(mapped_all_set.DERCapabilityLink, Link)
     assert isinstance(mapped_all_set.DERSettingsLink, Link)
     assert isinstance(mapped_all_set.DERStatusLink, Link)
     assert f"/{derp_id}" in mapped_all_set.CurrentDERProgramLink.href
@@ -89,7 +88,6 @@ def test_der_mapping():
     assert isinstance(mapped_with_none.AssociatedDERProgramListLink, Link)
     assert isinstance(mapped_with_none.CurrentDERProgramLink, Link)
     assert isinstance(mapped_with_none.DERAvailabilityLink, Link)
-    assert isinstance(mapped_with_none.DERCapabilityLink, Link)
     assert isinstance(mapped_with_none.DERSettingsLink, Link)
     assert isinstance(mapped_with_none.DERStatusLink, Link)
     assert f"/{derp_id}" in mapped_with_none.CurrentDERProgramLink.href
