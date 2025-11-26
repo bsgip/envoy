@@ -509,6 +509,8 @@ class DERSettingMapper:
     @staticmethod
     def map_from_request(changed_time: datetime, der_setting: DERSettings) -> SiteDERSetting:
         modes_enabled: Optional[DERControlType] = None
+        doe_modes_enabled: Optional[DERControlType] = None
+
         if der_setting.modesEnabled:
             modes_enabled = DERControlType(int(der_setting.modesEnabled, 16))
         if der_setting.doeModesEnabled:

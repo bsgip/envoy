@@ -215,8 +215,10 @@ def test_der_settings_roundtrip(optional_is_none: bool):
     expected: DERSettings = generate_class_instance(
         DERSettings, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
-    expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_HFRT_MAY_TRIP | DERControlType.OP_MOD_FREQ_DROOP)
-    expected.doeModesEnabled = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
+    if not optional_is_none:
+        expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_HFRT_MAY_TRIP | DERControlType.OP_MOD_FREQ_DROOP)
+        expected.doeModesEnabled = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
+
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=9876, href_prefix="/my/prefix"
     )
