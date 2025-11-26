@@ -545,6 +545,7 @@ def test_NotificationMapper_map_sites_to_response(notification_type: Notificatio
 
     assert notification.resource.type == XSI_TYPE_END_DEVICE_LIST
     assert notification.resource.pollRate == 9876
+    assert notification.resource.href and notification.resource.href.startswith("/custom/prefix")
     assert_list_type(EndDeviceResponse, notification.resource.EndDevice, count=2)
     assert_entity_hrefs_contain_entity_id_and_prefix(
         [e.href for e in notification.resource.EndDevice], [site1.site_id, site2.site_id], scope.href_prefix
@@ -931,7 +932,11 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(
     # mapper unit tests
     assert notification_all_set.resource.type == XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST
     assert notification_all_set.resource.pollRate == poll_rate_seconds
+    assert notification_all_set.resource.href and notification_all_set.resource.href.startswith("/custom/prefix")
+
     assert len(notification_all_set.resource.FunctionSetAssignments) == len(fsa_ids)
+    for fsa in notification_all_set.resource.FunctionSetAssignments:
+        assert fsa.href.startswith("/custom/prefix")
 
 
 @pytest.mark.parametrize("notification_type", list(NotificationType))

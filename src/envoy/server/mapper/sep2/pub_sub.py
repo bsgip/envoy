@@ -457,6 +457,7 @@ class NotificationMapper:
         poll_rate_seconds: int,
     ) -> Notification:
         """Turns a list of sites into a notification"""
+        edev_list_href = generate_href(EndDeviceListUri, scope)
         return Notification.model_validate(
             {
                 "subscribedResource": generate_href(EndDeviceListUri, scope),
@@ -464,6 +465,7 @@ class NotificationMapper:
                 "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_END_DEVICE_LIST,
+                    "href": edev_list_href,
                     "pollRate": poll_rate_seconds,
                     "all_": len(sites),
                     "results": len(sites),
@@ -493,6 +495,7 @@ class NotificationMapper:
                 "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_DER_CONTROL_LIST,
+                    "href": doe_list_href,
                     "all_": len(does),
                     "results": len(does),
                     "DERControl": [
@@ -519,6 +522,7 @@ class NotificationMapper:
                 "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_DER_PROGRAM_LIST,
+                    "href": group_list_href,
                     "all_": len(site_control_groups),
                     "results": len(site_control_groups),
                     "DERProgram": [
@@ -551,6 +555,7 @@ class NotificationMapper:
                 "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_READING_LIST,
+                    "href": reading_list_href,
                     "all_": len(readings),
                     "results": len(readings),
                     "Readings": [MirrorMeterReadingMapper.map_to_response(r) for r in readings],
@@ -584,6 +589,7 @@ class NotificationMapper:
                 "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
+                    "href": time_tariff_interval_list_href,
                     "all_": len(rates),
                     "results": len(rates),
                     "TimeTariffInterval": [
@@ -741,6 +747,7 @@ class NotificationMapper:
                 "status": _map_to_notification_status(notification_type),
                 "resource": {
                     "type": XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST,
+                    "href": fsa_list_href,
                     "pollRate": poll_rate_seconds,
                     "all_": len(new_fsa_ids),
                     "results": len(new_fsa_ids),
