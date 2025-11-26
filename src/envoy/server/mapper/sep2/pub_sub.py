@@ -48,6 +48,7 @@ from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.csip_aus.doe import DefaultDERControl, DERControlMapper, DERProgramMapper
 from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMapper, DERSettingMapper, DERStatusMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
+from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
 from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
 from envoy.server.mapper.sep2.pricing import TimeTariffIntervalMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
@@ -728,6 +729,7 @@ class NotificationMapper:
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
+        new_fsa_ids: list[int],
     ) -> Notification:
         """Turns a poll rate into a notification for a FunctionSetAssignmentsList"""
 
@@ -740,8 +742,14 @@ class NotificationMapper:
                 "resource": {
                     "type": XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST,
                     "pollRate": poll_rate_seconds,
-                    "all_": 1,
-                    "results": 0,
+                    "all_": len(new_fsa_ids),
+                    "results": len(new_fsa_ids),
+                    "FunctionSetAssignments": [
+                        FunctionSetAssignmentsMapper.map_to_response_unscoped(
+                            scope, scope.display_site_id, fsa_id, None, None
+                        )
+                        for fsa_id in new_fsa_ids
+                    ],
                 },
             }
         )

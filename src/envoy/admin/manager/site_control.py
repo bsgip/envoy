@@ -20,7 +20,7 @@ from envoy.admin.crud.doe import (
 )
 from envoy.admin.mapper.site_control import SiteControlGroupListMapper, SiteControlListMapper
 from envoy.notification.manager.notification import NotificationManager
-from envoy.server.crud.doe import select_site_control_group_by_id
+from envoy.server.crud.doe import select_site_control_group_by_id, select_site_control_group_fsa_ids
 from envoy.server.manager.time import utc_now
 from envoy.server.model.subscription import SubscriptionResource
 
@@ -33,9 +33,16 @@ class SiteControlGroupManager:
         now = utc_now()
         new_site_control_group = SiteControlGroupListMapper.map_from_request(request, now)
 
+        existing_fsa_ids = await select_site_control_group_fsa_ids(session, datetime.min)
+        is_new_fsa_id = new_site_control_group.fsa_id not in existing_fsa_ids
+
         session.add(new_site_control_group)
         await session.commit()
 
+        if is_new_fsa_id:
+            await NotificationManager.notify_changed_deleted_entities(
+                SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now
+            )
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_CONTROL_GROUP, now)
 
         return new_site_control_group.site_control_group_id

@@ -903,14 +903,16 @@ def test_NotificationMapper_map_der_status_to_response(notification_type: Notifi
     assert notification_all_set.resource.genConnectStatus.value == to_hex_binary(all_set.generator_connect_status)
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
-def test_NotificationMapper_map_function_set_assignments_list_to_response(notification_type: NotificationType):
+@pytest.mark.parametrize("notification_type, fsa_ids", product(list(NotificationType), [[11111, 222222], []]))
+def test_NotificationMapper_map_function_set_assignments_list_to_response(
+    notification_type: NotificationType, fsa_ids: list[int]
+):
     sub = generate_class_instance(Subscription, seed=303)
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
     poll_rate_seconds = 1234566
 
     notification_all_set = NotificationMapper.map_function_set_assignments_list_to_response(
-        poll_rate_seconds, sub, scope, notification_type
+        poll_rate_seconds, sub, scope, notification_type, fsa_ids
     )
     assert isinstance(notification_all_set, Notification)
     assert notification_all_set.subscribedResource.startswith("/custom/prefix")
@@ -929,6 +931,7 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(notifi
     # mapper unit tests
     assert notification_all_set.resource.type == XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST
     assert notification_all_set.resource.pollRate == poll_rate_seconds
+    assert len(notification_all_set.resource.FunctionSetAssignments) == len(fsa_ids)
 
 
 @pytest.mark.parametrize("notification_type", list(NotificationType))

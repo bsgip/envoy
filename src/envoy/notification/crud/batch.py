@@ -1,6 +1,6 @@
 from datetime import datetime
 from itertools import chain
-from typing import Any, Generic, Iterable, Sequence, Union, cast
+from typing import Any, Generic, Iterable, Optional, Sequence, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,10 +14,10 @@ from envoy.notification.crud.archive import (
 )
 from envoy.notification.crud.common import (
     ArchiveControlGroupScopedDefaultSiteControl,
-    ArchiveSiteScopedRuntimeServerConfig,
+    ArchiveSiteScopedFunctionSetAssignment,
     ArchiveSiteScopedSiteControlGroup,
     ControlGroupScopedDefaultSiteControl,
-    SiteScopedRuntimeServerConfig,
+    SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     TArchiveResourceModel,
     TResourceModel,
@@ -167,7 +167,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
             default_control.site_control_group_id,
         )
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
-        server_config = cast(SiteScopedRuntimeServerConfig, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        server_config = cast(SiteScopedFunctionSetAssignment, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (server_config.aggregator_id, server_config.site_id)
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         scgroup = cast(SiteScopedSiteControlGroup, entity)  # type: ignore # Pretty sure this is a mypy quirk
@@ -235,7 +235,7 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         return cast(ControlGroupScopedDefaultSiteControl, entity).original.site_id  # type: ignore
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
-        return cast(SiteScopedRuntimeServerConfig, entity).site_id  # type: ignore
+        return cast(SiteScopedFunctionSetAssignment, entity).site_id  # type: ignore
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         return cast(SiteScopedSiteControlGroup, entity).site_id  # type: ignore
     else:
@@ -716,26 +716,36 @@ async def fetch_default_site_controls_by_changed_at(
     )  # type: ignore
 
 
-async def fetch_runtime_config_by_changed_at(
+async def fetch_fsa_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[SiteScopedRuntimeServerConfig, ArchiveSiteScopedRuntimeServerConfig]:  # type: ignore # noqa: E501
-    """Fetches all RuntimeServerConfig instances matching the specified changed_at and returns them keyed by their
-    aggregator/site id"""
+) -> AggregatorBatchedEntities[SiteScopedFunctionSetAssignment, ArchiveSiteScopedFunctionSetAssignment]:  # type: ignore # noqa: E501
+    """Fetches all SiteScopedFunctionSetAssignment instances matching the specified changed_at and returns them keyed
+    by their aggregator/site id"""
 
+    # Two things can trigger a FSA Notification - a change in pollrate...
     runtime_cfg = await select_server_config(session)
-    if runtime_cfg is None or runtime_cfg.changed_time != timestamp:
+    new_poll_rate: Optional[int] = None
+    if runtime_cfg is not None and runtime_cfg.changed_time == timestamp:
+        new_poll_rate = runtime_cfg.fsal_pollrate_seconds
+
+    # ... or a change in SiteControlGroup fsa_index (indicating a new FunctionSetAssignment ID)
+    active_groups, _ = await fetch_entities_with_archive_by_datetime(
+        session, SiteControlGroup, ArchiveSiteControlGroup, timestamp
+    )
+    new_fsa_ids = [scg.fsa_id for scg in active_groups]
+
+    # If there isn't anything that's changed - don't encode any entities (there's nothing to Notify)
+    if new_poll_rate is None and not new_fsa_ids:
         return AggregatorBatchedEntities(
-            timestamp,
-            SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
-            [],
-            [],
+            timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, [], []
         )  # type: ignore
 
     # The fsa update will need to vary per Site so we generate an instance per site_id
     aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
 
     site_scoped_cfgs = [
-        SiteScopedRuntimeServerConfig(agg_id, site_id, runtime_cfg) for agg_id, site_id in aggregator_site_ids
+        SiteScopedFunctionSetAssignment(agg_id, site_id, new_fsa_ids, new_poll_rate)
+        for agg_id, site_id in aggregator_site_ids
     ]
 
     return AggregatorBatchedEntities(

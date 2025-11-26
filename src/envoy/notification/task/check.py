@@ -18,9 +18,9 @@ from envoy.notification.crud.batch import (
     fetch_der_setting_by_changed_at,
     fetch_der_status_by_changed_at,
     fetch_does_by_changed_at,
+    fetch_fsa_by_changed_at,
     fetch_rates_by_changed_at,
     fetch_readings_by_changed_at,
-    fetch_runtime_config_by_changed_at,
     fetch_site_control_groups_by_changed_at,
     fetch_sites_by_changed_at,
     get_site_id,
@@ -29,7 +29,7 @@ from envoy.notification.crud.batch import (
 )
 from envoy.notification.crud.common import (
     ControlGroupScopedDefaultSiteControl,
-    SiteScopedRuntimeServerConfig,
+    SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     TArchiveResourceModel,
     TResourceModel,
@@ -308,12 +308,15 @@ def entities_to_notification(
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
         # FUNCTION_SET_ASSIGNMENTS: (aggregator_id: int, site_id: int)
         (_, site_id) = batch_key
-        site_scoped_server_config = cast(SiteScopedRuntimeServerConfig, entities[0]) if len(entities) > 0 else None
-        poll_rate = _map_server_config(
-            None if site_scoped_server_config is None else site_scoped_server_config.original
-        ).fsal_pollrate_seconds
+        site_scoped_server_config = cast(SiteScopedFunctionSetAssignment, entities[0]) if len(entities) > 0 else None
+        poll_rate = site_scoped_server_config.function_set_assignment_poll_rate if site_scoped_server_config else None
+        if poll_rate is None:
+            poll_rate = _map_server_config(None).fsal_pollrate_seconds
+
+        new_fsa_ids = site_scoped_server_config.function_set_assignment_ids if site_scoped_server_config else []
+
         return NotificationMapper.map_function_set_assignments_list_to_response(
-            poll_rate, sub, scope, notification_type
+            poll_rate, sub, scope, notification_type, new_fsa_ids
         )
 
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
@@ -356,7 +359,7 @@ async def fetch_batched_entities(
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         return await fetch_default_site_controls_by_changed_at(session, timestamp)
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
-        return await fetch_runtime_config_by_changed_at(session, timestamp)
+        return await fetch_fsa_by_changed_at(session, timestamp)
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         return await fetch_site_control_groups_by_changed_at(session, timestamp)
     else:

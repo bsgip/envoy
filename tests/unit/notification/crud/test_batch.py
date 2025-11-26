@@ -21,9 +21,9 @@ from envoy.notification.crud.batch import (
     fetch_der_setting_by_changed_at,
     fetch_der_status_by_changed_at,
     fetch_does_by_changed_at,
+    fetch_fsa_by_changed_at,
     fetch_rates_by_changed_at,
     fetch_readings_by_changed_at,
-    fetch_runtime_config_by_changed_at,
     fetch_site_control_groups_by_changed_at,
     fetch_sites_by_changed_at,
     get_batch_key,
@@ -33,10 +33,10 @@ from envoy.notification.crud.batch import (
 )
 from envoy.notification.crud.common import (
     ArchiveControlGroupScopedDefaultSiteControl,
-    ArchiveSiteScopedRuntimeServerConfig,
+    ArchiveSiteScopedFunctionSetAssignment,
     ArchiveSiteScopedSiteControlGroup,
     ControlGroupScopedDefaultSiteControl,
-    SiteScopedRuntimeServerConfig,
+    SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     TResourceModel,
 )
@@ -59,7 +59,6 @@ from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveS
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
-from envoy.server.model.server import RuntimeServerConfig
 from envoy.server.model.site import (
     DefaultSiteControl,
     SiteDER,
@@ -281,10 +280,21 @@ def test_get_batch_key_invalid():
         ),
         (
             SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
-            SiteScopedRuntimeServerConfig(
+            SiteScopedFunctionSetAssignment(
                 aggregator_id=11,
                 site_id=22,
-                original=generate_class_instance(RuntimeServerConfig),
+                function_set_assignment_ids=[44, 55],
+                function_set_assignment_poll_rate=33,
+            ),
+            (11, 22),
+        ),
+        (
+            SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
+            SiteScopedFunctionSetAssignment(
+                aggregator_id=11,
+                site_id=22,
+                function_set_assignment_ids=[],
+                function_set_assignment_poll_rate=None,
             ),
             (11, 22),
         ),
@@ -399,8 +409,8 @@ def test_get_site_id_invalid():
         ),
         (
             SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
-            SiteScopedRuntimeServerConfig(
-                aggregator_id=1, site_id=2, original=generate_class_instance(RuntimeServerConfig, seed=101)
+            SiteScopedFunctionSetAssignment(
+                aggregator_id=1, site_id=2, function_set_assignment_ids=[3, 4], function_set_assignment_poll_rate=5
             ),
             2,
         ),
@@ -2461,39 +2471,39 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
 
 
 @pytest.mark.anyio
-async def test_fetch_runtime_config_by_changed_at(pg_base_config):
+async def test_fetch_fsa_by_changed_at(pg_base_config):
     """Tests that runtime config can be fetched and that it references all aggregator/site combos"""
     async with generate_async_session(pg_base_config) as session:
-        empty_batch = await fetch_runtime_config_by_changed_at(
-            session, datetime(2000, 1, 1, 1, 1, 1, tzinfo=timezone.utc)
+        empty_batch = await fetch_fsa_by_changed_at(session, datetime(2000, 1, 1, 1, 1, 1, tzinfo=timezone.utc))
+        assert_batched_entities(
+            empty_batch, SiteScopedFunctionSetAssignment, ArchiveSiteScopedFunctionSetAssignment, 0, 0
         )
-        assert_batched_entities(empty_batch, SiteScopedRuntimeServerConfig, ArchiveSiteScopedRuntimeServerConfig, 0, 0)
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
 
     # One for every site in the DB
-    expected_agg_site_cfg_id = [
-        (1, 1, 1),
-        (1, 2, 1),
-        (2, 3, 1),
-        (1, 4, 1),
-        (0, 5, 1),
-        (0, 6, 1),
+    expected_agg_site_poll_rate = [
+        (1, 1, 300),
+        (1, 2, 300),
+        (2, 3, 300),
+        (1, 4, 300),
+        (0, 5, 300),
+        (0, 6, 300),
     ]
     async with generate_async_session(pg_base_config) as session:
-        batch = await fetch_runtime_config_by_changed_at(
-            session, datetime(2023, 5, 1, 1, 1, 1, 500000, tzinfo=timezone.utc)
-        )
+        batch = await fetch_fsa_by_changed_at(session, datetime(2023, 5, 1, 1, 1, 1, 500000, tzinfo=timezone.utc))
         assert_batched_entities(
             batch,
-            SiteScopedRuntimeServerConfig,
-            ArchiveSiteScopedRuntimeServerConfig,
-            len(expected_agg_site_cfg_id),
+            SiteScopedFunctionSetAssignment,
+            ArchiveSiteScopedFunctionSetAssignment,
+            len(expected_agg_site_poll_rate),
             0,
         )
         all_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
-        assert all([isinstance(e.original, RuntimeServerConfig) for e in all_entities])
-        assert [(e.aggregator_id, e.site_id, e.original.runtime_server_config_id) for e in all_entities]
+        assert all([e.function_set_assignment_poll_rate == 300 for e in all_entities])
+        assert [
+            (e.aggregator_id, e.site_id, e.function_set_assignment_poll_rate) for e in all_entities
+        ] == expected_agg_site_poll_rate
 
 
 @pytest.mark.parametrize(

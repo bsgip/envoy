@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import Optional, TypeVar
 
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
 from envoy.server.model.archive.site import (
@@ -31,16 +31,20 @@ from envoy.server.model.tariff import TariffGeneratedRate
 
 
 @dataclass
-class SiteScopedRuntimeServerConfig:
-    """RuntimeServerConfig isn't scoped to a specific Site - for csip-aus it will need to be"""
+class SiteScopedFunctionSetAssignment:
+    """This is a mapping from RuntimeServerConfig (not site scoped) to a FunctionSetAssignment (site scoped)
+    - for csip-aus we need the site scoping"""
 
     aggregator_id: int
     site_id: int
-    original: RuntimeServerConfig
+    function_set_assignment_ids: list[int]  # The list of "changed" function set assignments
+    function_set_assignment_poll_rate: Optional[
+        int
+    ]  # The changed poll rate for FunctionSetAssignmentsList (if changed)
 
 
 @dataclass
-class ArchiveSiteScopedRuntimeServerConfig:
+class ArchiveSiteScopedFunctionSetAssignment:
     """There is no model for this in the DB - we don't archive top level config changes"""
 
     aggregator_id: int

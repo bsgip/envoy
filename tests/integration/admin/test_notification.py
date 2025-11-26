@@ -912,6 +912,124 @@ async def test_create_site_control_groups_with_active_subscription(
 
 
 @pytest.mark.anyio
+async def test_create_site_control_groups_with_new_fsa(
+    admin_client_auth: AsyncClient,
+    notifications_enabled: MockedAsyncClient,
+    pg_base_config,
+):
+    """Tests creating site control groups with a new FunctionSetAssignment ID generates notifications for FSA subs
+    via MockedAsyncClient"""
+
+    # Create a subscription to actually pickup these changes
+    subscription1_uri = "https://my.example:123/uri"
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # This is scoped to site2
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
+                resource_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    primacy = 76
+    fsa_id = 19341
+    site_control_request = SiteControlGroupRequest(description="new group", primacy=primacy, fsa_id=fsa_id)
+
+    resp = await admin_client_auth.post(
+        SiteControlGroupListUri,
+        content=site_control_request.model_dump_json(),
+    )
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
+
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+
+    # Do a really simple content check on the outgoing XML to ensure the notifications contain the expected
+    # FSA entities for each subscription
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription1_uri
+                and "</FunctionSetAssignments>" in r.content
+                and f"/edev/1/fsa/{fsa_id}" not in r.content
+                and f"/edev/2/fsa/{fsa_id}" in r.content
+                and f"/edev/4/fsa/{fsa_id}" not in r.content
+            ]
+        )
+        == 1
+    ), "Only one notification (for sub 2) should be for the new FSA for site 2"
+
+
+@pytest.mark.anyio
+async def test_create_site_control_groups_no_new_fsa(
+    admin_client_auth: AsyncClient,
+    notifications_enabled: MockedAsyncClient,
+    pg_base_config,
+):
+    """Tests creating site control groups with a an existing FunctionSetAssignment ID skips notifications for FSA subs
+    via MockedAsyncClient"""
+
+    # Create a subscription to actually pickup these changes
+    subscription1_uri = "https://my.example:123/uri"
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # This is scoped to site2
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
+                resource_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    primacy = 76
+    fsa_id = 1  # Already exists
+    site_control_request = SiteControlGroupRequest(description="new group", primacy=primacy, fsa_id=fsa_id)
+
+    resp = await admin_client_auth.post(
+        SiteControlGroupListUri,
+        content=site_control_request.model_dump_json(),
+    )
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Give any notifications a chance to propagate
+    await asyncio.sleep(2)
+
+    assert (
+        len(notifications_enabled.logged_requests) == 0
+    ), "This is NOT a new fsa_id - There shouldn't be a notification"
+
+
+@pytest.mark.anyio
 async def test_update_site_with_active_subscription(
     admin_client_auth: AsyncClient,
     notifications_enabled: MockedAsyncClient,

@@ -10,13 +10,17 @@ from envoy_schema.server.schema.sep2.types import SubscribableType
 
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.mrid import MridMapper
-from envoy.server.request_scope import SiteRequestScope
+from envoy.server.request_scope import BaseRequestScope, SiteRequestScope
 
 
 class FunctionSetAssignmentsMapper:
     @staticmethod
-    def map_to_response(
-        scope: SiteRequestScope, fsa_id: int, total_tp_links: Optional[int], total_derp_links: Optional[int]
+    def map_to_response_unscoped(
+        scope: BaseRequestScope,
+        site_id: int,
+        fsa_id: int,
+        total_tp_links: Optional[int],
+        total_derp_links: Optional[int],
     ) -> FunctionSetAssignmentsResponse:
         return FunctionSetAssignmentsResponse.model_validate(
             {
@@ -24,20 +28,28 @@ class FunctionSetAssignmentsMapper:
                     uri.FunctionSetAssignmentsUri,
                     scope,
                     fsa_id=fsa_id,
-                    site_id=scope.site_id,
+                    site_id=site_id,
                 ),
-                "mRID": MridMapper.encode_function_set_assignment_mrid(scope, scope.site_id, fsa_id),
+                "mRID": MridMapper.encode_function_set_assignment_mrid(scope, site_id, fsa_id),
                 "description": "",
                 "TimeLink": Link(href=generate_href(uri.TimeUri, scope)),
                 "TariffProfileListLink": ListLink(
-                    href=generate_href(uri.TariffProfileFSAListUri, scope, site_id=scope.site_id, fsa_id=fsa_id),
+                    href=generate_href(uri.TariffProfileFSAListUri, scope, site_id=site_id, fsa_id=fsa_id),
                     all_=total_tp_links,
                 ),
                 "DERProgramListLink": ListLink(
-                    href=generate_href(uri.DERProgramFSAListUri, scope, site_id=scope.site_id, fsa_id=fsa_id),
+                    href=generate_href(uri.DERProgramFSAListUri, scope, site_id=site_id, fsa_id=fsa_id),
                     all_=total_derp_links,
                 ),
             }
+        )
+
+    @staticmethod
+    def map_to_response(
+        scope: SiteRequestScope, fsa_id: int, total_tp_links: Optional[int], total_derp_links: Optional[int]
+    ) -> FunctionSetAssignmentsResponse:
+        return FunctionSetAssignmentsMapper.map_to_response_unscoped(
+            scope, scope.site_id, fsa_id, total_tp_links, total_derp_links
         )
 
     @staticmethod
