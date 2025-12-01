@@ -15,7 +15,7 @@ You will need to build an image called `envoy:latest` and then up the compose fi
 cd demo/
 
 # Build the default envoy image
-docker build -t envoy:latest -f ../Dockerfile.server ../
+docker build --pull --no-cache -t envoy:latest -f ../Dockerfile.server ../
 
 # Up the demo compose file
 HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up

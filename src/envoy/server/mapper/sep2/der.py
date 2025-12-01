@@ -76,7 +76,7 @@ def to_hex_binary(v: Optional[int]) -> Optional[str]:
     if v is None:
         return None
 
-    return f"{v:0x}"  # hex encoded
+    return f"{v:0X}"  # hex encoded
 
 
 class DERMapper:
