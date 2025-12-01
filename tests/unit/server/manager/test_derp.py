@@ -628,24 +628,24 @@ async def test_fetch_default_doe_controls_for_site_no_global_default(
         (None, None, None),
         (
             DefaultDoeConfiguration(100, 200, 300, 400, 50),
-            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0),
-            (0, 200, 300, 0, 50),
+            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0, version=999),
+            (999, 0, 200, 300, 0, 50),
         ),
         (
             DefaultDoeConfiguration(None, 200, 300, None, 50),
-            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0),
-            (0, 200, 300, 0, 50),
+            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0, version=888),
+            (888, 0, 200, 300, 0, 50),
         ),
         (
             DefaultDoeConfiguration(None, None, None, None, None),
-            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0),
-            (0, None, None, 0, None),
+            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0, version=777),
+            (777, 0, None, None, 0, None),
         ),
         # No site control
         (
             DefaultDoeConfiguration(100, 200, 300, 400, 50),
             None,
-            (100, 200, 300, 400, 50),
+            (0, 100, 200, 300, 400, 50),
         ),
         # Partial site control
         (
@@ -656,8 +656,8 @@ async def test_fetch_default_doe_controls_for_site_no_global_default(
                 load_limit_active_watts=400,
                 ramp_rate_percent_per_second=50,
             ),
-            DefaultSiteControl(import_limit_active_watts=111, load_limit_active_watts=444),
-            (111, 200, 300, 444, 50),
+            DefaultSiteControl(import_limit_active_watts=111, load_limit_active_watts=444, version=555),
+            (555, 111, 200, 300, 444, 50),
         ),
         # Full site control
         (
@@ -674,8 +674,9 @@ async def test_fetch_default_doe_controls_for_site_no_global_default(
                 generation_limit_active_watts=3,
                 load_limit_active_watts=4,
                 ramp_rate_percent_per_second=5,
+                version=6,
             ),
-            (1, 2, 3, 4, 5),
+            (6, 1, 2, 3, 4, 5),
         ),
         (
             None,
@@ -685,8 +686,9 @@ async def test_fetch_default_doe_controls_for_site_no_global_default(
                 generation_limit_active_watts=3,
                 load_limit_active_watts=4,
                 ramp_rate_percent_per_second=5,
+                version=7,
             ),
-            (1, 2, 3, 4, 5),
+            (7, 1, 2, 3, 4, 5),
         ),
     ],
 )
@@ -697,8 +699,9 @@ def test_resolve_default_site_control(default_doe_config, default_site_control, 
     if expected is None:
         assert result is None
     else:
-        assert result.import_limit_active_watts == expected[0]
-        assert result.export_limit_active_watts == expected[1]
-        assert result.generation_limit_active_watts == expected[2]
-        assert result.load_limit_active_watts == expected[3]
-        assert result.ramp_rate_percent_per_second == expected[4]
+        assert result.version == expected[0]
+        assert result.import_limit_active_watts == expected[1]
+        assert result.export_limit_active_watts == expected[2]
+        assert result.generation_limit_active_watts == expected[3]
+        assert result.load_limit_active_watts == expected[4]
+        assert result.ramp_rate_percent_per_second == expected[5]

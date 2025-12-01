@@ -110,7 +110,7 @@ class ConfigManager:
             return False
 
         if site.default_site_control is None:
-            site.default_site_control = DefaultSiteControl(changed_time=now, site_id=site.site_id)
+            site.default_site_control = DefaultSiteControl(changed_time=now, site_id=site.site_id, version=0)
         else:
             site.default_site_control.changed_time = now
 
@@ -134,6 +134,7 @@ class ConfigManager:
             )
             site.default_site_control.ramp_rate_percent_per_second = ramp_rate_value
 
+        site.default_site_control.version = site.default_site_control.version + 1
         await session.commit()
 
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.DEFAULT_SITE_CONTROL, now)

@@ -401,6 +401,8 @@ class DefaultSiteControl(Base):
     )  # When this record was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
+    version: Mapped[int] = mapped_column(INTEGER, server_default="0")  # Incremented whenever this record is changed
+
     import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on imported active power

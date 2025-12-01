@@ -17,9 +17,10 @@ from envoy_schema.admin.schema.config import (
 )
 from envoy_schema.admin.schema.uri import ServerConfigRuntimeUri, SiteControlDefaultConfigUri
 from httpx import AsyncClient
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from envoy.server.model.server import RuntimeServerConfig
+from envoy.server.model.site import DefaultSiteControl
 from tests.integration.response import read_response_body_string
 
 
@@ -112,8 +113,19 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
 )
 @pytest.mark.anyio
 async def test_get_and_update_site_control_default(
-    admin_client_auth: AsyncClient, site_id: int, expected: Optional[tuple]
+    pg_base_config,
+    admin_client_auth: AsyncClient,
+    site_id: int,
+    expected: Optional[tuple],
 ):
+    version_before = 0
+    async with generate_async_session(pg_base_config) as session:
+        db_record = (
+            await session.execute(select(DefaultSiteControl).where(DefaultSiteControl.site_id == site_id))
+        ).scalar_one_or_none()
+        if db_record:
+            version_before = db_record.version
+
     resp = await admin_client_auth.get(SiteControlDefaultConfigUri.format(site_id=site_id))
     if expected is None:
         assert resp.status_code == HTTPStatus.NOT_FOUND
@@ -161,3 +173,10 @@ async def test_get_and_update_site_control_default(
             config.server_default_generation_limit_watts,
             config.server_default_load_limit_watts,
         )
+
+        # Version number in the DB should be getting updated
+        async with generate_async_session(pg_base_config) as session:
+            db_record = (
+                await session.execute(select(DefaultSiteControl).where(DefaultSiteControl.site_id == site_id))
+            ).scalar_one()
+            assert db_record.version == version_before + 1, "The version field should be updated per update"

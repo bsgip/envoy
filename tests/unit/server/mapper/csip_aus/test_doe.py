@@ -177,6 +177,7 @@ def test_map_default_to_response(optional_is_none: bool):
     assert result.href.startswith("/my/prefix/")
     assert f"/{site_id}/" in result.href
     assert f"/{derp_id}/" in result.href
+    assert result.version == doe_default.version
 
     if doe_default.export_limit_active_watts is None:
         assert result.DERControlBase_.opModExpLimW is None
