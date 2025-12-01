@@ -1,6 +1,7 @@
 import urllib.parse
 from datetime import datetime, timezone
 from http import HTTPStatus
+from itertools import product
 from typing import Optional
 
 import envoy_schema.server.schema.uri as uris
@@ -280,10 +281,13 @@ async def test_delete_subscription(
         assert (initial_count - 1) == after_count
 
 
-@pytest.mark.parametrize("use_aggregator_edev", [True, False])
+@pytest.mark.parametrize(
+    "use_aggregator_edev, notification_uri",
+    product([True, False], ["https://example.com/456?foo=bar", "http://example.com:123", "https://example.com"]),
+)
 @pytest.mark.anyio
 async def test_create_doe_subscription(
-    pg_base_config, client: AsyncClient, sub_list_uri_format: str, use_aggregator_edev: bool
+    pg_base_config, client: AsyncClient, sub_list_uri_format: str, use_aggregator_edev: bool, notification_uri: str
 ):
     """When creating a sub check to see if it persists and is correctly assigned to the aggregator"""
 
@@ -291,7 +295,7 @@ async def test_create_doe_subscription(
 
     insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
     insert_request.encoding = SubscriptionEncoding.XML
-    insert_request.notificationURI = "https://example.com/456?foo=bar"
+    insert_request.notificationURI = notification_uri
     insert_request.subscribedResource = f"/edev/{edev_id}/derp/1/derc"
     response = await client.post(
         sub_list_uri_format.format(site_id=0),  # All subscriptions should be made to /edev/0/sub
@@ -328,6 +332,7 @@ async def test_create_doe_subscription(
             assert created_sub.scoped_site_id is None, "Aggregator scoped requests are site unscoped"
         else:
             assert created_sub.scoped_site_id == edev_id, "Regular requests are site scoped"
+        assert created_sub.notification_uri == notification_uri
 
 
 async def do_test_renewal(

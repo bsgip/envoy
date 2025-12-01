@@ -17,7 +17,7 @@ markers = [
     "disable_device_registration: marks tests that disable NULL Aggregator and disable unrecognised devices from registering (equivalent to allow_device_registration = False)",
     "nmi_validation_enabled: marks tests that enables NMI validation logic for the PUT ConnectionPoint endpoint",
     "allow_nmi_updates: marks whether test allows or disallows updates to nmi",
-    "exclude_endpoints: marks test that excludes endpoints from the application"
+    "exclude_endpoints: marks test that excludes endpoints from the application",
 ]
 
 # (for pytests only) Using pytest-env to set placeholder values for required settings.
@@ -50,6 +50,7 @@ name = "envoy"
 dynamic = ["version", "readme"]
 requires-python = ">=3.9,<4.0"
 dependencies = [
+    "envoy_schema==0.30.0",
     "fastapi>=0.94.1",
     "sqlalchemy>=2.0.0",
     "alembic",
@@ -69,7 +70,6 @@ dependencies = [
     "taskiq!=0.11.5,!=0.11.6",      # Known compatibiity issue with pydantic
     "taskiq-aio-pika",
     "parse",
-    "envoy_schema==0.29.0",
     "intervaltree",
 ]
 
