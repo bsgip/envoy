@@ -21,6 +21,8 @@ def upgrade() -> None:
     op.add_column(
         "archive_default_site_control", sa.Column("version", sa.INTEGER(), server_default="0", nullable=False)
     )
+    op.alter_column("archive_default_site_control", "version", server_default=None)
+
     op.add_column("default_site_control", sa.Column("version", sa.INTEGER(), server_default="0", nullable=False))
     # ### end Alembic commands ###
 
