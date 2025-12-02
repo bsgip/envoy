@@ -156,8 +156,8 @@ async def test_delete_mup_generates_notification(
                 r
                 for r in notifications_enabled.logged_requests
                 if r.uri == subscription1_uri
-                and "2b67" in r.content  # LocalID Value 11111 (unique to reading 1)
-                and "56ce" in r.content  # LocalID Value 22222 (unique to reading 2)
+                and "2B67" in r.content  # LocalID Value 11111 (unique to reading 1)
+                and "56CE" in r.content  # LocalID Value 22222 (unique to reading 2)
                 and "<status>4</status>" in r.content  # This is a deletion notification
             ]
         )

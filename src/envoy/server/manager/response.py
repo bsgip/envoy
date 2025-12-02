@@ -23,6 +23,7 @@ from envoy.server.crud.response import (
     select_rate_response_for_scope,
     select_tariff_generated_rate_responses,
 )
+from envoy.server.crud.site import select_single_site_with_lfdi
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.mapper.constants import MridType, ResponseSetType
 from envoy.server.mapper.sep2.mrid import MridMapper
@@ -142,6 +143,12 @@ class ResponseManager:
             logger.error(f"{response.subject} doesn't validate/decode for iana pen {scope.iana_pen}", exc_info=exc)
             raise BadRequestError(
                 f"subject '{response.subject}' doesn't reference a valid MRID from this utility server"
+            )
+
+        lfdi_matched_site = await select_single_site_with_lfdi(session, response.endDeviceLFDI, scope.aggregator_id)
+        if lfdi_matched_site is None or lfdi_matched_site.site_id != scope.site_id:
+            raise BadRequestError(
+                f"endDeviceLFDI '{response.endDeviceLFDI}' doesn't match EndDevice with ID {scope.site_id}."
             )
 
         if response_set_type == ResponseSetType.SITE_CONTROLS:

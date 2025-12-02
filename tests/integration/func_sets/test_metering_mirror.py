@@ -176,7 +176,7 @@ async def test_get_mirror_usage_point_list_pagination(
                     "mRID": "123",
                     "deviceLFDI": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                     "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                    "roleFlags": "7a",
+                    "roleFlags": "7A",
                     "status": 0,
                     "mirrorMeterReadings": [
                         {

@@ -9,7 +9,7 @@ from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.response import Response, ResponseListResponse, ResponseSet, ResponseSetList
 from sqlalchemy import func, select
-
+from envoy.server.model.site import Site
 from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.response import ResponseManager
 from envoy.server.mapper.constants import MridType, PricingReadingType, ResponseSetType
@@ -347,6 +347,7 @@ async def test_fetch_response_list_for_scope_bad_type():
         await ResponseManager.fetch_response_list_for_scope(mock_session, scope, -1, start, limit, created_after)
 
 
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
@@ -359,6 +360,7 @@ async def test_create_response_for_scope_invalid_mrid(
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
     mock_decode_doe_mrid: mock.MagicMock,
     mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
 ):
     """Tests that if decode_and_validate_mrid_type raises an error - a bad request is raised"""
     # Arrange
@@ -378,8 +380,90 @@ async def test_create_response_for_scope_invalid_mrid(
     mock_select_doe_include_deleted.assert_not_called()
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_not_called()
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
 
 
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
+@mock.patch("envoy.server.manager.response.select_doe_include_deleted")
+@mock.patch("envoy.server.manager.response.select_tariff_generated_rate_for_scope")
+@pytest.mark.anyio
+async def test_create_response_for_scope_lfdi_site_mismatch(
+    mock_select_tariff_generated_rate_for_scope: mock.MagicMock,
+    mock_select_doe_include_deleted: mock.MagicMock,
+    mock_decode_time_tariff_interval_mrid: mock.MagicMock,
+    mock_decode_doe_mrid: mock.MagicMock,
+    mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
+):
+    """Tests that if the endDeviceLFDI matches a different site than the scope, a bad request error is raised"""
+    # Arrange
+    session = create_mock_session()
+    scope = generate_class_instance(SiteRequestScope, seed=101, site_id=123)
+    response = generate_class_instance(Response, seed=202)
+    mock_decode_and_validate_mrid_type.return_value = MridType.DYNAMIC_OPERATING_ENVELOPE
+
+    # Mock a site with a different ID than the scope
+    mismatched_site = generate_class_instance(Site, seed=303, site_id=456)
+    mock_select_single_site_with_lfdi.return_value = mismatched_site
+
+    # Act
+    with pytest.raises(BadRequestError) as exc_info:
+        await ResponseManager.create_response_for_scope(session, scope, ResponseSetType.SITE_CONTROLS, response)
+
+    # Assert
+    assert "endDeviceLFDI" in str(exc_info.value)
+    assert str(scope.site_id) in str(exc_info.value)
+    assert_mock_session(session, committed=False)
+    mock_decode_and_validate_mrid_type.assert_called_once_with(scope, response.subject)
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
+    mock_select_tariff_generated_rate_for_scope.assert_not_called()
+    mock_select_doe_include_deleted.assert_not_called()
+    mock_decode_time_tariff_interval_mrid.assert_not_called()
+    mock_decode_doe_mrid.assert_not_called()
+
+
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
+@mock.patch("envoy.server.manager.response.select_doe_include_deleted")
+@mock.patch("envoy.server.manager.response.select_tariff_generated_rate_for_scope")
+@pytest.mark.anyio
+async def test_create_response_for_scope_lfdi_not_found(
+    mock_select_tariff_generated_rate_for_scope: mock.MagicMock,
+    mock_select_doe_include_deleted: mock.MagicMock,
+    mock_decode_time_tariff_interval_mrid: mock.MagicMock,
+    mock_decode_doe_mrid: mock.MagicMock,
+    mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
+):
+    """Tests that if the endDeviceLFDI doesn't match any site, a bad request error is raised"""
+    # Arrange
+    session = create_mock_session()
+    scope = generate_class_instance(SiteRequestScope, seed=101)
+    response = generate_class_instance(Response, seed=202)
+    mock_decode_and_validate_mrid_type.return_value = MridType.DYNAMIC_OPERATING_ENVELOPE
+    mock_select_single_site_with_lfdi.return_value = None  # No site found with this LFDI
+
+    # Act
+    with pytest.raises(BadRequestError) as exc_info:
+        await ResponseManager.create_response_for_scope(session, scope, ResponseSetType.SITE_CONTROLS, response)
+
+    # Assert
+    assert "endDeviceLFDI" in str(exc_info.value)
+    assert_mock_session(session, committed=False)
+    mock_decode_and_validate_mrid_type.assert_called_once_with(scope, response.subject)
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
+    mock_select_tariff_generated_rate_for_scope.assert_not_called()
+    mock_select_doe_include_deleted.assert_not_called()
+    mock_decode_time_tariff_interval_mrid.assert_not_called()
+    mock_decode_doe_mrid.assert_not_called()
+
+
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
@@ -392,6 +476,7 @@ async def test_create_response_for_scope_invalid_response_set_type(
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
     mock_decode_doe_mrid: mock.MagicMock,
     mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
 ):
     """Tests that if the response_set_type is unknown a bad request is raised"""
     # Arrange
@@ -411,8 +496,10 @@ async def test_create_response_for_scope_invalid_response_set_type(
     mock_select_doe_include_deleted.assert_not_called()
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_not_called()
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
 
 
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
@@ -425,6 +512,7 @@ async def test_create_response_for_scope_doe_with_price_mrid(
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
     mock_decode_doe_mrid: mock.MagicMock,
     mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
 ):
     """Tests that if a price response is sent to the DOE list - we get raise a bad request error"""
     # Arrange
@@ -444,8 +532,10 @@ async def test_create_response_for_scope_doe_with_price_mrid(
     mock_select_doe_include_deleted.assert_not_called()
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_not_called()
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
 
 
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
@@ -458,6 +548,7 @@ async def test_create_response_for_scope_doe_not_in_scope(
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
     mock_decode_doe_mrid: mock.MagicMock,
     mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
 ):
     """Tests that if a doe response references a doe not in scope - we get raise a bad request error"""
     # Arrange
@@ -470,18 +561,24 @@ async def test_create_response_for_scope_doe_not_in_scope(
     mock_decode_doe_mrid.return_value = decoded_doe_id
     mock_select_doe_include_deleted.return_value = None
 
+    # Mock LFDI check - site matches
+    matched_site = generate_class_instance(Site, seed=404, site_id=scope.site_id)
+    mock_select_single_site_with_lfdi.return_value = matched_site
+
     # Act
     with pytest.raises(BadRequestError):
         await ResponseManager.create_response_for_scope(session, scope, ResponseSetType.SITE_CONTROLS, response)
 
     # Assert
     mock_decode_and_validate_mrid_type.assert_called_once_with(scope, response.subject)
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
     mock_select_tariff_generated_rate_for_scope.assert_not_called()
     mock_select_doe_include_deleted.assert_called_once_with(session, scope.aggregator_id, scope.site_id, decoded_doe_id)
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_called_once_with(response.subject)
 
 
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
@@ -494,13 +591,14 @@ async def test_create_response_for_scope_doe_created_normally(
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
     mock_decode_doe_mrid: mock.MagicMock,
     mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
     pg_base_config,
 ):
     """Tests that DOE responses can be added to the database and the appropriate href returned"""
 
     # Arrange
     site_id = 1
-    scope = generate_class_instance(SiteRequestScope, seed=101, site_id=None, href_prefix="/my_prefix/")
+    scope = generate_class_instance(SiteRequestScope, seed=101, site_id=site_id, href_prefix="/my_prefix/")
     response = generate_class_instance(Response, seed=202)
     decoded_doe_id = 2
     existing_doe = generate_class_instance(
@@ -509,6 +607,10 @@ async def test_create_response_for_scope_doe_created_normally(
     mock_decode_and_validate_mrid_type.return_value = MridType.DYNAMIC_OPERATING_ENVELOPE
     mock_decode_doe_mrid.return_value = decoded_doe_id
     mock_select_doe_include_deleted.return_value = existing_doe
+
+    # Mock LFDI check - site matches
+    matched_site = generate_class_instance(Site, seed=404, site_id=site_id)
+    mock_select_single_site_with_lfdi.return_value = matched_site
 
     # Act
     async with generate_async_session(pg_base_config) as session:
@@ -523,6 +625,7 @@ async def test_create_response_for_scope_doe_created_normally(
 
     # Assert
     mock_decode_and_validate_mrid_type.assert_called_once_with(scope, response.subject)
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
     mock_select_tariff_generated_rate_for_scope.assert_not_called()
     mock_select_doe_include_deleted.assert_called_once_with(session, scope.aggregator_id, scope.site_id, decoded_doe_id)
     mock_decode_time_tariff_interval_mrid.assert_not_called()
@@ -554,6 +657,7 @@ async def test_create_response_for_scope_doe_created_normally(
         assert db_response.response_type == response.status, "This is double checking the mapper"
 
 
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
@@ -566,6 +670,7 @@ async def test_create_response_for_scope_price_with_doe_mrid(
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
     mock_decode_doe_mrid: mock.MagicMock,
     mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
 ):
     """Tests that if a doe response is sent to the price list - we get raise a bad request error"""
     # Arrange
@@ -589,6 +694,7 @@ async def test_create_response_for_scope_price_with_doe_mrid(
     mock_decode_doe_mrid.assert_not_called()
 
 
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
@@ -601,6 +707,7 @@ async def test_create_response_for_scope_price_not_in_scope(
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
     mock_decode_doe_mrid: mock.MagicMock,
     mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
 ):
     """Tests that if a price response references a price not in scope - we get raise a bad request error"""
     # Arrange
@@ -614,6 +721,10 @@ async def test_create_response_for_scope_price_not_in_scope(
     mock_decode_time_tariff_interval_mrid.return_value = (pricing_reading_type, decoded_rate_id)
     mock_select_tariff_generated_rate_for_scope.return_value = None
 
+    # Mock LFDI check - site matches
+    matched_site = generate_class_instance(Site, seed=404, site_id=scope.site_id)
+    mock_select_single_site_with_lfdi.return_value = matched_site
+
     # Act
     with pytest.raises(BadRequestError):
         await ResponseManager.create_response_for_scope(
@@ -622,6 +733,7 @@ async def test_create_response_for_scope_price_not_in_scope(
 
     # Assert
     mock_decode_and_validate_mrid_type.assert_called_once_with(scope, response.subject)
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
     mock_select_tariff_generated_rate_for_scope.assert_called_once_with(
         session, scope.aggregator_id, scope.site_id, decoded_rate_id
     )
@@ -630,6 +742,7 @@ async def test_create_response_for_scope_price_not_in_scope(
     mock_decode_doe_mrid.assert_not_called()
 
 
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
@@ -642,6 +755,7 @@ async def test_create_response_for_scope_price_created_normally(
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
     mock_decode_doe_mrid: mock.MagicMock,
     mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
     pg_base_config,
 ):
     """Tests that rate responses can be added to the database and the appropriate href returned"""
@@ -659,6 +773,10 @@ async def test_create_response_for_scope_price_created_normally(
     mock_decode_time_tariff_interval_mrid.return_value = (pricing_reading_type, decoded_rate_id)
     mock_select_tariff_generated_rate_for_scope.return_value = existing_rate
 
+    # Mock LFDI check - site matches
+    matched_site = generate_class_instance(Site, seed=404, site_id=site_id)
+    mock_select_single_site_with_lfdi.return_value = matched_site
+
     # Act
     async with generate_async_session(pg_base_config) as session:
         db_count_before = (
@@ -672,6 +790,7 @@ async def test_create_response_for_scope_price_created_normally(
 
     # Assert
     mock_decode_and_validate_mrid_type.assert_called_once_with(scope, response.subject)
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
     mock_select_tariff_generated_rate_for_scope.assert_called_once_with(
         session, scope.aggregator_id, scope.site_id, decoded_rate_id
     )

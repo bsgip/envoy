@@ -437,7 +437,7 @@ def test_MirrorMeterReadingMapper_map_reading_from_request_no_time_period():
     """If TimePeriod is none - raise error"""
     reading: Reading = generate_class_instance(Reading)
     reading.timePeriod = None
-    reading.qualityFlags = f"{QualityFlagsType.FORECAST:0x}"
+    reading.qualityFlags = f"{QualityFlagsType.FORECAST:0X}"
     with pytest.raises(InvalidMappingError):
         MirrorMeterReadingMapper.map_reading_from_request(reading, 1, datetime.now())
 
@@ -447,8 +447,8 @@ def test_MirrorMeterReadingMapper_map_reading_from_request():
     start_time = datetime(2022, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
 
     reading_all_set: Reading = generate_class_instance(Reading, seed=101, optional_is_none=False)
-    reading_all_set.qualityFlags = f"{QualityFlagsType.FORECAST:0x}"
-    reading_all_set.localID = f"{3456:0x}"
+    reading_all_set.qualityFlags = f"{QualityFlagsType.FORECAST:0X}"
+    reading_all_set.localID = f"{3456:0X}"
     reading_all_set.timePeriod = generate_class_instance(DateTimeIntervalType)
     reading_all_set.timePeriod.duration = 123
     reading_all_set.timePeriod.start = int(start_time.timestamp())
@@ -599,7 +599,7 @@ def test_MirrorMeterReadingMapper_map_to_response():
 
     reading_all_set = MirrorMeterReadingMapper.map_to_response(site_reading_all_set)
     assert reading_all_set.value == site_reading_all_set.value
-    assert reading_all_set.localID == "ff"
+    assert reading_all_set.localID == "FF"
     assert isinstance(reading_all_set.qualityFlags, str)
     assert reading_all_set.timePeriod is not None
     assert reading_all_set.timePeriod.duration == site_reading_all_set.time_period_seconds
@@ -617,8 +617,8 @@ def test_MirrorMeterReadingMapper_map_to_response():
 def test_MirrorMeterReadingMapper_reading_round_trip():
     """Round trips a Reading via SiteReading to ensure everything (of importance) is preserved"""
     reading_orig: Reading = generate_class_instance(Reading)
-    reading_orig.qualityFlags = f"{QualityFlagsType.FORECAST:0x}"
-    reading_orig.localID = f"{3456:0x}"
+    reading_orig.qualityFlags = f"{QualityFlagsType.FORECAST:0X}"
+    reading_orig.localID = f"{3456:0X}"
     reading_orig.timePeriod = generate_class_instance(DateTimeIntervalType)
     reading_orig.timePeriod.duration = 123
     reading_orig.timePeriod.start = int(datetime(2024, 2, 3, 4, 5, 6).timestamp())

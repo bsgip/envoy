@@ -621,8 +621,8 @@ async def test_submit_conditional_reading(client: AsyncClient, notifications_ena
     assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, expected_notification_uri)] == 1
 
     # Simple check on the notification content
-    assert "dead" not in notifications_enabled.logged_requests[0].content
-    assert "beef" in notifications_enabled.logged_requests[0].content
+    assert "DEAD" not in notifications_enabled.logged_requests[0].content
+    assert "BEEF" in notifications_enabled.logged_requests[0].content
 
 
 @pytest.mark.anyio
