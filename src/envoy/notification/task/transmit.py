@@ -9,11 +9,13 @@ from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
 
 from envoy.notification.exception import NotificationTransmitError
 from envoy.notification.handler import broker_dependency, session_dependency
+from envoy.server.api.response import SEP_XML_MIME
 from envoy.server.manager.time import utc_now
 from envoy.server.model.subscription import TransmitNotificationLog
 
 HEADER_SUBSCRIPTION_ID = "x-envoy-subscription-href"
 HEADER_NOTIFICATION_ID = "x-envoy-notification-id"
+HEADER_CONTENT_TYPE = "Content-Type"
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +134,11 @@ async def do_transmit_notification(
             attempt,
         )
 
-        headers = {HEADER_SUBSCRIPTION_ID: subscription_href, HEADER_NOTIFICATION_ID: notification_id}
+        headers = {
+            HEADER_SUBSCRIPTION_ID: subscription_href,
+            HEADER_NOTIFICATION_ID: notification_id,
+            HEADER_CONTENT_TYPE: SEP_XML_MIME,
+        }
 
         transmit_start = utc_now()
         try:

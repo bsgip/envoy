@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 from envoy.notification.exception import NotificationTransmitError
 from envoy.notification.task.transmit import (
+    HEADER_CONTENT_TYPE,
     HEADER_NOTIFICATION_ID,
     HEADER_SUBSCRIPTION_ID,
     TransmitResult,
@@ -24,6 +25,7 @@ from envoy.notification.task.transmit import (
     schedule_retry_transmission,
     transmit_notification,
 )
+from envoy.server.api.response import SEP_XML_MIME
 from envoy.server.model.subscription import TransmitNotificationLog
 from tests.unit.notification.mocks import (
     assert_task_kicked_n_times,
@@ -246,6 +248,7 @@ async def test_do_transmit_notification_success(mock_AsyncClient: mock.MagicMock
     assert headers is not None
     assert headers.get(HEADER_SUBSCRIPTION_ID, None) == subscription_href
     assert headers.get(HEADER_NOTIFICATION_ID, None) == str(notification_id)
+    assert headers.get(HEADER_CONTENT_TYPE, None) == SEP_XML_MIME
 
 
 @pytest.mark.anyio
@@ -290,6 +293,7 @@ async def test_do_transmit_notification_immediately_abort(mock_AsyncClient: mock
     assert headers is not None
     assert headers.get(HEADER_SUBSCRIPTION_ID, None) == subscription_href
     assert headers.get(HEADER_NOTIFICATION_ID, None) == str(notification_id)
+    assert headers.get(HEADER_CONTENT_TYPE, None) == SEP_XML_MIME
 
 
 @pytest.mark.anyio

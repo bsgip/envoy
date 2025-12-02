@@ -27,6 +27,7 @@ from httpx import AsyncClient
 from sqlalchemy import delete, insert, select
 
 from envoy.notification.task.transmit import HEADER_NOTIFICATION_ID
+from envoy.server.api.response import SEP_XML_MIME
 from envoy.server.model.server import RuntimeServerConfig
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import PRICE_DECIMAL_POWER
@@ -189,6 +190,7 @@ async def test_create_does_with_active_subscription(
         )
         == 1
     ), "Only one notification (for sub2) should have the doe3 batch"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.parametrize(
@@ -272,6 +274,7 @@ async def test_supersede_doe_with_active_subscription(
         )
         == 1
     ), "Only one notification for the insertion and superseded record"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.parametrize(
@@ -353,6 +356,7 @@ async def test_create_does_with_paginated_notifications(
         )
         == 1
     )
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.anyio
@@ -465,6 +469,7 @@ async def test_create_rates_with_active_subscription(
         )
         == 1
     ), "Only one notification should have the import prices"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.anyio
@@ -563,6 +568,7 @@ async def test_replace_rate_with_active_subscription(
             )
             == 1
         ), "Only one notification for the deletion"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.anyio
@@ -610,6 +616,7 @@ async def test_delete_site_with_active_subscription(
     assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
         notifications_enabled.logged_requests
     ), "Expected unique notification ids for each request"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.anyio
@@ -659,6 +666,7 @@ async def test_update_server_config_edev_list_notification(
         notifications_enabled.logged_requests
     ), "Expected unique notification ids for each request"
     assert f'pollRate="{edev_list_poll_rate}"' in notifications_enabled.logged_requests[0].content
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.anyio
@@ -720,6 +728,7 @@ async def test_update_server_config_fsa_notification(
     assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
         notifications_enabled.logged_requests
     ), "Expected unique notification ids for each request"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.parametrize("none_fsa_value", [True, False])
@@ -909,6 +918,7 @@ async def test_create_site_control_groups_with_active_subscription(
         )
         == 1
     ), "Only one notification (for sub 2) should be for the new DERP (id 3) for site 2"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.anyio
@@ -979,6 +989,7 @@ async def test_create_site_control_groups_with_new_fsa(
         )
         == 1
     ), "Only one notification (for sub 2) should be for the new FSA for site 2"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.anyio
@@ -1093,3 +1104,4 @@ async def test_update_site_with_active_subscription(
         )
         == 1
     ), "Only one notification (for sub 2) should be for site 2"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])

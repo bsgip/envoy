@@ -10,6 +10,7 @@ from httpx import AsyncClient
 from sqlalchemy import delete, insert
 
 from envoy.notification.task.transmit import HEADER_NOTIFICATION_ID
+from envoy.server.api.response import SEP_XML_MIME
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.integration.integration_server import cert_header
@@ -87,6 +88,7 @@ async def test_delete_site_generates_notification(
         )
         == 1
     ), "The NMI for site 1 should've been in the notification batch"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.anyio
@@ -163,3 +165,4 @@ async def test_delete_mup_generates_notification(
         )
         == 1
     ), "The readings (1 and 2) for mup 1 should've been in the notification batch"
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
