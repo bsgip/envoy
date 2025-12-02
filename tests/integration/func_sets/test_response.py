@@ -19,7 +19,7 @@ from envoy_schema.server.schema.sep2.response import (
 )
 from httpx import AsyncClient
 from sqlalchemy import func, insert, select
-
+from envoy.server.model import Site
 from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import response_set_type_to_href
@@ -609,6 +609,10 @@ async def test_create_response_for_aggregator(
 ):
     """Tests the various ways aggregators can send responses to the various list endpoints"""
     async with generate_async_session(pg_base_config) as session:
+        # Get the site lfdi from the database if set
+        site = await session.get(Site, site_id)
+        site_lfdi = site.lfdi if site else "ffffffffffffffffffffffffffffffffffffffff"
+
         # Add a DOE for site 5 (device cert) that can be cross referenced
         rate_count_before = (
             await session.execute(select(func.count()).select_from(TariffGeneratedRateResponse))
@@ -618,7 +622,7 @@ async def test_create_response_for_aggregator(
         ).scalar_one()
 
     request_body = generate_class_instance(request_type, subject=subject, status=ResponseType.REJECTED_INVALID_EVENT)
-    request_body.endDeviceLFDI = "ffffffffffffffffffffffffffffffffffffffff"
+    request_body.endDeviceLFDI = site_lfdi
 
     response = await client.post(
         response_list_uri_format.format(site_id=site_id, response_list_id=response_set_id),
