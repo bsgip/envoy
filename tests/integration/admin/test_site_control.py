@@ -384,3 +384,152 @@ async def test_delete_does_in_range(
         assert deleted_doe_ids == expected_doe_ids
 
         assert (before_doe_count - len(deleted_doe_ids)) == (await count_all_does(session, site_control_group_id, None))
+
+
+@pytest.mark.anyio
+async def test_supersede_site_control_different_fields_coexist(pg_base_config, admin_client_auth: AsyncClient):
+    """Checks that creating site controls with different control fields at the same time allows them to coexist."""
+
+    start_time = datetime(2025, 12, 15, 10, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane"))
+
+    # Create first DOE with load_limit
+    doe_with_load_limit = SiteControlRequest(
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, load_limit_watts=0
+    )
+
+    resp = await admin_client_auth.post(
+        SiteControlUri.format(group_id=1),
+        content=f"[{doe_with_load_limit.model_dump_json()}]",
+    )
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Create second DOE with import_limit at the same time
+    doe_with_import_limit = SiteControlRequest(
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=5000
+    )
+
+    resp = await admin_client_auth.post(
+        SiteControlUri.format(group_id=1),
+        content=f"[{doe_with_import_limit.model_dump_json()}]",
+    )
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Query all DOEs created in our test time range
+    async with generate_async_session(pg_base_config) as session:
+        does = (
+            (
+                await session.execute(
+                    select(DynamicOperatingEnvelope)
+                    .where(DynamicOperatingEnvelope.start_time >= datetime(2025, 12, 15, tzinfo=timezone.utc))
+                    .order_by(DynamicOperatingEnvelope.created_time)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        assert len(does) == 2, "Both DOEs should be inserted"
+
+        # Find each DOE by its control field characteristics
+        doe_load = next((d for d in does if d.load_limit_active_watts is not None), None)
+        doe_import = next((d for d in does if d.import_limit_active_watts is not None), None)
+
+        assert doe_load is not None, "DOE with load_limit should exist"
+        assert doe_import is not None, "DOE with import_limit should exist"
+
+        # Check DOE with load_limit
+        assert doe_load.load_limit_active_watts == Decimal("0")
+        assert doe_load.import_limit_active_watts is None
+        assert doe_load.superseded is False, "Different fields should not supersede each other"
+        assert doe_load.start_time == start_time
+        assert doe_load.duration_seconds == 300
+        assert_nowish(doe_load.changed_time)
+
+        # Check DOE with import_limit
+        assert doe_import.import_limit_active_watts == Decimal("5000")
+        assert doe_import.load_limit_active_watts is None
+        assert doe_import.superseded is False, "Different fields should not supersede each other"
+        assert doe_import.start_time == start_time
+        assert doe_import.duration_seconds == 300
+        assert_nowish(doe_import.changed_time)
+
+        # Verify no archives were created (since nothing was superseded)
+        archives = (
+            (
+                await session.execute(
+                    select(ArchiveDynamicOperatingEnvelope).where(
+                        ArchiveDynamicOperatingEnvelope.start_time >= datetime(2025, 12, 15, tzinfo=timezone.utc)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        assert len(archives) == 0, "No DOEs should be archived when different fields coexist"
+
+
+@pytest.mark.anyio
+async def test_supersede_site_control_same_field_does_supersede(pg_base_config, admin_client_auth: AsyncClient):
+    """
+    Checks that creating site controls with the SAME control field at the same time DOES cause supersession.
+    """
+    start_time = datetime(2025, 12, 10, 10, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane"))
+
+    # DOE1
+    doe1 = SiteControlRequest(
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, import_limit_watts=1000
+    )
+    resp = await admin_client_auth.post(SiteControlUri.format(group_id=1), content=f"[{doe1.model_dump_json()}]")
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # DOE2 with import_limit at the same time - should supersede DOE1
+    doe2 = SiteControlRequest(
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=2000
+    )
+    resp = await admin_client_auth.post(SiteControlUri.format(group_id=1), content=f"[{doe2.model_dump_json()}]")
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Query all DOEs created in our test time range
+    async with generate_async_session(pg_base_config) as session:
+        does = (
+            (
+                await session.execute(
+                    select(DynamicOperatingEnvelope)
+                    .where(DynamicOperatingEnvelope.start_time >= datetime(2025, 12, 1, tzinfo=timezone.utc))
+                    .order_by(DynamicOperatingEnvelope.created_time)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        assert len(does) == 2, "Both DOEs should exist in DB"
+
+        # First DOE (created earlier) should be superseded
+        first_doe = does[0]
+        assert first_doe.import_limit_active_watts == Decimal("1000"), "First DOE value"
+        assert first_doe.superseded is True, "Should be superseded - same control field (import_limit)"
+        assert_nowish(first_doe.changed_time)
+
+        # Second DOE should be active
+        second_doe = does[1]
+        assert second_doe.import_limit_active_watts == Decimal("2000"), "Second DOE value"
+        assert second_doe.superseded is False, "The newer DOE should be active"
+        assert_nowish(second_doe.changed_time)
+
+        # Verify an archive was created for the first DOE
+        archives = (
+            (
+                await session.execute(
+                    select(ArchiveDynamicOperatingEnvelope).where(
+                        ArchiveDynamicOperatingEnvelope.start_time >= datetime(2025, 12, 1, tzinfo=timezone.utc)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        assert len(archives) == 1, "Superseded DOE should be archived"
+        assert archives[0].import_limit_active_watts == Decimal("1000"), "Archived DOE should be the first one"

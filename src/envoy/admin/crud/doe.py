@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Optional, Sequence, cast
 
@@ -8,6 +9,44 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
+
+
+@dataclass
+class DOEFieldSet:
+    """Represents which control fields are set in a DOE"""
+
+    has_import_limit: bool = False
+    has_export_limit: bool = False
+    has_generation_limit: bool = False
+    has_load_limit: bool = False
+    has_set_energized: bool = False
+    has_set_connected: bool = False
+    has_set_point_percentage: bool = False
+
+    @staticmethod
+    def from_doe(doe: DynamicOperatingEnvelope) -> "DOEFieldSet":
+        """Extract which fields are set in a DOE"""
+        return DOEFieldSet(
+            has_import_limit=doe.import_limit_active_watts is not None,
+            has_export_limit=doe.export_limit_watts is not None,
+            has_generation_limit=doe.generation_limit_active_watts is not None,
+            has_load_limit=doe.load_limit_active_watts is not None,
+            has_set_energized=doe.set_energized is not None,
+            has_set_connected=doe.set_connected is not None,
+            has_set_point_percentage=doe.set_point_percentage is not None,
+        )
+
+    def conflicts_with(self, other: "DOEFieldSet") -> bool:
+        """Check if any control fields overlap between two DOEs"""
+        return (
+            (self.has_import_limit and other.has_import_limit)
+            or (self.has_export_limit and other.has_export_limit)
+            or (self.has_generation_limit and other.has_generation_limit)
+            or (self.has_load_limit and other.has_load_limit)
+            or (self.has_set_energized and other.has_set_energized)
+            or (self.has_set_connected and other.has_set_connected)
+            or (self.has_set_point_percentage and other.has_set_point_percentage)
+        )
 
 
 async def delete_does_with_start_time_in_range(
@@ -120,9 +159,11 @@ async def supersede_matching_does_for_site(
     primacy_by_group_id: dict[int, int],
     changed_time: datetime,
 ) -> None:
-    """Marks existing DynamicOperatingEnvelopes in the db as superseded If they are overlapped by any value in doe_list
-    (and the overlapping control has a equal/higher priority). Partial overlaps will still be treated as superseding
-    as per 2030.5 event rules and guidelines.
+    """Marks existing DynamicOperatingEnvelopes in the db as superseded if they are overlapped by any value in doe_list
+    (and the overlapping control has equal/higher priority) AND they have conflicting control fields.
+
+    Partial overlaps in time will still be treated as superseding as per 2030.5 event rules.
+    Field-level conflicts are checked: only DOEs controlling the same fields will supersede each other.
 
     doe_list: Should ONLY contain sites with the specified site_id
     site_id: The site_id that this request will be scoped to
@@ -155,6 +196,13 @@ async def supersede_matching_does_for_site(
                     DynamicOperatingEnvelope.site_control_group_id,
                     DynamicOperatingEnvelope.start_time,
                     DynamicOperatingEnvelope.end_time,
+                    DynamicOperatingEnvelope.import_limit_active_watts,
+                    DynamicOperatingEnvelope.export_limit_watts,
+                    DynamicOperatingEnvelope.generation_limit_active_watts,
+                    DynamicOperatingEnvelope.load_limit_active_watts,
+                    DynamicOperatingEnvelope.set_energized,
+                    DynamicOperatingEnvelope.set_connected,
+                    DynamicOperatingEnvelope.set_point_percentage,
                 ).where(
                     # We include site_control_group to ensure we can utilise our indexes
                     (DynamicOperatingEnvelope.site_control_group_id.in_(primacy_by_group_id.keys()))
@@ -173,21 +221,49 @@ async def supersede_matching_does_for_site(
     doe_list_tree = IntervalTree((Interval(doe.start_time, doe.end_time, doe) for doe in doe_list))
 
     # validate each potential match against the new controls - the aim is to find existing controls at the same/higher
-    # primacy (i.e. candidates for superseding)
+    # primacy (i.e. candidates for superseding) that also have conflicting control fields
     superseded_doe_ids: list[int] = []
-    for existing_doe_id, existing_site_control_id, existing_start_time, existing_end_time in potential_matches:
+    for (
+        existing_doe_id,
+        existing_site_control_id,
+        existing_start_time,
+        existing_end_time,
+        existing_import_limit,
+        existing_export_limit,
+        existing_gen_limit,
+        existing_load_limit,
+        existing_energized,
+        existing_connected,
+        existing_set_point,
+    ) in potential_matches:
+
         existing_doe_primacy = primacy_by_group_id[existing_site_control_id]
+
+        # Build field set for existing DOE
+        existing_fields = DOEFieldSet(
+            has_import_limit=existing_import_limit is not None,
+            has_export_limit=existing_export_limit is not None,
+            has_generation_limit=existing_gen_limit is not None,
+            has_load_limit=existing_load_limit is not None,
+            has_set_energized=existing_energized is not None,
+            has_set_connected=existing_connected is not None,
+            has_set_point_percentage=existing_set_point is not None,
+        )
+
         for interval in cast(set[Interval], doe_list_tree[existing_start_time:existing_end_time]):  # type: ignore
             incoming_doe: DynamicOperatingEnvelope = interval.data
-            # At this point we know this incoming DOE intersects our existing_doe - next step is to work out whether
-            # its at a lower/higher priority
+            # At this point we know this incoming DOE intersects our existing_doe in time - next step is to work out
+            # whether it's at a lower/higher priority AND whether they have conflicting control fields
             incoming_doe_primacy = primacy_by_group_id[incoming_doe.site_control_group_id]
 
             # Lower primacy means higher priority
             # Equal primacy means checking the creation time and we know incoming_doe is newer
             if incoming_doe_primacy <= existing_doe_primacy:
-                superseded_doe_ids.append(existing_doe_id)
-                break
+                # Check if they actually conflict on control fields
+                incoming_fields = DOEFieldSet.from_doe(incoming_doe)
+                if existing_fields.conflicts_with(incoming_fields):
+                    superseded_doe_ids.append(existing_doe_id)
+                    break
 
     await copy_rows_into_archive(
         session,
