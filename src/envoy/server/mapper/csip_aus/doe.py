@@ -163,7 +163,7 @@ class DERControlMapper:
             href=DERControlMapper.default_control_href(scope, display_site_id, der_program_id),
             version=default_doe.version,
             subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
-            mRID=MridMapper.encode_default_doe_mrid(scope),
+            mRID=MridMapper.encode_default_doe_mrid(scope, default_doe),
             setGradW=default_doe.ramp_rate_percent_per_second,
             DERControlBase_=DERControlBase(
                 opModImpLimW=(

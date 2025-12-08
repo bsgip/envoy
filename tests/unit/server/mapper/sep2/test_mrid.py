@@ -19,6 +19,7 @@ from envoy.server.mapper.sep2.mrid import (
     decode_mrid_type,
     encode_mrid,
 )
+from envoy.server.model.site import DefaultSiteControl
 from envoy.server.request_scope import BaseRequestScope
 
 
@@ -148,7 +149,9 @@ def test_all_default_encodings_unique():
     scope1 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=0)
     all_generated_mrids = []
 
-    assert_and_append_mrid(MridMapper.encode_default_doe_mrid(scope1), all_generated_mrids)
+    default_control = generate_class_instance(DefaultSiteControl)
+
+    assert_and_append_mrid(MridMapper.encode_default_doe_mrid(scope1, default_control), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope1, 0, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_doe_mrid(scope1, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_function_set_assignment_mrid(scope1, 0, 0), all_generated_mrids)
@@ -168,10 +171,11 @@ def test_encode_default_doe_mrid():
     scope1 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=123)
     scope2 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=456)
 
-    mrid1 = MridMapper.encode_default_doe_mrid(scope1)
+    default_control = generate_class_instance(DefaultSiteControl)
+    mrid1 = MridMapper.encode_default_doe_mrid(scope1, default_control)
     assert_mrid(mrid1)
-    assert mrid1 == MridMapper.encode_default_doe_mrid(scope1), "Mrid should be stable"
-    assert mrid1 != MridMapper.encode_default_doe_mrid(scope2), "PEN number should affect things"
+    assert mrid1 == MridMapper.encode_default_doe_mrid(scope1, default_control), "Mrid should be stable"
+    assert mrid1 != MridMapper.encode_default_doe_mrid(scope2, default_control), "PEN number should affect things"
 
     assert decode_mrid_type(mrid1) == MridType.DEFAULT_DOE
 
@@ -366,7 +370,8 @@ def test_decode_and_validate_mrid_type():
             # This is using a different scope (pen) and is therefore an error
             MridMapper.decode_and_validate_mrid_type(scope2, mrid1)
 
-    do_test(lambda s: MridMapper.encode_default_doe_mrid(s))
+    default_control = generate_class_instance(DefaultSiteControl)
+    do_test(lambda s: MridMapper.encode_default_doe_mrid(s, default_control))
     do_test(lambda s: MridMapper.encode_doe_program_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_doe_mrid(s, 1))
     do_test(lambda s: MridMapper.encode_function_set_assignment_mrid(s, 1, 2))
