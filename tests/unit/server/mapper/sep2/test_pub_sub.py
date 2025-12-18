@@ -51,15 +51,8 @@ from envoy.server.mapper.sep2.pub_sub import (
     SubscriptionMapper,
     _map_to_notification_status,
 )
-from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
-from envoy.server.model.site import (
-    DefaultSiteControl,
-    Site,
-    SiteDERAvailability,
-    SiteDERRating,
-    SiteDERSetting,
-    SiteDERStatus,
-)
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
+from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -941,7 +934,7 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(
 
 @pytest.mark.parametrize("notification_type", list(NotificationType))
 def test_NotificationMapper_map_default_site_control_response(notification_type: NotificationType):
-    all_set = generate_class_instance(DefaultSiteControl, seed=1, optional_is_none=False)
+    all_set = generate_class_instance(SiteControlGroupDefault, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
     scope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")

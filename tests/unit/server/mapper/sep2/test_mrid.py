@@ -19,7 +19,7 @@ from envoy.server.mapper.sep2.mrid import (
     decode_mrid_type,
     encode_mrid,
 )
-from envoy.server.model.site import DefaultSiteControl
+from envoy.server.model.doe import SiteControlGroupDefault
 from envoy.server.request_scope import BaseRequestScope
 
 
@@ -149,9 +149,9 @@ def test_all_default_encodings_unique():
     scope1 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=0)
     all_generated_mrids = []
 
-    default_control = generate_class_instance(DefaultSiteControl)
+    scg_default = generate_class_instance(SiteControlGroupDefault)
 
-    assert_and_append_mrid(MridMapper.encode_default_doe_mrid(scope1, default_control), all_generated_mrids)
+    assert_and_append_mrid(MridMapper.encode_default_doe_mrid(scope1, scg_default), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope1, 0, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_doe_mrid(scope1, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_function_set_assignment_mrid(scope1, 0, 0), all_generated_mrids)
@@ -171,11 +171,11 @@ def test_encode_default_doe_mrid():
     scope1 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=123)
     scope2 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=456)
 
-    default_control = generate_class_instance(DefaultSiteControl)
-    mrid1 = MridMapper.encode_default_doe_mrid(scope1, default_control)
+    scg_default = generate_class_instance(SiteControlGroupDefault)
+    mrid1 = MridMapper.encode_default_doe_mrid(scope1, scg_default)
     assert_mrid(mrid1)
-    assert mrid1 == MridMapper.encode_default_doe_mrid(scope1, default_control), "Mrid should be stable"
-    assert mrid1 != MridMapper.encode_default_doe_mrid(scope2, default_control), "PEN number should affect things"
+    assert mrid1 == MridMapper.encode_default_doe_mrid(scope1, scg_default), "Mrid should be stable"
+    assert mrid1 != MridMapper.encode_default_doe_mrid(scope2, scg_default), "PEN number should affect things"
 
     assert decode_mrid_type(mrid1) == MridType.DEFAULT_DOE
 

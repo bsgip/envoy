@@ -13,12 +13,12 @@ from envoy.notification.crud.archive import (
     orm_relationship_map_parent_entities,
 )
 from envoy.notification.crud.common import (
-    ArchiveControlGroupScopedDefaultSiteControl,
     ArchiveSiteScopedFunctionSetAssignment,
     ArchiveSiteScopedSiteControlGroup,
-    ControlGroupScopedDefaultSiteControl,
+    ArchiveSiteScopedSiteControlGroupDefault,
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
+    SiteScopedSiteControlGroupDefault,
     TArchiveResourceModel,
     TResourceModel,
 )
@@ -27,9 +27,12 @@ from envoy.server.crud.common import localize_start_time_for_entity
 from envoy.server.crud.server import select_server_config
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.aggregator import Aggregator
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
+from envoy.server.model.archive.doe import (
+    ArchiveDynamicOperatingEnvelope,
+    ArchiveSiteControlGroup,
+    ArchiveSiteControlGroupDefault,
+)
 from envoy.server.model.archive.site import (
-    ArchiveDefaultSiteControl,
     ArchiveSite,
     ArchiveSiteDER,
     ArchiveSiteDERAvailability,
@@ -39,16 +42,8 @@ from envoy.server.model.archive.site import (
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
-from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
-from envoy.server.model.site import (
-    DefaultSiteControl,
-    Site,
-    SiteDER,
-    SiteDERAvailability,
-    SiteDERRating,
-    SiteDERSetting,
-    SiteDERStatus,
-)
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
+from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -160,10 +155,10 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
         status = cast(SiteDERStatus, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (status.site_der.site.aggregator_id, status.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
-        default_control = cast(ControlGroupScopedDefaultSiteControl, entity)  # type: ignore
+        default_control = cast(SiteScopedSiteControlGroupDefault, entity)  # type: ignore
         return (
-            default_control.original.site.aggregator_id,
-            default_control.original.site_id,
+            default_control.aggregator_id,
+            default_control.site_id,
             default_control.site_control_group_id,
         )
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
@@ -207,7 +202,7 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
         return -1  # There are no subscriptions to a single FSA
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
-        return cast(ControlGroupScopedDefaultSiteControl, entity).site_control_group_id  # type: ignore
+        return cast(SiteScopedSiteControlGroupDefault, entity).site_control_group_id  # type: ignore
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         return cast(SiteScopedSiteControlGroup, entity).original.fsa_id  # type: ignore
     else:
@@ -233,7 +228,7 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         return cast(SiteDERStatus, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
-        return cast(ControlGroupScopedDefaultSiteControl, entity).original.site_id  # type: ignore
+        return cast(SiteScopedSiteControlGroupDefault, entity).site_id  # type: ignore
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
         return cast(SiteScopedFunctionSetAssignment, entity).site_id  # type: ignore
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
@@ -669,50 +664,32 @@ async def fetch_der_status_by_changed_at(
 
 async def fetch_default_site_controls_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[ControlGroupScopedDefaultSiteControl, ArchiveControlGroupScopedDefaultSiteControl]:  # type: ignore # noqa: E501
+) -> AggregatorBatchedEntities[SiteScopedSiteControlGroupDefault, ArchiveSiteScopedSiteControlGroupDefault]:  # type: ignore # noqa: E501
     """Fetches all DefaultSiteControl instances matching the specified changed_at and returns them keyed by their
     aggregator/site id
 
     Also fetches any site from the archive that was deleted at the specified timestamp"""
 
     active_defaults, deleted_defaults = await fetch_entities_with_archive_by_datetime(
-        session, DefaultSiteControl, ArchiveDefaultSiteControl, timestamp
+        session, SiteControlGroupDefault, ArchiveSiteControlGroupDefault, timestamp
     )
 
-    # Now fetch all site's so we can populate the site_relationship
-    referenced_site_ids = {
-        e.site_id
-        for e in cast(
-            Iterable[Union[DefaultSiteControl, ArchiveDefaultSiteControl]],
-            chain(active_defaults, deleted_defaults),
-        )
-    }
-    active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
-        session, Site, ArchiveSite, referenced_site_ids
-    )
+    # We need to generate a notification per site ID - so fetch all of those
+    aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
 
-    # Map the "site" relationship
-    orm_relationship_map_parent_entities(
-        cast(Iterable[Union[DefaultSiteControl, ArchiveDefaultSiteControl]], chain(active_defaults, deleted_defaults)),
-        lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
-        "site",
-    )
-
-    # The defaults will need to vary per SiteControlGroup so we generate an instance per site_control_group_id
-    site_control_group_ids = (await session.execute(select(SiteControlGroup.site_control_group_id))).scalars().all()
-
-    site_control_scoped_actives = [
-        ControlGroupScopedDefaultSiteControl(scg_id, ad) for ad in active_defaults for scg_id in site_control_group_ids
+    scoped_actives = [
+        SiteScopedSiteControlGroupDefault(agg_id, site_id, ad.site_control_group_id, ad)
+        for ad in active_defaults
+        for agg_id, site_id in aggregator_site_ids
     ]
-    site_control_scoped_deleted = [
-        ArchiveControlGroupScopedDefaultSiteControl(scg_id, ad)
-        for ad in deleted_defaults
-        for scg_id in site_control_group_ids
+    scoped_deleted = [
+        ArchiveSiteScopedSiteControlGroupDefault(agg_id, site_id, dd.site_control_group_id, dd)
+        for dd in deleted_defaults
+        for agg_id, site_id in aggregator_site_ids
     ]
 
     return AggregatorBatchedEntities(
-        timestamp, SubscriptionResource.DEFAULT_SITE_CONTROL, site_control_scoped_actives, site_control_scoped_deleted
+        timestamp, SubscriptionResource.DEFAULT_SITE_CONTROL, scoped_actives, scoped_deleted
     )  # type: ignore
 
 

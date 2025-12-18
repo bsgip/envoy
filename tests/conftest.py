@@ -65,18 +65,6 @@ def pg_empty_config(
     if href_prefix_marker is not None:
         os.environ["HREF_PREFIX"] = str(href_prefix_marker.args[0])
 
-    no_default_doe_marker = request.node.get_closest_marker("no_default_doe")
-    if no_default_doe_marker is None:
-        os.environ["USE_GLOBAL_DEFAULT_DOE_FALLBACK"] = "true"
-        os.environ["DEFAULT_DOE_IMPORT_ACTIVE_WATTS"] = str(DEFAULT_DOE_IMPORT_ACTIVE_WATTS)
-        os.environ["DEFAULT_DOE_EXPORT_ACTIVE_WATTS"] = str(DEFAULT_DOE_EXPORT_ACTIVE_WATTS)
-        os.environ["DEFAULT_DOE_LOAD_ACTIVE_WATTS"] = str(DEFAULT_DOE_LOAD_ACTIVE_WATTS)
-        os.environ["DEFAULT_DOE_GENERATION_ACTIVE_WATTS"] = str(DEFAULT_DOE_GENERATION_ACTIVE_WATTS)
-        os.environ["DEFAULT_DOE_RAMP_RATE_PERCENT_PER_SECOND"] = str(DEFAULT_DOE_RAMP_RATE_PERCENT_PER_SECOND)
-
-    else:
-        os.environ["USE_GLOBAL_DEFAULT_DOE_FALLBACK"] = "false"
-
     if request.node.get_closest_marker("admin_ro_user"):
         os.environ["READ_ONLY_USER"] = READONLY_USER_NAME
         os.environ["READ_ONLY_KEYS"] = f'["{READONLY_USER_KEY_1}", "{READONLY_USER_KEY_2}"]'

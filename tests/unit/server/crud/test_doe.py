@@ -10,6 +10,7 @@ from assertical.asserts.type import assert_dict_type, assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import select, update
+from sqlalchemy.exc import InvalidRequestError
 
 from envoy.admin.crud.doe import cancel_then_insert_does
 from envoy.server.crud.doe import (
@@ -618,34 +619,16 @@ async def test_select_doe_at_timestamp_pagination(
 async def extra_site_control_groups(pg_base_config):
 
     # Current database entry has changed time '2021-04-05 10:01:00.500'
+    #
+    # We will slot this in between 1 and 2
     async with generate_async_session(pg_base_config) as session:
         session.add(
             generate_class_instance(
                 SiteControlGroup,
                 seed=101,
-                primacy=2,
-                site_control_group_id=2,
-                fsa_id=1,
-                changed_time=datetime(2021, 4, 5, 10, 2, 0, 500000, tzinfo=timezone.utc),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                SiteControlGroup,
-                seed=202,
-                primacy=1,
-                site_control_group_id=3,
-                fsa_id=3,
-                changed_time=datetime(2021, 4, 5, 10, 3, 0, 500000, tzinfo=timezone.utc),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                SiteControlGroup,
-                seed=303,
                 primacy=1,
                 site_control_group_id=4,
-                fsa_id=1,
+                fsa_id=3,
                 changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=timezone.utc),
             )
         )
@@ -654,17 +637,21 @@ async def extra_site_control_groups(pg_base_config):
 
 
 @pytest.mark.parametrize(
-    "site_control_group_id, expected_primacy",
-    [(1, 0), (3, 1), (99, None), (None, None)],
+    "site_control_group_id, expected_primacy, expected_default_import_limit_active_watts",
+    [(1, 0, Decimal("10.10")), (2, 1, None), (3, 2, Decimal("20.20")), (99, None, None), (None, None, None)],
 )
 @pytest.mark.anyio
 async def test_select_site_control_group_by_id(
-    extra_site_control_groups, site_control_group_id: int, expected_primacy: Optional[int]
+    extra_site_control_groups,
+    site_control_group_id: int,
+    expected_primacy: Optional[int],
+    expected_default_import_limit_active_watts: Optional[Decimal],
 ):
     """Tests that select_site_control_group_by_code works with a variety of success/failure cases"""
 
+    # With include
     async with generate_async_session(extra_site_control_groups) as session:
-        result = await select_site_control_group_by_id(session, site_control_group_id)
+        result = await select_site_control_group_by_id(session, site_control_group_id, include_default=True)
 
         if expected_primacy is None:
             assert result is None
@@ -672,25 +659,45 @@ async def test_select_site_control_group_by_id(
             assert isinstance(result, SiteControlGroup)
             assert result.primacy == expected_primacy
             assert result.site_control_group_id == site_control_group_id
+            if expected_default_import_limit_active_watts is None:
+                assert (
+                    result.site_control_group_default is None
+                    or result.site_control_group_default.import_limit_active_watts is None
+                )
+            else:
+                assert (
+                    result.site_control_group_default is not None
+                    and result.site_control_group_default.import_limit_active_watts
+                    == expected_default_import_limit_active_watts
+                )
+
+    # Without include
+    async with generate_async_session(extra_site_control_groups) as session:
+        result = await select_site_control_group_by_id(session, site_control_group_id, include_default=False)
+        if expected_primacy is None:
+            assert result is None
+        else:
+            with pytest.raises(InvalidRequestError):
+                result.site_control_group_default.created_time
 
 
 @pytest.mark.parametrize(
     "start, limit, changed_after, fsa_id, expected_ids, expected_count",
     [
-        (0, 99, datetime.min, None, [1, 4, 3, 2], 4),
-        (0, 99, datetime.min, 1, [1, 4, 2], 3),
+        (0, 99, datetime.min, None, [1, 4, 2, 3], 4),
+        (0, 99, datetime.min, 1, [1, 2, 3], 3),
         (0, 99, datetime.min, 2, [], 0),
-        (0, 99, datetime.min, 3, [3], 1),
-        (1, 2, datetime.min, None, [4, 3], 4),
-        (1, 1, datetime.min, 1, [4], 3),
+        (0, 99, datetime.min, 3, [4], 1),
+        (1, 2, datetime.min, None, [4, 2], 4),
+        (1, 1, datetime.min, 1, [2], 3),
         (99, 99, datetime.min, None, [], 4),
-        (0, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [1, 4, 3, 2], 4),
-        (3, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [2], 4),
-        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), None, [4, 3, 2], 3),
+        (0, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [1, 4, 2, 3], 4),
+        (3, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [3], 4),
+        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), None, [4, 2, 3], 3),
         (0, 99, datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc), None, [4, 3], 2),
         (0, 99, datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc), None, [4], 1),
         (0, 99, datetime(2021, 4, 5, 10, 5, 0, tzinfo=timezone.utc), None, [], 0),
-        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, [4, 2], 2),
+        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, [2, 3], 2),
     ],
 )
 @pytest.mark.anyio
@@ -703,14 +710,45 @@ async def test_select_and_count_site_control_groups(
     expected_ids: list[int],
     expected_count: int,
 ):
-    async with generate_async_session(extra_site_control_groups) as session:
-        actual_groups = await select_site_control_groups(session, start, changed_after, limit, fsa_id)
-        assert expected_ids == [e.site_control_group_id for e in actual_groups]
-        assert_list_type(SiteControlGroup, actual_groups, len(expected_ids))
+    # This is a cache of known site_control_group_default values, keyed by the SiteControlGroup id
+    #
+    # If an ID isn't in here - it's because it doesn't have a default
+    #
+    # These values correspond to the SiteControlGroupDefault values in base_config.sql
+    scg_default_import_limit: dict[int, Decimal] = {
+        1: Decimal("10.10"),
+        3: Decimal("20.20"),
+    }
 
-        actual_count = await count_site_control_groups(session, changed_after, fsa_id)
-        assert isinstance(actual_count, int)
-        assert actual_count == expected_count
+    for include_defaults in [True, False]:
+        async with generate_async_session(extra_site_control_groups) as session:
+            actual_groups = await select_site_control_groups(
+                session, start, changed_after, limit, fsa_id, include_defaults=include_defaults
+            )
+            assert expected_ids == [e.site_control_group_id for e in actual_groups]
+            assert_list_type(SiteControlGroup, actual_groups, len(expected_ids))
+
+            actual_count = await count_site_control_groups(session, changed_after, fsa_id)
+            assert isinstance(actual_count, int)
+            assert actual_count == expected_count
+
+            if include_defaults:
+                for g in actual_groups:
+                    expected_import_default = scg_default_import_limit.get(g.site_control_group_id, None)
+                    if expected_import_default is None:
+                        assert g.site_control_group_default is None
+                    else:
+                        assert (
+                            g.site_control_group_default is not None
+                        ), f"SiteControlGroup ID: {g.site_control_group_id}"
+                        assert (
+                            g.site_control_group_default.import_limit_active_watts == expected_import_default
+                        ), f"SiteControlGroup ID: {g.site_control_group_id}"
+
+            else:
+                for g in actual_groups:
+                    with pytest.raises(InvalidRequestError):
+                        g.site_control_group_default.created_time
 
 
 @pytest.mark.anyio

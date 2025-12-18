@@ -119,7 +119,6 @@ async def select_single_site_no_scoping(
     site_id: int,
     include_groups: bool = False,
     include_der: bool = False,
-    include_site_default: bool = False,
 ) -> Optional[Site]:
     """Admin selecting of a single site - no filtering on aggregator is made."""
 
@@ -135,9 +134,6 @@ async def select_single_site_no_scoping(
             selectinload(Site.site_ders).selectinload(SiteDER.site_der_setting),
             selectinload(Site.site_ders).selectinload(SiteDER.site_der_status),
         )
-
-    if include_site_default:
-        stmt = stmt.options(selectinload(Site.default_site_control))
 
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()

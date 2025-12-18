@@ -1,26 +1,17 @@
 import json
-from decimal import Decimal
 from http import HTTPStatus
-from typing import Optional
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_nowish
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
-from envoy_schema.admin.schema.config import (
-    ControlDefaultRequest,
-    ControlDefaultResponse,
-    RuntimeServerConfigRequest,
-    RuntimeServerConfigResponse,
-    UpdateDefaultValue,
-)
-from envoy_schema.admin.schema.uri import ServerConfigRuntimeUri, SiteControlDefaultConfigUri
+from envoy_schema.admin.schema.config import RuntimeServerConfigRequest, RuntimeServerConfigResponse
+from envoy_schema.admin.schema.uri import ServerConfigRuntimeUri
 from httpx import AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 
 from envoy.server.model.server import RuntimeServerConfig
-from envoy.server.model.site import DefaultSiteControl
 from tests.integration.response import read_response_body_string
 
 
@@ -98,85 +89,3 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
     assert (
         third_update_response.site_control_pow10_encoding == third_config_request.site_control_pow10_encoding
     ), "This was the updated field"
-
-
-@pytest.mark.parametrize(
-    "site_id, expected",
-    [
-        (1, (Decimal("10.10"), Decimal("9.99"), Decimal("8.88"), Decimal("7.77"))),
-        (2, (None, None, None, None)),
-        (3, (Decimal("20.20"), Decimal("19.19"), Decimal("18.18"), Decimal("17.17"))),
-        (5, (None, None, None, None)),
-        (6, (None, None, None, None)),
-        (99, None),
-    ],
-)
-@pytest.mark.anyio
-async def test_get_and_update_site_control_default(
-    pg_base_config,
-    admin_client_auth: AsyncClient,
-    site_id: int,
-    expected: Optional[tuple],
-):
-    version_before = 0
-    async with generate_async_session(pg_base_config) as session:
-        db_record = (
-            await session.execute(select(DefaultSiteControl).where(DefaultSiteControl.site_id == site_id))
-        ).scalar_one_or_none()
-        if db_record:
-            version_before = db_record.version
-
-    resp = await admin_client_auth.get(SiteControlDefaultConfigUri.format(site_id=site_id))
-    if expected is None:
-        assert resp.status_code == HTTPStatus.NOT_FOUND
-    else:
-        assert resp.status_code == HTTPStatus.OK
-        body = read_response_body_string(resp)
-        config: ControlDefaultResponse = ControlDefaultResponse(**json.loads(body))
-        assert expected == (
-            config.server_default_import_limit_watts,
-            config.server_default_export_limit_watts,
-            config.server_default_generation_limit_watts,
-            config.server_default_load_limit_watts,
-        )
-
-    # now do an update for certain fields
-    config_request = ControlDefaultRequest(
-        import_limit_watts=UpdateDefaultValue(value=None),
-        export_limit_watts=UpdateDefaultValue(value=Decimal("1.11")),
-        generation_limit_watts=None,
-        load_limit_watts=None,
-        ramp_rate_percent_per_second=None,
-    )
-    resp = await admin_client_auth.post(
-        SiteControlDefaultConfigUri.format(site_id=site_id), content=config_request.model_dump_json()
-    )
-    if not expected:
-        assert resp.status_code == HTTPStatus.NOT_FOUND
-    else:
-        assert resp.status_code == HTTPStatus.NO_CONTENT
-
-    # and refetch
-    resp = await admin_client_auth.get(SiteControlDefaultConfigUri.format(site_id=site_id))
-
-    # Make sure only the fields we updated did an update
-    if expected is None:
-        assert resp.status_code == HTTPStatus.NOT_FOUND
-    else:
-        assert resp.status_code == HTTPStatus.OK
-        body = read_response_body_string(resp)
-        config: ControlDefaultResponse = ControlDefaultResponse(**json.loads(body))
-
-        assert (None, Decimal("1.11"), expected[2], expected[3]) == (
-            config.server_default_import_limit_watts,
-            config.server_default_export_limit_watts,
-            config.server_default_generation_limit_watts,
-            config.server_default_load_limit_watts,
-        )
-
-        # Version number in the DB should be getting updated
-        async with generate_async_session(pg_base_config) as session:
-            db_record = (
-                await session.execute(select(DefaultSiteControl).where(DefaultSiteControl.site_id == site_id))
-            ).scalar_one()
-            assert db_record.version == version_before + 1, "The version field should be updated per update"

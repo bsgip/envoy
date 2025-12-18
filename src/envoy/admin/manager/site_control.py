@@ -1,7 +1,10 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
 from envoy_schema.admin.schema.site_control import (
+    SiteControlGroupDefaultRequest,
+    SiteControlGroupDefaultResponse,
     SiteControlGroupPageResponse,
     SiteControlGroupRequest,
     SiteControlGroupResponse,
@@ -20,8 +23,11 @@ from envoy.admin.crud.doe import (
 )
 from envoy.admin.mapper.site_control import SiteControlGroupListMapper, SiteControlListMapper
 from envoy.notification.manager.notification import NotificationManager
+from envoy.server.crud.archive import copy_rows_into_archive
 from envoy.server.crud.doe import select_site_control_group_by_id, select_site_control_group_fsa_ids
 from envoy.server.manager.time import utc_now
+from envoy.server.model.archive.doe import ArchiveSiteControlGroupDefault
+from envoy.server.model.doe import SiteControlGroupDefault
 from envoy.server.model.subscription import SubscriptionResource
 
 
@@ -134,4 +140,80 @@ class SiteControlListManager:
             start=start,
             after=changed_after,
             does=does,
+        )
+
+    @staticmethod
+    async def update_site_control_default(
+        session: AsyncSession, group_id: int, request: SiteControlGroupDefaultRequest
+    ) -> bool:
+        now = utc_now()
+
+        scg = await select_site_control_group_by_id(session, group_id, include_default=True)
+        if scg is None:
+            return False
+
+        if scg.site_control_group_default is None:
+            scg.site_control_group_default = SiteControlGroupDefault(
+                changed_time=now, version=0, site_control_group_id=group_id
+            )
+        else:
+            # If there is an existing record - lets archive it BEFORE we update it
+            await copy_rows_into_archive(
+                session,
+                SiteControlGroupDefault,
+                ArchiveSiteControlGroupDefault,
+                lambda q: q.where(SiteControlGroupDefault.site_control_group_id == group_id),
+            )
+            scg.site_control_group_default.changed_time = now
+
+        if request.import_limit_watts is not None:
+            scg.site_control_group_default.import_limit_active_watts = request.import_limit_watts.value
+
+        if request.export_limit_watts is not None:
+            scg.site_control_group_default.export_limit_active_watts = request.export_limit_watts.value
+
+        if request.generation_limit_watts is not None:
+            scg.site_control_group_default.generation_limit_active_watts = request.generation_limit_watts.value
+
+        if request.load_limit_watts is not None:
+            scg.site_control_group_default.load_limit_active_watts = request.load_limit_watts.value
+
+        if request.ramp_rate_percent_per_second is not None:
+            ramp_rate_value = (
+                int(request.ramp_rate_percent_per_second.value)
+                if request.ramp_rate_percent_per_second.value is not None
+                else None
+            )
+            scg.site_control_group_default.ramp_rate_percent_per_second = ramp_rate_value
+
+        scg.site_control_group_default.version = scg.site_control_group_default.version + 1
+
+        await session.commit()
+
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.DEFAULT_SITE_CONTROL, now)
+
+        return True
+
+    @staticmethod
+    async def fetch_site_control_default_response(
+        session: AsyncSession, group_id: int
+    ) -> Optional[SiteControlGroupDefaultResponse]:
+        """Fetches the current site control group default values as a SiteControlGroupDefaultResponse for external
+        communication"""
+        scg = await select_site_control_group_by_id(session, group_id, include_default=True)
+        if not scg or not scg.site_control_group_default:
+            return None
+
+        return SiteControlGroupDefaultResponse(
+            ramp_rate_percent_per_second=(
+                Decimal(scg.site_control_group_default.ramp_rate_percent_per_second)
+                if scg.site_control_group_default.ramp_rate_percent_per_second is not None
+                else None
+            ),
+            server_default_import_limit_watts=scg.site_control_group_default.import_limit_active_watts,
+            server_default_export_limit_watts=scg.site_control_group_default.export_limit_active_watts,
+            server_default_generation_limit_watts=scg.site_control_group_default.generation_limit_active_watts,
+            server_default_load_limit_watts=scg.site_control_group_default.load_limit_active_watts,
+            changed_time=scg.site_control_group_default.changed_time,
+            created_time=scg.site_control_group_default.created_time,
         )

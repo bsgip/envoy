@@ -3,6 +3,7 @@ from typing import Optional, Sequence, Union
 
 from sqlalchemy import Select, func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from envoy.server.crud.common import localize_start_time, localize_start_time_for_entity
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope as ArchiveDOE
@@ -363,6 +364,7 @@ async def _site_control_groups(
     changed_after: datetime,
     limit: Optional[int],
     fsa_id: Optional[int],
+    include_defaults: bool,
 ) -> Union[Sequence[SiteControlGroup], int]:
     """Internal utility for fetching/counting SiteControlGroup's
 
@@ -383,6 +385,9 @@ async def _site_control_groups(
     if not is_counting:
         stmt = stmt.order_by(SiteControlGroup.primacy.asc(), SiteControlGroup.site_control_group_id.desc())
 
+        if include_defaults:
+            stmt = stmt.options(selectinload(SiteControlGroup.site_control_group_default))
+
     resp = await session.execute(stmt)
     if is_counting:
         return resp.scalar_one()
@@ -391,7 +396,12 @@ async def _site_control_groups(
 
 
 async def select_site_control_groups(
-    session: AsyncSession, start: Optional[int], changed_after: datetime, limit: Optional[int], fsa_id: Optional[int]
+    session: AsyncSession,
+    start: Optional[int],
+    changed_after: datetime,
+    limit: Optional[int],
+    fsa_id: Optional[int],
+    include_defaults: bool = False,
 ) -> Sequence[SiteControlGroup]:
     """Fetches SiteControlGroup with some basic pagination / filtering on change time.
 
@@ -400,7 +410,7 @@ async def select_site_control_groups(
     Orders by 2030.5 requirements on DERProgram which is primacy ASC, primary key DESC"""
 
     # Test coverage will ensure that it's an entity list
-    return await _site_control_groups(False, session, start, changed_after, limit, fsa_id)  # type: ignore [return-value] # noqa: E501
+    return await _site_control_groups(False, session, start, changed_after, limit, fsa_id, include_defaults)  # type: ignore [return-value] # noqa: E501
 
 
 async def count_site_control_groups(session: AsyncSession, changed_after: datetime, fsa_id: Optional[int]) -> int:
@@ -410,7 +420,7 @@ async def count_site_control_groups(session: AsyncSession, changed_after: dateti
     """
 
     # Test coverage will ensure that it's an int
-    return await _site_control_groups(True, session, 0, changed_after, None, fsa_id)  # type: ignore [return-value]
+    return await _site_control_groups(True, session, 0, changed_after, None, fsa_id, False)  # type: ignore [return-value]
 
 
 async def count_site_control_groups_by_fsa_id(session: AsyncSession) -> dict[int, int]:
@@ -425,11 +435,15 @@ async def count_site_control_groups_by_fsa_id(session: AsyncSession) -> dict[int
 
 
 async def select_site_control_group_by_id(
-    session: AsyncSession, site_control_group_id: int
+    session: AsyncSession, site_control_group_id: int, include_default: bool = False
 ) -> Optional[SiteControlGroup]:
     """Fetches a single SiteControlGroup with the specified site_control_group_id. Returns None if it can't be found."""
 
     stmt = select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == site_control_group_id).limit(1)
+
+    if include_default:
+        stmt = stmt.options(selectinload(SiteControlGroup.site_control_group_default))
+
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
 

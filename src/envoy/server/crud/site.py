@@ -15,7 +15,6 @@ from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (
-    ArchiveDefaultSiteControl,
     ArchiveSite,
     ArchiveSiteDER,
     ArchiveSiteDERAvailability,
@@ -28,7 +27,6 @@ from envoy.server.model.archive.subscription import ArchiveSubscription, Archive
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import (
-    DefaultSiteControl,
     Site,
     SiteDER,
     SiteDERAvailability,
@@ -365,19 +363,3 @@ async def delete_site_for_aggregator(
         lambda q: q.where(Site.site_id == site_id),
     )
     return True
-
-
-async def select_site_with_default_site_control(
-    session: AsyncSession, site_id: int, aggregator_id: int
-) -> Optional[Site]:
-    """Selects the unique Site with the specified site_id and aggregator_id, including the Site's DefaultSiteControls.
-    Returns None if a match isn't found"""
-    stmt = (
-        select(Site)
-        .where((Site.aggregator_id == aggregator_id) & (Site.site_id == site_id))
-        .options(
-            selectinload(Site.default_site_control),
-        )
-    )
-    resp = await session.execute(stmt)
-    return resp.scalar_one_or_none()

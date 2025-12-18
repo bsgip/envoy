@@ -10,7 +10,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from envoy.notification.handler import enable_notification_client
 from envoy.server.api.depends.allow_nmi_updates import ALLOW_NMI_UPDATES_ATTR
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
-from envoy.server.api.depends.default_doe import DefaultDoeDepends
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
 from envoy.server.api.depends.nmi_validator import NMI_VALIDATOR_ATTR
 from envoy.server.api.depends.request_state_settings import RequestStateSettingsDepends
@@ -22,8 +21,8 @@ from envoy.server.api.error_handler import (
 )
 from envoy.server.api.router import routers, unsecured_routers
 from envoy.server.database import enable_dynamic_azure_ad_database_credentials
-from envoy.server.lifespan import generate_combined_lifespan_manager
 from envoy.server.endpoint_exclusion import generate_routers_with_excluded_endpoints
+from envoy.server.lifespan import generate_combined_lifespan_manager
 from envoy.server.settings import AppSettings, settings
 
 # Setup logs
@@ -41,10 +40,6 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     lifespan_managers = []
 
     global_dependencies.append(Depends(RequestStateSettingsDepends(new_settings.href_prefix, new_settings.iana_pen)))
-
-    # if default DOE is specified - include the DefaultDoeDepends
-    if new_settings.use_global_default_doe_fallback:
-        global_dependencies.append(Depends(DefaultDoeDepends(**new_settings.default_doe_configuration)))
 
     # Setup notification broker connection for sep2 pub/sub support
     if new_settings.enable_notifications:

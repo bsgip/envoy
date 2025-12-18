@@ -212,33 +212,3 @@ class ArchiveSiteDERStatus(ArchiveBase):
     storage_mode_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     storage_connect_status: Mapped[Optional[ConnectStatusType]] = mapped_column(INTEGER, nullable=True)
     storage_connect_status_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class ArchiveDefaultSiteControl(ArchiveBase):
-    """Represents fields that map to a subset of the attributes defined in CSIP-AUS' DefaultDERControl resource.
-    This entity is linked to a Site."""
-
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site.DefaultSiteControl.__tablename__  # type: ignore
-    default_site_control_id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
-    site_id: Mapped[int] = mapped_column(INTEGER)
-
-    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
-    version: Mapped[int] = mapped_column(INTEGER)  # Incremented whenever this record is changed
-
-    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(16, original_models.site.DOE_DECIMAL_PLACES), nullable=True
-    )  # Constraint on imported active power
-    export_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(16, original_models.site.DOE_DECIMAL_PLACES), nullable=True
-    )  # Constraint on exported active/reactive power
-    generation_limit_active_watts: Mapped[Optional[Optional[Decimal]]] = mapped_column(
-        DECIMAL(16, original_models.site.DOE_DECIMAL_PLACES), nullable=True
-    )
-    load_limit_active_watts: Mapped[Optional[Optional[Decimal]]] = mapped_column(
-        DECIMAL(16, original_models.site.DOE_DECIMAL_PLACES), nullable=True
-    )
-    ramp_rate_percent_per_second: Mapped[Optional[int]] = mapped_column(
-        nullable=True
-    )  # Constraint on exported active/reactive power

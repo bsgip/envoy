@@ -52,15 +52,8 @@ from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignm
 from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
 from envoy.server.mapper.sep2.pricing import TimeTariffIntervalMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
-from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
-from envoy.server.model.site import (
-    DefaultSiteControl,
-    Site,
-    SiteDERAvailability,
-    SiteDERRating,
-    SiteDERSetting,
-    SiteDERStatus,
-)
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
+from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -763,7 +756,7 @@ class NotificationMapper:
 
     @staticmethod
     def map_default_site_control_response(
-        default_control: Optional[DefaultSiteControl],
+        scg_default: Optional[SiteControlGroupDefault],
         der_program_id: int,
         pow10_multipier: int,
         sub: Subscription,
@@ -777,9 +770,9 @@ class NotificationMapper:
         )
 
         resource_model: Optional[DefaultDERControl] = None
-        if default_control is not None:
+        if scg_default is not None:
             resource_model = DERControlMapper.map_to_default_response(
-                scope, default_control, scope.display_site_id, der_program_id, pow10_multipier
+                scope, scg_default, scope.display_site_id, der_program_id, pow10_multipier
             )
             resource_model.type = XSI_TYPE_DEFAULT_DER_CONTROL
 

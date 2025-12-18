@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import BOOLEAN, DECIMAL, VARCHAR, BigInteger, DateTime, ForeignKey, Index, func
+from sqlalchemy import BOOLEAN, DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model.base import Base
@@ -36,11 +36,49 @@ class SiteControlGroup(Base):
         lazy="raise", back_populates="site_control_group"
     )
 
+    site_control_group_default: Mapped[Optional["SiteControlGroupDefault"]] = relationship(
+        back_populates="site_control_group", lazy="raise", passive_deletes=True, uselist=False
+    )  # The default DOE
+
     Index(
         "ix_site_control_group_primacy_site_control_group_id",
         "primacy",
         "site_control_group_id",
     ),
+
+
+class SiteControlGroupDefault(Base):
+    """Represents fields that map to a subset of the attributes defined in CSIP-AUS' DefaultDERControl resource. These
+    default values fall underneath a specific SiteControlGroup."""
+
+    __tablename__ = "site_control_group_default"
+    site_control_group_default_id: Mapped[int] = mapped_column(primary_key=True)
+    site_control_group_id: Mapped[int] = mapped_column(
+        ForeignKey("site_control_group.site_control_group_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )  # When this record was created
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+    version: Mapped[int] = mapped_column(INTEGER, server_default="0")  # Incremented whenever this record is changed
+
+    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )  # Constraint on imported active power
+    export_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )  # Constraint on exported active power
+    generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )
+    load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
+    ramp_rate_percent_per_second: Mapped[Optional[int]] = mapped_column(nullable=True)  # hundredths of percent per sec
+
+    site_control_group: Mapped["SiteControlGroup"] = relationship(
+        back_populates="site_control_group_default", lazy="raise"
+    )
 
 
 # TODO: Rename this and related archive to SiteControl. These entities will eventually hold more than

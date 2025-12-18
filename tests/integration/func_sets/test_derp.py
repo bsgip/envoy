@@ -120,26 +120,6 @@ async def test_get_derprogram_list(
 ):
     """Tests getting DERPrograms for various sites and validates access constraints"""
 
-    # preload some extra derps
-    async with generate_async_session(pg_base_config) as session:
-        session.add(
-            generate_class_instance(
-                SiteControlGroup,
-                seed=101,
-                site_control_group_id=2,
-                changed_time=datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                SiteControlGroup,
-                seed=202,
-                site_control_group_id=3,
-                changed_time=datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc),
-            )
-        )
-        await session.commit()
-
     path = uri_derp_list_format.format(site_id=site_id) + build_paging_params(start, limit, after)
     response = await client.get(path, headers=agg_1_headers)
 
@@ -164,14 +144,14 @@ async def test_get_derprogram_list(
 @pytest.mark.parametrize(
     "start, limit, after, site_id, fsa_id, expected_derp_ids_with_count, expected_status",
     [
-        (None, 99, None, 1, 1, [(1, 3), (2, 0)], HTTPStatus.OK),
-        (None, 99, None, 1, 2, [(3, 0)], HTTPStatus.OK),
+        (None, 99, None, 1, 1, [(1, 3), (2, 0), (3, 0)], HTTPStatus.OK),
+        (None, 99, None, 1, 2, [], HTTPStatus.OK),
         (None, 99, None, 1, 3, [(4, 0)], HTTPStatus.OK),
-        (None, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, 1, [(2, 0)], HTTPStatus.OK),
+        (None, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, 1, [(2, 0), (3, 0)], HTTPStatus.OK),
         (None, 1, None, 1, 1, [(1, 3)], HTTPStatus.OK),
-        (1, 99, None, 1, 1, [(2, 0)], HTTPStatus.OK),
+        (1, 99, None, 1, 1, [(2, 0), (3, 0)], HTTPStatus.OK),
         (None, 99, None, 3, 1, None, HTTPStatus.NOT_FOUND),  # Belongs to agg 2
-        (None, 99, None, 4, 1, [(1, 0), (2, 0)], HTTPStatus.OK),
+        (None, 99, None, 4, 1, [(1, 0), (2, 0), (3, 0)], HTTPStatus.OK),
         (None, 99, None, 5, 1, None, HTTPStatus.NOT_FOUND),  # Belongs to device cert
         (None, 99, None, 99, 1, None, HTTPStatus.NOT_FOUND),  # DNE
         (None, 99, None, 0, 1, None, HTTPStatus.FORBIDDEN),  # Virtual aggregator device cant access DERPs
@@ -198,24 +178,6 @@ async def test_get_derprogram_list_fsa_scoped(
         session.add(
             generate_class_instance(
                 SiteControlGroup,
-                seed=101,
-                site_control_group_id=2,
-                fsa_id=1,
-                changed_time=datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                SiteControlGroup,
-                seed=202,
-                site_control_group_id=3,
-                fsa_id=2,
-                changed_time=datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                SiteControlGroup,
                 seed=303,
                 site_control_group_id=4,
                 fsa_id=3,
@@ -236,11 +198,11 @@ async def test_get_derprogram_list_fsa_scoped(
         parsed_response: DERProgramListResponse = DERProgramListResponse.from_xml(body)
         assert parsed_response.href == uri_derp_list_fsa_format.format(site_id=site_id, fsa_id=fsa_id)
         assert parsed_response.results == len(expected_derp_ids_with_count)
-        assert len(parsed_response.DERProgram) == len(expected_derp_ids_with_count)
 
-        actual_derp_ids_with_count = [
-            (int(derp.href.split("/")[-1]), derp.DERControlListLink.all_) for derp in parsed_response.DERProgram
-        ]
+        derps = [] if parsed_response.DERProgram is None else parsed_response.DERProgram
+        assert len(derps) == len(expected_derp_ids_with_count)
+
+        actual_derp_ids_with_count = [(int(derp.href.split("/")[-1]), derp.DERControlListLink.all_) for derp in derps]
         assert expected_derp_ids_with_count == actual_derp_ids_with_count
 
 
@@ -547,36 +509,11 @@ async def test_get_dercontrol_list_all_expired(
 
 
 @pytest.mark.anyio
-@pytest.mark.no_default_doe
 async def test_get_default_doe_not_configured(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
-    """Tests getting the default DOE with no default configured returns 404"""
+    """Tests getting the default DOE with no default configured returns an "empty" default"""
 
-    # test a known site in base_config that does not have anything set either
-    path = uri_derc_default_control_format.format(site_id=2, der_program_id=1)
-    response = await client.get(path, headers=agg_1_headers)
-
-    assert_response_header(response, HTTPStatus.NOT_FOUND)
-    assert_error_response(response)
-
-
-@pytest.mark.anyio
-async def test_get_default_invalid_site_id(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
-    """Tests getting the default DOE with no default configured returns 404"""
-
-    # test trying to fetch a site unavailable to this aggregator
-    path = uri_derc_default_control_format.format(site_id=3, der_program_id=1)
-    response = await client.get(path, headers=agg_1_headers)
-
-    assert_response_header(response, HTTPStatus.NOT_FOUND)
-    assert_error_response(response)
-
-
-@pytest.mark.anyio
-async def test_get_fallback_default_doe(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
-    """Tests getting the default DOE"""
-
-    # test a known site
-    path = uri_derc_default_control_format.format(site_id=2, der_program_id=1)
+    # test a known DERProgram in base_config that does not have a default set
+    path = uri_derc_default_control_format.format(site_id=2, der_program_id=2)
     response = await client.get(path, headers=agg_1_headers)
 
     assert_response_header(response, HTTPStatus.OK)
@@ -584,19 +521,27 @@ async def test_get_fallback_default_doe(client: AsyncClient, uri_derc_default_co
     assert len(body) > 0
 
     parsed_response: DefaultDERControl = DefaultDERControl.from_xml(body)
+    assert parsed_response.href == path
+    assert parsed_response.DERControlBase_ is not None
+    assert parsed_response.DERControlBase_.opModImpLimW is None
+    assert parsed_response.DERControlBase_.opModExpLimW is None
+    assert parsed_response.DERControlBase_.opModGenLimW is None
+    assert parsed_response.DERControlBase_.opModLoadLimW is None
+    assert parsed_response.setGradW is None
+    assert parsed_response.version == 0
+    assert parsed_response.mRID
 
-    assert (
-        parsed_response.DERControlBase_.opModImpLimW.value
-        == DERControlMapper.map_to_active_power(
-            DEFAULT_DOE_IMPORT_ACTIVE_WATTS, DEFAULT_SITE_CONTROL_POW10_ENCODING
-        ).value
-    )
-    assert (
-        parsed_response.DERControlBase_.opModExpLimW.value
-        == DERControlMapper.map_to_active_power(
-            DEFAULT_DOE_EXPORT_ACTIVE_WATTS, DEFAULT_SITE_CONTROL_POW10_ENCODING
-        ).value
-    )
+
+@pytest.mark.anyio
+async def test_get_default_invalid_derp_id(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
+    """Tests getting the default DOE for a non existent DERProgram returns 404"""
+
+    # test trying to fetch a site unavailable to this aggregator
+    path = uri_derc_default_control_format.format(site_id=1, der_program_id=99)
+    response = await client.get(path, headers=agg_1_headers)
+
+    assert_response_header(response, HTTPStatus.NOT_FOUND)
+    assert_error_response(response)
 
 
 @pytest.mark.anyio

@@ -5,6 +5,8 @@ from typing import Optional
 
 from asyncpg.exceptions import CardinalityViolationError  # type: ignore
 from envoy_schema.admin.schema.site_control import (
+    SiteControlGroupDefaultRequest,
+    SiteControlGroupDefaultResponse,
     SiteControlGroupPageResponse,
     SiteControlGroupRequest,
     SiteControlGroupResponse,
@@ -12,6 +14,7 @@ from envoy_schema.admin.schema.site_control import (
     SiteControlRequest,
 )
 from envoy_schema.admin.schema.uri import (
+    SiteControlGroupDefaultUri,
     SiteControlGroupListUri,
     SiteControlGroupUri,
     SiteControlRangeUri,
@@ -145,3 +148,31 @@ async def delete_site_controls_in_range(group_id: int, period_start: datetime, p
     await SiteControlListManager.delete_site_controls_in_range(
         db.session, site_control_group_id=group_id, site_id=None, period_start=period_start, period_end=period_end
     )
+
+
+@router.post(SiteControlGroupDefaultUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
+async def update_site_control_default(group_id: int, body: SiteControlGroupDefaultRequest) -> None:
+    """Updates the control default config for the specified SiteControlGroup. Any missing values will NOT be updated.
+
+    Body:
+        single SiteControlGroupDefaultRequest object.
+
+    Returns:
+        None
+    """
+    result = await SiteControlListManager.update_site_control_default(db.session, group_id, body)
+    if not result:
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"group_id {group_id} not found")
+
+
+@router.get(SiteControlGroupDefaultUri, status_code=HTTPStatus.OK, response_model=SiteControlGroupDefaultResponse)
+async def get_site_control_default(group_id: int) -> SiteControlGroupDefaultResponse:
+    """Gets the control default config for the specified SiteControlGroup
+
+    Returns:
+        SiteControlGroupDefaultResponse or 404
+    """
+    result = await SiteControlListManager.fetch_site_control_default_response(db.session, group_id)
+    if not result:
+        raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"group_id {group_id} not found")
+    return result

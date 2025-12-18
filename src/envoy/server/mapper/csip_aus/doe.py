@@ -22,8 +22,7 @@ from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.sep2.mrid import MridMapper, ResponseSetType
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
-from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
-from envoy.server.model.site import DefaultSiteControl
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.request_scope import AggregatorRequestScope, BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
@@ -152,7 +151,7 @@ class DERControlMapper:
     @staticmethod
     def map_to_default_response(
         scope: BaseRequestScope,
-        default_doe: DefaultSiteControl,
+        default_doe: SiteControlGroupDefault,
         display_site_id: int,
         der_program_id: int,
         pow10_multipier: int,
@@ -288,13 +287,13 @@ class DERProgramMapper:
         rq_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope],
         total_controls: Optional[int],
         site_control_group: Union[SiteControlGroup, ArchiveSiteControlGroup],
-        default_doe: Optional[DefaultSiteControl],
+        site_control_group_default: Optional[SiteControlGroupDefault],
     ) -> DERProgramResponse:
         """Returns a DERProgram response for a SiteControlGroup"""
 
         # The default control link will only be included if we have a default DOE configured for this site
         default_der_link: Optional[Link] = None
-        if default_doe is not None:
+        if site_control_group_default is not None:
             default_der_link = Link.model_validate(
                 {
                     "href": DERControlMapper.default_control_href(
@@ -340,7 +339,6 @@ class DERProgramMapper:
         rq_scope: DeviceOrAggregatorRequestScope,
         site_control_groups_with_control_count: list[tuple[SiteControlGroup, int]],
         total_site_control_groups: int,
-        default_doe: Optional[DefaultSiteControl],
         pollrate_seconds: int,
         fsa_id: Optional[int],
     ) -> DERProgramListResponse:
@@ -353,7 +351,9 @@ class DERProgramMapper:
                 "pollRate": pollrate_seconds,
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "DERProgram": [
-                    DERProgramMapper.doe_program_response(rq_scope, control_count, group, default_doe)
+                    DERProgramMapper.doe_program_response(
+                        rq_scope, control_count, group, group.site_control_group_default
+                    )
                     for group, control_count in site_control_groups_with_control_count
                 ],
                 "all_": total_site_control_groups,

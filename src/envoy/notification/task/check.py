@@ -28,9 +28,9 @@ from envoy.notification.crud.batch import (
     select_subscriptions_for_resource,
 )
 from envoy.notification.crud.common import (
-    ControlGroupScopedDefaultSiteControl,
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
+    SiteScopedSiteControlGroupDefault,
     TArchiveResourceModel,
     TResourceModel,
 )
@@ -322,7 +322,7 @@ def entities_to_notification(
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         # DEFAULT_SITE_CONTROL: (aggregator_id: int, site_id: int, site_control_group_id: int)
         (_, site_id, site_control_group_id) = batch_key
-        default_site_control = cast(ControlGroupScopedDefaultSiteControl, entities[0]) if len(entities) > 0 else None
+        default_site_control = cast(SiteScopedSiteControlGroupDefault, entities[0]) if len(entities) > 0 else None
 
         return NotificationMapper.map_default_site_control_response(
             None if default_site_control is None else default_site_control.original,

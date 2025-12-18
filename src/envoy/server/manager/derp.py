@@ -19,7 +19,7 @@ from envoy.server.crud.doe import (
     select_site_control_group_by_id,
     select_site_control_groups,
 )
-from envoy.server.crud.site import select_single_site_with_site_id, select_site_with_default_site_control
+from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
@@ -30,9 +30,7 @@ from envoy.server.mapper.csip_aus.doe import (
     DERProgramMapper,
 )
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.config.default_doe import DefaultDoeConfiguration
-from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
-from envoy.server.model.site import DefaultSiteControl
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.request_scope import SiteRequestScope
 
 
@@ -41,7 +39,6 @@ class DERProgramManager:
     async def fetch_list_for_scope(
         session: AsyncSession,
         scope: SiteRequestScope,
-        default_doe: Optional[DefaultDoeConfiguration],
         start: int,
         changed_after: datetime,
         limit: int,
@@ -54,15 +51,14 @@ class DERProgramManager:
 
         now = utc_now()
 
-        site = await select_site_with_default_site_control(session, scope.site_id, scope.aggregator_id)
+        site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
         if not site:
             raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
 
-        default_site_control = DERControlManager._resolve_default_site_control(default_doe, site.default_site_control)
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
         site_control_groups = await select_site_control_groups(
-            session, start=start, limit=limit, changed_after=changed_after, fsa_id=fsa_id
+            session, start=start, limit=limit, changed_after=changed_after, fsa_id=fsa_id, include_defaults=True
         )
         site_control_group_count = await count_site_control_groups(session, changed_after, fsa_id=fsa_id)
         control_counts_by_group: list[tuple[SiteControlGroup, int]] = []
@@ -84,7 +80,6 @@ class DERProgramManager:
             scope,
             control_counts_by_group,
             site_control_group_count,
-            default_site_control,
             config.derpl_pollrate_seconds,
             fsa_id,
         )
@@ -94,25 +89,24 @@ class DERProgramManager:
         session: AsyncSession,
         scope: SiteRequestScope,
         der_program_id: int,
-        default_doe: Optional[DefaultDoeConfiguration],
     ) -> DERProgramResponse:
         """Returns the DERProgram with the specified ID
 
         if site_id DNE is inaccessible to aggregator_id a NotFoundError will be raised"""
 
-        site = await select_site_with_default_site_control(session, scope.site_id, scope.aggregator_id)
+        site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
         if not site:
             raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
 
-        default_site_control = DERControlManager._resolve_default_site_control(default_doe, site.default_site_control)
-
-        site_control_group = await select_site_control_group_by_id(session, der_program_id)
+        site_control_group = await select_site_control_group_by_id(session, der_program_id, include_default=True)
         if not site_control_group:
             raise NotFoundError(f"der_program_id {der_program_id} is not accessible / does not exist")
 
         now = utc_now()
         total_does = await count_active_does_include_deleted(session, der_program_id, site, now, datetime.min)
-        return DERProgramMapper.doe_program_response(scope, total_does, site_control_group, default_site_control)
+        return DERProgramMapper.doe_program_response(
+            scope, total_does, site_control_group, site_control_group.site_control_group_default
+        )
 
 
 class DERControlManager:
@@ -207,80 +201,33 @@ class DERControlManager:
         )
 
     @staticmethod
-    async def fetch_default_doe_controls_for_site(
+    async def fetch_default_doe_controls_for_scope(
         session: AsyncSession,
         scope: SiteRequestScope,
         der_program_id: int,
-        default_doe: Optional[DefaultDoeConfiguration],
     ) -> DefaultDERControl:
-        """Returns a default DOE control for a site or raises a NotFoundError if the site / defaults are inaccessible
-        or not configured"""
-        site = await select_site_with_default_site_control(session, scope.site_id, scope.aggregator_id)
-        if not site:
-            raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
-
-        default_site_control = DERControlManager._resolve_default_site_control(default_doe, site.default_site_control)
-        if default_site_control is None:
-            raise NotFoundError(f"There is no default DefaultDERControl configured for site {scope.site_id}")
+        """Returns a default DOE control for DERProgram - raises an error if the referenced DERProgram DNE"""
 
         # fetch runtime server config
         config = await RuntimeServerConfigManager.fetch_current_config(session)
+        scg = await select_site_control_group_by_id(session, der_program_id, include_default=True)
+        if not scg:
+            raise NotFoundError(f"DERProgram {der_program_id} for site {scope.site_id} is not accessible / missing.")
+
+        scg_default = scg.site_control_group_default
+        if scg_default is None:
+            scg_default = SiteControlGroupDefault(
+                site_control_group_default_id=0,
+                site_control_group_id=scg.site_control_group_id,
+                created_time=scg.created_time,
+                changed_time=scg.created_time,  # This is deliberately set to created_time instead of changed_time
+                version=0,
+            )
 
         return DERControlMapper.map_to_default_response(
-            scope, default_site_control, scope.display_site_id, der_program_id, config.site_control_pow10_encoding
-        )
-
-    @staticmethod
-    def _resolve_default_site_control(
-        default_doe: Optional[DefaultDoeConfiguration],
-        default_site_control: Optional[DefaultSiteControl],
-    ) -> Optional[DefaultSiteControl]:
-        """
-        Coalesce site control entity with fallback configuration values. For each field, the
-        entity's non-None value takes precedence, otherwise the fallback configuration value is used.
-
-        Args:
-            default_doe (Optional[DefaultDoeConfiguration]): Fallback configuration
-                providing default values.
-            default_site_control (Optional[DefaultSiteControl]): Site control entity
-                loaded from the database whose non-None fields take precedence.
-
-        Returns:
-            Optional[DefaultSiteControl]: DefaultSiteControl instance with values
-            coalesced from entity and fallback configuration. Returns None if both inputs are None.
-        """
-
-        def _prefer_left(left: Any, right: Any) -> Any:
-            return left if left is not None else right
-
-        if default_doe is None:
-            return default_site_control
-
-        if default_site_control is not None:
-            return DefaultSiteControl(
-                version=default_site_control.version,
-                default_site_control_id=default_site_control.default_site_control_id,
-                import_limit_active_watts=_prefer_left(
-                    default_site_control.import_limit_active_watts, default_doe.import_limit_active_watts
-                ),
-                export_limit_active_watts=_prefer_left(
-                    default_site_control.export_limit_active_watts, default_doe.export_limit_active_watts
-                ),
-                generation_limit_active_watts=_prefer_left(
-                    default_site_control.generation_limit_active_watts, default_doe.generation_limit_active_watts
-                ),
-                load_limit_active_watts=_prefer_left(
-                    default_site_control.load_limit_active_watts, default_doe.load_limit_active_watts
-                ),
-                ramp_rate_percent_per_second=_prefer_left(
-                    default_site_control.ramp_rate_percent_per_second, default_doe.ramp_rate_percent_per_second
-                ),
-            )
-        return DefaultSiteControl(
-            version=0,
-            import_limit_active_watts=default_doe.import_limit_active_watts,
-            export_limit_active_watts=default_doe.export_limit_active_watts,
-            generation_limit_active_watts=default_doe.generation_limit_active_watts,
-            load_limit_active_watts=default_doe.load_limit_active_watts,
-            ramp_rate_percent_per_second=default_doe.ramp_rate_percent_per_second,
+            scope,
+            scg_default,
+            scope.display_site_id,
+            der_program_id,
+            config.site_control_pow10_encoding,
         )

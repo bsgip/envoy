@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from envoy.server.mapper.constants import MridType, PricingReadingType, ResponseSetType
-from envoy.server.model.site import DefaultSiteControl
+from envoy.server.model.doe import SiteControlGroupDefault
 from envoy.server.request_scope import BaseRequestScope
 
 # constant maximum values for the various mrid components (max values for an unsigned int representation)
@@ -88,10 +88,9 @@ def decode_iana_pen(mrid: str) -> int:
 class MridMapper:
 
     @staticmethod
-    def encode_default_doe_mrid(scope: BaseRequestScope, default_site_control: DefaultSiteControl) -> str:
+    def encode_default_doe_mrid(scope: BaseRequestScope, scg_default: SiteControlGroupDefault) -> str:
         """Encodes a valid MRID for representing the default DOE"""
-        id_value: int = default_site_control.default_site_control_id or DEFAULT_DOE_ID
-        return encode_mrid(MridType.DEFAULT_DOE, id_value, scope.iana_pen)
+        return encode_mrid(MridType.DEFAULT_DOE, scg_default.site_control_group_default_id, scope.iana_pen)
 
     @staticmethod
     def encode_doe_program_mrid(scope: BaseRequestScope, site_control_group_id: int, site_id: int) -> str:

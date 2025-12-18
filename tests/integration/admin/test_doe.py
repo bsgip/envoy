@@ -15,15 +15,20 @@ from envoy_schema.admin.schema.doe import (
     DynamicOperatingEnvelopeRequest,
     DynamicOperatingEnvelopeResponse,
 )
-from envoy_schema.admin.schema.uri import DoeUri
+from envoy_schema.admin.schema.site_control import (
+    SiteControlGroupDefaultRequest,
+    SiteControlGroupDefaultResponse,
+    UpdateDefaultValue,
+)
+from envoy_schema.admin.schema.uri import DoeUri, SiteControlGroupDefaultUri
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from envoy.admin.crud.doe import count_all_does
 from envoy.admin.mapper.doe import DEFAULT_DOE_SITE_CONTROL_GROUP_ID
 from envoy.server.api.request import MAX_LIMIT
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroupDefault
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from tests.integration.admin.test_site import _build_query_string
 from tests.integration.response import read_response_body_string
 
@@ -192,3 +197,116 @@ async def test_get_all_does(
 
     assert_list_type(DynamicOperatingEnvelopeResponse, site_page.does, len(expected_doe_ids))
     assert expected_doe_ids == [d.dynamic_operating_envelope_id for d in site_page.does]
+
+
+@pytest.mark.parametrize(
+    "site_control_group_id, expected",
+    [
+        (1, (Decimal("10.10"), Decimal("9.99"), Decimal("8.88"), Decimal("7.77"))),
+        (2, None),
+        (3, (Decimal("20.20"), Decimal("19.19"), Decimal("18.18"), Decimal("17.17"))),
+        (99, None),
+    ],
+)
+@pytest.mark.anyio
+async def test_get_and_update_site_control_default(
+    pg_base_config,
+    admin_client_auth: AsyncClient,
+    site_control_group_id: int,
+    expected: Optional[tuple],
+):
+    version_before = 0
+    async with generate_async_session(pg_base_config) as session:
+        default_db_record = (
+            await session.execute(
+                select(SiteControlGroupDefault).where(
+                    SiteControlGroupDefault.site_control_group_id == site_control_group_id
+                )
+            )
+        ).scalar_one_or_none()
+        default_exists = default_db_record is not None
+        if default_db_record:
+            version_before = default_db_record.version
+
+        scg_db_record = (
+            await session.execute(
+                select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == site_control_group_id)
+            )
+        ).scalar_one_or_none()
+        scg_exists = scg_db_record is not None
+
+    resp = await admin_client_auth.get(SiteControlGroupDefaultUri.format(group_id=site_control_group_id))
+    if expected is None:
+        assert resp.status_code == HTTPStatus.NOT_FOUND
+    else:
+        assert resp.status_code == HTTPStatus.OK
+        body = read_response_body_string(resp)
+        config: SiteControlGroupDefaultResponse = SiteControlGroupDefaultResponse(**json.loads(body))
+        assert expected == (
+            config.server_default_import_limit_watts,
+            config.server_default_export_limit_watts,
+            config.server_default_generation_limit_watts,
+            config.server_default_load_limit_watts,
+        )
+
+    # now do an update for certain fields
+    config_request = SiteControlGroupDefaultRequest(
+        import_limit_watts=UpdateDefaultValue(value=None),
+        export_limit_watts=UpdateDefaultValue(value=Decimal("1.11")),
+        generation_limit_watts=None,
+        load_limit_watts=None,
+        ramp_rate_percent_per_second=None,
+    )
+    resp = await admin_client_auth.post(
+        SiteControlGroupDefaultUri.format(group_id=site_control_group_id), content=config_request.model_dump_json()
+    )
+    if scg_exists:
+        assert resp.status_code == HTTPStatus.NO_CONTENT
+    else:
+        assert resp.status_code == HTTPStatus.NOT_FOUND
+
+    # and refetch
+    resp = await admin_client_auth.get(SiteControlGroupDefaultUri.format(group_id=site_control_group_id))
+
+    # Make sure only the fields we updated did an update
+    if not scg_exists:
+        assert resp.status_code == HTTPStatus.NOT_FOUND
+    else:
+        assert resp.status_code == HTTPStatus.OK
+        body = read_response_body_string(resp)
+        config: SiteControlGroupDefaultResponse = SiteControlGroupDefaultResponse(**json.loads(body))
+
+        assert (
+            None,
+            Decimal("1.11"),
+            expected[2] if expected is not None else None,
+            expected[3] if expected is not None else None,
+        ) == (
+            config.server_default_import_limit_watts,
+            config.server_default_export_limit_watts,
+            config.server_default_generation_limit_watts,
+            config.server_default_load_limit_watts,
+        )
+
+        # Version number in the DB should be getting updated
+        #
+        # Archive records should be generated
+        async with generate_async_session(pg_base_config) as session:
+            default_db_record = (
+                await session.execute(
+                    select(SiteControlGroupDefault).where(
+                        SiteControlGroupDefault.site_control_group_id == site_control_group_id
+                    )
+                )
+            ).scalar_one()
+            assert default_db_record.version == version_before + 1, "The version field should be updated per update"
+
+            archive_records = (await session.execute(select(ArchiveSiteControlGroupDefault))).scalars().all()
+            if default_exists:
+                assert len(archive_records) == 1
+                assert archive_records[0].import_limit_active_watts == expected[0]
+                assert archive_records[0].export_limit_active_watts == expected[1]
+                assert archive_records[0].generation_limit_active_watts == expected[2]
+                assert archive_records[0].load_limit_active_watts == expected[3]
+            else:
+                assert len(archive_records) == 0

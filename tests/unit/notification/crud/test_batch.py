@@ -11,7 +11,7 @@ from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
 from envoy_schema.server.schema.sep2.types import QualityFlagsType
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
@@ -32,12 +32,12 @@ from envoy.notification.crud.batch import (
     select_subscriptions_for_resource,
 )
 from envoy.notification.crud.common import (
-    ArchiveControlGroupScopedDefaultSiteControl,
     ArchiveSiteScopedFunctionSetAssignment,
     ArchiveSiteScopedSiteControlGroup,
-    ControlGroupScopedDefaultSiteControl,
+    ArchiveSiteScopedSiteControlGroupDefault,
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
+    SiteScopedSiteControlGroupDefault,
     TResourceModel,
 )
 from envoy.notification.exception import NotificationError
@@ -45,9 +45,12 @@ from envoy.server.crud.site import Site
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.model.aggregator import NULL_AGGREGATOR_ID
 from envoy.server.model.archive.base import ArchiveBase
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
+from envoy.server.model.archive.doe import (
+    ArchiveDynamicOperatingEnvelope,
+    ArchiveSiteControlGroup,
+    ArchiveSiteControlGroupDefault,
+)
 from envoy.server.model.archive.site import (
-    ArchiveDefaultSiteControl,
     ArchiveSite,
     ArchiveSiteDER,
     ArchiveSiteDERAvailability,
@@ -58,15 +61,8 @@ from envoy.server.model.archive.site import (
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
-from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
-from envoy.server.model.site import (
-    DefaultSiteControl,
-    SiteDER,
-    SiteDERAvailability,
-    SiteDERRating,
-    SiteDERSetting,
-    SiteDERStatus,
-)
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
+from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -300,11 +296,13 @@ def test_get_batch_key_invalid():
         ),
         (
             SubscriptionResource.DEFAULT_SITE_CONTROL,
-            ControlGroupScopedDefaultSiteControl(
+            SiteScopedSiteControlGroupDefault(
+                aggregator_id=11,
+                site_id=22,
                 site_control_group_id=33,
-                original=DefaultSiteControl(site_id=11, site=Site(site_id=11, aggregator_id=22)),
+                original=generate_class_instance(SiteControlGroupDefault),
             ),
-            (22, 11, 33),
+            (11, 22, 33),
         ),
     ],
 )
@@ -352,10 +350,13 @@ def test_get_subscription_filter_id_invalid():
         ),
         (
             SubscriptionResource.DEFAULT_SITE_CONTROL,
-            ControlGroupScopedDefaultSiteControl(
-                site_control_group_id=4, original=generate_class_instance(DefaultSiteControl, seed=101)
+            SiteScopedSiteControlGroupDefault(
+                aggregator_id=11,
+                site_id=22,
+                site_control_group_id=33,
+                original=generate_class_instance(SiteControlGroupDefault),
             ),
-            4,
+            33,
         ),
     ],
 )
@@ -402,10 +403,13 @@ def test_get_site_id_invalid():
         ),
         (
             SubscriptionResource.DEFAULT_SITE_CONTROL,
-            ControlGroupScopedDefaultSiteControl(
-                site_control_group_id=4, original=generate_class_instance(DefaultSiteControl, seed=101, site_id=5)
+            SiteScopedSiteControlGroupDefault(
+                aggregator_id=11,
+                site_id=22,
+                site_control_group_id=33,
+                original=generate_class_instance(SiteControlGroupDefault),
             ),
-            5,
+            22,
         ),
         (
             SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
@@ -2240,179 +2244,106 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
 
 
 @pytest.mark.parametrize(
-    "timestamp,expected_ids",
+    "timestamp,expected_agg_site_scg_ids",
     [
         (
-            datetime(2023, 5, 1, 2, 2, 2, 500000, tzinfo=timezone.utc),
-            [1, 2],
+            datetime(2023, 5, 1, 1, 2, 2, 500000, tzinfo=timezone.utc),
+            [(0, 5, 1), (0, 6, 1), (1, 1, 1), (1, 2, 1), (1, 4, 1), (2, 3, 1)],  # One for every site and default #1
         ),
         (
-            datetime(2022, 2, 3, 4, 5, 8),  # timestamp mismatch
+            datetime(2023, 5, 1, 2, 2, 2, 500000, tzinfo=timezone.utc),
+            [(0, 5, 3), (0, 6, 3), (1, 1, 3), (1, 2, 3), (1, 4, 3), (2, 3, 3)],  # One for every site and default #2
+        ),
+        (
+            datetime(2022, 2, 3, 4, 5, 8, tzinfo=timezone.utc),  # timestamp mismatch
             [],
         ),
     ],
 )
 @pytest.mark.anyio
-async def test_fetch_default_site_controls_by_changed_at(pg_base_config, timestamp: datetime, expected_ids: list[int]):
-    """Tests that entities are filtered/returned correctly"""
+async def test_fetch_default_site_controls_by_changed_at(
+    pg_base_config, timestamp: datetime, expected_agg_site_scg_ids: list[tuple[int, int, int]]
+):
+    """Tests that entities are filtered/returned correctly
+
+    expected_agg_site_scg_ids should be a tuple of [agg_id, site_id, site_control_group_id]"""
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_default_site_controls_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            ControlGroupScopedDefaultSiteControl,
-            ArchiveControlGroupScopedDefaultSiteControl,
-            len(expected_ids),
+            SiteScopedSiteControlGroupDefault,
+            ArchiveSiteScopedSiteControlGroupDefault,
+            len(expected_agg_site_scg_ids),
             0,
         )
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
-        list_entities.sort(key=lambda default: default.original.default_site_control_id)
+        list_entities.sort(key=lambda default: (default.aggregator_id, default.site_id, default.site_control_group_id))
 
-        assert all([isinstance(e, ControlGroupScopedDefaultSiteControl) for e in list_entities])
-        assert all([e.site_control_group_id == 1 for e in list_entities]), "The only SiteControlGroup ID in the DB"
-        for i in range(len(expected_ids)):
-            assert list_entities[i].original.default_site_control_id == expected_ids[i]
+        assert all([isinstance(e, SiteScopedSiteControlGroupDefault) for e in list_entities])
+        for i in range(len(expected_agg_site_scg_ids)):
+            agg_id, site_id, scg_id = expected_agg_site_scg_ids[i]
+            assert list_entities[i].aggregator_id == agg_id, f"Mismatch at idx[{i}]"
+            assert list_entities[i].site_id == site_id, f"Mismatch at idx[{i}]"
+            assert list_entities[i].site_control_group_id == scg_id, f"Mismatch at idx[{i}]"
 
-        assert all([isinstance(e.original.site, Site) for e in list_entities]), "Site relationship populated"
-
-
-@pytest.mark.anyio
-async def test_fetch_default_site_controls_by_changed_at_multiple_groups(pg_base_config):
-    """Tests that multiple SiteControlGroup's generate copies of the defaults per SiteControlGroup ID"""
-    timestamp = datetime(2023, 5, 1, 2, 2, 2, 500000, tzinfo=timezone.utc)
-    expected_default_group_ids = [(1, 1), (1, 99), (2, 1), (2, 99)]
-
-    async with generate_async_session(pg_base_config) as session:
-        session.add(generate_class_instance(SiteControlGroup, site_control_group_id=99))
-        await session.commit()
-
-    async with generate_async_session(pg_base_config) as session:
-        # Need to unroll the batching into a single list (batching is tested elsewhere)
-        batch = await fetch_default_site_controls_by_changed_at(session, timestamp)
-        assert_batched_entities(
-            batch,
-            ControlGroupScopedDefaultSiteControl,
-            ArchiveControlGroupScopedDefaultSiteControl,
-            len(expected_default_group_ids),
-            0,
-        )
-        assert expected_default_group_ids == [
-            (e.original.default_site_control_id, e.site_control_group_id)
-            for _, entities in batch.models_by_batch_key.items()
-            for e in entities
-        ]
+        assert all([isinstance(e.original, SiteControlGroupDefault) for e in list_entities])
 
 
 @pytest.mark.anyio
 async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
-    # This matches the changed_time on default 1 and 2
+    # This matches the changed_time on derp 3 default
     timestamp = datetime(2023, 5, 1, 2, 2, 2, 500000, tzinfo=timezone.utc)
-    expected_active_default_ids = [1, 2]
-    expected_deleted_default_ids = [21, 24, 25]
+
+    # Combination of agg_id, site_id, site_control_group_id
+    expected_active_default_ids = [(0, 5, 3), (0, 6, 3), (1, 1, 3), (1, 2, 3), (1, 4, 3), (2, 3, 3)]
+    expected_deleted_default_ids = [(0, 5, 21), (0, 6, 21), (1, 1, 21), (1, 2, 21), (1, 4, 21), (2, 3, 21)]
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
 
-        # Inject a parent "archive" site that was deleted - the "newest" deleted value will be used
-        session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
-        session.add(
-            generate_class_instance(
-                ArchiveSite,
-                seed=22,
-                aggregator_id=1,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=10),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                ArchiveSite,
-                seed=33,
-                aggregator_id=1,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=5),  # Doesn't need to match the timestamp
-                nmi="deleted70",
-                timezone_id="Australia/Brisbane",
-            )
-        )
-
-        # This deleted site will be ignored in favour of the version in the active table
-        session.add(
-            generate_class_instance(
-                ArchiveSite,
-                seed=44,
-                aggregator_id=1,
-                site_id=1,
-                deleted_time=timestamp,
-            )
-        )
-
         # Inject archive defaults (only most recent is used)
         session.add(
             generate_class_instance(
-                ArchiveDefaultSiteControl,
+                ArchiveSiteControlGroupDefault,
                 seed=55,
-                site_id=1,
-                default_site_control_id=21,
+                site_control_group_default_id=2,
+                site_control_group_id=21,
             )
         )
         session.add(
             generate_class_instance(
-                ArchiveDefaultSiteControl,
+                ArchiveSiteControlGroupDefault,
                 seed=66,
-                site_id=1,
-                default_site_control_id=21,
+                site_control_group_default_id=2,
+                site_control_group_id=21,
                 deleted_time=timestamp - timedelta(seconds=5),
             )
         )
         session.add(
             generate_class_instance(
-                ArchiveDefaultSiteControl,
+                ArchiveSiteControlGroupDefault,
                 seed=77,
-                site_id=70,
-                default_site_control_id=21,
+                site_control_group_default_id=2,
+                site_control_group_id=21,
                 deleted_time=timestamp,
                 ramp_rate_percent_per_second=21,  # for identifying this record later
             )
         )
 
         # No deleted time so ignored
-        session.add(generate_class_instance(ArchiveDefaultSiteControl, seed=88, site_id=1, default_site_control_id=22))
-
-        # Wrong deleted time so ignored
         session.add(
             generate_class_instance(
-                ArchiveDefaultSiteControl,
-                seed=99,
-                site_id=1,
-                default_site_control_id=23,
-                deleted_time=timestamp - timedelta(seconds=5),
+                ArchiveSiteControlGroupDefault,
+                seed=88,
+                site_control_group_id=22,
+                site_control_group_default_id=21,
+                deleted_time=None,
             )
         )
 
-        # These will be picked up
-        session.add(
-            generate_class_instance(
-                ArchiveDefaultSiteControl,
-                seed=1010,
-                site_id=2,
-                default_site_control_id=24,
-                deleted_time=timestamp,
-                ramp_rate_percent_per_second=24,  # for identifying this record later
-            )
-        )
-        session.add(
-            generate_class_instance(
-                ArchiveDefaultSiteControl,
-                seed=1111,
-                site_id=3,
-                default_site_control_id=25,
-                deleted_time=timestamp,
-                ramp_rate_percent_per_second=25,  # for identifying this record later
-            )
-        )
         await session.commit()
 
     # Now see if the fetch grabs everything
@@ -2421,41 +2352,34 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
         batch = await fetch_default_site_controls_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            ControlGroupScopedDefaultSiteControl,
-            ArchiveControlGroupScopedDefaultSiteControl,
+            SiteScopedSiteControlGroupDefault,
+            ArchiveSiteScopedSiteControlGroupDefault,
             len(expected_active_default_ids),
             len(expected_deleted_default_ids),
         )
 
         active_list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
-        active_list_entities.sort(key=lambda e: e.original.default_site_control_id)
+        active_list_entities.sort(
+            key=lambda default: (default.aggregator_id, default.site_id, default.site_control_group_id)
+        )
 
         deleted_list_entities = [e for _, entities in batch.deleted_by_batch_key.items() for e in entities]
-        deleted_list_entities.sort(key=lambda e: e.original.default_site_control_id)
+        deleted_list_entities.sort(
+            key=lambda default: (default.aggregator_id, default.site_id, default.site_control_group_id)
+        )
 
         assert set(expected_active_default_ids) == set(
-            [e.original.default_site_control_id for e in active_list_entities]
+            [(e.aggregator_id, e.site_id, e.site_control_group_id) for e in active_list_entities]
         )
         assert set(expected_deleted_default_ids) == set(
-            [e.original.default_site_control_id for e in deleted_list_entities]
-        )
-
-        # Ensure the parent ORM relationship is populated for deleted/active instances
-        assert all([isinstance(e.original.site, Site) for v_list in batch.models_by_batch_key.values() for e in v_list])
-        assert all(
-            [
-                hasattr(e.original, "site")
-                and (isinstance(e.original.site, Site) or isinstance(e.original.site, ArchiveSite))
-                for v_list in batch.deleted_by_batch_key.values()
-                for e in v_list
-            ]
+            [(e.aggregator_id, e.site_id, e.site_control_group_id) for e in deleted_list_entities]
         )
 
         # Validate the deleted entities are the ones we expect (lean on the fact we setup a property on the
         # archive type in a particular way for the expected matches)
         assert all(
             [
-                e.original.ramp_rate_percent_per_second == e.original.default_site_control_id
+                e.original.ramp_rate_percent_per_second == e.site_control_group_id
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -2464,7 +2388,7 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
         assert_batched_entities(
-            empty_batch, ControlGroupScopedDefaultSiteControl, ArchiveControlGroupScopedDefaultSiteControl, 0, 0
+            empty_batch, SiteScopedSiteControlGroupDefault, ArchiveSiteScopedSiteControlGroupDefault, 0, 0
         )
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
@@ -2662,8 +2586,6 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert_batched_entities(
-            empty_batch, ControlGroupScopedDefaultSiteControl, ArchiveControlGroupScopedDefaultSiteControl, 0, 0
-        )
+        assert_batched_entities(empty_batch, SiteScopedSiteControlGroup, ArchiveSiteScopedSiteControlGroup, 0, 0)
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0

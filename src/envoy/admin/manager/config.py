@@ -1,22 +1,13 @@
 from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Optional
 
-from envoy_schema.admin.schema.config import (
-    ControlDefaultRequest,
-    ControlDefaultResponse,
-    RuntimeServerConfigRequest,
-    RuntimeServerConfigResponse,
-)
+from envoy_schema.admin.schema.config import RuntimeServerConfigRequest, RuntimeServerConfigResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.admin.crud.site import select_single_site_no_scoping
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.server import select_server_config
 from envoy.server.manager.server import _map_server_config
 from envoy.server.manager.time import utc_now
 from envoy.server.model.server import RuntimeServerConfig as ConfigEntity
-from envoy.server.model.site import DefaultSiteControl
 from envoy.server.model.subscription import SubscriptionResource
 
 
@@ -99,73 +90,4 @@ class ConfigManager:
             tariff_pow10_encoding=-4,  # Currently held constant
             changed_time=changed_time,
             created_time=created_time,
-        )
-
-    @staticmethod
-    async def update_site_control_default(session: AsyncSession, site_id: int, request: ControlDefaultRequest) -> bool:
-        now = utc_now()
-
-        site = await select_single_site_no_scoping(session, site_id, include_site_default=True)
-        if site is None:
-            return False
-
-        if site.default_site_control is None:
-            site.default_site_control = DefaultSiteControl(changed_time=now, site_id=site.site_id, version=0)
-        else:
-            site.default_site_control.changed_time = now
-
-        if request.import_limit_watts is not None:
-            site.default_site_control.import_limit_active_watts = request.import_limit_watts.value
-
-        if request.export_limit_watts is not None:
-            site.default_site_control.export_limit_active_watts = request.export_limit_watts.value
-
-        if request.generation_limit_watts is not None:
-            site.default_site_control.generation_limit_active_watts = request.generation_limit_watts.value
-
-        if request.load_limit_watts is not None:
-            site.default_site_control.load_limit_active_watts = request.load_limit_watts.value
-
-        if request.ramp_rate_percent_per_second is not None:
-            ramp_rate_value = (
-                int(request.ramp_rate_percent_per_second.value)
-                if request.ramp_rate_percent_per_second.value is not None
-                else None
-            )
-            site.default_site_control.ramp_rate_percent_per_second = ramp_rate_value
-
-        site.default_site_control.version = site.default_site_control.version + 1
-        await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.DEFAULT_SITE_CONTROL, now)
-
-        return True
-
-    @staticmethod
-    async def fetch_site_control_default_response(
-        session: AsyncSession, site_id: int
-    ) -> Optional[ControlDefaultResponse]:
-        """Fetches the current site control default values as a ControlDefaultResponse for external communication"""
-        site = await select_single_site_no_scoping(session, site_id, include_site_default=True)
-        if not site:
-            return None
-        if site.default_site_control:
-            default_config = site.default_site_control
-        else:
-            default_config = DefaultSiteControl(
-                changed_time=site.changed_time, created_time=site.created_time, site_id=site.site_id
-            )
-
-        return ControlDefaultResponse(
-            ramp_rate_percent_per_second=(
-                Decimal(default_config.ramp_rate_percent_per_second)
-                if default_config.ramp_rate_percent_per_second is not None
-                else None
-            ),
-            server_default_import_limit_watts=default_config.import_limit_active_watts,
-            server_default_export_limit_watts=default_config.export_limit_active_watts,
-            server_default_generation_limit_watts=default_config.generation_limit_active_watts,
-            server_default_load_limit_watts=default_config.load_limit_active_watts,
-            changed_time=default_config.changed_time,
-            created_time=default_config.created_time,
         )

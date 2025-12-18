@@ -25,14 +25,12 @@ from envoy.server.crud.site import (
     select_single_site_with_lfdi,
     select_single_site_with_sfdi,
     select_single_site_with_site_id,
-    select_site_with_default_site_control,
     upsert_site_for_aggregator,
 )
 from envoy.server.manager.time import utc_now
 from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (
-    ArchiveDefaultSiteControl,
     ArchiveSite,
     ArchiveSiteDER,
     ArchiveSiteDERAvailability,
@@ -45,15 +43,7 @@ from envoy.server.model.archive.subscription import ArchiveSubscription, Archive
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import (
-    DefaultSiteControl,
-    Site,
-    SiteDER,
-    SiteDERAvailability,
-    SiteDERRating,
-    SiteDERSetting,
-    SiteDERStatus,
-)
+from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -857,53 +847,6 @@ async def test_delete_site_for_aggregator(
             assert site is not None, "If the delete was NOT committed - the site should still exist"
         else:
             assert site is None, "If the delete was NOT committed but the site DNE - it should continue to not exist"
-
-
-@pytest.mark.parametrize(
-    "site_id, agg_id, expected_vals",
-    [
-        (1, 1, (1, 1, Decimal("10.10"), Decimal("9.99"), Decimal("8.88"), Decimal("7.77"), 6)),
-        (2, 1, None),
-        (3, 2, (2, 3, Decimal("20.20"), Decimal("19.19"), Decimal("18.18"), Decimal("17.17"), 16)),
-        (3, 1, None),
-        (99, 99, None),
-    ],
-)
-@pytest.mark.anyio
-async def test_select_site_with_default_site_control(
-    pg_base_config,
-    site_id: int,
-    agg_id: int,
-    expected_vals: Optional[
-        tuple[int, int, Optional[Decimal], Optional[Decimal], Optional[Decimal], Optional[Decimal], Optional[Decimal]]
-    ],
-):
-    """Tests the site to default site control relationship"""
-    async with generate_async_session(pg_base_config) as session:
-        site = await select_site_with_default_site_control(session, site_id=site_id, aggregator_id=agg_id)
-
-        if expected_vals is None:
-            if site is not None:
-                assert site.default_site_control is None
-        else:
-            default_site_control = site.default_site_control
-            (
-                default_site_control_id,
-                site_id,
-                import_limit_active_watts,
-                export_limit_active_watts,
-                generation_limit_active_watts,
-                load_limit_active_watts,
-                ramp_rate_percent_per_second,
-            ) = expected_vals
-            assert isinstance(default_site_control, DefaultSiteControl)
-            assert default_site_control.site_id == site_id
-            assert default_site_control.default_site_control_id == default_site_control_id
-            assert default_site_control.import_limit_active_watts == import_limit_active_watts
-            assert default_site_control.export_limit_active_watts == export_limit_active_watts
-            assert default_site_control.generation_limit_active_watts == generation_limit_active_watts
-            assert default_site_control.load_limit_active_watts == load_limit_active_watts
-            assert default_site_control.ramp_rate_percent_per_second == ramp_rate_percent_per_second
 
 
 @pytest.mark.anyio

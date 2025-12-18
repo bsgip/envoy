@@ -1,6 +1,5 @@
-from functools import cached_property
 import importlib.metadata
-from decimal import Decimal
+from functools import cached_property
 from typing import Any, Dict, Optional
 
 from pydantic import Field, model_validator
@@ -8,7 +7,7 @@ from pydantic_settings import BaseSettings
 
 from envoy.server.api.depends.allow_nmi_updates import DEFAULT_ALLOW_NMI_UPDATES
 from envoy.server.endpoint_exclusion import EndpointExclusionSet
-from envoy.server.manager.nmi_validator import NmiValidator, DNSPParticipantId
+from envoy.server.manager.nmi_validator import DNSPParticipantId, NmiValidator
 from envoy.settings import CommonSettings
 
 
@@ -49,16 +48,6 @@ class AppSettings(CommonSettings):
 
     cert_header: str = "x-forwarded-client-cert"  # either client certificate in PEM format or the sha256 fingerprint
 
-    # Global fallback default doe for sites that do not have these configured.
-    use_global_default_doe_fallback: bool = True
-    default_doe_import_active_watts: Optional[str] = None  # Constant default DERControl import as a decimal float
-    default_doe_export_active_watts: Optional[str] = None  # Constant default DERControl export as a decimal float
-    default_doe_load_active_watts: Optional[str] = None  # Constant default DERControl load limit as a decimal float
-    default_doe_generation_active_watts: Optional[str] = (
-        None  # Constant default DERControl generation limit as a decimal float
-    )
-    default_doe_ramp_rate_percent_per_second: Optional[int] = None  # Constant default DERControl ramp rate setpoint.
-
     allow_device_registration: bool = False  # True: LFDI auth will allow unknown certs to register single EndDevices
 
     nmi_validation: NmiValidationSettings = Field(default_factory=NmiValidationSettings)
@@ -76,24 +65,6 @@ class AppSettings(CommonSettings):
             "redoc_url": self.redoc_url,
             "title": self.title,
             "version": self.version,
-        }
-
-    @property
-    def default_doe_configuration(self) -> Dict[str, Any]:
-        return {
-            "import_limit_active_watts": (
-                Decimal(self.default_doe_import_active_watts) if self.default_doe_import_active_watts else None
-            ),
-            "export_limit_active_watts": (
-                Decimal(self.default_doe_export_active_watts) if self.default_doe_export_active_watts else None
-            ),
-            "load_limit_active_watts": (
-                Decimal(self.default_doe_load_active_watts) if self.default_doe_load_active_watts else None
-            ),
-            "generation_limit_active_watts": (
-                Decimal(self.default_doe_generation_active_watts) if self.default_doe_generation_active_watts else None
-            ),
-            "ramp_rate_percent_per_second": self.default_doe_ramp_rate_percent_per_second,
         }
 
 

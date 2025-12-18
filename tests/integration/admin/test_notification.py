@@ -9,15 +9,20 @@ import pytest
 from assertical.fake.generator import generate_class_instance
 from assertical.fake.http import HTTPMethod, MockedAsyncClient
 from assertical.fixtures.postgres import generate_async_session
-from envoy_schema.admin.schema.config import ControlDefaultRequest, RuntimeServerConfigRequest, UpdateDefaultValue
+from envoy_schema.admin.schema.config import RuntimeServerConfigRequest
 from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
 from envoy_schema.admin.schema.site import SiteUpdateRequest
-from envoy_schema.admin.schema.site_control import SiteControlGroupRequest, SiteControlRequest
+from envoy_schema.admin.schema.site_control import (
+    SiteControlGroupDefaultRequest,
+    SiteControlGroupDefaultResponse,
+    SiteControlGroupRequest,
+    SiteControlRequest,
+)
 from envoy_schema.admin.schema.uri import (
     DoeUri,
     ServerConfigRuntimeUri,
-    SiteControlDefaultConfigUri,
+    SiteControlGroupDefaultUri,
     SiteControlGroupListUri,
     SiteControlUri,
     SiteUri,
@@ -797,7 +802,7 @@ async def test_update_server_config_fsa_notification_no_change(
 async def test_update_site_default_config_notification(
     admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
 ):
-    """Tests that updating site default config generates subscription notifications for DefaultDERControl"""
+    """Tests that updating site control group default generates subscription notifications for DefaultDERControl"""
 
     subscription1_uri = "http://my.example:542/uri"
 

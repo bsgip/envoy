@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 from typing import Optional, TypeVar
 
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
+from envoy.server.model.archive.doe import (
+    ArchiveDynamicOperatingEnvelope,
+    ArchiveSiteControlGroup,
+    ArchiveSiteControlGroupDefault,
+)
 from envoy.server.model.archive.site import (
-    ArchiveDefaultSiteControl,
     ArchiveSite,
     ArchiveSiteDER,
     ArchiveSiteDERAvailability,
@@ -14,17 +17,9 @@ from envoy.server.model.archive.site import (
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.subscription import ArchiveSubscription
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
-from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.server import RuntimeServerConfig
-from envoy.server.model.site import (
-    DefaultSiteControl,
-    Site,
-    SiteDER,
-    SiteDERAvailability,
-    SiteDERRating,
-    SiteDERSetting,
-    SiteDERStatus,
-)
+from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -70,19 +65,23 @@ class ArchiveSiteScopedSiteControlGroup:
 
 
 @dataclass
-class ControlGroupScopedDefaultSiteControl:
-    """DefaultSiteControl isn't scoped to a specific SiteControlGroup - for csip-aus it will need to be"""
+class SiteScopedSiteControlGroupDefault:
+    """SiteControlGroupDefault isn't scoped to a specific site - for csip-aus it will need to be"""
 
+    aggregator_id: int
+    site_id: int
     site_control_group_id: int
-    original: DefaultSiteControl
+    original: SiteControlGroupDefault
 
 
 @dataclass
-class ArchiveControlGroupScopedDefaultSiteControl:
-    """DefaultSiteControl isn't scoped to a specific SiteControlGroup - for csip-aus it will need to be"""
+class ArchiveSiteScopedSiteControlGroupDefault:
+    """SiteControlGroupDefault isn't scoped to a specific site - for csip-aus it will need to be"""
 
+    aggregator_id: int
+    site_id: int
     site_control_group_id: int
-    original: ArchiveDefaultSiteControl
+    original: ArchiveSiteControlGroupDefault
 
 
 TResourceModel = TypeVar(
@@ -98,7 +97,7 @@ TResourceModel = TypeVar(
     SiteDERSetting,
     SiteDERStatus,
     Subscription,
-    DefaultSiteControl,
+    SiteControlGroupDefault,
     SiteControlGroup,
     RuntimeServerConfig,
 )
@@ -116,6 +115,6 @@ TArchiveResourceModel = TypeVar(
     ArchiveSiteDERSetting,
     ArchiveSiteDERStatus,
     ArchiveSubscription,
-    ArchiveDefaultSiteControl,
+    ArchiveSiteControlGroupDefault,
     ArchiveSiteControlGroup,
 )

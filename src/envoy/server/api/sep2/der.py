@@ -9,7 +9,6 @@ from fastapi_async_sqlalchemy import db
 from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
     extract_datetime_from_paging_param,
-    extract_default_doe,
     extract_limit_from_paging_param,
     extract_request_claims,
     extract_start_from_paging_param,
@@ -348,7 +347,6 @@ async def get_derprogram_list(
         derp_list = await DERProgramManager.fetch_list_for_scope(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
-            default_doe=extract_default_doe(request),
             start=extract_start_from_paging_param(start),
             limit=extract_limit_from_paging_param(limit),
             changed_after=extract_datetime_from_paging_param(after),

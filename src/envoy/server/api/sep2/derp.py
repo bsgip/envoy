@@ -8,7 +8,6 @@ from fastapi_async_sqlalchemy import db
 from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import (
     extract_datetime_from_paging_param,
-    extract_default_doe,
     extract_limit_from_paging_param,
     extract_request_claims,
     extract_start_from_paging_param,
@@ -46,7 +45,6 @@ async def get_derprogram_list(
         derp_list = await DERProgramManager.fetch_list_for_scope(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
-            default_doe=extract_default_doe(request),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -87,7 +85,6 @@ async def get_derprogram_list_fsa_scoped(
         derp_list = await DERProgramManager.fetch_list_for_scope(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
-            default_doe=extract_default_doe(request),
             start=extract_start_from_paging_param(start),
             changed_after=extract_datetime_from_paging_param(after),
             limit=extract_limit_from_paging_param(limit),
@@ -118,7 +115,6 @@ async def get_derprogram_doe(request: Request, site_id: int, der_program_id: int
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
             der_program_id=der_program_id,
-            default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
@@ -232,11 +228,10 @@ async def get_default_dercontrol(
     """
 
     try:
-        derc_list = await DERControlManager.fetch_default_doe_controls_for_site(
+        derc_list = await DERControlManager.fetch_default_doe_controls_for_scope(
             db.session,
             scope=extract_request_claims(request).to_site_request_scope(site_id),
             der_program_id=der_program_id,
-            default_doe=extract_default_doe(request),
         )
     except BadRequestError as ex:
         raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)

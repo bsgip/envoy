@@ -17,17 +17,16 @@ from envoy_schema.server.schema.sep2.der import (
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.derp import DERControlManager, DERProgramManager
 from envoy.server.mapper.csip_aus.doe import DERControlListSource
-from envoy.server.model.config.default_doe import DefaultDoeConfiguration
 from envoy.server.model.config.server import RuntimeServerConfig
-from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
-from envoy.server.model.site import DefaultSiteControl, Site
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
+from envoy.server.model.site import Site
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.derp.select_site_control_groups")
 @mock.patch("envoy.server.manager.derp.count_site_control_groups")
-@mock.patch("envoy.server.manager.derp.select_site_with_default_site_control")
+@mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.derp.count_active_does_include_deleted")
 @mock.patch("envoy.server.manager.derp.DERProgramMapper")
 @mock.patch("envoy.server.manager.derp.utc_now")
@@ -37,14 +36,13 @@ async def test_program_fetch_list_for_scope(
     mock_utc_now: mock.MagicMock,
     mock_DERProgramMapper: mock.MagicMock,
     mock_count_active_does_include_deleted: mock.MagicMock,
-    mock_select_site_with_default_site_control: mock.MagicMock,
+    mock_select_single_site_with_site_id: mock.MagicMock,
     mock_count_site_control_groups: mock.MagicMock,
     mock_select_site_control_groups: mock.MagicMock,
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
     existing_site = generate_class_instance(Site)
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
     mapped_list = generate_class_instance(DERProgramListResponse)
     scope = generate_class_instance(SiteRequestScope)
     now = datetime(2020, 1, 2, tzinfo=timezone.utc)
@@ -60,7 +58,7 @@ async def test_program_fetch_list_for_scope(
 
     mock_utc_now.return_value = now
     mock_session = create_mock_session()
-    mock_select_site_with_default_site_control.return_value = existing_site
+    mock_select_single_site_with_site_id.return_value = existing_site
     mock_count_site_control_groups.return_value = site_control_group_count
     mock_select_site_control_groups.return_value = site_control_groups
     mock_DERProgramMapper.doe_program_list_response = mock.Mock(return_value=mapped_list)
@@ -72,16 +70,14 @@ async def test_program_fetch_list_for_scope(
     mock_fetch_current_config.return_value = config
 
     # Act
-    result = await DERProgramManager.fetch_list_for_scope(
-        mock_session, scope, default_doe, start, changed_after, limit, fsa_id
-    )
+    result = await DERProgramManager.fetch_list_for_scope(mock_session, scope, start, changed_after, limit, fsa_id)
 
     # Assert
     assert result is mapped_list
 
-    mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
+    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_select_site_control_groups.assert_called_once_with(
-        mock_session, start=start, limit=limit, changed_after=changed_after, fsa_id=fsa_id
+        mock_session, start=start, limit=limit, changed_after=changed_after, fsa_id=fsa_id, include_defaults=True
     )
 
     # One call to control count for each site control group
@@ -93,29 +89,28 @@ async def test_program_fetch_list_for_scope(
 
 
 @pytest.mark.anyio
-@mock.patch("envoy.server.manager.derp.select_site_with_default_site_control")
+@mock.patch("envoy.server.manager.derp.select_single_site_with_site_id")
 @mock.patch("envoy.server.manager.derp.count_active_does_include_deleted")
 @mock.patch("envoy.server.manager.derp.DERProgramMapper")
 async def test_program_fetch_list_scope_dne(
     mock_DERProgramMapper: mock.MagicMock,
     mock_count_active_does_include_deleted: mock.MagicMock,
-    mock_select_site_with_default_site_control: mock.MagicMock,
+    mock_select_single_site_with_site_id: mock.MagicMock,
 ):
     """Checks that if the crud layer indicates site doesn't exist then the manager will raise an exception"""
     # Arrange
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
     fsa_id = 11
 
     mock_session = create_mock_session()
-    mock_select_site_with_default_site_control.return_value = None
+    mock_select_single_site_with_site_id.return_value = None
     scope = generate_class_instance(SiteRequestScope)
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERProgramManager.fetch_list_for_scope(mock_session, scope, default_doe, 1, datetime.min, 2, fsa_id)
+        await DERProgramManager.fetch_list_for_scope(mock_session, scope, 1, datetime.min, 2, fsa_id)
 
     # Assert
-    mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
+    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_count_active_does_include_deleted.assert_not_called()
     mock_DERProgramMapper.doe_program_list_response.assert_not_called()
     assert_mock_session(mock_session)
@@ -140,7 +135,6 @@ async def test_program_fetch_for_scope(
     derp_id = 142124
     existing_site = generate_class_instance(Site)
     mapped_program = generate_class_instance(DERProgramResponse)
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
     scope = generate_class_instance(SiteRequestScope)
     now = datetime(2011, 2, 3, tzinfo=timezone.utc)
     group = generate_class_instance(SiteControlGroup)
@@ -153,7 +147,7 @@ async def test_program_fetch_for_scope(
     mock_select_site_control_group_by_id.return_value = group
 
     # Act
-    result = await DERProgramManager.fetch_doe_program_for_scope(mock_session, scope, derp_id, default_doe)
+    result = await DERProgramManager.fetch_doe_program_for_scope(mock_session, scope, derp_id)
 
     # Assert
     assert result is mapped_program
@@ -180,7 +174,6 @@ async def test_program_fetch_site_dne(
 ):
     """Checks that if the crud layer indicates site doesn't exist then the manager will raise an exception"""
     # Arrange
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
     derp_id = 76662
 
     mock_session = create_mock_session()
@@ -189,7 +182,7 @@ async def test_program_fetch_site_dne(
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERProgramManager.fetch_doe_program_for_scope(mock_session, scope, derp_id, default_doe)
+        await DERProgramManager.fetch_doe_program_for_scope(mock_session, scope, derp_id)
 
     # Assert
     mock_select_site_control_group_by_id.assert_not_called()
@@ -212,7 +205,6 @@ async def test_program_fetch_site_control_group_dne(
 ):
     """Checks that if the crud layer indicates site doesn't exist then the manager will raise an exception"""
     # Arrange
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
     derp_id = 76662
 
     mock_session = create_mock_session()
@@ -222,7 +214,7 @@ async def test_program_fetch_site_control_group_dne(
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERProgramManager.fetch_doe_program_for_scope(mock_session, scope, derp_id, default_doe)
+        await DERProgramManager.fetch_doe_program_for_scope(mock_session, scope, derp_id)
 
     # Assert
     mock_select_site_control_group_by_id.assert_called_once_with(mock_session, derp_id)
@@ -493,7 +485,6 @@ async def test_fetch_default_doe_controls_for_site(
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
     derp_id = 771263
 
     returned_site = generate_class_instance(Site, generate_relationships=True)
@@ -510,7 +501,7 @@ async def test_fetch_default_doe_controls_for_site(
     mock_fetch_current_config.return_value = config
 
     # Act
-    result = await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, derp_id, default_doe)
+    result = await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, derp_id)
 
     # Assert
     assert result is mapped_control
@@ -531,7 +522,6 @@ async def test_fetch_default_doe_controls_for_site_bad_site(
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
-    default_doe = generate_class_instance(DefaultDoeConfiguration)
     derp_id = 771263
 
     mapped_control = generate_class_instance(DefaultDERControl)
@@ -544,7 +534,7 @@ async def test_fetch_default_doe_controls_for_site_bad_site(
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, derp_id, default_doe)
+        await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, derp_id)
 
     # Assert
     mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
@@ -561,7 +551,6 @@ async def test_fetch_default_doe_controls_for_site_no_default(
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
-    default_doe = None
     derp_id = 88123
 
     returned_site = generate_class_instance(Site, generate_relationships=False)
@@ -576,132 +565,10 @@ async def test_fetch_default_doe_controls_for_site_no_default(
 
     # Act
     with pytest.raises(NotFoundError):
-        await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, derp_id, default_doe)
+        await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, derp_id)
 
     # Assert
     mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_DERControlMapper.map_to_default_response.assert_not_called()
 
     assert_mock_session(mock_session)
-
-
-@pytest.mark.anyio
-@mock.patch("envoy.server.manager.derp.select_site_with_default_site_control")
-@mock.patch("envoy.server.manager.derp.DERControlMapper")
-@mock.patch("envoy.server.manager.derp.RuntimeServerConfigManager.fetch_current_config")
-async def test_fetch_default_doe_controls_for_site_no_global_default(
-    mock_fetch_current_config: mock.MagicMock,
-    mock_DERControlMapper: mock.MagicMock,
-    mock_select_site_with_default_site_control: mock.MagicMock,
-):
-    """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
-    # Arrange
-    default_doe = None
-    derp_id = 88144
-
-    returned_site = generate_class_instance(Site, generate_relationships=True)
-
-    mapped_control = None
-
-    mock_session = create_mock_session()
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
-
-    mock_select_site_with_default_site_control.return_value = returned_site
-    mock_DERControlMapper.map_to_default_response = mock.Mock(return_value=mapped_control)
-
-    mock_fetch_current_config.return_value = RuntimeServerConfig()
-
-    # Act
-    await DERControlManager.fetch_default_doe_controls_for_site(mock_session, scope, derp_id, default_doe)
-
-    # Assert
-    mock_select_site_with_default_site_control.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
-    mock_DERControlMapper.map_to_default_response.assert_called_once()
-
-    assert_mock_session(mock_session)
-
-
-@pytest.mark.parametrize(
-    "default_doe_config, default_site_control, expected",
-    [
-        # misc
-        (None, None, None),
-        (
-            DefaultDoeConfiguration(100, 200, 300, 400, 50),
-            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0, version=999),
-            (999, 0, 200, 300, 0, 50),
-        ),
-        (
-            DefaultDoeConfiguration(None, 200, 300, None, 50),
-            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0, version=888),
-            (888, 0, 200, 300, 0, 50),
-        ),
-        (
-            DefaultDoeConfiguration(None, None, None, None, None),
-            DefaultSiteControl(import_limit_active_watts=0, load_limit_active_watts=0, version=777),
-            (777, 0, None, None, 0, None),
-        ),
-        # No site control
-        (
-            DefaultDoeConfiguration(100, 200, 300, 400, 50),
-            None,
-            (0, 100, 200, 300, 400, 50),
-        ),
-        # Partial site control
-        (
-            DefaultDoeConfiguration(
-                import_limit_active_watts=100,
-                export_limit_active_watts=200,
-                generation_limit_active_watts=300,
-                load_limit_active_watts=400,
-                ramp_rate_percent_per_second=50,
-            ),
-            DefaultSiteControl(import_limit_active_watts=111, load_limit_active_watts=444, version=555),
-            (555, 111, 200, 300, 444, 50),
-        ),
-        # Full site control
-        (
-            DefaultDoeConfiguration(
-                import_limit_active_watts=100,
-                export_limit_active_watts=200,
-                generation_limit_active_watts=300,
-                load_limit_active_watts=400,
-                ramp_rate_percent_per_second=50,
-            ),
-            DefaultSiteControl(
-                import_limit_active_watts=1,
-                export_limit_active_watts=2,
-                generation_limit_active_watts=3,
-                load_limit_active_watts=4,
-                ramp_rate_percent_per_second=5,
-                version=6,
-            ),
-            (6, 1, 2, 3, 4, 5),
-        ),
-        (
-            None,
-            DefaultSiteControl(
-                import_limit_active_watts=1,
-                export_limit_active_watts=2,
-                generation_limit_active_watts=3,
-                load_limit_active_watts=4,
-                ramp_rate_percent_per_second=5,
-                version=7,
-            ),
-            (7, 1, 2, 3, 4, 5),
-        ),
-    ],
-)
-def test_resolve_default_site_control(default_doe_config, default_site_control, expected):
-    """Tests all combos of resolution"""
-    result = DERControlManager._resolve_default_site_control(default_doe_config, default_site_control)
-
-    if expected is None:
-        assert result is None
-    else:
-        assert result.version == expected[0]
-        assert result.import_limit_active_watts == expected[1]
-        assert result.export_limit_active_watts == expected[2]
-        assert result.generation_limit_active_watts == expected[3]
-        assert result.load_limit_active_watts == expected[4]
-        assert result.ramp_rate_percent_per_second == expected[5]

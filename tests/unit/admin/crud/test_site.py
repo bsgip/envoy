@@ -307,8 +307,8 @@ async def test_select_all_site_groups(
 @pytest.mark.anyio
 async def test_select_single_site_no_scoping_missing_site_ids(pg_base_config, missing_site_id: int):
     async with generate_async_session(pg_base_config) as session:
-        for groups, der, site_default in product([True, False], [True, False], [True, False]):
-            assert (await select_single_site_no_scoping(session, missing_site_id, groups, der, site_default)) is None
+        for groups, der in product([True, False], [True, False]):
+            assert (await select_single_site_no_scoping(session, missing_site_id, groups, der)) is None
 
 
 @pytest.mark.parametrize(
@@ -350,14 +350,13 @@ async def test_select_single_site_no_scoping(
             ders[0].site_der_status.site_der_status_id if ders[0].site_der_status else None,
         )
 
-    for include_groups, include_der, include_site_default in product([True, False], [True, False], [True, False]):
+    for include_groups, include_der in product([True, False], [True, False]):
         async with generate_async_session(pg_base_config) as session:
             site = await select_single_site_no_scoping(
                 session,
                 site_id,
                 include_groups=include_groups,
                 include_der=include_der,
-                include_site_default=include_site_default,
             )
 
             if include_groups:
@@ -371,13 +370,3 @@ async def test_select_single_site_no_scoping(
             else:
                 with pytest.raises(InvalidRequestError):
                     assert len(site.site_ders) == 0
-
-            if include_site_default:
-                assert expected_site_import_watts == (
-                    site.default_site_control.import_limit_active_watts
-                    if site.default_site_control is not None
-                    else None
-                )
-            else:
-                with pytest.raises(InvalidRequestError):
-                    assert site.default_site_control.default_site_control_id == 0

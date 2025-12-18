@@ -47,9 +47,22 @@ INSERT INTO public.site("site_id", "nmi", "aggregator_id", "timezone_id", "creat
 SELECT pg_catalog.setval('public.site_site_id_seq', 7, true);
 
 INSERT INTO public.site_control_group("site_control_group_id", "description", "primacy", "fsa_id", "created_time", "changed_time") 
-VALUES (1, 'Dynamic Operating Envelopes', 0, 1, '2000-01-01 00:00:00Z', '2021-04-05 10:01:00.500');
+VALUES (1, 'Dynamic Operating Envelopes #1', 0, 1, '2000-01-01 00:00:00Z', '2021-04-05 10:01:00.500');
 
-SELECT pg_catalog.setval('public.site_control_group_site_control_group_id_seq', 2, true);
+INSERT INTO public.site_control_group("site_control_group_id", "description", "primacy", "fsa_id", "created_time", "changed_time") 
+VALUES (2, 'Dynamic Operating Envelopes #2', 1, 1, '2000-01-01 00:00:00Z', '2021-04-05 10:02:00.500');
+
+INSERT INTO public.site_control_group("site_control_group_id", "description", "primacy", "fsa_id", "created_time", "changed_time") 
+VALUES (3, 'Dynamic Operating Envelopes #3', 2, 1, '2000-01-01 00:00:00Z', '2021-04-05 10:03:00.500');
+
+SELECT pg_catalog.setval('public.site_control_group_site_control_group_id_seq', 4, true);
+
+-- DERProgram #1 and DERProgram #3 have defaults.
+INSERT INTO public.site_control_group_default(site_control_group_default_id, site_control_group_id, import_limit_active_watts, export_limit_active_watts, generation_limit_active_watts, load_limit_active_watts, ramp_rate_percent_per_second, created_time, changed_time)
+VALUES (1, 1, 10.10, 9.99, 8.88, 7.77, 6, '2000-01-01 00:00:00', '2023-05-01 01:02:02.500');
+INSERT INTO public.site_control_group_default(site_control_group_default_id, site_control_group_id, import_limit_active_watts, export_limit_active_watts, generation_limit_active_watts, load_limit_active_watts, ramp_rate_percent_per_second,  created_time, changed_time)
+VALUES (2, 3, 20.20, 19.19, 18.18, 17.17, 16, '2000-01-01 00:00:00', '2023-05-01 02:02:02.500');
+SELECT pg_catalog.setval('public.site_control_group_default_site_control_group_default_id_seq', 3, true);
 
 
 -- Calculation log 1/2 have the same interval but calculation log 2 has a more recent created time
@@ -438,13 +451,6 @@ VALUES (4, 3, '2023-05-01 04:04:04.500', 'log-4', 41, 4, 42, 43, 44, 3);
 INSERT INTO public.site_log_event (site_log_event_id, site_id, created_time, details, extended_data, function_set, log_event_code, log_event_id, log_event_pen, profile_id)
 VALUES (5, 1, '2023-05-01 05:05:05.500', NULL, NULL, 5, 52, 53, 54, 4);
 SELECT pg_catalog.setval('public.site_log_event_site_log_event_id_seq', 6, true);
-
-
-INSERT INTO public.default_site_control(default_site_control_id, site_id, import_limit_active_watts, export_limit_active_watts, generation_limit_active_watts, load_limit_active_watts, ramp_rate_percent_per_second, created_time, changed_time)
-VALUES (1, 1, 10.10, 9.99, 8.88, 7.77, 6, '2023-05-01 02:02:02.500', '2023-05-01 02:02:02.500');
-INSERT INTO public.default_site_control(default_site_control_id, site_id, import_limit_active_watts, export_limit_active_watts, generation_limit_active_watts, load_limit_active_watts, ramp_rate_percent_per_second,  created_time, changed_time)
-VALUES (2, 3, 20.20, 19.19, 18.18, 17.17, 16, '2023-05-01 02:02:02.500', '2023-05-01 02:02:02.500');
-SELECT pg_catalog.setval('public.default_site_control_default_site_control_id_seq', 3, true);
 
 INSERT INTO public.runtime_server_config(runtime_server_config_id,  changed_time, created_time, dcap_pollrate_seconds, edevl_pollrate_seconds, fsal_pollrate_seconds, derpl_pollrate_seconds, derl_pollrate_seconds, mup_postrate_seconds, site_control_pow10_encoding)
 VALUES (1, '2023-05-01 01:01:01.500', '2023-05-01 01:01:01.500', 300, 300, 300, 60, 60, 60, -2);

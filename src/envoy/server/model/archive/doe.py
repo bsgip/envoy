@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
 from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX, ArchiveBase
+from envoy.server.model.constants import DOE_DECIMAL_PLACES
 
 
 class ArchiveSiteControlGroup(ArchiveBase):
@@ -23,6 +24,32 @@ class ArchiveSiteControlGroup(ArchiveBase):
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ArchiveSiteControlGroupDefault(ArchiveBase):
+    """Represents fields that map to a subset of the attributes defined in CSIP-AUS' DefaultDERControl resource. These
+    default values fall underneath a specific SiteControlGroup."""
+
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.SiteControlGroupDefault.__tablename__  # type: ignore
+    site_control_group_default_id: Mapped[int] = mapped_column(INTEGER, index=True)
+    site_control_group_id: Mapped[int] = mapped_column(INTEGER, nullable=False)
+
+    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When this record was created
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    version: Mapped[int] = mapped_column(INTEGER)  # Incremented whenever this record is changed
+
+    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )  # Constraint on imported active power
+    export_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )  # Constraint on exported active power
+    generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
+    )
+    load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
+    ramp_rate_percent_per_second: Mapped[Optional[int]] = mapped_column(nullable=True)  # hundredths of percent per sec
 
 
 class ArchiveDynamicOperatingEnvelope(ArchiveBase):
