@@ -11,7 +11,7 @@ from assertical.asserts.time import assert_datetime_equal, assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from envoy.admin.crud.doe import (
     cancel_then_insert_does,
@@ -221,6 +221,16 @@ async def test_supersede_matching_does_for_site(
     pg_base_config, doe_list: list[DynamicOperatingEnvelope], expected_doe_update_ids: list[int]
 ):
     async with generate_async_session(pg_base_config) as session:
+        await session.execute(
+            update(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 1).values(primacy=11)
+        )
+        await session.execute(
+            update(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 2).values(primacy=22)
+        )
+        await session.execute(
+            update(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 3).values(primacy=1)
+        )
+
         original_superseded_values = dict(
             (
                 await session.execute(
@@ -230,8 +240,6 @@ async def test_supersede_matching_does_for_site(
             .tuples()
             .all()
         )
-        session.add(generate_class_instance(SiteControlGroup, seed=1, site_control_group_id=2, primacy=22))
-        session.add(generate_class_instance(SiteControlGroup, seed=2, site_control_group_id=3, primacy=33))
         await session.commit()
 
     site_id = 99
@@ -275,11 +283,9 @@ async def test_supersede_then_insert_does_many_sites(
         original_doe_count = (
             await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))
         ).scalar_one()
-        session.add(generate_class_instance(SiteControlGroup, seed=1, site_control_group_id=2, primacy=22))
-        session.add(generate_class_instance(SiteControlGroup, seed=2, site_control_group_id=3, primacy=33))
         await session.commit()
 
-    expected_primacy_by_group_id = {1: 0, 2: 22, 3: 33}
+    expected_primacy_by_group_id = {1: 0, 2: 1, 3: 2}
     changed_time = datetime(2021, 11, 4, 2, 3, 4, tzinfo=timezone.utc)
     does = [
         generate_class_instance(
@@ -415,24 +421,6 @@ async def extra_site_control_groups(pg_base_config):
 
     # Current database entry has changed time '2021-04-05 10:01:00.500'
     async with generate_async_session(pg_base_config) as session:
-        session.add(
-            generate_class_instance(
-                SiteControlGroup,
-                seed=101,
-                primacy=2,
-                site_control_group_id=2,
-                changed_time=datetime(2021, 4, 5, 10, 2, 0, 500000, tzinfo=timezone.utc),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                SiteControlGroup,
-                seed=202,
-                primacy=1,
-                site_control_group_id=3,
-                changed_time=datetime(2021, 4, 5, 10, 3, 0, 500000, tzinfo=timezone.utc),
-            )
-        )
         session.add(
             generate_class_instance(
                 SiteControlGroup,

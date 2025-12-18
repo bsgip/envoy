@@ -534,10 +534,7 @@ async def test_get_associated_derprogram_list(
     expected_doe_count: Optional[int],
     valid_headers: dict,
 ):
-    """Tests getting DERPrograms for various sites/der and validates access constraints
-
-    Being a virtual entity - we don't go too hard on validating the paging (it'll always
-    be a single element or a 404)"""
+    """Tests getting DERPrograms for various sites/der and validates access constraints"""
 
     # Test a known site
     href = uri.AssociatedDERProgramListUri.format(site_id=site_id, der_id=der_id)
@@ -552,6 +549,6 @@ async def test_get_associated_derprogram_list(
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response: DERProgramListResponse = DERProgramListResponse.from_xml(body)
-        assert parsed_response.all_ == 1
-        assert parsed_response.results == 1
+        assert parsed_response.all_ == 3
+        assert parsed_response.results == 3
         assert parsed_response.DERProgram[0].DERControlListLink.all_ == expected_doe_count

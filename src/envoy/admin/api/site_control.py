@@ -160,7 +160,7 @@ async def update_site_control_default(group_id: int, body: SiteControlGroupDefau
     Returns:
         None
     """
-    result = await SiteControlListManager.update_site_control_default(db.session, group_id, body)
+    result = await SiteControlGroupManager.update_site_control_default(db.session, group_id, body)
     if not result:
         raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"group_id {group_id} not found")
 
@@ -172,7 +172,7 @@ async def get_site_control_default(group_id: int) -> SiteControlGroupDefaultResp
     Returns:
         SiteControlGroupDefaultResponse or 404
     """
-    result = await SiteControlListManager.fetch_site_control_default_response(db.session, group_id)
+    result = await SiteControlGroupManager.fetch_site_control_default_response(db.session, group_id)
     if not result:
         raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"group_id {group_id} not found")
     return result

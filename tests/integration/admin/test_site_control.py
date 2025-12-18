@@ -81,12 +81,12 @@ async def test_get_site_control_group_by_id(
 @pytest.mark.parametrize(
     "start, limit, after, expected_group_ids",
     [
-        (None, None, None, [1]),
-        (1, None, None, []),
+        (None, None, None, [1, 2, 3]),
+        (1, None, None, [2, 3]),
         (0, 1, None, [1]),
         (0, 0, None, []),
-        (None, None, datetime(2021, 4, 5, 10, 1, 0, 500000, tzinfo=timezone.utc), [1]),
-        (None, None, datetime(2021, 4, 5, 10, 2, 0, 500000, tzinfo=timezone.utc), []),
+        (None, None, datetime(2021, 4, 5, 10, 1, 0, 500000, tzinfo=timezone.utc), [1, 2, 3]),
+        (None, None, datetime(2021, 4, 5, 10, 2, 0, 500000, tzinfo=timezone.utc), [2, 3]),
     ],
 )
 @pytest.mark.anyio

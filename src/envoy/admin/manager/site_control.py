@@ -77,71 +77,6 @@ class SiteControlGroupManager:
 
         return SiteControlGroupListMapper.map_to_response(scg)
 
-
-class SiteControlListManager:
-    @staticmethod
-    async def delete_site_controls_in_range(
-        session: AsyncSession,
-        site_control_group_id: int,
-        site_id: Optional[int],
-        period_start: datetime,
-        period_end: datetime,
-    ) -> None:
-        """deletes all site controls matching the specified parameters."""
-
-        deleted_time = utc_now()
-        await delete_does_with_start_time_in_range(
-            session,
-            site_control_group_id=site_control_group_id,
-            site_id=site_id,
-            period_start=period_start,
-            period_end=period_end,
-            deleted_time=deleted_time,
-        )
-        await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(
-            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, deleted_time
-        )
-        return
-
-    @staticmethod
-    async def add_many_site_control(
-        session: AsyncSession, site_control_group_id: int, control_list: list[SiteControlRequest]
-    ) -> None:
-        """Inserts many site controls into the db for the specified site_control_group."""
-
-        changed_time = utc_now()
-        doe_models = SiteControlListMapper.map_from_request(site_control_group_id, changed_time, control_list)
-        await supersede_then_insert_does(session, doe_models, changed_time)
-        await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(
-            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, changed_time
-        )
-
-    @staticmethod
-    async def get_all_site_controls(
-        session: AsyncSession, site_control_group_id: int, start: int, limit: int, changed_after: Optional[datetime]
-    ) -> SiteControlPageResponse:
-        """Admin specific (paginated) fetch of site controls that covers all aggregators.
-        changed_after: If specified - filter to does whose changed date is >= this value"""
-        doe_count = await count_all_does(session, site_control_group_id, changed_after)
-        does = await select_all_does(
-            session,
-            site_control_group_id=site_control_group_id,
-            changed_after=changed_after,
-            start=start,
-            limit=limit,
-        )
-        return SiteControlListMapper.map_to_paged_response(
-            total_count=doe_count,
-            limit=limit,
-            start=start,
-            after=changed_after,
-            does=does,
-        )
-
     @staticmethod
     async def update_site_control_default(
         session: AsyncSession, group_id: int, request: SiteControlGroupDefaultRequest
@@ -216,4 +151,69 @@ class SiteControlListManager:
             server_default_load_limit_watts=scg.site_control_group_default.load_limit_active_watts,
             changed_time=scg.site_control_group_default.changed_time,
             created_time=scg.site_control_group_default.created_time,
+        )
+
+
+class SiteControlListManager:
+    @staticmethod
+    async def delete_site_controls_in_range(
+        session: AsyncSession,
+        site_control_group_id: int,
+        site_id: Optional[int],
+        period_start: datetime,
+        period_end: datetime,
+    ) -> None:
+        """deletes all site controls matching the specified parameters."""
+
+        deleted_time = utc_now()
+        await delete_does_with_start_time_in_range(
+            session,
+            site_control_group_id=site_control_group_id,
+            site_id=site_id,
+            period_start=period_start,
+            period_end=period_end,
+            deleted_time=deleted_time,
+        )
+        await session.commit()
+
+        await NotificationManager.notify_changed_deleted_entities(
+            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, deleted_time
+        )
+        return
+
+    @staticmethod
+    async def add_many_site_control(
+        session: AsyncSession, site_control_group_id: int, control_list: list[SiteControlRequest]
+    ) -> None:
+        """Inserts many site controls into the db for the specified site_control_group."""
+
+        changed_time = utc_now()
+        doe_models = SiteControlListMapper.map_from_request(site_control_group_id, changed_time, control_list)
+        await supersede_then_insert_does(session, doe_models, changed_time)
+        await session.commit()
+
+        await NotificationManager.notify_changed_deleted_entities(
+            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, changed_time
+        )
+
+    @staticmethod
+    async def get_all_site_controls(
+        session: AsyncSession, site_control_group_id: int, start: int, limit: int, changed_after: Optional[datetime]
+    ) -> SiteControlPageResponse:
+        """Admin specific (paginated) fetch of site controls that covers all aggregators.
+        changed_after: If specified - filter to does whose changed date is >= this value"""
+        doe_count = await count_all_does(session, site_control_group_id, changed_after)
+        does = await select_all_does(
+            session,
+            site_control_group_id=site_control_group_id,
+            changed_after=changed_after,
+            start=start,
+            limit=limit,
+        )
+        return SiteControlListMapper.map_to_paged_response(
+            total_count=doe_count,
+            limit=limit,
+            start=start,
+            after=changed_after,
+            does=does,
         )

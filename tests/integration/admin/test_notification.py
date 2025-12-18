@@ -916,9 +916,9 @@ async def test_create_site_control_groups_with_active_subscription(
                 for r in notifications_enabled.logged_requests
                 if r.uri == subscription2_uri
                 and str(primacy) in r.content
-                and "/edev/1/derp/3" not in r.content
-                and "/edev/2/derp/3" in r.content
-                and "/edev/4/derp/3" not in r.content
+                and "/edev/1/" not in r.content
+                and "/edev/2/derp/5" in r.content
+                and "/edev/4/" not in r.content
             ]
         )
         == 1

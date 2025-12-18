@@ -268,9 +268,6 @@ async def test_select_and_count_active_does_include_deleted_multiple_groups(
 
     # Migrate ever
     async with generate_async_session(pg_additional_does) as session:
-        session.add(generate_class_instance(SiteControlGroup, site_control_group_id=2))
-        await session.flush()
-
         await session.execute(
             update(DOE)
             .values(site_control_group_id=2)
@@ -773,7 +770,7 @@ async def test_count_site_control_groups_by_fsa_id_empty_db(pg_empty_config):
         (datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), [1, 3]),
         (datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), [1, 3]),
         (datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), [1, 3]),
-        (datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc), [1]),
+        (datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc), [3]),
         (datetime(2021, 4, 5, 10, 6, 0, tzinfo=timezone.utc), []),
     ],
 )
