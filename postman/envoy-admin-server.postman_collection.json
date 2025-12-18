@@ -408,65 +408,6 @@
 					"response": []
 				},
 				{
-					"name": "POST Update site control default",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"import_limit_watts\": {\"value\": 500},\n    \"export_limit_watts\": {\"value\": 500},\n    \"generation_limit_watts\": {\"value\": 500},\n    \"load_limit_watts\": {\"value\": 500},\n    \"ramp_rate_percent_per_second\": {\"value\": 500}\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{HOST}}/site/{{SITE_ID}}/control_default",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"site",
-								"{{SITE_ID}}",
-								"control_default"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GET site control default",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"import_limit_watts\" 500,\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{HOST}}/site/{{SITE_ID}}/control_default",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"site",
-								"{{SITE_ID}}",
-								"control_default"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "POST Update server runtime config",
 					"request": {
 						"method": "POST",
@@ -786,6 +727,65 @@
 							"path": [
 								"site_control_group",
 								"{{GROUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Update site control group default",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"import_limit_watts\": {\"value\": 500},\n    \"export_limit_watts\": {\"value\": 500},\n    \"generation_limit_watts\": {\"value\": 500},\n    \"load_limit_watts\": {\"value\": 500},\n    \"ramp_rate_percent_per_second\": {\"value\": 500}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/default",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group",
+								"{{GROUP_ID}}",
+								"default"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET site control group default",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"import_limit_watts\" 500,\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/default",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group",
+								"{{GROUP_ID}}",
+								"default"
 							]
 						}
 					},
