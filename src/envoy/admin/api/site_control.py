@@ -25,6 +25,7 @@ from envoy.admin.manager.site_control import SiteControlGroupManager, SiteContro
 from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import extract_limit_from_paging_param, extract_start_from_paging_param
 from envoy.server.api.response import LOCATION_HEADER_NAME
+from envoy.server.manager.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -145,3 +146,34 @@ async def delete_site_controls_in_range(group_id: int, period_start: datetime, p
     await SiteControlListManager.delete_site_controls_in_range(
         db.session, site_control_group_id=group_id, site_id=None, period_start=period_start, period_end=period_end
     )
+
+
+@router.delete(SiteControlGroupListUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
+async def delete_all_site_control_groups() -> None:
+    """
+    Deletes all site control groups, including the DERPrograms, FSA's, and SiteControls.
+     The values are persisted in the archived tables, and notifications are called.
+
+    The primary purpose of this function is use by the CACTUS runner tool, allowing the database to be partially
+    cleared between test runs, without completely blindsiding the clients
+    """
+    now = await utc_now()
+
+    all_control_groups_response = await SiteControlGroupManager.get_all_site_control_groups(
+        session=db.session,
+        start=extract_start_from_paging_param(),
+        limit=extract_limit_from_paging_param(),
+        changed_after=None,
+    )
+    all_control_groups = all_control_groups_response.site_control_groups
+
+    # This manager handles notifications for the DOEs
+    for control_group in all_control_groups:
+        SiteControlListManager.delete_site_controls_in_range(
+            db.session,
+            site_control_group_id=control_group.site_control_group_id,
+            site_id=None,
+            period_start=period_start,
+            period_end=now,
+        )
+    return
