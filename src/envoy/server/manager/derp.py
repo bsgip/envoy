@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from envoy_schema.server.schema.sep2.der import (
     DefaultDERControl,
@@ -208,8 +208,6 @@ class DERControlManager:
     ) -> DefaultDERControl:
         """Returns a default DOE control for DERProgram - raises an error if the referenced DERProgram DNE"""
 
-        # fetch runtime server config
-        config = await RuntimeServerConfigManager.fetch_current_config(session)
         scg = await select_site_control_group_by_id(session, der_program_id, include_default=True)
         if not scg:
             raise NotFoundError(f"DERProgram {der_program_id} for site {scope.site_id} is not accessible / missing.")
@@ -224,6 +222,7 @@ class DERControlManager:
                 version=0,
             )
 
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
         return DERControlMapper.map_to_default_response(
             scope,
             scg_default,

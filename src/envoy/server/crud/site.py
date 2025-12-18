@@ -6,7 +6,6 @@ from envoy_schema.server.schema.sep2.types import DeviceCategory
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from envoy.server.crud import common
 from envoy.server.crud.aggregator import select_aggregator
@@ -338,21 +337,6 @@ async def delete_site_for_aggregator(
 
     # Site Groups assignments aren't archived - we can delete them directly
     await session.execute(delete(SiteGroupAssignment).where(SiteGroupAssignment.site_id == site_id))
-
-    # Archive the DefaultSiteControl
-    default_site_control_id = (
-        await session.execute(
-            (select(DefaultSiteControl.default_site_control_id).where(DefaultSiteControl.site_id == site_id))
-        )
-    ).scalar_one_or_none()
-    if default_site_control_id is not None:
-        await delete_rows_into_archive(
-            session,
-            DefaultSiteControl,
-            ArchiveDefaultSiteControl,
-            deleted_time,
-            lambda q: q.where(DefaultSiteControl.default_site_control_id == default_site_control_id),
-        )
 
     # Finally delete the site
     await delete_rows_into_archive(

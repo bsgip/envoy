@@ -370,7 +370,7 @@ def test_decode_and_validate_mrid_type():
             # This is using a different scope (pen) and is therefore an error
             MridMapper.decode_and_validate_mrid_type(scope2, mrid1)
 
-    default_control = generate_class_instance(DefaultSiteControl)
+    default_control = generate_class_instance(SiteControlGroupDefault)
     do_test(lambda s: MridMapper.encode_default_doe_mrid(s, default_control))
     do_test(lambda s: MridMapper.encode_doe_program_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_doe_mrid(s, 1))

@@ -11,7 +11,7 @@ from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
 from envoy_schema.server.schema.sep2.types import QualityFlagsType
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
@@ -61,7 +61,7 @@ from envoy.server.model.archive.site import (
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
-from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroupDefault
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource

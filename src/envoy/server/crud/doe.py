@@ -420,7 +420,15 @@ async def count_site_control_groups(session: AsyncSession, changed_after: dateti
     """
 
     # Test coverage will ensure that it's an int
-    return await _site_control_groups(True, session, 0, changed_after, None, fsa_id, False)  # type: ignore [return-value]
+    return await _site_control_groups(
+        True,
+        session,
+        0,
+        changed_after,
+        None,
+        fsa_id,
+        False,
+    )  # type: ignore [return-value]
 
 
 async def count_site_control_groups_by_fsa_id(session: AsyncSession) -> dict[int, int]:

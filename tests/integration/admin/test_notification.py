@@ -15,9 +15,9 @@ from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
 from envoy_schema.admin.schema.site import SiteUpdateRequest
 from envoy_schema.admin.schema.site_control import (
     SiteControlGroupDefaultRequest,
-    SiteControlGroupDefaultResponse,
     SiteControlGroupRequest,
     SiteControlRequest,
+    UpdateDefaultValue,
 )
 from envoy_schema.admin.schema.uri import (
     DoeUri,
@@ -799,7 +799,7 @@ async def test_update_server_config_fsa_notification_no_change(
 
 
 @pytest.mark.anyio
-async def test_update_site_default_config_notification(
+async def test_update_site_control_group_default_notification(
     admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
 ):
     """Tests that updating site control group default generates subscription notifications for DefaultDERControl"""
@@ -810,13 +810,13 @@ async def test_update_site_default_config_notification(
         # Clear any other subs first
         await session.execute(delete(Subscription))
 
-        # Will pickup site default updates for site 2
+        # Will pickup default updates for site 2, derp 3
         await session.execute(
             insert(Subscription).values(
                 aggregator_id=1,
                 changed_time=datetime.now(),
                 resource_type=SubscriptionResource.DEFAULT_SITE_CONTROL,
-                resource_id=None,
+                resource_id=3,
                 scoped_site_id=2,
                 notification_uri=subscription1_uri,
                 entity_limit=10,
@@ -826,7 +826,7 @@ async def test_update_site_default_config_notification(
         await session.commit()
 
     # now do an update for certain fields
-    config_request = ControlDefaultRequest(
+    config_request = SiteControlGroupDefaultRequest(
         import_limit_watts=UpdateDefaultValue(value=None),
         export_limit_watts=UpdateDefaultValue(value=Decimal("2.34")),
         generation_limit_watts=None,
@@ -834,14 +834,14 @@ async def test_update_site_default_config_notification(
         ramp_rate_percent_per_second=None,
     )
 
-    # Update default controls for site 1 and site 2
+    # Update default controls for DERP2 and DERP3
     resp = await admin_client_auth.post(
-        SiteControlDefaultConfigUri.format(site_id=1), content=config_request.model_dump_json()
+        SiteControlGroupDefaultUri.format(group_id=2), content=config_request.model_dump_json()
     )
     assert resp.status_code == HTTPStatus.NO_CONTENT
 
     resp = await admin_client_auth.post(
-        SiteControlDefaultConfigUri.format(site_id=2), content=config_request.model_dump_json()
+        SiteControlGroupDefaultUri.format(group_id=3), content=config_request.model_dump_json()
     )
     assert resp.status_code == HTTPStatus.NO_CONTENT
 

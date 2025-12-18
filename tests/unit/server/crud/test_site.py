@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from decimal import Decimal
 from itertools import product
 from typing import Callable, Optional, Union
 
@@ -740,16 +739,6 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
             None,
             ArchiveTariffGeneratedRate,
             lambda q: q.where(TariffGeneratedRate.site_id == site_id),
-        )
-    )
-
-    snapshot.append(
-        await count_table_rows(
-            session,
-            DefaultSiteControl,
-            None,
-            ArchiveDefaultSiteControl,
-            lambda q: q.where(DefaultSiteControl.site_id == site_id),
         )
     )
 

@@ -25,7 +25,7 @@ from sqlalchemy import delete, func, select
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.subscription import select_subscription_by_id
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
-from envoy.server.model.subscription import Subscription
+from envoy.server.model.subscription import Subscription, SubscriptionResource
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
@@ -282,21 +282,22 @@ async def test_delete_subscription(
 
 
 @pytest.mark.parametrize(
-    "use_aggregator_edev, notification_uri",
-    product([True, False], ["https://example.com/456?foo=bar", "http://example.com:123", "https://example.com"]),
+    "use_aggregator_edev, derp_id",
+    product([True, False], [1, 2, 3]),
 )
 @pytest.mark.anyio
-async def test_create_doe_subscription(
-    pg_base_config, client: AsyncClient, sub_list_uri_format: str, use_aggregator_edev: bool, notification_uri: str
+async def test_create_derp_default_subscription(
+    pg_base_config, client: AsyncClient, sub_list_uri_format: str, use_aggregator_edev: bool, derp_id: int
 ):
     """When creating a sub check to see if it persists and is correctly assigned to the aggregator"""
 
+    notification_uri = "https://example.com/456?foo=bar"
     edev_id: int = 0 if use_aggregator_edev else 1
 
     insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
     insert_request.encoding = SubscriptionEncoding.XML
     insert_request.notificationURI = notification_uri
-    insert_request.subscribedResource = f"/edev/{edev_id}/derp/1/derc"
+    insert_request.subscribedResource = f"/edev/{edev_id}/derp/{derp_id}/dderc"
     response = await client.post(
         sub_list_uri_format.format(site_id=0),  # All subscriptions should be made to /edev/0/sub
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
@@ -333,6 +334,65 @@ async def test_create_doe_subscription(
         else:
             assert created_sub.scoped_site_id == edev_id, "Regular requests are site scoped"
         assert created_sub.notification_uri == notification_uri
+        assert created_sub.resource_id == derp_id
+        assert created_sub.resource_type == SubscriptionResource.DEFAULT_SITE_CONTROL
+
+
+@pytest.mark.parametrize(
+    "use_aggregator_edev, notification_uri",
+    product([True, False], ["https://example.com/456?foo=bar", "http://example.com:123", "https://example.com"]),
+)
+@pytest.mark.anyio
+async def test_create_doe_subscription(
+    pg_base_config, client: AsyncClient, sub_list_uri_format: str, use_aggregator_edev: bool, notification_uri: str
+):
+    """When creating a sub check to see if it persists and is correctly assigned to the aggregator"""
+
+    edev_id: int = 0 if use_aggregator_edev else 1
+    derp_id = 2
+
+    insert_request: Sep2Subscription = generate_class_instance(Sep2Subscription)
+    insert_request.encoding = SubscriptionEncoding.XML
+    insert_request.notificationURI = notification_uri
+    insert_request.subscribedResource = f"/edev/{edev_id}/derp/{derp_id}/derc"
+    response = await client.post(
+        sub_list_uri_format.format(site_id=0),  # All subscriptions should be made to /edev/0/sub
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=Sep2Subscription.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+    assert len(read_response_body_string(response)) == 0
+    inserted_href = read_location_header(response)
+
+    # now lets grab the sub we just created
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.OK)
+    response_body = read_response_body_string(response)
+    assert len(response_body) > 0
+    parsed_response: Sep2Subscription = Sep2Subscription.from_xml(response_body)
+    assert parsed_response.href in inserted_href
+    assert parsed_response.notificationURI == insert_request.notificationURI
+    assert parsed_response.subscribedResource == insert_request.subscribedResource
+    assert parsed_response.limit == insert_request.limit
+
+    # check that other aggregators can't fetch it
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_2_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.NOT_FOUND)
+    assert_error_response(response)
+
+    # Validate the DB record is properly scoped
+    async with generate_async_session(pg_base_config) as session:
+        resp = await session.execute(select(Subscription).order_by(Subscription.subscription_id.desc()).limit(1))
+        created_sub = resp.scalars().first()
+        assert_nowish(created_sub.changed_time)
+        assert_nowish(created_sub.created_time)
+        if use_aggregator_edev:
+            assert created_sub.scoped_site_id is None, "Aggregator scoped requests are site unscoped"
+        else:
+            assert created_sub.scoped_site_id == edev_id, "Regular requests are site scoped"
+        assert created_sub.notification_uri == notification_uri
+        assert created_sub.resource_id == derp_id
+        assert created_sub.resource_type == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE
 
 
 async def do_test_renewal(

@@ -15,9 +15,9 @@ from envoy_schema.server.schema.sep2.pub_sub import (
 
 from envoy.notification.crud.batch import AggregatorBatchedEntities, get_batch_key
 from envoy.notification.crud.common import (
-    ControlGroupScopedDefaultSiteControl,
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
+    SiteScopedSiteControlGroupDefault,
 )
 from envoy.notification.exception import NotificationError
 from envoy.notification.task.check import (
@@ -589,8 +589,8 @@ def test_all_entity_batches(input_changed: dict[tuple, list], input_deleted: dic
         (SubscriptionResource.SITE_DER_STATUS, SiteDERStatus, 987941),
         (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, SiteScopedFunctionSetAssignment, None),
         (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, SiteScopedFunctionSetAssignment, 241214),
-        (SubscriptionResource.DEFAULT_SITE_CONTROL, ControlGroupScopedDefaultSiteControl, None),
-        (SubscriptionResource.DEFAULT_SITE_CONTROL, ControlGroupScopedDefaultSiteControl, 331241),
+        (SubscriptionResource.DEFAULT_SITE_CONTROL, SiteScopedSiteControlGroupDefault, None),
+        (SubscriptionResource.DEFAULT_SITE_CONTROL, SiteScopedSiteControlGroupDefault, 331241),
         (SubscriptionResource.SITE_CONTROL_GROUP, SiteScopedSiteControlGroup, None),
         (SubscriptionResource.SITE_CONTROL_GROUP, SiteScopedSiteControlGroup, 442119),
     ],
