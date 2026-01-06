@@ -542,6 +542,8 @@ async def test_supersede_site_control_same_field_does_supersede(pg_base_config, 
 async def test_delete_all_site_control_groups(pg_base_config, admin_client_auth: AsyncClient):
     """Tests that DELETE on SiteControlGroupListUri archives all site control groups, defaults, and DOEs."""
 
+    # Arrange (mostly set up by base config)
+
     # Count records before deletion
     async with generate_async_session(pg_base_config) as session:
         initial_scg_count = (await session.execute(select(func.count()).select_from(SiteControlGroup))).scalar_one()
@@ -553,9 +555,11 @@ async def test_delete_all_site_control_groups(pg_base_config, admin_client_auth:
         assert initial_scg_count > 0, "Test requires existing SiteControlGroups"
         assert initial_doe_count > 0, "Test requires existing DynamicOperatingEnvelopes"
 
-    # Execute DELETE
+    # ACT: Execute DELETE
     response = await admin_client_auth.delete(SiteControlGroupListUri)
     assert response.status_code == HTTPStatus.NO_CONTENT
+
+    # ASSERT
 
     # Verify all records are archived and main tables are empty
     async with generate_async_session(pg_base_config) as session:
@@ -601,6 +605,6 @@ async def test_delete_all_site_control_groups(pg_base_config, admin_client_auth:
         for archived_scg in archived_scgs:
             assert archived_scg.deleted_time is not None, "deleted_time should be set"
 
-    # Calling DELETE again should still succeed (idempotent - nothing to delete)
+    # Calling DELETE again should still succeed
     response = await admin_client_auth.delete(SiteControlGroupListUri)
     assert response.status_code == HTTPStatus.NO_CONTENT

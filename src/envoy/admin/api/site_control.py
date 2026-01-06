@@ -152,7 +152,8 @@ async def delete_site_controls_in_range(group_id: int, period_start: datetime, p
 
 @router.delete(SiteControlGroupListUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
 async def delete_all_site_control_groups() -> None:
-    """Deletes all site control groups, including the SiteControls.
+    """
+    Deletes all site control groups, including the SiteControls, SiteControlGroupDefaults, and FunctionSetAssignments.
     The values are persisted in the archived tables, and notifications are called.
 
     The primary purpose of this function is use by the CACTUS runner tool, allowing the database to be partially
