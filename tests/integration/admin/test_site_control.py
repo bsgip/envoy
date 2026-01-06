@@ -30,8 +30,11 @@ from sqlalchemy import func, select
 
 from envoy.admin.crud.doe import count_all_does, count_all_site_control_groups
 from envoy.server.api.request import MAX_LIMIT
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.archive.doe import (
+    ArchiveDynamicOperatingEnvelope,
+    ArchiveSiteControlGroup,
+)
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from tests.integration.admin.test_site import _build_query_string
 from tests.integration.response import read_location_header, read_response_body_string
 
@@ -533,3 +536,71 @@ async def test_supersede_site_control_same_field_does_supersede(pg_base_config, 
 
         assert len(archives) == 1, "Superseded DOE should be archived"
         assert archives[0].import_limit_active_watts == Decimal("1000"), "Archived DOE should be the first one"
+
+
+@pytest.mark.anyio
+async def test_delete_all_site_control_groups(pg_base_config, admin_client_auth: AsyncClient):
+    """Tests that DELETE on SiteControlGroupListUri archives all site control groups, defaults, and DOEs."""
+
+    # Count records before deletion
+    async with generate_async_session(pg_base_config) as session:
+        initial_scg_count = (await session.execute(select(func.count()).select_from(SiteControlGroup))).scalar_one()
+        initial_doe_count = (
+            await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))
+        ).scalar_one()
+
+        # Verify we have data to delete
+        assert initial_scg_count > 0, "Test requires existing SiteControlGroups"
+        assert initial_doe_count > 0, "Test requires existing DynamicOperatingEnvelopes"
+
+    # Execute DELETE
+    response = await admin_client_auth.delete(SiteControlGroupListUri)
+    assert response.status_code == HTTPStatus.NO_CONTENT
+
+    # Verify all records are archived and main tables are empty
+    async with generate_async_session(pg_base_config) as session:
+        # Main tables should be empty
+        after_scg_count = (await session.execute(select(func.count()).select_from(SiteControlGroup))).scalar_one()
+        after_scg_default_count = (
+            await session.execute(select(func.count()).select_from(SiteControlGroupDefault))
+        ).scalar_one()
+        after_doe_count = (
+            await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))
+        ).scalar_one()
+
+        assert after_scg_count == 0, "All SiteControlGroups should be deleted"
+        assert after_scg_default_count == 0, "All SiteControlGroupDefaults should be deleted"
+        assert after_doe_count == 0, "All DynamicOperatingEnvelopes should be deleted"
+
+        # Archive tables should have the deleted records with deleted_time set
+        archived_scgs = (
+            (
+                await session.execute(
+                    select(ArchiveSiteControlGroup).where(ArchiveSiteControlGroup.deleted_time.is_not(None))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        archived_does = (
+            (
+                await session.execute(
+                    select(ArchiveDynamicOperatingEnvelope).where(
+                        ArchiveDynamicOperatingEnvelope.deleted_time.is_not(None)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        assert len(archived_scgs) == initial_scg_count, "All SiteControlGroups should be archived"
+        assert len(archived_does) >= initial_doe_count, "All DynamicOperatingEnvelopes should be archived"
+
+        # Verify deleted_time is set on archived records
+        for archived_scg in archived_scgs:
+            assert archived_scg.deleted_time is not None, "deleted_time should be set"
+
+    # Calling DELETE again should still succeed (idempotent - nothing to delete)
+    response = await admin_client_auth.delete(SiteControlGroupListUri)
+    assert response.status_code == HTTPStatus.NO_CONTENT

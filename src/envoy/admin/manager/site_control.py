@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.admin.crud.doe import (
     count_all_does,
     count_all_site_control_groups,
+    delete_all_site_control_groups_into_archive,
     delete_does_with_start_time_in_range,
     select_all_does,
     select_all_site_control_groups,
@@ -52,6 +53,42 @@ class SiteControlGroupManager:
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_CONTROL_GROUP, now)
 
         return new_site_control_group.site_control_group_id
+
+    @staticmethod
+    async def delete_all_site_control_groups(session: AsyncSession) -> None:
+        """Deletes all site control groups, archiving them and sending notifications.
+
+        This includes all SiteControlGroups, SiteControlGroupDefaults, and DynamicOperatingEnvelopes.
+        All deleted records are moved to their respective archive tables with deleted_time set.
+
+        The primary purpose of this function is use by the CACTUS runner tool, allowing the database to be partially
+        cleared between test runs, without completely blindsiding the clients.
+        """
+        deleted_time = utc_now()
+
+        # Perform the archive/delete operation
+        await delete_all_site_control_groups_into_archive(session, deleted_time)
+
+        await session.commit()
+
+        # Send notifications for all affected resources
+        # DOEs (site controls) were deleted
+        await NotificationManager.notify_changed_deleted_entities(
+            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, deleted_time
+        )
+
+        # Default controls were deleted
+        await NotificationManager.notify_changed_deleted_entities(
+            SubscriptionResource.DEFAULT_SITE_CONTROL, deleted_time
+        )
+
+        # Site control groups (DER programs) were deleted
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_CONTROL_GROUP, deleted_time)
+
+        # FSA list has changed (all groups removed means FSA content changed)
+        await NotificationManager.notify_changed_deleted_entities(
+            SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, deleted_time
+        )
 
     @staticmethod
     async def get_all_site_control_groups(
