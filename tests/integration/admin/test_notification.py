@@ -235,12 +235,14 @@ async def test_supersede_doe_with_active_subscription(
         await session.commit()
 
     # This will supersede DOE 1 and generate an insert for the new value
+    # Use a small export_limit_watts to ensure it fits in Int16 when multiplied by 100 (pow10_multiplier=-2)
     doe_1 = generate_class_instance(
         body_type,
         seed=10001,
         site_id=1,
         calculation_log_id=None,
         start_time=datetime(2022, 5, 7, 1, 2, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        export_limit_watts=100,
     )
 
     content = ",".join([d.model_dump_json() for d in [doe_1]])
