@@ -41,6 +41,54 @@ def test_map_to_hundredths(percent: Decimal, expected: int):
 
 
 @pytest.mark.parametrize(
+    "watts, requested_multiplier, expected_value, expected_multiplier",
+    [
+        # Small values that fit in Int16 with the requested multiplier
+        (Decimal("100"), 0, 100, 0),
+        (Decimal("100"), -2, 10000, -2),
+        (Decimal("1.5"), -2, 150, -2),
+        # Large values that require multiplier adjustment to fit Int16
+        # Algorithm: ceil(log10(|p| / 32767)) gives minimum multiplier needed
+        (Decimal("60000"), 0, 6000, 1),
+        (Decimal("100000"), 0, 10000, 1),
+        (Decimal("500000"), 0, 5000, 2),
+        # Values with negative multipliers that would overflow
+        (Decimal("5"), -4, 5000, -3),
+        (Decimal("10"), -4, 10000, -3),
+        # Negative power values
+        (Decimal("-60000"), 0, -6000, 1),
+        (Decimal("-100"), -2, -10000, -2),
+        # Zero
+        (Decimal("0"), 0, 0, 0),
+        (Decimal("0"), -4, 0, -4),
+        # Values exactly at boundaries
+        (Decimal("32767"), 0, 32767, 0),  # Int16 max
+        (Decimal("-32768"), 0, -32768, 0),  # Int16 min
+        (Decimal("32768"), 0, 3276, 1),  # One over
+        # Very large values
+        (Decimal("1000000"), 0, 10000, 2),
+        (Decimal("10000000"), 0, 10000, 3),
+    ],
+)
+def test_map_to_active_power(watts: Decimal, requested_multiplier: int, expected_value: int, expected_multiplier: int):
+    """Tests that map_to_active_power correctly encodes power values with appropriate multipliers.
+
+    IEEE 2030.5 uses Int16 for ActivePower.value (-32768 to 32767), so the mapper must
+    automatically adjust the multiplier when the value would exceed this range.
+    """
+    result = DERControlMapper.map_to_active_power(watts, requested_multiplier)
+
+    assert -32768 <= result.value <= 32767
+    assert result.value == expected_value, f"Expected value={expected_value}, got {result.value}"
+    assert result.multiplier == expected_multiplier, f"Expected {expected_multiplier}, got {result.multiplier}"
+
+    # Verify the actual watts is approximately correct just in case
+    actual_watts = Decimal(result.value) * (Decimal(10) ** result.multiplier)
+    tolerance = Decimal(10) ** result.multiplier  # Tolerance is one unit
+    assert abs(actual_watts - watts) < tolerance, f"Expected ~{watts}W, got {actual_watts}W (tolerance: {tolerance})"
+
+
+@pytest.mark.parametrize(
     "doe_type, randomize_seconds, is_active",
     product([DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope], [-123, 123, None], [True, False]),
 )
@@ -92,14 +140,20 @@ def test_map_derc_to_response(
     assert result_all_set.href.startswith(scope.href_prefix)
     assert f"/{scope.display_site_id}" in result_all_set.href
     assert f"/{site_control_group_id}" in result_all_set.href
-    assert result_all_set.DERControlBase_.opModImpLimW.multiplier == -4
-    assert result_all_set.DERControlBase_.opModExpLimW.multiplier == -4
-    assert result_all_set.DERControlBase_.opModImpLimW.value == int(doe.import_limit_active_watts * 10000)
-    assert result_all_set.DERControlBase_.opModExpLimW.value == int(doe.export_limit_watts * 10000)
-    assert result_all_set.DERControlBase_.opModGenLimW.multiplier == -4
-    assert result_all_set.DERControlBase_.opModLoadLimW.multiplier == -4
-    assert result_all_set.DERControlBase_.opModGenLimW.value == int(doe.generation_limit_active_watts * 10000)
-    assert result_all_set.DERControlBase_.opModLoadLimW.value == int(doe.load_limit_active_watts * 10000)
+
+    # The multiplier should be at least -4, but may be adjusted to fit Int16 range (IEEE 2030.5 uses Int16 for value)
+    def check_active_power(ap, expected_watts):
+        INT16_MAX = 32767
+        INT16_MIN = -32768
+        assert INT16_MIN <= ap.value <= INT16_MAX
+        actual_watts = Decimal(ap.value) * (Decimal(10) ** ap.multiplier)
+        assert actual_watts == expected_watts
+        assert ap.multiplier >= -4
+
+    check_active_power(result_all_set.DERControlBase_.opModImpLimW, doe.import_limit_active_watts)
+    check_active_power(result_all_set.DERControlBase_.opModExpLimW, doe.export_limit_watts)
+    check_active_power(result_all_set.DERControlBase_.opModGenLimW, doe.generation_limit_active_watts)
+    check_active_power(result_all_set.DERControlBase_.opModLoadLimW, doe.load_limit_active_watts)
     assert result_all_set.DERControlBase_.opModConnect == doe.set_connected
     assert result_all_set.DERControlBase_.opModEnergize == doe.set_energized
     assert result_all_set.DERControlBase_.opModFixedW == DERControlMapper.map_to_hundredths(doe.set_point_percentage)

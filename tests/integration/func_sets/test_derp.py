@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
-
+from envoy.server.model.server import RuntimeServerConfig as DbRuntimeServerConfig
 import envoy_schema.server.schema.uri as uri
 import pytest
 from assertical.asserts.time import assert_datetime_equal
@@ -717,3 +717,73 @@ async def test_get_doe(
             assert parsed_response.EventStatus_.currentStatus == 2
         else:
             assert parsed_response.EventStatus_.currentStatus == 0
+
+
+@pytest.mark.anyio
+async def test_large_power_value_fits_int16(
+    client: AsyncClient,
+    pg_base_config,
+    uri_derc_list_format: str,
+    agg_1_headers,
+):
+    """Test that large power values are properly encoded: value fits within the Int16 range (-32768 to 32767)."""
+    INT16_MAX = 32767
+    INT16_MIN = -32768
+
+    large_export_watts = 60000  # exceeds Int16 max of 32767
+    start_time = utc_now() + timedelta(seconds=60)
+    duration_seconds = 300
+
+    async with generate_async_session(pg_base_config) as session:
+        site = (await session.execute(select(Site).where(Site.site_id == 1))).scalar_one()
+        site_control_group = (
+            await session.execute(select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 1))
+        ).scalar_one()
+
+        db_config = (await session.execute(select(DbRuntimeServerConfig))).scalar_one()
+        db_config.site_control_pow10_encoding = 0
+        await session.commit()
+
+        # Create a DOE with large power value
+        session.add(
+            DynamicOperatingEnvelope(
+                site=site,
+                site_control_group=site_control_group,
+                start_time=start_time,
+                duration_seconds=duration_seconds,
+                end_time=start_time + timedelta(seconds=duration_seconds),
+                export_limit_watts=large_export_watts,
+                import_limit_active_watts=large_export_watts,
+                changed_time=utc_now(),
+                created_time=utc_now(),
+                superseded=False,
+            )
+        )
+        await session.commit()
+
+    # Query the DER control via the API
+    path = uri_derc_list_format.format(site_id=1, der_program_id=1) + build_paging_params(limit=99)
+    response = await client.get(path, headers=agg_1_headers)
+    assert_response_header(response, HTTPStatus.OK)
+
+    body = read_response_body_string(response)
+    parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
+
+    # Find newly created control
+    large_control = None
+    expected_start_timestamp = int(start_time.timestamp())
+    for ctrl in parsed_response.DERControl:
+        if ctrl.DERControlBase_ and ctrl.DERControlBase_.opModExpLimW:
+            # Check if this is our control match on start time
+            if ctrl.interval.start == expected_start_timestamp:
+                large_control = ctrl
+                break
+
+    # Verify value correct
+    assert large_control is not None
+    actual_exp_watts = large_control.DERControlBase_.opModExpLimW.value * (
+        10**large_control.DERControlBase_.opModExpLimW.multiplier
+    )
+    assert actual_exp_watts == large_export_watts
+    assert INT16_MIN <= large_control.DERControlBase_.opModExpLimW.value <= INT16_MAX
+    assert INT16_MIN <= large_control.DERControlBase_.opModImpLimW.value <= INT16_MAX

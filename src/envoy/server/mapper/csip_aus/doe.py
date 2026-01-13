@@ -16,6 +16,7 @@ from envoy_schema.server.schema.sep2.der import (
 from envoy_schema.server.schema.sep2.event import EventStatus, EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
+import math
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
@@ -32,14 +33,53 @@ class DERControlListSource(IntEnum):
 
 
 class DERControlMapper:
+    INT16_MAX = 32767
+    INT16_MIN = -32768
+
     @staticmethod
     def map_to_active_power(p: Decimal, pow10_multiplier: int) -> ActivePower:
-        """Creates an ActivePower instance from our own internal power decimal reading"""
-        decimal_power = int(pow(10, -pow10_multiplier))
-        return ActivePower(
-            value=int(p * decimal_power),
-            multiplier=pow10_multiplier,
-        )
+        """Creates an ActivePower instance from our own internal power decimal reading.
+
+        The IEEE 2030.5 spec uses Int16 for the value field, so we need to ensure the resulting value fits within the
+        range -32768 to 32767. If the configured pow10_multiplier would result in a value outside this range, we
+        automatically increase the multiplier by the minimum amount, to ensure the value fits without precision loss.
+
+        Args:
+            p: Power value in watts (as a Decimal)
+            pow10_multiplier: The power of 10 multiplier to use. The actual power value
+                is calculated as: value * 10^multiplier
+
+        Returns:
+            ActivePower with value and multiplier such that value * 10^multiplier = p and value fits within Int16 range.
+        """
+
+        # Helper function to calculate the integer value for a given multiplier
+        # value = p * 10^(-multiplier) = p / 10^multiplier
+        def calc_value(mult: int) -> int:
+            if mult >= 0:
+                return int(p / Decimal(10**mult))
+            else:
+                return int(p * Decimal(10 ** (-mult)))
+
+        # Calculate the initial value with the provided multiplier
+        value = calc_value(pow10_multiplier)
+
+        # If value fits in Int16, use the original multiplier
+        if DERControlMapper.INT16_MIN <= value <= DERControlMapper.INT16_MAX:
+            return ActivePower(value=value, multiplier=pow10_multiplier)
+
+        # Handle zero case
+        abs_p = abs(p)
+        if abs_p == 0:
+            return ActivePower(value=0, multiplier=pow10_multiplier)
+
+        # Calculate the required multiplier to fit the value in Int16
+        required_multiplier = math.ceil(math.log10(float(abs_p) / DERControlMapper.INT16_MAX))
+
+        # Use the maximum of required multiplier and configured multiplier for best precision
+        actual_multiplier = max(required_multiplier, pow10_multiplier)
+
+        return ActivePower(value=calc_value(actual_multiplier), multiplier=actual_multiplier)
 
     @staticmethod
     def map_to_hundredths(p: Decimal) -> int:
