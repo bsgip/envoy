@@ -157,6 +157,13 @@ def assert_rate_for_id(
         assert actual_rate.export_active_price == Decimal(f"-{expected_rate_id}.22")
         assert actual_rate.import_reactive_price == Decimal(f"{expected_rate_id}.333")
         assert actual_rate.export_reactive_price == Decimal(f"-{expected_rate_id}.4444")
+
+        # Check that prices use at least 6 decimal places
+        assert actual_rate.import_active_price.as_tuple().exponent == -6
+        assert actual_rate.export_active_price.as_tuple().exponent == -6
+        assert actual_rate.import_reactive_price.as_tuple().exponent == -6
+        assert actual_rate.export_reactive_price.as_tuple().exponent == -6
+
         if expected_date is not None and expected_time is not None:
             tz = ZoneInfo(expected_tz)
             assert_datetime_equal(actual_rate.start_time, datetime.combine(expected_date, expected_time, tzinfo=tz))
