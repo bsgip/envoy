@@ -182,7 +182,7 @@ class ResponseManager:
                 raise BadRequestError(f"{mrid_type} responses are not accepted to this list.")
 
             # We have a response targeting a tariff generated rate
-            (pricing_reading_type, rate_id) = MridMapper.decode_time_tariff_interval_mrid(response.subject)
+            pricing_reading_type, rate_id = MridMapper.decode_time_tariff_interval_mrid(response.subject)
 
             # Validate the referenced tariff rate is accessible to this scope
             tariff_generated_rate = await select_tariff_generated_rate_for_scope(

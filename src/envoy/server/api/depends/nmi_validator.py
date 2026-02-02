@@ -2,7 +2,6 @@ from fastapi import Request
 
 from envoy.server.manager.nmi_validator import NmiValidator
 
-
 NMI_VALIDATOR_ATTR = "nmi_validator"
 
 

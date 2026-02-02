@@ -225,7 +225,7 @@ async def test_fetch_entities_with_archive_by_id_site_der(
 async def test_extract_source_archive_pk_columns(source_type: type[Base], archive_type: type[ArchiveBase]):
     """Tests that extract_source_archive_pk_columns works for all of our source/archive types"""
 
-    (source_pk, archive_pk) = extract_source_archive_pk_columns(source_type, archive_type)
+    source_pk, archive_pk = extract_source_archive_pk_columns(source_type, archive_type)
 
     # Any failures here are likely the fault of a bad source/archive model definition
     assert source_pk.name == archive_pk.name
@@ -242,7 +242,7 @@ async def test_extract_source_archive_pk_columns(source_type: type[Base], archiv
 async def test_extract_source_archive_changed_deleted_columns(source_type: type[Base], archive_type: type[ArchiveBase]):
     """Tests that extract_source_archive_changed_deleted_columns works for all of our source/archive types"""
 
-    (source_pk, archive_pk) = extract_source_archive_changed_deleted_columns(source_type, archive_type)
+    source_pk, archive_pk = extract_source_archive_changed_deleted_columns(source_type, archive_type)
 
     # Any failures here are likely the fault of a bad source/archive model definition
     assert source_pk.name == "changed_time"

@@ -79,7 +79,7 @@ class AsyncCache(Generic[K, V]):
         Exceptions raised by the internal update_fn will not be caught and will abort the cache update"""
 
         # use cache first from outside the lock - the hope is that 99% of requests go this route
-        (value, expiring_value) = self._fetch_from_cache(key)
+        value, expiring_value = self._fetch_from_cache(key)
         if value:
             return expiring_value
 
@@ -87,7 +87,7 @@ class AsyncCache(Generic[K, V]):
         # to ensure only one coroutine is doing an update at a time
         async with self._lock:
             # Double check that the cache hasn't updated while we were waiting on the lock
-            (value, expiring_value) = self._fetch_from_cache(key)
+            value, expiring_value = self._fetch_from_cache(key)
             if value:
                 return expiring_value
 
@@ -97,7 +97,7 @@ class AsyncCache(Generic[K, V]):
             # Now it's the final attempt - either get it or raise an error
             # we do this test from within the lock so we're sure that no other updates
             # can occur - basically - if the ID DNE - it's 100% not in the set of valid public keys
-            (value, expiring_value) = self._fetch_from_cache(key)
+            value, expiring_value = self._fetch_from_cache(key)
             return expiring_value
 
     async def get_value(self, update_arg: Any, key: K) -> Optional[V]:
@@ -142,7 +142,7 @@ class AsyncCache(Generic[K, V]):
 
         Exceptions raised by force_update will not propagate upwards"""
 
-        (value, _) = self._fetch_from_cache(key)
+        value, _ = self._fetch_from_cache(key)
         if value:
             return value
 

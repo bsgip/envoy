@@ -51,8 +51,7 @@ async def test_select_server_config(pg_base_config, expected: Optional[RuntimeSe
     """Basic success test"""
     # Arrange
     if expected:
-        pg_base_config.execute(
-            f"""UPDATE runtime_server_config
+        pg_base_config.execute(f"""UPDATE runtime_server_config
             SET created_time='{expected.created_time.isoformat()}',
                 changed_time='{expected.changed_time.isoformat()}',
                 dcap_pollrate_seconds={expected.dcap_pollrate_seconds},
@@ -63,8 +62,7 @@ async def test_select_server_config(pg_base_config, expected: Optional[RuntimeSe
                 mup_postrate_seconds={expected.mup_postrate_seconds},
                 site_control_pow10_encoding={expected.site_control_pow10_encoding}
             WHERE runtime_server_config_id=1;
-            """
-        )
+            """)
     else:
         pg_base_config.execute("DELETE FROM runtime_server_config;")
     pg_base_config.commit()

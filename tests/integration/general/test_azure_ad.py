@@ -84,7 +84,7 @@ async def test_enable_dynamic_azure_ad_database_credentials(
 ):
     """Heavily mocked / synthetic test that checks our usage of the SQLAlchemy core events that we use to inject
     dynamic credentials"""
-    (client, mocked_client) = client_with_async_mock
+    client, mocked_client = client_with_async_mock
 
     # Add a listener to capture DB connections
     db_connection_creds: list[tuple[str, str]] = []
@@ -131,7 +131,7 @@ async def test_refresh_seconds_updating_cache(
 ):
     """Heavily mocked / synthetic test that validates the background task repeatedly updates the token cache on
     schedule (irrespective of errors). We use call outs to the token service as a proxy for the tokens being updated"""
-    (client, mocked_client) = client_with_async_mock
+    client, mocked_client = client_with_async_mock
 
     # Add a listener to capture DB connections
     db_connection_creds: list[tuple[str, str]] = []

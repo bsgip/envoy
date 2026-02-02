@@ -17,17 +17,13 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        sa.text(
-            """
+    op.execute(sa.text("""
     CREATE COLLATION "case_insensitive" (
         provider = icu,
         locale = 'und-u-ks-level2',
         deterministic = false
     );
-    """
-        )
-    )
+    """))
 
     op.alter_column("site", "lfdi", type_=sa.VARCHAR(length=42, collation="case_insensitive"))
     op.alter_column("site_reading_type", "mrid", type_=sa.VARCHAR(length=32, collation="case_insensitive"))

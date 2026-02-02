@@ -58,16 +58,14 @@ def upgrade() -> None:
 
     # We need to create a "doe" control group entry if there are existing DOEs - otherwise we leave the table blank
     # This will have site_control_group_id = 1 and will represent the old, static, group labelled as "doe"
-    op.execute(
-        """INSERT INTO site_control_group(description, primacy, created_time, changed_time)
+    op.execute("""INSERT INTO site_control_group(description, primacy, created_time, changed_time)
 SELECT 'Dynamic Operating Envelopes' as description,
         0 as primacy,
         now() as created_time,
         now() as changed_time
 FROM dynamic_operating_envelope
 LIMIT 1;
-"""
-    )
+""")
 
     # site_control_group_id will need to default to the newly created group (right above) but then have the default
     # removed

@@ -9,7 +9,6 @@ from enum import Enum
 import logging
 import re
 
-
 logger = logging.getLogger(__name__)
 
 

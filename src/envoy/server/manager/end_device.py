@@ -205,7 +205,7 @@ class EndDeviceManager:
 
         # Generate the sfdi if required (never do this for device certs)
         if end_device.sFDI is None or end_device.sFDI == 0 and not is_device_cert:
-            (sfdi, lfdi) = await EndDeviceManager.generate_unique_device_id(session, scope.aggregator_id)
+            sfdi, lfdi = await EndDeviceManager.generate_unique_device_id(session, scope.aggregator_id)
             end_device.sFDI = sfdi
             if not end_device.lFDI:
                 end_device.lFDI = lfdi  # Only update LFDI if not specified (i.e preserve what they send)
@@ -326,7 +326,7 @@ class EndDeviceManager:
             start = max(0, start - 1)
 
         # Are we selecting all sites for an aggregator or are we scoped to a particular site
-        (site_list, site_count) = await fetch_sites_and_count_for_claims(session, scope, start, after, limit)
+        site_list, site_count = await fetch_sites_and_count_for_claims(session, scope, start, after, limit)
 
         # site_count should include the virtual site
         if includes_virtual_site:

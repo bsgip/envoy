@@ -170,8 +170,8 @@ class DERAvailabilityMapper:
             reserved_charge_percent=from_sep2_percent(der_avail.reserveChargePercent),
             reserved_deliver_percent=from_sep2_percent(der_avail.reservePercent),
         )
-        (m.estimated_var_avail_value, m.estimated_var_avail_multiplier) = set_value_multiplier(der_avail.statVarAvail)
-        (m.estimated_w_avail_value, m.estimated_w_avail_multiplier) = set_value_multiplier(der_avail.statWAvail)
+        m.estimated_var_avail_value, m.estimated_var_avail_multiplier = set_value_multiplier(der_avail.statVarAvail)
+        m.estimated_w_avail_value, m.estimated_w_avail_multiplier = set_value_multiplier(der_avail.statWAvail)
         return m
 
 
@@ -406,40 +406,38 @@ class DERCapabilityMapper:
             normal_category=der_cap.rtgNormalCategory,
             abnormal_category=der_cap.rtgAbnormalCategory,
         )
-        (m.max_a_value, m.max_a_multiplier) = set_value_multiplier(der_cap.rtgMaxA)
-        (m.max_ah_value, m.max_ah_multiplier) = set_value_multiplier(der_cap.rtgMaxAh)
-        (m.max_charge_rate_va_value, m.max_charge_rate_va_multiplier) = set_value_multiplier(der_cap.rtgMaxChargeRateVA)
-        (m.max_charge_rate_w_value, m.max_charge_rate_w_multiplier) = set_value_multiplier(der_cap.rtgMaxChargeRateW)
-        (m.max_discharge_rate_va_value, m.max_discharge_rate_va_multiplier) = set_value_multiplier(
+        m.max_a_value, m.max_a_multiplier = set_value_multiplier(der_cap.rtgMaxA)
+        m.max_ah_value, m.max_ah_multiplier = set_value_multiplier(der_cap.rtgMaxAh)
+        m.max_charge_rate_va_value, m.max_charge_rate_va_multiplier = set_value_multiplier(der_cap.rtgMaxChargeRateVA)
+        m.max_charge_rate_w_value, m.max_charge_rate_w_multiplier = set_value_multiplier(der_cap.rtgMaxChargeRateW)
+        m.max_discharge_rate_va_value, m.max_discharge_rate_va_multiplier = set_value_multiplier(
             der_cap.rtgMaxDischargeRateVA
         )
-        (m.max_discharge_rate_w_value, m.max_discharge_rate_w_multiplier) = set_value_multiplier(
+        m.max_discharge_rate_w_value, m.max_discharge_rate_w_multiplier = set_value_multiplier(
             der_cap.rtgMaxDischargeRateW
         )
-        (m.max_v_value, m.max_v_multiplier) = set_value_multiplier(der_cap.rtgMaxV)
-        (m.max_va_value, m.max_va_multiplier) = set_value_multiplier(der_cap.rtgMaxVA)
-        (m.max_var_value, m.max_var_multiplier) = set_value_multiplier(der_cap.rtgMaxVar)
-        (m.max_var_neg_value, m.max_var_neg_multiplier) = set_value_multiplier(der_cap.rtgMaxVarNeg)
-        (m.max_w_value, m.max_w_multiplier) = cast(tuple[int, int], set_value_multiplier(der_cap.rtgMaxW))
-        (m.max_wh_value, m.max_wh_multiplier) = set_value_multiplier(der_cap.rtgMaxWh)
+        m.max_v_value, m.max_v_multiplier = set_value_multiplier(der_cap.rtgMaxV)
+        m.max_va_value, m.max_va_multiplier = set_value_multiplier(der_cap.rtgMaxVA)
+        m.max_var_value, m.max_var_multiplier = set_value_multiplier(der_cap.rtgMaxVar)
+        m.max_var_neg_value, m.max_var_neg_multiplier = set_value_multiplier(der_cap.rtgMaxVarNeg)
+        m.max_w_value, m.max_w_multiplier = cast(tuple[int, int], set_value_multiplier(der_cap.rtgMaxW))
+        m.max_wh_value, m.max_wh_multiplier = set_value_multiplier(der_cap.rtgMaxWh)
 
-        (m.min_pf_over_excited_displacement, m.min_pf_over_excited_multiplier) = set_value_multiplier(
+        m.min_pf_over_excited_displacement, m.min_pf_over_excited_multiplier = set_value_multiplier(
             der_cap.rtgMinPFOverExcited
         )
-        (m.min_pf_under_excited_displacement, m.min_pf_under_excited_multiplier) = set_value_multiplier(
+        m.min_pf_under_excited_displacement, m.min_pf_under_excited_multiplier = set_value_multiplier(
             der_cap.rtgMinPFUnderExcited
         )
-        (m.min_v_value, m.min_v_multiplier) = set_value_multiplier(der_cap.rtgMinV)
-        (m.over_excited_pf_displacement, m.over_excited_pf_multiplier) = set_value_multiplier(der_cap.rtgOverExcitedPF)
-        (m.over_excited_w_value, m.over_excited_w_multiplier) = set_value_multiplier(der_cap.rtgOverExcitedW)
-        (m.reactive_susceptance_value, m.reactive_susceptance_multiplier) = set_value_multiplier(
+        m.min_v_value, m.min_v_multiplier = set_value_multiplier(der_cap.rtgMinV)
+        m.over_excited_pf_displacement, m.over_excited_pf_multiplier = set_value_multiplier(der_cap.rtgOverExcitedPF)
+        m.over_excited_w_value, m.over_excited_w_multiplier = set_value_multiplier(der_cap.rtgOverExcitedW)
+        m.reactive_susceptance_value, m.reactive_susceptance_multiplier = set_value_multiplier(
             der_cap.rtgReactiveSusceptance
         )
-        (m.under_excited_pf_displacement, m.under_excited_pf_multiplier) = set_value_multiplier(
-            der_cap.rtgUnderExcitedPF
-        )
-        (m.under_excited_w_value, m.under_excited_w_multiplier) = set_value_multiplier(der_cap.rtgUnderExcitedW)
-        (m.v_nom_value, m.v_nom_multiplier) = set_value_multiplier(der_cap.rtgVNom)
+        m.under_excited_pf_displacement, m.under_excited_pf_multiplier = set_value_multiplier(der_cap.rtgUnderExcitedPF)
+        m.under_excited_w_value, m.under_excited_w_multiplier = set_value_multiplier(der_cap.rtgUnderExcitedW)
+        m.v_nom_value, m.v_nom_multiplier = set_value_multiplier(der_cap.rtgVNom)
 
         return m
 
@@ -529,36 +527,34 @@ class DERSettingMapper:
             doe_modes_enabled=doe_modes_enabled,
             changed_time=changed_time,
         )
-        (m.max_a_value, m.max_a_multiplier) = set_value_multiplier(der_setting.setMaxA)
-        (m.max_ah_value, m.max_ah_multiplier) = set_value_multiplier(der_setting.setMaxAh)
-        (m.max_charge_rate_va_value, m.max_charge_rate_va_multiplier) = set_value_multiplier(
+        m.max_a_value, m.max_a_multiplier = set_value_multiplier(der_setting.setMaxA)
+        m.max_ah_value, m.max_ah_multiplier = set_value_multiplier(der_setting.setMaxAh)
+        m.max_charge_rate_va_value, m.max_charge_rate_va_multiplier = set_value_multiplier(
             der_setting.setMaxChargeRateVA
         )
-        (m.max_charge_rate_w_value, m.max_charge_rate_w_multiplier) = set_value_multiplier(
-            der_setting.setMaxChargeRateW
-        )
-        (m.max_discharge_rate_va_value, m.max_discharge_rate_va_multiplier) = set_value_multiplier(
+        m.max_charge_rate_w_value, m.max_charge_rate_w_multiplier = set_value_multiplier(der_setting.setMaxChargeRateW)
+        m.max_discharge_rate_va_value, m.max_discharge_rate_va_multiplier = set_value_multiplier(
             der_setting.setMaxDischargeRateVA
         )
-        (m.max_discharge_rate_w_value, m.max_discharge_rate_w_multiplier) = set_value_multiplier(
+        m.max_discharge_rate_w_value, m.max_discharge_rate_w_multiplier = set_value_multiplier(
             der_setting.setMaxDischargeRateW
         )
-        (m.max_v_value, m.max_v_multiplier) = set_value_multiplier(der_setting.setMaxV)
-        (m.max_var_value, m.max_var_multiplier) = set_value_multiplier(der_setting.setMaxVar)
-        (m.max_va_value, m.max_va_multiplier) = set_value_multiplier(der_setting.setMaxVA)
-        (m.max_var_neg_value, m.max_var_neg_multiplier) = set_value_multiplier(der_setting.setMaxVarNeg)
-        (m.max_w_value, m.max_w_multiplier) = cast(tuple[int, int], set_value_multiplier(der_setting.setMaxW))
-        (m.max_wh_value, m.max_wh_multiplier) = set_value_multiplier(der_setting.setMaxWh)
+        m.max_v_value, m.max_v_multiplier = set_value_multiplier(der_setting.setMaxV)
+        m.max_var_value, m.max_var_multiplier = set_value_multiplier(der_setting.setMaxVar)
+        m.max_va_value, m.max_va_multiplier = set_value_multiplier(der_setting.setMaxVA)
+        m.max_var_neg_value, m.max_var_neg_multiplier = set_value_multiplier(der_setting.setMaxVarNeg)
+        m.max_w_value, m.max_w_multiplier = cast(tuple[int, int], set_value_multiplier(der_setting.setMaxW))
+        m.max_wh_value, m.max_wh_multiplier = set_value_multiplier(der_setting.setMaxWh)
 
-        (m.min_pf_over_excited_displacement, m.min_pf_over_excited_multiplier) = set_value_multiplier(
+        m.min_pf_over_excited_displacement, m.min_pf_over_excited_multiplier = set_value_multiplier(
             der_setting.setMinPFOverExcited
         )
-        (m.min_pf_under_excited_displacement, m.min_pf_under_excited_multiplier) = set_value_multiplier(
+        m.min_pf_under_excited_displacement, m.min_pf_under_excited_multiplier = set_value_multiplier(
             der_setting.setMinPFUnderExcited
         )
-        (m.min_v_value, m.min_v_multiplier) = set_value_multiplier(der_setting.setMinV)
-        (m.v_nom_value, m.v_nom_multiplier) = set_value_multiplier(der_setting.setVNom)
-        (m.v_ref_value, m.v_ref_multiplier) = set_value_multiplier(der_setting.setVRef)
-        (m.v_ref_ofs_value, m.v_ref_ofs_multiplier) = set_value_multiplier(der_setting.setVRefOfs)
+        m.min_v_value, m.min_v_multiplier = set_value_multiplier(der_setting.setMinV)
+        m.v_nom_value, m.v_nom_multiplier = set_value_multiplier(der_setting.setVNom)
+        m.v_ref_value, m.v_ref_multiplier = set_value_multiplier(der_setting.setVRef)
+        m.v_ref_ofs_value, m.v_ref_ofs_multiplier = set_value_multiplier(der_setting.setVRefOfs)
 
         return m
