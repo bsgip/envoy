@@ -257,6 +257,7 @@ class MirrorUsagePointListMapper:
                 "href": generate_href(uris.MirrorUsagePointListUri, scope),
                 "all_": group_count,
                 "results": len(grouped_srts),
+                "pollRate": postrate_seconds,
                 "mirrorUsagePoints": [
                     MirrorUsagePointMapper.map_to_response(scope, group, srts, postrate_seconds)
                     for group, srts in grouped_srts
