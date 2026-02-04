@@ -44,13 +44,16 @@ The underlying IEEE 2030.5 standard requires specially signed certificates to id
 | File | Description |
 |------|-------------|
 | `testca.crt` | Certificate for the self signed certificate authority (CA) that will be signing the client/proxy certs |
-| `testca.key` | Private Key for the self signed certificate authority (CA) that will be signing the client/proxy certs. Will have passphrase `testcapassphrase` |
+| `testca.key` | Private Key for the self signed certificate authority (CA) that will be signing the client/proxy certs. No passphrase |
 | `testaggregator.crt` | Certificate for the client certificate registered to a testing "aggregator" |
-| `testaggregator.key` | Private Key for the client certificate registered to a testing "aggregator". Will have passphrase `testclientpassphrase` |
-| `testaggregator.p12` | PKCS#12/PFX, a convenient combination of the `testaggregator.crt` and `testaggregator.key`. Will have passphrase `testclientpassphrase` |
- `testdevice.crt` | Certificate for the client certificate registered to a testing non-aggregator "device" |
-| `testdevice.key` | Private Key for the client certificate registered to a testing non-aggregator "device". Will have passphrase `testclientpassphrase` |
-| `testdevice.p12` | PKCS#12/PFX, a convenient combination of the `testdevice.crt` and `testdevice.key`. Will have passphrase `testclientpassphrase` |
+| `testaggregator.key` | Private Key for the client certificate registered to a testing "aggregator". No passphrase |
+| `testaggregator.p12` | PKCS#12/PFX, a convenient combination of the `testaggregator.crt` and `testaggregator.key`. Empty string passphrase |
+ `testdevice1.crt` | Certificate for the client certificate registered to a testing non-aggregator "device" |
+| `testdevice1.key` | Private Key for the client certificate registered to a testing non-aggregator "device". No passphrase |
+| `testdevice1.p12` | PKCS#12/PFX, a convenient combination of the `testdevice.crt` and `testdevice.key`. Empty string passphrase |
+`testdevice2.crt` | Certificate for the client certificate registered to a testing non-aggregator "device" |
+| `testdevice2.key` | Private Key for the client certificate registered to a testing non-aggregator "device". No passphrase |
+| `testdevice2.p12` | PKCS#12/PFX, a convenient combination of the `testdevice.crt` and `testdevice.key`. Empty string passphrase |
 
 The client certificates described in the table above are signed by the test CA and can be used against the nginx instance exposed on port 8443.
 
@@ -76,7 +79,7 @@ In the root repository directory under `postman/` you'll find Postman collection
 You'll need to import them and then do the following:
 1. File -> Settings -> Certificates -> Client Certificates -> Add Certificate
     * Set the certificate host to `https://localhost:8443`
-    * Set the PFX file to `testdevice.p12` (see table above for passphrase and other info)
+    * Set the PFX file to `testdevice.p12` (see table above for other info)
 2. envoy collection -> Variables
     * Set HOST to `localhost:8443`
 
