@@ -28,7 +28,7 @@ def localize_start_time(entity_and_tz: Optional[Row[tuple[EntityWithStartTime, s
 
     entity: EntityWithStartTime
     tz_name: str
-    (entity, tz_name) = entity_and_tz
+    entity, tz_name = entity_and_tz
     return localize_start_time_for_entity(entity, tz_name)
 
 

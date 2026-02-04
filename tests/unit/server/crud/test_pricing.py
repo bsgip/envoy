@@ -325,7 +325,7 @@ async def test_select_unique_rate_days_filtering(
 ):
     """Tests the various filter options on select_unique_rate_days and count_unique_rate_days"""
     async with generate_async_session(pg_base_config) as session:
-        (unique_rate_days, select_count) = await select_unique_rate_days(
+        unique_rate_days, select_count = await select_unique_rate_days(
             session, agg_id, tariff_id, site_id, 0, after, 99
         )
         unique_rate_days_count = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
@@ -349,7 +349,7 @@ async def test_select_unique_rate_days_filtering_la_time(
 ):
     """Extends test_select_unique_rate_days_filtering with a test on different site timezones"""
     async with generate_async_session(pg_la_timezone) as session:
-        (unique_rate_days, select_count) = await select_unique_rate_days(
+        unique_rate_days, select_count = await select_unique_rate_days(
             session, agg_id, tariff_id, site_id, 0, after, 99
         )
         unique_rate_days_count = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
@@ -379,7 +379,7 @@ async def test_select_unique_rate_days_pagination(
 ):
     """Tests the various pagination options on select_unique_rate_days"""
     async with generate_async_session(pg_base_config) as session:
-        (unique_rate_days, select_count) = await select_unique_rate_days(session, 1, 1, 1, start, datetime.min, limit)
+        unique_rate_days, select_count = await select_unique_rate_days(session, 1, 1, 1, start, datetime.min, limit)
         assert unique_rate_days == output_list
         assert isinstance(select_count, int)
         assert_list_type(date, unique_rate_days)

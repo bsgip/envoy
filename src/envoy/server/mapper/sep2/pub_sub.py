@@ -386,7 +386,7 @@ class SubscriptionMapper:
 
         # Figure out what the client wants to subscribe to
         resource_href = remove_href_prefix(subscription.subscribedResource, scope)
-        (resource, scoped_site_id, resource_id) = SubscriptionMapper.parse_resource_href(resource_href)
+        resource, scoped_site_id, resource_id = SubscriptionMapper.parse_resource_href(resource_href)
 
         try:
             uri = urlparse(subscription.notificationURI)

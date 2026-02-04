@@ -242,7 +242,7 @@ def entities_to_notification(
             raise NotificationError("SubscriptionResource.TARIFF_GENERATED_RATE requires pricing_reading_type")
 
         # TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
-        (_, tariff_id, _, day) = batch_key
+        _, tariff_id, _, day = batch_key
         return NotificationMapper.map_rates_to_response(
             tariff_id=tariff_id,
             day=day,
@@ -254,7 +254,7 @@ def entities_to_notification(
         )
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int, site_control_group_id: int)
-        (_, _, site_control_group_id) = batch_key
+        _, _, site_control_group_id = batch_key
         return NotificationMapper.map_does_to_response(
             site_control_group_id=site_control_group_id,
             does=cast(Sequence[DynamicOperatingEnvelope], entities),  # type: ignore
@@ -273,41 +273,41 @@ def entities_to_notification(
         )
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
-        (_, _, group_id) = batch_key
+        _, _, group_id = batch_key
         return NotificationMapper.map_readings_to_response(
             group_id, cast(Sequence[SiteReading], entities), sub, scope, notification_type  # type: ignore
         )
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, site_id, site_der_id) = batch_key
+        _, site_id, site_der_id = batch_key
         availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None  # type: ignore
         return NotificationMapper.map_der_availability_to_response(
             site_der_id, availability, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_RATING:
         # SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, site_id, site_der_id) = batch_key
+        _, site_id, site_der_id = batch_key
         rating = cast(SiteDERRating, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
         return NotificationMapper.map_der_rating_to_response(
             site_der_id, rating, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_SETTING:
         # SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, site_id, site_der_id) = batch_key
+        _, site_id, site_der_id = batch_key
         settings = cast(SiteDERSetting, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
         return NotificationMapper.map_der_settings_to_response(
             site_der_id, settings, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         # SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
-        (_, site_id, site_der_id) = batch_key
+        _, site_id, site_der_id = batch_key
         status = cast(SiteDERStatus, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
         return NotificationMapper.map_der_status_to_response(
             site_der_id, status, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
         # FUNCTION_SET_ASSIGNMENTS: (aggregator_id: int, site_id: int)
-        (_, site_id) = batch_key
+        _, site_id = batch_key
         site_scoped_server_config = cast(SiteScopedFunctionSetAssignment, entities[0]) if len(entities) > 0 else None
         poll_rate = site_scoped_server_config.function_set_assignment_poll_rate if site_scoped_server_config else None
         if poll_rate is None:
@@ -321,7 +321,7 @@ def entities_to_notification(
 
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         # DEFAULT_SITE_CONTROL: (aggregator_id: int, site_id: int, site_control_group_id: int)
-        (_, site_id, site_control_group_id) = batch_key
+        _, site_id, site_control_group_id = batch_key
         default_site_control = cast(SiteScopedSiteControlGroupDefault, entities[0]) if len(entities) > 0 else None
 
         return NotificationMapper.map_default_site_control_response(
