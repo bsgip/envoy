@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from envoy.server.model import Base
 from envoy.server.model.site import Site
 
-PRICE_DECIMAL_PLACES = 4  # How many decimal places do we store / distribute prices with?
+PRICE_DECIMAL_PLACES = 6  # How many decimal places do we store / distribute prices with?
 PRICE_DECIMAL_POWER = pow(10, PRICE_DECIMAL_PLACES)
 
 
