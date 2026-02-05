@@ -5,7 +5,6 @@ import logging
 from starlette.routing import BaseRoute, Route
 from fastapi import APIRouter
 
-
 logging.basicConfig(style="{", level=logging.INFO)
 logger = logging.getLogger(__name__)
 

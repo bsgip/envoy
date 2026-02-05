@@ -236,7 +236,7 @@ async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_pref
 
     while len(uris_to_visit) > 0:
         # get the next URI to visit
-        (uri, src_uris) = uris_to_visit.pop()
+        uri, src_uris = uris_to_visit.pop()
         if uri in visited_uris:
             continue
         visited_uris.add(uri)

@@ -13,7 +13,6 @@ from envoy.server.model.aggregator import Aggregator, AggregatorCertificateAssig
 from envoy.server.model.base import Certificate
 from envoy.server.model.doe import SiteControlGroup
 
-
 # There are two types of clients: aggregators and devices
 # Aggregators have their certificates recorded in public.certificate
 # while devices do not - envoy does not keep a record of non-aggregator

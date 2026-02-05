@@ -1,6 +1,5 @@
 from fastapi import Request
 
-
 ALLOW_NMI_UPDATES_ATTR = "allow_nmi_updates"
 DEFAULT_ALLOW_NMI_UPDATES = True
 

@@ -309,7 +309,7 @@ async def test_select_single_site_with_site_id(
         if expected_vals is None:
             assert site is None
         else:
-            (nmi, lfdi, sfdi, dc, changed_time) = expected_vals
+            nmi, lfdi, sfdi, dc, changed_time = expected_vals
             assert isinstance(site, Site)
             assert site.site_id == site_id
             assert site.aggregator_id == agg_id
@@ -367,7 +367,7 @@ async def test_select_single_site_with_sfdi(
         if expected_vals is None:
             assert site is None
         else:
-            (site_id, nmi, lfdi, dc, changed_time) = expected_vals
+            site_id, nmi, lfdi, dc, changed_time = expected_vals
             assert isinstance(site, Site)
             assert site.site_id == site_id
             assert site.aggregator_id == agg_id

@@ -176,7 +176,7 @@ async def test_fetch_tariff_profile_list(
     # make sure we properly bundled up the resulting tariff + rate count tuples and passed it along to the mapper
     mock_TariffProfileMapper.map_to_list_response.assert_called_once()
     call_args = mock_TariffProfileMapper.map_to_list_response.call_args_list[0].args
-    (passed_scope, tariffs_with_rates, total_tariffs, mapped_fsa_id) = call_args
+    passed_scope, tariffs_with_rates, total_tariffs, mapped_fsa_id = call_args
     assert list(tariffs_with_rates) == [
         (tariff_1, tariff_1_rate_count * TOTAL_PRICING_READING_TYPES),
         (tariff_2, tariff_2_rate_count * TOTAL_PRICING_READING_TYPES),

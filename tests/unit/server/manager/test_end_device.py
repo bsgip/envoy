@@ -162,7 +162,7 @@ async def test_fetch_sites_and_count_for_claims(
 
     # Assert the resulting values
     assert isinstance(result, tuple)
-    (actual_sites, actual_count) = result
+    actual_sites, actual_count = result
     assert actual_count == expected_count
     assert_iterable_type(Site, actual_sites, count=len(expected_sites))
     assert actual_count == expected_count
@@ -226,7 +226,7 @@ async def test_end_device_manager_generate_unique_device_id(
     mock_select_single_site_with_sfdi.side_effect = [generate_class_instance(Site), None]
 
     # Act
-    (sfdi, lfdi) = await EndDeviceManager.generate_unique_device_id(mock_session, aggregator_id)
+    sfdi, lfdi = await EndDeviceManager.generate_unique_device_id(mock_session, aggregator_id)
 
     # Assert
     assert isinstance(sfdi, int)

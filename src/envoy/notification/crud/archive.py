@@ -53,7 +53,7 @@ async def fetch_entities_with_archive_by_id(
     The return types will be a tuple of the form:
         (source_entities, archive_entities)"""
 
-    (source_pk_col, archive_pk_col) = extract_source_archive_pk_columns(source_type, archive_type)
+    source_pk_col, archive_pk_col = extract_source_archive_pk_columns(source_type, archive_type)
 
     # Lookup the source table
     source_entities = (
@@ -104,11 +104,11 @@ async def fetch_entities_with_archive_by_datetime(
     if not hasattr(source_type, "changed_time"):
         raise ValueError(f"Type {source_type} has no changed_time column to filter for modified entities")
 
-    (source_changed_time, archive_deleted_time) = extract_source_archive_changed_deleted_columns(
+    source_changed_time, archive_deleted_time = extract_source_archive_changed_deleted_columns(
         source_type, archive_type
     )
 
-    (_, archive_pk_col) = extract_source_archive_pk_columns(source_type, archive_type)
+    _, archive_pk_col = extract_source_archive_pk_columns(source_type, archive_type)
 
     # Lookup the source table (using changed_time)
     source_entities = (await session.execute(select(source_type).where(source_changed_time == cd_time))).scalars().all()
