@@ -331,16 +331,13 @@ class DERProgramMapper:
     ) -> DERProgramResponse:
         """Returns a DERProgram response for a SiteControlGroup"""
 
-        # The default control link will only be included if we have a default DOE configured for this site
-        default_der_link: Optional[Link] = None
-        if site_control_group_default is not None:
-            default_der_link = Link.model_validate(
-                {
-                    "href": DERControlMapper.default_control_href(
-                        rq_scope, rq_scope.display_site_id, site_control_group.site_control_group_id
-                    ),
-                }
-            )
+        default_der_link = Link.model_validate(
+            {
+                "href": DERControlMapper.default_control_href(
+                    rq_scope, rq_scope.display_site_id, site_control_group.site_control_group_id
+                ),
+            }
+        )
 
         active_der_control_count: Optional[int] = None
         if total_controls is not None:

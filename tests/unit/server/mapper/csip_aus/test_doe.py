@@ -381,7 +381,10 @@ def test_map_derp_doe_program_response_no_default_doe(scg_type: type[Union[SiteC
     assert result.ActiveDERControlListLink is not None
     assert isinstance(result.ActiveDERControlListLink, ListLink)
     assert result.ActiveDERControlListLink.href
-    assert result.DefaultDERControlLink is None
+    assert result.DefaultDERControlLink is not None
+    assert isinstance(result.DefaultDERControlLink, Link)
+    assert result.DefaultDERControlLink.href
+    assert f"/{site_control_group_id}" in result.DefaultDERControlLink.href
     assert f"/{site_control_group_id}" in result.href
 
 
