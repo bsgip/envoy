@@ -206,6 +206,24 @@ async def test_schedule_retry_transmission(
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("disable_tls_verify, expected_verify", [(False, True), (True, False)])
+@mock.patch("envoy.notification.task.transmit.AsyncClient")
+async def test_do_transmit_notification_tls_verify(
+    mock_AsyncClient: mock.MagicMock, disable_tls_verify: bool, expected_verify: bool
+):
+    """Tests that the disable_tls_verify flag is correctly passed through to AsyncClient as verify"""
+    mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content="Mock response content"))
+    mock_AsyncClient.return_value = mocked_client
+
+    await do_transmit_notification(
+        "http://foo.bar/example", "content", "/sub/1", str(uuid4()), 0,
+        disable_tls_verify=disable_tls_verify,
+    )
+
+    mock_AsyncClient.assert_called_once_with(timeout=mock.ANY, verify=expected_verify)
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     "response_code",
     [
@@ -382,12 +400,14 @@ async def test_transmit_notification_no_retry(
 
     mock_do_transmit_notification.return_value = transmit_result
     await transmit_notification(
-        remote_uri, content, subscription_href, subscription_id, notification_id, attempt, broker, session
+        remote_uri, content, subscription_href, subscription_id, notification_id, attempt, broker, session,
+        disable_tls_verify=False,
     )
 
     mock_safely_log_transmit_result.assert_called_once()
     mock_do_transmit_notification.assert_called_once_with(
-        remote_uri, content, subscription_href, notification_id, attempt
+        remote_uri, content, subscription_href, notification_id, attempt,
+        disable_tls_verify=False,
     )
     mock_schedule_retry_transmission.assert_not_called()
     assert_mock_session(session)
@@ -419,12 +439,14 @@ async def test_transmit_notification_with_retry(
         500,
     )
     await transmit_notification(
-        remote_uri, content, subscription_href, subscription_id, notification_id, attempt, broker, session
+        remote_uri, content, subscription_href, subscription_id, notification_id, attempt, broker, session,
+        disable_tls_verify=False,
     )
 
     mock_safely_log_transmit_result.assert_called_once()
     mock_do_transmit_notification.assert_called_once_with(
-        remote_uri, content, subscription_href, notification_id, attempt
+        remote_uri, content, subscription_href, notification_id, attempt,
+        disable_tls_verify=False,
     )
     mock_schedule_retry_transmission.assert_called_once_with(
         broker, remote_uri, content, subscription_href, subscription_id, notification_id, attempt
