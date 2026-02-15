@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
 
 from envoy.notification.exception import NotificationTransmitError
-from envoy.notification.handler import broker_dependency, session_dependency
+from envoy.notification.handler import broker_dependency, disable_tls_verify_dependency, session_dependency
 from envoy.server.api.response import SEP_XML_MIME
 from envoy.server.manager.time import utc_now
 from envoy.server.model.subscription import TransmitNotificationLog
@@ -115,7 +115,12 @@ async def schedule_retry_transmission(
 
 
 async def do_transmit_notification(
-    remote_uri: str, content: str, subscription_href: str, notification_id: str, attempt: int
+    remote_uri: str,
+    content: str,
+    subscription_href: str,
+    notification_id: str,
+    attempt: int,
+    disable_tls_verify: bool = False,
 ) -> TransmitResult:
     """Internal method for transmitting the notification - Raises a NotificationTransmitError if the request fails and
     needs retrying otherwise returns TransmitResult indicating the final result"""
@@ -125,7 +130,7 @@ async def do_transmit_notification(
     # is the fact that CSIP recommends the use of mutual TLS which basically requires us to share our server
     # cert with the listener. This is all handled out of band and will be noted in the client docs
     # but I've put this message here for devs who read this code and get terrified. Good job on your keen security eye!
-    async with AsyncClient(timeout=TRANSMIT_TIMEOUT_SECONDS) as client:
+    async with AsyncClient(timeout=TRANSMIT_TIMEOUT_SECONDS, verify=not disable_tls_verify) as client:
         logger.debug(
             "Attempting to send notification %s of size %d to %s (attempt %d)",
             notification_id,
@@ -207,6 +212,7 @@ async def transmit_notification(
     attempt: int,
     broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)] = TaskiqDepends(),
     session: Annotated[AsyncSession, TaskiqDepends(session_dependency)] = TaskiqDepends(),
+    disable_tls_verify: Annotated[bool, TaskiqDepends(disable_tls_verify_dependency)] = TaskiqDepends(),
 ) -> None:
     """Call this to trigger an outgoing notification to be sent. If the notification fails it will be retried
     a few times (at a staggered cadence) before giving up.
@@ -219,7 +225,12 @@ async def transmit_notification(
 
     try:
         transmit_result = await do_transmit_notification(
-            remote_uri, content, subscription_href, notification_id, attempt
+            remote_uri,
+            content,
+            subscription_href,
+            notification_id,
+            attempt,
+            disable_tls_verify=disable_tls_verify,
         )
         await safely_log_transmit_result(
             session=session, result=transmit_result, attempt=attempt, subscription_id=subscription_id, content=content

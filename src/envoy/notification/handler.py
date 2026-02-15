@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 STATE_DB_SESSION_MAKER = "db_session_maker"
 # TaskIQ state key for an optional string
 STATE_HREF_PREFIX = "href_prefix"
+# TaskIQ state key for disabling TLS verification on outbound notification requests
+STATE_DISABLE_TLS_VERIFY = "disable_tls_verify"
 
 
 # Reference to the shared InMemoryBroker. Will be lazily instantiated
@@ -93,6 +95,10 @@ async def broker_dependency(context: Annotated[Context, TaskiqDepends()]) -> Asy
 
 async def href_prefix_dependency(context: Annotated[Context, TaskiqDepends()]) -> Optional[str]:
     return getattr(context.state, STATE_HREF_PREFIX, None)
+
+
+async def disable_tls_verify_dependency(context: Annotated[Context, TaskiqDepends()]) -> bool:
+    return getattr(context.state, STATE_DISABLE_TLS_VERIFY, False)
 
 
 async def session_dependency(context: Annotated[Context, TaskiqDepends()]) -> AsyncGenerator[AsyncSession, None]:

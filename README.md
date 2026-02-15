@@ -67,6 +67,7 @@ Typically settings are set by setting an environment variable with the same name
 | `href_prefix` | `string` | Used for when the server is exposed externally under a path prefix. The value of this variable will be prefixed to all returned `href` elements |
 | `iana_pen` | `int` | Defaults to 0. The Internet Assigned Numbers Authority - Private Enterprise Number of the organisation hosting this instance. This value will be used in all encoded MRIDs as per sep2 specifications. |
 | `sqlalchemy_engine_arguments` | `str` | A JSON encoded dictionary of additional parameters to pass to the SQL Alchemy `create_engine` function. Please see the [SQL Alchemy](https://docs.sqlalchemy.org/en/20/core/engines.html#sqlalchemy.create_engine) docs for specifics.  Example: `{"pool_size":10, "max_overflow":15}`. Please note that `pool_recycle` will be overridden if `azure_ad_db_refresh_secs` is set |
+| `notification_disable_tls_verify` | `bool` | If `true`, disables TLS certificate verification for outbound notification requests to subscription recipients. Defaults to `false`. |
 
 **Additional Utility Server Settings (server)**
 

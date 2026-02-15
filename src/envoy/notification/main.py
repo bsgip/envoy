@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from taskiq import TaskiqEvents, TaskiqState
 
 from envoy.notification.exception import NotificationError
-from envoy.notification.handler import STATE_DB_SESSION_MAKER, STATE_HREF_PREFIX, generate_broker
+from envoy.notification.handler import (
+    STATE_DB_SESSION_MAKER,
+    STATE_DISABLE_TLS_VERIFY,
+    STATE_HREF_PREFIX,
+    generate_broker,
+)
 from envoy.notification.settings import generate_settings
 from envoy.server.api.auth.azure import AzureADResourceTokenConfig
 from envoy.server.database import HandlerDetails, install_handler, remove_handler
@@ -61,6 +66,7 @@ async def startup(state: TaskiqState) -> None:
     db_engine = create_async_engine(db_cfg["db_url"], **engine_args)
     setattr(state, STATE_DB_SESSION_MAKER, async_sessionmaker(db_engine, expire_on_commit=False))
     setattr(state, STATE_HREF_PREFIX, settings.href_prefix)
+    setattr(state, STATE_DISABLE_TLS_VERIFY, settings.notification_disable_tls_verify)
 
 
 @broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)
