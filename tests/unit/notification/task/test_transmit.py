@@ -216,7 +216,11 @@ async def test_do_transmit_notification_tls_verify(
     mock_AsyncClient.return_value = mocked_client
 
     await do_transmit_notification(
-        "http://foo.bar/example", "content", "/sub/1", str(uuid4()), 0,
+        "http://foo.bar/example",
+        "content",
+        "/sub/1",
+        str(uuid4()),
+        0,
         disable_tls_verify=disable_tls_verify,
     )
 
@@ -400,13 +404,24 @@ async def test_transmit_notification_no_retry(
 
     mock_do_transmit_notification.return_value = transmit_result
     await transmit_notification(
-        remote_uri, content, subscription_href, subscription_id, notification_id, attempt, broker, session,
+        remote_uri,
+        content,
+        subscription_href,
+        subscription_id,
+        notification_id,
+        attempt,
+        broker,
+        session,
         disable_tls_verify=False,
     )
 
     mock_safely_log_transmit_result.assert_called_once()
     mock_do_transmit_notification.assert_called_once_with(
-        remote_uri, content, subscription_href, notification_id, attempt,
+        remote_uri,
+        content,
+        subscription_href,
+        notification_id,
+        attempt,
         disable_tls_verify=False,
     )
     mock_schedule_retry_transmission.assert_not_called()
@@ -439,13 +454,24 @@ async def test_transmit_notification_with_retry(
         500,
     )
     await transmit_notification(
-        remote_uri, content, subscription_href, subscription_id, notification_id, attempt, broker, session,
+        remote_uri,
+        content,
+        subscription_href,
+        subscription_id,
+        notification_id,
+        attempt,
+        broker,
+        session,
         disable_tls_verify=False,
     )
 
     mock_safely_log_transmit_result.assert_called_once()
     mock_do_transmit_notification.assert_called_once_with(
-        remote_uri, content, subscription_href, notification_id, attempt,
+        remote_uri,
+        content,
+        subscription_href,
+        notification_id,
+        attempt,
         disable_tls_verify=False,
     )
     mock_schedule_retry_transmission.assert_called_once_with(
