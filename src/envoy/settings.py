@@ -45,8 +45,6 @@ class CommonSettings(BaseSettings):
     database_url: PostgresDsn
     default_timezone: str = "Australia/Brisbane"
 
-    notification_disable_tls_verify: bool = False  # Disable TLS cert verification for outbound notifications
-
     href_prefix: Optional[str] = None  # Will ensure all outgoing href's are prefixed with this value (None = disabled)
     iana_pen: int = 0  # The IANA Private Enterprise Number of the organisation hosting this instance. Encoded in mrids
 
