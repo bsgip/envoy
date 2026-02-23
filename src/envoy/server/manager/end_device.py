@@ -28,6 +28,7 @@ from envoy.server.crud.site import (
 )
 from envoy.server.crud.subscription import count_subscriptions_for_site
 from envoy.server.exception import (
+    BadRequestError,
     ConflictError,
     ForbiddenError,
     NmiValidationError,
@@ -186,30 +187,29 @@ class EndDeviceManager:
     ) -> int:
         """This will add the specified end_device in the database.
 
-        If the sfdi is unspecified they will be populated using generate_unique_device_id.
-
         This request uses the raw request scope but will ensure that the scope has permission to access the supplied
         site, raising ForbiddenError otherwise
 
-        Raises ConflictError if sfdi/lfdi-aggregator_id combination already exists.
-
+        Raises:
+            ConflictError if sfdi/lfdi-aggregator_id combination already exists.
+            ForbiddenError if a conflict exists between sfdi, lfdi and the cert.
+            BadRequestError if the lfdi field is missing for a device behind an aggregator.
         """
         is_device_cert = scope.source == CertificateType.DEVICE_CERTIFICATE
         if is_device_cert:
             # This will happen for a site registration from a device cert
-            # In this case - the client is restricted to ONLY interact with the site with the same sfdi/lfdi
+            # In this case - the client is restricted to ONLY interact with the site with the same sfdi
+            # The devices lfdi is drawn from the cert lfdi if it is not provided in the body
+            # A clash between the lfdi field and the cert lfdi is forbidden
             if end_device.sFDI != scope.sfdi:
                 raise ForbiddenError(f"sfdi mismatch. POST body: {end_device.sFDI} cert: {scope.sfdi}")
-            if not EndDeviceManager.lfdi_matches(end_device.lFDI, scope.lfdi):
-                raise ForbiddenError(f"lfdi mismatch. POST body: '{end_device.lFDI}' cert: '{scope.lfdi}'")
-
-        # Generate the sfdi if required (never do this for device certs)
-        if end_device.sFDI is None or end_device.sFDI == 0 and not is_device_cert:
-            sfdi, lfdi = await EndDeviceManager.generate_unique_device_id(session, scope.aggregator_id)
-            end_device.sFDI = sfdi
             if not end_device.lFDI:
-                end_device.lFDI = lfdi  # Only update LFDI if not specified (i.e preserve what they send)
-            logger.info(f"add_or_update_enddevice_for_aggregator: generated sfdi {sfdi} and lfdi {lfdi}")
+                end_device.lFDI = scope.lfdi
+            elif not EndDeviceManager.lfdi_matches(end_device.lFDI, scope.lfdi):
+                raise ForbiddenError(f"lfdi mismatch. POST body: '{end_device.lFDI}' cert: '{scope.lfdi}'")
+        else:
+            if end_device.lFDI is None:
+                raise BadRequestError("lfdi required for aggregator managed devices")
 
         logger.info(
             f"add_enddevice_for_aggregator: upserting sfdi {end_device.sFDI} and lfdi {end_device.lFDI} for aggregator {scope.aggregator_id}"  # noqa e501

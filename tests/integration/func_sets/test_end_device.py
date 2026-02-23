@@ -376,35 +376,64 @@ async def test_create_end_device_specified_sfdi(client: AsyncClient, edev_base_u
 
 
 @pytest.mark.anyio
-async def test_create_end_device_no_sfdi(client: AsyncClient, edev_base_uri: str):
-    """When creating an end_device check to see if it persists and is correctly assigned to the aggregator
-    (with sfdi be generated on the server side)"""
-    insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
-    insert_request.sFDI = 0
-    insert_request.lFDI = ""
-    insert_request.postRate = 123
-    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.ENERGY_MANAGEMENT_SYSTEM))
+async def test_create_end_device_no_lfdi_direct(client: AsyncClient, edev_base_uri: str) -> None:
+    """When creating an end_device from a direct device client ensure lfdi is obtained from cert"""
+
+    insert_request: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest,
+        postRate=123,
+        deviceCategory="{0:x}".format(int(DeviceCategory.HOT_TUB)),
+    )
+    insert_request.lFDI = None
+    insert_request.sFDI = int(UNREGISTERED_CERT_SFDI)
+
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(UNREGISTERED_CERT)},
+        content=EndDeviceRequest.to_xml(insert_request),
+    )
+
+    # Just ensure we didn't provide an LFDI
+    assert insert_request.lFDI is None
+
+    assert_response_header(response, HTTPStatus.CREATED, None)
+    inserted_href = read_location_header(response)
+
+    # now lets grab the end device we just created
+    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(UNREGISTERED_CERT)})
+    assert_response_header(response, HTTPStatus.OK)
+    response_body = read_response_body_string(response)
+    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
+
+    # Check lfdi field populated
+    assert parsed_response.lFDI is not None
+    # And it matches the cert
+    assert parsed_response.lFDI == UNREGISTERED_CERT_LFDI
+
+
+@pytest.mark.anyio
+async def test_create_end_device_no_lfdi_aggregator(client: AsyncClient, edev_base_uri: str) -> None:
+    """When creating an end_device from an aggregator client reject on no lfdi provided"""
+
+    insert_request: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest,
+        postRate=123,
+        deviceCategory="{0:x}".format(int(DeviceCategory.HOT_TUB)),
+    )
+    insert_request.lFDI = None
+    insert_request.sFDI = int(AGG_1_SFDI_FROM_VALID_CERT)
+
     response = await client.post(
         edev_base_uri,
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
         content=EndDeviceRequest.to_xml(insert_request),
     )
-    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
-    assert len(read_response_body_string(response)) == 0
-    inserted_href = read_location_header(response)
 
-    # now lets grab the end device we just created
-    response = await client.get(inserted_href, headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
-    assert_response_header(response, HTTPStatus.OK)
-    response_body = read_response_body_string(response)
-    assert len(response_body) > 0
-    parsed_response: EndDeviceResponse = EndDeviceResponse.from_xml(response_body)
-    assert_nowish(parsed_response.changedTime)
-    assert parsed_response.href == inserted_href
-    assert parsed_response.enabled == 1
-    assert parsed_response.lFDI.strip() != ""
-    assert parsed_response.sFDI != 0
-    assert parsed_response.deviceCategory == insert_request.deviceCategory
+    # Just ensure we didn't provide an LFDI
+    assert insert_request.lFDI is None
+
+    # Should be a 400
+    assert_response_header(response, HTTPStatus.BAD_REQUEST)
 
 
 @pytest.mark.anyio
