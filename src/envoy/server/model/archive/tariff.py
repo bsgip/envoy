@@ -1,9 +1,18 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional
 
-from envoy_schema.server.schema.sep2.types import CurrencyCode
-from sqlalchemy import DECIMAL, INTEGER, BigInteger, DateTime, Integer, String
+from envoy_schema.server.schema.sep2.types import (
+    AccumulationBehaviourType,
+    CommodityType,
+    CurrencyCode,
+    DataQualifierType,
+    FlowDirectionType,
+    KindType,
+    PhaseCode,
+    RoleFlagsType,
+    UomType,
+)
+from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
@@ -16,14 +25,44 @@ class ArchiveTariff(ArchiveBase):
     name: Mapped[str] = mapped_column(String(64))
     dnsp_code: Mapped[str] = mapped_column(String(20))
     currency_code: Mapped[CurrencyCode] = mapped_column(Integer)
+    price_power_of_ten_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    primacy: Mapped[int] = mapped_column(INTEGER)
+
     fsa_id: Mapped[int] = mapped_column(Integer)
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class ArchiveTariffComponent(ArchiveBase):
+    """Represents a single pricing "unit of measure". All TariffGeneratedRate instances underneath it will dictate
+    individual prices but this entity will describe what is actually being priced"""
+
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.TariffComponent.__tablename__
+    tariff_component_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    tariff_id: Mapped[int] = mapped_column(INTEGER)
+
+    description: Mapped[Optional[str]] = mapped_column(VARCHAR(length=32), nullable=True)
+    version: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    role_flags: Mapped[RoleFlagsType] = mapped_column(INTEGER)
+
+    # ReadingType fields
+    accumulation_behaviour: Mapped[Optional[AccumulationBehaviourType]] = mapped_column(INTEGER, nullable=True)
+    commodity: Mapped[Optional[CommodityType]] = mapped_column(INTEGER, nullable=True)
+    data_qualifier: Mapped[Optional[DataQualifierType]] = mapped_column(INTEGER, nullable=True)
+    flow_direction: Mapped[Optional[FlowDirectionType]] = mapped_column(INTEGER, nullable=True)
+    kind: Mapped[Optional[KindType]] = mapped_column(INTEGER, nullable=True)
+    phase: Mapped[Optional[PhaseCode]] = mapped_column(INTEGER, nullable=True)
+    power_of_ten_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    uom: Mapped[Optional[UomType]] = mapped_column(INTEGER, nullable=True)
+
+    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading set was created
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the rec was last altered
+
+
 class ArchiveTariffGeneratedRate(ArchiveBase):
     __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.TariffGeneratedRate.__tablename__  # type: ignore
     tariff_generated_rate_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    tariff_component_id: Mapped[int] = mapped_column(INTEGER)
     tariff_id: Mapped[int] = mapped_column(INTEGER)
     site_id: Mapped[int] = mapped_column(INTEGER)
     calculation_log_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
@@ -32,7 +71,6 @@ class ArchiveTariffGeneratedRate(ArchiveBase):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     duration_seconds: Mapped[int] = mapped_column(INTEGER)
-    import_active_price: Mapped[Decimal] = mapped_column(DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES))
-    export_active_price: Mapped[Decimal] = mapped_column(DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES))
-    import_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES))
-    export_reactive_price: Mapped[Decimal] = mapped_column(DECIMAL(10, original_models.tariff.PRICE_DECIMAL_PLACES))
+    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    price_pow10_encoded: Mapped[int] = mapped_column(INTEGER)
