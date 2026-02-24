@@ -12,7 +12,7 @@ from envoy_schema.server.schema.sep2.types import (
     RoleFlagsType,
     UomType,
 )
-from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime, Integer, String
+from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
@@ -74,3 +74,20 @@ class ArchiveTariffGeneratedRate(ArchiveBase):
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     price_pow10_encoded: Mapped[int] = mapped_column(INTEGER)
+
+    __table_args__ = (
+        Index(
+            "archive_tariff_generated_rate_tariff_id_end_time_deleted_time_site_id",
+            "tariff_id",
+            "end_time",
+            "deleted_time",
+            "site_id",
+        ),  # This is to support finding rates that have been deleted (or cancelled)
+        Index(
+            "archive_tariff_generated_rate_tariff_component_id_end_time_deleted_time_site_id",
+            "tariff_component_id",
+            "end_time",
+            "deleted_time",
+            "site_id",
+        ),  # This is to support finding rates that have been deleted (or cancelled)
+    )
