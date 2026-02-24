@@ -95,22 +95,56 @@ INSERT INTO public.calculation_log_label_value("calculation_log_id", "label_id",
 
 
 
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "created_time", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 36, 1, '2000-01-01 00:00:00Z', '2023-01-02 11:01:02');
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "created_time", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 124, 1, '2000-01-01 00:00:00Z', '2023-01-02 12:01:02');
-INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "created_time", "changed_time") VALUES (3, 'tariff-3', 'tariff-dnsp-code-3', 840, 2, '2000-01-01 00:00:00Z', '2023-01-02 13:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "primacy", "price_power_of_ten_multiplier", "created_time", "changed_time") VALUES (1, 'tariff-1', 'tariff-dnsp-code-1', 36, 1, 1, 0, '2000-01-01 00:00:00Z', '2023-01-02 11:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "primacy", "price_power_of_ten_multiplier", "created_time", "changed_time") VALUES (2, 'tariff-2', 'tariff-dnsp-code-2', 124, 1, 2, 1, '2000-01-01 00:00:00Z', '2023-01-02 12:01:02');
+INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fsa_id", "primacy", "price_power_of_ten_multiplier", "created_time", "changed_time") VALUES (3, 'tariff-3', 'tariff-dnsp-code-3', 840, 2, 3, 2, '2000-01-01 00:00:00Z', '2023-01-02 13:01:02');
 
 SELECT pg_catalog.setval('public.tariff_tariff_id_seq', 4, true);
 
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (1, 1, 1, 2, '2000-01-01 00:00:00Z', '2022-03-04 11:22:33.500', '2022-03-05 01:02+10', 11, 1.1, -1.22, 1.333, -1.4444);
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (2, 1, 1, 2, '2000-01-01 00:00:00Z', '2022-03-04 12:22:33.500', '2022-03-05 03:04+10', 12, 2.1, -2.22, 2.333, -2.4444);
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (3, 1, 2, 2, '2000-01-01 00:00:00Z', '2022-03-04 13:22:33.500', '2022-03-05 01:02+10', 13, 3.1, -3.22, 3.333, -3.4444);
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (4, 1, 1, NULL, '2000-01-01 00:00:00Z', '2022-03-04 14:22:33.500', '2022-03-06 01:02+10', 14, 4.1, -4.22, 4.333, -4.4444);
 
-SELECT pg_catalog.setval('public.tariff_generated_rate_tariff_generated_rate_id_seq', 5, true);
+-- TC #1 (Under Tariff #1)  - Import Active Power kw/h
+INSERT INTO public.tariff_component("tariff_component_id", "tariff_id", "role_flags", "accumulation_behaviour", "commodity", "data_qualifier", "flow_direction", "kind", "phase", "power_of_ten_multiplier", "uom", "created_time", "changed_time")
+VALUES (1, 1, 1, 3, 2, 2, 1, 12, 0, 3, 38, '2000-01-01 00:00:00Z', '2022-02-01 01:00:00+10');
+
+-- TC #2 (Under Tariff #1)  - Export Active Power (undefined pow10)
+INSERT INTO public.tariff_component("tariff_component_id", "tariff_id", "role_flags", "accumulation_behaviour", "commodity", "data_qualifier", "flow_direction", "kind", "phase", "power_of_ten_multiplier", "uom", "created_time", "changed_time")
+VALUES (2, 1, 1, NULL, NULL, NULL, 19, NULL, NULL, NULL, 38, '2000-01-01 00:00:00Z', '2022-02-01 02:00:00+10');
+
+-- TC #3 (Under Tariff #1)  - Everything optional
+INSERT INTO public.tariff_component("tariff_component_id", "tariff_id", "role_flags", "accumulation_behaviour", "commodity", "data_qualifier", "flow_direction", "kind", "phase", "power_of_ten_multiplier", "uom", "created_time", "changed_time")
+VALUES (3, 1, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2000-01-01 00:00:00Z', '2022-02-01 03:00:00+10');
+
+-- TC #4 (Under Tariff #2)  - Import Active Power kw/h
+INSERT INTO public.tariff_component("tariff_component_id", "tariff_id", "role_flags", "accumulation_behaviour", "commodity", "data_qualifier", "flow_direction", "kind", "phase", "power_of_ten_multiplier", "uom", "created_time", "changed_time")
+VALUES (4, 2, 3, 3, 2, 2, 1, 12, 0, 3, 38, '2000-01-01 00:00:00Z', '2022-02-01 04:00:00+10');
+
+SELECT pg_catalog.setval('public.tariff_component_tariff_component_id_seq', 5, true);
+
+-- Site #1 rates for TC #1
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "tariff_component_id", "site_id", "calculation_log_id", "start_time", "duration_seconds", "end_time", "price_pow10_encoded", "created_time", "changed_time")
+VALUES (1, 1, 1, 1, 2, '2022-03-05 01:00:00+10', 11, '2022-03-05 01:00:11+10', 1111, '2000-01-01 00:00:00Z', '2022-03-04 11:22:33.500');
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "tariff_component_id", "site_id", "calculation_log_id", "start_time", "duration_seconds", "end_time", "price_pow10_encoded", "created_time", "changed_time")
+VALUES (2, 1, 1, 1, 2, '2022-03-05 01:00:11+10', 22, '2022-03-05 01:00:33+10', 2222, '2000-01-01 00:00:00Z', '2022-03-04 12:22:33.500');
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "tariff_component_id", "site_id", "calculation_log_id", "start_time", "duration_seconds", "end_time", "price_pow10_encoded", "created_time", "changed_time")
+VALUES (3, 1, 1, 1, 2, '2022-03-05 01:00:33+10', 33, '2022-03-05 01:01:06+10', 3333, '2000-01-01 00:00:00Z', '2022-03-04 13:22:33.500');
+
+-- Site #2 rates for TC #1
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "tariff_component_id", "site_id", "calculation_log_id", "start_time", "duration_seconds", "end_time", "price_pow10_encoded", "created_time", "changed_time")
+VALUES (4, 1, 1, 2, NULL, '2022-03-05 01:00:00+10', 44, '2022-03-05 01:00:44+10', 4444, '2000-01-01 00:00:00Z', '2022-03-04 14:22:33.500');
+
+-- Site #3 rates for TC #1
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "tariff_component_id", "site_id", "calculation_log_id", "start_time", "duration_seconds", "end_time", "price_pow10_encoded", "created_time", "changed_time")
+VALUES (5, 1, 1, 3, NULL, '2022-03-05 01:00:00+10', 55, '2022-03-05 01:00:55+10', 5555, '2000-01-01 00:00:00Z', '2022-03-04 15:22:33.500');
+
+-- Site #1 rates for TC #2
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "tariff_component_id", "site_id", "calculation_log_id", "start_time", "duration_seconds", "end_time", "price_pow10_encoded", "created_time", "changed_time")
+VALUES (6, 1, 2, 1, NULL, '2022-03-05 01:00:00+10', 66, '2022-03-05 01:01:06+10', 6666, '2000-01-01 00:00:00Z', '2022-03-04 16:22:33.500');
+
+-- Site #1 rates for TC #4
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "tariff_component_id", "site_id", "calculation_log_id", "start_time", "duration_seconds", "end_time", "price_pow10_encoded", "created_time", "changed_time")
+VALUES (7, 2, 4, 1, NULL, '2022-03-05 01:00:00+10', 77, '2022-03-05 01:01:17+10', 7777, '2000-01-01 00:00:00Z', '2022-03-04 17:22:33.500');
+
+SELECT pg_catalog.setval('public.tariff_generated_rate_tariff_generated_rate_id_seq', 7, true);
 
 
 INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id_snapshot", "site_id", "created_time", "response_type", "pricing_reading_type") VALUES (1, 1, 1, '2022-01-01 00:00:00+10', 1, 1);
