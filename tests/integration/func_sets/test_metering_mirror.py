@@ -726,3 +726,56 @@ async def test_delete_mup(
                 await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))
             ).scalar_one()
             assert site_archive_count == 0, "Nothing should be archived"
+
+
+@pytest.mark.anyio
+async def test_create_mup_duplicate_mmr_mrid_rejected(client: AsyncClient):
+    """If two MUPs (different group mRIDs) share the same individual MMR mRID for the same site, the second
+    POST should be rejected with 400 rather than causing a DB integrity error (500)."""
+
+    # Arrange
+    shared_mmr_mrid = "dddddddddddddddddddddddddddddddd"
+    device_lfdi = "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
+
+    shared_mmr = MirrorMeterReading.model_validate(
+        {"mRID": shared_mmr_mrid, "readingType": {"uom": UomType.REAL_POWER_WATT}}
+    )
+
+    first_mup = MirrorUsagePointRequest.model_validate(
+        {
+            "mRID": "aaaaaaaaaaaaaaaaaaaaaaaaaaaa1111",
+            "deviceLFDI": device_lfdi,
+            "serviceCategoryKind": ServiceKind.ELECTRICITY,
+            "roleFlags": "03",
+            "status": 0,
+            "mirrorMeterReadings": [shared_mmr],
+        }
+    )
+    second_mup = MirrorUsagePointRequest.model_validate(
+        {
+            "mRID": "aaaaaaaaaaaaaaaaaaaaaaaaaaaa2222",  # different mRID
+            "deviceLFDI": device_lfdi,
+            "serviceCategoryKind": ServiceKind.ELECTRICITY,
+            "roleFlags": "49",
+            "status": 0,
+            "mirrorMeterReadings": [shared_mmr],  # same MMR mRID
+        }
+    )
+
+    # First POST should succeed
+    response = await client.post(
+        uris.MirrorUsagePointListUri,
+        content=MirrorUsagePointRequest.to_xml(first_mup, skip_empty=False, exclude_none=True, exclude_unset=True),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+
+    # ACT
+    # Second POST with a different group mRID but the same MMR mRID must be rejected
+    response = await client.post(
+        uris.MirrorUsagePointListUri,
+        content=MirrorUsagePointRequest.to_xml(second_mup, skip_empty=False, exclude_none=True, exclude_unset=True),
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+    )
+    assert_response_header(response, HTTPStatus.BAD_REQUEST, expected_content_type=None)
+    assert_error_response(response)
