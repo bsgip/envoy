@@ -77,14 +77,14 @@ class ArchiveTariffGeneratedRate(ArchiveBase):
 
     __table_args__ = (
         Index(
-            "archive_tariff_generated_rate_tariff_id_end_time_deleted_time_site_id",
+            "archive_tariff_generated_rate_tariff_id_end_deleted_time_site",
             "tariff_id",
             "end_time",
             "deleted_time",
             "site_id",
         ),  # This is to support finding rates that have been deleted (or cancelled)
         Index(
-            "archive_tariff_generated_rate_tariff_component_id_end_time_deleted_time_site_id",
+            "archive_tariff_generated_rate_tc_id_end_deleted_time_site",
             "tariff_component_id",
             "end_time",
             "deleted_time",

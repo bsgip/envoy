@@ -86,30 +86,51 @@ async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optiona
     return resp.scalar_one_or_none()
 
 
-async def select_tariff_generated_rate_for_scope(
+async def select_tariff_generated_rate_include_deleted(
     session: AsyncSession,
     aggregator_id: int,
     site_id: Optional[int],
     rate_id: int,
-) -> Optional[TariffGeneratedRate]:
-    """Attempts to fetch a TariffGeneratedRate using its primary id, also scoping it to a particular aggregator/site
+) -> Optional[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]]:
+    """Attempts to fetch a TariffGeneratedRate/ArchiveTariffGeneratedRate using its primary id, also scoping it to a
+    particular aggregator/site
 
     aggregator_id: The aggregator id to constrain the lookup to
     site_id: If None - no effect otherwise the query will apply a filter on site_id using this value"""
 
-    stmt = (
+    stmt_active = (
         select(TariffGeneratedRate, Site.timezone_id)
         .join(TariffGeneratedRate.site)
         .where((TariffGeneratedRate.tariff_generated_rate_id == rate_id) & (Site.aggregator_id == aggregator_id))
     )
     if site_id is not None:
-        stmt = stmt.where(TariffGeneratedRate.site_id == site_id)
+        stmt_active = stmt_active.where(TariffGeneratedRate.site_id == site_id)
 
-    resp = await session.execute(stmt)
-    raw = resp.one_or_none()
-    if raw is None:
-        return None
-    return localize_start_time(raw)
+    resp_active = await session.execute(stmt_active)
+    raw_active = resp_active.one_or_none()
+    if raw_active is not None:
+        return localize_start_time(raw_active)
+
+    # If we are here - there's nothing in the active table - consider the archive
+    stmt_archive = (
+        select(ArchiveTariffGeneratedRate, Site.timezone_id)
+        .join(Site, ArchiveTariffGeneratedRate.site_id == Site.site_id)
+        .where(
+            (ArchiveTariffGeneratedRate.tariff_generated_rate_id == rate_id)
+            & (ArchiveTariffGeneratedRate.deleted_time.is_not(None))  # Only deleted records
+            & (Site.aggregator_id == aggregator_id)
+        )
+        .order_by(ArchiveTariffGeneratedRate.deleted_time.desc())
+        .limit(1)  # Only the most recent deletion (realistically there will only ever be one anyway)
+    )
+    if site_id is not None:
+        stmt_archive = stmt_archive.where(ArchiveTariffGeneratedRate.site_id == site_id)
+
+    resp_archive = await session.execute(stmt_archive)
+    raw_archive = resp_archive.one_or_none()
+    if raw_archive is not None:
+        return localize_start_time(raw_archive)
+    return None
 
 
 async def select_tariff_component_by_id(

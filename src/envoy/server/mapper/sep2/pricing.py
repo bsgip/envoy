@@ -35,7 +35,7 @@ from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
-from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
 
 

@@ -35,7 +35,6 @@ from envoy.notification.task.transmit import HEADER_NOTIFICATION_ID
 from envoy.server.api.response import SEP_XML_MIME
 from envoy.server.model.server import RuntimeServerConfig
 from envoy.server.model.subscription import Subscription, SubscriptionResource
-from envoy.server.model.tariff import PRICE_DECIMAL_POWER
 
 
 @pytest.mark.parametrize(

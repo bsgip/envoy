@@ -24,7 +24,7 @@ from envoy.server.mapper.sep2.pricing import (
     TariffProfileMapper,
     TimeTariffIntervalMapper,
 )
-from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, Tariff, TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
 
 

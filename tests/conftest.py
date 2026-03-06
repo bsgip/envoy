@@ -135,6 +135,15 @@ def pg_additional_does(pg_base_config: Connection) -> Generator[Connection, None
 
 
 @pytest.fixture
+def pg_additional_prices(pg_base_config: Connection) -> Generator[Connection, None, None]:
+    """Mutates pg_base_config to include additional Prices"""
+
+    execute_sql_file_for_connection(pg_base_config, "tests/data/sql/additional_prices.sql")
+
+    yield pg_base_config
+
+
+@pytest.fixture
 def pg_billing_data(pg_base_config: Connection) -> Generator[Connection, None, None]:
     """Mutates pg_base_config to include additional billing specific data"""
 

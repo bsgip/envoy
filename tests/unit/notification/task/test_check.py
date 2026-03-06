@@ -41,7 +41,7 @@ from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
-from envoy.server.model.tariff import PRICE_DECIMAL_POWER, TariffGeneratedRate
+from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope, DeviceOrAggregatorRequestScope
 from tests.unit.notification.mocks import (
     assert_task_kicked_n_times,

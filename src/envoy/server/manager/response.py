@@ -14,7 +14,7 @@ from envoy_schema.server.schema.sep2.response import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.doe import select_doe_include_deleted
-from envoy.server.crud.pricing import select_tariff_generated_rate_for_scope
+from envoy.server.crud.pricing import select_tariff_generated_rate_include_deleted
 from envoy.server.crud.response import (
     count_doe_responses,
     count_tariff_generated_rate_responses,
