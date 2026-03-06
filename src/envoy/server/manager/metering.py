@@ -22,6 +22,7 @@ from envoy.server.crud.site_reading import (
     fetch_grouped_site_reading_details,
     fetch_site_reading_types_for_group,
     fetch_site_reading_types_for_group_mrid,
+    fetch_site_reading_type_for_mrid,
     generate_site_reading_type_group_id,
     upsert_site_readings,
 )
@@ -89,6 +90,16 @@ class MirrorMeteringManager:
         if not group_srts:
             created = True
             group_id = await generate_site_reading_type_group_id(session)
+
+            # Check that none of the individual MMR mRIDs already exist under a different MUP for this site.
+            for mmr in mup.mirrorMeterReadings:
+                existing = await fetch_site_reading_type_for_mrid(
+                    session, aggregator_id=scope.aggregator_id, site_id=site_id, mrid=mmr.mRID
+                )
+                if existing is not None:
+                    raise BadRequestError(
+                        f"MirrorMeterReading mRID {mmr.mRID} already exists under a different MirrorUsagePoint"
+                    )
 
             # Start by creating the site reading types and getting them in the database
             for mmr in mup.mirrorMeterReadings:
