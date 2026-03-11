@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from itertools import islice, product
-from typing import Iterator, Optional, Sequence
+from typing import Iterator, Optional, Sequence, cast
 
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.event import EventStatus
@@ -31,69 +31,47 @@ from envoy_schema.server.schema.sep2.types import (
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
-from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
+from envoy.server.mapper.constants import ResponseSetType
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
-from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
 class TariffProfileMapper:
     @staticmethod
-    def _map_to_response(
-        scope: BaseRequestScope, tariff: Tariff, tp_href: str, total_rates: int
-    ) -> TariffProfileResponse:
-        return TariffProfileResponse.model_validate(
-            {
-                "href": tp_href,
-                "mRID": MridMapper.encode_tariff_profile_mrid(scope, tariff.tariff_id),
-                "description": tariff.name,
-                "currency": tariff.currency_code,
-                "pricePowerOfTenMultiplier": -PRICE_DECIMAL_PLACES,  # Needs to negate - $1 is encoded as 10000 * 10^-4
-                "rateCode": tariff.dnsp_code,
-                "primacyType": PrimacyType.IN_HOME_ENERGY_MANAGEMENT_SYSTEM,
-                "serviceCategoryKind": ServiceKind.ELECTRICITY,
-                "RateComponentListLink": ListLink(href=tp_href + "/rc", all_=total_rates),
-            }
-        )
-
-    @staticmethod
     def map_to_response(
-        scope: DeviceOrAggregatorRequestScope, tariff: Tariff, total_rates: int
+        scope: DeviceOrAggregatorRequestScope, tariff: Tariff, total_components: int, total_active_rates: int
     ) -> TariffProfileResponse:
-        """Returns a mapped sep2 entity.
+        """Returns a mapped sep2 entity TariffProfileResponse.
 
-        This endpoint is designed to operate independent of a particular scope to allow encoding of multiple
-        different sites. It's the responsibility of the caller to validate the scope before calling this."""
+        total_components: The total number of RateComponent (TariffComponent) instances that sit under this tariff
+        total_active_rates: Total of active TimeTariffInterval (TariffGeneratedRate) instances under this tariff"""
         tp_href = generate_href(uri.TariffProfileUri, scope, tariff_id=tariff.tariff_id, site_id=scope.display_site_id)
-        return TariffProfileMapper._map_to_response(scope, tariff, tp_href, total_rates)
-
-    @staticmethod
-    def map_to_nosite_response(scope: BaseRequestScope, tariff: Tariff) -> TariffProfileResponse:
-        """Returns a mapped sep2 entity. The href to RateComponentListLink will be to an endpoint
-        for returning rate components for an unspecified site id"""
-        tp_href = generate_href(uri.TariffProfileUnscopedUri, scope, tariff_id=tariff.tariff_id)
-        return TariffProfileMapper._map_to_response(scope, tariff, tp_href, 0)
-
-    @staticmethod
-    def map_to_list_nosite_response(
-        scope: BaseRequestScope, tariffs: Sequence[Tariff], total_tariffs: int
-    ) -> TariffProfileListResponse:
-        """Returns a list containing multiple sep2 entities. The href to RateComponentListLink will be to an endpoint
-        for returning rate components for an unspecified site id"""
-        return TariffProfileListResponse.model_validate(
-            {
-                "all_": total_tariffs,
-                "results": len(tariffs),
-                "TariffProfile": [TariffProfileMapper.map_to_nosite_response(scope, t) for t in tariffs],
-            }
+        rc_href = generate_href(
+            uri.RateComponentListUri, scope, tariff_id=tariff.tariff_id, site_id=scope.display_site_id
+        )
+        ctti_href = generate_href(
+            uri.CombinedTimeTariffIntervalListUri, scope, tariff_id=tariff.tariff_id, site_id=scope.display_site_id
+        )
+        return TariffProfileResponse(
+            href=tp_href,
+            mRID=MridMapper.encode_tariff_profile_mrid(scope, tariff.tariff_id),
+            description=tariff.name,
+            currency=tariff.currency_code,
+            pricePowerOfTenMultiplier=tariff.price_power_of_ten_multiplier,
+            rateCode=tariff.dnsp_code,
+            primacyType=tariff.primacy,  # We don't want to block primacies outside zero and one
+            serviceCategoryKind=ServiceKind.ELECTRICITY,
+            RateComponentListLink=ListLink(href=rc_href, all_=total_components),
+            CombinedTimeTariffIntervalListLink=ListLink(href=ctti_href, all_=total_active_rates),
         )
 
     @staticmethod
     def map_to_list_response(
         scope: DeviceOrAggregatorRequestScope,
-        tariffs: Iterator[tuple[Tariff, int]],
+        tariffs: Iterator[tuple[Tariff, int, int]],
         total_tariffs: int,
         fsa_id: Optional[int],
     ) -> TariffProfileListResponse:
@@ -101,14 +79,14 @@ class TariffProfileMapper:
         TimeTariffProfile and RateComponentListLink
 
         tariffs should be a list of tuples combining the individual tariffs with the underlying count
-        of rate components
+        of rate components and active tariff rates
 
         This endpoint is designed to operate independent of a particular scope to allow encoding of multiple
         different sites. It's the responsibility of the caller to validate the scope before calling this."""
         tariff_profiles: list[TariffProfileResponse] = []
         tariffs_count: int = 0
-        for tariff, rc_count in tariffs:
-            tariff_profiles.append(TariffProfileMapper.map_to_response(scope, tariff, rc_count))
+        for tariff, rc_count, active_rates in tariffs:
+            tariff_profiles.append(TariffProfileMapper.map_to_response(scope, tariff, rc_count, active_rates))
             tariffs_count = tariffs_count + 1
 
         if fsa_id is None:
@@ -131,109 +109,48 @@ class TariffProfileMapper:
         )
 
 
-TOTAL_PRICING_READING_TYPES = len(PricingReadingType)  # The total number of PricingReadingType enums
-
-
-class PricingReadingTypeMapper:
-    @staticmethod
-    def pricing_reading_type_href(scope: BaseRequestScope, rt: PricingReadingType) -> str:
-        return generate_href(uri.PricingReadingTypeUri, scope, reading_type=rt)
-
-    @staticmethod
-    def extract_price(rt: PricingReadingType, rate: TariffGeneratedRate) -> Decimal:
-        if rt == PricingReadingType.IMPORT_ACTIVE_POWER_KWH:
-            return rate.import_active_price
-        elif rt == PricingReadingType.EXPORT_ACTIVE_POWER_KWH:
-            return rate.export_active_price
-        elif rt == PricingReadingType.IMPORT_REACTIVE_POWER_KVARH:
-            return rate.import_reactive_price
-        elif rt == PricingReadingType.EXPORT_REACTIVE_POWER_KVARH:
-            return rate.export_reactive_price
-        else:
-            raise InvalidMappingError(f"Unknown reading type {rt}")
-
-    @staticmethod
-    def create_reading_type(scope: BaseRequestScope, rt: PricingReadingType) -> ReadingType:
-        """Creates a named reading type based on a fixed enum describing the readings associated
-        with a particular type of pricing"""
-        href = PricingReadingTypeMapper.pricing_reading_type_href(scope, rt)
-        if rt == PricingReadingType.IMPORT_ACTIVE_POWER_KWH:
-            return ReadingType.model_validate(
-                {
-                    "href": href,
-                    "commodity": CommodityType.ELECTRICITY_PRIMARY_METERED_VALUE,
-                    "flowDirection": FlowDirectionType.FORWARD,
-                    "powerOfTenMultiplier": 3,  # kilowatt hours
-                    "uom": UomType.REAL_ENERGY_WATT_HOURS,
-                }
-            )
-        elif rt == PricingReadingType.EXPORT_ACTIVE_POWER_KWH:
-            return ReadingType.model_validate(
-                {
-                    "href": href,
-                    "commodity": CommodityType.ELECTRICITY_PRIMARY_METERED_VALUE,
-                    "flowDirection": FlowDirectionType.REVERSE,
-                    "powerOfTenMultiplier": 3,  # kilowatt hours
-                    "uom": UomType.REAL_ENERGY_WATT_HOURS,
-                }
-            )
-        elif rt == PricingReadingType.IMPORT_REACTIVE_POWER_KVARH:
-            return ReadingType.model_validate(
-                {
-                    "href": href,
-                    "commodity": CommodityType.ELECTRICITY_SECONDARY_METERED_VALUE,
-                    "flowDirection": FlowDirectionType.FORWARD,
-                    "powerOfTenMultiplier": 3,  # kvarh hours
-                    "uom": UomType.REACTIVE_ENERGY_VARH,
-                }
-            )
-        elif rt == PricingReadingType.EXPORT_REACTIVE_POWER_KVARH:
-            return ReadingType.model_validate(
-                {
-                    "href": href,
-                    "commodity": CommodityType.ELECTRICITY_SECONDARY_METERED_VALUE,
-                    "flowDirection": FlowDirectionType.REVERSE,
-                    "powerOfTenMultiplier": 3,  # kvarh hours
-                    "uom": UomType.REACTIVE_ENERGY_VARH,
-                }
-            )
-        else:
-            raise InvalidMappingError(f"Unknown reading type {rt}")
-
-
 class RateComponentMapper:
     @staticmethod
-    def map_to_response(
-        scope: SiteRequestScope,
-        tariff_id: int,
-        pricing_reading: PricingReadingType,
-        day: date,
-    ) -> RateComponentResponse:
-        """Maps/Creates a single rate component response describing a single type of reading"""
-        rate_component_id = day.isoformat()
-        # Timezone doesn't really matter here - It just needs to be consistent
-        start_time = datetime.combine(day, time(), tzinfo=timezone.utc)
+    def create_reading_type(scope: DeviceOrAggregatorRequestScope, tc: TariffComponent) -> ReadingType:
+        """Creates a named reading type that represents the uom associated with TariffComponent"""
+        href = generate_href(
+            uri.PricingReadingTypeUri,
+            scope,
+            site_id=scope.display_site_id,
+            tariff_id=tc.tariff_id,
+            rate_component_id=tc.tariff_component_id,
+        )
+        return ReadingType(
+            href=href,
+            accumulationBehaviour=tc.accumulation_behaviour,
+            commodity=tc.commodity,
+            dataQualifier=tc.data_qualifier,
+            flowDirection=tc.flow_direction,
+            kind=tc.kind,
+            phase=tc.phase,
+            powerOfTenMultiplier=tc.power_of_ten_multiplier,
+            uom=tc.uom,
+        )
+
+    @staticmethod
+    def map_to_response(scope: DeviceOrAggregatorRequestScope, tc: TariffComponent) -> RateComponentResponse:
+        """Maps/Creates a single rate component response describing a commodity being priced"""
+
+        # /edev/{site_id}/tp/{tariff_id}/rc/{rate_component_id}
         rc_href = generate_href(
             uri.RateComponentUri,
             scope,
-            tariff_id=tariff_id,
-            site_id=scope.site_id,
-            rate_component_id=rate_component_id,
-            pricing_reading=pricing_reading,
+            site_id=scope.display_site_id,
+            tariff_id=tc.tariff_id,
+            rate_component_id=tc.tariff_component_id,
         )
         return RateComponentResponse.model_validate(
-            {
-                "href": rc_href,
-                "mRID": MridMapper.encode_rate_component_mrid(
-                    scope, tariff_id, scope.site_id, start_time, pricing_reading
-                ),
-                "description": pricing_reading.name,
-                "roleFlags": to_hex_binary(RoleFlagsType.NONE),
-                "ReadingTypeLink": Link(
-                    href=PricingReadingTypeMapper.pricing_reading_type_href(scope, pricing_reading)
-                ),
-                "TimeTariffIntervalListLink": ListLink(href=rc_href + "/tti"),
-            }
+            href=rc_href,
+            mRID=MridMapper.encode_rate_component_mrid(scope, tariff_id, scope.site_id, start_time, pricing_reading),
+            description=pricing_reading.name,
+            roleFlags=to_hex_binary(RoleFlagsType.NONE),
+            ReadingTypeLink=Link(href=PricingReadingTypeMapper.pricing_reading_type_href(scope, pricing_reading)),
+            TimeTariffIntervalListLink=ListLink(href=rc_href + "/tti"),
         )
 
     @staticmethod

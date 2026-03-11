@@ -19,17 +19,6 @@ class MridType(IntEnum):
     RESPONSE_SET = 10
 
 
-class PricingReadingType(IntEnum):
-    """The different types of readings that can be priced
-
-    Increasing this beyond 4 unique values will have implications for the mrid mapper"""
-
-    IMPORT_ACTIVE_POWER_KWH = auto()
-    EXPORT_ACTIVE_POWER_KWH = auto()
-    IMPORT_REACTIVE_POWER_KVARH = auto()
-    EXPORT_REACTIVE_POWER_KVARH = auto()
-
-
 class ResponseSetType(IntEnum):
     """The different types of response sets that are exposed via this utility server. Essentially this is a mapping
     of every type that has "response" objects associated with them"""

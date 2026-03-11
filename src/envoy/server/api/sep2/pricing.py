@@ -192,37 +192,6 @@ async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) 
     return XmlResponse(tp)
 
 
-@router.head(uri.RateComponentListUnscopedUri)
-@router.get(uri.RateComponentListUnscopedUri, status_code=HTTPStatus.OK)
-async def get_ratecomponentlist_nositescope(
-    tariff_id: int,
-    request: Request,
-    start: list[int] = Query([0], alias="s"),
-    after: list[int] = Query([0], alias="a"),
-    limit: list[int] = Query([1], alias="l"),
-) -> XmlResponse:
-    """Responds with a paginated list of RateComponents belonging to tariff_id. This will
-    always be empty as all prices are site specific. This endpoint is purely for strict sep2 compliance.
-
-    Args:
-        tariff_id: Path parameter, the target TariffProfile's internal registration number.
-        request: FastAPI request object.
-        start: list query parameter for the start index value. Default 0.
-        after: list query parameter for lists with a datetime primary index. Default 0.
-        limit: list query parameter for the maximum number of objects to return. Default 1.
-
-    Returns:
-        fastapi.Response object.
-
-    """
-
-    # return an empty list - clients will only discover this endpoint by querying for tariff profiles
-    # directly. Tariff profiles need to be discovered via function set assignments and from there
-    # they will directed to the appropriate endpoint describing site scoped rates
-    href = generate_href(request.url.path, extract_request_claims(request).to_unregistered_request_scope())
-    return XmlResponse(RateComponentListResponse.model_validate({"all_": 0, "results": 0, "href": href}))
-
-
 @router.head(uri.TariffProfileUri)
 @router.get(uri.TariffProfileUri, status_code=HTTPStatus.OK)
 async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request) -> XmlResponse:

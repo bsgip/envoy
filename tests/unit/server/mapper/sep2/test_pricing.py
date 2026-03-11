@@ -72,69 +72,49 @@ def test_create_reading_type_failure(bad_enum_val):
         PricingReadingTypeMapper.create_reading_type(scope, bad_enum_val)
 
 
-def test_tariff_profile_nosite_mapping():
-    """Non exhaustive test of the tariff profile mapping - mainly to sanity check important fields and ensure
-    that exceptions aren't being raised"""
-    all_set: Tariff = generate_class_instance(Tariff, seed=101, optional_is_none=False)
-    scope: BaseRequestScope = generate_class_instance(BaseRequestScope, optional_is_none=True)
-    mapped_all_set = TariffProfileMapper.map_to_nosite_response(scope, all_set)
-    assert mapped_all_set
-    assert mapped_all_set.href
-    assert mapped_all_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES
-    assert mapped_all_set.rateCode == all_set.dnsp_code
-    assert mapped_all_set.currency == all_set.currency_code
-    assert mapped_all_set.RateComponentListLink
-    assert mapped_all_set.RateComponentListLink.href
-    assert mapped_all_set.RateComponentListLink.href.startswith(mapped_all_set.href)
-    assert (
-        mapped_all_set.RateComponentListLink.all_ == 0
-    ), "Raw tariff mappings have no rates - need site info to get this information"
-
-    some_set: Tariff = generate_class_instance(Tariff, seed=202, optional_is_none=True)
-    mapped_some_set = TariffProfileMapper.map_to_nosite_response(scope, some_set)
-    assert mapped_some_set
-    assert mapped_some_set.href
-    assert mapped_some_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES
-    assert mapped_some_set.rateCode == some_set.dnsp_code
-    assert mapped_some_set.currency == some_set.currency_code
-    assert mapped_some_set.RateComponentListLink
-    assert mapped_some_set.RateComponentListLink.href
-    assert mapped_some_set.RateComponentListLink.href.startswith(mapped_some_set.href)
-    assert (
-        mapped_some_set.RateComponentListLink.all_ == 0
-    ), "Raw tariff mappings have no rates - need site info to get this information"
-
-
 def test_tariff_profile_mapping():
     """Non exhaustive test of the tariff profile mapping - mainly to sanity check important fields and ensure
     that exceptions aren't being raised"""
     total_rates = 76543
-    all_set: Tariff = generate_class_instance(Tariff, seed=101, optional_is_none=False)
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001)
-    mapped_all_set = TariffProfileMapper.map_to_response(scope, all_set, total_rates)
+    total_components = 951878
+    all_set = generate_class_instance(Tariff, seed=101, optional_is_none=False)
+    scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001)
+    mapped_all_set = TariffProfileMapper.map_to_response(scope, all_set, total_components, total_rates)
     assert mapped_all_set
     assert f"/{scope.display_site_id}" in mapped_all_set.href
-    assert mapped_all_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES, "We send $1 as 10000 * 10^-4"
+    assert mapped_all_set.pricePowerOfTenMultiplier == all_set.price_power_of_ten_multiplier
+    assert mapped_all_set.primacyType == all_set.primacy
     assert mapped_all_set.rateCode == all_set.dnsp_code
     assert mapped_all_set.currency == all_set.currency_code
-    assert mapped_all_set.RateComponentListLink
-    assert mapped_all_set.RateComponentListLink.href
+    assert mapped_all_set.RateComponentListLink and mapped_all_set.RateComponentListLink.href
     assert mapped_all_set.RateComponentListLink.href.startswith(mapped_all_set.href)
     assert f"/{scope.display_site_id}" in mapped_all_set.RateComponentListLink.href
-    assert mapped_all_set.RateComponentListLink.all_ == total_rates
+    assert mapped_all_set.RateComponentListLink.all_ == total_components
+    assert mapped_all_set.CombinedTimeTariffIntervalListLink and mapped_all_set.CombinedTimeTariffIntervalListLink.href
+    assert mapped_all_set.CombinedTimeTariffIntervalListLink.href.startswith(mapped_all_set.href)
+    assert f"/{scope.display_site_id}" in mapped_all_set.CombinedTimeTariffIntervalListLink.href
+    assert mapped_all_set.CombinedTimeTariffIntervalListLink.all_ == total_rates
+    assert mapped_all_set.RateComponentListLink.href != mapped_all_set.CombinedTimeTariffIntervalListLink.href
 
-    some_set: Tariff = generate_class_instance(Tariff, seed=202, optional_is_none=True)
-    mapped_some_set = TariffProfileMapper.map_to_response(scope, some_set, total_rates)
+    some_set = generate_class_instance(Tariff, seed=202, optional_is_none=True)
+    mapped_some_set = TariffProfileMapper.map_to_response(scope, some_set, total_components, total_rates)
     assert mapped_some_set
     assert f"/{scope.display_site_id}" in mapped_some_set.href
-    assert mapped_some_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES, "We send $1 as 10000 * 10^-4"
+    assert mapped_some_set.pricePowerOfTenMultiplier == some_set.price_power_of_ten_multiplier
+    assert mapped_some_set.primacyType == some_set.primacy
     assert mapped_some_set.rateCode == some_set.dnsp_code
     assert mapped_some_set.currency == some_set.currency_code
-    assert mapped_some_set.RateComponentListLink
-    assert mapped_some_set.RateComponentListLink.href
+    assert mapped_some_set.RateComponentListLink and mapped_some_set.RateComponentListLink.href
     assert mapped_some_set.RateComponentListLink.href.startswith(mapped_some_set.href)
     assert f"/{scope.display_site_id}" in mapped_some_set.RateComponentListLink.href
-    assert mapped_some_set.RateComponentListLink.all_ == total_rates
+    assert mapped_some_set.RateComponentListLink.all_ == total_components
+    assert (
+        mapped_some_set.CombinedTimeTariffIntervalListLink and mapped_some_set.CombinedTimeTariffIntervalListLink.href
+    )
+    assert mapped_some_set.CombinedTimeTariffIntervalListLink.href.startswith(mapped_some_set.href)
+    assert f"/{scope.display_site_id}" in mapped_some_set.CombinedTimeTariffIntervalListLink.href
+    assert mapped_some_set.CombinedTimeTariffIntervalListLink.all_ == total_rates
+    assert mapped_some_set.RateComponentListLink.href != mapped_some_set.CombinedTimeTariffIntervalListLink.href
 
 
 def test_tariff_profile_list_nosite_mapping():
@@ -162,13 +142,16 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: Optional[in
         generate_class_instance(Tariff, seed=101, optional_is_none=False),
         generate_class_instance(Tariff, seed=202, optional_is_none=True),
     ]
-    tariff_rate_counts = [456, 789]
+    tariff_component_counts = [456, 789]
+    tariff_rate_counts = [987, 654]
     tariff_count = 123
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1001, optional_is_none=optional_is_none, href_prefix="/fake/prefix"
     )
 
-    mapped = TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts), tariff_count, fsa_id)
+    mapped = TariffProfileMapper.map_to_list_response(
+        scope, zip(tariffs, tariff_component_counts, tariff_rate_counts), tariff_count, fsa_id
+    )
     assert isinstance(mapped, TariffProfileListResponse)
 
     assert mapped.href.startswith(scope.href_prefix)
@@ -183,9 +166,11 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: Optional[in
     assert all([f"/{scope.display_site_id}" in tp.href for tp in mapped.TariffProfile])
     assert all([f"/{scope.display_site_id}" in tp.RateComponentListLink.href for tp in mapped.TariffProfile])
 
-    # Double check our rate component counts get handed down to the child lists correctly
-    assert mapped.TariffProfile[0].RateComponentListLink.all_ == tariff_rate_counts[0]
-    assert mapped.TariffProfile[1].RateComponentListLink.all_ == tariff_rate_counts[1]
+    # Double check our counts get handed down to the child lists correctly
+    assert mapped.TariffProfile[0].CombinedTimeTariffIntervalListLink.all_ == tariff_rate_counts[0]
+    assert mapped.TariffProfile[1].CombinedTimeTariffIntervalListLink.all_ == tariff_rate_counts[1]
+    assert mapped.TariffProfile[0].RateComponentListLink.all_ == tariff_component_counts[0]
+    assert mapped.TariffProfile[1].RateComponentListLink.all_ == tariff_component_counts[1]
 
 
 @mock.patch("envoy.server.mapper.sep2.pricing.PricingReadingTypeMapper")
