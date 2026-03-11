@@ -196,7 +196,7 @@ def doe(start_time: datetime, end_time: datetime, scg_id: int = 1, site_id: int 
                     datetime(2022, 5, 7, 1, 2, 1, tzinfo=AEST), datetime(2022, 5, 7, 1, 2, 10, tzinfo=AEST), scg_id=2
                 ),  # encapsulated by doe 1
             ],
-            [],  # site control group 2 is higher primacy and therefore won't supersede the existing doe
+            [],  # site control group 2 (higher primacy) is different from scg (parent of doe 1) - no supersde
         ),
         (
             [
@@ -204,7 +204,7 @@ def doe(start_time: datetime, end_time: datetime, scg_id: int = 1, site_id: int 
                     datetime(2022, 5, 7, 1, 2, 1, tzinfo=AEST), datetime(2022, 5, 7, 1, 2, 10, tzinfo=AEST), scg_id=3
                 ),  # encapsulated by doe 1
             ],
-            [1],  # site control group 3 is lower primacy and will therefore supersede
+            [],  # site control group 3 (lower primacy) is different from scg (parent of doe 1) - no supersde
         ),
         (
             [
@@ -246,11 +246,11 @@ async def test_supersede_matching_does_for_site(
     if len(doe_list) > 0:
         site_id = doe_list[0].site_id
 
-    primacy_by_group_id = {1: 11, 2: 22, 3: 1}
+    all_site_control_group_ids = [1, 2, 3]
     changed_time = datetime(2021, 11, 4, 2, 3, 4, tzinfo=timezone.utc)
 
     async with generate_async_session(pg_base_config) as session:
-        await supersede_matching_does_for_site(session, doe_list, site_id, primacy_by_group_id, changed_time)
+        await supersede_matching_does_for_site(session, doe_list, site_id, all_site_control_group_ids, changed_time)
         await session.commit()
 
     # Assert
@@ -285,7 +285,7 @@ async def test_supersede_then_insert_does_many_sites(
         ).scalar_one()
         await session.commit()
 
-    expected_primacy_by_group_id = {1: 0, 2: 1, 3: 2}
+    expected_site_control_group_ids = [1, 2, 3]
     changed_time = datetime(2021, 11, 4, 2, 3, 4, tzinfo=timezone.utc)
     does = [
         generate_class_instance(
@@ -337,9 +337,9 @@ async def test_supersede_then_insert_does_many_sites(
         # Assert that each doe is grouped under the site and then processed in batches of that size
         mock_supersede_matching_does_for_site.assert_has_calls(
             [
-                mock.call(session, [does[0], does[1], does[3]], 1, expected_primacy_by_group_id, changed_time),
-                mock.call(session, [does[2]], 2, expected_primacy_by_group_id, changed_time),
-                mock.call(session, [does[4]], 3, expected_primacy_by_group_id, changed_time),
+                mock.call(session, [does[0], does[1], does[3]], 1, expected_site_control_group_ids, changed_time),
+                mock.call(session, [does[2]], 2, expected_site_control_group_ids, changed_time),
+                mock.call(session, [does[4]], 3, expected_site_control_group_ids, changed_time),
             ],
             any_order=True,
         )
