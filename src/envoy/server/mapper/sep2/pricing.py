@@ -136,7 +136,6 @@ class RateComponentMapper:
     def map_to_response(scope: DeviceOrAggregatorRequestScope, tc: TariffComponent) -> RateComponentResponse:
         """Maps/Creates a single rate component response describing a commodity being priced"""
 
-        # /edev/{site_id}/tp/{tariff_id}/rc/{rate_component_id}
         rc_href = generate_href(
             uri.RateComponentUri,
             scope,
@@ -144,7 +143,7 @@ class RateComponentMapper:
             tariff_id=tc.tariff_id,
             rate_component_id=tc.tariff_component_id,
         )
-        return RateComponentResponse.model_validate(
+        return RateComponentResponse(
             href=rc_href,
             mRID=MridMapper.encode_rate_component_mrid(scope, tariff_id, scope.site_id, start_time, pricing_reading),
             description=pricing_reading.name,

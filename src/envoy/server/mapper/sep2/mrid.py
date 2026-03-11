@@ -131,41 +131,24 @@ class MridMapper:
     @staticmethod
     def encode_rate_component_mrid(
         scope: BaseRequestScope,
-        tariff_id: int,
+        tariff_component_id: int,
         site_id: int,
-        start_timestamp: datetime,
-        pricing_reading_type: PricingReadingType,
     ) -> str:
-        """Encodes a valid MRID for a specific rate component. Rate components don't have a relevant primary key
-        in our DB model so this is derived from other values.
+        """Encodes a valid MRID for a specific rate component.
 
-        tariff_id: max value is expected to be a 32 bit unsigned int.
+        tariff_component_id: max value is expected to be a 32 bit unsigned int
         site_id: max value is expected to be a 32 bit unsigned int.
-        start_timestamp: Must be timezone aware - will only consider this value down to the minute resolution
-        pricing_reading_type: Only supports a maximum of 4 unique values"""
+        """
 
         # We have 92 bits to encode an ID
 
-        # 32 bits tariff ID
+        # 32 bits tariff_component_id
         # 32 bits site id
-        # 2 bits pricing_reading_type
-        # 26 bits timestamp (encoded as MINUTES since unix epoch)
 
-        prt_int = int(pricing_reading_type) - 1
-        if prt_int < 0 or prt_int >= 4:
-            raise ValueError(f"Invalid PricingReadingType value of {prt_int}. Expected a value in range [0, 3]")
+        tariff_component_id_shifted = (tariff_component_id & 0xFFFFFFFF) << 32
+        site_id_shifted = site_id & 0xFFFFFFFF
 
-        tariff_shifted = tariff_id << 60
-        site_id_shifted = site_id << 28
-        prt_shifted = prt_int << 26
-
-        # Minutes since epoch - gives us ~127 years until we rollover if we are only encoding 26 bits
-        # Do a modulo first so we can also cleanly rollover dates prior to the epoch
-        total_minutes_clamped = (int((start_timestamp - RATE_COMPONENT_EPOCH).total_seconds()) // 60) % (MAX_INT_26 + 1)
-        timestamp_shifted = total_minutes_clamped & MAX_INT_26
-
-        id = tariff_shifted | site_id_shifted | prt_shifted | timestamp_shifted
-        return encode_mrid(MridType.RATE_COMPONENT, id, scope.iana_pen)
+        return encode_mrid(MridType.RATE_COMPONENT, tariff_component_id_shifted | site_id_shifted, scope.iana_pen)
 
     @staticmethod
     def encode_time_tariff_interval_mrid(

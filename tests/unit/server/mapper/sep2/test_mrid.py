@@ -155,12 +155,7 @@ def test_all_default_encodings_unique():
     assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope1, 0, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_doe_mrid(scope1, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_function_set_assignment_mrid(scope1, 0, 0), all_generated_mrids)
-    for prt in PricingReadingType:
-        assert_and_append_mrid(
-            MridMapper.encode_rate_component_mrid(scope1, 0, 0, datetime.min.replace(tzinfo=timezone.utc), prt),
-            all_generated_mrids,
-        )
-        assert_and_append_mrid(MridMapper.encode_time_tariff_interval_mrid(scope1, 0, prt), all_generated_mrids)
+    assert_and_append_mrid(MridMapper.encode_rate_component_mrid(scope1, 0, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_tariff_profile_mrid(scope1, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_response_set_mrid(scope1, 0), all_generated_mrids)
 
@@ -254,47 +249,17 @@ def test_encode_rate_component_mrid():
 
     all_generated_mrids = []
 
-    for scope, tariff_id, site_id, timestamp, prt in product(
+    for scope, tariff_component_id, site_id in product(
         [scope1, scope2],
         [0, 123, MAX_INT_32],
         [0, 123, MAX_INT_32],
-        [
-            datetime(2000, 1, 1, tzinfo=timezone.utc),
-            datetime(2000, 1, 1, tzinfo=timezone.utc) - timedelta(minutes=1),
-            datetime(2000, 1, 1, tzinfo=timezone.utc) + timedelta(minutes=1),
-            datetime(2000, 1, 1, tzinfo=timezone.utc) + timedelta(minutes=MAX_INT_26 - 1),
-        ],
-        PricingReadingType,
     ):
         assert_and_append_mrid(
-            MridMapper.encode_rate_component_mrid(scope, tariff_id, site_id, timestamp, prt),
-            all_generated_mrids,
+            MridMapper.encode_rate_component_mrid(scope, tariff_component_id, site_id), all_generated_mrids
         )
 
     assert len(all_generated_mrids) == len(set(all_generated_mrids)), "Each MRID should be unique"
     assert all(decode_mrid_type(m) == MridType.RATE_COMPONENT for m in all_generated_mrids)
-
-
-def test_encode_rate_component_mrid_bad_pricing_reading_type():
-    """Checks that invalid values for pricing_reading_type raise ValueError"""
-    scope = generate_class_instance(BaseRequestScope)
-    tariff_id = 1
-    site_id = 2
-    timestamp = datetime(2024, 1, 2, tzinfo=timezone.utc)
-
-    # Valid values to act as a sanity check - these should all be OK
-    assert_mrid(MridMapper.encode_rate_component_mrid(scope, tariff_id, site_id, timestamp, 1))
-    assert_mrid(MridMapper.encode_rate_component_mrid(scope, tariff_id, site_id, timestamp, 2))
-    assert_mrid(MridMapper.encode_rate_component_mrid(scope, tariff_id, site_id, timestamp, 3))
-    assert_mrid(MridMapper.encode_rate_component_mrid(scope, tariff_id, site_id, timestamp, 4))
-
-    # This is our actual tests for out of range values
-    with pytest.raises(ValueError):
-        MridMapper.encode_rate_component_mrid(scope, tariff_id, site_id, timestamp, 0)
-    with pytest.raises(ValueError):
-        MridMapper.encode_rate_component_mrid(scope, tariff_id, site_id, timestamp, -1)
-    with pytest.raises(ValueError):
-        MridMapper.encode_rate_component_mrid(scope, tariff_id, site_id, timestamp, 5)  # Too high
 
 
 def test_encode_response_set_mrid():
@@ -375,11 +340,7 @@ def test_decode_and_validate_mrid_type():
     do_test(lambda s: MridMapper.encode_doe_program_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_doe_mrid(s, 1))
     do_test(lambda s: MridMapper.encode_function_set_assignment_mrid(s, 1, 2))
-    do_test(
-        lambda s: MridMapper.encode_rate_component_mrid(
-            s, 1, 2, datetime(2021, 2, 3, tzinfo=timezone.utc), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH
-        )
-    )
+    do_test(lambda s: MridMapper.encode_rate_component_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_time_tariff_interval_mrid(s, 1, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH))
     do_test(lambda s: MridMapper.encode_tariff_profile_mrid(s, 1))
     do_test(lambda s: MridMapper.encode_response_set_mrid(s, 1))
