@@ -1106,6 +1106,7 @@ async def test_add_or_update_readings_multiple_readings_no_mup_updates(pg_base_c
             phase=64,
             powerOfTenMultiplier=3,
             intervalLength=0,
+            commodity=2,
         ),  # Matches SiteReadingType #1 perfectly so no update required
         reading=reading1,
     )
