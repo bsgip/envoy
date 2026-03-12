@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
+from envoy_schema.server.schema.sep2.metering import ReadingType
 from envoy_schema.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
     ConsumptionTariffIntervalResponse,
@@ -89,6 +90,18 @@ class TariffProfileManager:
 
 
 class RateComponentManager:
+
+    @staticmethod
+    async def fetch_reading_type(
+        session: AsyncSession, scope: SiteRequestScope, tariff_id: int, rate_component_id: int
+    ) -> ReadingType:
+        """Fetches the ReadingType associated with a RateComponent"""
+
+        tc = await select_tariff_component_by_id(session, rate_component_id)
+        if tc is None or tc.tariff_id != tariff_id:
+            raise NotFoundError(f"Unable to find {rate_component_id=} for /edev/{scope.site_id}")
+
+        return RateComponentMapper.create_reading_type(scope, tc)
 
     @staticmethod
     async def fetch_rate_component(
