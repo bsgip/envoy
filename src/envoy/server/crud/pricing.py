@@ -189,22 +189,22 @@ async def count_active_rates_include_deleted(
     session: AsyncSession,
     tariff_id: int,
     tariff_component_id: Optional[int],
-    site: Site,
+    site_id: int,
     now: datetime,
-    changed_after: datetime,
+    changed_after: Optional[datetime],
 ) -> int:
     """Provides the count of records returned from select_active_rates_include_deleted (assuming no pagination).
 
     tariff_id: The parent TariffID to filter results to (only used if tariff_component_id is None)
     tariff_component_id: If specified - ONLY filter for results underneath this ID (tariff_id is NOT considered)
-    site: The site that the counted rates will be all be scoped from
+    site_id: The site that the counted rates will be all be scoped from
     now: The timestamp that excludes any rate whose end_time precedes this (they are expired and no longer relevant)
     changed_after: Only rates modified after this time will be counted."""
 
     count_active_rates_stmt = (
         select(func.count())
         .select_from(TariffGeneratedRate)
-        .where((TariffGeneratedRate.end_time > now) & (TariffGeneratedRate.site_id == site.site_id))
+        .where((TariffGeneratedRate.end_time > now) & (TariffGeneratedRate.site_id == site_id))
     )
     if tariff_component_id is None:
         count_active_rates_stmt = count_active_rates_stmt.where(TariffGeneratedRate.tariff_id == tariff_id)
@@ -218,7 +218,7 @@ async def count_active_rates_include_deleted(
         .select_from(ArchiveTariffGeneratedRate)
         .where(
             (ArchiveTariffGeneratedRate.end_time > now)
-            & (ArchiveTariffGeneratedRate.site_id == site.site_id)
+            & (ArchiveTariffGeneratedRate.site_id == site_id)
             & (ArchiveTariffGeneratedRate.deleted_time.is_not(None))
         )
     )
@@ -229,7 +229,7 @@ async def count_active_rates_include_deleted(
             ArchiveTariffGeneratedRate.tariff_component_id == tariff_component_id
         )
 
-    if changed_after != datetime.min:
+    if changed_after is not None and changed_after != datetime.min:
         # The "changed_time" for archives is actually the "deleted_time"
         count_active_rates_stmt = count_active_rates_stmt.where(TariffGeneratedRate.changed_time >= changed_after)
         count_archive_rates_stmt = count_archive_rates_stmt.where(
@@ -249,7 +249,7 @@ async def select_active_rates_include_deleted(
     site: Site,
     now: datetime,
     start: int,
-    changed_after: datetime,
+    changed_after: Optional[datetime],
     limit: Optional[int],
 ) -> list[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]]:
     """Fetches TariffGeneratedRate from its primary table AND archive according to the specified filter criteria. Only
@@ -316,7 +316,7 @@ async def select_active_rates_include_deleted(
             ArchiveTariffGeneratedRate.tariff_component_id == tariff_component_id
         )
 
-    if changed_after != datetime.min:
+    if changed_after is not None and changed_after != datetime.min:
         # The "changed_time" for archives is actually the "deleted_time"
         select_active_rates = select_active_rates.where(TariffGeneratedRate.changed_time >= changed_after)
         select_archive_rates = select_archive_rates.where(ArchiveTariffGeneratedRate.deleted_time >= changed_after)

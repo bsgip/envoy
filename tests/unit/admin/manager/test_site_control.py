@@ -22,6 +22,7 @@ from envoy.server.model.doe import SiteControlGroupDefault
                 load_limit_watts=UpdateDefaultValue(value=None),
                 generation_limit_watts=UpdateDefaultValue(value=None),
                 ramp_rate_percent_per_second=UpdateDefaultValue(value=None),
+                storage_target_watts=UpdateDefaultValue(value=None),
             ),
         ),
         (
@@ -32,6 +33,7 @@ from envoy.server.model.doe import SiteControlGroupDefault
                 load_limit_watts=UpdateDefaultValue(value=Decimal(13)),
                 generation_limit_watts=UpdateDefaultValue(value=Decimal(14)),
                 ramp_rate_percent_per_second=UpdateDefaultValue(value=Decimal(15)),
+                storage_target_watts=UpdateDefaultValue(value=Decimal(16)),
             ),
         ),
         (
@@ -42,6 +44,7 @@ from envoy.server.model.doe import SiteControlGroupDefault
                 load_limit_watts=UpdateDefaultValue(value=Decimal(13)),
                 generation_limit_watts=UpdateDefaultValue(value=Decimal(14)),
                 ramp_rate_percent_per_second=UpdateDefaultValue(value=Decimal(15)),
+                storage_target_watts=UpdateDefaultValue(value=Decimal(16)),
             ),
         ),
         (
@@ -52,6 +55,7 @@ from envoy.server.model.doe import SiteControlGroupDefault
                 load_limit_watts=UpdateDefaultValue(value=Decimal(13)),
                 generation_limit_watts=UpdateDefaultValue(value=Decimal(14)),
                 ramp_rate_percent_per_second=UpdateDefaultValue(value=Decimal(15)),
+                storage_target_watts=UpdateDefaultValue(value=Decimal(16)),
             ),
         ),
     ],

@@ -44,7 +44,6 @@ from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import InvalidMappingError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.common import generate_href, remove_href_prefix
-from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.csip_aus.doe import DefaultDERControl, DERControlMapper, DERProgramMapper
 from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMapper, DERSettingMapper, DERStatusMapper
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
@@ -560,7 +559,6 @@ class NotificationMapper:
     def map_rates_to_response(
         tariff_id: int,
         day: date,
-        pricing_reading_type: PricingReadingType,
         rates: Sequence[TariffGeneratedRate],
         sub: Subscription,
         scope: AggregatorRequestScope,
@@ -573,7 +571,6 @@ class NotificationMapper:
             site_id=scope.display_site_id,
             tariff_id=tariff_id,
             rate_component_id=day.isoformat(),
-            pricing_reading=int(pricing_reading_type),
         )
         return Notification.model_validate(
             {

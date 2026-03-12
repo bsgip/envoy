@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from envoy.server.mapper.constants import MridType, PricingReadingType, ResponseSetType
+from envoy.server.mapper.constants import MridType, ResponseSetType
 from envoy.server.model.doe import SiteControlGroupDefault
 from envoy.server.request_scope import BaseRequestScope
 
@@ -151,22 +151,12 @@ class MridMapper:
         return encode_mrid(MridType.RATE_COMPONENT, tariff_component_id_shifted | site_id_shifted, scope.iana_pen)
 
     @staticmethod
-    def encode_time_tariff_interval_mrid(
-        scope: BaseRequestScope, tariff_generated_rate_id: int, pricing_reading_type: PricingReadingType
-    ) -> str:
+    def encode_time_tariff_interval_mrid(scope: BaseRequestScope, tariff_generated_rate_id: int) -> str:
         """Encodes a valid MRID for a specific tariff generated rate
 
-        tariff_generated_rate_id: max value is expected to be a 64 bit unsigned int.
-        pricing_reading_type: Only supports a maximum of 4 unique values"""
+        tariff_generated_rate_id: max value is expected to be a 64 bit unsigned int."""
 
-        # Top 2 bits are for pricing reading type
-        # Remaining 90 bits are for tariff_generated_rate_id (which will use at most 64)
-        prt_int = int(pricing_reading_type) - 1
-        if prt_int < 0 or prt_int >= 4:
-            raise ValueError(f"Invalid PricingReadingType value of {prt_int}. Expected a value in range [0, 3]")
-
-        id = (prt_int << 90) | (tariff_generated_rate_id & MAX_INT_64)
-        return encode_mrid(MridType.TIME_TARIFF_INTERVAL, id, scope.iana_pen)
+        return encode_mrid(MridType.TIME_TARIFF_INTERVAL, tariff_generated_rate_id & MAX_INT_64, scope.iana_pen)
 
     @staticmethod
     def encode_response_set_mrid(scope: BaseRequestScope, response_set_type: ResponseSetType) -> str:
@@ -218,15 +208,14 @@ class MridMapper:
         return decode_mrid_id(mrid)
 
     @staticmethod
-    def decode_time_tariff_interval_mrid(mrid: str) -> tuple[PricingReadingType, int]:
+    def decode_time_tariff_interval_mrid(mrid: str) -> int:
         """Attempts to decode the ID component of the specified mrid.
 
         This function assumes it's a MridType.TIME_TARIFF_INTERVAL encoding. Failure to check this before will
         result in undefined behaviour.
 
-        returns the PricingReadingType AND TariffGeneratedRate.tariff_generated_rate_id"""
+        returns the TariffGeneratedRate.tariff_generated_rate_id"""
         if not mrid or len(mrid) != 32:
             raise ValueError("Expected mrid to have 32 hex characters")
 
-        id = decode_mrid_id(mrid)
-        return (PricingReadingType((id >> 90) + 1), id & 0xFFFFFFFFFFFFFFFF)
+        return decode_mrid_id(mrid)

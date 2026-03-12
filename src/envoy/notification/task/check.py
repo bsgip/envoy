@@ -39,7 +39,6 @@ from envoy.notification.handler import broker_dependency, href_prefix_dependency
 from envoy.notification.task.transmit import transmit_notification
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.server import RuntimeServerConfigManager, _map_server_config
-from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper, NotificationType, SubscriptionMapper
 from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.doe import DynamicOperatingEnvelope
@@ -73,7 +72,6 @@ class NotificationEntities(Generic[TResourceModel]):
     notification_id: UUID  # Unique ID for this notification (to detect retries)
     notification_type: NotificationType  # Is this notification for a change in or deletion of these entities
     batch_key: tuple  # The batch key representing this particular batch of entities (see get_batch_key())
-    pricing_reading_type: Optional[PricingReadingType]
 
 
 T = TypeVar("T")
@@ -228,7 +226,6 @@ def entities_to_notification(
     href_prefix: Optional[str],
     notification_type: NotificationType,
     entities: Sequence[TResourceModel],
-    pricing_reading_type: Optional[PricingReadingType],
     config: RuntimeServerConfig,
 ) -> Sep2Notification:
     """Givens a subscription and associated entities - generate the notification content that will be sent out"""

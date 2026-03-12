@@ -18,7 +18,6 @@ from envoy_schema.server.schema.sep2.pricing import (
 )
 from httpx import AsyncClient
 
-from envoy.server.mapper.constants import PricingReadingType
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
@@ -28,22 +27,6 @@ from tests.integration.response import assert_error_response, assert_response_he
 @pytest.fixture
 def agg_1_headers():
     return {cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize("price_reading_type", PricingReadingType)
-async def test_get_pricingreadingtype(client: AsyncClient, price_reading_type: PricingReadingType, agg_1_headers):
-    """Checks we get a valid pricing reading type for each enum value."""
-    path = uri.PricingReadingTypeUri.format(reading_type=price_reading_type.value)
-    response = await client.get(path, headers=agg_1_headers)
-    assert_response_header(response, HTTPStatus.OK)
-    body = read_response_body_string(response)
-    assert len(body) > 0
-
-    # The unit tests will do the heavy lifting - this is just a sanity check
-    parsed_response: ReadingType = ReadingType.from_xml(body)
-    assert parsed_response.commodity
-    assert parsed_response.flowDirection
 
 
 @pytest.mark.anyio

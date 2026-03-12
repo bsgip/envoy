@@ -390,10 +390,12 @@ async def test_select_tariff_generated_rate_for_scope_la_timezone(
     [
         # Site #1 - ANY TC
         ([6, 1, 2, 3, 8, 9], 6, 1, None, 1, BASE, 0, datetime.min, 99),
+        ([6, 1, 2, 3, 8, 9], 6, 1, None, 1, BASE, 0, None, 99),
         # Site #1 - TC #1
         ([1, 2, 3, 8, 9], 5, 1, 1, 1, BASE, 0, datetime.min, 99),
         # Site #1 - TC #2
         ([6], 1, 1, 2, 1, BASE, 0, datetime.min, 99),
+        ([6], 1, 1, 2, 1, BASE, 0, None, 99),
         # Site #1 - TC #3
         ([], 0, 1, 3, 1, BASE, 0, datetime.min, 99),
         # Site #1 - TC #DNE
@@ -427,7 +429,7 @@ async def test_select_and_count_active_rates_include_deleted(
     site_id: int,
     now: datetime,
     start: int,
-    changed_after: datetime,
+    changed_after: Optional[datetime],
     limit: int,
 ):
     """Tests that count_active_rates_include_deleted and select_active_rates_include_deleted both handle archives
@@ -459,7 +461,7 @@ async def test_select_and_count_active_rates_include_deleted(
             session,
             tariff_id=tariff_id,
             tariff_component_id=tariff_component_id,
-            site=existing_site,
+            site_id=site_id,
             now=now,
             changed_after=changed_after,
         )

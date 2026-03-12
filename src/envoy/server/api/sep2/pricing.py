@@ -22,8 +22,6 @@ from envoy.server.manager.pricing import (
     TimeTariffIntervalManager,
 )
 from envoy.server.mapper.common import generate_href
-from envoy.server.mapper.constants import PricingReadingType
-from envoy.server.mapper.sep2.pricing import PricingReadingTypeMapper
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +30,7 @@ router = APIRouter()
 
 @router.head(uri.PricingReadingTypeUri)
 @router.get(uri.PricingReadingTypeUri, status_code=HTTPStatus.OK)
-async def get_pricingreadingtype(request: Request, reading_type: PricingReadingType) -> XmlResponse:
+async def get_pricingreadingtype(request: Request) -> XmlResponse:
     """Responds with ReadingType describing the priced type of reading. This is to handle the ReadingType link
     referenced href callback from RateComponent.ReadingTypeLink.
 
@@ -261,7 +259,7 @@ async def get_ratecomponentlist(
 @router.head(uri.RateComponentUri)
 @router.get(uri.RateComponentUri, status_code=HTTPStatus.OK)
 async def get_singleratecomponent(
-    tariff_id: int, site_id: int, rate_component_id: str, pricing_reading: PricingReadingType, request: Request
+    tariff_id: int, site_id: int, rate_component_id: str, request: Request
 ) -> XmlResponse:
     """Responds with a single RateComponent resource identified by the parent tariff_id and target rate_component_id.
 
@@ -299,7 +297,6 @@ async def get_timetariffintervallist(
     tariff_id: int,
     site_id: int,
     rate_component_id: str,
-    pricing_reading: PricingReadingType,
     request: Request,
     start: list[int] = Query([0], alias="s"),
     after: list[int] = Query([0], alias="a"),
@@ -344,7 +341,6 @@ async def get_singletimetariffinterval(
     tariff_id: int,
     site_id: int,
     rate_component_id: str,
-    pricing_reading: PricingReadingType,
     tti_id: str,
     request: Request,
 ) -> XmlResponse:
@@ -387,7 +383,6 @@ async def get_consumptiontariffintervallist(
     tariff_id: int,
     site_id: int,
     rate_component_id: str,
-    pricing_reading: PricingReadingType,
     tti_id: str,
     sep2_price: int,
     request: Request,
@@ -440,7 +435,6 @@ async def get_singleconsumptiontariffinterval(
     tariff_id: int,
     site_id: int,
     rate_component_id: str,
-    pricing_reading: PricingReadingType,
     tti_id: str,
     sep2_price: int,
     request: Request,

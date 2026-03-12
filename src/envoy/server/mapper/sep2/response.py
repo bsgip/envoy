@@ -12,7 +12,7 @@ from envoy_schema.server.schema.sep2.response import (
 )
 
 from envoy.server.mapper.common import generate_href
-from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
+from envoy.server.mapper.constants import ResponseSetType
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope
@@ -78,16 +78,12 @@ class ResponseMapper:
             createdDateTime=int(rate_response.created_time.timestamp()),
             endDeviceLFDI=rate_response.site.lfdi,
             status=rate_response.response_type,
-            subject=MridMapper.encode_time_tariff_interval_mrid(
-                scope, rate_response.tariff_generated_rate_id_snapshot, rate_response.pricing_reading_type
-            ),
+            subject=MridMapper.encode_time_tariff_interval_mrid(scope, rate_response.tariff_generated_rate_id_snapshot),
         )
 
     @staticmethod
     def map_from_price_request(
-        r: Union[PriceResponse, Response],
-        tariff_generated_rate: TariffGeneratedRate,
-        pricing_reading_type: PricingReadingType,
+        r: Union[PriceResponse, Response], tariff_generated_rate: TariffGeneratedRate
     ) -> TariffGeneratedRateResponse:
         """Maps a sep2 PriceResponse to an internal TariffGeneratedRateResponse model that references a specific
         PricingReadingType within a TariffGeneratedRate"""
@@ -97,7 +93,6 @@ class ResponseMapper:
             tariff_generated_rate_id_snapshot=tariff_generated_rate.tariff_generated_rate_id,
             site_id=tariff_generated_rate.site_id,
             response_type=r.status,
-            pricing_reading_type=pricing_reading_type,
         )
 
     @staticmethod

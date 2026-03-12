@@ -41,7 +41,6 @@ from envoy_schema.server.schema.uri import (
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
-from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.csip_aus.doe import DERControlMapper
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.pub_sub import (

@@ -2,10 +2,9 @@ from datetime import datetime
 from typing import Optional
 
 from envoy_schema.server.schema.sep2.response import ResponseType
-from sqlalchemy import INTEGER, SMALLINT, BigInteger, DateTime, ForeignKey, Index, func
+from sqlalchemy import INTEGER, BigInteger, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.model.base import Base
 from envoy.server.model.site import Site
 
@@ -54,9 +53,6 @@ class TariffGeneratedRateResponse(Base):
     )  # When the response was created
 
     response_type: Mapped[Optional[ResponseType]] = mapped_column(INTEGER, nullable=True)
-    pricing_reading_type: Mapped[PricingReadingType] = mapped_column(
-        SMALLINT
-    )  # The specific price component being responded to (eg: is it for the active price in a TariffGeneratedRate)
 
     site: Mapped[Site] = relationship(lazy="raise")
 

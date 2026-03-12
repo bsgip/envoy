@@ -5,7 +5,7 @@ from typing import Callable
 import pytest
 from assertical.fake.generator import generate_class_instance
 
-from envoy.server.mapper.constants import MridType, PricingReadingType, ResponseSetType
+from envoy.server.mapper.constants import MridType, ResponseSetType
 from envoy.server.mapper.sep2.mrid import (
     MAX_IANA_PEN,
     MAX_INT_26,
@@ -357,14 +357,12 @@ def test_decode_doe_mrid(doe_id: int):
     assert decoded_id == doe_id
 
 
-@pytest.mark.parametrize("rate_id, prt", product([0, MAX_INT_32, MAX_INT_64, 123, 4], PricingReadingType))
-def test_decode_time_tariff_interval_mrid(rate_id: int, prt: PricingReadingType):
+@pytest.mark.parametrize("rate_id", product([0, MAX_INT_32, MAX_INT_64, 123, 4]))
+def test_decode_time_tariff_interval_mrid(rate_id: int):
     scope = generate_class_instance(BaseRequestScope)
-    mrid = MridMapper.encode_time_tariff_interval_mrid(scope, rate_id, prt)
+    mrid = MridMapper.encode_time_tariff_interval_mrid(scope, rate_id)
     assert_mrid(mrid)
-    decoded_prt, decoded_id = MridMapper.decode_time_tariff_interval_mrid(mrid)
+    decoded_id = MridMapper.decode_time_tariff_interval_mrid(mrid)
 
     assert isinstance(decoded_id, int)
-    assert isinstance(decoded_prt, PricingReadingType)
     assert decoded_id == rate_id
-    assert decoded_prt == prt

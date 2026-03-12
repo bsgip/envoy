@@ -1,14 +1,13 @@
-from datetime import date, datetime, time, timezone
-from decimal import Decimal
-from itertools import islice, product
-from typing import Iterator, Optional, Sequence, cast
+from datetime import datetime
+from typing import Iterator, Optional, Sequence, Union
 
 from envoy_schema.server.schema import uri
-from envoy_schema.server.schema.sep2.event import EventStatus
+from envoy_schema.server.schema.sep2.event import EventStatus, EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.metering import ReadingType
 from envoy_schema.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
+    ConsumptionTariffIntervalListSummaryResponse,
     ConsumptionTariffIntervalResponse,
     RateComponentListResponse,
     RateComponentResponse,
@@ -18,25 +17,23 @@ from envoy_schema.server.schema.sep2.pricing import (
     TimeTariffIntervalResponse,
 )
 from envoy_schema.server.schema.sep2.types import (
-    CommodityType,
     ConsumptionBlockType,
-    FlowDirectionType,
-    PrimacyType,
-    RoleFlagsType,
+    DateTimeIntervalType,
     ServiceKind,
     SubscribableType,
     TOUType,
-    UomType,
 )
 
-from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.constants import ResponseSetType
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
-from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
+
+CONSUMPTION_TARIFF_INTERVAL_ID = 1  # This is a constant - our implementation only ever has a single CTI per price
 
 
 class TariffProfileMapper:
@@ -99,13 +96,11 @@ class TariffProfileMapper:
                 fsa_id=fsa_id,
             )
 
-        return TariffProfileListResponse.model_validate(
-            {
-                "href": href,
-                "all_": total_tariffs,
-                "results": tariffs_count,
-                "TariffProfile": tariff_profiles,
-            }
+        return TariffProfileListResponse(
+            href=href,
+            all_=total_tariffs,
+            results=tariffs_count,
+            TariffProfile=tariff_profiles,
         )
 
 
@@ -133,238 +128,221 @@ class RateComponentMapper:
         )
 
     @staticmethod
-    def map_to_response(scope: DeviceOrAggregatorRequestScope, tc: TariffComponent) -> RateComponentResponse:
+    def map_to_response(
+        scope: DeviceOrAggregatorRequestScope, tc: TariffComponent, total_rates: int
+    ) -> RateComponentResponse:
         """Maps/Creates a single rate component response describing a commodity being priced"""
 
-        rc_href = generate_href(
+        rate_component_href = generate_href(
             uri.RateComponentUri,
             scope,
             site_id=scope.display_site_id,
             tariff_id=tc.tariff_id,
             rate_component_id=tc.tariff_component_id,
         )
+        reading_type_link = generate_href(
+            uri.PricingReadingTypeUri,
+            scope,
+            site_id=scope.display_site_id,
+            tariff_id=tc.tariff_id,
+            rate_component_id=tc.tariff_component_id,
+        )
+        tti_link = generate_href(
+            uri.TimeTariffIntervalListUri,
+            scope,
+            site_id=scope.display_site_id,
+            tariff_id=tc.tariff_id,
+            rate_component_id=tc.tariff_component_id,
+        )
+
+        role_flags = to_hex_binary(tc.role_flags)
+        if role_flags is None:
+            role_flags = "00"
+
         return RateComponentResponse(
-            href=rc_href,
-            mRID=MridMapper.encode_rate_component_mrid(scope, tariff_id, scope.site_id, start_time, pricing_reading),
-            description=pricing_reading.name,
-            roleFlags=to_hex_binary(RoleFlagsType.NONE),
-            ReadingTypeLink=Link(href=PricingReadingTypeMapper.pricing_reading_type_href(scope, pricing_reading)),
-            TimeTariffIntervalListLink=ListLink(href=rc_href + "/tti"),
+            href=rate_component_href,
+            mRID=MridMapper.encode_rate_component_mrid(scope, tc.tariff_component_id, scope.display_site_id),
+            description=tc.description,
+            roleFlags=role_flags,
+            ReadingTypeLink=Link(href=reading_type_link),
+            TimeTariffIntervalListLink=ListLink(href=tti_link, all_=total_rates),
         )
 
     @staticmethod
     def map_to_list_response(
         scope: SiteRequestScope,
-        unique_rate_days: list[date],
-        total_unique_rate_days: int,
-        skip_start: int,
-        skip_end: int,
         tariff_id: int,
+        tariff_components_with_count: list[tuple[TariffComponent, int]],
+        total_tariff_components: int,
     ) -> RateComponentListResponse:
-        """Maps/creates a set of rate components under a RateComponentListResponse for a set of rate totals
-        organised by date"""
-        rc_list = []
-        iterator = islice(
-            product(unique_rate_days, PricingReadingType),  # Iterator
-            skip_start,  # Start index
-            (len(unique_rate_days) * TOTAL_PRICING_READING_TYPES) - skip_end,  # End
-        )
-        for day, pricing_type in iterator:
-            rc_list.append(RateComponentMapper.map_to_response(scope, tariff_id, pricing_type, day))
+        """Maps/creates a set of rate components under a RateComponentListResponse for a set of TariffComponents with
+        their associated count of child TariffGeneratedRate"""
 
-        return RateComponentListResponse.model_validate(
-            {
-                "all_": total_unique_rate_days * TOTAL_PRICING_READING_TYPES,
-                "results": len(rc_list),
-                "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
-                "RateComponent": rc_list,
-            }
+        list_href = generate_href(
+            uri.RateComponentListUri,
+            scope,
+            site_id=scope.display_site_id,
+            tariff_id=tariff_id,
+        )
+
+        return RateComponentListResponse(
+            href=list_href,
+            all_=total_tariff_components,
+            results=len(tariff_components_with_count),
+            subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
+            RateComponent=[
+                RateComponentMapper.map_to_response(scope, tc, rate_count)
+                for tc, rate_count in tariff_components_with_count
+            ],
         )
 
 
 class ConsumptionTariffIntervalMapper:
-    """This is a fully 'Virtual' entity that doesn't exist in the DB. Instead we create them based on a fixed price"""
-
-    @staticmethod
-    def database_price_to_sep2(price: Decimal) -> int:
-        """Converts a database price ($1.2345) to a sep2 price integer by multiplying it by the price power of 10
-        according to the value of PRICE_DECIMAL_PLACES"""
-        return int(price * PRICE_DECIMAL_POWER)
-
-    @staticmethod
-    def instance_href(
-        scope: DeviceOrAggregatorRequestScope,
-        tariff_id: int,
-        pricing_reading: PricingReadingType,
-        day: date,
-        time_of_day: time,
-        price: Decimal,
-    ) -> str:
-        """Returns the href for a single instance of a ConsumptionTariffIntervalResponse at a set price
-
-        This endpoint is designed to operate independent of a particular scope to allow encoding of multiple
-        different sites. It's the responsibility of the caller to validate the scope before calling this."""
-        base = ConsumptionTariffIntervalMapper.list_href(
-            scope, tariff_id, scope.display_site_id, pricing_reading, day, time_of_day, price
-        )
-        return f"{base}/1"
-
-    @staticmethod
-    def list_href(
-        scope: BaseRequestScope,
-        tariff_id: int,
-        tariff_site_id: int,
-        pricing_reading: PricingReadingType,
-        day: date,
-        time_of_day: time,
-        price: Decimal,
-    ) -> str:
-        """Returns the href for a list that will hold a single instance of a ConsumptionTariffIntervalResponse at a
-        set price
-
-        This endpoint is designed to operate independent of a particular scope to allow encoding of multiple
-        different sites. It's the responsibility of the caller to validate the scope before calling this."""
-        rate_component_id = day.isoformat()
-        tti_id = time_of_day.isoformat("minutes")
-        sep2_price = ConsumptionTariffIntervalMapper.database_price_to_sep2(price)
-        return generate_href(
-            uri.ConsumptionTariffIntervalListUri,
-            scope,
-            tariff_id=tariff_id,
-            site_id=tariff_site_id,
-            rate_component_id=rate_component_id,
-            pricing_reading=pricing_reading,
-            tti_id=tti_id,
-            sep2_price=sep2_price,
-        )
+    """This is a fully 'Virtual' entity that doesn't exist in the DB. Instead we create them based on a
+    TariffGeneratedRate (i.e. each TariffGeneratedRate is just a single price)"""
 
     @staticmethod
     def map_to_response(
-        scope: SiteRequestScope,
-        tariff_id: int,
-        pricing_rt: PricingReadingType,
-        day: date,
-        time_of_day: time,
-        price: Decimal,
+        scope: DeviceOrAggregatorRequestScope, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate, cti_id: int
     ) -> ConsumptionTariffIntervalResponse:
-        """Returns a ConsumptionTariffIntervalResponse with price being set to an integer by adjusting to
-        PRICE_DECIMAL_PLACES"""
-        href = ConsumptionTariffIntervalMapper.instance_href(scope, tariff_id, pricing_rt, day, time_of_day, price)
-        return ConsumptionTariffIntervalResponse.model_validate(
-            {
-                "href": href,
-                "consumptionBlock": ConsumptionBlockType.NOT_APPLICABLE,
-                "price": ConsumptionTariffIntervalMapper.database_price_to_sep2(price),
-                "startValue": 0,
-            }
+        """Returns a ConsumptionTariffIntervalResponse with the nominated ID"""
+        href = generate_href(
+            uri.ConsumptionTariffIntervalUri,
+            scope,
+            site_id=scope.display_site_id,
+            tariff_id=rate.tariff_id,
+            rate_component_id=rate.tariff_component_id,
+            tti_id=rate.tariff_generated_rate_id,
+            cti_id=cti_id,
+        )
+        return ConsumptionTariffIntervalResponse(
+            href=href,
+            consumptionBlock=ConsumptionBlockType.NOT_APPLICABLE,
+            price=rate.price_pow10_encoded,
+            startValue=0,
         )
 
     @staticmethod
     def map_to_list_response(
-        scope: SiteRequestScope,
-        tariff_id: int,
-        pricing_rt: PricingReadingType,
-        day: date,
-        time_of_day: time,
-        price: Decimal,
+        scope: DeviceOrAggregatorRequestScope, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate
     ) -> ConsumptionTariffIntervalListResponse:
-        """Returns a ConsumptionTariffIntervalListResponse with price being set to an integer by adjusting to
-        PRICE_DECIMAL_PLACES"""
-        href = ConsumptionTariffIntervalMapper.list_href(
-            scope, tariff_id, scope.site_id, pricing_rt, day, time_of_day, price
+        """Returns a singleton list containing the one ConsumptionTariffIntervalResponse representing rate"""
+        href = generate_href(
+            uri.ConsumptionTariffIntervalListUri,
+            scope,
+            site_id=scope.display_site_id,
+            tariff_id=rate.tariff_id,
+            rate_component_id=rate.tariff_component_id,
+            tti_id=rate.tariff_generated_rate_id,
         )
-        cti = ConsumptionTariffIntervalMapper.map_to_response(scope, tariff_id, pricing_rt, day, time_of_day, price)
-        return ConsumptionTariffIntervalListResponse.model_validate(
-            {"href": href, "all_": 1, "results": 1, "ConsumptionTariffInterval": [cti]}
-        )
+        cti = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, CONSUMPTION_TARIFF_INTERVAL_ID)
+        return ConsumptionTariffIntervalListResponse(href=href, all_=1, results=1, ConsumptionTariffInterval=[cti])
+
+    @staticmethod
+    def map_to_summary_list_response(
+        scope: DeviceOrAggregatorRequestScope, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate
+    ) -> ConsumptionTariffIntervalListSummaryResponse:
+        """Returns a singleton list containing the one ConsumptionTariffIntervalResponse representing rate"""
+        cti = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, CONSUMPTION_TARIFF_INTERVAL_ID)
+        return ConsumptionTariffIntervalListSummaryResponse(all_=1, results=1, ConsumptionTariffInterval=[cti])
 
 
 class TimeTariffIntervalMapper:
-    @staticmethod
-    def instance_href(
-        scope: BaseRequestScope,
-        tariff_id: int,
-        tariff_site_id: int,
-        day: date,
-        pricing_reading: PricingReadingType,
-        time_of_day: time,
-    ) -> str:
-        """Creates a href that identifies a single TimeTariffIntervalResponse with the specified values.
-
-        This endpoint is designed to operate independent of a particular scope to allow encoding of multiple
-        different sites. It's the responsibility of the caller to validate the scope before calling this."""
-        rate_component_id = day.isoformat()
-        tti_id = time_of_day.isoformat("minutes")
-        return generate_href(
-            uri.TimeTariffIntervalUri,
-            scope,
-            tariff_id=tariff_id,
-            site_id=tariff_site_id,
-            rate_component_id=rate_component_id,
-            pricing_reading=pricing_reading,
-            tti_id=tti_id,
-        )
 
     @staticmethod
     def map_to_response(
-        scope: BaseRequestScope, rate: TariffGeneratedRate, pricing_reading: PricingReadingType
+        scope: DeviceOrAggregatorRequestScope, now: datetime, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate
     ) -> TimeTariffIntervalResponse:
-        """Creates a new TimeTariffIntervalResponse for the given rate and specific price reading"""
-        start_d = rate.start_time.date()
-        start_t = rate.start_time.time()
-        price = PricingReadingTypeMapper.extract_price(pricing_reading, rate)
-        href = TimeTariffIntervalMapper.instance_href(
-            scope, rate.tariff_id, rate.site_id, start_d, pricing_reading, start_t
+        """Creates a new TimeTariffIntervalResponse for the given rate"""
+        href = generate_href(
+            uri.TimeTariffIntervalUri,
+            scope,
+            site_id=scope.display_site_id,
+            tariff_id=rate.tariff_id,
+            rate_component_id=rate.tariff_component_id,
+            tti_id=rate.tariff_generated_rate_id,
         )
-        list_href = ConsumptionTariffIntervalMapper.list_href(
-            scope, rate.tariff_id, rate.site_id, pricing_reading, start_d, start_t, price
+        cti_list_href = generate_href(
+            uri.ConsumptionTariffIntervalListUri,
+            scope,
+            site_id=scope.display_site_id,
+            tariff_id=rate.tariff_id,
+            rate_component_id=rate.tariff_component_id,
+            tti_id=rate.tariff_generated_rate_id,
+        )
+        rate_component_href = generate_href(
+            uri.RateComponentUri,
+            scope,
+            site_id=scope.display_site_id,
+            tariff_id=rate.tariff_id,
+            rate_component_id=rate.tariff_component_id,
         )
 
-        return TimeTariffIntervalResponse.model_validate(
-            {
-                "href": href,
-                "mRID": MridMapper.encode_time_tariff_interval_mrid(
-                    scope,
-                    rate.tariff_generated_rate_id,
-                    pricing_reading,
-                ),
-                "version": 0,
-                "description": rate.start_time.isoformat(),
-                "touTier": TOUType.NOT_APPLICABLE,
-                "creationTime": int(rate.changed_time.timestamp()),
-                "replyTo": ResponseListMapper.response_list_href(
-                    scope, rate.site_id, ResponseSetType.TARIFF_GENERATED_RATES
-                ),  # Response function set
-                "responseRequired": SPECIFIC_RESPONSE_REQUIRED,  # Response function set
-                "interval": {
-                    "start": int(rate.start_time.timestamp()),
-                    "duration": rate.duration_seconds,
-                },
-                "EventStatus_": EventStatus.model_validate(
-                    {
-                        "currentStatus": 0,  # Set to 'scheduled'
-                        "dateTime": int(rate.changed_time.timestamp()),  # Set to when it is created
-                        "potentiallySuperseded": False,
-                    }
-                ),
-                "ConsumptionTariffIntervalListLink": ListLink(href=list_href, all_=1),  # single rate
-            }
+        is_active = rate.start_time <= now
+        event_status: int
+        event_status_time: datetime
+        if isinstance(rate, ArchiveTariffGeneratedRate) and rate.deleted_time is not None:
+            # This is a deleted rate
+            event_status = EventStatusType.Cancelled
+            event_status_time = rate.deleted_time
+        else:
+            # This is either a schedule / active DOE
+            event_status = EventStatusType.Active if is_active else EventStatusType.Scheduled
+            event_status_time = rate.changed_time
+
+        return TimeTariffIntervalResponse(
+            href=href,
+            mRID=MridMapper.encode_time_tariff_interval_mrid(scope, rate.tariff_generated_rate_id),
+            version=0,
+            touTier=TOUType.NOT_APPLICABLE,
+            creationTime=int(rate.changed_time.timestamp()),
+            replyTo=ResponseListMapper.response_list_href(
+                scope, rate.site_id, ResponseSetType.TARIFF_GENERATED_RATES
+            ),  # Response function set
+            responseRequired=SPECIFIC_RESPONSE_REQUIRED,  # Response function set
+            interval=DateTimeIntervalType(
+                start=int(rate.start_time.timestamp()),
+                duration=rate.duration_seconds,
+            ),
+            EventStatus_=EventStatus(
+                currentStatus=event_status,
+                dateTime=int(event_status_time.timestamp()),
+                potentiallySuperseded=False,
+            ),
+            ConsumptionTariffIntervalListLink=ListLink(href=cti_list_href, all_=1),  # single rate
+            RateComponentLink=Link(href=rate_component_href),  # csip-aus v1.3 extension
+            ConsumptionTariffIntervalListSummary=ConsumptionTariffIntervalMapper.map_to_summary_list_response(
+                scope, rate
+            ),  # csip-aus v1.3 extension
         )
 
     @staticmethod
     def map_to_list_response(
         scope: DeviceOrAggregatorRequestScope,
-        rates: Sequence[TariffGeneratedRate],
-        pricing_reading: PricingReadingType,
+        tariff_id: int,
+        tariff_component_id: Optional[int],
+        now: datetime,
+        rates: Sequence[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]],
         total: int,
     ) -> TimeTariffIntervalListResponse:
         """Creates a TimeTariffIntervalListResponse for a single set of rates."""
-        return TimeTariffIntervalListResponse.model_validate(
-            {
-                "all_": total,
-                "results": len(rates),
-                "TimeTariffInterval": [
-                    TimeTariffIntervalMapper.map_to_response(scope, rate, pricing_reading) for rate in rates
-                ],
-            }
+
+        if tariff_component_id is None:
+            href = generate_href(
+                uri.CombinedTimeTariffIntervalListUri, scope, site_id=scope.display_site_id, tariff_id=tariff_id
+            )
+        else:
+            href = generate_href(
+                uri.TimeTariffIntervalListUri,
+                scope,
+                site_id=scope.display_site_id,
+                tariff_id=tariff_id,
+                rate_component_id=tariff_component_id,
+            )
+
+        return TimeTariffIntervalListResponse(
+            href=href,
+            all_=total,
+            results=len(rates),
+            TimeTariffInterval=[TimeTariffIntervalMapper.map_to_response(scope, now, rate) for rate in rates],
         )
