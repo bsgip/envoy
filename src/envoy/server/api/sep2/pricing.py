@@ -38,7 +38,7 @@ async def get_pricingreadingtype(request: Request, site_id: int, tariff_id: int,
         fastapi.Response object.
     """
     try:
-        rt = RateComponentManager.fetch_reading_type(
+        rt = await RateComponentManager.fetch_reading_type(
             db.session,
             extract_request_claims(request).to_site_request_scope(site_id),
             tariff_id=tariff_id,
