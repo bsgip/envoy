@@ -78,7 +78,9 @@ class TariffProfileMapper:
         of rate components and active tariff rates
 
         This endpoint is designed to operate independent of a particular scope to allow encoding of multiple
-        different sites. It's the responsibility of the caller to validate the scope before calling this."""
+        different sites. It's the responsibility of the caller to validate the scope before calling this.
+
+        tariffs: Tuple in the form (tariff, rate_component_count, time_tariff_interval_count)"""
         tariff_profiles: list[TariffProfileResponse] = []
         tariffs_count: int = 0
         for tariff, rc_count, active_rates in tariffs:
