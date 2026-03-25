@@ -273,9 +273,19 @@ class ConsumptionTariffIntervalMapper:
     def map_to_summary_list_response(
         scope: DeviceOrAggregatorRequestScope, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate
     ) -> ConsumptionTariffIntervalListSummaryResponse:
-        """Returns a singleton list containing the one ConsumptionTariffIntervalResponse representing rate"""
-        cti = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, CONSUMPTION_TARIFF_INTERVAL_ID)
-        return ConsumptionTariffIntervalListSummaryResponse(all_=1, results=1, ConsumptionTariffInterval=[cti])
+        """Returns a list containing the ConsumptionTariffIntervalResponse(s) representing rate"""
+
+        if rate.block_1_start_pow10_encoded is not None and rate.price_pow10_encoded_block_1 is not None:
+            cti_block_0 = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, 1)
+            cti_block_1 = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, 2)
+            return ConsumptionTariffIntervalListSummaryResponse(
+                all_=2, results=2, ConsumptionTariffInterval=[cti_block_0, cti_block_1]
+            )
+        else:
+            cti_block_0 = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, 1)
+            return ConsumptionTariffIntervalListSummaryResponse(
+                all_=1, results=1, ConsumptionTariffInterval=[cti_block_0]
+            )
 
 
 class TimeTariffIntervalMapper:
@@ -321,6 +331,11 @@ class TimeTariffIntervalMapper:
             event_status = EventStatusType.Active if is_active else EventStatusType.Scheduled
             event_status_time = rate.changed_time
 
+        if rate.block_1_start_pow10_encoded is None or rate.price_pow10_encoded_block_1 is None:
+            total_consumption_blocks = 1
+        else:
+            total_consumption_blocks = 2
+
         return TimeTariffIntervalResponse(
             href=href,
             mRID=MridMapper.encode_time_tariff_interval_mrid(scope, rate.tariff_generated_rate_id),
@@ -340,7 +355,7 @@ class TimeTariffIntervalMapper:
                 dateTime=int(event_status_time.timestamp()),
                 potentiallySuperseded=False,
             ),
-            ConsumptionTariffIntervalListLink=ListLink(href=cti_list_href, all_=1),  # single rate
+            ConsumptionTariffIntervalListLink=ListLink(href=cti_list_href, all_=total_consumption_blocks),
             RateComponentLink=Link(href=rate_component_href),  # csip-aus v1.3 extension
             ConsumptionTariffIntervalListSummary=ConsumptionTariffIntervalMapper.map_to_summary_list_response(
                 scope, rate

@@ -182,10 +182,10 @@ class ResponseManager:
                 raise BadRequestError(f"{mrid_type} responses are not accepted to this list.")
 
             # We have a response targeting a tariff generated rate
-            pricing_reading_type, rate_id = MridMapper.decode_time_tariff_interval_mrid(response.subject)
+            rate_id = MridMapper.decode_time_tariff_interval_mrid(response.subject)
 
             # Validate the referenced tariff rate is accessible to this scope
-            tariff_generated_rate = await select_tariff_generated_rate_for_scope(
+            tariff_generated_rate = await select_tariff_generated_rate_include_deleted(
                 session, scope.aggregator_id, scope.site_id, rate_id
             )
             if tariff_generated_rate is None:
@@ -193,9 +193,7 @@ class ResponseManager:
                     f"subject '{response.subject}' references a price not available on this utility server"
                 )
 
-            rate_response = ResponseMapper.map_from_price_request(
-                cast(PriceResponse, response), tariff_generated_rate, pricing_reading_type
-            )
+            rate_response = ResponseMapper.map_from_price_request(cast(PriceResponse, response), tariff_generated_rate)
 
             # Once we commit, the object becomes mostly detached and can't be referenced. So we need to do any
             # remaining operations on it between flush and commit

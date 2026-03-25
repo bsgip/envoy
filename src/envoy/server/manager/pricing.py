@@ -48,6 +48,10 @@ class TariffProfileManager:
         if tariff is None:
             return None
 
+        site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
+        if site is None:
+            return None
+
         now = utc_now()
         total_components = await count_tariff_components_by_tariff(session, tariff_id, None)
         total_rates = await count_active_rates_include_deleted(
@@ -96,6 +100,10 @@ class RateComponentManager:
     ) -> ReadingType:
         """Fetches the ReadingType associated with a RateComponent"""
 
+        site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
+        if site is None:
+            raise NotFoundError(f"Unable to find {rate_component_id=} for /edev/{scope.site_id}")
+
         tc = await select_tariff_component_by_id(session, rate_component_id)
         if tc is None or tc.tariff_id != tariff_id:
             raise NotFoundError(f"Unable to find {rate_component_id=} for /edev/{scope.site_id}")
@@ -110,6 +118,10 @@ class RateComponentManager:
         rate_component_id: int,
     ) -> Optional[RateComponentResponse]:
         """Fetches a RateComponent underneath a specific tariff_id - returns None if it DNE"""
+
+        site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
+        if site is None:
+            return None
 
         tc = await select_tariff_component_by_id(session, rate_component_id)
         if tc is None or tc.tariff_id != tariff_id:
@@ -165,7 +177,11 @@ class TimeTariffIntervalManager:
 
         existing_site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
         if existing_site is None:
-            raise NotFoundError(f"/edev/{scope.site_id} does not exist / is inaccessible.")
+            raise NotFoundError(f"/edev/{scope.site_id} does not exist or is inaccessible.")
+
+        existing_rc = await select_tariff_component_by_id(session, rate_component_id)
+        if existing_rc is None or existing_rc.tariff_id != tariff_id:
+            raise NotFoundError(f"/rc/{rate_component_id} does not exist or is inaccessible to /tp/{tariff_id}.")
 
         now = utc_now()
         rates = await select_active_rates_include_deleted(

@@ -15,6 +15,7 @@ from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.constants import ResponseSetType
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -83,7 +84,7 @@ class ResponseMapper:
 
     @staticmethod
     def map_from_price_request(
-        r: Union[PriceResponse, Response], tariff_generated_rate: TariffGeneratedRate
+        r: Union[PriceResponse, Response], tariff_generated_rate: Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]
     ) -> TariffGeneratedRateResponse:
         """Maps a sep2 PriceResponse to an internal TariffGeneratedRateResponse model that references a specific
         PricingReadingType within a TariffGeneratedRate"""

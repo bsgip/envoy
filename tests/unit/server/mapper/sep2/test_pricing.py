@@ -251,12 +251,28 @@ def test_consumption_tariff_interval_map_to_summary_list_response(
 
     mapped = ConsumptionTariffIntervalMapper.map_to_summary_list_response(scope, rate)
     assert isinstance(mapped, ConsumptionTariffIntervalListSummaryResponse)
-    assert mapped.all_ == 1
-    assert mapped.results == 1
-    assert mapped.href is None, "No href for the summary list - it's not a dedicated resource"
-    assert_list_type(ConsumptionTariffIntervalResponse, mapped.ConsumptionTariffInterval, count=1)
 
-    assert mapped.ConsumptionTariffInterval[0].href.startswith("/pfx")
+    if rate.block_1_start_pow10_encoded is None or rate.price_pow10_encoded_block_1 is None:
+        assert mapped.all_ == 1
+        assert mapped.results == 1
+        assert_list_type(ConsumptionTariffIntervalResponse, mapped.ConsumptionTariffInterval, count=1)
+
+        assert mapped.ConsumptionTariffInterval[0].startValue == 0
+        assert mapped.ConsumptionTariffInterval[0].price == rate.price_pow10_encoded
+        assert mapped.ConsumptionTariffInterval[0].href.startswith("/pfx")
+    else:
+        assert mapped.all_ == 2
+        assert mapped.results == 2
+        assert_list_type(ConsumptionTariffIntervalResponse, mapped.ConsumptionTariffInterval, count=2)
+        assert mapped.ConsumptionTariffInterval[0].startValue == 0
+        assert mapped.ConsumptionTariffInterval[0].price == rate.price_pow10_encoded
+        assert mapped.ConsumptionTariffInterval[0].href.startswith("/pfx")
+
+        assert mapped.ConsumptionTariffInterval[1].startValue == rate.block_1_start_pow10_encoded
+        assert mapped.ConsumptionTariffInterval[1].price == rate.price_pow10_encoded_block_1
+        assert mapped.ConsumptionTariffInterval[1].href.startswith("/pfx")
+
+    assert mapped.href is None, "No href for the summary list - it's not a dedicated resource"
 
 
 @pytest.mark.parametrize(
@@ -292,16 +308,31 @@ def test_time_tariff_interval_map_to_response(
         assert mapped.EventStatus_.currentStatus == EventStatusType.Active
         assert mapped.EventStatus_.dateTime == int(rate.changed_time.timestamp())
 
-    assert mapped.ConsumptionTariffIntervalListLink.all_ == 1, "This should be singleton"
+    # We can have either 1 or 2 consumption blocks
     assert mapped.ConsumptionTariffIntervalListSummary.href is None
-    assert mapped.ConsumptionTariffIntervalListSummary.all_ == 1
-    assert mapped.ConsumptionTariffIntervalListSummary.results == 1
+    if rate.block_1_start_pow10_encoded is None or rate.price_pow10_encoded_block_1 is None:
+        expected_consumption_blocks = 1
+
+    else:
+        expected_consumption_blocks = 2
+    assert mapped.ConsumptionTariffIntervalListLink.all_ == expected_consumption_blocks
+    assert mapped.ConsumptionTariffIntervalListSummary.all_ == expected_consumption_blocks
+    assert mapped.ConsumptionTariffIntervalListSummary.results == expected_consumption_blocks
+
     assert_list_type(
         ConsumptionTariffIntervalResponse,
         mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval,
-        count=1,
+        count=expected_consumption_blocks,
     )
     mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].price == rate.price_pow10_encoded
+    mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].startValue == 0
+    if expected_consumption_blocks > 1:
+        mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[
+            1
+        ].price == rate.price_pow10_encoded_block_1
+        mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[
+            1
+        ].startValue == rate.block_1_start_pow10_encoded
 
     all_hrefs = [mapped.href, mapped.RateComponentLink.href, mapped.ConsumptionTariffIntervalListLink.href]
     for href in all_hrefs:
