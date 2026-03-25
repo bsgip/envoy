@@ -87,6 +87,13 @@ def upgrade() -> None:
     op.add_column("archive_tariff_generated_rate", sa.Column("tariff_component_id", sa.INTEGER(), nullable=False))
     op.add_column("archive_tariff_generated_rate", sa.Column("end_time", sa.DateTime(timezone=True), nullable=False))
     op.add_column("archive_tariff_generated_rate", sa.Column("price_pow10_encoded", sa.INTEGER(), nullable=False))
+    op.add_column(
+        "archive_tariff_generated_rate", sa.Column("block_1_start_pow10_encoded", sa.INTEGER(), nullable=True)
+    )
+    op.add_column(
+        "archive_tariff_generated_rate", sa.Column("price_pow10_encoded_block_1", sa.INTEGER(), nullable=True)
+    )
+
     op.create_index(
         "archive_tariff_generated_rate_tariff_id_end_deleted_time_site",
         "archive_tariff_generated_rate",
@@ -108,6 +115,8 @@ def upgrade() -> None:
     op.add_column("tariff_generated_rate", sa.Column("tariff_component_id", sa.BigInteger(), nullable=False))
     op.add_column("tariff_generated_rate", sa.Column("end_time", sa.DateTime(timezone=True), nullable=False))
     op.add_column("tariff_generated_rate", sa.Column("price_pow10_encoded", sa.INTEGER(), nullable=False))
+    op.add_column("tariff_generated_rate", sa.Column("block_1_start_pow10_encoded", sa.INTEGER(), nullable=True))
+    op.add_column("tariff_generated_rate", sa.Column("price_pow10_encoded_block_1", sa.INTEGER(), nullable=True))
     op.drop_constraint("tariff_id_site_id_start_time_uc", "tariff_generated_rate", type_="unique")
     op.create_index(
         "ix_tariff_generated_rate_tariff_component_id_end_time_site_id",
@@ -163,6 +172,8 @@ def downgrade() -> None:
         ["tariff_id", "site_id", "start_time"],
         postgresql_nulls_not_distinct=False,
     )
+    op.drop_column("tariff_generated_rate", "block_1_start_pow10_encoded")
+    op.drop_column("tariff_generated_rate", "price_pow10_encoded_block_1")
     op.drop_column("tariff_generated_rate", "price_pow10_encoded")
     op.drop_column("tariff_generated_rate", "end_time")
     op.drop_column("tariff_generated_rate", "tariff_component_id")
@@ -190,6 +201,8 @@ def downgrade() -> None:
     op.drop_index(
         "archive_tariff_generated_rate_tariff_id_end_deleted_time_site", table_name="archive_tariff_generated_rate"
     )
+    op.drop_column("archive_tariff_generated_rate", "block_1_start_pow10_encoded")
+    op.drop_column("archive_tariff_generated_rate", "price_pow10_encoded_block_1")
     op.drop_column("archive_tariff_generated_rate", "price_pow10_encoded")
     op.drop_column("archive_tariff_generated_rate", "end_time")
     op.drop_column("archive_tariff_generated_rate", "tariff_component_id")

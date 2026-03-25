@@ -29,7 +29,6 @@ from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.pricing import (
-    CONSUMPTION_TARIFF_INTERVAL_ID,
     ConsumptionTariffIntervalMapper,
     RateComponentMapper,
     TariffProfileMapper,
@@ -256,10 +255,6 @@ class ConsumptionTariffIntervalManager:
         time_tariff_interval_id: int,
         consumption_tariff_interval_id: int,
     ) -> ConsumptionTariffIntervalResponse:
-        """ """
-
-        if consumption_tariff_interval_id != CONSUMPTION_TARIFF_INTERVAL_ID:
-            raise NotFoundError(f"No ConsumptionTariffInterval with that href.")
 
         rate = await select_tariff_generated_rate_include_deleted(
             session, scope.aggregator_id, scope.site_id, time_tariff_interval_id

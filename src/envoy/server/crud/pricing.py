@@ -1,8 +1,7 @@
-from datetime import date, datetime, time, timedelta
-from itertools import islice
+from datetime import datetime
 from typing import Optional, Sequence, Union
 
-from sqlalchemy import TIMESTAMP, Date, Select, cast, func, literal_column, select
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.common import localize_start_time, localize_start_time_for_entity
@@ -276,6 +275,8 @@ async def select_active_rates_include_deleted(
         TariffGeneratedRate.duration_seconds,
         TariffGeneratedRate.end_time,
         TariffGeneratedRate.price_pow10_encoded,
+        TariffGeneratedRate.block_1_start_pow10_encoded,
+        TariffGeneratedRate.price_pow10_encoded_block_1,
         TariffGeneratedRate.created_time,
         TariffGeneratedRate.changed_time,
         literal_column("NULL").label("archive_id"),
@@ -298,6 +299,8 @@ async def select_active_rates_include_deleted(
         ArchiveTariffGeneratedRate.duration_seconds,
         ArchiveTariffGeneratedRate.end_time,
         ArchiveTariffGeneratedRate.price_pow10_encoded,
+        ArchiveTariffGeneratedRate.block_1_start_pow10_encoded,
+        ArchiveTariffGeneratedRate.price_pow10_encoded_block_1,
         ArchiveTariffGeneratedRate.created_time,
         ArchiveTariffGeneratedRate.changed_time,
         ArchiveTariffGeneratedRate.archive_id,
@@ -349,6 +352,8 @@ async def select_active_rates_include_deleted(
                     duration_seconds=t.duration_seconds,
                     end_time=t.end_time,
                     price_pow10_encoded=t.price_pow10_encoded,
+                    block_1_start_pow10_encoded=t.block_1_start_pow10_encoded,
+                    price_pow10_encoded_block_1=t.price_pow10_encoded_block_1,
                     created_time=t.created_time,
                     changed_time=t.changed_time,
                     archive_id=t.archive_id,
@@ -369,6 +374,8 @@ async def select_active_rates_include_deleted(
                     duration_seconds=t.duration_seconds,
                     end_time=t.end_time,
                     price_pow10_encoded=t.price_pow10_encoded,
+                    block_1_start_pow10_encoded=t.block_1_start_pow10_encoded,
+                    price_pow10_encoded_block_1=t.price_pow10_encoded_block_1,
                     created_time=t.created_time,
                     changed_time=t.changed_time,
                 ),

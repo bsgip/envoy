@@ -24,6 +24,7 @@ from envoy_schema.server.schema.sep2.types import (
     TOUType,
 )
 
+from envoy.server.exception import NotFoundError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.constants import ResponseSetType
 from envoy.server.mapper.sep2.der import to_hex_binary
@@ -32,8 +33,6 @@ from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, Respon
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
-
-CONSUMPTION_TARIFF_INTERVAL_ID = 1  # This is a constant - our implementation only ever has a single CTI per price
 
 
 class TariffProfileMapper:
@@ -202,6 +201,23 @@ class ConsumptionTariffIntervalMapper:
     TariffGeneratedRate (i.e. each TariffGeneratedRate is just a single price)"""
 
     @staticmethod
+    def extract_block_start_price(
+        rate: TariffGeneratedRate | ArchiveTariffGeneratedRate, cti_id: int
+    ) -> tuple[int, int]:
+        """Extracts the (start, price) for the specified cti_id (block_id). The first block is cti_id=1. Raises a
+        NotFoundError if the rate does NOT have a price/start value at that block."""
+
+        match (cti_id):
+            case 1:
+                return (0, rate.price_pow10_encoded)
+            case 2:
+                if rate.block_1_start_pow10_encoded is None or rate.price_pow10_encoded_block_1 is None:
+                    raise NotFoundError(f"There is no {cti_id} block for the specified TimeTariffInterval")
+                return (rate.block_1_start_pow10_encoded, rate.price_pow10_encoded_block_1)
+            case _:
+                raise NotFoundError(f"There is no {cti_id} block for the specified TimeTariffInterval")
+
+    @staticmethod
     def map_to_response(
         scope: DeviceOrAggregatorRequestScope, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate, cti_id: int
     ) -> ConsumptionTariffIntervalResponse:
@@ -215,11 +231,15 @@ class ConsumptionTariffIntervalMapper:
             tti_id=rate.tariff_generated_rate_id,
             cti_id=cti_id,
         )
+
+        # We have multiple block prices in a single rate - this will select the correct value
+        start, price = ConsumptionTariffIntervalMapper.extract_block_start_price(rate, cti_id)
+
         return ConsumptionTariffIntervalResponse(
             href=href,
-            consumptionBlock=ConsumptionBlockType.NOT_APPLICABLE,
-            price=rate.price_pow10_encoded,
-            startValue=0,
+            consumptionBlock=ConsumptionBlockType(cti_id),
+            price=price,
+            startValue=start,
         )
 
     @staticmethod
@@ -235,8 +255,19 @@ class ConsumptionTariffIntervalMapper:
             rate_component_id=rate.tariff_component_id,
             tti_id=rate.tariff_generated_rate_id,
         )
-        cti = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, CONSUMPTION_TARIFF_INTERVAL_ID)
-        return ConsumptionTariffIntervalListResponse(href=href, all_=1, results=1, ConsumptionTariffInterval=[cti])
+
+        # We will either have 1 or 2 price blocks depending on whether the rate has the fields set
+        if rate.block_1_start_pow10_encoded is not None and rate.price_pow10_encoded_block_1 is not None:
+            cti_block_0 = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, 1)
+            cti_block_1 = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, 2)
+            return ConsumptionTariffIntervalListResponse(
+                href=href, all_=2, results=2, ConsumptionTariffInterval=[cti_block_0, cti_block_1]
+            )
+        else:
+            cti_block_0 = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, 1)
+            return ConsumptionTariffIntervalListResponse(
+                href=href, all_=1, results=1, ConsumptionTariffInterval=[cti_block_0]
+            )
 
     @staticmethod
     def map_to_summary_list_response(

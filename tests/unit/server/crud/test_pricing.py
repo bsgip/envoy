@@ -269,6 +269,13 @@ def assert_rate_for_id(
         assert actual_rate.end_time == actual_rate.start_time + timedelta(seconds=actual_rate.duration_seconds)
         assert actual_rate.price_pow10_encoded == 1111 * expected_rate_id
 
+        if expected_rate_id in {2, 4}:
+            assert actual_rate.block_1_start_pow10_encoded is None
+            assert actual_rate.price_pow10_encoded_block_1 is None
+        else:
+            assert actual_rate.block_1_start_pow10_encoded == expected_rate_id * 1000
+            assert actual_rate.price_pow10_encoded_block_1 == (expected_rate_id * 1000) + 1
+
         # Other things are specific to the individual records
         match (expected_rate_id):
             case 1:

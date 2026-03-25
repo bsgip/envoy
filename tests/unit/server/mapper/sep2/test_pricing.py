@@ -17,8 +17,10 @@ from envoy_schema.server.schema.sep2.pricing import (
     TariffProfileResponse,
     TimeTariffIntervalResponse,
 )
+from envoy_schema.server.schema.sep2.types import ConsumptionBlockType
 from envoy_schema.server.schema.uri import TariffProfileFSAListUri, TariffProfileListUri
 
+from envoy.server.exception import NotFoundError
 from envoy.server.mapper.sep2.pricing import (
     ConsumptionTariffIntervalMapper,
     RateComponentMapper,
@@ -169,21 +171,37 @@ def test_rate_component_map_to_list_response():
 
 
 @pytest.mark.parametrize(
-    "optional_is_none, type", product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate])
+    "optional_is_none, type, cti_id",
+    product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate], [1, 2, 3]),
 )
 def test_consumption_tariff_interval_map_to_response(
-    optional_is_none: bool, type: Union[type[ArchiveTariffGeneratedRate], type[TariffGeneratedRate]]
+    optional_is_none: bool, type: Union[type[ArchiveTariffGeneratedRate], type[TariffGeneratedRate]], cti_id: int
 ):
     scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=101, href_prefix="/pfx")
     rate = generate_class_instance(type, seed=202, optional_is_none=optional_is_none)
-    cti_id = 111445
 
-    mapped = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, cti_id)
-    assert isinstance(mapped, ConsumptionTariffIntervalResponse)
-    assert mapped.price == rate.price_pow10_encoded
-    assert mapped.href and mapped.href.startswith("/pfx")
-    assert str(cti_id) in mapped.href
-    assert str(scope.display_site_id) in mapped.href
+    # ct_id can be 1 or 2... but only 2 if there are the optional prices specified
+    expect_error = cti_id == 3 or (cti_id == 2 and optional_is_none)
+    if expect_error:
+        with pytest.raises(NotFoundError):
+            ConsumptionTariffIntervalMapper.map_to_response(scope, rate, cti_id)
+    else:
+        mapped = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, cti_id)
+        assert isinstance(mapped, ConsumptionTariffIntervalResponse)
+
+        if cti_id == 1:
+            assert mapped.price == rate.price_pow10_encoded
+            assert mapped.startValue == 0
+        else:
+            assert mapped.price == rate.price_pow10_encoded_block_1
+            assert mapped.startValue == rate.block_1_start_pow10_encoded
+
+        assert isinstance(mapped.consumptionBlock, ConsumptionBlockType)
+        assert mapped.consumptionBlock == ConsumptionBlockType(cti_id)
+
+        assert mapped.href and mapped.href.startswith("/pfx")
+        assert f"/{cti_id}" in mapped.href
+        assert str(scope.display_site_id) in mapped.href
 
 
 @pytest.mark.parametrize(
@@ -192,17 +210,31 @@ def test_consumption_tariff_interval_map_to_response(
 def test_consumption_tariff_interval_map_to_list_response(
     optional_is_none: bool, type: Union[type[ArchiveTariffGeneratedRate], type[TariffGeneratedRate]]
 ):
-    """Tests that the resulting object is a singleton list"""
+    """Tests that the resulting object encodes all price blocks"""
     scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=101, href_prefix="/pfx")
     rate = generate_class_instance(type, seed=202, optional_is_none=optional_is_none)
 
     mapped = ConsumptionTariffIntervalMapper.map_to_list_response(scope, rate)
     assert isinstance(mapped, ConsumptionTariffIntervalListResponse)
-    assert mapped.all_ == 1
-    assert mapped.results == 1
-    assert mapped.href and mapped.href.startswith("/pfx")
-    assert_list_type(ConsumptionTariffIntervalResponse, mapped.ConsumptionTariffInterval, count=1)
 
+    if rate.block_1_start_pow10_encoded is None or rate.price_pow10_encoded_block_1 is None:
+        assert mapped.all_ == 1
+        assert mapped.results == 1
+        assert_list_type(ConsumptionTariffIntervalResponse, mapped.ConsumptionTariffInterval, count=1)
+
+        assert mapped.ConsumptionTariffInterval[0].startValue == 0
+        assert mapped.ConsumptionTariffInterval[0].price == rate.price_pow10_encoded
+    else:
+        assert mapped.all_ == 2
+        assert mapped.results == 2
+        assert_list_type(ConsumptionTariffIntervalResponse, mapped.ConsumptionTariffInterval, count=2)
+        assert mapped.ConsumptionTariffInterval[0].startValue == 0
+        assert mapped.ConsumptionTariffInterval[0].price == rate.price_pow10_encoded
+
+        assert mapped.ConsumptionTariffInterval[1].startValue == rate.block_1_start_pow10_encoded
+        assert mapped.ConsumptionTariffInterval[1].price == rate.price_pow10_encoded_block_1
+
+    assert mapped.href and mapped.href.startswith("/pfx")
     assert mapped.ConsumptionTariffInterval[0].href.startswith("/pfx")
     assert mapped.ConsumptionTariffInterval[0].href != mapped.href
 

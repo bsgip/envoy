@@ -74,6 +74,8 @@ class ArchiveTariffGeneratedRate(ArchiveBase):
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     price_pow10_encoded: Mapped[int] = mapped_column(INTEGER)
+    block_1_start_pow10_encoded: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    price_pow10_encoded_block_1: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
 
     __table_args__ = (
         Index(

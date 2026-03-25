@@ -112,6 +112,16 @@ class TariffGeneratedRate(Base):
         INTEGER
     )  # The actual price - pow10 encoded via 10 ^ Tariff.price_power_of_ten_multiplier * price_pow10_encoded
     # eg: if price_pow10_encoded = 1234 and Tariff.price_power_of_ten_multiplier is -2 then the actual price is $12.34
+    #
+    # This represents the block 0 price (and is the ONLY price if price_pow10_encoded_block_1 is None)
+
+    block_1_start_pow10_encoded: Mapped[Optional[int]] = mapped_column(
+        INTEGER, nullable=True
+    )  # price_pow_10_encoded is only valid until this much usage has occurred - encoded using RateComponent pow10
+
+    price_pow10_encoded_block_1: Mapped[Optional[int]] = mapped_column(
+        INTEGER, nullable=True
+    )  # Similar to price_pow10_encoded but is only applicable after block_1_start_pow10_encoded usage has occurred
 
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
