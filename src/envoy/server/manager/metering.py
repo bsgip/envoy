@@ -20,6 +20,7 @@ from envoy.server.crud.site_reading import (
     count_grouped_site_reading_details,
     delete_site_reading_type_group,
     fetch_grouped_site_reading_details,
+    fetch_any_site_reading_type_for_mrids_other_site,
     fetch_site_reading_types_for_group,
     fetch_site_reading_types_for_group_mrid,
     fetch_site_reading_type_for_mrid,
@@ -85,6 +86,12 @@ class MirrorMeteringManager:
         srts_by_mrid: CaseInsensitiveDict[SiteReadingType] = CaseInsensitiveDict(
             ((srt.mrid, srt) for srt in group_srts)
         )
+
+        new_mmr_mrids = [mmr.mRID for mmr in mup.mirrorMeterReadings if mmr.mRID not in srts_by_mrid]
+        if new_mmr_mrids and await fetch_any_site_reading_type_for_mrids_other_site(
+            session, scope.aggregator_id, site_id, new_mmr_mrids
+        ):
+            raise NotFoundError("One or more MirrorMeterReading mRIDs are owned by a different EndDevice")
 
         # If this is a new MUP mrid - we can insert it as is
         if not group_srts:
