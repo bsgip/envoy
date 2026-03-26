@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import product
 from typing import Optional, Union, cast
 
@@ -8,7 +8,11 @@ from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.sep2.der import DERControlResponse, DERProgramResponse
 from envoy_schema.server.schema.sep2.end_device import EndDeviceResponse
 from envoy_schema.server.schema.sep2.metering import Reading
-from envoy_schema.server.schema.sep2.pricing import TimeTariffIntervalResponse
+from envoy_schema.server.schema.sep2.pricing import (
+    RateComponentResponse,
+    TariffProfileResponse,
+    TimeTariffIntervalResponse,
+)
 from envoy_schema.server.schema.sep2.pub_sub import (
     XSI_TYPE_DEFAULT_DER_CONTROL,
     XSI_TYPE_DER_AVAILABILITY,
@@ -19,7 +23,9 @@ from envoy_schema.server.schema.sep2.pub_sub import (
     XSI_TYPE_DER_STATUS,
     XSI_TYPE_END_DEVICE_LIST,
     XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST,
+    XSI_TYPE_RATE_COMPONENT_LIST,
     XSI_TYPE_READING_LIST,
+    XSI_TYPE_TARIFF_PROFILE_LIST,
     XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
 )
 from envoy_schema.server.schema.sep2.pub_sub import Condition as Sep2Condition
@@ -54,7 +60,7 @@ from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, S
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
@@ -105,11 +111,12 @@ def test_SubscriptionMapper_calculate_resource_href_at_least_one_supported_combo
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, display_site_id=display_site_id, href_prefix="/foo/bar"
     )
-    for site_id, resource_id in product([1129414, None], [82521517, None]):
+    for site_id, resource_id, resource_parent_id in product([1129414, None], [82521517, None], [98714515, None]):
         sub: Subscription = generate_class_instance(Subscription)
         sub.resource_type = resource
         sub.scoped_site_id = site_id
         sub.resource_id = resource_id
+        sub.resource_parent_id = resource_parent_id
 
         try:
             href = SubscriptionMapper.calculate_resource_href(sub, scope)
@@ -137,11 +144,12 @@ def test_SubscriptionMapper_calculate_resource_href_all_support_site_unscoped(re
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, optional_is_none=True
     )
-    for resource_id in [1, None]:
+    for resource_id, resource_parent_id in product([1, None], [2, None]):
         sub: Subscription = generate_class_instance(Subscription)
         sub.resource_type = resource
         sub.scoped_site_id = None
         sub.resource_id = resource_id
+        sub.resource_parent_id = resource_parent_id
 
         try:
             href = SubscriptionMapper.calculate_resource_href(sub, scope)
@@ -171,12 +179,18 @@ def test_SubscriptionMapper_calculate_resource_href_encodes_site_id(
     sub.resource_type = resource
     sub.scoped_site_id = 8912491  # This should be used
     sub.resource_id = None
+    sub.resource_parent_id = None
 
+    # Lazy way of trying combinations of resource_id / parent_resource_id to get something valid
     try:
         href = SubscriptionMapper.calculate_resource_href(sub, scope)
     except InvalidMappingError:
-        sub.resource_id = 888
-        href = SubscriptionMapper.calculate_resource_href(sub, scope)
+        try:
+            sub.resource_id = 888
+            href = SubscriptionMapper.calculate_resource_href(sub, scope)
+        except InvalidMappingError:
+            sub.resource_parent_id = 777
+            href = SubscriptionMapper.calculate_resource_href(sub, scope)
 
     assert f"/{sub.scoped_site_id}" in href
 
@@ -241,14 +255,21 @@ def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
     # We filter out the only "non unique" case which is SITE/FSA where resource_id has a value (it's nonsensical)
     unique_combos = [
         c
-        for c in product(SubscriptionResource, [1, None], [2, None])
-        if c != (SubscriptionResource.SITE, 1, 2)
-        and c != (SubscriptionResource.SITE, None, 2)
-        and c != (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, 1, 2)
-        and c != (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, None, 2)
+        for c in product(SubscriptionResource, [111, None], [222, None], [333, None])
+        if c
+        not in {
+            (SubscriptionResource.SITE, 111, 222, 333),
+            (SubscriptionResource.SITE, 111, 222, None),
+            (SubscriptionResource.SITE, None, 222, 333),
+            (SubscriptionResource.SITE, None, 222, None),
+            (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, 111, 222, 333),
+            (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, 111, 222, None),
+            (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, None, 222, 333),
+            (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, None, 222, None),
+        }
     ]
 
-    for resource, site_id, resource_id in unique_combos:
+    for resource, site_id, resource_id, resource_parent_id in unique_combos:
 
         display_site_id = VIRTUAL_END_DEVICE_SITE_ID if site_id is None else site_id
         scope: DeviceOrAggregatorRequestScope = generate_class_instance(
@@ -258,6 +279,7 @@ def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
         sub.resource_type = resource
         sub.scoped_site_id = display_site_id + 999  # Ensure this isn't considered for href creation
         sub.resource_id = resource_id
+        sub.resource_parent_id = resource_parent_id
 
         try:
             href = SubscriptionMapper.calculate_resource_href(sub, scope)
@@ -268,14 +290,11 @@ def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
         assert href and isinstance(href, str)
         all_hrefs.append(href)
 
-        if site_id is not None:
-            assert str(site_id) in href, "If the ID is specified - it should be in the generated href"
-
         if resource_id is not None:
-            assert str(resource_id) in href, "If the ID is specified - it should be in the generated href"
+            assert str(resource_id) in href, f"{resource} If the ID is specified - it should be in the generated href"
 
     assert len(all_hrefs) == len(set(all_hrefs)), f"Expected all hrefs to be unique: {all_hrefs}"
-    assert total_fails < 25, "There shouldn't be this many combinations generating InvalidMappingError - go investigate"
+    assert total_fails < 75, "There shouldn't be this many combinations generating InvalidMappingError - go investigate"
 
 
 def test_SubscriptionMapper_map_to_response_condition():
@@ -299,15 +318,15 @@ def test_SubscriptionMapper_map_to_response_condition():
 
 
 def test_SubscriptionMapper_map_to_response():
-    sub_all_set: Subscription = generate_class_instance(Subscription, seed=101, optional_is_none=False)
+    sub_all_set = generate_class_instance(Subscription, seed=101, optional_is_none=False, resource_parent_id=None)
     sub_all_set.conditions = []
     sub_all_set.notification_uri = "http://my.example:11/foo"
     sub_all_set.resource_type = SubscriptionResource.READING
-    sub_optional: Subscription = generate_class_instance(Subscription, seed=101, optional_is_none=True)
+    sub_optional = generate_class_instance(Subscription, seed=101, optional_is_none=True, resource_parent_id=None)
     sub_optional.conditions = []
     sub_optional.notification_uri = "https://my.example:22/foo"
     sub_optional.resource_type = SubscriptionResource.SITE
-    sub_with_condition: Subscription = generate_class_instance(Subscription, seed=101, optional_is_none=True)
+    sub_with_condition = generate_class_instance(Subscription, seed=101, optional_is_none=True, resource_parent_id=None)
     sub_with_condition.conditions = [cast(SubscriptionCondition, generate_class_instance(SubscriptionCondition))]
     sub_with_condition.conditions[0].attribute = ConditionAttributeIdentifier.READING_VALUE
     sub_with_condition.notification_uri = "http://my.example:33/foo"
@@ -408,19 +427,22 @@ def test_SubscriptionMapper_calculate_subscription_href():
 def test_SubscriptionMapper_map_from_request():
 
     # Using the same keys -
-    sub_all_set: Sep2Subscription = generate_class_instance(Sep2Subscription, seed=101, optional_is_none=False)
+    sub_all_set = generate_class_instance(Sep2Subscription, seed=101, optional_is_none=False)
     sub_all_set.subscribedResource = "/prefix/edev/123"
     sub_all_set.notificationURI = "https://foo.bar:44/path"
-    sub_optional: Sep2Subscription = generate_class_instance(Sep2Subscription, seed=202, optional_is_none=True)
+    sub_optional = generate_class_instance(Sep2Subscription, seed=202, optional_is_none=True)
     sub_optional.subscribedResource = "/prefix/edev/123"
     sub_optional.notificationURI = "https://foo.bar:44/path"
-    sub_condition: Sep2Subscription = generate_class_instance(Sep2Subscription, seed=303, optional_is_none=False)
+    sub_condition = generate_class_instance(Sep2Subscription, seed=303, optional_is_none=False)
     sub_condition.subscribedResource = "/prefix/edev/123"
     sub_condition.notificationURI = "https://foo.bar:44/path"
     sub_condition.condition = generate_class_instance(Sep2Condition)
     sub_condition.condition.attributeIdentifier = ConditionAttributeIdentifier.READING_VALUE
+    sub_tti = generate_class_instance(Sep2Subscription, seed=101, optional_is_none=False)
+    sub_tti.subscribedResource = "/prefix/edev/123/tp/456/rc/789/tti"
+    sub_tti.notificationURI = "https://foo.bar:44/path"
 
-    scope_prefix: DeviceOrAggregatorRequestScope = generate_class_instance(
+    scope_prefix = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1001, site_id=None, href_prefix="/prefix"
     )
     valid_domains = set(["foo.bar", "example.com"])
@@ -432,6 +454,7 @@ def test_SubscriptionMapper_map_from_request():
     assert result_all_set.resource_type == SubscriptionResource.SITE
     assert result_all_set.scoped_site_id == 123
     assert result_all_set.resource_id is None
+    assert result_all_set.resource_parent_id is None
     assert not result_all_set.conditions
 
     result_optional = SubscriptionMapper.map_from_request(sub_optional, scope_prefix, valid_domains, changed_time)
@@ -440,6 +463,7 @@ def test_SubscriptionMapper_map_from_request():
     assert result_optional.resource_type == SubscriptionResource.SITE
     assert result_optional.scoped_site_id == 123
     assert result_optional.resource_id is None
+    assert result_optional.resource_parent_id is None
     assert not result_optional.conditions
 
     result_condition = SubscriptionMapper.map_from_request(sub_condition, scope_prefix, valid_domains, changed_time)
@@ -448,57 +472,84 @@ def test_SubscriptionMapper_map_from_request():
     assert result_condition.resource_type == SubscriptionResource.SITE
     assert result_condition.scoped_site_id == 123
     assert result_condition.resource_id is None
+    assert result_condition.resource_parent_id is None
     assert len(result_condition.conditions) == 1
+
+    result_tti = SubscriptionMapper.map_from_request(sub_tti, scope_prefix, valid_domains, changed_time)
+    assert isinstance(result_tti, Subscription)
+    assert not result_tti.subscription_id
+    assert result_tti.resource_type == SubscriptionResource.TARIFF_GENERATED_RATE
+    assert result_tti.scoped_site_id == 123
+    assert result_tti.resource_id == 789
+    assert result_tti.resource_parent_id == 456
+    assert not result_tti.conditions
 
 
 @pytest.mark.parametrize(
     "href, expected",
     [
-        ("/edev", (SubscriptionResource.SITE, None, None)),
-        ("/edev/123", (SubscriptionResource.SITE, 123, None)),
-        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}", (SubscriptionResource.SITE, None, None)),
+        ("/edev", (SubscriptionResource.SITE, None, None, None)),
+        ("/edev/123", (SubscriptionResource.SITE, 123, None, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}", (SubscriptionResource.SITE, None, None, None)),
         ("/edev/123-a", InvalidMappingError),
         ("/edev/", InvalidMappingError),
-        ("/upt/11/mr/22/rs/all/r", (SubscriptionResource.READING, 11, 22)),
-        (f"/upt/{VIRTUAL_END_DEVICE_SITE_ID}/mr/22/rs/all/r", (SubscriptionResource.READING, None, 22)),
+        ("/upt/11/mr/22/rs/all/r", (SubscriptionResource.READING, 11, 22, None)),
+        (f"/upt/{VIRTUAL_END_DEVICE_SITE_ID}/mr/22/rs/all/r", (SubscriptionResource.READING, None, 22, None)),
         ("/upt/11/mr/22/rs/all/", InvalidMappingError),
         ("/upt/11/mr/22/rs/allbutnot/r", InvalidMappingError),
         ("/upt/11/mr/22-2/rs/all/r", InvalidMappingError),
         ("/upt/11-2/mr/22/rs/all/r", InvalidMappingError),
-        ("/edev/33/tp/44/rc", (SubscriptionResource.TARIFF_GENERATED_RATE, 33, 44)),
-        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/tp/44/rc", (SubscriptionResource.TARIFF_GENERATED_RATE, None, 44)),
+        ("/edev/33/tp/44/rc", (SubscriptionResource.TARIFF_COMPONENT, 33, 44, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/tp/44/rc", (SubscriptionResource.TARIFF_COMPONENT, None, 44, None)),
+        ("/edev/33/tp/44/rc/55", InvalidMappingError),
+        ("/edev/33/tp", (SubscriptionResource.TARIFF, 33, None, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/tp", (SubscriptionResource.TARIFF, None, None, None)),
+        ("/edev/33/tp/44", InvalidMappingError),
+        ("/edev/33/tp/44/rc/55/tti", (SubscriptionResource.TARIFF_GENERATED_RATE, 33, 55, 44)),
+        (
+            f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/tp/44/rc/55/tti",
+            (SubscriptionResource.TARIFF_GENERATED_RATE, None, 55, 44),
+        ),
+        ("/edev/33/tp/44/ctti", (SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE, 33, 44, None)),
+        (
+            f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/tp/44/ctti",
+            (SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE, None, 44, None),
+        ),
         ("/edev/33nan/tp/44/rc", InvalidMappingError),
         ("/edev/33/tp/44-4/rc", InvalidMappingError),
         ("/edev/55/derp/doe/derc", InvalidMappingError),  # This is the legacy way of doing DOE subscriptions
-        ("/edev/55/derp/66/derc", (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, 55, 66)),
+        ("/edev/55/derp/66/derc", (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, 55, 66, None)),
         (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp/doe/derc", InvalidMappingError),  # Legacy method for DOE subs
         (
             f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp/77/derc",
-            (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, None, 77),
+            (SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, None, 77, None),
         ),
         ("/edev/55/derp/doe_but_not/derc", InvalidMappingError),
         ("/edev/55-3/derp/doe/derc", InvalidMappingError),
         ("/edev/55/derp/doe", InvalidMappingError),
-        ("/edev/55/der/1/dera", (SubscriptionResource.SITE_DER_AVAILABILITY, 55, 1)),
-        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/der/1/dera", (SubscriptionResource.SITE_DER_AVAILABILITY, None, 1)),
+        ("/edev/55/der/1/dera", (SubscriptionResource.SITE_DER_AVAILABILITY, 55, 1, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/der/1/dera", (SubscriptionResource.SITE_DER_AVAILABILITY, None, 1, None)),
         ("/edev/55/der/1/dera/other", InvalidMappingError),
-        ("/edev/55/der/1/derg", (SubscriptionResource.SITE_DER_SETTING, 55, 1)),
-        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/der/1/derg", (SubscriptionResource.SITE_DER_SETTING, None, 1)),
-        ("/edev/55/der/1/dercap", (SubscriptionResource.SITE_DER_RATING, 55, 1)),
-        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/der/1/dercap", (SubscriptionResource.SITE_DER_RATING, None, 1)),
-        ("/edev/55/der/1/ders", (SubscriptionResource.SITE_DER_STATUS, 55, 1)),
-        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/der/1/ders", (SubscriptionResource.SITE_DER_STATUS, None, 1)),
+        ("/edev/55/der/1/derg", (SubscriptionResource.SITE_DER_SETTING, 55, 1, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/der/1/derg", (SubscriptionResource.SITE_DER_SETTING, None, 1, None)),
+        ("/edev/55/der/1/dercap", (SubscriptionResource.SITE_DER_RATING, 55, 1, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/der/1/dercap", (SubscriptionResource.SITE_DER_RATING, None, 1, None)),
+        ("/edev/55/der/1/ders", (SubscriptionResource.SITE_DER_STATUS, 55, 1, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/der/1/ders", (SubscriptionResource.SITE_DER_STATUS, None, 1, None)),
         ("/edev/55/derp/2/dderc/foo", InvalidMappingError),
-        ("/edev/55/derp/2/dderc", (SubscriptionResource.DEFAULT_SITE_CONTROL, 55, 2)),
-        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp/1/dderc", (SubscriptionResource.DEFAULT_SITE_CONTROL, None, 1)),
+        ("/edev/55/derp/2/dderc", (SubscriptionResource.DEFAULT_SITE_CONTROL, 55, 2, None)),
+        (
+            f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp/1/dderc",
+            (SubscriptionResource.DEFAULT_SITE_CONTROL, None, 1, None),
+        ),
         ("/edev/55/fsa/foo", InvalidMappingError),
-        ("/edev/55/fsa", (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, 55, None)),
-        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/fsa", (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, None, None)),
+        ("/edev/55/fsa", (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, 55, None, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/fsa", (SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, None, None, None)),
         ("/edev/55/derp/foo", InvalidMappingError),
-        ("/edev/55/derp", (SubscriptionResource.SITE_CONTROL_GROUP, 55, None)),
-        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp", (SubscriptionResource.SITE_CONTROL_GROUP, None, None)),
-        ("/edev/55/fsa/66/derp", (SubscriptionResource.SITE_CONTROL_GROUP, 55, 66)),
-        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/fsa/66/derp", (SubscriptionResource.SITE_CONTROL_GROUP, None, 66)),
+        ("/edev/55/derp", (SubscriptionResource.SITE_CONTROL_GROUP, 55, None, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/derp", (SubscriptionResource.SITE_CONTROL_GROUP, None, None, None)),
+        ("/edev/55/fsa/66/derp", (SubscriptionResource.SITE_CONTROL_GROUP, 55, 66, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/fsa/66/derp", (SubscriptionResource.SITE_CONTROL_GROUP, None, 66, None)),
         ("/edev/55/der/1/derx", InvalidMappingError),
         ("/", InvalidMappingError),
         ("edev", InvalidMappingError),
@@ -643,8 +694,10 @@ def test_NotificationMapper_map_readings_to_response(notification_type: Notifica
     ), "If this fails - starting testing using assert_entity_hrefs_contain_entity_id_and_prefix (see other tests)"
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
-def test_NotificationMapper_map_rates_to_response(notification_type: NotificationType):
+@pytest.mark.parametrize("notification_type, tariff_component_id", product(list(NotificationType), [None, 51231]))
+def test_NotificationMapper_map_rates_to_response(
+    notification_type: NotificationType, tariff_component_id: Optional[int]
+):
     rate1: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=101, optional_is_none=False)
     rate2: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=True)
 
@@ -653,18 +706,22 @@ def test_NotificationMapper_map_rates_to_response(notification_type: Notificatio
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
     tariff_id = 888
-    day = datetime.now().date()
-    pricing_reading_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
+    now = datetime(2021, 5, 7, tzinfo=timezone.utc)
 
     notification = NotificationMapper.map_rates_to_response(
-        tariff_id, day, pricing_reading_type, [rate1, rate2], sub, scope, notification_type
+        tariff_id, tariff_component_id, [rate1, rate2], sub, scope, notification_type, now
     )
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
-    assert str(int(pricing_reading_type)) in notification.subscribedResource
-    assert str(scope.display_site_id) in notification.subscribedResource
-    assert str(tariff_id) in notification.subscribedResource
-    assert "/tti" in notification.subscribedResource, "This should be a time tariff interval list href"
+
+    if tariff_component_id is not None:
+        assert f"/{tariff_component_id}/" in notification.subscribedResource
+        assert "/tti" in notification.subscribedResource, "This should be a time tariff interval list href"
+    else:
+        assert "/ctti" in notification.subscribedResource, "This should be a combined time tariff interval list href"
+    assert f"/{scope.display_site_id}/" in notification.subscribedResource
+    assert f"/{tariff_id}/" in notification.subscribedResource
+
     assert notification.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification.subscriptionURI
     if notification_type == NotificationType.ENTITY_DELETED:
@@ -990,3 +1047,67 @@ def test_NotificationMapper_map_default_site_control_response_none_value():
     assert notification_all_set.resource is None
     assert f"/{derp_id}/" in notification_all_set.subscribedResource
     assert f"/{scope.display_site_id}/" in notification_all_set.subscribedResource
+
+
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_tariffs_to_response(notification_type: NotificationType):
+    tariff1 = generate_class_instance(Tariff, seed=101, optional_is_none=False)
+    tariff2 = generate_class_instance(Tariff, seed=202, optional_is_none=True)
+
+    sub = generate_class_instance(Subscription, seed=303)
+    scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
+
+    notification = NotificationMapper.map_tariffs_to_response([tariff1, tariff2], sub, scope, notification_type)
+    assert isinstance(notification, Notification)
+    assert notification.subscribedResource.startswith("/custom/prefix")
+
+    assert f"/{scope.display_site_id}/" in notification.subscribedResource
+
+    assert notification.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification.subscriptionURI
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification.status == NotificationStatus.DEFAULT
+
+    assert notification.resource.type == XSI_TYPE_TARIFF_PROFILE_LIST
+    assert_list_type(TariffProfileResponse, notification.resource.TariffProfile, count=2)
+    assert_entity_hrefs_contain_entity_id_and_prefix(
+        [e.href for e in notification.resource.TariffProfile],
+        [scope.display_site_id, scope.display_site_id],
+        scope.href_prefix,
+    )
+
+
+@pytest.mark.parametrize("notification_type", list(NotificationType))
+def test_NotificationMapper_map_tariff_components_to_response(notification_type: NotificationType):
+    tc1 = generate_class_instance(TariffComponent, seed=101, optional_is_none=False)
+    tc2 = generate_class_instance(TariffComponent, seed=202, optional_is_none=True)
+
+    sub = generate_class_instance(Subscription, seed=303)
+    scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
+    tariff_id = 16114169
+
+    notification = NotificationMapper.map_rate_components_to_response(
+        tariff_id, [tc1, tc2], sub, scope, notification_type
+    )
+    assert isinstance(notification, Notification)
+    assert notification.subscribedResource.startswith("/custom/prefix")
+
+    assert f"/edev/{scope.display_site_id}/" in notification.subscribedResource
+    assert f"/tp/{tariff_id}/" in notification.subscribedResource
+
+    assert notification.subscriptionURI.startswith("/custom/prefix")
+    assert "/sub" in notification.subscriptionURI
+    if notification_type == NotificationType.ENTITY_DELETED:
+        assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    else:
+        assert notification.status == NotificationStatus.DEFAULT
+
+    assert notification.resource.type == XSI_TYPE_RATE_COMPONENT_LIST
+    assert_list_type(RateComponentResponse, notification.resource.RateComponent, count=2)
+    assert_entity_hrefs_contain_entity_id_and_prefix(
+        [e.href for e in notification.resource.RateComponent],
+        [scope.display_site_id, scope.display_site_id],
+        scope.href_prefix,
+    )

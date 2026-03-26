@@ -18,6 +18,8 @@ from envoy.notification.crud.common import (
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     SiteScopedSiteControlGroupDefault,
+    SiteScopedTariff,
+    SiteScopedTariffComponent,
 )
 from envoy.notification.exception import NotificationError
 from envoy.notification.task.check import (
@@ -578,6 +580,8 @@ def test_all_entity_batches(input_changed: dict[tuple, list], input_deleted: dic
         (SubscriptionResource.READING, SiteReading, 8979831),
         (SubscriptionResource.TARIFF_GENERATED_RATE, TariffGeneratedRate, None),
         (SubscriptionResource.TARIFF_GENERATED_RATE, TariffGeneratedRate, 98731),
+        (SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE, TariffGeneratedRate, None),
+        (SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE, TariffGeneratedRate, 51551),
         (SubscriptionResource.SITE_DER_AVAILABILITY, SiteDERAvailability, None),
         (SubscriptionResource.SITE_DER_AVAILABILITY, SiteDERAvailability, 89798),
         (SubscriptionResource.SITE_DER_RATING, SiteDERRating, None),
@@ -592,6 +596,10 @@ def test_all_entity_batches(input_changed: dict[tuple, list], input_deleted: dic
         (SubscriptionResource.DEFAULT_SITE_CONTROL, SiteScopedSiteControlGroupDefault, 331241),
         (SubscriptionResource.SITE_CONTROL_GROUP, SiteScopedSiteControlGroup, None),
         (SubscriptionResource.SITE_CONTROL_GROUP, SiteScopedSiteControlGroup, 442119),
+        (SubscriptionResource.TARIFF_COMPONENT, SiteScopedTariffComponent, None),
+        (SubscriptionResource.TARIFF_COMPONENT, SiteScopedTariffComponent, 776751),
+        (SubscriptionResource.TARIFF, SiteScopedTariff, None),
+        (SubscriptionResource.TARIFF, SiteScopedTariff, 900041),
     ],
 )
 def test_entities_to_notification_sites(  # noqa: C901
@@ -604,9 +612,6 @@ def test_entities_to_notification_sites(  # noqa: C901
     href_prefix = "/my_href/prefix"
     sub = Subscription(
         resource_type=resource, notification_uri="http://example.com/foo", scoped_site_id=sub_site_id_scope
-    )
-    pricing_reading_type = (
-        PricingReadingType.EXPORT_ACTIVE_POWER_KWH if resource == SubscriptionResource.TARIFF_GENERATED_RATE else None
     )
     batch_key = get_batch_key(resource, generate_class_instance(entity_class, generate_relationships=True))
     config = RuntimeServerConfig()
@@ -623,7 +628,7 @@ def test_entities_to_notification_sites(  # noqa: C901
                 entities.append(e)
 
             notification = entities_to_notification(
-                resource, sub, batch_key, href_prefix, notification_type, entities, pricing_reading_type, config
+                resource, sub, batch_key, href_prefix, notification_type, entities, config
             )
             assert isinstance(notification, Notification)
             assert notification.subscribedResource.startswith(href_prefix)
@@ -700,6 +705,15 @@ def test_entities_to_notification_sites(  # noqa: C901
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_CONTROL_GROUP and entity_length:
                 assert len(notification.resource.DERProgram) == len(entities)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.TARIFF_COMPONENT:
+                assert len(notification.resource.RateComponent) == len(entities)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.TARIFF:
+                assert len(notification.resource.TariffProfile) == len(entities)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
+                assert len(notification.resource.TimeTariffInterval) == len(entities)
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
 
 

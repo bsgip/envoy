@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Sequence
 from zoneinfo import ZoneInfo
@@ -26,6 +26,8 @@ from envoy.notification.crud.batch import (
     fetch_readings_by_changed_at,
     fetch_site_control_groups_by_changed_at,
     fetch_sites_by_changed_at,
+    fetch_tariff_components_by_changed_at,
+    fetch_tariffs_by_changed_at,
     get_batch_key,
     get_site_id,
     get_subscription_filter_id,
@@ -35,9 +37,13 @@ from envoy.notification.crud.common import (
     ArchiveSiteScopedFunctionSetAssignment,
     ArchiveSiteScopedSiteControlGroup,
     ArchiveSiteScopedSiteControlGroupDefault,
+    ArchiveSiteScopedTariff,
+    ArchiveSiteScopedTariffComponent,
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     SiteScopedSiteControlGroupDefault,
+    SiteScopedTariff,
+    SiteScopedTariffComponent,
     TResourceModel,
 )
 from envoy.notification.exception import NotificationError
@@ -59,13 +65,13 @@ from envoy.server.model.archive.site import (
     ArchiveSiteDERStatus,
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
-from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
+from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffComponent, ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroupDefault
 from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 
 
 def assert_batched_entities(
@@ -182,7 +188,7 @@ def test_get_batch_key_invalid():
 
 
 @pytest.mark.parametrize(
-    "resource,entity,expected",
+    "resource, entity, expected",
     [
         (SubscriptionResource.SITE, Site(aggregator_id=1, site_id=2), (1, 2)),
         (
@@ -210,21 +216,10 @@ def test_get_batch_key_invalid():
                 tariff_generated_rate_id=99,
                 site_id=3,
                 tariff_id=2,
-                start_time=datetime(2023, 2, 3, 4, 5, 6),
+                tariff_component_id=4,
                 site=Site(site_id=3, aggregator_id=1),
             ),
-            (1, 2, 3, date(2023, 2, 3)),
-        ),
-        (
-            SubscriptionResource.TARIFF_GENERATED_RATE,
-            TariffGeneratedRate(
-                tariff_generated_rate_id=99,
-                site_id=3,
-                tariff_id=2,
-                start_time=datetime(2023, 2, 3, 4, 5, 6, tzinfo=timezone.utc),
-                site=Site(site_id=3, aggregator_id=1),
-            ),
-            (1, 2, 3, date(2023, 2, 3)),
+            (1, 2, 3, 4),
         ),
         (
             SubscriptionResource.SITE_DER_AVAILABILITY,
@@ -304,6 +299,35 @@ def test_get_batch_key_invalid():
             ),
             (11, 22, 33),
         ),
+        (
+            SubscriptionResource.TARIFF_COMPONENT,
+            SiteScopedTariffComponent(
+                aggregator_id=1,
+                site_id=2,
+                original=generate_class_instance(TariffComponent, seed=101, tariff_id=3),
+            ),
+            (1, 2, 3),
+        ),
+        (
+            SubscriptionResource.TARIFF,
+            SiteScopedTariff(
+                aggregator_id=1,
+                site_id=2,
+                original=generate_class_instance(Tariff, seed=101),
+            ),
+            (1, 2),
+        ),
+        (
+            SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
+            TariffGeneratedRate(
+                tariff_generated_rate_id=99,
+                site_id=3,
+                tariff_id=2,
+                tariff_component_id=4,
+                site=Site(site_id=3, aggregator_id=1),
+            ),
+            (1, 2, 3),
+        ),
     ],
 )
 def test_get_batch_key(resource: SubscriptionResource, entity: TResourceModel, expected: tuple):
@@ -340,6 +364,16 @@ def test_get_subscription_filter_id_invalid():
         ),
         (
             SubscriptionResource.TARIFF_GENERATED_RATE,
+            TariffGeneratedRate(
+                tariff_generated_rate_id=999,
+                site_id=3,
+                tariff_id=2,
+                start_time=datetime(2023, 2, 3, 4, 5, 6),
+            ),
+            2,
+        ),
+        (
+            SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
             TariffGeneratedRate(
                 tariff_generated_rate_id=999,
                 site_id=3,
@@ -431,7 +465,9 @@ def test_get_site_id(resource: SubscriptionResource, entity: TResourceModel, exp
         (1, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, [2]),
         (1, SubscriptionResource.READING, [5]),
         (2, SubscriptionResource.TARIFF_GENERATED_RATE, [3]),
+        (2, SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE, []),
         (1, SubscriptionResource.TARIFF_GENERATED_RATE, []),
+        (1, SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE, []),
         (99, SubscriptionResource.SITE, []),
         (2, SubscriptionResource.READING, []),
     ],
@@ -2584,5 +2620,321 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
         assert_batched_entities(empty_batch, SiteScopedSiteControlGroup, ArchiveSiteScopedSiteControlGroup, 0, 0)
+        assert len(empty_batch.models_by_batch_key) == 0
+        assert len(empty_batch.deleted_by_batch_key) == 0
+
+
+@pytest.mark.parametrize(
+    "timestamp, expected_agg_site_tariff_ids",
+    [
+        (
+            datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc),
+            [(1, 1, 1), (1, 2, 1), (2, 3, 1), (1, 4, 1), (0, 5, 1), (0, 6, 1)],
+        ),
+        (
+            datetime(2022, 2, 3, 4, 5, 8, tzinfo=timezone.utc),  # timestamp mismatch
+            [],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_tariffs_by_changed_at(
+    pg_base_config, timestamp: datetime, expected_agg_site_tariff_ids: list[tuple[int, int, int]]
+):
+    """Tests that entities are filtered/returned correctly and expand per site.
+
+    expected_agg_site_tariff_ids: tuple of aggregator_id, site_id, tariff_id"""
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_tariffs_by_changed_at(session, timestamp)
+        assert_batched_entities(
+            batch,
+            SiteScopedTariff,
+            ArchiveSiteScopedTariff,
+            len(expected_agg_site_tariff_ids),
+            0,
+        )
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+
+        assert all([isinstance(e, SiteScopedTariff) for e in list_entities])
+        actual_agg_site_group_ids = [(e.aggregator_id, e.site_id, e.original.tariff_id) for e in list_entities]
+
+        assert expected_agg_site_tariff_ids == actual_agg_site_group_ids
+
+
+@pytest.mark.anyio
+async def test_fetch_tariff_by_timestamp_with_archive(pg_base_config):
+    """Tests that entities are filtered/returned correctly and include archive data"""
+
+    # This matches the changed_time on tariff 1
+    timestamp = datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc)
+    expected_active_tariff_ids = [1]
+    expected_deleted_tariff_ids = [21, 24, 25]
+    expected_site_agg_ids = [(1, 1), (1, 2), (2, 3), (1, 4), (0, 5), (0, 6)]
+
+    # inject a bunch of archival data
+    async with generate_async_session(pg_base_config) as session:
+
+        # Inject archive defaults (only most recent is used)
+        session.add(
+            generate_class_instance(
+                ArchiveTariff,
+                seed=55,
+                tariff_id=21,
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveTariff,
+                seed=66,
+                tariff_id=21,
+                deleted_time=timestamp - timedelta(seconds=5),
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveTariff,
+                seed=77,
+                tariff_id=21,
+                deleted_time=timestamp,
+                primacy=21,  # for identifying this record later
+            )
+        )
+
+        # No deleted time so ignored
+        session.add(generate_class_instance(ArchiveTariff, seed=88, tariff_id=22))
+
+        # Wrong deleted time so ignored
+        session.add(
+            generate_class_instance(
+                ArchiveTariff,
+                seed=99,
+                tariff_id=23,
+                deleted_time=timestamp - timedelta(seconds=5),
+            )
+        )
+
+        # These will be picked up
+        session.add(
+            generate_class_instance(
+                ArchiveTariff,
+                seed=1010,
+                tariff_id=24,
+                deleted_time=timestamp,
+                primacy=24,  # for identifying this record later
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveTariff,
+                seed=1111,
+                tariff_id=25,
+                deleted_time=timestamp,
+                primacy=25,  # for identifying this record later
+            )
+        )
+        await session.commit()
+
+    # Now see if the fetch grabs everything
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_tariffs_by_changed_at(session, timestamp)
+        assert_batched_entities(
+            batch,
+            SiteScopedTariff,
+            ArchiveSiteScopedTariff,
+            len(expected_active_tariff_ids) * len(expected_site_agg_ids),
+            len(expected_deleted_tariff_ids) * len(expected_site_agg_ids),
+        )
+
+        # The resulting entities will be multiplied out by the expected_site_agg_ids entries
+        # We will check that every expected Tariff is found against every existing site
+        active_list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        deleted_list_entities = [e for _, entities in batch.deleted_by_batch_key.items() for e in entities]
+        active_agg_site_group_ids = [(e.aggregator_id, e.site_id, e.original.tariff_id) for e in active_list_entities]
+        deleted_agg_site_group_ids = [(e.aggregator_id, e.site_id, e.original.tariff_id) for e in deleted_list_entities]
+
+        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_active_tariff_ids):
+            expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
+            assert expected_tuple in active_agg_site_group_ids
+
+        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_deleted_tariff_ids):
+            expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
+            assert expected_tuple in deleted_agg_site_group_ids
+
+        # Validate the deleted entities are the ones we expect (lean on the fact we setup a property on the
+        # archive type in a particular way for the expected matches)
+        assert all(
+            [
+                e.original.primacy == e.original.tariff_id
+                for v_list in batch.deleted_by_batch_key.values()
+                for e in v_list
+            ]
+        )
+
+        # Sanity check that a different timestamp yields nothing
+        empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
+        assert_batched_entities(empty_batch, SiteScopedTariff, ArchiveSiteScopedTariff, 0, 0)
+        assert len(empty_batch.models_by_batch_key) == 0
+        assert len(empty_batch.deleted_by_batch_key) == 0
+
+
+@pytest.mark.parametrize(
+    "timestamp, expected_agg_site_component_ids",
+    [
+        (
+            datetime(2022, 2, 1, 1, 0, 0, tzinfo=timezone(timedelta(hours=10))),
+            [(1, 1, 1), (1, 2, 1), (2, 3, 1), (1, 4, 1), (0, 5, 1), (0, 6, 1)],
+        ),
+        (
+            datetime(2022, 2, 3, 4, 5, 8, tzinfo=timezone.utc),  # timestamp mismatch
+            [],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_fetch_tariff_components_by_changed_at(
+    pg_base_config, timestamp: datetime, expected_agg_site_component_ids: list[tuple[int, int, int]]
+):
+    """Tests that entities are filtered/returned correctly and expand per site.
+
+    expected_agg_site_component_ids: tuple of aggregator_id, site_id, tariff_component_id"""
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_tariff_components_by_changed_at(session, timestamp)
+        assert_batched_entities(
+            batch,
+            SiteScopedTariffComponent,
+            ArchiveSiteScopedTariffComponent,
+            len(expected_agg_site_component_ids),
+            0,
+        )
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+
+        assert all([isinstance(e, SiteScopedTariffComponent) for e in list_entities])
+        actual_agg_site_group_ids = [
+            (e.aggregator_id, e.site_id, e.original.tariff_component_id) for e in list_entities
+        ]
+
+        assert expected_agg_site_component_ids == actual_agg_site_group_ids
+
+
+@pytest.mark.anyio
+async def test_fetch_tariff_component_by_timestamp_with_archive(pg_base_config):
+    """Tests that entities are filtered/returned correctly and include archive data"""
+
+    # This matches the changed_time on tariff 1
+    timestamp = datetime(2022, 2, 1, 1, 0, 0, tzinfo=timezone(timedelta(hours=10)))
+    expected_active_tariff_ids = [1]
+    expected_deleted_tariff_ids = [21, 24, 25]
+    expected_site_agg_ids = [(1, 1), (1, 2), (2, 3), (1, 4), (0, 5), (0, 6)]
+
+    # inject a bunch of archival data
+    async with generate_async_session(pg_base_config) as session:
+
+        # Inject archive defaults (only most recent is used)
+        session.add(
+            generate_class_instance(
+                ArchiveTariffComponent,
+                seed=55,
+                tariff_component_id=21,
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveTariffComponent,
+                seed=66,
+                tariff_component_id=21,
+                deleted_time=timestamp - timedelta(seconds=5),
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveTariffComponent,
+                seed=77,
+                tariff_component_id=21,
+                deleted_time=timestamp,
+                power_of_ten_multiplier=21,  # for identifying this record later
+            )
+        )
+
+        # No deleted time so ignored
+        session.add(generate_class_instance(ArchiveTariffComponent, seed=88, tariff_component_id=22))
+
+        # Wrong deleted time so ignored
+        session.add(
+            generate_class_instance(
+                ArchiveTariffComponent,
+                seed=99,
+                tariff_component_id=23,
+                deleted_time=timestamp - timedelta(seconds=5),
+            )
+        )
+
+        # These will be picked up
+        session.add(
+            generate_class_instance(
+                ArchiveTariffComponent,
+                seed=1010,
+                tariff_component_id=24,
+                deleted_time=timestamp,
+                power_of_ten_multiplier=24,  # for identifying this record later
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveTariffComponent,
+                seed=1111,
+                tariff_component_id=25,
+                deleted_time=timestamp,
+                power_of_ten_multiplier=25,  # for identifying this record later
+            )
+        )
+        await session.commit()
+
+    # Now see if the fetch grabs everything
+    async with generate_async_session(pg_base_config) as session:
+        # Need to unroll the batching into a single list (batching is tested elsewhere)
+        batch = await fetch_tariff_components_by_changed_at(session, timestamp)
+        assert_batched_entities(
+            batch,
+            SiteScopedTariffComponent,
+            ArchiveSiteScopedTariffComponent,
+            len(expected_active_tariff_ids) * len(expected_site_agg_ids),
+            len(expected_deleted_tariff_ids) * len(expected_site_agg_ids),
+        )
+
+        # The resulting entities will be multiplied out by the expected_site_agg_ids entries
+        # We will check that every expected Tariff is found against every existing site
+        active_list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        deleted_list_entities = [e for _, entities in batch.deleted_by_batch_key.items() for e in entities]
+        active_agg_site_group_ids = [
+            (e.aggregator_id, e.site_id, e.original.tariff_component_id) for e in active_list_entities
+        ]
+        deleted_agg_site_group_ids = [
+            (e.aggregator_id, e.site_id, e.original.tariff_component_id) for e in deleted_list_entities
+        ]
+
+        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_active_tariff_ids):
+            expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
+            assert expected_tuple in active_agg_site_group_ids
+
+        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_deleted_tariff_ids):
+            expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
+            assert expected_tuple in deleted_agg_site_group_ids
+
+        # Validate the deleted entities are the ones we expect (lean on the fact we setup a property on the
+        # archive type in a particular way for the expected matches)
+        assert all(
+            [
+                e.original.power_of_ten_multiplier == e.original.tariff_component_id
+                for v_list in batch.deleted_by_batch_key.values()
+                for e in v_list
+            ]
+        )
+
+        # Sanity check that a different timestamp yields nothing
+        empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
+        assert_batched_entities(empty_batch, SiteScopedTariffComponent, ArchiveSiteScopedTariffComponent, 0, 0)
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0

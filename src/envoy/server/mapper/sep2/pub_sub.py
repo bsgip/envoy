@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 from enum import IntEnum
 from typing import Optional, Sequence, Union
 from urllib.parse import urlparse
@@ -13,14 +13,17 @@ from envoy_schema.server.schema.sep2.pub_sub import (
     XSI_TYPE_DER_STATUS,
     XSI_TYPE_END_DEVICE_LIST,
     XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST,
+    XSI_TYPE_RATE_COMPONENT_LIST,
     XSI_TYPE_READING_LIST,
+    XSI_TYPE_TARIFF_PROFILE_LIST,
     XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
 )
 from envoy_schema.server.schema.sep2.pub_sub import Condition as Sep2Condition
-from envoy_schema.server.schema.sep2.pub_sub import Notification, NotificationStatus
+from envoy_schema.server.schema.sep2.pub_sub import Notification, NotificationResourceCombined, NotificationStatus
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
 from envoy_schema.server.schema.sep2.pub_sub import SubscriptionEncoding, SubscriptionListResponse
 from envoy_schema.server.schema.uri import (
+    CombinedTimeTariffIntervalListUri,
     DefaultDERControlUri,
     DERAvailabilityUri,
     DERCapabilityUri,
@@ -36,6 +39,7 @@ from envoy_schema.server.schema.uri import (
     ReadingListUri,
     SubscriptionListUri,
     SubscriptionUri,
+    TariffProfileListUri,
     TimeTariffIntervalListUri,
 )
 from parse import parse  # type: ignore
@@ -49,13 +53,13 @@ from envoy.server.mapper.sep2.der import DERAvailabilityMapper, DERCapabilityMap
 from envoy.server.mapper.sep2.end_device import EndDeviceMapper
 from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignmentsMapper
 from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
-from envoy.server.mapper.sep2.pricing import TimeTariffIntervalMapper
+from envoy.server.mapper.sep2.pricing import RateComponentMapper, TariffProfileMapper, TimeTariffIntervalMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope
 
 
@@ -95,11 +99,19 @@ class SubscriptionMapper:
         href_site_id = sub.scoped_site_id if sub.scoped_site_id is not None else scope.display_site_id
 
         if sub.resource_type == SubscriptionResource.SITE:
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
             if sub.scoped_site_id is None:
                 return generate_href(EndDeviceListUri, scope)
             else:
                 return generate_href(EndDeviceUri, scope, site_id=href_site_id)
         elif sub.resource_type == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DOEs without a resource_id is unsupported on sub {sub.subscription_id}"
@@ -107,6 +119,10 @@ class SubscriptionMapper:
 
             return generate_href(DERControlListUri, scope, site_id=href_site_id, der_program_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.READING:
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to readings without a resource_id is unsupported on sub {sub.subscription_id}"
@@ -120,28 +136,23 @@ class SubscriptionMapper:
                 reading_set_id=READING_SET_ALL_ID,
             )
         elif sub.resource_type == SubscriptionResource.TARIFF_GENERATED_RATE:
-            if sub.resource_id is None:
+            if sub.resource_id is None or sub.resource_parent_id is None:
                 raise InvalidMappingError(
-                    f"Subscribing to rates without a resource_id is unsupported on sub {sub.subscription_id}"
+                    f"Subscribing to rates requires resource_id/resource_parent_id on sub {sub.subscription_id}"
                 )
 
-            # We have to make a fun decision here - given our subs don't technically support subscribing
-            # at a TimeTariffInterval level (which would actually be subscribing to a single day's prices)
-            # we can either:
-            #   a) Subscribe to the parent RateComponent which is scoped to site/tariff (and then return
-            #      TimeTariffInterval for ALL price types in notifications)
-            #   b) Subscribe to the TimeTariffInterval but instead return ALL dates/price types despite
-            #      the subscribedResourceUri
-            #
-            # Both are annoying - I think option a) feels the least hacky (as both break the standard slightly
-            # in different ways)
             return generate_href(
-                RateComponentListUri,
+                TimeTariffIntervalListUri,
                 scope,
                 site_id=href_site_id,
-                tariff_id=sub.resource_id,
+                tariff_id=sub.resource_parent_id,
+                rate_component_id=sub.resource_id,
             )
         elif sub.resource_type == SubscriptionResource.SITE_DER_AVAILABILITY:
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DERAvailability requires resource_id on sub {sub.subscription_id}"
@@ -149,7 +160,10 @@ class SubscriptionMapper:
 
             return generate_href(DERAvailabilityUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_RATING:
-
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DERCapability requires resource_id on sub {sub.subscription_id}"
@@ -157,7 +171,10 @@ class SubscriptionMapper:
 
             return generate_href(DERCapabilityUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_SETTING:
-
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DERSettings requires resource_id on sub {sub.subscription_id}"
@@ -165,13 +182,19 @@ class SubscriptionMapper:
 
             return generate_href(DERSettingsUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_STATUS:
-
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
             if sub.resource_id is None:
                 raise InvalidMappingError(f"Subscribing to DERStatus requires resource_id on sub {sub.subscription_id}")
 
             return generate_href(DERStatusUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.DEFAULT_SITE_CONTROL:
-
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DefaultDERControl requires resource_id on sub {sub.subscription_id}"
@@ -179,12 +202,62 @@ class SubscriptionMapper:
 
             return generate_href(DefaultDERControlUri, scope, site_id=href_site_id, der_program_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
             return generate_href(FunctionSetAssignmentsListUri, scope, site_id=href_site_id)
         elif sub.resource_type == SubscriptionResource.SITE_CONTROL_GROUP:
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
             if sub.resource_id is not None:
                 return generate_href(DERProgramFSAListUri, scope, site_id=href_site_id, fsa_id=sub.resource_id)
             else:
                 return generate_href(DERProgramListUri, scope, site_id=href_site_id)
+        elif sub.resource_type == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
+            if sub.resource_id is None:
+                raise InvalidMappingError(
+                    f"Subscribing to combined rates requires resource_id on sub {sub.subscription_id}"
+                )
+
+            return generate_href(
+                CombinedTimeTariffIntervalListUri,
+                scope,
+                site_id=href_site_id,
+                tariff_id=sub.resource_id,
+            )
+        elif sub.resource_type == SubscriptionResource.TARIFF_COMPONENT:
+            if sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
+            if sub.resource_id is None:
+                raise InvalidMappingError(
+                    f"Subscribing to tariff components requires resource_id on sub {sub.subscription_id}"
+                )
+
+            return generate_href(
+                RateComponentListUri,
+                scope,
+                site_id=href_site_id,
+                tariff_id=sub.resource_id,
+            )
+        elif sub.resource_type == SubscriptionResource.TARIFF:
+            if sub.resource_id is not None or sub.resource_parent_id is not None:
+                raise InvalidMappingError(
+                    f"resource_id/resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                )
+            return generate_href(
+                TariffProfileListUri,
+                scope,
+                site_id=href_site_id,
+            )
         else:
             raise InvalidMappingError(
                 f"Cannot map a resource HREF for resource_type {sub.resource_type} on sub {sub.subscription_id}"
@@ -220,11 +293,15 @@ class SubscriptionMapper:
         )
 
     @staticmethod
-    def parse_resource_href(href: str) -> tuple[SubscriptionResource, Optional[int], Optional[int]]:  # noqa C901
+    def parse_resource_href(  # noqa C901
+        href: str,
+    ) -> tuple[SubscriptionResource, Optional[int], Optional[int], Optional[int]]:
         """Takes a subscription subscribed resource href (sans any href_prefix) and attempts to decompose it into
-        (resource, scoped_site_id, resource_id) - raises InvalidMappingError if there is no way to accomplish this"""
+        (resource, scoped_site_id, resource_id, resource_parent_id) - raises InvalidMappingError if there is no way to
+        accomplish this
+        """
         if href == EndDeviceListUri:
-            return (SubscriptionResource.SITE, None, None)
+            return (SubscriptionResource.SITE, None, None, None)
 
         # Try Reading
         result = parse(ReadingListUri, href)
@@ -234,21 +311,62 @@ class SubscriptionMapper:
                     SubscriptionResource.READING,
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["site_reading_type_id"]),
+                    None,
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Reading resource")
 
-        # Try Rate
-        result = parse(RateComponentListUri, href)
+        # Try TimeTariffInterval list
+        result = parse(CombinedTimeTariffIntervalListUri, href)
+        if result:
+            try:
+                return (
+                    SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
+                    _parse_site_id_from_match(result["site_id"]),
+                    int(result["tariff_id"]),
+                    None,
+                )
+            except ValueError:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a combined Rate resource")
+
+        # Try TimeTariffInterval list
+        result = parse(TimeTariffIntervalListUri, href)
         if result:
             try:
                 return (
                     SubscriptionResource.TARIFF_GENERATED_RATE,
                     _parse_site_id_from_match(result["site_id"]),
+                    int(result["rate_component_id"]),
                     int(result["tariff_id"]),
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Rate resource")
+
+        # Try RateComponent list
+        result = parse(RateComponentListUri, href)
+        if result:
+            try:
+                return (
+                    SubscriptionResource.TARIFF_COMPONENT,
+                    _parse_site_id_from_match(result["site_id"]),
+                    int(result["tariff_id"]),
+                    None,
+                )
+            except ValueError:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Tariff Component resource")
+
+        # Try TariffProfile list
+        result = parse(TariffProfileListUri, href)
+        if result:
+            try:
+                return (
+                    SubscriptionResource.TARIFF,
+                    _parse_site_id_from_match(result["site_id"]),
+                    None,
+                    None,
+                )
+            except ValueError:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Tariff resource")
 
         # Try DOE
         result = parse(DERControlListUri, href)
@@ -258,6 +376,7 @@ class SubscriptionMapper:
                     SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_program_id"]),
+                    None,
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DOE resource")
@@ -270,6 +389,7 @@ class SubscriptionMapper:
                     SubscriptionResource.SITE_DER_AVAILABILITY,
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
+                    None,
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERAvailability resource")
@@ -282,6 +402,7 @@ class SubscriptionMapper:
                     SubscriptionResource.SITE_DER_RATING,
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
+                    None,
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERRating resource")
@@ -294,6 +415,7 @@ class SubscriptionMapper:
                     SubscriptionResource.SITE_DER_SETTING,
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
+                    None,
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERSetting resource")
@@ -306,6 +428,7 @@ class SubscriptionMapper:
                     SubscriptionResource.SITE_DER_STATUS,
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
+                    None,
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERStatus resource")
@@ -318,6 +441,7 @@ class SubscriptionMapper:
                     SubscriptionResource.DEFAULT_SITE_CONTROL,
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_program_id"]),
+                    None,
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DefaultDERControl resource")
@@ -330,6 +454,7 @@ class SubscriptionMapper:
                     SubscriptionResource.SITE_CONTROL_GROUP,
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["fsa_id"]),
+                    None,
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
@@ -341,6 +466,7 @@ class SubscriptionMapper:
                 return (
                     SubscriptionResource.FUNCTION_SET_ASSIGNMENTS,
                     _parse_site_id_from_match(result["site_id"]),
+                    None,
                     None,
                 )
             except ValueError:
@@ -356,6 +482,7 @@ class SubscriptionMapper:
                     SubscriptionResource.SITE_CONTROL_GROUP,
                     _parse_site_id_from_match(result["site_id"]),
                     None,
+                    None,
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
@@ -364,7 +491,7 @@ class SubscriptionMapper:
         result = parse(EndDeviceUri, href)
         if result:
             try:
-                return (SubscriptionResource.SITE, _parse_site_id_from_match(result["site_id"]), None)
+                return (SubscriptionResource.SITE, _parse_site_id_from_match(result["site_id"]), None, None)
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a EndDevice resource")
 
@@ -385,7 +512,9 @@ class SubscriptionMapper:
 
         # Figure out what the client wants to subscribe to
         resource_href = remove_href_prefix(subscription.subscribedResource, scope)
-        resource, scoped_site_id, resource_id = SubscriptionMapper.parse_resource_href(resource_href)
+        resource, scoped_site_id, resource_id, resource_parent_id = SubscriptionMapper.parse_resource_href(
+            resource_href
+        )
 
         try:
             uri = urlparse(subscription.notificationURI)
@@ -415,6 +544,7 @@ class SubscriptionMapper:
             changed_time=changed_time,
             resource_type=resource,
             resource_id=resource_id,
+            resource_parent_id=resource_parent_id,
             scoped_site_id=scoped_site_id,
             notification_uri=subscription.notificationURI,
             entity_limit=subscription.limit,
@@ -558,35 +688,42 @@ class NotificationMapper:
     @staticmethod
     def map_rates_to_response(
         tariff_id: int,
-        day: date,
+        tariff_component_id: Optional[int],
         rates: Sequence[TariffGeneratedRate],
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
+        now: datetime,
     ) -> Notification:
         """Turns a list of dynamic prices into a notification"""
-        time_tariff_interval_list_href = generate_href(
-            TimeTariffIntervalListUri,
-            scope,
-            site_id=scope.display_site_id,
-            tariff_id=tariff_id,
-            rate_component_id=day.isoformat(),
-        )
-        return Notification.model_validate(
-            {
-                "subscribedResource": time_tariff_interval_list_href,
-                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
-                "status": _map_to_notification_status(notification_type),
-                "resource": {
-                    "type": XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
-                    "href": time_tariff_interval_list_href,
-                    "all_": len(rates),
-                    "results": len(rates),
-                    "TimeTariffInterval": [
-                        TimeTariffIntervalMapper.map_to_response(scope, r, pricing_reading_type) for r in rates
-                    ],
-                },
-            }
+
+        if tariff_component_id is None:
+            time_tariff_interval_list_href = generate_href(
+                CombinedTimeTariffIntervalListUri,
+                scope,
+                site_id=scope.display_site_id,
+                tariff_id=tariff_id,
+            )
+        else:
+            time_tariff_interval_list_href = generate_href(
+                TimeTariffIntervalListUri,
+                scope,
+                site_id=scope.display_site_id,
+                tariff_id=tariff_id,
+                rate_component_id=tariff_component_id,
+            )
+
+        return Notification(
+            subscribedResource=time_tariff_interval_list_href,
+            subscriptionURI=SubscriptionMapper.calculate_subscription_href(sub, scope),
+            status=_map_to_notification_status(notification_type),
+            resource=NotificationResourceCombined(
+                type=XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
+                href=time_tariff_interval_list_href,
+                all_=len(rates),
+                results=len(rates),
+                TimeTariffInterval=[TimeTariffIntervalMapper.map_to_response(scope, now, r) for r in rates],
+            ),
         )
 
     @staticmethod
@@ -780,4 +917,53 @@ class NotificationMapper:
                 "status": _map_to_notification_status(notification_type),
                 "resource": resource_model.model_dump() if resource_model is not None else None,
             }
+        )
+
+    @staticmethod
+    def map_tariffs_to_response(
+        tariffs: Sequence[Tariff],
+        sub: Subscription,
+        scope: AggregatorRequestScope,
+        notification_type: NotificationType,
+    ) -> Notification:
+        """Turns a list of tariffs into a notification"""
+
+        tp_list_href = generate_href(TariffProfileListUri, scope, site_id=scope.display_site_id)
+
+        return Notification(
+            subscribedResource=tp_list_href,
+            subscriptionURI=SubscriptionMapper.calculate_subscription_href(sub, scope),
+            status=_map_to_notification_status(notification_type),
+            resource=NotificationResourceCombined(
+                type=XSI_TYPE_TARIFF_PROFILE_LIST,
+                href=tp_list_href,
+                all_=len(tariffs),
+                results=len(tariffs),
+                TariffProfile=[TariffProfileMapper.map_to_response(scope, t, 0, 0) for t in tariffs],
+            ),
+        )
+
+    @staticmethod
+    def map_rate_components_to_response(
+        tariff_id: int,
+        components: Sequence[TariffComponent],
+        sub: Subscription,
+        scope: AggregatorRequestScope,
+        notification_type: NotificationType,
+    ) -> Notification:
+        """Turns a list of tariff components into a notification"""
+
+        rc_list_href = generate_href(RateComponentListUri, scope, site_id=scope.display_site_id, tariff_id=tariff_id)
+
+        return Notification(
+            subscribedResource=rc_list_href,
+            subscriptionURI=SubscriptionMapper.calculate_subscription_href(sub, scope),
+            status=_map_to_notification_status(notification_type),
+            resource=NotificationResourceCombined(
+                type=XSI_TYPE_RATE_COMPONENT_LIST,
+                href=rc_list_href,
+                all_=len(components),
+                results=len(components),
+                RateComponent=[RateComponentMapper.map_to_response(scope, tc, 0) for tc in components],
+            ),
         )

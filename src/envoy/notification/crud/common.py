@@ -16,13 +16,13 @@ from envoy.server.model.archive.site import (
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.subscription import ArchiveSubscription
-from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
+from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffComponent, ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.server import RuntimeServerConfig
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 
 
 @dataclass
@@ -84,6 +84,42 @@ class ArchiveSiteScopedSiteControlGroupDefault:
     original: ArchiveSiteControlGroupDefault
 
 
+@dataclass
+class SiteScopedTariff:
+    """Tariff isn't scoped to a specific site - for csip-aus it will need to be"""
+
+    aggregator_id: int
+    site_id: int
+    original: Tariff
+
+
+@dataclass
+class ArchiveSiteScopedTariff:
+    """ArchiveTariff isn't scoped to a specific site - for csip-aus it will need to be"""
+
+    aggregator_id: int
+    site_id: int
+    original: ArchiveTariff
+
+
+@dataclass
+class SiteScopedTariffComponent:
+    """TariffComponent isn't scoped to a specific site - for csip-aus it will need to be"""
+
+    aggregator_id: int
+    site_id: int
+    original: TariffComponent
+
+
+@dataclass
+class ArchiveSiteScopedTariffComponent:
+    """ArchiveTariffComponent isn't scoped to a specific site - for csip-aus it will need to be"""
+
+    aggregator_id: int
+    site_id: int
+    original: ArchiveTariffComponent
+
+
 TResourceModel = TypeVar(
     "TResourceModel",
     Site,
@@ -100,6 +136,8 @@ TResourceModel = TypeVar(
     SiteControlGroupDefault,
     SiteControlGroup,
     RuntimeServerConfig,
+    Tariff,
+    TariffComponent,
 )
 
 TArchiveResourceModel = TypeVar(
@@ -117,4 +155,6 @@ TArchiveResourceModel = TypeVar(
     ArchiveSubscription,
     ArchiveSiteControlGroupDefault,
     ArchiveSiteControlGroup,
+    ArchiveTariff,
+    ArchiveTariffComponent,
 )

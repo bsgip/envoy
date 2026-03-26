@@ -32,13 +32,16 @@ from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
 class TariffProfileMapper:
     @staticmethod
     def map_to_response(
-        scope: DeviceOrAggregatorRequestScope, tariff: Tariff, total_components: int, total_active_rates: int
+        scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],
+        tariff: Tariff,
+        total_components: int,
+        total_active_rates: int,
     ) -> TariffProfileResponse:
         """Returns a mapped sep2 entity TariffProfileResponse.
 
@@ -102,6 +105,7 @@ class TariffProfileMapper:
             all_=total_tariffs,
             results=tariffs_count,
             TariffProfile=tariff_profiles,
+            subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
         )
 
 
@@ -130,7 +134,7 @@ class RateComponentMapper:
 
     @staticmethod
     def map_to_response(
-        scope: DeviceOrAggregatorRequestScope, tc: TariffComponent, total_rates: int
+        scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope], tc: TariffComponent, total_rates: int
     ) -> RateComponentResponse:
         """Maps/Creates a single rate component response describing a commodity being priced"""
 
@@ -221,7 +225,9 @@ class ConsumptionTariffIntervalMapper:
 
     @staticmethod
     def map_to_response(
-        scope: DeviceOrAggregatorRequestScope, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate, cti_id: int
+        scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],
+        rate: TariffGeneratedRate | ArchiveTariffGeneratedRate,
+        cti_id: int,
     ) -> ConsumptionTariffIntervalResponse:
         """Returns a ConsumptionTariffIntervalResponse with the nominated ID"""
         href = generate_href(
@@ -273,7 +279,8 @@ class ConsumptionTariffIntervalMapper:
 
     @staticmethod
     def map_to_summary_list_response(
-        scope: DeviceOrAggregatorRequestScope, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate
+        scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],
+        rate: TariffGeneratedRate | ArchiveTariffGeneratedRate,
     ) -> ConsumptionTariffIntervalListSummaryResponse:
         """Returns a list containing the ConsumptionTariffIntervalResponse(s) representing rate"""
 
@@ -294,13 +301,15 @@ class TimeTariffIntervalMapper:
 
     @staticmethod
     def map_to_response(
-        scope: DeviceOrAggregatorRequestScope, now: datetime, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate
+        scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],
+        now: datetime,
+        rate: TariffGeneratedRate | ArchiveTariffGeneratedRate,
     ) -> TimeTariffIntervalResponse:
         """Creates a new TimeTariffIntervalResponse for the given rate"""
         href = generate_href(
             uri.TimeTariffIntervalUri,
             scope,
-            site_id=scope.display_site_id,
+            site_id=rate.site_id,
             tariff_id=rate.tariff_id,
             rate_component_id=rate.tariff_component_id,
             tti_id=rate.tariff_generated_rate_id,
@@ -308,7 +317,7 @@ class TimeTariffIntervalMapper:
         cti_list_href = generate_href(
             uri.ConsumptionTariffIntervalListUri,
             scope,
-            site_id=scope.display_site_id,
+            site_id=rate.site_id,
             tariff_id=rate.tariff_id,
             rate_component_id=rate.tariff_component_id,
             tti_id=rate.tariff_generated_rate_id,
@@ -316,7 +325,7 @@ class TimeTariffIntervalMapper:
         rate_component_href = generate_href(
             uri.RateComponentUri,
             scope,
-            site_id=scope.display_site_id,
+            site_id=rate.site_id,
             tariff_id=rate.tariff_id,
             rate_component_id=rate.tariff_component_id,
         )
@@ -390,6 +399,7 @@ class TimeTariffIntervalMapper:
 
         return TimeTariffIntervalListResponse(
             href=href,
+            subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
             all_=total,
             results=len(rates),
             TimeTariffInterval=[TimeTariffIntervalMapper.map_to_response(scope, now, rate) for rate in rates],
