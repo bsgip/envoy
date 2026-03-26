@@ -280,38 +280,17 @@ def test_encode_time_tariff_interval_mrid():
 
     all_generated_mrids = []
 
-    for scope, time_tariff_interval_id, prt in product(
+    for scope, time_tariff_interval_id in product(
         [scope1, scope2],
         [0, 123, MAX_INT_32, MAX_INT_64],
-        PricingReadingType,
     ):
         assert_and_append_mrid(
-            MridMapper.encode_time_tariff_interval_mrid(scope, time_tariff_interval_id, prt),
+            MridMapper.encode_time_tariff_interval_mrid(scope, time_tariff_interval_id),
             all_generated_mrids,
         )
 
     assert len(all_generated_mrids) == len(set(all_generated_mrids)), "Each MRID should be unique"
     assert all(decode_mrid_type(m) == MridType.TIME_TARIFF_INTERVAL for m in all_generated_mrids)
-
-
-def test_encode_time_tariff_interval_mrid_bad_pricing_reading_type():
-    """Checks that invalid values for pricing_reading_type raise ValueError"""
-    scope = generate_class_instance(BaseRequestScope)
-    tariff_generated_rate_id = 1
-
-    # Valid values to act as a sanity check - these should all be OK
-    assert_mrid(MridMapper.encode_time_tariff_interval_mrid(scope, tariff_generated_rate_id, 1))
-    assert_mrid(MridMapper.encode_time_tariff_interval_mrid(scope, tariff_generated_rate_id, 2))
-    assert_mrid(MridMapper.encode_time_tariff_interval_mrid(scope, tariff_generated_rate_id, 3))
-    assert_mrid(MridMapper.encode_time_tariff_interval_mrid(scope, tariff_generated_rate_id, 4))
-
-    # This is our actual tests for out of range values
-    with pytest.raises(ValueError):
-        MridMapper.encode_time_tariff_interval_mrid(scope, tariff_generated_rate_id, 0)
-    with pytest.raises(ValueError):
-        MridMapper.encode_time_tariff_interval_mrid(scope, tariff_generated_rate_id, -1)
-    with pytest.raises(ValueError):
-        MridMapper.encode_time_tariff_interval_mrid(scope, tariff_generated_rate_id, 5)  # Too high
 
 
 def test_decode_and_validate_mrid_type():
@@ -341,7 +320,7 @@ def test_decode_and_validate_mrid_type():
     do_test(lambda s: MridMapper.encode_doe_mrid(s, 1))
     do_test(lambda s: MridMapper.encode_function_set_assignment_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_rate_component_mrid(s, 1, 2))
-    do_test(lambda s: MridMapper.encode_time_tariff_interval_mrid(s, 1, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH))
+    do_test(lambda s: MridMapper.encode_time_tariff_interval_mrid(s, 1))
     do_test(lambda s: MridMapper.encode_tariff_profile_mrid(s, 1))
     do_test(lambda s: MridMapper.encode_response_set_mrid(s, 1))
 
@@ -357,7 +336,7 @@ def test_decode_doe_mrid(doe_id: int):
     assert decoded_id == doe_id
 
 
-@pytest.mark.parametrize("rate_id", product([0, MAX_INT_32, MAX_INT_64, 123, 4]))
+@pytest.mark.parametrize("rate_id", [0, MAX_INT_32, MAX_INT_64, 123, 4])
 def test_decode_time_tariff_interval_mrid(rate_id: int):
     scope = generate_class_instance(BaseRequestScope)
     mrid = MridMapper.encode_time_tariff_interval_mrid(scope, rate_id)

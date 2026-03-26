@@ -45,7 +45,6 @@ ALL_ENDPOINTS_WITH_SUPPORTED_METHODS: list[tuple[list[HTTPMethod], str]] = [
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/fsa/1"),
 
     # Pricing function set
-    ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/fsa/1/tp"),  # FSA scoped link to Tariffs
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp/1"),
     ([HTTPMethod.GET, HTTPMethod.HEAD], "/edev/1/tp/1/ctti"),
