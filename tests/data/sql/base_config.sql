@@ -407,8 +407,8 @@ VALUES (5, -- subscription_id
     '2000-01-01 00:00:00Z', -- created_time
     '2024-01-02 15:22:33.500', -- changed_time
     4, -- resource_type
-    NULL, -- resource_parent_id
     1, -- resource_id
+    NULL, -- resource_parent_id
     NULL, -- scoped_site_id
     'https://example.com:55/path/', -- notification_uri
     55 -- entity_limit

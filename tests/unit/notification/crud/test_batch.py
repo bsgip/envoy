@@ -394,6 +394,15 @@ def test_get_subscription_filter_id_invalid():
             ),
             33,
         ),
+        (
+            SubscriptionResource.TARIFF,
+            SiteScopedTariff(
+                aggregator_id=11,
+                site_id=22,
+                original=generate_class_instance(Tariff, fsa_id=33),
+            ),
+            33,
+        ),
     ],
 )
 def test_get_subscription_filter_id(resource: SubscriptionResource, entity: TResourceModel, expected: int):

@@ -60,7 +60,11 @@ def subscribable_resource_hrefs(site_id: int, pricing_reading_type_id: int) -> l
         f"/edev/{site_id}/der/1/dera",
         f"/edev/{site_id}/der/1/ders",
         f"/edev/{site_id}/der/1/derg",
+        f"/edev/{site_id}/fsa/1/tp",
+        f"/edev/{site_id}/tp",
         f"/edev/{site_id}/tp/1/rc",
+        f"/edev/{site_id}/tp/1/ctti",
+        f"/edev/{site_id}/tp/1/rc/1/tti",
         f"/upt/{site_id}/mr/{pricing_reading_type_id}/rs/all/r",
         f"/edev/{site_id}/fsa",
         f"/edev/{site_id}/derp/1/dderc",
@@ -208,7 +212,7 @@ async def test_get_subscription_list_by_page(
         (AGG_1_VALID_CERT, 1, 2, None),
         (AGG_1_VALID_CERT, 2, 2, "/edev/2/derp/1/derc"),
         (AGG_2_VALID_CERT, 1, 2, None),  # Wrong aggregator
-        (AGG_2_VALID_CERT, 0, 3, "/edev/3/tp/3/rc"),
+        (AGG_2_VALID_CERT, 0, 3, "/edev/3/tp/1/rc/3/tti"),
         (AGG_1_VALID_CERT, 0, 4, "/edev/4"),
         (AGG_1_VALID_CERT, 4, 4, "/edev/4"),
         (AGG_1_VALID_CERT, 0, 5, "/upt/0/mr/1/rs/all/r"),
@@ -707,6 +711,7 @@ async def test_der_capability_subscription(
     updated_cap: DERCapability = generate_class_instance(DERCapability, generate_relationships=True)
     updated_cap.modesSupported = "03"
     updated_cap.doeModesSupported = "02"
+    updated_cap.vppModesSupported = "01"
     response = await client.put(
         uris.DERCapabilityUri.format(site_id=1, der_id=PUBLIC_SITE_DER_ID),
         content=updated_cap.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),

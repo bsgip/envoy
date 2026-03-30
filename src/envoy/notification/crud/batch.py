@@ -227,7 +227,7 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
     elif resource == SubscriptionResource.TARIFF_COMPONENT:
         return cast(SiteScopedTariffComponent, entity).original.tariff_component_id  # type: ignore
     elif resource == SubscriptionResource.TARIFF:
-        return cast(SiteScopedTariff, entity).original.tariff_id  # type: ignore
+        return cast(SiteScopedTariff, entity).original.fsa_id  # type: ignore
     elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
         # rate subscriptions can be scoped to a single tariff
         return cast(TariffGeneratedRate, entity).tariff_id  # type: ignore # Pretty sure this is a mypy quirk

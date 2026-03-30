@@ -42,7 +42,7 @@ from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope, DeviceOrAggregatorRequestScope
 from tests.unit.notification.mocks import (
     assert_task_kicked_n_times,
@@ -255,6 +255,38 @@ def test_get_entity_pages_der(resource: SubscriptionResource, notification_type:
                 TariffGeneratedRate(tariff_generated_rate_id=4, site_id=1, tariff_component_id=1, tariff_id=99),
             ],
             [0, 2],
+        ),
+        (
+            Subscription(
+                resource_type=SubscriptionResource.TARIFF,
+                resource_id=22,
+                resource_parent_id=None,
+                conditions=[],
+            ),
+            SubscriptionResource.TARIFF,
+            [
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=11, fsa_id=22)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=22, fsa_id=11)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=33, fsa_id=11)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=44, fsa_id=22)),
+            ],
+            [0, 3],
+        ),
+        (
+            Subscription(
+                resource_type=SubscriptionResource.TARIFF,
+                resource_id=None,
+                resource_parent_id=None,
+                conditions=[],
+            ),
+            SubscriptionResource.TARIFF,
+            [
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=11, fsa_id=22)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=22, fsa_id=11)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=33, fsa_id=11)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=44, fsa_id=22)),
+            ],
+            [0, 1, 2, 3],
         ),
         (
             Subscription(resource_type=SubscriptionResource.READING, resource_id=11, conditions=[]),

@@ -39,6 +39,7 @@ from envoy_schema.server.schema.uri import (
     ReadingListUri,
     SubscriptionListUri,
     SubscriptionUri,
+    TariffProfileFSAListUri,
     TariffProfileListUri,
     TimeTariffIntervalListUri,
 )
@@ -249,15 +250,19 @@ class SubscriptionMapper:
                 tariff_id=sub.resource_id,
             )
         elif sub.resource_type == SubscriptionResource.TARIFF:
-            if sub.resource_id is not None or sub.resource_parent_id is not None:
+            if sub.resource_parent_id is not None:
                 raise InvalidMappingError(
-                    f"resource_id/resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
+                    f"resource_parent_id unsupported for {sub.resource_type} on sub {sub.subscription_id}"
                 )
-            return generate_href(
-                TariffProfileListUri,
-                scope,
-                site_id=href_site_id,
-            )
+
+            if sub.resource_id is None:
+                return generate_href(
+                    TariffProfileListUri,
+                    scope,
+                    site_id=href_site_id,
+                )
+            else:
+                return generate_href(TariffProfileFSAListUri, scope, site_id=href_site_id, fsa_id=sub.resource_id)
         else:
             raise InvalidMappingError(
                 f"Cannot map a resource HREF for resource_type {sub.resource_type} on sub {sub.subscription_id}"
@@ -354,6 +359,19 @@ class SubscriptionMapper:
                 )
             except ValueError:
                 raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Tariff Component resource")
+
+        # Try TariffProfile list (via FSA)
+        result = parse(TariffProfileFSAListUri, href)
+        if result:
+            try:
+                return (
+                    SubscriptionResource.TARIFF,
+                    _parse_site_id_from_match(result["site_id"]),
+                    int(result["fsa_id"]),
+                    None,
+                )
+            except ValueError:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Tariff resource")
 
         # Try TariffProfile list
         result = parse(TariffProfileListUri, href)

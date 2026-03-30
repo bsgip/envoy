@@ -504,6 +504,8 @@ def test_SubscriptionMapper_map_from_request():
         ("/edev/33/tp/44/rc/55", InvalidMappingError),
         ("/edev/33/tp", (SubscriptionResource.TARIFF, 33, None, None)),
         (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/tp", (SubscriptionResource.TARIFF, None, None, None)),
+        ("/edev/33/fsa/44/tp", (SubscriptionResource.TARIFF, 33, 44, None)),
+        (f"/edev/{VIRTUAL_END_DEVICE_SITE_ID}/fsa/44/tp", (SubscriptionResource.TARIFF, None, 44, None)),
         ("/edev/33/tp/44", InvalidMappingError),
         ("/edev/33/tp/44/rc/55/tti", (SubscriptionResource.TARIFF_GENERATED_RATE, 33, 55, 44)),
         (
