@@ -1,8 +1,8 @@
 from datetime import datetime
 
 from envoy_schema.admin.schema.archive import (
-    ArchiveDynamicOperatingEnvelopeResponse,
     ArchivePageResponse,
+    ArchiveSiteControlResponse,
     ArchiveSiteResponse,
     ArchiveTariffGeneratedRateResponse,
 )
@@ -47,10 +47,10 @@ class ArchiveListManager:
         )
 
     @staticmethod
-    async def get_archive_does_for_period(
+    async def get_archive_site_controls_for_period(
         session: AsyncSession, start: int, limit: int, period_start: datetime, period_end: datetime, only_deletes: bool
-    ) -> ArchivePageResponse[ArchiveDynamicOperatingEnvelopeResponse]:
-        """Admin specific (paginated) fetch of archived doe records that covers all aggregators."""
+    ) -> ArchivePageResponse[ArchiveSiteControlResponse]:
+        """Admin specific (paginated) fetch of archived SiteControl records that covers all aggregators."""
         archive_count = await count_archive_does_for_period(
             session, period_start=period_start, period_end=period_end, only_deletes=only_deletes
         )

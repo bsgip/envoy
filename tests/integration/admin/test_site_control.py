@@ -11,6 +11,7 @@ from assertical.asserts.time import assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
+from envoy_schema.admin.schema.base import BatchCreateResponse
 from envoy_schema.admin.schema.site_control import (
     SiteControlGroupPageResponse,
     SiteControlGroupRequest,
@@ -30,10 +31,7 @@ from sqlalchemy import func, select
 
 from envoy.admin.crud.doe import count_all_does, count_all_site_control_groups
 from envoy.server.api.request import MAX_LIMIT
-from envoy.server.model.archive.doe import (
-    ArchiveDynamicOperatingEnvelope,
-    ArchiveSiteControlGroup,
-)
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from tests.integration.admin.test_site import _build_query_string
 from tests.integration.response import read_location_header, read_response_body_string
@@ -140,11 +138,18 @@ async def test_create_site_controls(admin_client_auth: AsyncClient):
     control_1 = generate_class_instance(SiteControlRequest, site_id=1)
     control_2 = generate_class_instance(SiteControlRequest, site_id=2)
 
+    content = f"[{control_1.model_dump_json()}, {control_2.model_dump_json()}]"
     resp = await admin_client_auth.post(
-        SiteControlUri.format(group_id=1), content=f"[{control_1.model_dump_json()}, {control_2.model_dump_json()}]"
+        SiteControlUri.format(group_id=1), content=content, headers={"Content-Type": "application/json"}
     )
 
     assert resp.status_code == HTTPStatus.CREATED
+
+    body = read_response_body_string(resp)
+    assert len(body) > 0
+    batch_response = BatchCreateResponse(**json.loads(body))
+    assert_list_type(int, batch_response.ids, count=2)
+    assert batch_response.ids == [6, 7], "DB has counter set to start from 6 - so we know exactly what IDs to expect"
 
 
 @pytest.mark.anyio

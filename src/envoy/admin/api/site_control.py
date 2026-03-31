@@ -4,6 +4,7 @@ from http import HTTPStatus
 from typing import Optional
 
 from asyncpg.exceptions import CardinalityViolationError  # type: ignore
+from envoy_schema.admin.schema.base import BatchCreateResponse
 from envoy_schema.admin.schema.site_control import (
     SiteControlGroupDefaultRequest,
     SiteControlGroupDefaultResponse,
@@ -91,7 +92,7 @@ async def get_all_site_control_groups(
 
 
 @router.post(SiteControlUri, status_code=HTTPStatus.CREATED, response_model=None)
-async def create_site_controls(group_id: int, control_list: list[SiteControlRequest]) -> None:
+async def create_site_controls(group_id: int, control_list: list[SiteControlRequest]) -> BatchCreateResponse:
     """Bulk creation of 'Site Controls' under a site control group. Each SiteControlRequest is associated
     with a Site object via the site_id attribute.
 
@@ -102,7 +103,7 @@ async def create_site_controls(group_id: int, control_list: list[SiteControlRequ
         None
     """
     try:
-        await SiteControlListManager.add_many_site_control(db.session, group_id, control_list)
+        return await SiteControlListManager.add_many_site_control(db.session, group_id, control_list)
     except CardinalityViolationError as exc:
         raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances")
     except IntegrityError as exc:

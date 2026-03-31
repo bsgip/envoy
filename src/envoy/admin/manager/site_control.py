@@ -1,7 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, cast
 
+from envoy_schema.admin.schema.base import BatchCreateResponse
 from envoy_schema.admin.schema.site_control import (
     SiteControlGroupDefaultRequest,
     SiteControlGroupDefaultResponse,
@@ -188,6 +189,7 @@ class SiteControlGroupManager:
             server_default_load_limit_watts=scg.site_control_group_default.load_limit_active_watts,
             changed_time=scg.site_control_group_default.changed_time,
             created_time=scg.site_control_group_default.created_time,
+            server_default_storage_target_watts=None,
         )
 
 
@@ -221,17 +223,19 @@ class SiteControlListManager:
     @staticmethod
     async def add_many_site_control(
         session: AsyncSession, site_control_group_id: int, control_list: list[SiteControlRequest]
-    ) -> None:
+    ) -> BatchCreateResponse:
         """Inserts many site controls into the db for the specified site_control_group."""
 
         changed_time = utc_now()
-        doe_models = SiteControlListMapper.map_from_request(site_control_group_id, changed_time, control_list)
-        await supersede_then_insert_does(session, doe_models, changed_time)
+        site_control_models = SiteControlListMapper.map_from_request(site_control_group_id, changed_time, control_list)
+        inserted_ids = await supersede_then_insert_does(session, site_control_models, changed_time)
         await session.commit()
 
         await NotificationManager.notify_changed_deleted_entities(
             SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, changed_time
         )
+
+        return BatchCreateResponse(ids=cast(list[int], inserted_ids))
 
     @staticmethod
     async def get_all_site_controls(

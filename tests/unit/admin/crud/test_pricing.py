@@ -1,14 +1,21 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Optional
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal, assert_nowish
+from assertical.asserts.type import assert_dict_type, assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import func, select
 
-from envoy.admin.crud.pricing import insert_single_tariff, update_single_tariff, upsert_many_tariff_genrate
+from envoy.admin.crud.pricing import (
+    insert_many_tariff_genrate,
+    insert_single_tariff,
+    select_tariff_ids_for_component_ids,
+    update_single_tariff,
+)
 from envoy.server.crud.pricing import select_single_tariff
 from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
@@ -16,6 +23,12 @@ from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 async def _select_latest_tariff_generated_rate(session) -> TariffGeneratedRate:
     stmt = select(TariffGeneratedRate).order_by(TariffGeneratedRate.tariff_generated_rate_id.desc()).limit(1)
+    resp = await session.execute(stmt)
+    return resp.scalar_one()
+
+
+async def _select_tariff_generated_rate_by_id(session, id: int) -> Optional[TariffGeneratedRate]:
+    stmt = select(TariffGeneratedRate).where(TariffGeneratedRate.tariff_generated_rate_id == id)
     resp = await session.execute(stmt)
     return resp.scalar_one()
 
@@ -73,89 +86,127 @@ async def test_update_single_tariff(pg_base_config):
 
 
 @pytest.mark.anyio
-async def test_upsert_many_tariff_genrate_insert(pg_base_config):
+async def test_insert_many_tariff_genrate_insert(pg_base_config):
     """Assert that we are able to successfully insert a valid TariffGeneratedRate into a db"""
 
-    deleted_time = datetime(2022, 1, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
     async with generate_async_session(pg_base_config) as session:
-        doe_in: TariffGeneratedRate = generate_class_instance(
-            TariffGeneratedRate, generate_relationships=False, site_id=1, tariff_id=1
+        rate_in: TariffGeneratedRate = generate_class_instance(
+            TariffGeneratedRate, generate_relationships=False, site_id=1, tariff_id=1, tariff_component_id=1
         )
         # clean up generated instance to ensure it doesn't clash with base_config
-        del doe_in.tariff_generated_rate_id
+        del rate_in.tariff_generated_rate_id
 
-        await upsert_many_tariff_genrate(session, [doe_in], deleted_time)
+        inserted_ids = await insert_many_tariff_genrate(session, [rate_in])
         await session.commit()
 
+        assert_list_type(int, inserted_ids, count=1)
+
     async with generate_async_session(pg_base_config) as session:
-        doe_out = await _select_latest_tariff_generated_rate(session)
+        rate_out = await _select_latest_tariff_generated_rate(session)
+        assert rate_out.tariff_generated_rate_id == inserted_ids[0]
 
         assert_class_instance_equality(
             TariffGeneratedRate,
-            doe_out,
-            doe_in,
+            rate_in,
+            rate_out,
             ignored_properties={"tariff_generated_rate_id", "created_time"},
         )
 
         # created_time should be now as this is an insert, changed_time should match what was put in
-        assert_nowish(doe_out.created_time)
-        assert_datetime_equal(doe_out.changed_time, doe_out.changed_time)
+        assert_nowish(rate_out.created_time)
+        assert_datetime_equal(rate_in.changed_time, rate_out.changed_time)
 
-        # No archive on insert
+        # No archive
         assert (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one() == 0
 
-        doe_in_1 = generate_class_instance(
-            TariffGeneratedRate, site_id=1, tariff_id=1, start_time=doe_in.start_time + timedelta(seconds=1)
+        rate_in_1 = generate_class_instance(
+            TariffGeneratedRate,
+            site_id=1,
+            tariff_id=1,
+            tariff_component_id=1,
+            start_time=rate_in.start_time + timedelta(seconds=1),
         )
 
         # Rerun as a sanity check to catch any weird conflict errors
-        await upsert_many_tariff_genrate(session, [doe_in, doe_in_1], deleted_time)
+        inserted_ids_1 = await insert_many_tariff_genrate(session, [rate_in, rate_in_1])
+        assert_list_type(int, inserted_ids_1, count=2)
 
-        # Re-inserting will generate an archived value
-        assert (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one() == 1
+        assert inserted_ids[0] not in inserted_ids_1, "These should be new "
+
+        # Re-inserting will not update - this will be a fresh record
+        assert (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one() == 0
 
 
 @pytest.mark.anyio
-async def test_upsert_many_tariff_genrate_update(pg_base_config):
-    """Assert that we are able to successfully update a valid TariffGeneratedRate in the db"""
+async def test_insert_many_tariff_genrate_overlapping(pg_base_config):
+    """Assert that we are able to successfully insert an overlapping TariffGeneratedRate in the db"""
 
-    deleted_time = datetime(2022, 1, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
     async with generate_async_session(pg_base_config) as session:
         original_rate = await _select_latest_tariff_generated_rate(session)
-        cloned_original_rate = clone_class_instance(original_rate, ignored_properties={"tariff", "site"})
+        cloned_original_rate = clone_class_instance(
+            original_rate, ignored_properties={"tariff", "site", "tariff_component"}
+        )
 
         # clean up generated instance to ensure it doesn't clash with base_config
-        rate_to_update: TariffGeneratedRate = clone_class_instance(
-            original_rate, ignored_properties={"tariff_generated_rate_id", "created_time", "site", "tariff"}
+        rate_to_insert: TariffGeneratedRate = clone_class_instance(
+            original_rate,
+            ignored_properties={"tariff_generated_rate_id", "created_time", "site", "tariff", "tariff_component"},
         )
-        rate_to_update.import_active_price += Decimal("99.1")
-        rate_to_update.export_active_price += Decimal("99.2")
-        rate_to_update.import_reactive_price += Decimal("98.1")
-        rate_to_update.export_reactive_price += Decimal("98.2")
-        rate_to_update.changed_time = datetime(2026, 1, 3, tzinfo=timezone.utc)
-        rate_to_update.created_time = datetime(2027, 1, 3, tzinfo=timezone.utc)  # This shouldn't do anything
+        rate_to_insert.price_pow10_encoded += 123
+        rate_to_insert.changed_time = datetime(2026, 1, 3, tzinfo=timezone.utc)
+        rate_to_insert.created_time = datetime(2027, 1, 3, tzinfo=timezone.utc)  # This shouldn't do anything
 
-        await upsert_many_tariff_genrate(session, [rate_to_update], deleted_time)
+        inserted_ids = await insert_many_tariff_genrate(session, [rate_to_insert])
         await session.commit()
 
-    async with generate_async_session(pg_base_config) as session:
-        rate_after_update = await _select_latest_tariff_generated_rate(session)
+        assert_list_type(int, inserted_ids, count=1)
 
-        # This was a delete and new insert - created time changes
+    # Check the original rate in the DB remains unchanged and that a new record was created
+    async with generate_async_session(pg_base_config) as session:
+        rate_after_insert = await _select_tariff_generated_rate_by_id(
+            session, cloned_original_rate.tariff_generated_rate_id
+        )
+        inserted_rate = await _select_tariff_generated_rate_by_id(session, inserted_ids[0])
+
+        # Old rate - no change
         assert_class_instance_equality(
             TariffGeneratedRate,
-            rate_to_update,
-            rate_after_update,
-            ignored_properties={"tariff_generated_rate_id", "created_time", "site", "tariff"},
+            cloned_original_rate,
+            rate_after_insert,
         )
-        assert_nowish(rate_after_update.created_time)
 
-        # Old rate should've been archived
-        assert (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one() == 1
-        archive_data = (await session.execute(select(ArchiveTariffGeneratedRate))).scalar_one()
-
+        # New rate - inserted
         assert_class_instance_equality(
-            TariffGeneratedRate, cloned_original_rate, archive_data, ignored_properties={"tariff", "site"}
+            TariffGeneratedRate,
+            rate_to_insert,
+            inserted_rate,
+            ignored_properties={"tariff_generated_rate_id", "created_time"},
         )
-        assert_nowish(archive_data.archive_time)
-        assert archive_data.deleted_time == deleted_time
+        assert_nowish(inserted_rate.created_time)
+
+        # Nothing in the archive
+        assert (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one() == 0
+
+
+@pytest.mark.parametrize(
+    "tariff_component_ids, expected_result",
+    [
+        ([], {}),
+        ([99], {}),
+        ([99, 98], {}),
+        ([99, 98], {}),
+        ([1], {1: 1}),
+        ([1, 2, 3, 4], {1: 1, 2: 1, 3: 1, 4: 2}),
+        ([1, 2, 3], {1: 1, 2: 1, 3: 1}),
+        ([4, 1], {1: 1, 4: 2}),
+        ([1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 4, 4], {1: 1, 2: 1, 3: 1, 4: 2}),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_tariff_ids_for_component_ids(
+    pg_base_config, tariff_component_ids: list[int], expected_result: dict[int, int]
+):
+    async with generate_async_session(pg_base_config) as session:
+        result = await select_tariff_ids_for_component_ids(session, tariff_component_ids)
+        assert_dict_type(int, int, result, count=len(expected_result))
+        assert result == expected_result

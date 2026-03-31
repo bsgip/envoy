@@ -20,7 +20,6 @@ from envoy_schema.admin.schema.site_control import (
     UpdateDefaultValue,
 )
 from envoy_schema.admin.schema.uri import (
-    DoeUri,
     ServerConfigRuntimeUri,
     SiteControlGroupDefaultUri,
     SiteControlGroupListUri,
@@ -37,32 +36,30 @@ from envoy.server.model.server import RuntimeServerConfig
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 
 
-@pytest.mark.parametrize(
-    "body_type, uri",
-    [(DynamicOperatingEnvelopeRequest, DoeUri), (SiteControlRequest, SiteControlUri.format(group_id=1))],
-)
 @pytest.mark.anyio
-async def test_create_does_no_active_subscription(
+async def test_create_site_controls_no_active_subscription(
     pg_base_config,
     admin_client_auth: AsyncClient,
     notifications_enabled: MockedAsyncClient,
-    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
-    uri: str,
 ):
-    # There is currently a DOE sub in place - delete it before the test
+    uri = SiteControlUri.format(group_id=1)
+
+    # There is currently a SiteControl sub in place - delete it before the test
     async with generate_async_session(pg_base_config) as session:
         select_result = await session.execute(select(Subscription).where(Subscription.subscription_id == 2))
         sub = select_result.scalar_one()
         await session.delete(sub)
         await session.commit()
 
-    doe = generate_class_instance(body_type)
-    doe.site_id = 1
+    site_control_request_1 = generate_class_instance(SiteControlRequest)
+    site_control_request_1.site_id = 1
 
-    doe_1 = generate_class_instance(body_type, seed=123, optional_is_none=True)
-    doe_1.site_id = 2
+    site_control_request_2 = generate_class_instance(SiteControlRequest, seed=123, optional_is_none=True)
+    site_control_request_2.site_id = 2
 
-    resp = await admin_client_auth.post(uri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
+    resp = await admin_client_auth.post(
+        uri, content=f"[{site_control_request_1.model_dump_json()}, {site_control_request_2.model_dump_json()}]"
+    )
 
     assert resp.status_code == HTTPStatus.CREATED
 
@@ -72,19 +69,13 @@ async def test_create_does_no_active_subscription(
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
 
 
-@pytest.mark.parametrize(
-    "body_type, uri",
-    [(DynamicOperatingEnvelopeRequest, DoeUri), (SiteControlRequest, SiteControlUri.format(group_id=1))],
-)
 @pytest.mark.anyio
-async def test_create_does_with_active_subscription(
-    admin_client_auth: AsyncClient,
-    notifications_enabled: MockedAsyncClient,
-    pg_base_config,
-    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
-    uri: str,
+async def test_create_site_controls_with_active_subscription(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
 ):
-    """Tests creating DOEs with an active subscription generates notifications via the MockedAsyncClient"""
+    """Tests creating SiteControls with an active subscription generates notifications via the MockedAsyncClient"""
+    uri = SiteControlUri.format(group_id=1)
+
     # Create a subscription to actually pickup these changes
     subscription1_uri = "http://my.example:542/uri"
     subscription2_uri = "https://my.other.example:542/uri"
@@ -120,12 +111,12 @@ async def test_create_does_with_active_subscription(
 
         await session.commit()
 
-    doe_1 = generate_class_instance(body_type, seed=10001, site_id=1, calculation_log_id=None)
-    doe_2 = generate_class_instance(body_type, seed=20002, site_id=1, calculation_log_id=1)
-    doe_3 = generate_class_instance(body_type, seed=30003, site_id=2, calculation_log_id=1)
-    doe_4 = generate_class_instance(body_type, seed=40004, site_id=3, calculation_log_id=None)
+    control_1 = generate_class_instance(SiteControlRequest, seed=10001, site_id=1, calculation_log_id=None)
+    control_2 = generate_class_instance(SiteControlRequest, seed=20002, site_id=1, calculation_log_id=1)
+    control_3 = generate_class_instance(SiteControlRequest, seed=30003, site_id=2, calculation_log_id=1)
+    control_4 = generate_class_instance(SiteControlRequest, seed=40004, site_id=3, calculation_log_id=None)
 
-    content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
+    content = ",".join([d.model_dump_json() for d in [control_1, control_2, control_3, control_4]])
     resp = await admin_client_auth.post(
         uri,
         content=f"[{content}]",
@@ -135,9 +126,9 @@ async def test_create_does_with_active_subscription(
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=3, timeout_seconds=30)
 
-    # DOE 1,2 are batch 1 and go to sub1
-    # DOE 3 is batch 2 and go to sub1 and sub2
-    # DOE 4 is batch 3 and has no subscriptions (it belongs to a different aggregator)
+    # Control 1,2 are batch 1 and go to sub1
+    # Control 3 is batch 2 and go to sub1 and sub2
+    # Control 4 is batch 3 and has no subscriptions (it belongs to a different aggregator)
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
     assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 3
     assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 2
@@ -156,10 +147,10 @@ async def test_create_does_with_active_subscription(
                 r
                 for r in notifications_enabled.logged_requests
                 if r.uri == subscription1_uri
-                and f"{doe_1.export_limit_watts}" in r.content
-                and f"{doe_2.export_limit_watts}" in r.content
-                and f"{doe_3.export_limit_watts}" not in r.content
-                and f"{doe_4.export_limit_watts}" not in r.content
+                and f"{control_1.export_limit_watts}" in r.content
+                and f"{control_2.export_limit_watts}" in r.content
+                and f"{control_3.export_limit_watts}" not in r.content
+                and f"{control_4.export_limit_watts}" not in r.content
             ]
         )
         == 1
@@ -171,10 +162,10 @@ async def test_create_does_with_active_subscription(
                 r
                 for r in notifications_enabled.logged_requests
                 if r.uri == subscription1_uri
-                and f"{doe_1.export_limit_watts}" not in r.content
-                and f"{doe_2.export_limit_watts}" not in r.content
-                and f"{doe_3.export_limit_watts}" in r.content
-                and f"{doe_4.export_limit_watts}" not in r.content
+                and f"{control_1.export_limit_watts}" not in r.content
+                and f"{control_2.export_limit_watts}" not in r.content
+                and f"{control_3.export_limit_watts}" in r.content
+                and f"{control_4.export_limit_watts}" not in r.content
             ]
         )
         == 1
@@ -186,10 +177,10 @@ async def test_create_does_with_active_subscription(
                 r
                 for r in notifications_enabled.logged_requests
                 if r.uri == subscription2_uri
-                and f"{doe_1.export_limit_watts}" not in r.content
-                and f"{doe_2.export_limit_watts}" not in r.content
-                and f"{doe_3.export_limit_watts}" in r.content
-                and f"{doe_4.export_limit_watts}" not in r.content
+                and f"{control_1.export_limit_watts}" not in r.content
+                and f"{control_2.export_limit_watts}" not in r.content
+                and f"{control_3.export_limit_watts}" in r.content
+                and f"{control_4.export_limit_watts}" not in r.content
             ]
         )
         == 1
@@ -197,20 +188,14 @@ async def test_create_does_with_active_subscription(
     assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
-@pytest.mark.parametrize(
-    "body_type, uri",
-    [(DynamicOperatingEnvelopeRequest, DoeUri), (SiteControlRequest, SiteControlUri.format(group_id=1))],
-)
 @pytest.mark.anyio
-async def test_supersede_doe_with_active_subscription(
-    admin_client_auth: AsyncClient,
-    notifications_enabled: MockedAsyncClient,
-    pg_base_config,
-    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
-    uri: str,
+async def test_supersede_site_control_with_active_subscription(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
 ):
-    """Tests superseding a DOE with an active subscription generates notifications for the superseded and inserted
-    entity"""
+    """Tests superseding a SiteControl with an active subscription generates notifications for the superseded and
+    inserted entity"""
+
+    uri = SiteControlUri.format(group_id=1)
 
     # Create a subscription to actually pickup these changes
     subscription1_uri = "http://my.example:542/uri"
@@ -235,8 +220,8 @@ async def test_supersede_doe_with_active_subscription(
 
     # This will supersede DOE 1 and generate an insert for the new value
     # Use a small export_limit_watts to ensure it fits in Int16 when multiplied by 100 (pow10_multiplier=-2)
-    doe_1 = generate_class_instance(
-        body_type,
+    control_1 = generate_class_instance(
+        SiteControlRequest,
         seed=10001,
         site_id=1,
         calculation_log_id=None,
@@ -244,7 +229,7 @@ async def test_supersede_doe_with_active_subscription(
         export_limit_watts=100,
     )
 
-    content = ",".join([d.model_dump_json() for d in [doe_1]])
+    content = ",".join([d.model_dump_json() for d in [control_1]])
     resp = await admin_client_auth.post(
         uri,
         content=f"[{content}]",
@@ -271,7 +256,7 @@ async def test_supersede_doe_with_active_subscription(
                 r
                 for r in notifications_enabled.logged_requests
                 if r.uri == subscription1_uri
-                and f"<value>{doe_1.export_limit_watts * 100}</value>" in r.content  # Value of new DERControl
+                and f"<value>{control_1.export_limit_watts * 100}</value>" in r.content  # Value of new DERControl
                 and "<currentStatus>0</currentStatus>" in r.content  # One DERControl is "scheduled"
                 and "<value>111</value>" in r.content  # Value of superseded DERControl
                 and "<currentStatus>4</currentStatus>" in r.content  # One DERControl is "superseded"
@@ -283,19 +268,15 @@ async def test_supersede_doe_with_active_subscription(
     assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
-@pytest.mark.parametrize(
-    "body_type, uri",
-    [(DynamicOperatingEnvelopeRequest, DoeUri), (SiteControlRequest, SiteControlUri.format(group_id=1))],
-)
 @pytest.mark.anyio
 async def test_create_does_with_paginated_notifications(
     admin_client_auth: AsyncClient,
     notifications_enabled: MockedAsyncClient,
     pg_base_config,
-    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
-    uri: str,
 ):
-    """Tests creating DOEs with an active subscription respected the subscription entity_limit"""
+    """Tests creating SiteControls with an active subscription respected the subscription entity_limit"""
+    uri = SiteControlUri.format(group_id=1)
+
     # Create a subscription to actually pickup these changes
     subscription1_uri = "http://my.example:542/uri"
     async with generate_async_session(pg_base_config) as session:
@@ -314,12 +295,12 @@ async def test_create_does_with_paginated_notifications(
 
         await session.commit()
 
-    doe_1 = generate_class_instance(body_type, seed=101, site_id=1, calculation_log_id=None)
-    doe_2 = generate_class_instance(body_type, seed=202, site_id=1, calculation_log_id=None)
-    doe_3 = generate_class_instance(body_type, seed=303, site_id=1, calculation_log_id=None)
-    doe_4 = generate_class_instance(body_type, seed=404, site_id=3, calculation_log_id=None)
+    control_1 = generate_class_instance(SiteControlRequest, seed=101, site_id=1, calculation_log_id=None)
+    control_2 = generate_class_instance(SiteControlRequest, seed=202, site_id=1, calculation_log_id=None)
+    control_3 = generate_class_instance(SiteControlRequest, seed=303, site_id=1, calculation_log_id=None)
+    control_4 = generate_class_instance(SiteControlRequest, seed=404, site_id=3, calculation_log_id=None)
 
-    content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
+    content = ",".join([d.model_dump_json() for d in [control_1, control_2, control_3, control_4]])
     resp = await admin_client_auth.post(
         uri,
         content=f"[{content}]",

@@ -3,8 +3,8 @@ from decimal import Decimal
 from typing import Sequence
 
 from envoy_schema.admin.schema.archive import (
-    ArchiveDynamicOperatingEnvelopeResponse,
     ArchivePageResponse,
+    ArchiveSiteControlResponse,
     ArchiveSiteResponse,
     ArchiveTariffGeneratedRateResponse,
 )
@@ -42,12 +42,12 @@ class ArchiveMapper:
         )
 
     @staticmethod
-    def map_to_doe_response(doe: ArchiveDynamicOperatingEnvelope) -> ArchiveDynamicOperatingEnvelopeResponse:
+    def map_to_doe_response(doe: ArchiveDynamicOperatingEnvelope) -> ArchiveSiteControlResponse:
         archive_time = doe.archive_time
         if archive_time is None:
             archive_time = utc_now()  # Should never happen - the default in the DB will set this
 
-        return ArchiveDynamicOperatingEnvelopeResponse(
+        return ArchiveSiteControlResponse(
             archive_id=doe.archive_id,
             archive_time=archive_time,
             deleted_time=doe.deleted_time,
@@ -116,7 +116,7 @@ class ArchiveListMapper:
         limit: int,
         period_start: datetime,
         period_end: datetime,
-    ) -> ArchivePageResponse[ArchiveDynamicOperatingEnvelopeResponse]:
+    ) -> ArchivePageResponse[ArchiveSiteControlResponse]:
         return ArchivePageResponse(
             start=start,
             limit=limit,

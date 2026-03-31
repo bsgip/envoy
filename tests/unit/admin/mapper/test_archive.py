@@ -6,8 +6,8 @@ from assertical.asserts.time import assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.archive import (
-    ArchiveDynamicOperatingEnvelopeResponse,
     ArchivePageResponse,
+    ArchiveSiteControlResponse,
     ArchiveSiteResponse,
     ArchiveTariffGeneratedRateResponse,
 )
@@ -66,15 +66,13 @@ def test_map_to_doe_response():
     optional = generate_class_instance(ArchiveDynamicOperatingEnvelope, seed=202, optional_is_none=True)
 
     all_mapped = ArchiveMapper.map_to_doe_response(all)
-    assert isinstance(all_mapped, ArchiveDynamicOperatingEnvelopeResponse)
-    assert_class_instance_equality(
-        ArchiveDynamicOperatingEnvelopeResponse, all, all_mapped
-    )  # These should just map 1-1
+    assert isinstance(all_mapped, ArchiveSiteControlResponse)
+    assert_class_instance_equality(ArchiveSiteControlResponse, all, all_mapped)  # These should just map 1-1
 
     optional_mapped = ArchiveMapper.map_to_doe_response(optional)
-    assert isinstance(optional_mapped, ArchiveDynamicOperatingEnvelopeResponse)
+    assert isinstance(optional_mapped, ArchiveSiteControlResponse)
     assert_class_instance_equality(
-        ArchiveDynamicOperatingEnvelopeResponse,
+        ArchiveSiteControlResponse,
         optional,
         optional_mapped,
         {"archive_time", "import_limit_active_watts", "export_limit_watts"},

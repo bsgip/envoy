@@ -7,13 +7,13 @@ from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.archive import (
-    ArchiveDynamicOperatingEnvelopeResponse,
     ArchivePageResponse,
+    ArchiveSiteControlResponse,
     ArchiveSiteResponse,
     ArchiveTariffGeneratedRateResponse,
 )
 from envoy_schema.admin.schema.uri import (
-    ArchiveForPeriodDoes,
+    ArchiveForPeriodSiteControls,
     ArchiveForPeriodSites,
     ArchiveForPeriodTariffGeneratedRate,
 )
@@ -196,14 +196,14 @@ async def test_get_archive_for_period_does(
     await populate_archive_with_type(pg_base_config, ArchiveDynamicOperatingEnvelope)
 
     response = await admin_client_auth.get(
-        ArchiveForPeriodDoes.format(period_start=period_start.isoformat(), period_end=period_end.isoformat())
+        ArchiveForPeriodSiteControls.format(period_start=period_start.isoformat(), period_end=period_end.isoformat())
         + f"?only_deletes={only_deletes}&start={start}&limit={limit}"
     )
     assert response.status_code == HTTPStatus.OK
 
     body = read_response_body_string(response)
     assert len(body) > 0
-    page = ArchivePageResponse[ArchiveDynamicOperatingEnvelopeResponse](**json.loads(body))
+    page = ArchivePageResponse[ArchiveSiteControlResponse](**json.loads(body))
 
     if limit >= MAX_LIMIT:
         assert page.limit == MAX_LIMIT
@@ -211,5 +211,5 @@ async def test_get_archive_for_period_does(
         assert page.limit == limit
     assert page.start == start
     assert page.total_count == expected_count
-    assert_list_type(ArchiveDynamicOperatingEnvelopeResponse, page.entities, len(expected_archive_ids))
+    assert_list_type(ArchiveSiteControlResponse, page.entities, len(expected_archive_ids))
     assert expected_archive_ids == [e.archive_id for e in page.entities]

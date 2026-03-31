@@ -331,8 +331,10 @@ async def test_supersede_then_insert_does_many_sites(
     ]
 
     async with generate_async_session(pg_base_config) as session:
-        await supersede_then_insert_does(session, does, changed_time)
+        returned_ids = await supersede_then_insert_does(session, does, changed_time)
         await session.commit()
+
+        assert_list_type(int, returned_ids, count=len(does))
 
         # Assert that each doe is grouped under the site and then processed in batches of that size
         mock_supersede_matching_does_for_site.assert_has_calls(
@@ -351,12 +353,29 @@ async def test_supersede_then_insert_does_many_sites(
         ).scalar_one()
         assert after_doe_count == original_doe_count + len(does)
 
+        # Do a deep inspection on the DOEs one by one
+        for expected_doe, expected_id in zip(does, returned_ids):
+            actual_doe = (
+                await session.execute(
+                    select(DynamicOperatingEnvelope).where(
+                        DynamicOperatingEnvelope.dynamic_operating_envelope_id == expected_id
+                    )
+                )
+            ).scalar_one()
+            assert_class_instance_equality(
+                DynamicOperatingEnvelope,
+                expected_doe,
+                actual_doe,
+                ignored_properties={"created_time", "changed_time", "dynamic_operating_envelope_id"},
+            )
+
 
 @pytest.mark.anyio
 async def test_supersede_then_insert_does_empty_list(mocker: pytest_mock.MockerFixture) -> None:
     """Ensure proper return for empty doe list supplied"""
     async with mocker.AsyncMock() as session:
-        await supersede_then_insert_does(session, [], datetime.now())
+        result = await supersede_then_insert_does(session, [], datetime.now())
+        assert_list_type(int, result, count=0)
 
         # Ensure no calls to session or its methods
         # Should mean early return

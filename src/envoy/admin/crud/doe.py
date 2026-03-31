@@ -121,14 +121,16 @@ async def cancel_then_insert_does(
 
 async def supersede_then_insert_does(
     session: AsyncSession, doe_list: list[DynamicOperatingEnvelope], changed_time: datetime
-) -> None:
+) -> Sequence[int]:
     """Inserts the specified list of doe's. Any existing doe in the database will have their superseded flag updated
     if they overlap in time (taking into account primacy / creation time)
 
-    Will generate archive records for updated controls"""
+    Will generate archive records for updated controls.
+
+    Returns the IDs of the inserted records - corresponding 1-1 with doe_list"""
 
     if len(doe_list) == 0:
-        return
+        return []
 
     # start by caching all primacy values from the parent SiteControlGroup's
     primacy_by_group_id = dict(
@@ -151,9 +153,13 @@ async def supersede_then_insert_does(
     # Now we can do the inserts
     table = DynamicOperatingEnvelope.__table__
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
-    await session.execute(
-        insert(DynamicOperatingEnvelope).values(([{k: getattr(doe, k) for k in update_cols} for doe in doe_list]))
+    insert_ids = await session.execute(
+        insert(DynamicOperatingEnvelope)
+        .values(([{k: getattr(doe, k) for k in update_cols} for doe in doe_list]))
+        .returning(DynamicOperatingEnvelope.dynamic_operating_envelope_id)
     )
+
+    return insert_ids.scalars().all()
 
 
 async def supersede_matching_does_for_site(
