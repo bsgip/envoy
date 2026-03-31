@@ -22,6 +22,7 @@ from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX, ArchiveBase
 class ArchiveTariff(ArchiveBase):
     __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.Tariff.__tablename__  # type: ignore
     tariff_id: Mapped[int] = mapped_column(INTEGER, index=True)
+    version: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     name: Mapped[str] = mapped_column(String(64))
     dnsp_code: Mapped[str] = mapped_column(String(20))
     currency_code: Mapped[CurrencyCode] = mapped_column(Integer)

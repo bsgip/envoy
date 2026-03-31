@@ -89,6 +89,7 @@ def upgrade() -> None:
     op.create_index("ix_tariff_component_tariff_id", "tariff_component", ["tariff_id"], unique=False)
     op.add_column("archive_tariff", sa.Column("price_power_of_ten_multiplier", sa.INTEGER(), nullable=True))
     op.add_column("archive_tariff", sa.Column("primacy", sa.INTEGER(), nullable=False))
+    op.add_column("archive_tariff", sa.Column("version", sa.INTEGER(), nullable=True))
     op.add_column("archive_tariff_generated_rate", sa.Column("tariff_component_id", sa.INTEGER(), nullable=False))
     op.add_column("archive_tariff_generated_rate", sa.Column("end_time", sa.DateTime(timezone=True), nullable=False))
     op.add_column("archive_tariff_generated_rate", sa.Column("price_pow10_encoded", sa.INTEGER(), nullable=False))
@@ -117,6 +118,7 @@ def upgrade() -> None:
     op.drop_column("archive_tariff_generated_rate", "import_reactive_price")
     op.add_column("tariff", sa.Column("price_power_of_ten_multiplier", sa.INTEGER(), nullable=True))
     op.add_column("tariff", sa.Column("primacy", sa.INTEGER(), nullable=False))
+    op.add_column("tariff", sa.Column("version", sa.INTEGER(), nullable=True))
     op.add_column("tariff_generated_rate", sa.Column("tariff_component_id", sa.BigInteger(), nullable=False))
     op.add_column("tariff_generated_rate", sa.Column("end_time", sa.DateTime(timezone=True), nullable=False))
     op.add_column("tariff_generated_rate", sa.Column("price_pow10_encoded", sa.INTEGER(), nullable=False))
@@ -190,6 +192,7 @@ def downgrade() -> None:
     op.drop_column("tariff_generated_rate", "tariff_component_id")
     op.drop_column("tariff", "primacy")
     op.drop_column("tariff", "price_power_of_ten_multiplier")
+    op.drop_column("tariff", "version")
     op.add_column(
         "archive_tariff_generated_rate",
         sa.Column("import_reactive_price", sa.NUMERIC(precision=10, scale=4), autoincrement=False, nullable=False),
@@ -219,6 +222,7 @@ def downgrade() -> None:
     op.drop_column("archive_tariff_generated_rate", "tariff_component_id")
     op.drop_column("archive_tariff", "primacy")
     op.drop_column("archive_tariff", "price_power_of_ten_multiplier")
+    op.drop_column("archive_tariff", "version")
     op.drop_index("ix_tariff_component_tariff_id", table_name="tariff_component")
     op.drop_index(op.f("ix_tariff_component_changed_time"), table_name="tariff_component")
     op.drop_table("tariff_component")

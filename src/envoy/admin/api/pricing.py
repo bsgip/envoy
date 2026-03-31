@@ -108,7 +108,7 @@ async def get_tariff_component(tariff_component_id: int) -> TariffComponentRespo
     return await TariffComponentManager.fetch_tariff_component(db.session, tariff_component_id)
 
 
-@router.post(TariffComponentCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
+@router.post(TariffComponentCreateUri, status_code=HTTPStatus.CREATED, response_model=BatchCreateResponse)
 async def create_tariff_component(tariff_component: TariffComponentRequest, response: Response) -> BatchCreateResponse:
     """Creates a singular tariff component. The location (/tariff_component/{tariff_id}) of the created resource is
     provided in the 'Location' header of the response.

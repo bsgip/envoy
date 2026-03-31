@@ -225,7 +225,7 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         return cast(SiteScopedSiteControlGroup, entity).original.fsa_id  # type: ignore
     elif resource == SubscriptionResource.TARIFF_COMPONENT:
-        return cast(SiteScopedTariffComponent, entity).original.tariff_component_id  # type: ignore
+        return cast(SiteScopedTariffComponent, entity).original.tariff_id  # type: ignore
     elif resource == SubscriptionResource.TARIFF:
         return cast(SiteScopedTariff, entity).original.fsa_id  # type: ignore
     elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:

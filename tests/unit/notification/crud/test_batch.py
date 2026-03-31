@@ -403,6 +403,15 @@ def test_get_subscription_filter_id_invalid():
             ),
             33,
         ),
+        (
+            SubscriptionResource.TARIFF_COMPONENT,
+            SiteScopedTariffComponent(
+                aggregator_id=11,
+                site_id=22,
+                original=generate_class_instance(TariffComponent, tariff_id=33),
+            ),
+            33,
+        ),
     ],
 )
 def test_get_subscription_filter_id(resource: SubscriptionResource, entity: TResourceModel, expected: int):

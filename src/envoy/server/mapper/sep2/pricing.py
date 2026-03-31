@@ -57,6 +57,7 @@ class TariffProfileMapper:
         return TariffProfileResponse(
             href=tp_href,
             mRID=MridMapper.encode_tariff_profile_mrid(scope, tariff.tariff_id),
+            version=tariff.version,
             description=tariff.name,
             currency=tariff.currency_code,
             pricePowerOfTenMultiplier=tariff.price_power_of_ten_multiplier,

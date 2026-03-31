@@ -10,8 +10,7 @@ from assertical.fake.generator import generate_class_instance
 from assertical.fake.http import HTTPMethod, MockedAsyncClient
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.config import RuntimeServerConfigRequest
-from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
-from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
+from envoy_schema.admin.schema.pricing import TariffComponentRequest, TariffGeneratedRateRequest, TariffRequest
 from envoy_schema.admin.schema.site import SiteUpdateRequest
 from envoy_schema.admin.schema.site_control import (
     SiteControlGroupDefaultRequest,
@@ -25,8 +24,11 @@ from envoy_schema.admin.schema.uri import (
     SiteControlGroupListUri,
     SiteControlUri,
     SiteUri,
+    TariffComponentCreateUri,
+    TariffCreateUri,
     TariffGeneratedRateCreateUri,
 )
+from envoy_schema.server.schema.sep2.types import RoleFlagsType
 from httpx import AsyncClient
 from sqlalchemy import delete, insert, select
 
@@ -347,78 +349,82 @@ async def test_create_does_with_paginated_notifications(
 
 
 @pytest.mark.anyio
-async def test_create_rates_with_active_subscription(
+async def test_create_tariff_component_with_active_subscription(
     admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
 ):
-    """Tests creating rates with an active subscription generates notifications via the MockedAsyncClient"""
+    """Tests creating tariff components with an active subscription generates notifications via the MockedAsyncClient"""
+
     # Create a subscription to actually pickup these changes
-    subscription1_uri = "http://example:542/uri?a=b"
+    #
+    # We will create three subscriptions
+    #   1) Subscribed to RateComponents on tariff 1 for site 1
+    #   2) Subscribed to RateComponents on tariff 2 for site 1
+    #   3) Subscribed to RateComponents on tariff 1 for site 2
+    subscription1_uri = "http://example1:541/uri?a=b"
+    subscription2_uri = "http://example2:542/uri?a=b"
+    subscription3_uri = "http://example3:543/uri?a=b"
     async with generate_async_session(pg_base_config) as session:
-        # this is unscoped
+        await session.execute(delete(Subscription))
+
         await session.execute(
             insert(Subscription).values(
                 aggregator_id=1,
                 changed_time=datetime.now(),
-                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
-                resource_id=None,
-                scoped_site_id=None,
+                resource_type=SubscriptionResource.TARIFF_COMPONENT,
+                resource_id=1,
+                resource_parent_id=None,
+                scoped_site_id=1,
                 notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_COMPONENT,
+                resource_id=2,
+                resource_parent_id=None,
+                scoped_site_id=1,
+                notification_uri=subscription2_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_COMPONENT,
+                resource_id=1,
+                resource_parent_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription3_uri,
                 entity_limit=10,
             )
         )
 
         await session.commit()
 
-    rate_1: TariffGeneratedRateRequest = generate_class_instance(
-        TariffGeneratedRateRequest,
-        seed=101,
-        site_id=1,
-        tariff_id=1,
-        start_time=datetime(2022, 3, 4, 14, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
-        calculation_log_id=1,
-    )
+    tc_1 = generate_class_instance(TariffComponentRequest, seed=101, tariff_id=1, role_flags=1)
+    resp = await admin_client_auth.post(TariffComponentCreateUri, content=tc_1.model_dump_json())
+    assert resp.status_code == HTTPStatus.CREATED
 
-    rate_2: TariffGeneratedRateRequest = generate_class_instance(
-        TariffGeneratedRateRequest,
-        seed=202,
-        site_id=1,
-        tariff_id=1,
-        start_time=datetime(2022, 3, 4, 14, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
-        calculation_log_id=None,
-    )
-
-    rate_3: TariffGeneratedRateRequest = generate_class_instance(
-        TariffGeneratedRateRequest,
-        seed=303,
-        site_id=1,
-        tariff_id=1,
-        start_time=datetime(2022, 3, 4, 14, 10, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
-        calculation_log_id=None,
-    )
-
-    rate_4: TariffGeneratedRateRequest = generate_class_instance(
-        TariffGeneratedRateRequest,
-        seed=404,
-        site_id=3,
-        tariff_id=1,
-        start_time=datetime(2022, 3, 4, 14, 15, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
-        calculation_log_id=None,
-    )
-
-    content = ",".join([d.model_dump_json() for d in [rate_1, rate_2, rate_3, rate_4]])
-    resp = await admin_client_auth.post(
-        TariffGeneratedRateCreateUri,
-        content=f"[{content}]",
-    )
+    # Mismatches on tariff id - no notifications
+    tc_2 = generate_class_instance(TariffComponentRequest, seed=303, tariff_id=3, role_flags=2)
+    resp = await admin_client_auth.post(TariffComponentCreateUri, content=tc_2.model_dump_json())
     assert resp.status_code == HTTPStatus.CREATED
 
     # Give the notifications a chance to propagate
-    assert await notifications_enabled.wait_for_n_requests(n=4, timeout_seconds=30)
+    assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
 
-    # There will be 4 price notifications going out (one for each price type)
+    # There will be 1 rate notification going out - one for sub1 and sub3 (matching tc_1)
+    # RateComponents are NOT site scoped so they fire for all sites
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
-    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 4
-    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 4
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription3_uri)] == 1
 
     assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
     assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
@@ -433,30 +439,285 @@ async def test_create_rates_with_active_subscription(
                 r
                 for r in notifications_enabled.logged_requests
                 if r.uri == subscription1_uri
-                and f"/{int(rate_1.export_active_price * PRICE_DECIMAL_POWER)}" in r.content
-                and f"/{int(rate_2.export_active_price * PRICE_DECIMAL_POWER)}" in r.content
-                and f"/{int(rate_3.export_active_price * PRICE_DECIMAL_POWER)}" in r.content
-                and f"/{int(rate_4.export_active_price * PRICE_DECIMAL_POWER)}" not in r.content
+                and "<roleFlags>01</roleFlags>" in r.content
+                and "<roleFlags>02</roleFlags>" not in r.content
             ]
         )
         == 1
-    ), "Only one notification should have the export prices"
+    ), "Only the tc_1 RateComponent should be sent out via notification for site1"
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription3_uri
+                and "<roleFlags>01</roleFlags>" in r.content
+                and "<roleFlags>02</roleFlags>" not in r.content
+            ]
+        )
+        == 1
+    ), "Only the tc_1 RateComponent should be sent out via notification for site2"
 
+
+@pytest.mark.anyio
+async def test_create_tariff_with_active_subscription(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests creating tariffs with an active subscription generates notifications via the MockedAsyncClient"""
+
+    # Create a subscription to actually pickup these changes
+    #
+    # We will create four subscriptions
+    #   1) Subscribed to TariffProfiles for site 1 (no fsa_id)
+    #   2) Subscribed to TariffProfiles for site 1 (fsa_id 1)
+    subscription1_uri = "http://example1:541/uri?a=b"
+    subscription2_uri = "http://example2:542/uri?a=b"
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(delete(Subscription))
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF,
+                resource_id=None,
+                resource_parent_id=None,
+                scoped_site_id=1,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF,
+                resource_id=1,
+                resource_parent_id=None,
+                scoped_site_id=1,
+                notification_uri=subscription2_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    # Will match Sub 1/2
+    t_1 = generate_class_instance(TariffRequest, seed=101, dnsp_code="mytariff1", fsa_id=1)
+    resp = await admin_client_auth.post(TariffCreateUri, content=t_1.model_dump_json())
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Will only match Sub 1 (due to the fsa_id)
+    t_2 = generate_class_instance(TariffRequest, seed=202, dnsp_code="mytariff2", fsa_id=2)
+    resp = await admin_client_auth.post(TariffCreateUri, content=t_2.model_dump_json())
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=3, timeout_seconds=30)
+
+    # There will be 1 rate notification going out - one for sub1 and sub3 (matching tc_1)
+    # RateComponents are NOT site scoped so they fire for all sites
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 3
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription2_uri)] == 1
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+
+    # Do a really simple content check on the outgoing XML to ensure the notifications contain the expected
+    # entities for each subscription
     assert (
         len(
             [
                 r
                 for r in notifications_enabled.logged_requests
                 if r.uri == subscription1_uri
-                and f"/{int(rate_1.import_active_price * PRICE_DECIMAL_POWER)}" in r.content
-                and f"/{int(rate_2.import_active_price * PRICE_DECIMAL_POWER)}" in r.content
-                and f"/{int(rate_3.import_active_price * PRICE_DECIMAL_POWER)}" in r.content
-                and f"/{int(rate_4.import_active_price * PRICE_DECIMAL_POWER)}" not in r.content
+                and "<rateCode>mytariff1</rateCode>" in r.content
+                and "<rateCode>mytariff2</rateCode>" not in r.content
             ]
         )
         == 1
-    ), "Only one notification should have the import prices"
-    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
+    ), "Tariff 1 should be sent to sub1"
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription1_uri
+                and "<rateCode>mytariff1</rateCode>" not in r.content
+                and "<rateCode>mytariff2</rateCode>" in r.content
+            ]
+        )
+        == 1
+    ), "Tariff 2 should be sent to sub1"
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription2_uri
+                and "<rateCode>mytariff1</rateCode>" in r.content
+                and "<rateCode>mytariff2</rateCode>" not in r.content
+            ]
+        )
+        == 1
+    ), "Tariff 1 should be sent to sub2"
+
+
+@pytest.mark.anyio
+async def test_create_rates_with_active_subscription(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests creating rates with an active subscription generates notifications via the MockedAsyncClient"""
+
+    # Create a subscription to actually pickup these changes
+    #
+    # We will create four subscriptions
+    #   1) Subscribed to combined TTI's on tariff 1 for site 1
+    #   2) Subscribed to RateComponent 1 TTI's for site 1
+    #   3) Subscribed to combined TTI's on tariff 1 for site 2
+    #   4) Subscribed to RateComponent 1 TTI's for site 2
+    subscription1_uri = "http://example1:541/uri?a=b"
+    subscription2_uri = "http://example2:542/uri?a=b"
+    subscription3_uri = "http://example3:543/uri?a=b"
+    subscription4_uri = "http://example4:544/uri?a=b"
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(delete(Subscription))
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
+                resource_id=1,
+                resource_parent_id=None,
+                scoped_site_id=1,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                resource_id=1,
+                resource_parent_id=1,
+                scoped_site_id=1,
+                notification_uri=subscription2_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
+                resource_id=1,
+                resource_parent_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription3_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                resource_id=1,
+                resource_parent_id=1,
+                scoped_site_id=2,
+                notification_uri=subscription4_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    rate_1 = generate_class_instance(
+        TariffGeneratedRateRequest,
+        seed=101,
+        site_id=1,
+        tariff_component_id=1,
+        start_time=datetime(2022, 3, 4, 14, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        calculation_log_id=1,
+    )
+
+    # Mismatches on site
+    rate_2 = generate_class_instance(
+        TariffGeneratedRateRequest,
+        seed=202,
+        site_id=3,
+        tariff_component_id=1,
+        start_time=datetime(2022, 3, 4, 14, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        calculation_log_id=None,
+    )
+
+    # Mismatches on rate component id
+    rate_3 = generate_class_instance(
+        TariffGeneratedRateRequest,
+        seed=303,
+        site_id=1,
+        tariff_component_id=4,
+        start_time=datetime(2022, 3, 4, 14, 10, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        calculation_log_id=None,
+    )
+
+    content = ",".join([d.model_dump_json() for d in [rate_1, rate_2, rate_3]])
+    resp = await admin_client_auth.post(TariffGeneratedRateCreateUri, content=f"[{content}]")
+    assert resp.status_code == HTTPStatus.CREATED
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+
+    # There will be 2 price notifications going out - one for sub1 and one for sub2 (both matching rate1)
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription2_uri)] == 1
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+
+    # Do a really simple content check on the outgoing XML to ensure the notifications contain the expected
+    # entities for each subscription
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription1_uri
+                and f"<price>{rate_1.price_pow10_encoded}</price>" in r.content
+                and f"<price>{rate_2.price_pow10_encoded}</price>" not in r.content
+                and f"<price>{rate_3.price_pow10_encoded}</price>" not in r.content
+            ]
+        )
+        == 1
+    ), "Only the rate1 price should be sent out via notification"
+
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription2_uri
+                and f"<price>{rate_1.price_pow10_encoded}</price>" in r.content
+                and f"<price>{rate_2.price_pow10_encoded}</price>" not in r.content
+                and f"<price>{rate_3.price_pow10_encoded}</price>" not in r.content
+            ]
+        )
+        == 1
+    ), "Only the rate1 price should be sent out via notification"
 
 
 @pytest.mark.anyio

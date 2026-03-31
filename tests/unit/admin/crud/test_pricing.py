@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
 from typing import Optional
 
 import pytest
@@ -62,8 +61,9 @@ async def test_update_single_tariff(pg_base_config):
 
         tariff = await select_single_tariff(session, tariff_in.tariff_id)
 
-        assert_class_instance_equality(Tariff, tariff, tariff_in, ignored_properties={"created_time"})
+        assert_class_instance_equality(Tariff, tariff, tariff_in, ignored_properties={"created_time", "version"})
         assert tariff.created_time == datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc), "created_time doesn't update"
+        assert tariff.version == 1, "The DB has version=None so we roll straight to version 1"
 
         # Check the old tariff was archived before update
         assert (await session.execute(select(func.count()).select_from(ArchiveTariff))).scalar_one() == 1
@@ -77,6 +77,8 @@ async def test_update_single_tariff(pg_base_config):
                 currency_code=36,
                 created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
                 changed_time=datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc),
+                primacy=1,
+                price_power_of_ten_multiplier=0,
                 fsa_id=1,
             ),
             archive_data,

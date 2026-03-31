@@ -25,6 +25,7 @@ class Tariff(Base):
 
     __tablename__ = "tariff"
     tariff_id: Mapped[int] = mapped_column(primary_key=True)
+    version: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     name: Mapped[str] = mapped_column(String(64))  # descriptive name of the tariff
     dnsp_code: Mapped[str] = mapped_column(String(20))  # code assigned by the DNSP for their own internal processes
     currency_code: Mapped[CurrencyCode] = mapped_column(Integer)  # ISO 4217 numerical currency code - eg AUD = 36

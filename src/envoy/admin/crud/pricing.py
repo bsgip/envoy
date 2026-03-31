@@ -31,6 +31,13 @@ async def update_single_tariff(session: AsyncSession, updated_tariff: Tariff) ->
     tariff.name = updated_tariff.name
     tariff.currency_code = updated_tariff.currency_code
     tariff.fsa_id = updated_tariff.fsa_id
+    tariff.primacy = updated_tariff.primacy
+    tariff.price_power_of_ten_multiplier = updated_tariff.price_power_of_ten_multiplier
+
+    if tariff.version is None:
+        tariff.version = 1
+    else:
+        tariff.version = tariff.version + 1
 
 
 async def insert_many_tariff_genrate(
