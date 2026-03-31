@@ -39,7 +39,7 @@ Top level directories define multiple apps that use a common codebase/shared mod
 * `demo/`: A fully containerised demonstration of all services in this project
 * `src/envoy/`: root package directory
 * `src/envoy/admin/`: Used for internal API endpoints for administering the server/injecting calculated entities
-* `src/envoy/server/`: primary implementation of the public API's - eg 2030.5 etc 
+* `src/envoy/server/`: primary implementation of the public API's - eg 2030.5 etc
 * `src/envoy/notification` : Used for handling all notification server tasks/workers for supporting 2030.5 pub/sub
 * `tests/`: root tests directory
 
@@ -76,10 +76,10 @@ Typically settings are set by setting an environment variable with the same name
 | `cert_header` | `string` | The name of the HTTP header that API endpoints will look for to validate a client. This should be set by the TLS termination point and can contain either a full client certificate in PEM format or the sha256 fingerprint of that certificate. defaults to "x-forwarded-client-cert" |
 | `allow_device_registration` | `bool` | If True - the registration workflows that enable unrecognised certs to generate/manage a single EndDevice (tied to that cert) will be enabled. Otherwise any cert will need to be registered out of band and assigned to an aggregator before connections can be made. Defaults to False|
 | `static_registration_pin` | `int` | If set - all new EndDevice registrations will have their Registration PIN set to this value (use 5 digit form). Uses a random number generator otherwise.  |
-| `nmi_validation_enabled` | `bool` | If `true` - all updates of `ConnectionPoint` resource will trigger validation on `ConnectionPoint.id` against on AEMO's NMI Allocation List (Version 13 – November 2022). Defaults to `false`.  |  
+| `nmi_validation_enabled` | `bool` | If `true` - all updates of `ConnectionPoint` resource will trigger validation on `ConnectionPoint.id` against on AEMO's NMI Allocation List (Version 13 – November 2022). Defaults to `false`.  |
 | `nmi_validation_participant_id` | `str` | Specifies the Participant ID (DNSP-only) as defined in AEMO’s NMI Allocation List (Version 13 – November 2022). For entities without an official Participant ID, a custom identifier is used - refer to DNSPParticipantId for details. This setting is required if `nmi_validation_enabled` is `true`.  |
 | `allow_nmi_updates` | `bool` | If `true`, updates to the ConnectionPoint resource are allowed. If `false`, an HTTP 409 Conflict will be returned. Defaults to `true`. |
-| `exclude_endpoints` | `string` | JSON-encoded set of tuples of the form (HTTP Method, URI), each defining an endpoint which should be excluded from the App at runtime e.g. `[["GET", "/tm"], ["HEAD", "/tm"]]`. Optional. | 
+| `exclude_endpoints` | `string` | JSON-encoded set of tuples of the form (HTTP Method, URI), each defining an endpoint which should be excluded from the App at runtime e.g. `[["GET", "/tm"], ["HEAD", "/tm"]]`. Optional. |
 
 **Additional Admin Server Settings (admin)**
 
@@ -132,7 +132,7 @@ postgres=# create user envoyuser with encrypted password 'mypass';
 postgres=# grant all privileges on database envoydb to envoyuser;
 ```
 
-Note: for postgres>=15, create privileges on the public schema are no longer created by default. 
+Note: for postgres>=15, create privileges on the public schema are no longer created by default.
 To enable table creation with the envoyuser, grant ownership of the database (local development only)
 ```
 postgres=# ALTER DATABASE envoydb OWNER TO envoyuser;
@@ -150,11 +150,17 @@ Envoy is is dependent on a number of environment variables (see the section on s
 
 We recommend adding these to a `.env` file in the root directory so that they are accessible by both fastapi and docker.
 
+```
+DATABASE_URL=postgresql+asyncpg://envoyuser:mypass@localhost:5432/envoydb
+ADMIN_USERNAME=testuser
+ADMIN_PASSWORD=testpassword
+```
+
 4. Apply alembic migrations to the database schema
 
 ```
-ln -s $PWD/.env $PWD/src/envoy/server/.env
-cd src/envoy/server/
+cd src/envoy/server
+ln -s ../../../.env .env
 alembic upgrade head
 cd -
 ```
@@ -168,11 +174,10 @@ The Postman collection in postman/envoy.postman_collection.json uses certificate
 6. (Optional) Start notification server worker
 
 The notification server will require workers to handle executing the async tasks. This is handled by taskiq and a worker
-can be initialised with: 
+can be initialised with:
 
 `taskiq worker envoy.notification.main:broker envoy.notification.task`
 
 7. Start server
 
 `uvicorn envoy.server.main:app --host 0.0.0.0 --reload`
-            

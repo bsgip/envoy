@@ -31,6 +31,7 @@ class AppSettings(CommonSettings):
             "redoc_url": self.redoc_url,
             "title": self.title,
             "version": self.version,
+            "strict_content_type": False,
         }
 
 

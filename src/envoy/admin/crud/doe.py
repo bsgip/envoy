@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Callable, Optional, Sequence, cast
+from typing import Callable, Iterable, Optional, Sequence, cast
 
 from intervaltree import Interval, IntervalTree  # type: ignore
 from sqlalchemy import Delete, and_, func, insert, or_, select, update
@@ -132,10 +132,8 @@ async def supersede_then_insert_does(
     if len(doe_list) == 0:
         return []
 
-    # start by caching all primacy values from the parent SiteControlGroup's
-    primacy_by_group_id = dict(
-        (await session.execute(select(SiteControlGroup.site_control_group_id, SiteControlGroup.primacy))).tuples().all()
-    )
+    # start by fetching all SiteControlGroup IDs - we need them to use our indexes in the later DERControl lookups
+    all_site_control_group_ids = (await session.execute(select(SiteControlGroup.site_control_group_id))).scalars().all()
 
     # Organise the incoming DOE's by site_id to better chunk the lookups (and utilise existing indexes)
     does_by_site_id: dict[int, list[DynamicOperatingEnvelope]] = {}
@@ -148,7 +146,9 @@ async def supersede_then_insert_does(
 
     # Start making the requests to the database to update the existing DOEs as superseded
     for site_id, site_doe_list in does_by_site_id.items():
-        await supersede_matching_does_for_site(session, site_doe_list, site_id, primacy_by_group_id, changed_time)
+        await supersede_matching_does_for_site(
+            session, site_doe_list, site_id, all_site_control_group_ids, changed_time
+        )
 
     # Now we can do the inserts
     table = DynamicOperatingEnvelope.__table__
@@ -166,7 +166,7 @@ async def supersede_matching_does_for_site(
     session: AsyncSession,
     doe_list: list[DynamicOperatingEnvelope],
     site_id: int,
-    primacy_by_group_id: dict[int, int],
+    all_site_control_group_ids: Iterable[int],
     changed_time: datetime,
 ) -> None:
     """Marks existing DynamicOperatingEnvelopes in the db as superseded if they are overlapped by any value in doe_list
@@ -177,7 +177,7 @@ async def supersede_matching_does_for_site(
 
     doe_list: Should ONLY contain sites with the specified site_id
     site_id: The site_id that this request will be scoped to
-    primacy_by_group_id: Cache of primacy values for every SiteControlGroup's ID
+    all_site_control_group_ids: Every SiteControlGroup ID that will be checked for DERControls
     changed_time: Will be applied to all existing DOE's that are updated
 
     This will appropriately archive all updated records
@@ -215,7 +215,7 @@ async def supersede_matching_does_for_site(
                     DynamicOperatingEnvelope.set_point_percentage,
                 ).where(
                     # We include site_control_group to ensure we can utilise our indexes
-                    (DynamicOperatingEnvelope.site_control_group_id.in_(primacy_by_group_id.keys()))
+                    (DynamicOperatingEnvelope.site_control_group_id.in_(all_site_control_group_ids))
                     & (DynamicOperatingEnvelope.site_id == site_id)
                     & (DynamicOperatingEnvelope.end_time > min_date)
                     & (DynamicOperatingEnvelope.start_time < max_date)
@@ -247,8 +247,6 @@ async def supersede_matching_does_for_site(
         existing_set_point,
     ) in potential_matches:
 
-        existing_doe_primacy = primacy_by_group_id[existing_site_control_id]
-
         # Build field set for existing DOE
         existing_fields = DOEFieldSet(
             has_import_limit=existing_import_limit is not None,
@@ -262,13 +260,13 @@ async def supersede_matching_does_for_site(
 
         for interval in cast(set[Interval], doe_list_tree[existing_start_time:existing_end_time]):  # type: ignore
             incoming_doe: DynamicOperatingEnvelope = interval.data
-            # At this point we know this incoming DOE intersects our existing_doe in time - next step is to work out
-            # whether it's at a lower/higher priority AND whether they have conflicting control fields
-            incoming_doe_primacy = primacy_by_group_id[incoming_doe.site_control_group_id]
+            # At this point we know this incoming DOE intersects our existing_doe in time
 
-            # Lower primacy means higher priority
-            # Equal primacy means checking the creation time and we know incoming_doe is newer
-            if incoming_doe_primacy <= existing_doe_primacy:
+            #
+            # Superseding ONLY applies if the controls are in the same DERProgram AND they have conflicting
+            # controls
+            #
+            if incoming_doe.site_control_group_id == existing_site_control_id:
                 # Check if they actually conflict on control fields
                 incoming_fields = DOEFieldSet.from_doe(incoming_doe)
                 if existing_fields.conflicts_with(incoming_fields):
