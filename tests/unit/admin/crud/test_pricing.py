@@ -14,10 +14,11 @@ from envoy.admin.crud.pricing import (
     insert_single_tariff,
     select_tariff_ids_for_component_ids,
     update_single_tariff,
+    update_single_tariff_component,
 )
-from envoy.server.crud.pricing import select_single_tariff
-from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffGeneratedRate
-from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+from envoy.server.crud.pricing import select_single_tariff, select_tariff_component_by_id
+from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffComponent, ArchiveTariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 
 
 async def _select_latest_tariff_generated_rate(session) -> TariffGeneratedRate:
@@ -53,16 +54,20 @@ async def test_insert_single_tariff(pg_empty_config):
 
 @pytest.mark.anyio
 async def test_update_single_tariff(pg_base_config):
+    changed_time = datetime(2016, 6, 7, 14, 6, 8, tzinfo=timezone.utc)
     async with generate_async_session(pg_base_config) as session:
         tariff_in = generate_class_instance(Tariff)
         tariff_in.tariff_id = 1
-        await update_single_tariff(session, tariff_in)
+        await update_single_tariff(session, tariff_in, changed_time)
         await session.flush()
 
         tariff = await select_single_tariff(session, tariff_in.tariff_id)
 
-        assert_class_instance_equality(Tariff, tariff, tariff_in, ignored_properties={"created_time", "version"})
+        assert_class_instance_equality(
+            Tariff, tariff, tariff_in, ignored_properties={"created_time", "changed_time", "version"}
+        )
         assert tariff.created_time == datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc), "created_time doesn't update"
+        assert tariff.changed_time == changed_time
         assert tariff.version == 1, "The DB has version=None so we roll straight to version 1"
 
         # Check the old tariff was archived before update
@@ -75,16 +80,82 @@ async def test_update_single_tariff(pg_base_config):
                 name="tariff-1",
                 dnsp_code="tariff-dnsp-code-1",
                 currency_code=36,
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                changed_time=datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc),
                 primacy=1,
                 price_power_of_ten_multiplier=0,
                 fsa_id=1,
+                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
+                changed_time=datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc),
             ),
             archive_data,
         )
         assert_nowish(archive_data.archive_time)
         assert archive_data.deleted_time is None
+
+        await session.commit()
+
+    # Check version increments
+    async with generate_async_session(pg_base_config) as session:
+        await update_single_tariff(session, tariff_in, changed_time)
+        await session.flush()
+
+        tariff = await select_single_tariff(session, tariff_in.tariff_id)
+        assert tariff.version == 2
+
+
+@pytest.mark.anyio
+async def test_update_single_tariff_component(pg_base_config):
+    changed_time = datetime(2016, 6, 7, 14, 6, 8, tzinfo=timezone.utc)
+    async with generate_async_session(pg_base_config) as session:
+        tc_in = generate_class_instance(TariffComponent)
+        tc_in.tariff_component_id = 1
+        await update_single_tariff_component(session, tc_in, changed_time)
+        await session.flush()
+
+        tc = await select_tariff_component_by_id(session, tc_in.tariff_component_id)
+
+        assert_class_instance_equality(
+            TariffComponent, tc, tc_in, ignored_properties={"created_time", "changed_time", "version", "tariff_id"}
+        )
+        assert tc.created_time == datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc), "created_time doesn't update"
+        assert tc.changed_time == changed_time
+        assert tc.version == 1, "The DB has version=None so we roll straight to version 1"
+        assert tc.tariff_id == 1, "This should NOT be updateable"
+
+        # Check the old component was archived before update
+        assert (await session.execute(select(func.count()).select_from(ArchiveTariffComponent))).scalar_one() == 1
+        archive_data = (await session.execute(select(ArchiveTariffComponent))).scalar_one()
+
+        assert_class_instance_equality(
+            TariffComponent,
+            TariffComponent(
+                tariff_component_id=1,
+                tariff_id=1,
+                role_flags=1,
+                accumulation_behaviour=3,
+                commodity=2,
+                data_qualifier=2,
+                flow_direction=1,
+                kind=12,
+                phase=0,
+                power_of_ten_multiplier=3,
+                uom=38,
+                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
+                changed_time=datetime(2022, 2, 1, 1, 0, 0, tzinfo=timezone(timedelta(hours=10))),
+            ),
+            archive_data,
+        )
+        assert_nowish(archive_data.archive_time)
+        assert archive_data.deleted_time is None
+
+        await session.commit()
+
+    # Check version increments
+    async with generate_async_session(pg_base_config) as session:
+        await update_single_tariff_component(session, tc_in, changed_time)
+        await session.flush()
+
+        tc = await select_tariff_component_by_id(session, tc_in.tariff_component_id)
+        assert tc.version == 2
 
 
 @pytest.mark.anyio

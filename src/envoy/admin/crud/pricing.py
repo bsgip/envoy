@@ -5,7 +5,7 @@ from sqlalchemy import and_, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
-from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffGeneratedRate
+from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffComponent, ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 
 
@@ -16,7 +16,7 @@ async def insert_single_tariff(session: AsyncSession, tariff: Tariff) -> None:
     session.add(tariff)
 
 
-async def update_single_tariff(session: AsyncSession, updated_tariff: Tariff) -> None:
+async def update_single_tariff(session: AsyncSession, updated_tariff: Tariff, changed_time: datetime) -> None:
     """Updates a single existing tariff entry in the DB. The old version will be archived"""
 
     await copy_rows_into_archive(
@@ -26,18 +26,55 @@ async def update_single_tariff(session: AsyncSession, updated_tariff: Tariff) ->
     resp = await session.execute(select(Tariff).where(Tariff.tariff_id == updated_tariff.tariff_id))
     tariff = resp.scalar_one()
 
-    tariff.changed_time = updated_tariff.changed_time
     tariff.dnsp_code = updated_tariff.dnsp_code
     tariff.name = updated_tariff.name
     tariff.currency_code = updated_tariff.currency_code
     tariff.fsa_id = updated_tariff.fsa_id
     tariff.primacy = updated_tariff.primacy
     tariff.price_power_of_ten_multiplier = updated_tariff.price_power_of_ten_multiplier
+    tariff.changed_time = changed_time
 
     if tariff.version is None:
         tariff.version = 1
     else:
         tariff.version = tariff.version + 1
+
+
+async def update_single_tariff_component(
+    session: AsyncSession, updated_tc: TariffComponent, changed_time: datetime
+) -> None:
+    """Updates a single existing tariff component entry in the DB. The old version will be archived.
+
+    Primary key / tariff ID will NOT be updated"""
+
+    await copy_rows_into_archive(
+        session,
+        TariffComponent,
+        ArchiveTariffComponent,
+        lambda q: q.where(TariffComponent.tariff_component_id == updated_tc.tariff_component_id),
+    )
+
+    resp = await session.execute(
+        select(TariffComponent).where(TariffComponent.tariff_component_id == updated_tc.tariff_component_id)
+    )
+    tc = resp.scalar_one()
+
+    tc.description = updated_tc.description
+    tc.role_flags = updated_tc.role_flags
+    tc.accumulation_behaviour = updated_tc.accumulation_behaviour
+    tc.commodity = updated_tc.commodity
+    tc.data_qualifier = updated_tc.data_qualifier
+    tc.flow_direction = updated_tc.flow_direction
+    tc.kind = updated_tc.kind
+    tc.phase = updated_tc.phase
+    tc.power_of_ten_multiplier = updated_tc.power_of_ten_multiplier
+    tc.uom = updated_tc.uom
+    tc.changed_time = changed_time
+
+    if tc.version is None:
+        tc.version = 1
+    else:
+        tc.version = tc.version + 1
 
 
 async def insert_many_tariff_genrate(

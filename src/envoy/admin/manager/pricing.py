@@ -20,6 +20,7 @@ from envoy.admin.crud.pricing import (
     insert_single_tariff,
     select_tariff_ids_for_component_ids,
     update_single_tariff,
+    update_single_tariff_component,
 )
 from envoy.admin.mapper.pricing import TariffComponentMapper, TariffGeneratedRateListMapper, TariffMapper
 from envoy.notification.manager.notification import NotificationManager
@@ -53,7 +54,7 @@ class TariffManager:
         changed_time = utc_now()
         tariff_model = TariffMapper.map_from_request(changed_time, tariff)
         tariff_model.tariff_id = tariff_id
-        await update_single_tariff(session, tariff_model)
+        await update_single_tariff(session, tariff_model, changed_time)
         await session.commit()
 
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF, changed_time)
@@ -96,6 +97,20 @@ class TariffComponentManager:
         if tc is None:
             raise NoResultFound
         return TariffComponentMapper.map_to_response(tc)
+
+    @staticmethod
+    async def update_tariff_component(
+        session: AsyncSession, tariff_component_id: int, tariff_component: TariffComponentRequest
+    ) -> None:
+        """Select a singular tariff component entry from the DB and map to a TariffResponse object."""
+
+        changed_time = utc_now()
+        tc_model = TariffComponentMapper.map_from_request(changed_time, tariff_component)
+        tc_model.tariff_component_id = tariff_component_id
+        await update_single_tariff_component(session, tc_model, changed_time)
+        await session.commit()
+
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_COMPONENT, changed_time)
 
 
 class TariffGeneratedRateManager:

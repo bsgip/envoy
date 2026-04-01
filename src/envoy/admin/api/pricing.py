@@ -77,7 +77,7 @@ async def create_tariff(tariff: TariffRequest, response: Response) -> BatchCreat
     return BatchCreateResponse(ids=[tariff_id])
 
 
-@router.put(TariffUpdateUri, status_code=HTTPStatus.OK, response_model=None)
+@router.put(TariffUpdateUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
 async def update_tariff(tariff_id: int, tariff: TariffRequest) -> None:
     """Updates a tariff object.
 
@@ -105,7 +105,25 @@ async def get_tariff_component(tariff_component_id: int) -> TariffComponentRespo
     Returns:
         TariffComponentResponse
     """
-    return await TariffComponentManager.fetch_tariff_component(db.session, tariff_component_id)
+    try:
+        return await TariffComponentManager.fetch_tariff_component(db.session, tariff_component_id)
+    except NoResultFound as exc:
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found")
+
+
+@router.put(TariffComponentUpdateUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
+async def update_tariff_component(tariff_component_id: int, tariff_component: TariffComponentRequest) -> None:
+    """Updates a singular TariffComponent with the new values.
+
+    Path Param:
+        tariff_component_id: integer ID of the desired tariff component resource.
+    Returns:
+        TariffComponentResponse
+    """
+    try:
+        await TariffComponentManager.update_tariff_component(db.session, tariff_component_id, tariff_component)
+    except NoResultFound as exc:
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found")
 
 
 @router.post(TariffComponentCreateUri, status_code=HTTPStatus.CREATED, response_model=BatchCreateResponse)

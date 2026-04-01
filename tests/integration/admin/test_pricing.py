@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from http import HTTPStatus
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -26,7 +27,7 @@ from envoy_schema.admin.schema.uri import (
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
-from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
+from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffComponent, ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import TariffGeneratedRate
 
 
@@ -68,13 +69,63 @@ async def test_create_tariff_with_fetch(admin_client_auth: AsyncClient):
     assert_nowish(tariff_resp.changed_time)
 
 
+@pytest.mark.parametrize(
+    "tariff_id, new_values, expected_status",
+    [
+        (1, generate_class_instance(TariffRequest), HTTPStatus.NO_CONTENT),
+        (3, generate_class_instance(TariffRequest, optional_is_none=True), HTTPStatus.NO_CONTENT),
+        (99, generate_class_instance(TariffRequest), HTTPStatus.NOT_FOUND),
+    ],
+)
 @pytest.mark.anyio
-async def test_update_tariff(admin_client_auth: AsyncClient):
-    tariff = generate_class_instance(TariffRequest)
-    tariff.currency_code = 36
-    resp = await admin_client_auth.put(TariffUpdateUri.format(tariff_id=1), json=tariff.model_dump())
+async def test_update_tariff(
+    pg_base_config,
+    admin_client_auth: AsyncClient,
+    tariff_id: int,
+    new_values: TariffRequest,
+    expected_status: HTTPStatus,
+):
+    """Can we update a Tariff and then refetch the thing we just updated."""
 
-    assert resp.status_code == HTTPStatus.OK
+    uri = TariffUpdateUri.format(tariff_id=tariff_id)
+    resp = await admin_client_auth.put(uri, json=new_values.model_dump())
+    assert resp.status_code == expected_status
+
+    if resp.status_code == HTTPStatus.NO_CONTENT:
+        # After creating - try and fetch it back to see if matches what we sent
+        resp = await admin_client_auth.get(uri)
+        assert resp.status_code == HTTPStatus.OK
+        tariff_resp = TariffResponse(**json.loads(resp.content))
+
+        assert_class_instance_equality(TariffRequest, new_values, tariff_resp)
+        assert_nowish(tariff_resp.changed_time)
+
+        # Check the archive has 1 entry
+        async with generate_async_session(pg_base_config) as session:
+            db_count = await session.execute(select(func.count()).select_from(ArchiveTariff))
+            assert db_count.scalar_one() == 1
+    else:
+        # Check the archive is empty
+        async with generate_async_session(pg_base_config) as session:
+            db_count = await session.execute(select(func.count()).select_from(ArchiveTariff))
+            assert db_count.scalar_one() == 0
+
+
+@pytest.mark.parametrize(
+    "tariff_component_id, expected_status", [(1, HTTPStatus.OK), (4, HTTPStatus.OK), (99, HTTPStatus.NOT_FOUND)]
+)
+@pytest.mark.anyio
+async def test_fetch_tariff_component(
+    admin_client_auth: AsyncClient, tariff_component_id: int, expected_status: HTTPStatus
+):
+    """Can we create a TariffComponent and then refetch the thing we just created"""
+
+    resp = await admin_client_auth.get(TariffComponentUpdateUri.format(tariff_component_id=tariff_component_id))
+    assert resp.status_code == expected_status
+
+    if resp.status_code == HTTPStatus.OK:
+        tc_resp = TariffComponentResponse(**json.loads(resp.content))
+        assert tc_resp.tariff_component_id == tariff_component_id
 
 
 @pytest.mark.parametrize("tariff_id", [1, 2, 3])
@@ -108,6 +159,61 @@ async def test_create_tariff_component_bad_tariff_id(admin_client_auth: AsyncCli
     tc = generate_class_instance(TariffComponentRequest, tariff_id=99)
     resp = await admin_client_auth.post(TariffComponentCreateUri, json=tc.model_dump())
     assert resp.status_code == HTTPStatus.BAD_REQUEST
+
+
+@pytest.mark.parametrize(
+    "tariff_component_id, new_values, expected_status",
+    [
+        (1, generate_class_instance(TariffComponentRequest, tariff_id=99), HTTPStatus.NO_CONTENT),
+        (1, generate_class_instance(TariffComponentRequest, tariff_id=1), HTTPStatus.NO_CONTENT),
+        (3, generate_class_instance(TariffComponentRequest, optional_is_none=True), HTTPStatus.NO_CONTENT),
+        (4, generate_class_instance(TariffComponentRequest, optional_is_none=True), HTTPStatus.NO_CONTENT),
+        (99, generate_class_instance(TariffComponentRequest), HTTPStatus.NOT_FOUND),
+    ],
+)
+@pytest.mark.anyio
+async def test_update_tariff_component(
+    pg_base_config,
+    admin_client_auth: AsyncClient,
+    tariff_component_id: int,
+    new_values: TariffComponentRequest,
+    expected_status: HTTPStatus,
+):
+    """Can we update a TariffComponent and then refetch the thing we just updated."""
+
+    # Before doing anything - snapshot the original value
+    uri = TariffComponentUpdateUri.format(tariff_component_id=tariff_component_id)
+    resp = await admin_client_auth.get(uri)
+    original_tc: Optional[TariffComponentResponse] = None
+    if resp.status_code == HTTPStatus.OK:
+        original_tc = TariffComponentResponse(**json.loads(resp.content))
+
+    resp = await admin_client_auth.put(uri, json=new_values.model_dump())
+    assert resp.status_code == expected_status
+
+    if resp.status_code == HTTPStatus.NO_CONTENT:
+        # Check the updates applied
+        assert original_tc is not None
+
+        # After creating - try and fetch it back to see if matches what we sent
+        resp = await admin_client_auth.get(uri)
+        assert resp.status_code == HTTPStatus.OK
+        tc_resp = TariffComponentResponse(**json.loads(resp.content))
+
+        assert_class_instance_equality(TariffComponentRequest, new_values, tc_resp, ignored_properties={"tariff_id"})
+
+        assert tc_resp.tariff_id == original_tc.tariff_id
+        assert_nowish(tc_resp.changed_time)
+
+        # Check the archive has 1 entry
+        async with generate_async_session(pg_base_config) as session:
+            db_count = await session.execute(select(func.count()).select_from(ArchiveTariffComponent))
+            assert db_count.scalar_one() == 1
+    else:
+        # Check the archive is empty
+        async with generate_async_session(pg_base_config) as session:
+            db_count = await session.execute(select(func.count()).select_from(ArchiveTariffComponent))
+            assert db_count.scalar_one() == 0
 
 
 @pytest.mark.anyio
