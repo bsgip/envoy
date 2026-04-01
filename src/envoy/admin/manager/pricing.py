@@ -16,6 +16,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.pricing import (
+    cancel_tariff_generated_rate,
     insert_many_tariff_genrate,
     insert_single_tariff,
     select_single_tariff_generated_rate,
@@ -124,6 +125,15 @@ class TariffGeneratedRateManager:
         if rate is None:
             raise NoResultFound
         return TariffGeneratedRateListMapper.map_to_single_rate_response(rate)
+
+    @staticmethod
+    async def cancel_tariff_generated_rate(session: AsyncSession, tariff_generated_rate_id: int) -> None:
+        """Cancel (and archive) the specified rate. Will raise notifications. If tariff_generated_rate_id DNE -
+        do nothing"""
+        now = utc_now()
+        await cancel_tariff_generated_rate(session, tariff_generated_rate_id, now)
+        await session.commit()
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_GENERATED_RATE, now)
 
     @staticmethod
     async def add_many_tariff_genrate(

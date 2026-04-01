@@ -265,6 +265,53 @@ async def test_fetch_tariff_generated_rate(
         assert tc_resp.tariff_generated_rate_id == tariff_generated_rate_id
 
 
+@pytest.mark.parametrize(
+    "tariff_generated_rate_id, expected_status",
+    [(1, HTTPStatus.NO_CONTENT), (4, HTTPStatus.NO_CONTENT), (99, HTTPStatus.NO_CONTENT)],
+)
+@pytest.mark.anyio
+async def test_delete_tariff_generated_rate(
+    pg_base_config, admin_client_auth: AsyncClient, tariff_generated_rate_id: int, expected_status: HTTPStatus
+):
+    async with generate_async_session(pg_base_config) as session:
+        stmt = (
+            select(func.count())
+            .select_from(TariffGeneratedRate)
+            .where(TariffGeneratedRate.tariff_generated_rate_id == tariff_generated_rate_id)
+        )
+        resp = await session.execute(stmt)
+        exists = (resp.scalar_one()) == 1
+
+    resp = await admin_client_auth.delete(
+        TariffGeneratedRateUpdateUri.format(tariff_generated_rate_id=tariff_generated_rate_id)
+    )
+    assert resp.status_code == expected_status
+
+    async with generate_async_session(pg_base_config) as session:
+        after_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(TariffGeneratedRate)
+                .where(TariffGeneratedRate.tariff_generated_rate_id == tariff_generated_rate_id)
+            )
+        ).scalar_one()
+        archive_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(ArchiveTariffGeneratedRate)
+                .where(ArchiveTariffGeneratedRate.tariff_generated_rate_id == tariff_generated_rate_id)
+                .where(ArchiveTariffGeneratedRate.deleted_time.is_not(None))
+            )
+        ).scalar_one()
+
+        if exists:
+            assert after_count == 0
+            assert archive_count == 1
+        else:
+            assert after_count == 0
+            assert archive_count == 0
+
+
 @pytest.mark.anyio
 async def test_no_update_tariff_genrate(pg_base_config, admin_client_auth: AsyncClient):
     """Checks that inserting a price will never update an existing record"""

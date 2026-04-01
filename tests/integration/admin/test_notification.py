@@ -28,6 +28,7 @@ from envoy_schema.admin.schema.uri import (
     TariffComponentUpdateUri,
     TariffCreateUri,
     TariffGeneratedRateCreateUri,
+    TariffGeneratedRateUpdateUri,
     TariffUpdateUri,
 )
 from httpx import AsyncClient
@@ -946,6 +947,130 @@ async def test_create_rates_with_active_subscription(
         )
         == 1
     ), "Only the rate1 price should be sent out via notification"
+
+
+@pytest.mark.anyio
+async def test_delete_rates_with_active_subscription(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests deleting rates with an active subscription generates notifications via the MockedAsyncClient"""
+
+    # Create a subscription to actually pickup these changes
+    #
+    # We will create four subscriptions
+    #   1) Subscribed to combined TTI's on tariff 1 for site 1
+    #   2) Subscribed to RateComponent 1 TTI's for site 1
+    #   3) Subscribed to combined TTI's on tariff 1 for site 2
+    #   4) Subscribed to RateComponent 1 TTI's for site 2
+    subscription1_uri = "http://example1:541/uri?a=b"
+    subscription2_uri = "http://example2:542/uri?a=b"
+    subscription3_uri = "http://example3:543/uri?a=b"
+    subscription4_uri = "http://example4:544/uri?a=b"
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(delete(Subscription))
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
+                resource_id=1,
+                resource_parent_id=None,
+                scoped_site_id=1,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                resource_id=1,
+                resource_parent_id=1,
+                scoped_site_id=1,
+                notification_uri=subscription2_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
+                resource_id=1,
+                resource_parent_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription3_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                resource_id=1,
+                resource_parent_id=1,
+                scoped_site_id=2,
+                notification_uri=subscription4_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    resp = await admin_client_auth.delete(TariffGeneratedRateUpdateUri.format(tariff_generated_rate_id=1))
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+
+    # There will be 2 price notifications going out - one for sub1 and one for sub2 (both matching the delete)
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription2_uri)] == 1
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+
+    # Do a really simple content check on the outgoing XML to ensure the notifications contain the expected
+    # entities for each subscription
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription1_uri
+                and "<subscribedResource>/edev/1/tp/1/ctti</subscribedResource>" in r.content
+                and "<subscribedResource>/edev/1/tp/1/rc/1/tti</subscribedResource>" not in r.content
+                and "<price>1111</price>" in r.content
+                and "<currentStatus>2</currentStatus>" in r.content  # Cancelled
+            ]
+        )
+        == 1
+    ), "Only the cancelled price should be sent out via notification"
+
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription2_uri
+                and "<subscribedResource>/edev/1/tp/1/ctti</subscribedResource>" not in r.content
+                and "<subscribedResource>/edev/1/tp/1/rc/1/tti</subscribedResource>" in r.content
+                and "<price>1111</price>" in r.content
+                and "<currentStatus>2</currentStatus>" in r.content  # Cancelled
+            ]
+        )
+        == 1
+    ), "Only the cancelled price should be sent out via notification"
 
 
 @pytest.mark.anyio

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Iterable, List, Optional, Sequence
 
-from sqlalchemy import and_, insert, or_, select
+from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
@@ -117,3 +117,18 @@ async def select_single_tariff_generated_rate(
         select(TariffGeneratedRate).where(TariffGeneratedRate.tariff_generated_rate_id == tariff_generated_rate_id)
     )
     return resp.scalar_one_or_none()
+
+
+async def cancel_tariff_generated_rate(
+    session: AsyncSession, tariff_generated_rate_id: int, deleted_time: datetime
+) -> None:
+    """Deletes the specified TariffGeneratedRate into the archive and marks it with the specified deleted_time
+
+    If the record DNE - this will have no effect."""
+    await delete_rows_into_archive(
+        session,
+        TariffGeneratedRate,
+        ArchiveTariffGeneratedRate,
+        deleted_time,
+        lambda q: q.where(TariffGeneratedRate.tariff_generated_rate_id == tariff_generated_rate_id),
+    )

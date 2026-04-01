@@ -182,3 +182,18 @@ async def get_tariff_genrate(tariff_generated_rate_id: int) -> TariffGeneratedRa
         return await TariffGeneratedRateManager.fetch_tariff_generated_rate(db.session, tariff_generated_rate_id)
     except NoResultFound as exc:
         raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found")
+
+
+@router.delete(TariffGeneratedRateUpdateUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
+async def delete_tariff_genrate(tariff_generated_rate_id: int) -> None:
+    """Delete (cancel) a singular TariffGeneratedRateResponse. Will notify clients of cancellation.
+
+    Path Param:
+        tariff_generated_rate_id: integer ID of the desired tariff generated rate resource.
+    Returns:
+        TariffGeneratedRateResponse
+    """
+    try:
+        return await TariffGeneratedRateManager.cancel_tariff_generated_rate(db.session, tariff_generated_rate_id)
+    except NoResultFound as exc:
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found")

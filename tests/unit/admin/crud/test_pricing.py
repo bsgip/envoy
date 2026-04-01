@@ -10,6 +10,7 @@ from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import func, select
 
 from envoy.admin.crud.pricing import (
+    cancel_tariff_generated_rate,
     insert_many_tariff_genrate,
     insert_single_tariff,
     select_single_tariff_generated_rate,
@@ -302,3 +303,41 @@ async def test_select_single_tariff_generated_rate(pg_base_config):
         assert rate4.site_id == 2
         assert rate4.price_pow10_encoded == 4444
         assert rate4.price_pow10_encoded_block_1 is None
+
+
+@pytest.mark.parametrize(
+    "tariff_generated_rate_id, expected_deleted_price",
+    [
+        (99, None),
+        (1, 1111),
+        (2, 2222),
+        (4, 4444),
+        (6, 6666),
+        (7, 7777),
+    ],
+)
+@pytest.mark.anyio
+async def test_cancel_tariff_generated_rate(pg_base_config, tariff_generated_rate_id, expected_deleted_price):
+    deleted_time = datetime(2028, 4, 1, tzinfo=timezone.utc)
+    async with generate_async_session(pg_base_config) as session:
+        await cancel_tariff_generated_rate(session, tariff_generated_rate_id, deleted_time)
+
+        # Record not in active table anymore
+        assert (
+            await session.execute(
+                select(func.count())
+                .select_from(TariffGeneratedRate)
+                .where(TariffGeneratedRate.tariff_generated_rate_id == tariff_generated_rate_id)
+            )
+        ).scalar_one() == 0
+
+        # Record archived correctly (if it existed)
+        archive_records = (await session.execute(select(ArchiveTariffGeneratedRate))).scalars().all()
+        if expected_deleted_price is None:
+            assert len(archive_records) == 0
+        else:
+            assert len(archive_records) == 1
+            rec = archive_records[0]
+            assert rec.tariff_generated_rate_id == tariff_generated_rate_id
+            assert rec.deleted_time == deleted_time
+            assert rec.price_pow10_encoded == expected_deleted_price
