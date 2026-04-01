@@ -257,15 +257,14 @@ async def test_get_response_for_device_cert(
             insert(TariffGeneratedRate).values(
                 tariff_generated_rate_id=102,
                 tariff_id=1,
+                tariff_component_id=1,
                 site_id=5,
                 calculation_log_id=None,
                 changed_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
                 start_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
                 duration_seconds=300,
-                import_active_price=101,
-                export_active_price=202,
-                import_reactive_price=303,
-                export_reactive_price=404,
+                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=timezone.utc),
+                price_pow10_encoded=101,
             )
         )
 
@@ -285,7 +284,6 @@ async def test_get_response_for_device_cert(
                 tariff_generated_rate_response_id=1002,
                 tariff_generated_rate_id_snapshot=102,
                 site_id=5,
-                pricing_reading_type=PricingReadingType.IMPORT_ACTIVE_POWER_KWH,
                 response_type=8,
             )
         )
@@ -434,15 +432,14 @@ async def test_get_response_list_pagination_for_device_cert(
             insert(TariffGeneratedRate).values(
                 tariff_generated_rate_id=102,
                 tariff_id=1,
+                tariff_component_id=1,
                 site_id=5,
                 calculation_log_id=None,
                 changed_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
                 start_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
                 duration_seconds=300,
-                import_active_price=101,
-                export_active_price=202,
-                import_reactive_price=303,
-                export_reactive_price=404,
+                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=timezone.utc),
+                price_pow10_encoded=101,
             )
         )
 
@@ -462,7 +459,6 @@ async def test_get_response_list_pagination_for_device_cert(
                 tariff_generated_rate_response_id=1002,
                 tariff_generated_rate_id_snapshot=102,
                 site_id=5,
-                pricing_reading_type=PricingReadingType.IMPORT_ACTIVE_POWER_KWH,
                 response_type=8,
             )
         )

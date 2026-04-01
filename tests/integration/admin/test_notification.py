@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime
 from decimal import Decimal
 from http import HTTPStatus
-from typing import Union
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -1329,6 +1328,7 @@ async def test_update_site_control_group_default_notification(
         generation_limit_watts=None,
         load_limit_watts=None,
         ramp_rate_percent_per_second=None,
+        storage_target_watts=None,
     )
 
     # Update default controls for DERP2 and DERP3

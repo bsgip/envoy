@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from decimal import Decimal
 
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_nowish
@@ -67,7 +66,26 @@ def test_map_to_doe_response():
 
     all_mapped = ArchiveMapper.map_to_doe_response(all)
     assert isinstance(all_mapped, ArchiveSiteControlResponse)
-    assert_class_instance_equality(ArchiveSiteControlResponse, all, all_mapped)  # These should just map 1-1
+    assert_class_instance_equality(
+        ArchiveSiteControlResponse,
+        all,
+        all_mapped,
+        {
+            "site_control_id",
+            "archive_time",
+            "set_connect",
+            "import_limit_watts",
+            "generation_limit_watts",
+            "load_limit_watts",
+            "storage_target_watts",
+        },
+    )
+    assert all_mapped.site_control_id == all.dynamic_operating_envelope_id
+    assert all_mapped.set_connect == all.set_connected
+    assert all_mapped.import_limit_watts == all.import_limit_active_watts
+    assert all_mapped.generation_limit_watts == all.generation_limit_active_watts
+    assert all_mapped.load_limit_watts == all.load_limit_active_watts
+    assert all_mapped.storage_target_watts is None
 
     optional_mapped = ArchiveMapper.map_to_doe_response(optional)
     assert isinstance(optional_mapped, ArchiveSiteControlResponse)
@@ -75,11 +93,23 @@ def test_map_to_doe_response():
         ArchiveSiteControlResponse,
         optional,
         optional_mapped,
-        {"archive_time", "import_limit_active_watts", "export_limit_watts"},
+        {
+            "site_control_id",
+            "archive_time",
+            "set_connect",
+            "import_limit_watts",
+            "generation_limit_watts",
+            "load_limit_watts",
+            "storage_target_watts",
+        },
     )  # These should just map 1-1
+    assert optional_mapped.site_control_id == optional.dynamic_operating_envelope_id
+    assert optional_mapped.set_connect == optional.set_connected
+    assert optional_mapped.import_limit_watts == optional.import_limit_active_watts
+    assert optional_mapped.generation_limit_watts == optional.generation_limit_active_watts
+    assert optional_mapped.load_limit_watts == optional.load_limit_active_watts
+    assert optional_mapped.storage_target_watts is None
     assert_nowish(optional_mapped.archive_time)  # This is a workaround in case we get some bad data
-    assert optional_mapped.import_limit_active_watts == Decimal(0), "Workaround limitations on legacy API"
-    assert optional_mapped.export_limit_watts == Decimal(0), "Workaround limitations on legacy API"
 
 
 def test_map_to_paged_doe_response():
@@ -99,7 +129,7 @@ def test_map_to_paged_doe_response():
 
     page_response = ArchiveListMapper.map_to_does_response(total_count, does, start, limit, period_start, period_end)
     assert isinstance(page_response, ArchivePageResponse)
-    assert_list_type(ArchiveDynamicOperatingEnvelopeResponse, page_response.entities, len(does))
+    assert_list_type(ArchiveSiteControlResponse, page_response.entities, len(does))
     assert page_response.period_end == period_end
     assert page_response.period_start == period_start
     assert page_response.limit == limit

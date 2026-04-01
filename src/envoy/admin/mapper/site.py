@@ -150,6 +150,8 @@ class SiteMapper:
             max_var_neg=_extract_failover_pow10_value(rating, setting, "max_var_neg_value", "max_var_neg_multiplier"),
             max_wh=_extract_failover_pow10_value(rating, setting, "max_wh_value", "max_wh_multiplier"),
             v_nom=_extract_failover_pow10_value(rating, setting, "v_nom_value", "v_nom_multiplier"),
+            min_wh=Decimal(0),
+            vpp_modes_supported=None,
         )
 
     @staticmethod

@@ -90,7 +90,7 @@ def upgrade() -> None:
     op.add_column("archive_tariff", sa.Column("price_power_of_ten_multiplier", sa.INTEGER(), nullable=True))
     op.add_column("archive_tariff", sa.Column("primacy", sa.INTEGER(), nullable=False))
     op.add_column("archive_tariff", sa.Column("version", sa.INTEGER(), nullable=True))
-    op.add_column("archive_tariff_generated_rate", sa.Column("tariff_component_id", sa.INTEGER(), nullable=False))
+    op.add_column("archive_tariff_generated_rate", sa.Column("tariff_component_id", sa.BigInteger(), nullable=False))
     op.add_column("archive_tariff_generated_rate", sa.Column("end_time", sa.DateTime(timezone=True), nullable=False))
     op.add_column("archive_tariff_generated_rate", sa.Column("price_pow10_encoded", sa.INTEGER(), nullable=False))
     op.add_column(
