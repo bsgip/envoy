@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from envoy.admin.crud.pricing import (
     insert_many_tariff_genrate,
     insert_single_tariff,
+    select_single_tariff_generated_rate,
     select_tariff_ids_for_component_ids,
     update_single_tariff,
     update_single_tariff_component,
@@ -283,3 +284,21 @@ async def test_select_tariff_ids_for_component_ids(
         result = await select_tariff_ids_for_component_ids(session, tariff_component_ids)
         assert_dict_type(int, int, result, count=len(expected_result))
         assert result == expected_result
+
+
+@pytest.mark.anyio
+async def test_select_single_tariff_generated_rate(pg_base_config):
+    async with generate_async_session(pg_base_config) as session:
+        assert (await select_single_tariff_generated_rate(session, 99)) is None
+
+        rate1 = await select_single_tariff_generated_rate(session, 1)
+        assert isinstance(rate1, TariffGeneratedRate)
+        assert rate1.site_id == 1
+        assert rate1.price_pow10_encoded == 1111
+        assert rate1.price_pow10_encoded_block_1 == 1001
+
+        rate4 = await select_single_tariff_generated_rate(session, 4)
+        assert isinstance(rate4, TariffGeneratedRate)
+        assert rate4.site_id == 2
+        assert rate4.price_pow10_encoded == 4444
+        assert rate4.price_pow10_encoded_block_1 is None

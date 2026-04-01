@@ -8,6 +8,7 @@ from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
     TariffComponentResponse,
     TariffGeneratedRateRequest,
+    TariffGeneratedRateResponse,
     TariffRequest,
     TariffResponse,
 )
@@ -16,6 +17,7 @@ from envoy_schema.admin.schema.uri import (
     TariffComponentUpdateUri,
     TariffCreateUri,
     TariffGeneratedRateCreateUri,
+    TariffGeneratedRateUpdateUri,
     TariffUpdateUri,
 )
 from fastapi import APIRouter, Query, Response
@@ -165,3 +167,18 @@ async def create_tariff_genrate(tariff_generates: List[TariffGeneratedRateReques
 
     except IntegrityError as exc:
         raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "tariff_id or site_id not found")
+
+
+@router.get(TariffGeneratedRateUpdateUri, status_code=HTTPStatus.OK, response_model=TariffGeneratedRateResponse)
+async def get_tariff_genrate(tariff_generated_rate_id: int) -> TariffGeneratedRateResponse:
+    """Fetch a singular TariffGeneratedRateResponse Object.
+
+    Path Param:
+        tariff_generated_rate_id: integer ID of the desired tariff generated rate resource.
+    Returns:
+        TariffGeneratedRateResponse
+    """
+    try:
+        return await TariffGeneratedRateManager.fetch_tariff_generated_rate(db.session, tariff_generated_rate_id)
+    except NoResultFound as exc:
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found")

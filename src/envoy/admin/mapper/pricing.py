@@ -5,6 +5,7 @@ from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
     TariffComponentResponse,
     TariffGeneratedRateRequest,
+    TariffGeneratedRateResponse,
     TariffRequest,
     TariffResponse,
 )
@@ -82,6 +83,23 @@ class TariffComponentMapper:
 
 
 class TariffGeneratedRateListMapper:
+
+    @staticmethod
+    def map_to_single_rate_response(rate: TariffGeneratedRate) -> TariffGeneratedRateResponse:
+        return TariffGeneratedRateResponse(
+            tariff_generated_rate_id=rate.tariff_generated_rate_id,
+            tariff_id=rate.tariff_id,
+            tariff_component_id=rate.tariff_component_id,
+            site_id=rate.site_id,
+            calculation_log_id=rate.calculation_log_id,
+            changed_time=rate.changed_time,
+            created_time=rate.created_time,
+            start_time=rate.start_time,
+            duration_seconds=rate.duration_seconds,
+            price_pow10_encoded=rate.price_pow10_encoded,
+            block_1_start_pow10_encoded=rate.block_1_start_pow10_encoded,
+            price_pow10_encoded_block_1=rate.price_pow10_encoded_block_1,
+        )
 
     @staticmethod
     def map_from_single_rate_request(

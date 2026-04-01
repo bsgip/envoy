@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Iterable, List, Sequence
+from typing import Iterable, List, Optional, Sequence
 
 from sqlalchemy import and_, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -107,3 +107,13 @@ async def select_tariff_ids_for_component_ids(
         )
     )
     return dict(resp.tuples().all())
+
+
+async def select_single_tariff_generated_rate(
+    session: AsyncSession, tariff_generated_rate_id: int
+) -> Optional[TariffGeneratedRate]:
+    """Admin lookup of a single TariffGeneratedRate by ID - no scoping for aggregators"""
+    resp = await session.execute(
+        select(TariffGeneratedRate).where(TariffGeneratedRate.tariff_generated_rate_id == tariff_generated_rate_id)
+    )
+    return resp.scalar_one_or_none()

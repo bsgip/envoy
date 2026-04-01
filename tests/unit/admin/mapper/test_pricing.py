@@ -72,9 +72,7 @@ def test_tariff_component_mapper_roundtrip(optional_is_none: bool):
 
 @pytest.mark.parametrize("optional_is_none", [True, False])
 def test_tariff_genrate_mapper_from_request(optional_is_none: bool):
-    req: TariffGeneratedRateRequest = generate_class_instance(
-        TariffGeneratedRateRequest, optional_is_none=optional_is_none
-    )
+    req = generate_class_instance(TariffGeneratedRateRequest, optional_is_none=optional_is_none)
     changed_time = datetime(2022, 4, 5, 6, 7, 8, 9)
     mdl = TariffGeneratedRateListMapper.map_from_request(
         changed_time, [req], {(req.tariff_component_id + 1): 99, req.tariff_component_id: 1234}
@@ -105,3 +103,29 @@ def test_tariff_genrate_mapper_from_request_mismatch_component_id():
     changed_time = datetime(2022, 4, 5, 6, 7, 8, 9)
     with pytest.raises(InvalidMappingError):
         TariffGeneratedRateListMapper.map_from_request(changed_time, [req], {(req.tariff_component_id + 1): 99, 0: 99})
+
+
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_tariff_genrate_mapper_roundtrip(optional_is_none: bool):
+    initial = generate_class_instance(TariffGeneratedRateRequest, optional_is_none=optional_is_none)
+    changed_time = datetime(2022, 4, 5, 6, 7, 8, 9)
+    created_time = datetime(2023, 5, 6, 6, 7, 8, 9)
+    tariff_id = 1515152
+    tariff_gen_rate_id = 981471
+
+    mdl = TariffGeneratedRateListMapper.map_from_single_rate_request(changed_time, initial, tariff_id)
+    mdl.tariff_generated_rate_id = tariff_gen_rate_id  # This would be set by the DB normally
+    mdl.created_time = created_time  # This would be set by the DB normally
+
+    result = TariffGeneratedRateListMapper.map_to_single_rate_response(mdl)
+
+    assert_class_instance_equality(
+        TariffGeneratedRateRequest,
+        initial,
+        result,
+        ignored_properties={"tariff_id", "tariff_generated_rate_id"},
+    )
+    assert result.changed_time == changed_time
+    assert result.created_time == created_time
+    assert result.tariff_id == tariff_id
+    assert result.tariff_generated_rate_id == tariff_gen_rate_id

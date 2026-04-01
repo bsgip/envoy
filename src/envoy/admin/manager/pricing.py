@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.admin.crud.pricing import (
     insert_many_tariff_genrate,
     insert_single_tariff,
+    select_single_tariff_generated_rate,
     select_tariff_ids_for_component_ids,
     update_single_tariff,
     update_single_tariff_component,
@@ -114,6 +115,16 @@ class TariffComponentManager:
 
 
 class TariffGeneratedRateManager:
+    @staticmethod
+    async def fetch_tariff_generated_rate(
+        session: AsyncSession, tariff_generated_rate_id: int
+    ) -> TariffGeneratedRateResponse:
+        """Select a singular tariff rate entry from the DB and map to a TariffGeneratedRateResponse object."""
+        rate = await select_single_tariff_generated_rate(session, tariff_generated_rate_id)
+        if rate is None:
+            raise NoResultFound
+        return TariffGeneratedRateListMapper.map_to_single_rate_response(rate)
+
     @staticmethod
     async def add_many_tariff_genrate(
         session: AsyncSession, tariff_genrates: List[TariffGeneratedRateRequest]

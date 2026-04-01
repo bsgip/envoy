@@ -14,6 +14,7 @@ from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
     TariffComponentResponse,
     TariffGeneratedRateRequest,
+    TariffGeneratedRateResponse,
     TariffRequest,
     TariffResponse,
 )
@@ -22,6 +23,7 @@ from envoy_schema.admin.schema.uri import (
     TariffComponentUpdateUri,
     TariffCreateUri,
     TariffGeneratedRateCreateUri,
+    TariffGeneratedRateUpdateUri,
     TariffUpdateUri,
 )
 from httpx import AsyncClient
@@ -118,8 +120,6 @@ async def test_update_tariff(
 async def test_fetch_tariff_component(
     admin_client_auth: AsyncClient, tariff_component_id: int, expected_status: HTTPStatus
 ):
-    """Can we create a TariffComponent and then refetch the thing we just created"""
-
     resp = await admin_client_auth.get(TariffComponentUpdateUri.format(tariff_component_id=tariff_component_id))
     assert resp.status_code == expected_status
 
@@ -217,21 +217,52 @@ async def test_update_tariff_component(
 
 
 @pytest.mark.anyio
-async def test_create_tariff_genrates(admin_client_auth: AsyncClient):
-    tariff_genrate = generate_class_instance(TariffGeneratedRateRequest, tariff_component_id=1, site_id=1)
+async def test_create_tariff_genrates_with_fetch(admin_client_auth: AsyncClient):
+    tariff_genrate_1 = generate_class_instance(
+        TariffGeneratedRateRequest, seed=101, tariff_component_id=1, site_id=1, calculation_log_id=1
+    )
 
-    tariff_genrate_1 = generate_class_instance(TariffGeneratedRateRequest, tariff_component_id=2, site_id=2)
+    tariff_genrate_2 = generate_class_instance(
+        TariffGeneratedRateRequest, seed=202, tariff_component_id=2, site_id=2, calculation_log_id=None
+    )
 
     resp = await admin_client_auth.post(
         TariffGeneratedRateCreateUri,
-        content=f"[{tariff_genrate.model_dump_json()}, {tariff_genrate_1.model_dump_json()}]",
-        headers={"Content-Type": "application/json"},
+        content=f"[{tariff_genrate_1.model_dump_json()}, {tariff_genrate_2.model_dump_json()}]",
     )
 
     assert resp.status_code == HTTPStatus.CREATED
     rate_resp = BatchCreateResponse(**json.loads(resp.content))
 
     assert rate_resp.ids == [8, 9], "We know that the DB sequence is set to 8 in base_config.sql"
+
+    for new_id, expected_genrate in zip(rate_resp.ids, [tariff_genrate_1, tariff_genrate_2]):
+        # Now refetch each newly created record
+        resp = await admin_client_auth.get(TariffGeneratedRateUpdateUri.format(tariff_generated_rate_id=new_id))
+        assert resp.status_code == HTTPStatus.OK
+        actual_genrate = TariffGeneratedRateResponse(**json.loads(resp.content))
+
+        assert_class_instance_equality(TariffGeneratedRateRequest, expected_genrate, actual_genrate)
+        assert actual_genrate.tariff_generated_rate_id == new_id
+        assert_nowish(actual_genrate.created_time)
+        assert_nowish(actual_genrate.changed_time)
+
+
+@pytest.mark.parametrize(
+    "tariff_generated_rate_id, expected_status", [(1, HTTPStatus.OK), (4, HTTPStatus.OK), (99, HTTPStatus.NOT_FOUND)]
+)
+@pytest.mark.anyio
+async def test_fetch_tariff_generated_rate(
+    admin_client_auth: AsyncClient, tariff_generated_rate_id: int, expected_status: HTTPStatus
+):
+    resp = await admin_client_auth.get(
+        TariffGeneratedRateUpdateUri.format(tariff_generated_rate_id=tariff_generated_rate_id)
+    )
+    assert resp.status_code == expected_status
+
+    if resp.status_code == HTTPStatus.OK:
+        tc_resp = TariffGeneratedRateResponse(**json.loads(resp.content))
+        assert tc_resp.tariff_generated_rate_id == tariff_generated_rate_id
 
 
 @pytest.mark.anyio
