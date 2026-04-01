@@ -445,6 +445,7 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
                 resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
                 scoped_site_id=3,
                 resource_id=3,
+                resource_parent_id=1,
                 notification_uri="http://test.insert/",
                 entity_limit=555,
             ),  # Will rewrite sub 3

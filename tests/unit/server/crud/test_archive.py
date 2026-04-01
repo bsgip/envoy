@@ -5,7 +5,7 @@ from typing import Any, Optional
 import pytest
 from assertical.asserts.time import assert_nowish
 from assertical.fixtures.postgres import generate_async_session
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
@@ -17,7 +17,7 @@ from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 from tests.unit.server.model.archive.test_archive_models import find_paired_archive_classes
 
 
@@ -203,7 +203,7 @@ async def test_delete_rows_into_archive_no_matches(pg_base_config, original_type
             (
                 (ot, at)
                 for ot, at in find_paired_archive_classes()
-                if ot not in {Site, Tariff, SiteReadingType, SiteControlGroup}
+                if ot not in {Site, SiteReadingType, SiteControlGroup}
             ),
             [True, False],
         )
@@ -218,6 +218,16 @@ async def test_delete_rows_into_archive_all_matches(
     NOTE - this test won't cover types that have FK dependencies"""
 
     deleted_time = datetime(2021, 5, 6, 7, 8, 9, 1234, tzinfo=timezone.utc)
+
+    # As a pre-condition - certain types DONT cascade delete so we artificially nuke child tables with FK refs before
+    if original_type == Tariff or original_type == TariffComponent:
+        async with generate_async_session(pg_base_config) as session:
+            await session.execute(delete(TariffGeneratedRate))
+            await session.commit()
+    if original_type == Tariff:
+        async with generate_async_session(pg_base_config) as session:
+            await session.execute(delete(TariffComponent))
+            await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
         original_count_before = (await session.execute(select(func.count()).select_from(original_type))).scalar_one()
@@ -271,7 +281,7 @@ async def test_delete_rows_into_archive_complex_filter(pg_base_config):
             ArchiveTariffGeneratedRate,
             deleted_time,
             lambda q: q.where(
-                or_(TariffGeneratedRate.tariff_generated_rate_id == 1, TariffGeneratedRate.duration_seconds == 14)
+                or_(TariffGeneratedRate.tariff_generated_rate_id == 1, TariffGeneratedRate.price_pow10_encoded == 7777)
             ),
         )
 
@@ -292,8 +302,8 @@ async def test_delete_rows_into_archive_complex_filter(pg_base_config):
             session, ArchiveTariffGeneratedRate, ignore_columns=ARCHIVE_BASE_COLUMNS
         )
 
-        assert original_values[1:3] == original_values_after, "The second and third rates should be left in place"
-        assert [original_values[0], original_values[3]] == archive_values_after, "First and fourth rates should archive"
+        assert original_values[1:6] == original_values_after, "The rates #2 - #6 should be left in place"
+        assert [original_values[0], original_values[6]] == archive_values_after, "1st and 7th rates should archive"
 
         # Validate the archive specific metadata
         deleted_time_vals = await fetch_single_column(session, ArchiveSite, "deleted_time")
@@ -357,8 +367,8 @@ async def test_delete_rows_into_archive_cascade_deletes(pg_base_config):
         assert 5 == (await session.execute(select(func.count()).select_from(Site))).scalar_one()
         assert 1 == (await session.execute(select(func.count()).select_from(ArchiveSite))).scalar_one()
 
-        assert 1 == (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
-        assert 3 == (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one()
+        assert 2 == (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
+        assert 5 == (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one()
 
         assert 1 == (await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))).scalar_one()
         assert (
