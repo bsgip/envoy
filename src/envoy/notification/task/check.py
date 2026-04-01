@@ -50,7 +50,7 @@ from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionResource
-from envoy.server.model.tariff import TariffComponent, TariffGeneratedRate
+from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope, CertificateType
 
 logger = logging.getLogger(__name__)

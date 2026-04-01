@@ -1,5 +1,4 @@
 from datetime import datetime
-from enum import IntEnum, auto
 from itertools import chain
 from typing import Any, Generic, Iterable, Optional, Sequence, Union, cast
 

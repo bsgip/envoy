@@ -38,7 +38,7 @@ class ArchiveTariffComponent(ArchiveBase):
     """Represents a single pricing "unit of measure". All TariffGeneratedRate instances underneath it will dictate
     individual prices but this entity will describe what is actually being priced"""
 
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.TariffComponent.__tablename__
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.TariffComponent.__tablename__  # type: ignore
     tariff_component_id: Mapped[int] = mapped_column(BigInteger, index=True)
     tariff_id: Mapped[int] = mapped_column(INTEGER)
 

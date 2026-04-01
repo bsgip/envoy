@@ -7,7 +7,6 @@ from assertical.asserts.generator import assert_class_instance_equality
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
-    TariffComponentResponse,
     TariffGeneratedRateRequest,
     TariffRequest,
     TariffResponse,
