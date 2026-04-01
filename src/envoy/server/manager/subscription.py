@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.crud.doe import select_site_control_group_by_id
-from envoy.server.crud.pricing import select_single_tariff
+from envoy.server.crud.pricing import select_single_tariff, select_tariff_component_by_id
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID, select_single_site_with_site_id
 from envoy.server.crud.site_reading import fetch_site_reading_types_for_group
 from envoy.server.crud.subscription import (
@@ -121,7 +121,7 @@ class SubscriptionManager:
                 )
 
     @staticmethod
-    async def validate_subscription_linked_resource(
+    async def validate_subscription_linked_resource(  # noqa: C901
         session: AsyncSession, scope: AggregatorRequestScope, sub: MappedSubscription
     ) -> None:
         """Validates the resource_id of sub to ensure if falls within scope - raises BadRequestError on error"""
@@ -139,9 +139,30 @@ class SubscriptionManager:
                 if not srts:
                     raise BadRequestError(f"Invalid mup {sub.resource_id} for site {scope.site_id}")
             elif sub.resource_type == SubscriptionResource.TARIFF_GENERATED_RATE:
+                if sub.resource_parent_id is None:
+                    raise BadRequestError(f"Missing tariff_profile ID for site {scope.site_id}")
+
+                tc = await select_tariff_component_by_id(session, sub.resource_id)
+                if tc is None:
+                    raise BadRequestError(f"Invalid tariff_component_id {sub.resource_id} for site {scope.site_id}")
+
+                tp = await select_single_tariff(session, sub.resource_parent_id)
+                if tp is None:
+                    raise BadRequestError(f"Invalid tariff_id {sub.resource_parent_id} for site {scope.site_id}")
+
+                if tc.tariff_id != tp.tariff_id:
+                    raise BadRequestError(
+                        f"Invalid tariff_component_id {tc.tariff_component_id} for site {scope.site_id}"
+                    )
+
+            elif sub.resource_type == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
                 tp = await select_single_tariff(session, sub.resource_id)
                 if tp is None:
                     raise BadRequestError(f"Invalid tariff_id {sub.resource_id} for site {scope.site_id}")
+            elif sub.resource_type == SubscriptionResource.TARIFF_COMPONENT:
+                tc = await select_tariff_component_by_id(session, sub.resource_id)
+                if tc is None:
+                    raise BadRequestError(f"Invalid tariff_component_id {sub.resource_id} for site {scope.site_id}")
             elif (
                 sub.resource_type == SubscriptionResource.SITE_DER_AVAILABILITY
                 or sub.resource_type == SubscriptionResource.SITE_DER_RATING
@@ -155,6 +176,8 @@ class SubscriptionManager:
                 if scg is None:
                     raise BadRequestError(f"Invalid site_control_group_id {sub.resource_id} for site {scope.site_id}")
             elif sub.resource_type == SubscriptionResource.SITE_CONTROL_GROUP:
+                return  # FSA is not scoped to particular aggregator, so just pass
+            elif sub.resource_type == SubscriptionResource.TARIFF:
                 return  # FSA is not scoped to particular aggregator, so just pass
             else:
                 raise BadRequestError("sub.resource_id is improperly set. Check subscribedResource is valid.")

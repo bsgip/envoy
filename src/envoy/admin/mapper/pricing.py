@@ -1,9 +1,17 @@
-from datetime import datetime
-from typing import List
+from datetime import datetime, timedelta
+from typing import List, Optional
 
-from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
+from envoy_schema.admin.schema.pricing import (
+    TariffComponentRequest,
+    TariffComponentResponse,
+    TariffGeneratedRateRequest,
+    TariffGeneratedRateResponse,
+    TariffRequest,
+    TariffResponse,
+)
 
-from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+from envoy.server.exception import InvalidMappingError
+from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 
 
 class TariffMapper:
@@ -15,6 +23,8 @@ class TariffMapper:
             currency_code=tariff.currency_code,
             dnsp_code=tariff.dnsp_code,
             fsa_id=tariff.fsa_id,
+            price_power_of_ten_multiplier=tariff.price_power_of_ten_multiplier,
+            primacy=tariff.primacy,
         )
 
     @staticmethod
@@ -27,26 +37,102 @@ class TariffMapper:
             currency_code=tariff.currency_code,
             name=tariff.name,
             fsa_id=tariff.fsa_id,
+            price_power_of_ten_multiplier=(
+                tariff.price_power_of_ten_multiplier if tariff.price_power_of_ten_multiplier else 0
+            ),
+            primacy=tariff.primacy,
+        )
+
+
+class TariffComponentMapper:
+    @staticmethod
+    def map_from_request(changed_time: datetime, tc: TariffComponentRequest) -> TariffComponent:
+        return TariffComponent(
+            changed_time=changed_time,
+            tariff_id=tc.tariff_id,
+            role_flags=tc.role_flags,
+            description=tc.description,
+            accumulation_behaviour=tc.accumulation_behaviour,
+            commodity=tc.commodity,
+            data_qualifier=tc.data_qualifier,
+            flow_direction=tc.flow_direction,
+            kind=tc.kind,
+            phase=tc.phase,
+            power_of_ten_multiplier=tc.power_of_ten_multiplier,
+            uom=tc.uom,
+        )
+
+    @staticmethod
+    def map_to_response(tc: TariffComponent) -> TariffComponentResponse:
+        return TariffComponentResponse(
+            tariff_component_id=tc.tariff_component_id,
+            created_time=tc.created_time,
+            changed_time=tc.changed_time,
+            tariff_id=tc.tariff_id,
+            role_flags=tc.role_flags,
+            description=tc.description,
+            accumulation_behaviour=tc.accumulation_behaviour,
+            commodity=tc.commodity,
+            data_qualifier=tc.data_qualifier,
+            flow_direction=tc.flow_direction,
+            kind=tc.kind,
+            phase=tc.phase,
+            power_of_ten_multiplier=tc.power_of_ten_multiplier,
+            uom=tc.uom,
         )
 
 
 class TariffGeneratedRateListMapper:
+
+    @staticmethod
+    def map_to_single_rate_response(rate: TariffGeneratedRate) -> TariffGeneratedRateResponse:
+        return TariffGeneratedRateResponse(
+            tariff_generated_rate_id=rate.tariff_generated_rate_id,
+            tariff_id=rate.tariff_id,
+            tariff_component_id=rate.tariff_component_id,
+            site_id=rate.site_id,
+            calculation_log_id=rate.calculation_log_id,
+            changed_time=rate.changed_time,
+            created_time=rate.created_time,
+            start_time=rate.start_time,
+            duration_seconds=rate.duration_seconds,
+            price_pow10_encoded=rate.price_pow10_encoded,
+            block_1_start_pow10_encoded=rate.block_1_start_pow10_encoded,
+            price_pow10_encoded_block_1=rate.price_pow10_encoded_block_1,
+        )
+
+    @staticmethod
+    def map_from_single_rate_request(
+        changed_time: datetime, rate: TariffGeneratedRateRequest, tariff_id: Optional[int]
+    ) -> TariffGeneratedRate:
+        if tariff_id is None:
+            raise InvalidMappingError(f"Unable to identify Tariff id for TariffComponent {rate.tariff_component_id}")
+
+        end_time = rate.start_time + timedelta(seconds=rate.duration_seconds)
+
+        return TariffGeneratedRate(
+            tariff_id=tariff_id,
+            tariff_component_id=rate.tariff_component_id,
+            site_id=rate.site_id,
+            calculation_log_id=rate.calculation_log_id,
+            changed_time=changed_time,
+            start_time=rate.start_time,
+            duration_seconds=rate.duration_seconds,
+            end_time=end_time,
+            price_pow10_encoded=rate.price_pow10_encoded,
+            block_1_start_pow10_encoded=rate.block_1_start_pow10_encoded,
+            price_pow10_encoded_block_1=rate.price_pow10_encoded_block_1,
+        )
+
     @staticmethod
     def map_from_request(
-        changed_time: datetime, tariff_genrate_list: List[TariffGeneratedRateRequest]
+        changed_time: datetime,
+        tariff_genrate_list: List[TariffGeneratedRateRequest],
+        tariff_ids_by_component_id: dict[int, int],
     ) -> List[TariffGeneratedRate]:
         return [
-            TariffGeneratedRate(
-                tariff_id=tariff_genrate.tariff_id,
-                site_id=tariff_genrate.site_id,
-                calculation_log_id=tariff_genrate.calculation_log_id,
-                changed_time=changed_time,
-                start_time=tariff_genrate.start_time,
-                duration_seconds=tariff_genrate.duration_seconds,
-                import_active_price=tariff_genrate.import_active_price,
-                export_active_price=tariff_genrate.export_active_price,
-                import_reactive_price=tariff_genrate.import_reactive_price,
-                export_reactive_price=tariff_genrate.export_reactive_price,
+            TariffGeneratedRateListMapper.map_from_single_rate_request(
+                changed_time, tariff_genrate, tariff_ids_by_component_id.get(tariff_genrate.tariff_component_id, None)
             )
             for tariff_genrate in tariff_genrate_list
         ]

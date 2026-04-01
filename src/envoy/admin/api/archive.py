@@ -3,13 +3,13 @@ from datetime import datetime
 from http import HTTPStatus
 
 from envoy_schema.admin.schema.archive import (
-    ArchiveDynamicOperatingEnvelopeResponse,
     ArchivePageResponse,
+    ArchiveSiteControlResponse,
     ArchiveSiteResponse,
     ArchiveTariffGeneratedRateResponse,
 )
 from envoy_schema.admin.schema.uri import (
-    ArchiveForPeriodDoes,
+    ArchiveForPeriodSiteControls,
     ArchiveForPeriodSites,
     ArchiveForPeriodTariffGeneratedRate,
 )
@@ -60,18 +60,18 @@ async def get_archived_sites_for_period(
 
 
 @router.get(
-    ArchiveForPeriodDoes,
+    ArchiveForPeriodSiteControls,
     status_code=HTTPStatus.OK,
-    response_model=ArchivePageResponse[ArchiveDynamicOperatingEnvelopeResponse],
+    response_model=ArchivePageResponse[ArchiveSiteControlResponse],
 )
-async def get_archived_does_for_period(
+async def get_archived_site_controls_for_period(
     start: list[int] = Query([0]),
     limit: list[int] = Query([100]),
     period_start: datetime = Path(),
     period_end: datetime = Path(),
     only_deletes: bool = Query(True),
-) -> ArchivePageResponse[ArchiveDynamicOperatingEnvelopeResponse]:
-    """Endpoint for a paginated list of archived DOE Objects, ordered by archive_id that were created within a
+) -> ArchivePageResponse[ArchiveSiteControlResponse]:
+    """Endpoint for a paginated list of archived SiteControl Objects, ordered by archive_id that were created within a
     period of time. An archive is a moment in time snapshot of a record that was created before it was deleted/updated.
 
     Path Param:
@@ -86,9 +86,9 @@ async def get_archived_does_for_period(
     Note - The period range will filter records based on archive_time if only_deletes=False or deleted_time otherwise
 
     Returns:
-        ArchivePageResponse[ArchiveDynamicOperatingEnvelopeResponse]
+        ArchivePageResponse[ArchiveSiteControlResponse]
     """
-    return await ArchiveListManager.get_archive_does_for_period(
+    return await ArchiveListManager.get_archive_site_controls_for_period(
         session=db.session,
         start=extract_start_from_paging_param(start),
         limit=extract_limit_from_paging_param(limit),

@@ -18,6 +18,8 @@ from envoy.notification.crud.common import (
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     SiteScopedSiteControlGroupDefault,
+    SiteScopedTariff,
+    SiteScopedTariffComponent,
 )
 from envoy.notification.exception import NotificationError
 from envoy.notification.task.check import (
@@ -34,14 +36,13 @@ from envoy.notification.task.check import (
 )
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
-from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationType, SubscriptionMapper
 from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
-from envoy.server.model.tariff import PRICE_DECIMAL_POWER, TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope, DeviceOrAggregatorRequestScope
 from tests.unit.notification.mocks import (
     assert_task_kicked_n_times,
@@ -136,60 +137,16 @@ def test_get_entity_pages_basic(mock_batched: mock.MagicMock, notification_type:
     assert actual[0].entities == [entities[0], entities[1]]
     assert actual[0].subscription is sub
     assert actual[0].batch_key == batch_key
-    assert actual[0].pricing_reading_type is None
     assert actual[0].notification_type == notification_type
 
     assert actual[1].entities == [entities[2]]
     assert actual[1].subscription is sub
     assert actual[1].batch_key == batch_key
-    assert actual[1].pricing_reading_type is None
     assert actual[1].notification_type == notification_type
 
     assert actual[0].notification_id != actual[1].notification_id, "Each notification should have a unique ID"
 
     mock_batched.assert_called_once_with(entities, page_size)
-
-
-@pytest.mark.parametrize("notification_type", list(NotificationType))
-@mock.patch("envoy.notification.task.check.batched")
-def test_get_entity_pages_rates(mock_batched: mock.MagicMock, notification_type: NotificationType):
-    """Similar to test_get_entity_pages_basic but tests the special case of rates multiplying the pages out for
-    each PricingReadingType"""
-    sub = Subscription()
-    batch_key = (1, 2, "three")
-    resource = SubscriptionResource.TARIFF_GENERATED_RATE
-    page_size = 999
-    entities = [
-        TariffGeneratedRate(tariff_generated_rate_id=1),
-        TariffGeneratedRate(tariff_generated_rate_id=2),
-        TariffGeneratedRate(tariff_generated_rate_id=3),
-    ]
-
-    mock_batched.return_value = [[entities[0], entities[1]], [entities[2]]]
-
-    actual = list(get_entity_pages(resource, sub, batch_key, page_size, entities, notification_type))
-    assert len(actual) == 8, "Our mock batch is returned as 2 pages which then multiply out 4 price types"
-    assert all([isinstance(ne, NotificationEntities) for ne in actual])
-    assert all([ne.notification_type == notification_type for ne in actual]), "Notification type should be set on all"
-
-    for prt in PricingReadingType:
-        prt_pages = [p for p in actual if p.pricing_reading_type == prt]
-        assert len(prt_pages) == 2, f"Expected to find two pages for pricing_reading_type {prt}"
-
-        assert prt_pages[0].entities == [entities[0], entities[1]]
-        assert prt_pages[0].subscription is sub
-        assert prt_pages[0].batch_key == batch_key
-        assert prt_pages[0].pricing_reading_type == prt
-
-        assert prt_pages[1].entities == [entities[2]]
-        assert prt_pages[1].subscription is sub
-        assert prt_pages[1].batch_key == batch_key
-        assert prt_pages[1].pricing_reading_type == prt
-
-    assert len(set([p.notification_id for p in actual])) == len(actual), "Each notification_id should be unique"
-
-    # Ensure all the calls to batched are made with the appropriate args
-    assert all([args.args == (entities, page_size) for args in mock_batched.call_args_list])
 
 
 @pytest.mark.parametrize("notification_type", list(NotificationType))
@@ -284,15 +241,52 @@ def test_get_entity_pages_der(resource: SubscriptionResource, notification_type:
             [0, 1],
         ),
         (
-            Subscription(resource_type=SubscriptionResource.TARIFF_GENERATED_RATE, resource_id=2, conditions=[]),
+            Subscription(
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                resource_id=2,
+                resource_parent_id=99,
+                conditions=[],
+            ),
             SubscriptionResource.TARIFF_GENERATED_RATE,
             [
-                TariffGeneratedRate(tariff_generated_rate_id=1, site_id=2, tariff_id=2),
-                TariffGeneratedRate(tariff_generated_rate_id=2, site_id=2, tariff_id=1),
-                TariffGeneratedRate(tariff_generated_rate_id=3, site_id=1, tariff_id=2),
-                TariffGeneratedRate(tariff_generated_rate_id=4, site_id=1, tariff_id=1),
+                TariffGeneratedRate(tariff_generated_rate_id=1, site_id=2, tariff_component_id=2, tariff_id=99),
+                TariffGeneratedRate(tariff_generated_rate_id=2, site_id=2, tariff_component_id=1, tariff_id=99),
+                TariffGeneratedRate(tariff_generated_rate_id=3, site_id=1, tariff_component_id=2, tariff_id=99),
+                TariffGeneratedRate(tariff_generated_rate_id=4, site_id=1, tariff_component_id=1, tariff_id=99),
             ],
             [0, 2],
+        ),
+        (
+            Subscription(
+                resource_type=SubscriptionResource.TARIFF,
+                resource_id=22,
+                resource_parent_id=None,
+                conditions=[],
+            ),
+            SubscriptionResource.TARIFF,
+            [
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=11, fsa_id=22)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=22, fsa_id=11)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=33, fsa_id=11)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=44, fsa_id=22)),
+            ],
+            [0, 3],
+        ),
+        (
+            Subscription(
+                resource_type=SubscriptionResource.TARIFF,
+                resource_id=None,
+                resource_parent_id=None,
+                conditions=[],
+            ),
+            SubscriptionResource.TARIFF,
+            [
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=11, fsa_id=22)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=22, fsa_id=11)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=33, fsa_id=11)),
+                SiteScopedTariff(aggregator_id=1, site_id=2, original=Tariff(tariff_id=44, fsa_id=22)),
+            ],
+            [0, 1, 2, 3],
         ),
         (
             Subscription(resource_type=SubscriptionResource.READING, resource_id=11, conditions=[]),
@@ -490,7 +484,6 @@ def test_entities_to_notification_unknown_resource():
             None,
             NotificationType.ENTITY_CHANGED,
             [],
-            None,
             RuntimeServerConfig(),
         )
 
@@ -579,6 +572,8 @@ def test_all_entity_batches(input_changed: dict[tuple, list], input_deleted: dic
         (SubscriptionResource.READING, SiteReading, 8979831),
         (SubscriptionResource.TARIFF_GENERATED_RATE, TariffGeneratedRate, None),
         (SubscriptionResource.TARIFF_GENERATED_RATE, TariffGeneratedRate, 98731),
+        (SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE, TariffGeneratedRate, None),
+        (SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE, TariffGeneratedRate, 51551),
         (SubscriptionResource.SITE_DER_AVAILABILITY, SiteDERAvailability, None),
         (SubscriptionResource.SITE_DER_AVAILABILITY, SiteDERAvailability, 89798),
         (SubscriptionResource.SITE_DER_RATING, SiteDERRating, None),
@@ -593,6 +588,10 @@ def test_all_entity_batches(input_changed: dict[tuple, list], input_deleted: dic
         (SubscriptionResource.DEFAULT_SITE_CONTROL, SiteScopedSiteControlGroupDefault, 331241),
         (SubscriptionResource.SITE_CONTROL_GROUP, SiteScopedSiteControlGroup, None),
         (SubscriptionResource.SITE_CONTROL_GROUP, SiteScopedSiteControlGroup, 442119),
+        (SubscriptionResource.TARIFF_COMPONENT, SiteScopedTariffComponent, None),
+        (SubscriptionResource.TARIFF_COMPONENT, SiteScopedTariffComponent, 776751),
+        (SubscriptionResource.TARIFF, SiteScopedTariff, None),
+        (SubscriptionResource.TARIFF, SiteScopedTariff, 900041),
     ],
 )
 def test_entities_to_notification_sites(  # noqa: C901
@@ -605,9 +604,6 @@ def test_entities_to_notification_sites(  # noqa: C901
     href_prefix = "/my_href/prefix"
     sub = Subscription(
         resource_type=resource, notification_uri="http://example.com/foo", scoped_site_id=sub_site_id_scope
-    )
-    pricing_reading_type = (
-        PricingReadingType.EXPORT_ACTIVE_POWER_KWH if resource == SubscriptionResource.TARIFF_GENERATED_RATE else None
     )
     batch_key = get_batch_key(resource, generate_class_instance(entity_class, generate_relationships=True))
     config = RuntimeServerConfig()
@@ -624,7 +620,7 @@ def test_entities_to_notification_sites(  # noqa: C901
                 entities.append(e)
 
             notification = entities_to_notification(
-                resource, sub, batch_key, href_prefix, notification_type, entities, pricing_reading_type, config
+                resource, sub, batch_key, href_prefix, notification_type, entities, config
             )
             assert isinstance(notification, Notification)
             assert notification.subscribedResource.startswith(href_prefix)
@@ -702,6 +698,15 @@ def test_entities_to_notification_sites(  # noqa: C901
             elif resource == SubscriptionResource.SITE_CONTROL_GROUP and entity_length:
                 assert len(notification.resource.DERProgram) == len(entities)
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.TARIFF_COMPONENT:
+                assert len(notification.resource.RateComponent) == len(entities)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.TARIFF:
+                assert len(notification.resource.TariffProfile) == len(entities)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
+            elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
+                assert len(notification.resource.TimeTariffInterval) == len(entities)
+                assert expected_sub_resource_href_snippet in notification.subscribedResource
 
 
 @pytest.mark.anyio
@@ -753,7 +758,7 @@ async def test_check_db_change_or_delete(
     batch1_entity2.site.site_id = batch1_entity1.site.site_id
     batch1_entity2.site.aggregator_id = batch1_entity1.site.aggregator_id
     entities = AggregatorBatchedEntities(timestamp, resource, [batch1_entity1, batch1_entity2, batch2_entity1], [])
-    mock_fetch_batched_entities.return_value = entities
+    mock_fetch_batched_entities.return_value = [entities]
 
     # Create some subscriptions for the two aggregators we implied above
     agg1_sub1: Subscription = generate_class_instance(Subscription, seed=11)  # Matches nothing
@@ -886,6 +891,7 @@ async def test_check_db_change_or_delete_rates(
     timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
 
     # Create some entities that will form 2 batches
+    # They will have the same Tariff / Site but different rate component
     rate1: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=101, generate_relationships=True)
     rate2: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=202, generate_relationships=True)
     rate2.site_id = rate1.site_id
@@ -896,14 +902,15 @@ async def test_check_db_change_or_delete_rates(
     rate1.start_time = datetime(2022, 4, 6, 14, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane"))
     rate2.start_time = datetime(2022, 4, 6, 14, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane"))
     entities = AggregatorBatchedEntities(timestamp, resource, [rate1, rate2], [])
-    mock_fetch_batched_entities.return_value = entities
+    mock_fetch_batched_entities.return_value = [entities]
 
     # Create a single sub
     sub1: Subscription = generate_class_instance(Subscription, seed=11)
     mock_select_subscriptions_for_resource.return_value = [sub1]
 
     # Configure what entities are serviced by what subscription
-    mock_entities_serviced_by_subscription.return_value = (e for e in [rate1, rate2])
+    # Pass everything through
+    mock_entities_serviced_by_subscription.side_effect = lambda sub, resource, entities: (e for e in entities)
 
     # Create runtime server config
     config: RuntimeServerConfig = generate_class_instance(RuntimeServerConfig)
@@ -924,8 +931,8 @@ async def test_check_db_change_or_delete_rates(
     # ASSERT
     #
 
-    # There should be 4 notifications sent out - each containing 2 rates (one for every price type)
-    assert_task_kicked_n_times(mock_transmit_notification, 4)
+    # There should be 2 notifications sent out - each containing 2 rates (one for every price type)
+    assert_task_kicked_n_times(mock_transmit_notification, 2)
     assert_task_kicked_with_broker_and_args(
         mock_transmit_notification, mock_broker, remote_uri=sub1.notification_uri, attempt=0
     )
@@ -946,43 +953,14 @@ async def test_check_db_change_or_delete_rates(
     assert len(set([c for c in all_content])) == len(all_content), "All content must be unique"
 
     # See if our entities appear in the output content (use the timestamp as unique fingerprint)
-    rate1_export_active_fingerprint = f"14:00/cti/{rate1.export_active_price * PRICE_DECIMAL_POWER}"
-    rate1_import_active_fingerprint = f"14:00/cti/{rate1.import_active_price * PRICE_DECIMAL_POWER}"
-    rate1_export_reactive_fingerprint = f"14:00/cti/{rate1.export_reactive_price * PRICE_DECIMAL_POWER}"
-    rate1_import_reactive_fingerprint = f"14:00/cti/{rate1.import_reactive_price * PRICE_DECIMAL_POWER}"
-    rate2_export_active_fingerprint = f"14:05/cti/{rate2.export_active_price * PRICE_DECIMAL_POWER}"
-    rate2_import_active_fingerprint = f"14:05/cti/{rate2.import_active_price * PRICE_DECIMAL_POWER}"
-    rate2_export_reactive_fingerprint = f"14:05/cti/{rate2.export_reactive_price * PRICE_DECIMAL_POWER}"
-    rate2_import_reactive_fingerprint = f"14:05/cti/{rate2.import_reactive_price * PRICE_DECIMAL_POWER}"
+    rate1_price_fingerprint = f">{rate1.price_pow10_encoded}<"
+    rate2_price_fingerprint = f">{rate2.price_pow10_encoded}<"
 
-    assert (
-        len([c for c in all_content if rate1_export_active_fingerprint in c and rate2_export_active_fingerprint in c])
-        == 1
-    )
-    assert (
-        len([c for c in all_content if rate1_import_active_fingerprint in c and rate2_import_active_fingerprint in c])
-        == 1
-    )
-    assert (
-        len(
-            [
-                c
-                for c in all_content
-                if rate1_export_reactive_fingerprint in c and rate2_export_reactive_fingerprint in c
-            ]
-        )
-        == 1
-    )
-    assert (
-        len(
-            [
-                c
-                for c in all_content
-                if rate1_import_reactive_fingerprint in c and rate2_import_reactive_fingerprint in c
-            ]
-        )
-        == 1
-    )
+    rc1_fingerprint = f"/rc/{rate1.tariff_component_id}/"
+    rc2_fingerprint = f"/rc/{rate2.tariff_component_id}/"
+
+    assert len([c for c in all_content if rate1_price_fingerprint in c and rc1_fingerprint in c]) == 1
+    assert len([c for c in all_content if rate2_price_fingerprint in c and rc2_fingerprint in c]) == 1
 
     all_ids: list[str] = [a.kwargs["notification_id"] for a in kiq_args]
     assert all([isinstance(id, str) for id in all_ids])

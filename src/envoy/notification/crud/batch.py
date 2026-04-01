@@ -16,9 +16,13 @@ from envoy.notification.crud.common import (
     ArchiveSiteScopedFunctionSetAssignment,
     ArchiveSiteScopedSiteControlGroup,
     ArchiveSiteScopedSiteControlGroupDefault,
+    ArchiveSiteScopedTariff,
+    ArchiveSiteScopedTariffComponent,
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     SiteScopedSiteControlGroupDefault,
+    SiteScopedTariff,
+    SiteScopedTariffComponent,
     TArchiveResourceModel,
     TResourceModel,
 )
@@ -41,17 +45,19 @@ from envoy.server.model.archive.site import (
     ArchiveSiteDERStatus,
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
-from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
+from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffComponent, ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 
 
 class AggregatorBatchedEntities(Generic[TResourceModel, TArchiveResourceModel]):
     """A set of TResourceModel and TArchiveResourceModel entities keyed by their aggregator ID and then site id. They
     represent all of the entities that have changed/deleted in a single batch (identified by timestamp)."""
+
+    resource: SubscriptionResource
 
     timestamp: datetime
 
@@ -82,7 +88,7 @@ class AggregatorBatchedEntities(Generic[TResourceModel, TArchiveResourceModel]):
         deleted_models: Sequence[TArchiveResourceModel],
     ) -> None:
         super().__init__()
-
+        self.resource = resource
         self.timestamp = timestamp
         self.models_by_batch_key = AggregatorBatchedEntities._generate_batch_dict(resource, models)
         self.deleted_by_batch_key = AggregatorBatchedEntities._generate_batch_dict(resource, deleted_models)
@@ -113,18 +119,21 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
 
     Given the SubscriptionResource - it's safe to rely on the ordering of the batch key tuple entries:
 
-    SubscriptionResource.SITE: (aggregator_id: int, site_id: int) OR (aggregator_id: int)
-    SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int, site_control_group_id: int)
-    SubscriptionResource.READING: (aggregator_id: int, site_id: int, group_id: int)
-    SubscriptionResource.TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
-    SubscriptionResource.SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
-    SubscriptionResource.SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
-    SubscriptionResource.SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
-    SubscriptionResource.SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
-    SubscriptionResource.FUNCTION_SET_ASSIGNMENTS: (aggregator_id: int, site_id: int)
-    SubscriptionResource.SITE_CONTROL_GROUP: (aggregator_id: int, site_id: int)
-    SubscriptionResource.DEFAULT_SITE_CONTROL: (aggregator_id: int, site_id: int, site_control_group_id: int)
-    SubscriptionResource.SUBSCRIPTION: (aggregator_id: int, subscription_id: int)
+    SITE: (aggregator_id: int, site_id: int) OR (aggregator_id: int)
+    DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int, site_control_group_id: int)
+    READING: (aggregator_id: int, site_id: int, group_id: int)
+    TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, tariff_component_id: int)
+    SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
+    SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
+    SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
+    SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
+    FUNCTION_SET_ASSIGNMENTS: (aggregator_id: int, site_id: int)
+    SITE_CONTROL_GROUP: (aggregator_id: int, site_id: int)
+    DEFAULT_SITE_CONTROL: (aggregator_id: int, site_id: int, site_control_group_id: int)
+    SUBSCRIPTION: (aggregator_id: int, subscription_id: int)
+    TARIFF_COMPONENT: (aggregator_id: int, site_id: int, tariff_id: int)
+    TARIFF: (aggregator_id: int, site_id: int)
+    COMBINED_TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int)
     """
     if resource == SubscriptionResource.SITE:
         site: Site = cast(Site, entity)  # type: ignore # Pretty sure this is a mypy quirk
@@ -141,7 +150,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         rate = cast(TariffGeneratedRate, entity)  # type: ignore # Pretty sure this is a mypy quirk
-        return (rate.site.aggregator_id, rate.tariff_id, rate.site_id, rate.start_time.date())
+        return (rate.site.aggregator_id, rate.tariff_id, rate.site_id, rate.tariff_component_id)
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         availability = cast(SiteDERAvailability, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (availability.site_der.site.aggregator_id, availability.site_der.site_id, PUBLIC_SITE_DER_ID)
@@ -167,6 +176,15 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         scgroup = cast(SiteScopedSiteControlGroup, entity)  # type: ignore # Pretty sure this is a mypy quirk
         return (scgroup.aggregator_id, scgroup.site_id)
+    elif resource == SubscriptionResource.TARIFF_COMPONENT:
+        tariff_component = cast(SiteScopedTariffComponent, entity)  # type: ignore
+        return (tariff_component.aggregator_id, tariff_component.site_id, tariff_component.original.tariff_id)
+    elif resource == SubscriptionResource.TARIFF:
+        tariff = cast(SiteScopedTariff, entity)  # type: ignore
+        return (tariff.aggregator_id, tariff.site_id)
+    elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
+        rate = cast(TariffGeneratedRate, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        return (rate.site.aggregator_id, rate.tariff_id, rate.site_id)
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate batch key")
 
@@ -186,7 +204,7 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
         return cast(SiteReading, entity).site_reading_type.group_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         # rate subscriptions can be scoped to a single tariff
-        return cast(TariffGeneratedRate, entity).tariff_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(TariffGeneratedRate, entity).tariff_component_id  # type: ignore # Pretty sure this is a mypy quirk
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # der entities get scoped to the parent der
         return PUBLIC_SITE_DER_ID  # There is only a single site DER per EndDevice - it has a static id
@@ -205,6 +223,13 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
         return cast(SiteScopedSiteControlGroupDefault, entity).site_control_group_id  # type: ignore
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         return cast(SiteScopedSiteControlGroup, entity).original.fsa_id  # type: ignore
+    elif resource == SubscriptionResource.TARIFF_COMPONENT:
+        return cast(SiteScopedTariffComponent, entity).original.tariff_id  # type: ignore
+    elif resource == SubscriptionResource.TARIFF:
+        return cast(SiteScopedTariff, entity).original.fsa_id  # type: ignore
+    elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
+        # rate subscriptions can be scoped to a single tariff
+        return cast(TariffGeneratedRate, entity).tariff_id  # type: ignore # Pretty sure this is a mypy quirk
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate primary key")
 
@@ -233,6 +258,12 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
         return cast(SiteScopedFunctionSetAssignment, entity).site_id  # type: ignore
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         return cast(SiteScopedSiteControlGroup, entity).site_id  # type: ignore
+    elif resource == SubscriptionResource.TARIFF_COMPONENT:
+        return cast(SiteScopedTariffComponent, entity).site_id  # type: ignore
+    elif resource == SubscriptionResource.TARIFF:
+        return cast(SiteScopedTariff, entity).site_id  # type: ignore
+    elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
+        return cast(TariffGeneratedRate, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate site id")
 
@@ -279,12 +310,15 @@ async def fetch_sites_by_changed_at(
 
 async def fetch_rates_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[TariffGeneratedRate, ArchiveTariffGeneratedRate]:
+) -> list[AggregatorBatchedEntities[TariffGeneratedRate, ArchiveTariffGeneratedRate]]:
     """Fetches all rates matching the specified changed_at and returns them keyed by their aggregator/site id
 
     Will include the TariffGeneratedRate.site relationship
 
-    Also fetches any site from the archive that was deleted at the specified timestamp"""
+    Also fetches any site from the archive that was deleted at the specified timestamp
+
+    Will return two batches - one grouped by TARIFF_GENERATED_RATE batch and another keyed by
+    COMBINED_TARIFF_GENERATED_RATE"""
 
     active_rates, deleted_rates = await fetch_entities_with_archive_by_datetime(
         session, TariffGeneratedRate, ArchiveTariffGeneratedRate, timestamp
@@ -313,7 +347,12 @@ async def fetch_rates_by_changed_at(
     for e in cast(Iterable[TariffGeneratedRate], chain(active_rates, deleted_rates)):
         localize_start_time_for_entity(e, e.site.timezone_id)
 
-    return AggregatorBatchedEntities(timestamp, SubscriptionResource.TARIFF_GENERATED_RATE, active_rates, deleted_rates)
+    return [
+        AggregatorBatchedEntities(timestamp, SubscriptionResource.TARIFF_GENERATED_RATE, active_rates, deleted_rates),
+        AggregatorBatchedEntities(
+            timestamp, SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE, active_rates, deleted_rates
+        ),
+    ]
 
 
 async def fetch_does_by_changed_at(
@@ -761,4 +800,72 @@ async def fetch_site_control_groups_by_changed_at(
 
     return AggregatorBatchedEntities(
         timestamp, SubscriptionResource.SITE_CONTROL_GROUP, site_scoped_active_groups, site_scoped_deleted_groups
+    )  # type: ignore
+
+
+async def fetch_tariffs_by_changed_at(
+    session: AsyncSession, timestamp: datetime
+) -> AggregatorBatchedEntities[SiteScopedTariff, ArchiveSiteScopedTariff]:  # type: ignore # noqa: E501
+    """Fetches all Tariff instances matching the specified changed_at and returns them keyed by all existing
+    site IDs
+
+    Also fetches any tariff from the archive that was deleted at the specified timestamp"""
+
+    active_tariffs, deleted_tariffs = await fetch_entities_with_archive_by_datetime(
+        session, Tariff, ArchiveTariff, timestamp
+    )
+    if len(active_tariffs) == 0 and len(deleted_tariffs) == 0:
+        return AggregatorBatchedEntities(timestamp, SubscriptionResource.TARIFF, [], [])  # type: ignore
+
+    # The tariff update will need to vary per Site so we generate an instance per site_id
+    aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
+
+    site_scoped_active_tariffs = [
+        SiteScopedTariff(agg_id, site_id, tariff)
+        for agg_id, site_id in aggregator_site_ids
+        for tariff in active_tariffs
+    ]
+
+    site_scoped_deleted_tariffs = [
+        ArchiveSiteScopedTariff(agg_id, site_id, deleted_tariff)
+        for agg_id, site_id in aggregator_site_ids
+        for deleted_tariff in deleted_tariffs
+    ]
+
+    return AggregatorBatchedEntities(
+        timestamp, SubscriptionResource.TARIFF, site_scoped_active_tariffs, site_scoped_deleted_tariffs
+    )  # type: ignore
+
+
+async def fetch_tariff_components_by_changed_at(
+    session: AsyncSession, timestamp: datetime
+) -> AggregatorBatchedEntities[SiteScopedTariffComponent, ArchiveSiteScopedTariffComponent]:  # type: ignore # noqa: E501
+    """Fetches all TariffComponent instances matching the specified changed_at and returns them keyed by all existing
+    site IDs
+
+    Also fetches any tariff from the archive that was deleted at the specified timestamp"""
+
+    active_comps, deleted_comps = await fetch_entities_with_archive_by_datetime(
+        session, TariffComponent, ArchiveTariffComponent, timestamp
+    )
+    if len(active_comps) == 0 and len(deleted_comps) == 0:
+        return AggregatorBatchedEntities(timestamp, SubscriptionResource.TARIFF_COMPONENT, [], [])  # type: ignore
+
+    # The tariff component update will need to vary per Site so we generate an instance per site_id
+    aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
+
+    site_scoped_active_comps = [
+        SiteScopedTariffComponent(agg_id, site_id, tariff_component)
+        for agg_id, site_id in aggregator_site_ids
+        for tariff_component in active_comps
+    ]
+
+    site_scoped_deleted_comps = [
+        ArchiveSiteScopedTariffComponent(agg_id, site_id, deleted_tariff_component)
+        for agg_id, site_id in aggregator_site_ids
+        for deleted_tariff_component in deleted_comps
+    ]
+
+    return AggregatorBatchedEntities(
+        timestamp, SubscriptionResource.TARIFF_COMPONENT, site_scoped_active_comps, site_scoped_deleted_comps
     )  # type: ignore

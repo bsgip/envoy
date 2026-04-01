@@ -1,13 +1,19 @@
 """Basic tests that valid no exceptions are being raised"""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.fake.generator import generate_class_instance
-from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
+from envoy_schema.admin.schema.pricing import (
+    TariffComponentRequest,
+    TariffGeneratedRateRequest,
+    TariffRequest,
+    TariffResponse,
+)
 
-from envoy.admin.mapper.pricing import TariffGeneratedRateListMapper, TariffMapper
+from envoy.admin.mapper.pricing import TariffComponentMapper, TariffGeneratedRateListMapper, TariffMapper
+from envoy.server.exception import InvalidMappingError
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 
@@ -48,12 +54,28 @@ def test_tariff_mapper_to_response():
 
 
 @pytest.mark.parametrize("optional_is_none", [True, False])
+def test_tariff_component_mapper_roundtrip(optional_is_none: bool):
+    expected = generate_class_instance(TariffComponentRequest, optional_is_none=optional_is_none)
+    changed_time = datetime(2023, 4, 5, 6, 7, 8, 9)
+    created_time = datetime(2024, 4, 5, 6, 7, 8, 9)
+    mdl = TariffComponentMapper.map_from_request(changed_time, expected)
+    mdl.tariff_component_id = 123321
+    mdl.created_time = created_time
+    actual = TariffComponentMapper.map_to_response(mdl)
+
+    assert_class_instance_equality(TariffComponentRequest, expected, actual)
+    assert actual.changed_time == changed_time
+    assert actual.created_time == created_time
+    assert actual.tariff_component_id == 123321
+
+
+@pytest.mark.parametrize("optional_is_none", [True, False])
 def test_tariff_genrate_mapper_from_request(optional_is_none: bool):
-    req: TariffGeneratedRateRequest = generate_class_instance(
-        TariffGeneratedRateRequest, optional_is_none=optional_is_none
-    )
+    req = generate_class_instance(TariffGeneratedRateRequest, optional_is_none=optional_is_none)
     changed_time = datetime(2022, 4, 5, 6, 7, 8, 9)
-    mdl = TariffGeneratedRateListMapper.map_from_request(changed_time, [req]).pop()
+    mdl = TariffGeneratedRateListMapper.map_from_request(
+        changed_time, [req], {(req.tariff_component_id + 1): 99, req.tariff_component_id: 1234}
+    ).pop()
 
     assert isinstance(mdl, TariffGeneratedRate)
 
@@ -61,9 +83,48 @@ def test_tariff_genrate_mapper_from_request(optional_is_none: bool):
         TariffGeneratedRate,
         mdl,
         req,
-        ignored_properties=set(["tariff_generated_rate_id", "created_time", "changed_time"]),
+        ignored_properties={"tariff_generated_rate_id", "tariff_id", "created_time", "changed_time", "end_time"},
     )
 
+    assert mdl.tariff_id == 1234, "Should come via dict lookup"
+    assert mdl.end_time == mdl.start_time + timedelta(seconds=mdl.duration_seconds)
+    assert mdl.end_time.tzinfo == mdl.start_time.tzinfo
+
     assert mdl.changed_time == changed_time
+
     assert mdl.tariff_generated_rate_id == None  # noqa
     assert mdl.created_time == None, "This should be set in the DB"  # noqa
+
+
+def test_tariff_genrate_mapper_from_request_mismatch_component_id():
+    """If the tariff_component_id can't be found in the supplied dict, raise an error"""
+    req: TariffGeneratedRateRequest = generate_class_instance(TariffGeneratedRateRequest)
+    changed_time = datetime(2022, 4, 5, 6, 7, 8, 9)
+    with pytest.raises(InvalidMappingError):
+        TariffGeneratedRateListMapper.map_from_request(changed_time, [req], {(req.tariff_component_id + 1): 99, 0: 99})
+
+
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_tariff_genrate_mapper_roundtrip(optional_is_none: bool):
+    initial = generate_class_instance(TariffGeneratedRateRequest, optional_is_none=optional_is_none)
+    changed_time = datetime(2022, 4, 5, 6, 7, 8, 9)
+    created_time = datetime(2023, 5, 6, 6, 7, 8, 9)
+    tariff_id = 1515152
+    tariff_gen_rate_id = 981471
+
+    mdl = TariffGeneratedRateListMapper.map_from_single_rate_request(changed_time, initial, tariff_id)
+    mdl.tariff_generated_rate_id = tariff_gen_rate_id  # This would be set by the DB normally
+    mdl.created_time = created_time  # This would be set by the DB normally
+
+    result = TariffGeneratedRateListMapper.map_to_single_rate_response(mdl)
+
+    assert_class_instance_equality(
+        TariffGeneratedRateRequest,
+        initial,
+        result,
+        ignored_properties={"tariff_id", "tariff_generated_rate_id"},
+    )
+    assert result.changed_time == changed_time
+    assert result.created_time == created_time
+    assert result.tariff_id == tariff_id
+    assert result.tariff_generated_rate_id == tariff_gen_rate_id

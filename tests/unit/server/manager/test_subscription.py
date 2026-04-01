@@ -17,7 +17,7 @@ from envoy.server.model.doe import SiteControlGroup
 from envoy.server.model.site import Site
 from envoy.server.model.site_reading import SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
-from envoy.server.model.tariff import Tariff
+from envoy.server.model.tariff import Tariff, TariffComponent
 from envoy.server.request_scope import AggregatorRequestScope
 
 
@@ -236,88 +236,301 @@ async def test_validate_subscription_site_scope(
 
 
 @pytest.mark.parametrize(
-    "sub_site_id, resource_id, resource_type, site_control_group, reading_types, tariff, expected_valid",
+    "sub_site_id, resource_id, resource_parent_id, resource_type, site_control_group, reading_types,"
+    + "tariff, tariff_component, expected_valid",
     [
-        (123, 456, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, None, None, None, False),  # SiteControl DNE
-        (None, 456, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, None, None, None, False),  # SiteControl DNE
-        (123, 456, SubscriptionResource.TARIFF_GENERATED_RATE, None, None, None, False),  # Tariff DNE
-        (None, 456, SubscriptionResource.TARIFF_GENERATED_RATE, None, None, None, False),  # Tariff DNE
-        (123, 456, SubscriptionResource.READING, None, None, None, False),  # Reading Types DNE
-        (None, 456, SubscriptionResource.READING, None, None, None, False),  # Reading Types DNE
-        (123, 456, SubscriptionResource.READING, None, [], None, False),  # Reading Types DNE
-        (123, 456, SubscriptionResource.SITE_DER_AVAILABILITY, None, None, None, False),  # Bad resource ID
-        (None, 456, SubscriptionResource.SITE_DER_AVAILABILITY, None, None, None, False),  # Bad resource ID
-        (123, 456, SubscriptionResource.SITE_DER_RATING, None, None, None, False),  # Bad resource ID
-        (None, 456, SubscriptionResource.SITE_DER_RATING, None, None, None, False),  # Bad resource ID
-        (123, 456, SubscriptionResource.SITE_DER_SETTING, None, None, None, False),  # Bad resource ID
-        (None, 456, SubscriptionResource.SITE_DER_SETTING, None, None, None, False),  # Bad resource ID
-        (123, 456, SubscriptionResource.SITE_DER_STATUS, None, None, None, False),  # Bad resource ID
-        (None, 456, SubscriptionResource.SITE_DER_STATUS, None, None, None, False),  # Bad resource ID
-        (123, 456, SubscriptionResource.DEFAULT_SITE_CONTROL, None, None, None, False),  # SiteControl DNE
-        (None, 456, SubscriptionResource.DEFAULT_SITE_CONTROL, None, None, None, False),  # SiteControl DNE
-        (None, PUBLIC_SITE_DER_ID, SubscriptionResource.SITE_DER_AVAILABILITY, None, None, None, True),
-        (123, PUBLIC_SITE_DER_ID, SubscriptionResource.SITE_DER_AVAILABILITY, None, None, None, True),
-        (None, PUBLIC_SITE_DER_ID, SubscriptionResource.SITE_DER_RATING, None, None, None, True),
-        (123, PUBLIC_SITE_DER_ID, SubscriptionResource.SITE_DER_RATING, None, None, None, True),
-        (None, PUBLIC_SITE_DER_ID, SubscriptionResource.SITE_DER_SETTING, None, None, None, True),
-        (123, PUBLIC_SITE_DER_ID, SubscriptionResource.SITE_DER_SETTING, None, None, None, True),
-        (None, PUBLIC_SITE_DER_ID, SubscriptionResource.SITE_DER_STATUS, None, None, None, True),
-        (123, PUBLIC_SITE_DER_ID, SubscriptionResource.SITE_DER_STATUS, None, None, None, True),
         (
             123,
             456,
+            None,
+            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
+            None,
+            None,
+            None,
+            None,
+            False,
+        ),  # SiteControl DNE
+        (
+            None,
+            456,
+            None,
+            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
+            None,
+            None,
+            None,
+            None,
+            False,
+        ),  # SiteControl DNE
+        (
+            123,
+            456,
+            789,
+            SubscriptionResource.TARIFF_GENERATED_RATE,
+            None,
+            None,
+            generate_class_instance(Tariff, tariff_id=789),
+            None,
+            False,
+        ),  # TariffComponent DNE
+        (
+            None,
+            456,
+            789,
+            SubscriptionResource.TARIFF_GENERATED_RATE,
+            None,
+            None,
+            generate_class_instance(Tariff, tariff_id=789),
+            None,
+            False,
+        ),  # TariffComponent DNE
+        (
+            123,
+            456,
+            789,
+            SubscriptionResource.TARIFF_GENERATED_RATE,
+            None,
+            None,
+            generate_class_instance(Tariff, tariff_id=789),
+            generate_class_instance(TariffComponent, tariff_id=99, tariff_component_id=456),  # wrong tariff_id
+            False,
+        ),  # TariffComponent exists but not under Tariff
+        (
+            None,
+            456,
+            789,
+            SubscriptionResource.TARIFF_GENERATED_RATE,
+            None,
+            None,
+            generate_class_instance(Tariff, tariff_id=789),
+            generate_class_instance(TariffComponent, tariff_id=99, tariff_component_id=456),  # wrong tariff_id
+            False,
+        ),  # TariffComponent exists but not under Tariff
+        (
+            123,
+            456,
+            789,
+            SubscriptionResource.TARIFF_GENERATED_RATE,
+            None,
+            None,
+            None,
+            generate_class_instance(TariffComponent, tariff_id=789, tariff_component_id=456),  # correct tariff_id
+            False,
+        ),  # TariffComponent exists but Tariff is missing
+        (
+            None,
+            456,
+            789,
+            SubscriptionResource.TARIFF_GENERATED_RATE,
+            None,
+            None,
+            None,
+            generate_class_instance(TariffComponent, tariff_id=789, tariff_component_id=456),  # correct tariff_id
+            False,
+        ),  # TariffComponent exists but Tariff is missing
+        (
+            123,
+            456,
+            None,
+            SubscriptionResource.TARIFF_GENERATED_RATE,
+            None,
+            None,
+            generate_class_instance(Tariff, tariff_id=789),
+            generate_class_instance(TariffComponent, tariff_id=789, tariff_component_id=456),  # wrong tariff_id
+            False,
+        ),  # Handling a None resource_parent_id (shouldn't happen but it's a good safety)
+        (
+            123,
+            456,
+            789,
+            SubscriptionResource.TARIFF_GENERATED_RATE,
+            None,
+            None,
+            None,
+            None,
+            False,
+        ),  # Neither TariffComponent / Tariff exist
+        (
+            None,
+            456,
+            789,
+            SubscriptionResource.TARIFF_GENERATED_RATE,
+            None,
+            None,
+            None,
+            None,
+            False,
+        ),  # Neither TariffComponent / Tariff exist
+        (
+            123,
+            456,
+            None,
+            SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
+            None,
+            None,
+            None,
+            None,
+            False,
+        ),  # Tariff DNE
+        (
+            None,
+            456,
+            None,
+            SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
+            None,
+            None,
+            None,
+            None,
+            False,
+        ),  # Tariff DNE
+        (
+            123,
+            456,
+            None,
+            SubscriptionResource.TARIFF_COMPONENT,
+            None,
+            None,
+            None,
+            None,
+            False,
+        ),  # TariffComponent DNE
+        (
+            None,
+            456,
+            None,
+            SubscriptionResource.TARIFF_COMPONENT,
+            None,
+            None,
+            None,
+            None,
+            False,
+        ),  # TariffComponent DNE
+        (123, 456, None, SubscriptionResource.READING, None, None, None, None, False),  # Reading Types DNE
+        (None, 456, None, SubscriptionResource.READING, None, None, None, None, False),  # Reading Types DNE
+        (123, 456, None, SubscriptionResource.READING, None, [], None, None, False),  # Reading Types DNE
+        (123, 456, None, SubscriptionResource.SITE_DER_AVAILABILITY, None, None, None, None, False),  # Bad resource ID
+        (None, 456, None, SubscriptionResource.SITE_DER_AVAILABILITY, None, None, None, None, False),  # Bad resource ID
+        (123, 456, None, SubscriptionResource.SITE_DER_RATING, None, None, None, None, False),  # Bad resource ID
+        (None, 456, None, SubscriptionResource.SITE_DER_RATING, None, None, None, None, False),  # Bad resource ID
+        (123, 456, None, SubscriptionResource.SITE_DER_SETTING, None, None, None, None, False),  # Bad resource ID
+        (None, 456, None, SubscriptionResource.SITE_DER_SETTING, None, None, None, None, False),  # Bad resource ID
+        (123, 456, None, SubscriptionResource.SITE_DER_STATUS, None, None, None, None, False),  # Bad resource ID
+        (None, 456, None, SubscriptionResource.SITE_DER_STATUS, None, None, None, None, False),  # Bad resource ID
+        (123, 456, None, SubscriptionResource.DEFAULT_SITE_CONTROL, None, None, None, None, False),  # SiteControl DNE
+        (None, 456, None, SubscriptionResource.DEFAULT_SITE_CONTROL, None, None, None, None, False),  # SiteControl DNE
+        (None, PUBLIC_SITE_DER_ID, None, SubscriptionResource.SITE_DER_AVAILABILITY, None, None, None, None, True),
+        (123, PUBLIC_SITE_DER_ID, None, SubscriptionResource.SITE_DER_AVAILABILITY, None, None, None, None, True),
+        (None, PUBLIC_SITE_DER_ID, None, SubscriptionResource.SITE_DER_RATING, None, None, None, None, True),
+        (123, PUBLIC_SITE_DER_ID, None, SubscriptionResource.SITE_DER_RATING, None, None, None, None, True),
+        (None, PUBLIC_SITE_DER_ID, None, SubscriptionResource.SITE_DER_SETTING, None, None, None, None, True),
+        (123, PUBLIC_SITE_DER_ID, None, SubscriptionResource.SITE_DER_SETTING, None, None, None, None, True),
+        (None, PUBLIC_SITE_DER_ID, None, SubscriptionResource.SITE_DER_STATUS, None, None, None, None, True),
+        (123, PUBLIC_SITE_DER_ID, None, SubscriptionResource.SITE_DER_STATUS, None, None, None, None, True),
+        (
+            123,
+            456,
+            None,
             SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
             generate_class_instance(SiteControlGroup),
             None,
             None,
+            None,
             True,
         ),
         (
             123,
             456,
+            None,
             SubscriptionResource.DEFAULT_SITE_CONTROL,
             generate_class_instance(SiteControlGroup),
             None,
             None,
+            None,
             True,
         ),
         (
             123,
             456,
+            None,
             SubscriptionResource.SITE_CONTROL_GROUP,
             generate_class_instance(SiteControlGroup),
             None,
             None,
+            None,
             True,
         ),
-        (None, None, None, None, None, None, True),  # No resource id - will validate fine
-        (123, None, None, None, None, None, True),  # No resource id - will validate fine
+        (
+            123,
+            456,
+            789,
+            SubscriptionResource.TARIFF_GENERATED_RATE,
+            None,
+            None,
+            generate_class_instance(Tariff, tariff_id=789),
+            generate_class_instance(TariffComponent, tariff_id=789, tariff_component_id=456),
+            True,
+        ),
+        (
+            123,
+            456,
+            None,
+            SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
+            None,
+            None,
+            generate_class_instance(Tariff, tariff_id=456),
+            None,
+            True,
+        ),
+        (
+            123,
+            456,
+            None,
+            SubscriptionResource.TARIFF_COMPONENT,
+            None,
+            None,
+            None,
+            generate_class_instance(TariffComponent, tariff_id=789, tariff_component_id=456),
+            True,
+        ),
+        (123, None, None, SubscriptionResource.TARIFF, None, None, None, None, True),
+        (None, None, None, SubscriptionResource.TARIFF, None, None, None, None, True),
+        (None, None, None, None, None, None, None, None, True),  # No resource id - will validate fine
+        (123, None, None, None, None, None, None, None, True),  # No resource id - will validate fine
     ],
 )
 @mock.patch("envoy.server.manager.subscription.select_site_control_group_by_id")
 @mock.patch("envoy.server.manager.subscription.fetch_site_reading_types_for_group")
 @mock.patch("envoy.server.manager.subscription.select_single_tariff")
+@mock.patch("envoy.server.manager.subscription.select_tariff_component_by_id")
 @pytest.mark.anyio
 async def test_validate_subscription_linked_resource(
+    mock_select_tariff_component_by_id: mock.MagicMock,
     mock_select_single_tariff: mock.MagicMock,
     mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_select_site_control_group_by_id: mock.MagicMock,
     sub_site_id: Optional[int],
     resource_id: Optional[int],
+    resource_parent_id: Optional[int],
     resource_type: SubscriptionResource,
     site_control_group: Optional[SiteControlGroup],
     reading_types: Optional[list[SiteReadingType]],
     tariff: Optional[Tariff],
+    tariff_component: Optional[TariffComponent],
     expected_valid: bool,
 ):
     """Tests the various pathways in validate_subscription_linked_resource"""
     mock_session: AsyncSession = create_mock_session()
     scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=sub_site_id)
-    mapped_sub = Subscription(resource_type=resource_type, scoped_site_id=sub_site_id, resource_id=resource_id)
+    mapped_sub = Subscription(
+        resource_type=resource_type,
+        scoped_site_id=sub_site_id,
+        resource_id=resource_id,
+        resource_parent_id=resource_parent_id,
+    )
 
     mock_select_site_control_group_by_id.return_value = site_control_group
     mock_fetch_site_reading_types_for_group.return_value = reading_types
     mock_select_single_tariff.return_value = tariff
+    mock_select_tariff_component_by_id.return_value = tariff_component
 
     if expected_valid:
         await SubscriptionManager.validate_subscription_linked_resource(mock_session, scope, mapped_sub)

@@ -24,6 +24,9 @@ class SubscriptionResource(IntEnum):
     DEFAULT_SITE_CONTROL = auto()
     FUNCTION_SET_ASSIGNMENTS = auto()  # This just maps to the pollRate exposed in the FSA List
     SITE_CONTROL_GROUP = auto()
+    TARIFF_COMPONENT = auto()
+    TARIFF = auto()
+    COMBINED_TARIFF_GENERATED_RATE = auto()  # Similar to TARIFF_GENERATED_RATE but across ALL TariffComponents
 
 
 class Subscription(Base):
@@ -44,6 +47,9 @@ class Subscription(Base):
     resource_id: Mapped[Optional[int]] = mapped_column(
         INTEGER, nullable=True
     )  # Represents the ID of a single resource being subscribed or if NULL, the list of all available resources
+    resource_parent_id: Mapped[Optional[int]] = mapped_column(
+        INTEGER, nullable=True
+    )  # Like resource_id but only for subscriptions with a multi part ID - this represents an ID of a parent list
     scoped_site_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("site.site_id"), nullable=True
     )  # If set - this subscription is scoped to this specific site_id

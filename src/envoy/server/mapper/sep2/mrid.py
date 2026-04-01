@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from envoy.server.mapper.constants import MridType, PricingReadingType, ResponseSetType
+from envoy.server.mapper.constants import MridType, ResponseSetType
 from envoy.server.model.doe import SiteControlGroupDefault
 from envoy.server.request_scope import BaseRequestScope
 
@@ -131,59 +131,32 @@ class MridMapper:
     @staticmethod
     def encode_rate_component_mrid(
         scope: BaseRequestScope,
-        tariff_id: int,
+        tariff_component_id: int,
         site_id: int,
-        start_timestamp: datetime,
-        pricing_reading_type: PricingReadingType,
     ) -> str:
-        """Encodes a valid MRID for a specific rate component. Rate components don't have a relevant primary key
-        in our DB model so this is derived from other values.
+        """Encodes a valid MRID for a specific rate component.
 
-        tariff_id: max value is expected to be a 32 bit unsigned int.
+        tariff_component_id: max value is expected to be a 32 bit unsigned int
         site_id: max value is expected to be a 32 bit unsigned int.
-        start_timestamp: Must be timezone aware - will only consider this value down to the minute resolution
-        pricing_reading_type: Only supports a maximum of 4 unique values"""
+        """
 
         # We have 92 bits to encode an ID
 
-        # 32 bits tariff ID
+        # 32 bits tariff_component_id
         # 32 bits site id
-        # 2 bits pricing_reading_type
-        # 26 bits timestamp (encoded as MINUTES since unix epoch)
 
-        prt_int = int(pricing_reading_type) - 1
-        if prt_int < 0 or prt_int >= 4:
-            raise ValueError(f"Invalid PricingReadingType value of {prt_int}. Expected a value in range [0, 3]")
+        tariff_component_id_shifted = (tariff_component_id & 0xFFFFFFFF) << 32
+        site_id_shifted = site_id & 0xFFFFFFFF
 
-        tariff_shifted = tariff_id << 60
-        site_id_shifted = site_id << 28
-        prt_shifted = prt_int << 26
-
-        # Minutes since epoch - gives us ~127 years until we rollover if we are only encoding 26 bits
-        # Do a modulo first so we can also cleanly rollover dates prior to the epoch
-        total_minutes_clamped = (int((start_timestamp - RATE_COMPONENT_EPOCH).total_seconds()) // 60) % (MAX_INT_26 + 1)
-        timestamp_shifted = total_minutes_clamped & MAX_INT_26
-
-        id = tariff_shifted | site_id_shifted | prt_shifted | timestamp_shifted
-        return encode_mrid(MridType.RATE_COMPONENT, id, scope.iana_pen)
+        return encode_mrid(MridType.RATE_COMPONENT, tariff_component_id_shifted | site_id_shifted, scope.iana_pen)
 
     @staticmethod
-    def encode_time_tariff_interval_mrid(
-        scope: BaseRequestScope, tariff_generated_rate_id: int, pricing_reading_type: PricingReadingType
-    ) -> str:
+    def encode_time_tariff_interval_mrid(scope: BaseRequestScope, tariff_generated_rate_id: int) -> str:
         """Encodes a valid MRID for a specific tariff generated rate
 
-        tariff_generated_rate_id: max value is expected to be a 64 bit unsigned int.
-        pricing_reading_type: Only supports a maximum of 4 unique values"""
+        tariff_generated_rate_id: max value is expected to be a 64 bit unsigned int."""
 
-        # Top 2 bits are for pricing reading type
-        # Remaining 90 bits are for tariff_generated_rate_id (which will use at most 64)
-        prt_int = int(pricing_reading_type) - 1
-        if prt_int < 0 or prt_int >= 4:
-            raise ValueError(f"Invalid PricingReadingType value of {prt_int}. Expected a value in range [0, 3]")
-
-        id = (prt_int << 90) | (tariff_generated_rate_id & MAX_INT_64)
-        return encode_mrid(MridType.TIME_TARIFF_INTERVAL, id, scope.iana_pen)
+        return encode_mrid(MridType.TIME_TARIFF_INTERVAL, tariff_generated_rate_id & MAX_INT_64, scope.iana_pen)
 
     @staticmethod
     def encode_response_set_mrid(scope: BaseRequestScope, response_set_type: ResponseSetType) -> str:
@@ -235,15 +208,14 @@ class MridMapper:
         return decode_mrid_id(mrid)
 
     @staticmethod
-    def decode_time_tariff_interval_mrid(mrid: str) -> tuple[PricingReadingType, int]:
+    def decode_time_tariff_interval_mrid(mrid: str) -> int:
         """Attempts to decode the ID component of the specified mrid.
 
         This function assumes it's a MridType.TIME_TARIFF_INTERVAL encoding. Failure to check this before will
         result in undefined behaviour.
 
-        returns the PricingReadingType AND TariffGeneratedRate.tariff_generated_rate_id"""
+        returns the TariffGeneratedRate.tariff_generated_rate_id"""
         if not mrid or len(mrid) != 32:
             raise ValueError("Expected mrid to have 32 hex characters")
 
-        id = decode_mrid_id(mrid)
-        return (PricingReadingType((id >> 90) + 1), id & 0xFFFFFFFFFFFFFFFF)
+        return decode_mrid_id(mrid)

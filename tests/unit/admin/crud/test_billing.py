@@ -10,7 +10,6 @@ from assertical.fixtures.postgres import generate_async_session
 from envoy.admin.crud.billing import (
     BillingData,
     fetch_aggregator,
-    fetch_aggregator_billing_data,
     fetch_calculation_log_billing_data,
     fetch_sites_billing_data,
 )
@@ -36,146 +35,6 @@ aest = ZoneInfo("Australia/Brisbane")  # This is UTC+10 to align with the start 
 
 
 @pytest.mark.parametrize(
-    "period_start, period_end, aggregator_id, tariff_id, expected_tariff_imports, expected_doe_imports, expected_wh_readings, expected_varh_readings, expected_watt_readings",  # noqa e501
-    [
-        (
-            datetime(2023, 9, 10, tzinfo=aest),  # Period start
-            datetime(2023, 9, 11, tzinfo=aest),  # Period end
-            1,  # aggregator_id
-            1,  # tariff_id
-            [  # expected_tariff_imports
-                Decimal("1.1"),
-                Decimal("2.1"),
-                Decimal("3.1"),
-                Decimal("6.1"),
-            ],
-            [  # expected_doe_imports
-                Decimal("1.11"),
-                Decimal("2.11"),
-                Decimal("5.11"),
-            ],
-            [  # expected_wh_readings
-                (1, 72, 11),
-                (1, 72, 22),
-                (2, 72, 77),
-            ],
-            [  # expected_var_readings
-                (1, 73, 55),
-            ],
-            [(1, 38, 99), (1, 38, 1010)],  # expected_watt_readings
-        ),
-        # Variation on date
-        (
-            datetime(2023, 9, 11, tzinfo=aest),  # Period start
-            datetime(2023, 9, 12, tzinfo=aest),  # Period end
-            1,  # aggregator_id
-            1,  # tariff_id
-            [  # expected_tariff_imports
-                Decimal("4.1"),
-                Decimal("5.1"),
-            ],
-            [  # expected_doe_imports
-                Decimal("3.11"),
-                Decimal("4.11"),
-            ],
-            [  # expected_wh_readings
-                (1, 72, 33),
-                (1, 72, 44),
-            ],
-            [  # expected_var_readings
-                (1, 73, 66),
-            ],
-            [(1, 38, 1111)],  # expected_watt_readings
-        ),
-        # Variation on tariff ID
-        (
-            datetime(2023, 9, 11, tzinfo=aest),  # Period start
-            datetime(2023, 9, 12, tzinfo=aest),  # Period end
-            1,  # aggregator_id
-            2,  # tariff_id
-            [],  # expected_tariff_imports
-            [  # expected_doe_imports
-                Decimal("3.11"),
-                Decimal("4.11"),
-            ],
-            [  # expected_wh_readings
-                (1, 72, 33),
-                (1, 72, 44),
-            ],
-            [  # expected_var_readings
-                (1, 73, 66),
-            ],
-            [(1, 38, 1111)],  # expected_watt_readings
-        ),
-        # Time mismatch
-        (
-            datetime(2023, 9, 9, tzinfo=aest),  # Period start
-            datetime(2023, 9, 10, tzinfo=aest),  # Period end
-            1,  # aggregator_id
-            1,  # tariff_id
-            [],  # expected_tariff_imports
-            [],  # expected_doe_imports
-            [],  # expected_wh_readings
-            [],  # expected_var_readings
-            [],  # expected_watt_readings
-        ),
-        # Agg ID mismatch
-        (
-            datetime(2023, 9, 10, tzinfo=aest),  # Period start
-            datetime(2023, 9, 11, tzinfo=aest),  # Period end
-            3,  # aggregator_id
-            1,  # tariff_id
-            [],  # expected_tariff_imports
-            [],  # expected_doe_imports
-            [],  # expected_wh_readings
-            [],  # expected_var_readings
-            [],  # expected_watt_readings
-        ),
-    ],
-)
-@pytest.mark.anyio
-async def test_fetch_aggregator_billing_data(
-    pg_billing_data,
-    period_start: datetime,
-    period_end: datetime,
-    aggregator_id: int,
-    tariff_id: int,
-    expected_tariff_imports: list,
-    expected_doe_imports: list,
-    expected_wh_readings: list,
-    expected_varh_readings: list,
-    expected_watt_readings: list,
-):
-    """Assert fetch billing data fetches the correct data given a pg_billing_data database"""
-
-    async with generate_async_session(pg_billing_data) as session:
-        billing_data = await fetch_aggregator_billing_data(
-            period_start=period_start,
-            period_end=period_end,
-            aggregator_id=aggregator_id,
-            session=session,
-            tariff_id=tariff_id,
-        )
-        assert_billing_data_types(billing_data)
-
-        assert [b.import_active_price for b in billing_data.active_tariffs] == expected_tariff_imports
-
-        assert [b.import_limit_active_watts for b in billing_data.active_does] == expected_doe_imports
-
-        assert [
-            (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.wh_readings
-        ] == expected_wh_readings
-
-        assert [
-            (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.varh_readings
-        ] == expected_varh_readings
-
-        assert [
-            (b.site_reading_type.site_id, b.site_reading_type.uom, b.value) for b in billing_data.watt_readings
-        ] == expected_watt_readings
-
-
-@pytest.mark.parametrize(
     "calculation_log_id, tariff_id, expected_tariff_imports, expected_doe_imports, expected_wh_readings, expected_varh_readings, expected_watt_readings",  # noqa e501
     [
         (99, 1, None, None, None, None, None),
@@ -183,8 +42,8 @@ async def test_fetch_aggregator_billing_data(
             4,  # calculation_log_id
             1,  # tariff_id
             [  # expected_tariff_imports
-                Decimal("2.1"),
-                Decimal("3.1"),
+                12,
+                13,
             ],
             [  # expected_doe_imports
                 Decimal("2.11"),
@@ -202,10 +61,10 @@ async def test_fetch_aggregator_billing_data(
             5,  # calculation_log_id
             1,  # tariff_id
             [
-                Decimal("4.1"),
-                Decimal("5.1"),
-                Decimal("6.1"),
-                Decimal("7.1"),
+                14,
+                15,
+                16,
+                17,
             ],  # expected_tariff_imports
             [
                 Decimal("3.11"),
@@ -301,7 +160,7 @@ async def test_fetch_calculation_log_billing_data(
 
         assert_billing_data_types(billing_data)
 
-        assert [b.import_active_price for b in billing_data.active_tariffs] == expected_tariff_imports
+        assert [b.price_pow10_encoded for b in billing_data.active_tariffs] == expected_tariff_imports
 
         assert [b.import_limit_active_watts for b in billing_data.active_does] == expected_doe_imports
 
@@ -327,10 +186,10 @@ async def test_fetch_calculation_log_billing_data(
             [1, 2, 4],  # site_ids
             1,  # tariff_id
             [  # expected_tariff_imports
-                Decimal("1.1"),
-                Decimal("2.1"),
-                Decimal("3.1"),
-                Decimal("6.1"),
+                11,
+                12,
+                13,
+                16,
             ],
             [  # expected_doe_imports
                 Decimal("1.11"),
@@ -354,7 +213,7 @@ async def test_fetch_calculation_log_billing_data(
             [2],  # site_ids
             1,  # tariff_id
             [  # expected_tariff_imports
-                Decimal("6.1"),
+                16,
             ],
             [  # expected_doe_imports
                 Decimal("5.11"),
@@ -372,8 +231,8 @@ async def test_fetch_calculation_log_billing_data(
             [1, 2, 4],  # site_ids
             1,  # tariff_id
             [  # expected_tariff_imports
-                Decimal("4.1"),
-                Decimal("5.1"),
+                14,
+                15,
             ],
             [  # expected_doe_imports
                 Decimal("3.11"),
@@ -471,7 +330,7 @@ async def test_fetch_sites_billing_data(
         )
         assert_billing_data_types(billing_data)
 
-        assert [b.import_active_price for b in billing_data.active_tariffs] == expected_tariff_imports
+        assert [b.price_pow10_encoded for b in billing_data.active_tariffs] == expected_tariff_imports
 
         assert [b.import_limit_active_watts for b in billing_data.active_does] == expected_doe_imports
 

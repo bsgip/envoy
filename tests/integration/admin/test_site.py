@@ -302,9 +302,9 @@ async def test_get_site(
 @pytest.mark.parametrize(
     "site_id, expected_status, archive_site_count, archive_doe_count, archive_price_count",
     [
-        (1, HTTPStatus.NO_CONTENT, 1, 3, 3),
+        (1, HTTPStatus.NO_CONTENT, 1, 3, 5),
         (2, HTTPStatus.NO_CONTENT, 1, 1, 1),
-        (3, HTTPStatus.NO_CONTENT, 1, 0, 0),
+        (3, HTTPStatus.NO_CONTENT, 1, 0, 1),
         (4, HTTPStatus.NO_CONTENT, 1, 0, 0),
         (5, HTTPStatus.NO_CONTENT, 1, 0, 0),
         (99, HTTPStatus.NOT_FOUND, 0, 0, 0),

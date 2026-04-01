@@ -23,6 +23,8 @@ from envoy.notification.crud.batch import (
     fetch_readings_by_changed_at,
     fetch_site_control_groups_by_changed_at,
     fetch_sites_by_changed_at,
+    fetch_tariff_components_by_changed_at,
+    fetch_tariffs_by_changed_at,
     get_site_id,
     get_subscription_filter_id,
     select_subscriptions_for_resource,
@@ -31,6 +33,8 @@ from envoy.notification.crud.common import (
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     SiteScopedSiteControlGroupDefault,
+    SiteScopedTariff,
+    SiteScopedTariffComponent,
     TArchiveResourceModel,
     TResourceModel,
 )
@@ -39,7 +43,7 @@ from envoy.notification.handler import broker_dependency, href_prefix_dependency
 from envoy.notification.task.transmit import transmit_notification
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.server import RuntimeServerConfigManager, _map_server_config
-from envoy.server.mapper.constants import PricingReadingType
+from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper, NotificationType, SubscriptionMapper
 from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.doe import DynamicOperatingEnvelope
@@ -73,7 +77,6 @@ class NotificationEntities(Generic[TResourceModel]):
     notification_id: UUID  # Unique ID for this notification (to detect retries)
     notification_type: NotificationType  # Is this notification for a change in or deletion of these entities
     batch_key: tuple  # The batch key representing this particular batch of entities (see get_batch_key())
-    pricing_reading_type: Optional[PricingReadingType]
 
 
 T = TypeVar("T")
@@ -115,26 +118,7 @@ def get_entity_pages(
     notification_type: NotificationType,
 ) -> Generator[NotificationEntities, None, None]:
     """Breaks a set of entities into pages that are represented by NotificationEntities."""
-    if resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        # Tariff rates are special because each rate maps to 4 entities (one for each of the various prices)
-        # So we need to handle this mapping here as we split everything into NotificationEntities
-        entity_list = list(entities)  # We will be looping this multiple times so we need to stream it out
-        for price_type in [
-            PricingReadingType.IMPORT_ACTIVE_POWER_KWH,
-            PricingReadingType.EXPORT_ACTIVE_POWER_KWH,
-            PricingReadingType.IMPORT_REACTIVE_POWER_KVARH,
-            PricingReadingType.EXPORT_REACTIVE_POWER_KVARH,
-        ]:
-            for entity_page in batched(entity_list, page_size):
-                yield NotificationEntities(
-                    entities=entity_page,
-                    subscription=sub,
-                    notification_id=uuid4(),
-                    notification_type=notification_type,
-                    batch_key=batch_key,
-                    pricing_reading_type=price_type,
-                )
-    elif resource in NON_LIST_RESOURCES:
+    if resource in NON_LIST_RESOURCES:
         # DER resources can't be notified as a list - so treat these all as individual notifications
         for entity in entities:
             yield NotificationEntities(
@@ -143,7 +127,6 @@ def get_entity_pages(
                 notification_id=uuid4(),
                 notification_type=notification_type,
                 batch_key=batch_key,
-                pricing_reading_type=None,
             )
     else:
         for entity_page in batched(entities, page_size):
@@ -153,7 +136,6 @@ def get_entity_pages(
                 notification_id=uuid4(),
                 notification_type=notification_type,
                 batch_key=batch_key,
-                pricing_reading_type=None,
             )
 
 
@@ -221,14 +203,13 @@ def all_entity_batches(
         yield (batch_key, agg_id, cast(list[TResourceModel], deleted_entities), NotificationType.ENTITY_DELETED)
 
 
-def entities_to_notification(
+def entities_to_notification(  # noqa: C901
     resource: SubscriptionResource,
     sub: Subscription,
     batch_key: tuple,
     href_prefix: Optional[str],
     notification_type: NotificationType,
     entities: Sequence[TResourceModel],
-    pricing_reading_type: Optional[PricingReadingType],
     config: RuntimeServerConfig,
 ) -> Sep2Notification:
     """Givens a subscription and associated entities - generate the notification content that will be sent out"""
@@ -238,19 +219,17 @@ def entities_to_notification(
             cast(Sequence[Site], entities), sub, scope, notification_type, config.disable_edev_registration, config.edevl_pollrate_seconds  # type: ignore # mypy quirk # noqa: E501
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        if pricing_reading_type is None:
-            raise NotificationError("SubscriptionResource.TARIFF_GENERATED_RATE requires pricing_reading_type")
 
-        # TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
-        _, tariff_id, _, day = batch_key
+        # TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, tariff_component_id: int)
+        _, tariff_id, _, tariff_component_id = batch_key
         return NotificationMapper.map_rates_to_response(
             tariff_id=tariff_id,
-            day=day,
-            pricing_reading_type=pricing_reading_type,
+            tariff_component_id=tariff_component_id,
             rates=cast(Sequence[TariffGeneratedRate], entities),  # type: ignore # mypy quirk
             sub=sub,
             scope=scope,
             notification_type=notification_type,
+            now=utc_now(),
         )
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int, site_control_group_id: int)
@@ -332,38 +311,161 @@ def entities_to_notification(
             scope,
             notification_type,
         )
+    elif resource == SubscriptionResource.TARIFF_COMPONENT:
+        # TARIFF_COMPONENT: (aggregator_id: int, site_id: int, tariff_id: int)
+        _, site_id, tariff_id = batch_key
+
+        tariff_components = [cast(SiteScopedTariffComponent, e).original for e in entities]
+
+        return NotificationMapper.map_rate_components_to_response(
+            tariff_id, tariff_components, sub, scope, notification_type
+        )
+    elif resource == SubscriptionResource.TARIFF:
+        # TARIFF: (aggregator_id: int, site_id: int)
+
+        tariffs = [cast(SiteScopedTariff, e).original for e in entities]
+
+        return NotificationMapper.map_tariffs_to_response(tariffs, sub, scope, notification_type)
+    elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
+
+        # COMBINED_TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int)
+        _, tariff_id, _ = batch_key
+        return NotificationMapper.map_rates_to_response(
+            tariff_id=tariff_id,
+            tariff_component_id=None,
+            rates=cast(Sequence[TariffGeneratedRate], entities),  # type: ignore # mypy quirk
+            sub=sub,
+            scope=scope,
+            notification_type=notification_type,
+            now=utc_now(),
+        )
+
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify way to map entities")
 
 
 async def fetch_batched_entities(
     session: AsyncSession, resource: SubscriptionResource, timestamp: datetime
-) -> AggregatorBatchedEntities:
+) -> list[AggregatorBatchedEntities]:
     """Fetches the set of AggregatorBatchedEntities for the specified resource at the specified timestamp"""
     if resource == SubscriptionResource.SITE:
-        return await fetch_sites_by_changed_at(session, timestamp)
+        return [await fetch_sites_by_changed_at(session, timestamp)]
     elif resource == SubscriptionResource.READING:
-        return await fetch_readings_by_changed_at(session, timestamp)
+        return [await fetch_readings_by_changed_at(session, timestamp)]
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        return await fetch_does_by_changed_at(session, timestamp)
-    elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
+        return [await fetch_does_by_changed_at(session, timestamp)]
+    elif (
+        resource == SubscriptionResource.TARIFF_GENERATED_RATE
+        or resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE
+    ):
         return await fetch_rates_by_changed_at(session, timestamp)
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
-        return await fetch_der_availability_by_changed_at(session, timestamp)
+        return [await fetch_der_availability_by_changed_at(session, timestamp)]
     elif resource == SubscriptionResource.SITE_DER_RATING:
-        return await fetch_der_rating_by_changed_at(session, timestamp)
+        return [await fetch_der_rating_by_changed_at(session, timestamp)]
     elif resource == SubscriptionResource.SITE_DER_SETTING:
-        return await fetch_der_setting_by_changed_at(session, timestamp)
+        return [await fetch_der_setting_by_changed_at(session, timestamp)]
     elif resource == SubscriptionResource.SITE_DER_STATUS:
-        return await fetch_der_status_by_changed_at(session, timestamp)
+        return [await fetch_der_status_by_changed_at(session, timestamp)]
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
-        return await fetch_default_site_controls_by_changed_at(session, timestamp)
+        return [await fetch_default_site_controls_by_changed_at(session, timestamp)]
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
-        return await fetch_fsa_by_changed_at(session, timestamp)
+        return [await fetch_fsa_by_changed_at(session, timestamp)]
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
-        return await fetch_site_control_groups_by_changed_at(session, timestamp)
+        return [await fetch_site_control_groups_by_changed_at(session, timestamp)]
+    elif resource == SubscriptionResource.TARIFF:
+        return [await fetch_tariffs_by_changed_at(session, timestamp)]
+    elif resource == SubscriptionResource.TARIFF_COMPONENT:
+        return [await fetch_tariff_components_by_changed_at(session, timestamp)]
     else:
         raise NotificationError(f"Unsupported resource type: {resource}")
+
+
+async def handle_batch(
+    session: AsyncSession, batch: AggregatorBatchedEntities, href_prefix: Optional[str], broker: AsyncBroker
+) -> None:
+    """Given a batch of entities for a subscription type - turn those entities into a series of notifications"""
+    all_notifications: list[NotificationEntities] = []
+    aggregator_subs_cache: dict[int, Sequence[Subscription]] = {}  # keyed by aggregator_id
+    for batch_key, agg_id, entities, notification_type in all_entity_batches(
+        batch.models_by_batch_key, batch.deleted_by_batch_key
+    ):
+
+        # We enumerate by aggregator ID at the top level (as a way of minimising the size of entities)
+        # We also cache the per aggregator subscriptions to minimise round trips to the db
+        candidate_subscriptions = aggregator_subs_cache.get(agg_id, None)
+        if candidate_subscriptions is None:
+            candidate_subscriptions = await select_subscriptions_for_resource(session, agg_id, batch.resource)
+            aggregator_subs_cache[agg_id] = candidate_subscriptions
+
+        for sub in candidate_subscriptions:
+            # Break the entities that apply to this subscription down into "pages" according to
+            # the definition of the subscription
+            entity_limit = sub.entity_limit if sub.entity_limit > 0 else 1
+            if entity_limit > MAX_NOTIFICATION_PAGE_SIZE:
+                entity_limit = MAX_NOTIFICATION_PAGE_SIZE
+
+            if entities:
+                # Normally we're going to have a batch of entities that should be sent out via notifications
+                entities_to_notify = entities_serviced_by_subscription(sub, batch.resource, entities)
+                all_notifications.extend(
+                    get_entity_pages(
+                        batch.resource, sub, batch_key, entity_limit, entities_to_notify, notification_type
+                    )
+                )
+            else:
+                # But we can end up in this state if the subscription is at the List and an attribute on the list has
+                # changed (eg pollRate) - i.e. there are no child list items to indicate as changed - JUST the list.
+                if sub.resource_type == batch.resource:
+                    # All we need is a match on the type of subscription to generate the subscription
+                    all_notifications.append(
+                        NotificationEntities(
+                            entities=[],  # No entities - we're just wanting the parent List to notify as empty
+                            subscription=sub,
+                            notification_id=uuid4(),
+                            notification_type=NotificationType.ENTITY_CHANGED,
+                            batch_key=batch_key,
+                        )
+                    )
+
+    # Finally time to enqueue the outgoing notifications
+    logger.info(
+        "check_db_change_or_delete for resource %s at timestamp %s generated %d notifications",
+        batch.resource,
+        batch.timestamp,
+        len(all_notifications),
+    )
+
+    # fetch runtime server config
+    config = await RuntimeServerConfigManager.fetch_current_config(session)
+
+    for n in all_notifications:
+        content = entities_to_notification(
+            batch.resource,
+            n.subscription,
+            n.batch_key,
+            href_prefix,
+            n.notification_type,
+            n.entities,
+            config,
+        ).to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
+        if isinstance(content, bytes):
+            content = content.decode()
+
+        agg_id = n.batch_key[0]  # Aggregator ID is ALWAYS the first element of the batch_key
+        scope = scope_for_subscription(n.subscription, href_prefix)
+
+        try:
+            await transmit_notification.kicker().with_broker(broker).kiq(
+                remote_uri=n.subscription.notification_uri,
+                content=content,
+                notification_id=str(n.notification_id),
+                subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, scope),
+                subscription_id=n.subscription.subscription_id,
+                attempt=0,
+            )
+        except Exception as ex:
+            logger.error("Error adding transmission task", exc_info=ex)
 
 
 @async_shared_broker.task()
@@ -387,86 +489,5 @@ async def check_db_change_or_delete(
     logger.debug("check_db_change_or_delete for resource %s at timestamp %s", resource, timestamp)
 
     batched_entities = await fetch_batched_entities(session, resource, timestamp)
-
-    # Now generate subscription notifications
-    all_notifications: list[NotificationEntities] = []
-    aggregator_subs_cache: dict[int, Sequence[Subscription]] = {}  # keyed by aggregator_id
-    for batch_key, agg_id, entities, notification_type in all_entity_batches(
-        batched_entities.models_by_batch_key, batched_entities.deleted_by_batch_key
-    ):
-
-        # We enumerate by aggregator ID at the top level (as a way of minimising the size of entities)
-        # We also cache the per aggregator subscriptions to minimise round trips to the db
-        candidate_subscriptions = aggregator_subs_cache.get(agg_id, None)
-        if candidate_subscriptions is None:
-            candidate_subscriptions = await select_subscriptions_for_resource(session, agg_id, resource)
-            aggregator_subs_cache[agg_id] = candidate_subscriptions
-
-        for sub in candidate_subscriptions:
-            # Break the entities that apply to this subscription down into "pages" according to
-            # the definition of the subscription
-            entity_limit = sub.entity_limit if sub.entity_limit > 0 else 1
-            if entity_limit > MAX_NOTIFICATION_PAGE_SIZE:
-                entity_limit = MAX_NOTIFICATION_PAGE_SIZE
-
-            if entities:
-                # Normally we're going to have a batch of entities that should be sent out via notifications
-                entities_to_notify = entities_serviced_by_subscription(sub, resource, entities)
-                all_notifications.extend(
-                    get_entity_pages(resource, sub, batch_key, entity_limit, entities_to_notify, notification_type)
-                )
-            else:
-                # But we can end up in this state if the subscription is at the List and an attribute on the list has
-                # changed (eg pollRate) - i.e. there are no child list items to indicate as changed - JUST the list.
-                if sub.resource_type == resource:
-                    # All we need is a match on the type of subscription to generate the subscription
-                    all_notifications.append(
-                        NotificationEntities(
-                            entities=[],  # No entities - we're just wanting the parent List to notify as empty
-                            subscription=sub,
-                            notification_id=uuid4(),
-                            notification_type=NotificationType.ENTITY_CHANGED,
-                            batch_key=batch_key,
-                            pricing_reading_type=None,
-                        )
-                    )
-
-    # Finally time to enqueue the outgoing notifications
-    logger.info(
-        "check_db_change_or_delete for resource %s at timestamp %s generated %d notifications",
-        resource,
-        timestamp,
-        len(all_notifications),
-    )
-
-    # fetch runtime server config
-    config = await RuntimeServerConfigManager.fetch_current_config(session)
-
-    for n in all_notifications:
-        content = entities_to_notification(
-            resource,
-            n.subscription,
-            n.batch_key,
-            href_prefix,
-            n.notification_type,
-            n.entities,
-            n.pricing_reading_type,
-            config,
-        ).to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
-        if isinstance(content, bytes):
-            content = content.decode()
-
-        agg_id = n.batch_key[0]  # Aggregator ID is ALWAYS the first element of the batch_key
-        scope = scope_for_subscription(n.subscription, href_prefix)
-
-        try:
-            await transmit_notification.kicker().with_broker(broker).kiq(
-                remote_uri=n.subscription.notification_uri,
-                content=content,
-                notification_id=str(n.notification_id),
-                subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, scope),
-                subscription_id=n.subscription.subscription_id,
-                attempt=0,
-            )
-        except Exception as ex:
-            logger.error("Error adding transmission task", exc_info=ex)
+    for batch in batched_entities:
+        await handle_batch(session, batch, href_prefix, broker)

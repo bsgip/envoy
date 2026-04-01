@@ -4,11 +4,15 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import Row
 
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.tariff import TariffGeneratedRate
 
 EntityWithStartTime = TypeVar(
-    "EntityWithStartTime", bound=Union[TariffGeneratedRate, DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]
+    "EntityWithStartTime",
+    bound=Union[
+        TariffGeneratedRate, ArchiveTariffGeneratedRate, DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope
+    ],
 )
 
 

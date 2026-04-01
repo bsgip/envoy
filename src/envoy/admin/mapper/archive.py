@@ -1,10 +1,9 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import Sequence
 
 from envoy_schema.admin.schema.archive import (
-    ArchiveDynamicOperatingEnvelopeResponse,
     ArchivePageResponse,
+    ArchiveSiteControlResponse,
     ArchiveSiteResponse,
     ArchiveTariffGeneratedRateResponse,
 )
@@ -42,26 +41,33 @@ class ArchiveMapper:
         )
 
     @staticmethod
-    def map_to_doe_response(doe: ArchiveDynamicOperatingEnvelope) -> ArchiveDynamicOperatingEnvelopeResponse:
+    def map_to_doe_response(doe: ArchiveDynamicOperatingEnvelope) -> ArchiveSiteControlResponse:
         archive_time = doe.archive_time
         if archive_time is None:
             archive_time = utc_now()  # Should never happen - the default in the DB will set this
 
-        return ArchiveDynamicOperatingEnvelopeResponse(
+        return ArchiveSiteControlResponse(
             archive_id=doe.archive_id,
             archive_time=archive_time,
             deleted_time=doe.deleted_time,
-            dynamic_operating_envelope_id=doe.dynamic_operating_envelope_id,
+            site_control_id=doe.dynamic_operating_envelope_id,
             site_id=doe.site_id,
+            superseded=doe.superseded,
             calculation_log_id=doe.calculation_log_id,
             duration_seconds=doe.duration_seconds,
-            import_limit_active_watts=(
-                doe.import_limit_active_watts if doe.import_limit_active_watts is not None else Decimal(0)
-            ),
-            export_limit_watts=doe.export_limit_watts if doe.export_limit_watts is not None else Decimal(0),
+            import_limit_watts=doe.import_limit_active_watts,
+            export_limit_watts=doe.export_limit_watts,
+            generation_limit_watts=doe.generation_limit_active_watts,
+            load_limit_watts=doe.load_limit_active_watts,
+            set_point_percentage=doe.set_point_percentage,
+            ramp_time_seconds=doe.ramp_time_seconds,
             start_time=doe.start_time,
             changed_time=doe.changed_time,
             created_time=doe.created_time,
+            set_energized=doe.set_energized,
+            set_connect=doe.set_connected,
+            randomize_start_seconds=doe.randomize_start_seconds,
+            storage_target_watts=None,
         )
 
     @staticmethod
@@ -75,15 +81,15 @@ class ArchiveMapper:
             archive_time=archive_time,
             deleted_time=rate.deleted_time,
             tariff_id=rate.tariff_id,
+            tariff_component_id=rate.tariff_component_id,
             site_id=rate.site_id,
             calculation_log_id=rate.calculation_log_id,
             tariff_generated_rate_id=rate.tariff_generated_rate_id,
             start_time=rate.start_time,
             duration_seconds=rate.duration_seconds,
-            import_active_price=rate.import_active_price,
-            export_active_price=rate.export_active_price,
-            import_reactive_price=rate.import_reactive_price,
-            export_reactive_price=rate.export_reactive_price,
+            price_pow10_encoded=rate.price_pow10_encoded,
+            block_1_start_pow10_encoded=rate.block_1_start_pow10_encoded,
+            price_pow10_encoded_block_1=rate.price_pow10_encoded_block_1,
             changed_time=rate.changed_time,
             created_time=rate.created_time,
         )
@@ -116,7 +122,7 @@ class ArchiveListMapper:
         limit: int,
         period_start: datetime,
         period_end: datetime,
-    ) -> ArchivePageResponse[ArchiveDynamicOperatingEnvelopeResponse]:
+    ) -> ArchivePageResponse[ArchiveSiteControlResponse]:
         return ArchivePageResponse(
             start=start,
             limit=limit,

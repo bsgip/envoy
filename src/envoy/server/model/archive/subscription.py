@@ -19,6 +19,7 @@ class ArchiveSubscription(ArchiveBase):
 
     resource_type: Mapped[original_models.SubscriptionResource] = mapped_column(INTEGER)
     resource_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    resource_parent_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     scoped_site_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
 
     notification_uri: Mapped[str] = mapped_column(VARCHAR(length=2048))

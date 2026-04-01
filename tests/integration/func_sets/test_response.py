@@ -19,10 +19,11 @@ from envoy_schema.server.schema.sep2.response import (
 )
 from httpx import AsyncClient
 from sqlalchemy import func, insert, select
-from envoy.server.model import Site
-from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
+
+from envoy.server.mapper.constants import ResponseSetType
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import response_set_type_to_href
+from envoy.server.model import Site
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -256,15 +257,14 @@ async def test_get_response_for_device_cert(
             insert(TariffGeneratedRate).values(
                 tariff_generated_rate_id=102,
                 tariff_id=1,
+                tariff_component_id=1,
                 site_id=5,
                 calculation_log_id=None,
                 changed_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
                 start_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
                 duration_seconds=300,
-                import_active_price=101,
-                export_active_price=202,
-                import_reactive_price=303,
-                export_reactive_price=404,
+                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=timezone.utc),
+                price_pow10_encoded=101,
             )
         )
 
@@ -284,7 +284,6 @@ async def test_get_response_for_device_cert(
                 tariff_generated_rate_response_id=1002,
                 tariff_generated_rate_id_snapshot=102,
                 site_id=5,
-                pricing_reading_type=PricingReadingType.IMPORT_ACTIVE_POWER_KWH,
                 response_type=8,
             )
         )
@@ -433,15 +432,14 @@ async def test_get_response_list_pagination_for_device_cert(
             insert(TariffGeneratedRate).values(
                 tariff_generated_rate_id=102,
                 tariff_id=1,
+                tariff_component_id=1,
                 site_id=5,
                 calculation_log_id=None,
                 changed_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
                 start_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
                 duration_seconds=300,
-                import_active_price=101,
-                export_active_price=202,
-                import_reactive_price=303,
-                export_reactive_price=404,
+                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=timezone.utc),
+                price_pow10_encoded=101,
             )
         )
 
@@ -461,7 +459,6 @@ async def test_get_response_list_pagination_for_device_cert(
                 tariff_generated_rate_response_id=1002,
                 tariff_generated_rate_id_snapshot=102,
                 site_id=5,
-                pricing_reading_type=PricingReadingType.IMPORT_ACTIVE_POWER_KWH,
                 response_type=8,
             )
         )
@@ -497,7 +494,7 @@ async def test_get_response_list_pagination_for_device_cert(
             AGG_1_VALID_CERT,
             1,
             RATE_HREF,
-            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),
+            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1),
             Response,
             PriceResponse,
             HTTPStatus.CREATED,
@@ -506,7 +503,7 @@ async def test_get_response_list_pagination_for_device_cert(
             AGG_1_VALID_CERT,
             1,
             RATE_HREF,
-            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),
+            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1),
             PriceResponse,
             PriceResponse,
             HTTPStatus.CREATED,
@@ -515,7 +512,7 @@ async def test_get_response_list_pagination_for_device_cert(
             AGG_1_VALID_CERT,
             0,
             RATE_HREF,
-            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),
+            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1),
             PriceResponse,
             None,
             HTTPStatus.FORBIDDEN,
@@ -551,7 +548,7 @@ async def test_get_response_list_pagination_for_device_cert(
             AGG_2_VALID_CERT,
             1,
             RATE_HREF,
-            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),
+            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1),
             PriceResponse,
             None,
             HTTPStatus.BAD_REQUEST,
@@ -560,7 +557,7 @@ async def test_get_response_list_pagination_for_device_cert(
             AGG_1_VALID_CERT,
             2,
             RATE_HREF,
-            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),
+            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1),
             PriceResponse,
             None,
             HTTPStatus.BAD_REQUEST,
@@ -569,7 +566,7 @@ async def test_get_response_list_pagination_for_device_cert(
             AGG_1_VALID_CERT,
             1,
             RATE_HREF,
-            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 99, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),
+            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 99),
             PriceResponse,
             None,
             HTTPStatus.BAD_REQUEST,
@@ -578,7 +575,7 @@ async def test_get_response_list_pagination_for_device_cert(
             AGG_1_VALID_CERT,
             1,
             "foobar",
-            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),
+            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1),
             Response,
             None,
             HTTPStatus.NOT_FOUND,
@@ -587,7 +584,7 @@ async def test_get_response_list_pagination_for_device_cert(
             AGG_1_VALID_CERT,
             1,
             DOE_HREF,
-            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1, PricingReadingType.IMPORT_ACTIVE_POWER_KWH),
+            MridMapper.encode_time_tariff_interval_mrid(TEST_SCOPE, 1),
             Response,
             None,
             HTTPStatus.BAD_REQUEST,
