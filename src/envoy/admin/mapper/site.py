@@ -6,7 +6,7 @@ from envoy_schema.admin.schema.site import DERAvailability, DERConfiguration, DE
 from envoy_schema.admin.schema.site import SiteGroup as AdminSiteGroup
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
-from envoy_schema.server.schema.sep2.der import DERType, DOESupportedMode, VPPSupportedMode
+from envoy_schema.server.schema.sep2.der import DERType, DOESupportedMode, VPPControlType
 
 from envoy.server.mapper.common import pow10_to_decimal_value
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus, SiteGroup
@@ -113,7 +113,7 @@ class SiteMapper:
         elif rating and rating.doe_modes_supported is not None:
             doe_modes = rating.doe_modes_supported
 
-        vpp_modes: VPPSupportedMode | None = None
+        vpp_modes: VPPControlType | None = None
         if setting and setting.vpp_modes_enabled is not None:
             vpp_modes = setting.vpp_modes_enabled
         elif rating and rating.vpp_modes_supported is not None:

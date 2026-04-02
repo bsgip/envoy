@@ -18,7 +18,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERSettings,
     DERStatus,
     DOESupportedMode,
-    VPPSupportedMode,
+    VPPControlType,
 )
 from sqlalchemy import func, select
 
@@ -278,7 +278,7 @@ async def test_upsert_der_capability_not_found(
         e: DERCapability = generate_class_instance(DERCapability, generate_relationships=True)
         e.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT)
         e.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_IMPORT_LIMIT_W)
-        e.vppModesSupported = to_hex_binary(VPPSupportedMode.OP_MOD_STORAGE_TARGET_W)
+        e.vppModesSupported = to_hex_binary(VPPControlType.OP_MOD_STORAGE_TARGET_W)
 
         with pytest.raises(NotFoundError):
             await DERCapabilityManager.upsert_der_capability_for_site(
@@ -325,7 +325,7 @@ async def test_upsert_der_capability_roundtrip(
         DERControlType.OP_MOD_HVRT_MUST_TRIP | DERControlType.OP_MOD_HVRT_MOMENTARY_CESSATION
     )
     expected.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
-    expected.vppModesSupported = to_hex_binary(VPPSupportedMode.OP_MOD_STORAGE_TARGET_W)
+    expected.vppModesSupported = to_hex_binary(VPPControlType.OP_MOD_STORAGE_TARGET_W)
     async with generate_async_session(pg_base_config) as session:
         await DERCapabilityManager.upsert_der_capability_for_site(
             session,
@@ -419,7 +419,7 @@ async def test_upsert_der_settings_not_found(
         e: DERSettings = generate_class_instance(DERSettings, generate_relationships=True)
         e.modesEnabled = to_hex_binary(DERControlType.OP_MOD_FIXED_PF_ABSORB_W)
         e.doeModesEnabled = to_hex_binary(DOESupportedMode.OP_MOD_IMPORT_LIMIT_W)
-        e.vppModesEnabled = to_hex_binary(VPPSupportedMode.OP_MOD_STORAGE_TARGET_W)
+        e.vppModesEnabled = to_hex_binary(VPPControlType.OP_MOD_STORAGE_TARGET_W)
 
         with pytest.raises(NotFoundError):
             await DERSettingsManager.upsert_der_settings_for_site(
@@ -464,7 +464,7 @@ async def test_upsert_der_settings_roundtrip(
     expected: DERSettings = generate_class_instance(DERSettings, seed=5001, generate_relationships=True)
     expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_MAX_LIM_W | DERControlType.CHARGE_MODE)
     expected.doeModesEnabled = to_hex_binary(DERControlType.OP_MOD_CONNECT)
-    expected.vppModesEnabled = to_hex_binary(VPPSupportedMode.OP_MOD_STORAGE_TARGET_W)
+    expected.vppModesEnabled = to_hex_binary(VPPControlType.OP_MOD_STORAGE_TARGET_W)
     async with generate_async_session(pg_base_config) as session:
         await DERSettingsManager.upsert_der_settings_for_site(
             session,

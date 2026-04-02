@@ -16,7 +16,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERSettings,
     DERStatus,
     DOESupportedMode,
-    VPPSupportedMode,
+    VPPControlType,
 )
 from envoy_schema.server.schema.sep2.identification import Link
 
@@ -190,7 +190,7 @@ def test_der_capability_roundtrip(optional_is_none: bool):
     )
     expected.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT | DERControlType.OP_MOD_FREQ_DROOP)
     expected.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
-    expected.vppModesSupported = to_hex_binary(VPPSupportedMode.OP_MOD_STORAGE_TARGET_W)
+    expected.vppModesSupported = to_hex_binary(VPPControlType.OP_MOD_STORAGE_TARGET_W)
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1991, href_prefix="/my/prefix"
     )
@@ -220,7 +220,7 @@ def test_der_settings_roundtrip(optional_is_none: bool):
     if not optional_is_none:
         expected.modesEnabled = to_hex_binary(DERControlType.OP_MOD_HFRT_MAY_TRIP | DERControlType.OP_MOD_FREQ_DROOP)
         expected.doeModesEnabled = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
-        expected.vppModesEnabled = to_hex_binary(VPPSupportedMode.OP_MOD_STORAGE_TARGET_W)
+        expected.vppModesEnabled = to_hex_binary(VPPControlType.OP_MOD_STORAGE_TARGET_W)
 
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=9876, href_prefix="/my/prefix"

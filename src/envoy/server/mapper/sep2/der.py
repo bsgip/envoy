@@ -14,7 +14,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERSettings,
     DERStatus,
     DOESupportedMode,
-    VPPSupportedMode,
+    VPPControlType,
 )
 from envoy_schema.server.schema.sep2.identification import Link
 from envoy_schema.server.schema.sep2.types import SubscribableType
@@ -399,9 +399,7 @@ class DERCapabilityMapper:
 
     @staticmethod
     def map_from_request(changed_time: datetime, der_cap: DERCapability) -> SiteDERRating:
-        vpp_modes_supported = (
-            VPPSupportedMode(int(der_cap.vppModesSupported, 16)) if der_cap.vppModesSupported else None
-        )
+        vpp_modes_supported = VPPControlType(int(der_cap.vppModesSupported, 16)) if der_cap.vppModesSupported else None
         m = SiteDERRating(
             modes_supported=DERControlType(int(der_cap.modesSupported, 16)),
             der_type=der_cap.type_,

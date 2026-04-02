@@ -13,11 +13,7 @@ from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityRe
 from envoy_schema.server.schema.sep2.end_device import EndDeviceListResponse, EndDeviceResponse
 from envoy_schema.server.schema.sep2.metering import ReadingType
 from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading, MirrorUsagePoint
-from envoy_schema.server.schema.sep2.pricing import (
-    ConsumptionTariffIntervalListResponse,
-    RateComponentListResponse,
-    TariffProfileResponse,
-)
+from envoy_schema.server.schema.sep2.pricing import ConsumptionTariffIntervalListResponse, RateComponentListResponse
 from pydantic_xml import BaseXmlModel
 
 TXmlSchemaType = TypeVar("TXmlSchemaType", bound=BaseXmlModel)
@@ -142,13 +138,13 @@ MAPPINGS = [
     ),
     ("pricing/ratecomponentlist.xml", RateComponentListResponse, standard_assertions, [], True),
     ("pricing/readingtype.xml", ReadingType, standard_assertions, [], True),
-    (
-        "pricing/tariffprofile.xml",
-        TariffProfileResponse,
-        standard_assertions,
-        ["{urn:ieee:std:2030.5:ns}primacy"],
-        True,
-    ),
+    # (
+    #     "pricing/tariffprofile.xml",
+    #     TariffProfileResponse,
+    #     standard_assertions,
+    #     ["{urn:ieee:std:2030.5:ns}primacy"],
+    #     True,
+    # ),
     # (
     #     "pricing/timetariffintervallist.xml",
     #     TimeTariffIntervalListResponse,

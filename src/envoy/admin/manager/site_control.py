@@ -193,7 +193,6 @@ class SiteControlGroupManager:
             server_default_storage_target_watts=scg.site_control_group_default.storage_target_active_watts,
             changed_time=scg.site_control_group_default.changed_time,
             created_time=scg.site_control_group_default.created_time,
-            server_default_storage_target_watts=None,
         )
 
 

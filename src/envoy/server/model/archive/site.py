@@ -9,12 +9,12 @@ from envoy_schema.server.schema.sep2.der import (
     DERControlType,
     DERType,
     DOESupportedMode,
-    VPPSupportedMode,
     InverterStatusType,
     LocalControlModeStatusType,
     NormalCategoryType,
     OperationalModeStatusType,
     StorageModeStatusType,
+    VPPControlType,
 )
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from sqlalchemy import DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime
@@ -109,7 +109,7 @@ class ArchiveSiteDERRating(ArchiveBase):
     doe_modes_supported: Mapped[Optional[DOESupportedMode]] = mapped_column(INTEGER, nullable=True)
 
     # Storage Extension
-    vpp_modes_supported: Mapped[Optional[VPPSupportedMode]] = mapped_column(INTEGER, nullable=True)
+    vpp_modes_supported: Mapped[Optional[VPPControlType]] = mapped_column(INTEGER, nullable=True)
 
 
 class ArchiveSiteDERSetting(ArchiveBase):
@@ -169,7 +169,7 @@ class ArchiveSiteDERSetting(ArchiveBase):
     doe_modes_enabled: Mapped[Optional[DOESupportedMode]] = mapped_column(INTEGER, nullable=True)
 
     # Storage Extension
-    vpp_modes_enabled: Mapped[Optional[VPPSupportedMode]] = mapped_column(INTEGER, nullable=True)
+    vpp_modes_enabled: Mapped[Optional[VPPControlType]] = mapped_column(INTEGER, nullable=True)
     min_wh_value: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
     min_wh_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
 
