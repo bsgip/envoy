@@ -1,7 +1,7 @@
 """v13_pricing
 
 Revision ID: a25be5a186ba
-Revises: ed20565cc862
+Revises: fe565b4c1a9e
 Create Date: 2026-03-05 11:35:14.635916
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "a25be5a186ba"
-down_revision = "ed20565cc862"
+down_revision = "fe565b4c1a9e"
 branch_labels = None
 depends_on = None
 

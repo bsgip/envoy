@@ -1,7 +1,7 @@
 """add_transmit_notification_log
 
 Revision ID: 8feebfbbfe69
-Revises: 5a6908457f70
+Revises: 5a615c22e7ad
 Create Date: 2025-06-27 09:51:18.763889
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "8feebfbbfe69"
-down_revision = "5a6908457f70"
+down_revision = "5a615c22e7ad"
 branch_labels = None
 depends_on = None
 
