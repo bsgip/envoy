@@ -37,6 +37,7 @@ from envoy.notification.task.transmit import HEADER_NOTIFICATION_ID
 from envoy.server.api.response import SEP_XML_MIME
 from envoy.server.model.server import RuntimeServerConfig
 from envoy.server.model.subscription import Subscription, SubscriptionResource
+from envoy.server.model.tariff import Tariff, TariffComponent
 
 
 @pytest.mark.anyio
@@ -128,6 +129,7 @@ async def test_create_site_controls_with_active_subscription(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=3, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # Control 1,2 are batch 1 and go to sub1
     # Control 3 is batch 2 and go to sub1 and sub2
@@ -241,6 +243,7 @@ async def test_supersede_site_control_with_active_subscription(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
     assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
@@ -312,6 +315,7 @@ async def test_create_does_with_paginated_notifications(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # We should get 2 pages of notifications despite them all belonging to the same batch
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
@@ -419,6 +423,7 @@ async def test_create_tariff_component_with_active_subscription(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # There will be 1 rate notification going out - one for sub1 and sub3 (matching tc_1)
     # RateComponents are NOT site scoped so they fire for all sites
@@ -465,6 +470,8 @@ async def test_update_tariff_component_with_active_subscription(
     admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
 ):
     """Tests updating tariff components with an active subscription generates notifications via the MockedAsyncClient"""
+
+    tariff_3_tc_id = 99  # We need a TariffComponent under Tariff 3 - this will be its ID
 
     # Create a subscription to actually pickup these changes
     #
@@ -517,6 +524,10 @@ async def test_update_tariff_component_with_active_subscription(
             )
         )
 
+        # We want a tariff component under Tariff #3 that we know will avoid notifications
+        tariff_3 = (await session.execute(select(Tariff).where(Tariff.tariff_id == 3))).scalar_one()
+        session.add(generate_class_instance(TariffComponent, tariff=tariff_3, tariff_component_id=tariff_3_tc_id))
+
         await session.commit()
 
     tc_1 = generate_class_instance(TariffComponentRequest, seed=101, tariff_id=1, role_flags=3)
@@ -528,12 +539,13 @@ async def test_update_tariff_component_with_active_subscription(
     # Mismatches on tariff id - no notifications
     tc_2 = generate_class_instance(TariffComponentRequest, seed=303, tariff_id=3, role_flags=2)
     resp = await admin_client_auth.put(
-        TariffComponentUpdateUri.format(tariff_component_id=3), content=tc_2.model_dump_json()
+        TariffComponentUpdateUri.format(tariff_component_id=tariff_3_tc_id), content=tc_2.model_dump_json()
     )
     assert resp.status_code == HTTPStatus.NO_CONTENT
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # There will be 1 rate notification going out - one for sub1 and sub3 (matching tc_1)
     # RateComponents are NOT site scoped so they fire for all sites
@@ -631,6 +643,7 @@ async def test_create_tariff_with_active_subscription(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=3, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # There will be 3 tariff notifications going out - one for sub1 and sub3 (matching t_1) - another for sub1 + t_2
     # Tariffs are NOT site scoped so they fire for all sites
@@ -740,6 +753,7 @@ async def test_update_tariff_with_active_subscription(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=3, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # There will be 3 tariff notifications going out - one for sub1 and sub3 (matching t_1) and another for sub + t_2
     # Tariffs are NOT site scoped so they fire for all sites
@@ -905,6 +919,7 @@ async def test_create_rates_with_active_subscription(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # There will be 2 price notifications going out - one for sub1 and one for sub2 (both matching rate1)
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
@@ -1027,6 +1042,7 @@ async def test_delete_rates_with_active_subscription(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # There will be 2 price notifications going out - one for sub1 and one for sub2 (both matching the delete)
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
@@ -1107,6 +1123,7 @@ async def test_delete_site_with_active_subscription(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # Sub 1 got both notifications
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
@@ -1156,6 +1173,7 @@ async def test_update_server_config_edev_list_notification(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # Sub 1 got one notification, sub 2 got the other
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
@@ -1218,6 +1236,7 @@ async def test_update_server_config_fsa_notification(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # Sub 1 got one notification, sub 2 got the other
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
@@ -1344,6 +1363,7 @@ async def test_update_site_control_group_default_notification(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # Only one request should've generated a notification
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
@@ -1391,6 +1411,7 @@ async def test_create_site_control_groups_with_active_subscription(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     # SiteControlGroup changes generate 1 notification per site. That means:
     # sub1: Will get 3 notification batch (site 1, 2 and 4 - all under agg 1)
@@ -1465,6 +1486,7 @@ async def test_create_site_control_groups_with_new_fsa(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
     assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
@@ -1584,6 +1606,7 @@ async def test_update_site_with_active_subscription(
 
     # Give the notifications a chance to propagate
     assert await notifications_enabled.wait_for_n_requests(n=1, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
 
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
     assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
