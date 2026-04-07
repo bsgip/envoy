@@ -14,6 +14,17 @@ All client model definitions for this server can be found in [envoy-schema](http
 
 envoy has a full demo server for quickly evaluating its capabilities. See the [demo/](demo/README.md) directory for more info
 
+
+# Versioning
+
+`envoy` has support for multiple versions of CSIP-Aus via specific development branches. The major version number is how you can differentiate what CSIP-Aus version is being targetted.
+
+| CSIP-Aus Version | envoy versions | dev branch |
+| ---------------- | -------------- | ---------- |
+| `v1.1a` | `v0.*`, `v1.*` | `main` |
+| `v1.2` | `v0.*`, `v1.*` | `main` |
+| `v1.3` | `v2.*` | `csipaus.org/ns/v1.3` |
+
 # Development
 
 To install envoy for local development, clone this repository and then run:
