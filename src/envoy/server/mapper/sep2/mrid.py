@@ -90,7 +90,14 @@ class MridMapper:
     @staticmethod
     def encode_default_doe_mrid(scope: BaseRequestScope, scg_default: SiteControlGroupDefault) -> str:
         """Encodes a valid MRID for representing the default DOE"""
-        return encode_mrid(MridType.DEFAULT_DOE, scg_default.site_control_group_default_id, scope.iana_pen)
+        id = ((scg_default.site_control_group_id & MAX_INT_32) << 32) | (
+            scg_default.site_control_group_default_id & MAX_INT_32
+        )
+        return encode_mrid(
+            MridType.DEFAULT_DOE,
+            id,
+            scope.iana_pen,
+        )
 
     @staticmethod
     def encode_doe_program_mrid(scope: BaseRequestScope, site_control_group_id: int, site_id: int) -> str:
