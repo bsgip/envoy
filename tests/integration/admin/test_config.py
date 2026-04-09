@@ -31,6 +31,8 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
     config_response: RuntimeServerConfigResponse = RuntimeServerConfigResponse(**json.loads(body))
     assert config_response.dcap_pollrate_seconds > 0
     assert config_response.derpl_pollrate_seconds > 0
+    assert config_response.tp_pollrate_seconds > 0
+    assert config_response.tti_pollrate_seconds > 0
     assert config_response.disable_edev_registration is False
 
     # Update some config
@@ -46,9 +48,7 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
 
     assert_nowish(first_update_response.changed_time)
     assert_nowish(first_update_response.created_time)
-    assert_class_instance_equality(
-        RuntimeServerConfigRequest, config_request, first_update_response, {"tariff_pow10_encoding"}
-    )
+    assert_class_instance_equality(RuntimeServerConfigRequest, config_request, first_update_response)
 
     # update again (this time there is something in the db)
     second_config_request = generate_class_instance(
@@ -63,9 +63,7 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
     body = read_response_body_string(resp)
     second_update_response: RuntimeServerConfigResponse = RuntimeServerConfigResponse(**json.loads(body))
 
-    assert_class_instance_equality(
-        RuntimeServerConfigRequest, second_config_request, second_update_response, {"tariff_pow10_encoding"}
-    )
+    assert_class_instance_equality(RuntimeServerConfigRequest, second_config_request, second_update_response)
 
     # update again - but only one field
     third_config_request = generate_class_instance(RuntimeServerConfigRequest, seed=303, optional_is_none=True)
@@ -84,7 +82,7 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
         RuntimeServerConfigRequest,
         second_config_request,
         third_update_response,
-        {"tariff_pow10_encoding", "site_control_pow10_encoding"},
+        {"site_control_pow10_encoding"},
     )
     assert (
         third_update_response.site_control_pow10_encoding == third_config_request.site_control_pow10_encoding

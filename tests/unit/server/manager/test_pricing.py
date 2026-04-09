@@ -9,6 +9,7 @@ from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
 from envoy_schema.server.schema.sep2.pricing import RateComponentListResponse, TariffProfileListResponse
 
 from envoy.server.manager.pricing import RateComponentManager, TariffProfileManager
+from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.tariff import Tariff, TariffComponent
 from envoy.server.request_scope import SiteRequestScope
 
@@ -20,7 +21,9 @@ from envoy.server.request_scope import SiteRequestScope
 @mock.patch("envoy.server.manager.pricing.select_tariff_count")
 @mock.patch("envoy.server.manager.pricing.count_tariff_components_by_tariff")
 @mock.patch("envoy.server.manager.pricing.count_active_rates_include_deleted")
+@mock.patch("envoy.server.manager.pricing.RuntimeServerConfigManager.fetch_current_config")
 async def test_fetch_tariff_profile_list_counts_members(
+    mock_fetch_current_config: mock.MagicMock,
     mock_count_active_rates_include_deleted: mock.MagicMock,
     mock_count_tariff_components_by_tariff: mock.MagicMock,
     mock_select_tariff_count: mock.MagicMock,
@@ -37,6 +40,7 @@ async def test_fetch_tariff_profile_list_counts_members(
     changed = datetime.now()
     limit = 222
     tariff_count = 33
+    server_config = generate_class_instance(RuntimeServerConfig)
 
     all_tariffs = [generate_class_instance(Tariff, seed=i, tariff_id=i) for i in range(n_tariffs)]
     count_components = [i for i in range(n_tariffs)]
@@ -51,6 +55,7 @@ async def test_fetch_tariff_profile_list_counts_members(
     mock_count_active_rates_include_deleted.side_effect = count_rates
     mock_count_tariff_components_by_tariff.side_effect = count_components
     mock_map_to_list_response.return_value = mapped_tariffs
+    mock_fetch_current_config.return_value = server_config
 
     # Act
     response = await TariffProfileManager.fetch_tariff_profile_list(mock_session, scope, start, changed, limit, fsa_id)
@@ -67,11 +72,12 @@ async def test_fetch_tariff_profile_list_counts_members(
     # make sure we properly bundled up the resulting tariff + rate count tuples and passed it along to the mapper
     mock_map_to_list_response.assert_called_once()
     call_args = mock_map_to_list_response.call_args_list[0].args
-    passed_scope, tariffs_with_rates, total_tariffs, mapped_fsa_id = call_args
+    passed_scope, tariffs_with_rates, total_tariffs, mapped_fsa_id, poll_rate = call_args
     assert list(tariffs_with_rates) == list(zip(all_tariffs, count_components, count_rates))
     assert total_tariffs == tariff_count
     assert mapped_fsa_id == fsa_id
     assert passed_scope is scope
+    assert poll_rate == server_config.tp_pollrate_seconds
 
 
 @pytest.mark.parametrize("n_rates", [0, 1, 2])

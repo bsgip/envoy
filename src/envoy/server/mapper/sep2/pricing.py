@@ -74,6 +74,7 @@ class TariffProfileMapper:
         tariffs: Iterator[tuple[Tariff, int, int]],
         total_tariffs: int,
         fsa_id: Optional[int],
+        tp_poll_rate: int,
     ) -> TariffProfileListResponse:
         """Returns a list containing multiple sep2 entities. The href's will be to the site specific
         TimeTariffProfile and RateComponentListLink
@@ -103,6 +104,7 @@ class TariffProfileMapper:
 
         return TariffProfileListResponse(
             href=href,
+            pollRate=tp_poll_rate,
             all_=total_tariffs,
             results=tariffs_count,
             TariffProfile=tariff_profiles,
@@ -382,6 +384,7 @@ class TimeTariffIntervalMapper:
         now: datetime,
         rates: Sequence[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]],
         total: int,
+        tti_poll_rate: int,
     ) -> TimeTariffIntervalListResponse:
         """Creates a TimeTariffIntervalListResponse for a single set of rates."""
 
@@ -400,6 +403,7 @@ class TimeTariffIntervalMapper:
 
         return TimeTariffIntervalListResponse(
             href=href,
+            pollRate=tti_poll_rate,
             subscribable=SubscribableType.resource_supports_non_conditional_subscriptions,
             all_=total,
             results=len(rates),

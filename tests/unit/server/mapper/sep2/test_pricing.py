@@ -88,12 +88,13 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: Optional[in
     tariff_component_counts = [456, 789]
     tariff_rate_counts = [987, 654]
     tariff_count = 123
+    poll_rate = 7164814
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1001, optional_is_none=optional_is_none, href_prefix="/fake/prefix"
     )
 
     mapped = TariffProfileMapper.map_to_list_response(
-        scope, zip(tariffs, tariff_component_counts, tariff_rate_counts), tariff_count, fsa_id
+        scope, zip(tariffs, tariff_component_counts, tariff_rate_counts), tariff_count, fsa_id, poll_rate
     )
     assert isinstance(mapped, TariffProfileListResponse)
 
@@ -105,6 +106,7 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: Optional[in
 
     assert mapped.all_ == tariff_count
     assert mapped.results == 2
+    assert mapped.pollRate == poll_rate
     assert_list_type(TariffProfileResponse, mapped.TariffProfile, 2)
     assert all([f"/{scope.display_site_id}" in tp.href for tp in mapped.TariffProfile])
     assert all([f"/{scope.display_site_id}" in tp.RateComponentListLink.href for tp in mapped.TariffProfile])
@@ -354,8 +356,12 @@ def test_time_tariff_interval_map_to_list_response(tariff_component_id: Optional
     now = datetime(2022, 1, 5, tzinfo=timezone.utc)
     tariff_id = 198774112
     total = 63251
+    poll_rate = 9871414
 
-    mapped = TimeTariffIntervalMapper.map_to_list_response(scope, tariff_id, tariff_component_id, now, rates, total)
+    mapped = TimeTariffIntervalMapper.map_to_list_response(
+        scope, tariff_id, tariff_component_id, now, rates, total, poll_rate
+    )
+    assert mapped.pollRate == poll_rate
     assert mapped.all_ == total
     assert mapped.results == len(rates)
     assert mapped.href is not None and mapped.href.startswith("/pfx")

@@ -14,7 +14,9 @@ from envoy.server.model.subscription import SubscriptionResource
 class ConfigManager:
 
     @staticmethod
-    async def update_current_config(session: AsyncSession, updated_values: RuntimeServerConfigRequest) -> None:
+    async def update_current_config(  # noqa: C901
+        session: AsyncSession, updated_values: RuntimeServerConfigRequest
+    ) -> None:
         """Applies updated_values to the current server configuration. Will only set the non None values"""
         now = utc_now()
         existing_db_config = await select_server_config(session)
@@ -48,6 +50,12 @@ class ConfigManager:
 
         if updated_values.mup_postrate_seconds is not None:
             existing_db_config.mup_postrate_seconds = updated_values.mup_postrate_seconds
+
+        if updated_values.tp_pollrate_seconds is not None:
+            existing_db_config.tp_pollrate_seconds = updated_values.tp_pollrate_seconds
+
+        if updated_values.tti_pollrate_seconds is not None:
+            existing_db_config.tti_pollrate_seconds = updated_values.tti_pollrate_seconds
 
         if updated_values.site_control_pow10_encoding is not None:
             existing_db_config.site_control_pow10_encoding = updated_values.site_control_pow10_encoding
@@ -85,9 +93,10 @@ class ConfigManager:
             derl_pollrate_seconds=config.derl_pollrate_seconds,
             derpl_pollrate_seconds=config.derpl_pollrate_seconds,
             mup_postrate_seconds=config.mup_postrate_seconds,
+            tp_pollrate_seconds=config.tp_pollrate_seconds,
+            tti_pollrate_seconds=config.tti_pollrate_seconds,
             site_control_pow10_encoding=config.site_control_pow10_encoding,
             disable_edev_registration=config.disable_edev_registration,
-            tariff_pow10_encoding=-4,  # Currently held constant
             changed_time=changed_time,
             created_time=created_time,
         )
