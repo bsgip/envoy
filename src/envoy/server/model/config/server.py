@@ -11,5 +11,8 @@ class RuntimeServerConfig:
     derpl_pollrate_seconds: int = 60
     derl_pollrate_seconds: int = 60
     mup_postrate_seconds: int = 60
+    tp_pollrate_seconds: int = 900
+    tti_pollrate_seconds: int = 300
+
     site_control_pow10_encoding: int = 0
     disable_edev_registration: bool = False

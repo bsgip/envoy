@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from assertical.asserts.type import assert_list_type
+from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.metering import ReadingType
 from envoy_schema.server.schema.sep2.pricing import (
@@ -20,7 +21,10 @@ from envoy_schema.server.schema.sep2.pricing import (
 )
 from freezegun import freeze_time
 from httpx import AsyncClient
+from sqlalchemy import delete
 
+from envoy.server.manager.time import utc_now
+from envoy.server.model.server import RuntimeServerConfig
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.integration.integration_server import cert_header
 from tests.integration.request import build_paging_params
@@ -30,6 +34,29 @@ from tests.integration.response import assert_error_response, assert_response_he
 @pytest.fixture
 def agg_1_headers():
     return {cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("db_poll_rate, expected_poll_rate", [(None, 900), (300, 300), (3600, 3600)])
+async def test_get_tariff_profile_list_poll_rate(
+    pg_base_config, client: AsyncClient, agg_1_headers, db_poll_rate: Optional[int], expected_poll_rate: int
+):
+
+    # Preload the DB with the RunTimeServerConfig
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(delete(RuntimeServerConfig))
+        session.add(RuntimeServerConfig(changed_time=utc_now(), tp_pollrate_seconds=db_poll_rate))
+        await session.commit()
+
+    path = uri.TariffProfileFSAListUri.format(site_id=1, fsa_id=1)
+    response = await client.get(path, headers=agg_1_headers)
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    parsed_response: TariffProfileListResponse = TariffProfileListResponse.from_xml(body)
+    assert isinstance(parsed_response.pollRate, int)
+    assert parsed_response.pollRate == expected_poll_rate
 
 
 @pytest.mark.anyio
@@ -318,6 +345,39 @@ async def test_get_ratecomponent_reading_type(
         assert parsed_response.uom == expected_uom
         assert parsed_response.powerOfTenMultiplier == expected_pow10
         assert parsed_response.flowDirection == expected_direction
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("db_poll_rate, expected_poll_rate", [(None, 300), (300, 300), (3600, 3600)])
+async def test_get_tti_ctti_list_poll_rate(
+    pg_base_config, client: AsyncClient, agg_1_headers, db_poll_rate: Optional[int], expected_poll_rate: int
+):
+
+    # Preload the DB with the RunTimeServerConfig
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(delete(RuntimeServerConfig))
+        session.add(RuntimeServerConfig(changed_time=utc_now(), tti_pollrate_seconds=db_poll_rate))
+        await session.commit()
+
+    # Check TimeTariffIntervalList
+    path = uri.TimeTariffIntervalListUri.format(site_id=1, tariff_id=1, rate_component_id=1)
+    response = await client.get(path, headers=agg_1_headers)
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+    tti_response: TimeTariffIntervalListResponse = TimeTariffIntervalListResponse.from_xml(body)
+    assert isinstance(tti_response.pollRate, int)
+    assert tti_response.pollRate == expected_poll_rate
+
+    # Check CombinedTimeTariffIntervalList
+    path = uri.CombinedTimeTariffIntervalListUri.format(site_id=1, tariff_id=1)
+    response = await client.get(path, headers=agg_1_headers)
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+    ctti_response: TimeTariffIntervalListResponse = TimeTariffIntervalListResponse.from_xml(body)
+    assert isinstance(ctti_response.pollRate, int)
+    assert ctti_response.pollRate == expected_poll_rate
 
 
 @pytest.mark.anyio

@@ -27,6 +27,7 @@ from envoy.server.crud.pricing import (
 )
 from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.exception import NotFoundError
+from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.sep2.pricing import (
     ConsumptionTariffIntervalMapper,
@@ -87,8 +88,15 @@ class TariffProfileManager:
             )
             tariff_rate_counts.append(total_rates)
 
+        # fetch runtime server config
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
+
         return TariffProfileMapper.map_to_list_response(
-            scope, zip(tariffs, tariff_component_counts, tariff_rate_counts), tariff_count, fsa_id
+            scope,
+            zip(tariffs, tariff_component_counts, tariff_rate_counts),
+            tariff_count,
+            fsa_id,
+            config.tp_pollrate_seconds,
         )
 
 
@@ -191,8 +199,11 @@ class TimeTariffIntervalManager:
             session, tariff_id, rate_component_id, existing_site.site_id, now, after
         )
 
+        # fetch runtime server config
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
+
         return TimeTariffIntervalMapper.map_to_list_response(
-            scope, tariff_id, rate_component_id, now, rates, total_rates
+            scope, tariff_id, rate_component_id, now, rates, total_rates, config.tti_pollrate_seconds
         )
 
     @staticmethod
@@ -219,7 +230,12 @@ class TimeTariffIntervalManager:
             session, tariff_id, None, existing_site.site_id, now, after
         )
 
-        return TimeTariffIntervalMapper.map_to_list_response(scope, tariff_id, None, now, rates, total_rates)
+        # fetch runtime server config
+        config = await RuntimeServerConfigManager.fetch_current_config(session)
+
+        return TimeTariffIntervalMapper.map_to_list_response(
+            scope, tariff_id, None, now, rates, total_rates, config.tti_pollrate_seconds
+        )
 
     @staticmethod
     async def fetch_time_tariff_interval(
