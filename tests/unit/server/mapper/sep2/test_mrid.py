@@ -164,13 +164,20 @@ def test_encode_default_doe_mrid():
     scope1 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=123)
     scope2 = generate_class_instance(BaseRequestScope, seed=1, iana_pen=456)
 
-    scg_default = generate_class_instance(SiteControlGroupDefault)
-    mrid1 = MridMapper.encode_default_doe_mrid(scope1, scg_default)
-    assert_mrid(mrid1)
-    assert mrid1 == MridMapper.encode_default_doe_mrid(scope1, scg_default), "Mrid should be stable"
-    assert mrid1 != MridMapper.encode_default_doe_mrid(scope2, scg_default), "PEN number should affect things"
+    scg_default_group1 = generate_class_instance(SiteControlGroupDefault, site_control_group_id=1)
+    scg_default_group2 = generate_class_instance(SiteControlGroupDefault, site_control_group_id=2)
+    scg_default_group3 = generate_class_instance(
+        SiteControlGroupDefault, site_control_group_id=MAX_INT_32, site_control_group_default_id=MAX_INT_32
+    )
 
-    assert decode_mrid_type(mrid1) == MridType.DEFAULT_DOE
+    all_generated_mrids = []
+    for scope in [scope1, scope2]:
+        assert_and_append_mrid(MridMapper.encode_default_doe_mrid(scope, scg_default_group1), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_default_doe_mrid(scope, scg_default_group2), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_default_doe_mrid(scope, scg_default_group3), all_generated_mrids)
+
+    assert len(all_generated_mrids) == len(set(all_generated_mrids)), "Each MRID should be unique"
+    assert all(decode_mrid_type(m) == MridType.DEFAULT_DOE for m in all_generated_mrids)
 
 
 def test_encode_doe_program_mrid():

@@ -78,6 +78,21 @@ async def fetch_site_reading_type_for_mrid(
     return resp.scalar_one_or_none()
 
 
+async def fetch_any_site_reading_type_for_mrids_other_site(
+    session: AsyncSession, aggregator_id: int, site_id: int, mrids: list[str]
+) -> Optional[SiteReadingType]:
+    """Returns the first SiteReadingType whose mrid is in mrids but belongs to a different site.
+    Returns None if all mrids are unowned or owned by site_id."""
+    stmt = select(SiteReadingType).where(
+        (SiteReadingType.aggregator_id == aggregator_id)
+        & (SiteReadingType.mrid.in_(mrids))
+        & (SiteReadingType.site_id != site_id)
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalars().first()
+
+
 async def _fetch_site_reading_type_groups(
     only_count: bool,
     session: AsyncSession,

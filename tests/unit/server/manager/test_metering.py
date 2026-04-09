@@ -131,6 +131,59 @@ async def test_create_or_update_mirror_usage_point_missing_reading_type(pg_base_
 
 
 @pytest.mark.anyio
+async def test_create_or_update_mirror_usage_point_mmr_mrid_owned_by_other_site(pg_base_config):
+    """Submitting a MUP whose MMR mRID is already owned by a different site should be rejected with NotFoundError"""
+    shared_mmr_mrid = "aabbccdd11223344aabbccdd11223344"
+
+    # Site 1 (lfdi 1a1a...) creates a MUP with the shared mRID
+    mmr_site1 = generate_class_instance(
+        MirrorMeterReading,
+        mRID=shared_mmr_mrid,
+        readingType=generate_class_instance(ReadingType, seed=1),
+        reading=None,
+    )
+    mup_site1 = generate_class_instance(
+        MirrorUsagePoint,
+        mRID="mupsite1mrid000000000000000000ab",
+        roleFlags="12",
+        deviceLFDI="1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        mirrorMeterReadings=[mmr_site1],
+    )
+    async with generate_async_session(pg_base_config) as session:
+        await MirrorMeteringManager.create_or_update_mirror_usage_point(
+            session,
+            generate_class_instance(
+                MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, aggregator_id=1, site_id=None
+            ),
+            mup_site1,
+        )
+
+    # Site 2 (lfdi 2b2b...) tries to create a MUP reusing the same MMR mRID — must be rejected
+    mmr_site2 = generate_class_instance(
+        MirrorMeterReading,
+        mRID=shared_mmr_mrid,
+        readingType=generate_class_instance(ReadingType, seed=2),
+        reading=None,
+    )
+    mup_site2 = generate_class_instance(
+        MirrorUsagePoint,
+        mRID="mupsite2mrid000000000000000000cd",
+        roleFlags="12",
+        deviceLFDI="2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+        mirrorMeterReadings=[mmr_site2],
+    )
+    async with generate_async_session(pg_base_config) as session:
+        with pytest.raises(NotFoundError):
+            await MirrorMeteringManager.create_or_update_mirror_usage_point(
+                session,
+                generate_class_instance(
+                    MUPRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE, aggregator_id=1, site_id=None
+                ),
+                mup_site2,
+            )
+
+
+@pytest.mark.anyio
 async def test_create_or_update_mirror_usage_point_created_no_readings(pg_base_config):
     """Submitting a new MUP should insert everything associated with that mup under a new group ID (even if there
     are no readings)"""
