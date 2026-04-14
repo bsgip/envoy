@@ -30,7 +30,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffComponent, ArchiveTariffGeneratedRate
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import TariffComponent, TariffGeneratedRate
 
 
 @pytest.mark.anyio
@@ -301,6 +301,51 @@ async def test_delete_tariff_generated_rate(
                 .select_from(ArchiveTariffGeneratedRate)
                 .where(ArchiveTariffGeneratedRate.tariff_generated_rate_id == tariff_generated_rate_id)
                 .where(ArchiveTariffGeneratedRate.deleted_time.is_not(None))
+            )
+        ).scalar_one()
+
+        if exists:
+            assert after_count == 0
+            assert archive_count == 1
+        else:
+            assert after_count == 0
+            assert archive_count == 0
+
+
+@pytest.mark.parametrize(
+    "tariff_component_id, expected_status",
+    [(1, HTTPStatus.NO_CONTENT), (4, HTTPStatus.NO_CONTENT), (99, HTTPStatus.NO_CONTENT)],
+)
+@pytest.mark.anyio
+async def test_delete_tariff_component(
+    pg_base_config, admin_client_auth: AsyncClient, tariff_component_id: int, expected_status: HTTPStatus
+):
+    async with generate_async_session(pg_base_config) as session:
+        stmt = (
+            select(func.count())
+            .select_from(TariffComponent)
+            .where(TariffComponent.tariff_component_id == tariff_component_id)
+        )
+        resp = await session.execute(stmt)
+        exists = (resp.scalar_one()) == 1
+
+    resp = await admin_client_auth.delete(TariffComponentUpdateUri.format(tariff_component_id=tariff_component_id))
+    assert resp.status_code == expected_status
+
+    async with generate_async_session(pg_base_config) as session:
+        after_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(TariffComponent)
+                .where(TariffComponent.tariff_component_id == tariff_component_id)
+            )
+        ).scalar_one()
+        archive_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(ArchiveTariffComponent)
+                .where(ArchiveTariffComponent.tariff_component_id == tariff_component_id)
+                .where(ArchiveTariffComponent.deleted_time.is_not(None))
             )
         ).scalar_one()
 

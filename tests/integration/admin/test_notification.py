@@ -588,6 +588,154 @@ async def test_update_tariff_component_with_active_subscription(
 
 
 @pytest.mark.anyio
+async def test_delete_tariff_component_with_active_subscription(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests deleting tariff components with an active subscription generates notifications via the MockedAsyncClient"""
+
+    tariff_3_tc_id = 99  # We need a TariffComponent under Tariff 3 - this will be its ID
+
+    # Create a subscription to actually pickup these changes
+    #
+    # We will create three subscriptions
+    #   1) Subscribed to RateComponents on tariff 1 for site 1
+    #   2) Subscribed to RateComponents on tariff 2 for site 1
+    #   3) Subscribed to RateComponents on tariff 1 for site 2
+    #   4) Subscribed to TimeTariffIntervals under RateComponent 1
+    #   5) Subscribed to CombinedTimeTariffIntervals under Tariff 1
+    subscription1_uri = "http://example1:541/uri?a=b"
+    subscription2_uri = "http://example2:542/uri?a=b"
+    subscription3_uri = "http://example3:543/uri?a=b"
+    subscription4_uri = "http://example4:544/uri?a=b"
+    subscription5_uri = "http://example5:545/uri?a=b"
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(delete(Subscription))
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_COMPONENT,
+                resource_id=1,
+                resource_parent_id=None,
+                scoped_site_id=1,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_COMPONENT,
+                resource_id=2,
+                resource_parent_id=None,
+                scoped_site_id=1,
+                notification_uri=subscription2_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_COMPONENT,
+                resource_id=1,
+                resource_parent_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription3_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                resource_id=1,
+                resource_parent_id=1,
+                scoped_site_id=1,
+                notification_uri=subscription4_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
+                resource_id=1,
+                resource_parent_id=None,
+                scoped_site_id=1,
+                notification_uri=subscription5_uri,
+                entity_limit=10,
+            )
+        )
+
+        # We want a tariff component under Tariff #3 that we know will avoid notifications
+        tariff_3 = (await session.execute(select(Tariff).where(Tariff.tariff_id == 3))).scalar_one()
+        session.add(generate_class_instance(TariffComponent, tariff=tariff_3, tariff_component_id=tariff_3_tc_id))
+
+        await session.commit()
+
+    resp = await admin_client_auth.delete(TariffComponentUpdateUri.format(tariff_component_id=1))
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    # Mismatches on tariff component id - no notifications
+    resp = await admin_client_auth.delete(TariffComponentUpdateUri.format(tariff_component_id=99))
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    await asyncio.sleep(1)  # let any trailing notifications have a chance to arrive
+
+    # There will be 1 rate notification going out - one for sub1 and sub3 (matching tc_1)
+    # RateComponents are NOT site scoped so they fire for all sites
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription3_uri)] == 1
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+
+    # Do a really simple content check on the outgoing XML to ensure the notifications contain the expected
+    # entities for each subscription
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription1_uri
+                and "<status>4</status>" in r.content
+                and "/edev/1/tp/1/rc/1" in r.content
+                and "/edev/2/tp/1/rc/1" not in r.content
+            ]
+        )
+        == 1
+    ), "Only the tc_1 RateComponent should be sent out via notification for sub1"
+    assert (
+        len(
+            [
+                r
+                for r in notifications_enabled.logged_requests
+                if r.uri == subscription3_uri
+                and "<status>4</status>" in r.content
+                and "/edev/1/tp/1/rc/1" not in r.content
+                and "/edev/2/tp/1/rc/1" in r.content
+            ]
+        )
+        == 1
+    ), "Only the tc_1 RateComponent should be sent out via notification for sub3"
+
+
+@pytest.mark.anyio
 async def test_create_tariff_with_active_subscription(
     admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
 ):

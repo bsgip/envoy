@@ -16,6 +16,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.pricing import (
+    cancel_and_delete_tariff_component,
     cancel_tariff_generated_rate,
     insert_many_tariff_genrate,
     insert_single_tariff,
@@ -112,6 +113,19 @@ class TariffComponentManager:
         await update_single_tariff_component(session, tc_model, changed_time)
         await session.commit()
 
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_COMPONENT, changed_time)
+
+    @staticmethod
+    async def delete_tariff_component(session: AsyncSession, tariff_component_id: int) -> None:
+        """Delete a singular tariff component entry from the DB (and any active prices) - will archive"""
+
+        changed_time = utc_now()
+        await cancel_and_delete_tariff_component(session, tariff_component_id, changed_time)
+        await session.commit()
+
+        # We are deliberately NOT issuing a cancel notification for any child rates - that could potentially be massive
+        # The advice we (currently) have is to delete any active rates manually (which will raise notifications) before
+        # calling this.
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_COMPONENT, changed_time)
 
 
