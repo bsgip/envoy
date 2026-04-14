@@ -119,6 +119,30 @@ async def select_single_tariff_generated_rate(
     return resp.scalar_one_or_none()
 
 
+async def cancel_and_delete_tariff_component(
+    session: AsyncSession, tariff_component_id: int, deleted_time: datetime
+) -> None:
+    """Deletes the specified TariffComponent and ALL descendent TariffGeneratedRate into the archive and
+    marks them all with the specified deleted_time
+
+    If the record DNE - this will have no effect."""
+    await delete_rows_into_archive(
+        session,
+        TariffGeneratedRate,
+        ArchiveTariffGeneratedRate,
+        deleted_time,
+        lambda q: q.where(TariffGeneratedRate.tariff_component_id == tariff_component_id),
+    )
+
+    await delete_rows_into_archive(
+        session,
+        TariffComponent,
+        ArchiveTariffComponent,
+        deleted_time,
+        lambda q: q.where(TariffComponent.tariff_component_id == tariff_component_id),
+    )
+
+
 async def cancel_tariff_generated_rate(
     session: AsyncSession, tariff_generated_rate_id: int, deleted_time: datetime
 ) -> None:

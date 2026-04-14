@@ -2,8 +2,10 @@ import asyncio
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from envoy_schema.admin.schema.site_reading import CSIPAusSiteReadingPageResponse, CSIPAusSiteReadingUnit
 from envoy_schema.server.schema.sep2.types import UomType
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from envoy.admin.crud.site import select_single_site_no_scoping
 from envoy.admin.crud.site_reading import (
     count_site_readings_for_site_and_time,
@@ -11,8 +13,6 @@ from envoy.admin.crud.site_reading import (
     select_site_readings_for_site_and_time,
 )
 from envoy.admin.mapper.site_reading import AdminSiteReadingMapper
-from envoy_schema.admin.schema.site_reading import CSIPAusSiteReadingUnit, CSIPAusSiteReadingPageResponse
-
 from envoy.server.model.site import Site
 
 

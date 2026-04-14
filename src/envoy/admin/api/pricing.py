@@ -128,6 +128,21 @@ async def update_tariff_component(tariff_component_id: int, tariff_component: Ta
         raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found")
 
 
+@router.delete(TariffComponentUpdateUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
+async def delete_tariff_component(tariff_component_id: int) -> None:
+    """Deletes (and archives) a singular TariffComponent - raising pub/sub notifications as required.
+
+    Any existing TariffGeneratedRates will be archived too
+
+    Path Param:
+        tariff_component_id: integer ID of the desired tariff component resource.
+    """
+    try:
+        await TariffComponentManager.delete_tariff_component(db.session, tariff_component_id)
+    except NoResultFound as exc:
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found")
+
+
 @router.post(TariffComponentCreateUri, status_code=HTTPStatus.CREATED, response_model=BatchCreateResponse)
 async def create_tariff_component(tariff_component: TariffComponentRequest, response: Response) -> BatchCreateResponse:
     """Creates a singular tariff component. The location (/tariff_component/{tariff_id}) of the created resource is

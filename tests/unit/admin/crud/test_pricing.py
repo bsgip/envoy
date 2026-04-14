@@ -10,6 +10,7 @@ from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import func, select
 
 from envoy.admin.crud.pricing import (
+    cancel_and_delete_tariff_component,
     cancel_tariff_generated_rate,
     insert_many_tariff_genrate,
     insert_single_tariff,
@@ -341,3 +342,56 @@ async def test_cancel_tariff_generated_rate(pg_base_config, tariff_generated_rat
             assert rec.tariff_generated_rate_id == tariff_generated_rate_id
             assert rec.deleted_time == deleted_time
             assert rec.price_pow10_encoded == expected_deleted_price
+
+
+@pytest.mark.parametrize(
+    "tariff_component_id, expected_deleted_prices",
+    [
+        (99, None),
+        (1, [1111, 2222, 3333, 4444, 5555]),
+        (2, [6666]),
+        (3, []),
+    ],
+)
+@pytest.mark.anyio
+async def test_cancel_and_delete_tariff_component(
+    pg_base_config, tariff_component_id: int, expected_deleted_prices: Optional[list[int]]
+):
+    deleted_time = datetime(2028, 4, 1, tzinfo=timezone.utc)
+    async with generate_async_session(pg_base_config) as session:
+        await cancel_and_delete_tariff_component(session, tariff_component_id, deleted_time)
+
+        # Record not in active table anymore
+        assert (
+            await session.execute(
+                select(func.count())
+                .select_from(TariffComponent)
+                .where(TariffComponent.tariff_component_id == tariff_component_id)
+            )
+        ).scalar_one() == 0
+
+        # Record prices not in active table anymore
+        if expected_deleted_prices:
+            assert (
+                await session.execute(
+                    select(func.count())
+                    .select_from(TariffGeneratedRate)
+                    .where(TariffGeneratedRate.price_pow10_encoded.in_(expected_deleted_prices))
+                )
+            ).scalar_one() == 0
+
+        # Record archived correctly (if it existed)
+        archive_tcs = (await session.execute(select(ArchiveTariffComponent))).scalars().all()
+        archive_rates = (await session.execute(select(ArchiveTariffGeneratedRate))).scalars().all()
+        if expected_deleted_prices is None:
+            assert len(archive_tcs) == 0
+            assert len(archive_rates) == 0
+        else:
+            assert len(archive_tcs) == 1
+            rec = archive_tcs[0]
+            assert rec.tariff_component_id == tariff_component_id
+            assert rec.deleted_time == deleted_time
+
+            assert len(archive_rates) == len(expected_deleted_prices)
+            assert sorted(expected_deleted_prices) == sorted([a.price_pow10_encoded for a in archive_rates])
+            assert all([a.deleted_time == deleted_time for a in archive_rates])
