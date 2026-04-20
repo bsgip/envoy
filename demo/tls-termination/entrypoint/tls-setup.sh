@@ -11,7 +11,7 @@ fi
 cd "$CERTS_DIR"
 
 # Check if CA and client certificates exist, generate if not
-if ! [ -f "$CERTS_DIR/testca.crt" ] || ! [ -f "$CERTS_DIR/testaggregator.key" ] || ! [ -f "$CERTS_DIR/testaggregator.crt" ] || ! [ -f "$CERTS_DIR/testdevice1.key" ] || ! [ -f "$CERTS_DIR/testdevice1.crt" ] || ! [ -f "$CERTS_DIR/testdevice2.key" ] || ! [ -f "$CERTS_DIR/testdevice2.crt" ]; then
+if ! [ -f "$CERTS_DIR/testca.crt" ] || ! [ -f "$CERTS_DIR/testaggregator.key" ] || ! [ -f "$CERTS_DIR/testaggregator.crt" ] || ! [ -f "$CERTS_DIR/testaggregator2.key" ] || ! [ -f "$CERTS_DIR/testaggregator2.crt" ] || ! [ -f "$CERTS_DIR/testdevice1.key" ] || ! [ -f "$CERTS_DIR/testdevice1.crt" ] || ! [ -f "$CERTS_DIR/testdevice2.key" ] || ! [ -f "$CERTS_DIR/testdevice2.crt" ]; then
     # Generate test CA
     openssl genrsa -out "$CERTS_DIR/testca.key" 4096
     openssl req -new -x509 -days 9999 -key "$CERTS_DIR/testca.key" -out "$CERTS_DIR/testca.crt" \
@@ -26,6 +26,16 @@ if ! [ -f "$CERTS_DIR/testca.crt" ] || ! [ -f "$CERTS_DIR/testaggregator.key" ] 
     openssl pkcs12 -export -in "$CERTS_DIR/testaggregator.crt" -inkey "$CERTS_DIR/testaggregator.key" \
         -out "$CERTS_DIR/testaggregator.p12" -passout pass:
     rm "$CERTS_DIR/testaggregator.csr"
+
+    # Setup second test aggregator keypair
+    openssl genrsa -out "$CERTS_DIR/testaggregator2.key" 2048
+    openssl req -new -key "$CERTS_DIR/testaggregator2.key" -out "$CERTS_DIR/testaggregator2.csr" \
+        -subj "/C=AU/ST=ACT/L=CBR/O=TEST_ORG_2/CN=TEST_AGG2"
+    openssl x509 -req -days 9999 -in "$CERTS_DIR/testaggregator2.csr" -CA "$CERTS_DIR/testca.crt" \
+        -CAkey "$CERTS_DIR/testca.key" -set_serial 04 -out "$CERTS_DIR/testaggregator2.crt"
+    openssl pkcs12 -export -in "$CERTS_DIR/testaggregator2.crt" -inkey "$CERTS_DIR/testaggregator2.key" \
+        -out "$CERTS_DIR/testaggregator2.p12" -passout pass:
+    rm "$CERTS_DIR/testaggregator2.csr"
 
     # Setup test device (non-aggregator) keypair (device1)
     openssl genrsa -out "$CERTS_DIR/testdevice1.key" 2048
