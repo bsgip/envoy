@@ -7,7 +7,7 @@ docker build --pull --no-cache -t envoy:latest -f ../Dockerfile.server ../
 
 HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose down -v
 
-HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up -d
+HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up -d --build
 
 echo ""
 echo "Stack is up. Smoke test with:"
