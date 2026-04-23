@@ -137,5 +137,5 @@ class CaseInsensitiveDict(abc.MutableMapping, Generic[ValueType]):
 # IEEE 2030.5 integer type bounds used for inbound payload validation
 SEP2_INT8_MIN = -128
 SEP2_INT8_MAX = 127
-SEP2_INT48_MIN = -(2**47)    # -140_737_488_355_328
+SEP2_INT48_MIN = -(2**47)  # -140_737_488_355_328
 SEP2_INT48_MAX = (2**47) - 1  # 140_737_488_355_327

@@ -656,7 +656,7 @@ def _make_reading(value: Optional[int]) -> Reading:
     [
         SEP2_INT48_MAX + 1,
         SEP2_INT48_MIN - 1,
-        3_000_000_000_000_000,   # value from S-ALL-47 step 3B
+        3_000_000_000_000_000,  # value from S-ALL-47 step 3B
         -3_000_000_000_000_000,
     ],
 )
