@@ -100,7 +100,7 @@ async def test_create_or_update_mirror_usage_point_missing_reading_type(pg_base_
     mmr1 = generate_class_instance(
         MirrorMeterReading,
         mRID="111abc",
-        readingType=generate_class_instance(ReadingType, seed=404),
+        readingType=generate_class_instance(ReadingType, seed=404, powerOfTenMultiplier=3),
         reading=None,
     )
 
@@ -191,13 +191,13 @@ async def test_create_or_update_mirror_usage_point_created_no_readings(pg_base_c
     mmr1 = generate_class_instance(
         MirrorMeterReading,
         mRID="111abc",
-        readingType=generate_class_instance(ReadingType, seed=404),
+        readingType=generate_class_instance(ReadingType, seed=404, powerOfTenMultiplier=3),
     )
 
     mmr2 = generate_class_instance(
         MirrorMeterReading,
         mRID="222abc",
-        readingType=generate_class_instance(ReadingType, seed=505),
+        readingType=generate_class_instance(ReadingType, seed=505, powerOfTenMultiplier=3),
     )
 
     mup = generate_class_instance(
@@ -283,14 +283,14 @@ async def test_create_or_update_mirror_usage_point_created_with_readings(pg_base
     mmr1 = generate_class_instance(
         MirrorMeterReading,
         mRID="111abc",
-        readingType=generate_class_instance(ReadingType, seed=404),
+        readingType=generate_class_instance(ReadingType, seed=404, powerOfTenMultiplier=3),
         reading=reading1,
     )
 
     mmr2 = generate_class_instance(
         MirrorMeterReading,
         mRID="222abc",
-        readingType=generate_class_instance(ReadingType, seed=505),
+        readingType=generate_class_instance(ReadingType, seed=505, powerOfTenMultiplier=3),
         mirrorReadingSets=[generate_class_instance(MirrorReadingSet, readings=[reading2, reading3])],
     )
 
@@ -422,7 +422,7 @@ async def test_create_or_update_mirror_usage_point_update(
     mmr_new = generate_class_instance(
         MirrorMeterReading,
         mRID=force_case(force_upper_case, "abc123DEF"),
-        readingType=generate_class_instance(ReadingType, seed=404),
+        readingType=generate_class_instance(ReadingType, seed=404, powerOfTenMultiplier=3),
         reading=reading2,
     )
 
@@ -430,7 +430,7 @@ async def test_create_or_update_mirror_usage_point_update(
     mmr5 = generate_class_instance(
         MirrorMeterReading,
         mRID=force_case(force_upper_case, "50000000000000000000000000000Abc"),
-        readingType=generate_class_instance(ReadingType, seed=505),
+        readingType=generate_class_instance(ReadingType, seed=505, powerOfTenMultiplier=3),
         reading=reading3,
     )
 
