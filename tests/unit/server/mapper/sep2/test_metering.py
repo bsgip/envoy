@@ -27,7 +27,13 @@ from envoy_schema.server.schema.sep2.types import (
 
 from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import CaseInsensitiveDict
+from envoy.server.mapper.common import (
+    CaseInsensitiveDict,
+    SEP2_INT8_MAX,
+    SEP2_INT8_MIN,
+    SEP2_INT48_MAX,
+    SEP2_INT48_MIN,
+)
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.metering import (
     MirrorMeterReadingMapper,
@@ -263,7 +269,7 @@ def test_MirrorUsagePointMapper_map_from_request():
     role_flags = RoleFlagsType.IS_PEV
     mmr_all_set = generate_class_instance(MirrorMeterReading, seed=202)
     mmr_all_set.readingType = generate_class_instance(
-        ReadingType, seed=303, optional_is_none=False, uom=UomType.APPARENT_POWER_VA
+        ReadingType, seed=303, optional_is_none=False, uom=UomType.APPARENT_POWER_VA, powerOfTenMultiplier=3
     )
 
     mmr_optional = generate_class_instance(MirrorMeterReading, seed=505)
@@ -633,3 +639,81 @@ def test_MirrorMeterReadingMapper_reading_round_trip():
         reading_roundtrip,
         ignored_properties=set(["href", "type", "touTier", "subscribable", "consumptionBlock"]),
     )
+
+
+def _make_reading(value: Optional[int]) -> Reading:
+    reading: Reading = generate_class_instance(Reading, optional_is_none=True)
+    reading.timePeriod = generate_class_instance(DateTimeIntervalType)
+    reading.timePeriod.start = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
+    reading.timePeriod.duration = 300
+    reading.qualityFlags = f"{QualityFlagsType.NONE:0X}"
+    reading.value = value
+    return reading
+
+
+@pytest.mark.parametrize(
+    "bad_value",
+    [
+        SEP2_INT48_MAX + 1,
+        SEP2_INT48_MIN - 1,
+        3_000_000_000_000_000,   # value from S-ALL-47 step 3B
+        -3_000_000_000_000_000,
+    ],
+)
+def test_MirrorMeterReadingMapper_map_reading_from_request_value_overflow(bad_value: int):
+    """Reading.value outside int48 range must be rejected"""
+    with pytest.raises(InvalidMappingError):
+        MirrorMeterReadingMapper.map_reading_from_request(_make_reading(bad_value), 1, datetime.now())
+
+
+@pytest.mark.parametrize(
+    "ok_value",
+    [SEP2_INT48_MAX, SEP2_INT48_MIN, 100_000, 0, None],
+)
+def test_MirrorMeterReadingMapper_map_reading_from_request_value_in_range(ok_value: Optional[int]):
+    """Reading.value within int48 range (and None) must be accepted"""
+    result = MirrorMeterReadingMapper.map_reading_from_request(_make_reading(ok_value), 1, datetime.now())
+    assert result.value == ok_value
+
+
+def _make_mmr_with_multiplier(multiplier: Optional[int]) -> MirrorMeterReading:
+    mmr = generate_class_instance(MirrorMeterReading, mRID="abc123")
+    mmr.readingType = generate_class_instance(ReadingType, uom=UomType.REAL_POWER_WATT, optional_is_none=False)
+    mmr.readingType.powerOfTenMultiplier = multiplier
+    return mmr
+
+
+def _map_mup(mmr: MirrorMeterReading) -> SiteReadingType:
+    return MirrorUsagePointMapper.map_from_request(
+        mmr,
+        aggregator_id=1,
+        site_id=2,
+        group_id=3,
+        group_mrid="grp1",
+        group_description=None,
+        group_version=None,
+        group_status=None,
+        role_flags=RoleFlagsType.NONE,
+        changed_time=datetime.now(),
+    )
+
+
+@pytest.mark.parametrize(
+    "bad_mult",
+    [SEP2_INT8_MAX + 1, SEP2_INT8_MIN - 1, 1000, -1000],
+)
+def test_MirrorUsagePointMapper_map_from_request_bad_multiplier(bad_mult: int):
+    """powerOfTenMultiplier outside int8 range must be rejected"""
+    with pytest.raises(InvalidMappingError):
+        _map_mup(_make_mmr_with_multiplier(bad_mult))
+
+
+@pytest.mark.parametrize(
+    "ok_mult",
+    [SEP2_INT8_MAX, SEP2_INT8_MIN, 0, 1, None],
+)
+def test_MirrorUsagePointMapper_map_from_request_ok_multiplier(ok_mult: Optional[int]):
+    """powerOfTenMultiplier within int8 range (and None) must be accepted"""
+    result = _map_mup(_make_mmr_with_multiplier(ok_mult))
+    expected = ok_mult if ok_mult is not None else 0
+    assert result.power_of_ten_multiplier == expected
