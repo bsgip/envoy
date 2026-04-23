@@ -1,4 +1,4 @@
-from typing import Sequence, Union
+from typing import Optional, Sequence, Union
 
 import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.sep2.identification import ListLink
@@ -102,17 +102,25 @@ class ResponseMapper:
 
     @staticmethod
     def map_to_doe_response(
-        scope: BaseRequestScope, doe_response: DynamicOperatingEnvelopeResponse
+        scope: BaseRequestScope,
+        doe_response: DynamicOperatingEnvelopeResponse,
+        doe: Optional[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
     ) -> DERControlResponse:
         """Generates a sep2 DERControlResponse for a given DynamicOperatingEnvelopeResponse.
 
         doe_response: Will need the site relationship populated"""
+
+        if doe is not None and doe.display_id is not None:
+            doe_mrid = MridMapper.encode_doe_mrid(scope, True, doe.display_id)
+        else:
+            doe_mrid = MridMapper.encode_doe_mrid(scope, False, doe_response.dynamic_operating_envelope_id_snapshot)
+
         return DERControlResponse(
             href=ResponseMapper.doe_response_href(scope, doe_response),
             createdDateTime=int(doe_response.created_time.timestamp()),
             endDeviceLFDI=doe_response.site.lfdi,
             status=doe_response.response_type,
-            subject=MridMapper.encode_doe_mrid(scope, doe_response.dynamic_operating_envelope_id_snapshot),
+            subject=doe_mrid,
         )
 
     @staticmethod
@@ -160,7 +168,12 @@ class ResponseListMapper:
     @staticmethod
     def map_to_doe_response(
         scope: DeviceOrAggregatorRequestScope,
-        responses: Sequence[DynamicOperatingEnvelopeResponse],
+        responses: Sequence[
+            tuple[
+                DynamicOperatingEnvelopeResponse,
+                Optional[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+            ]
+        ],
         total_responses: int,
     ) -> ResponseListResponse:
         """Generates a list response for a doe response list"""
@@ -168,7 +181,7 @@ class ResponseListMapper:
             href=ResponseListMapper.response_list_href(scope, scope.display_site_id, ResponseSetType.SITE_CONTROLS),
             all_=total_responses,
             results=len(responses),
-            Response_=[ResponseMapper.map_to_doe_response(scope, r) for r in responses],
+            Response_=[ResponseMapper.map_to_doe_response(scope, r, doe) for r, doe in responses],
         )
 
 

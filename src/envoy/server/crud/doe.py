@@ -59,6 +59,56 @@ async def select_doe_include_deleted(
     return None
 
 
+async def select_doe_by_display_id_include_deleted(
+    session: AsyncSession,
+    aggregator_id: int,
+    site_id: int,
+    display_id: int,
+) -> Optional[Union[DOE, ArchiveDOE]]:
+    """Attempts to fetch a doe using its' display id, also scoping it to a particular aggregator/site. The archive
+    table will also be checked for deleted instances (of which the most recent deletion will be matched).
+
+    site_control_group_id: The SiteControlGroup to select doe's from
+    aggregator_id: The aggregator id to constrain the lookup to
+    site_id: the query will apply a filter on site_id using this value"""
+
+    # Start by confirming the referenced site_id exists within the specified aggregator.
+    site_timezone_id = (
+        await session.execute(
+            select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
+        )
+    ).scalar_one_or_none()
+    if not site_timezone_id:
+        return None
+
+    # Check primary table first
+    primary_table_doe = (
+        await session.execute(select(DOE).where((DOE.display_id == display_id) & (DOE.site_id == site_id)))
+    ).scalar_one_or_none()
+    if primary_table_doe is not None:
+        return localize_start_time_for_entity(primary_table_doe, site_timezone_id)
+
+    # Check archive otherwise
+    archive_table_doe = (
+        await session.execute(
+            (
+                select(ArchiveDOE)
+                .where(
+                    (ArchiveDOE.display_id == display_id)
+                    & (ArchiveDOE.site_id == site_id)
+                    & (ArchiveDOE.deleted_time.is_not(None))
+                )
+                .order_by(ArchiveDOE.deleted_time.desc())
+                .limit(1)
+            )
+        )
+    ).scalar_one_or_none()
+    if archive_table_doe is not None:
+        return localize_start_time_for_entity(archive_table_doe, site_timezone_id)
+
+    return None
+
+
 async def _does_at_timestamp(
     is_counting: bool,
     session: AsyncSession,
