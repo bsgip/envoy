@@ -37,6 +37,7 @@ def test_doe_mapper_from_request(optional_is_none: bool):
     assert mdl.end_time == req.start_time + timedelta(seconds=req.duration_seconds)
     assert mdl.end_time.tzinfo == mdl.start_time.tzinfo
     assert mdl.superseded is False, "No incoming record should map to being superseded"
+    assert mdl.display_id is None, "No mapping for display_id in this legacy model"
 
     assert not mdl.site
     assert not mdl.dynamic_operating_envelope_id

@@ -110,12 +110,26 @@ class MridMapper:
         )
 
     @staticmethod
-    def encode_doe_mrid(scope: BaseRequestScope, dynamic_operating_envelope_id: int) -> str:
+    def encode_doe_program_display_id_mrid(scope: BaseRequestScope, display_id: int) -> str:
+        """Encodes a valid MRID for a DOE program scoped to the specified SiteControlGroup.display_id
+
+        These will be namespaced from encode_doe_program_mrid but still register as a DER_PROGRAM
+
+        display_id: max value is expected to be a 32 bit unsigned int."""
+        return encode_mrid(MridType.DER_PROGRAM, ((1) << 64) | (display_id & MAX_INT_32), scope.iana_pen)
+
+    @staticmethod
+    def encode_doe_mrid(scope: BaseRequestScope, is_display_id: bool, doe_or_display_id: int) -> str:
         """Encodes a valid MRID for a specific DOE.
 
-        dynamic_operating_envelope_id: max value is expected to be a 64 bit unsigned int."""
+        is_display_id: True indicates that doe_or_display_id is referencing a display_id
+        doe_or_display_id: max value is expected to be a 64 bit unsigned int. can be either a
+                           dynamic_operating_envelope_id or a display_id (determined via is_display_id)"""
+
         return encode_mrid(
-            MridType.DYNAMIC_OPERATING_ENVELOPE, dynamic_operating_envelope_id & MAX_INT_64, scope.iana_pen
+            MridType.DYNAMIC_OPERATING_ENVELOPE,
+            (int(is_display_id) << 64) | (doe_or_display_id & MAX_INT_64),
+            scope.iana_pen,
         )
 
     @staticmethod
@@ -216,17 +230,20 @@ class MridMapper:
         return decode_mrid_type(mrid)
 
     @staticmethod
-    def decode_doe_mrid(mrid: str) -> int:
+    def decode_doe_mrid(mrid: str) -> tuple[bool, int]:
         """Attempts to decode the ID component of the specified mrid.
 
         This function assumes it's a MridType.DYNAMIC_OPERATING_ENVELOPE encoding. Failure to check this before will
         result in undefined behaviour.
 
-        returns the DynamicOperatingEnvelope.dynamic_operating_envelope_id"""
+        returns the tuple of [is_display_id: bool, doe_or_display_id: int"""
         if not mrid or len(mrid) != 32:
             raise ValueError("Expected mrid to have 32 hex characters")
 
-        return decode_mrid_id(mrid)
+        raw_id = decode_mrid_id(mrid)
+        doe_or_display_id = raw_id & MAX_INT_64
+        is_display_id = bool(raw_id >> 64)
+        return (is_display_id, doe_or_display_id)
 
     @staticmethod
     def decode_mirror_usage_point_mrid(mrid: str) -> int:
