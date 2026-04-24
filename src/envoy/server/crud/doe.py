@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Union, cast
 
 from sqlalchemy import Select, func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -485,11 +485,19 @@ async def count_site_control_groups_by_fsa_id(session: AsyncSession) -> dict[int
     """Returns a dictionary keyed by the SiteControlGroup.fsa_id with a value indicating the count
     of SiteControlGroup's with that fsa_id"""
     kvps = (
-        (await session.execute(select(SiteControlGroup.fsa_id, func.count()).group_by(SiteControlGroup.fsa_id)))
+        (
+            await session.execute(
+                select(SiteControlGroup.fsa_id, func.count())
+                .group_by(SiteControlGroup.fsa_id)
+                .where(SiteControlGroup.fsa_id.is_not(None))
+            )
+        )
         .tuples()
         .all()
     )
-    return dict(kvps)
+
+    # We safely cast here because we've filtered out the None values during the SQL query
+    return dict(cast(list[tuple[int, int]], kvps))
 
 
 async def select_site_control_group_by_id(

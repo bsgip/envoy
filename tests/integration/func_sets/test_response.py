@@ -18,11 +18,12 @@ from envoy_schema.server.schema.sep2.response import (
     ResponseType,
 )
 from httpx import AsyncClient
-from sqlalchemy import func, insert, select
-from envoy.server.model import Site
+from sqlalchemy import func, insert, select, update
+
 from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import response_set_type_to_href
+from envoy.server.model import Site
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -533,6 +534,15 @@ async def test_get_response_list_pagination_for_device_cert(
             AGG_1_VALID_CERT,
             1,
             DOE_HREF,
+            MridMapper.encode_doe_mrid(TEST_SCOPE, True, 1),
+            DERControlResponse,
+            None,
+            HTTPStatus.BAD_REQUEST,
+        ),  # display_id does NOT exist
+        (
+            AGG_1_VALID_CERT,
+            1,
+            DOE_HREF,
             MridMapper.encode_doe_mrid(TEST_SCOPE, False, 1),
             Response,
             DERControlResponse,
@@ -662,3 +672,109 @@ async def test_create_response_for_aggregator(
     else:
         assert_error_response(response)
         assert (doe_count_before + rate_count_before) == (doe_count_after + rate_count_after), "No new responses"
+
+
+@pytest.mark.parametrize(
+    "site_id, subject, expected_http_status",
+    [
+        (
+            1,
+            MridMapper.encode_doe_mrid(TEST_SCOPE, True, 11),
+            HTTPStatus.CREATED,
+        ),
+        (
+            2,
+            MridMapper.encode_doe_mrid(TEST_SCOPE, True, 11),
+            HTTPStatus.CREATED,
+        ),
+        (
+            3,
+            MridMapper.encode_doe_mrid(TEST_SCOPE, True, 11),
+            HTTPStatus.BAD_REQUEST,
+        ),  # There is no DERControl with display ID 11 for site_id 3
+        (
+            99,
+            MridMapper.encode_doe_mrid(TEST_SCOPE, True, 11),
+            HTTPStatus.BAD_REQUEST,
+        ),  # There is no site_id 99
+        (
+            1,
+            MridMapper.encode_doe_mrid(TEST_SCOPE, True, 1),
+            HTTPStatus.BAD_REQUEST,
+        ),  # There is no display_id of 1
+    ],
+)
+@pytest.mark.anyio
+async def test_create_response_for_doe_with_display_id(
+    pg_base_config,
+    client: AsyncClient,
+    response_list_uri_format: str,
+    site_id: int,
+    subject: str,
+    expected_http_status: HTTPStatus,
+):
+    """Tests the various ways aggregators can send responses to the various list endpoints"""
+
+    cert = AGG_1_VALID_CERT
+    response_set_id = DOE_HREF
+
+    # Update DOE 1,2,3 display ID so that DOE 1,3 have display_id 11 and DOE 2 has display_id 22
+    async with generate_async_session(pg_base_config) as session:
+        site = await session.get(Site, site_id)
+        site_lfdi = site.lfdi if site else "ffffffffffffffffffffffffffffffffffffffff"
+
+        await session.execute(
+            update(DynamicOperatingEnvelope)
+            .values(display_id=11)
+            .where(DynamicOperatingEnvelope.dynamic_operating_envelope_id.in_([1, 3]))
+        )
+        await session.execute(
+            update(DynamicOperatingEnvelope)
+            .values(display_id=22)
+            .where(DynamicOperatingEnvelope.dynamic_operating_envelope_id.in_([2]))
+        )
+
+        doe_count_before = (
+            await session.execute(select(func.count()).select_from(DynamicOperatingEnvelopeResponse))
+        ).scalar_one()
+        await session.commit()
+
+    request_body = generate_class_instance(
+        DERControlResponse, subject=subject, status=ResponseType.REJECTED_INVALID_EVENT
+    )
+    request_body.endDeviceLFDI = site_lfdi
+
+    # Act
+    response = await client.post(
+        response_list_uri_format.format(site_id=site_id, response_list_id=response_set_id),
+        content=request_body.to_xml(),
+        headers={cert_header: urllib.parse.quote(cert)},
+    )
+
+    # Assert
+    async with generate_async_session(pg_base_config) as session:
+        doe_count_after = (
+            await session.execute(select(func.count()).select_from(DynamicOperatingEnvelopeResponse))
+        ).scalar_one()
+
+    if expected_http_status == HTTPStatus.CREATED:
+        assert_response_header(response, expected_http_status, expected_content_type=None)
+
+        # We should receive a HREF to the created Response. Resolve it to ensure it's valid
+        assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+        created_href = read_location_header(response)
+
+        response = await client.get(created_href, headers={cert_header: urllib.parse.quote(cert)})
+        assert_response_header(response, HTTPStatus.OK)
+
+        parsed_response = DERControlResponse.from_xml(read_response_body_string(response))
+        assert parsed_response.status == request_body.status
+        assert parsed_response.subject == subject
+        assert parsed_response.endDeviceLFDI == site_lfdi
+        assert_nowish(parsed_response.createdDateTime)
+
+        assert (doe_count_before + 1) == (doe_count_after), "One new response"
+    else:
+        assert_response_header(response, expected_http_status)
+        assert_error_response(response)
+        assert (doe_count_before) == (doe_count_after), "No new responses"

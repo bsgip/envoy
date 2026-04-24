@@ -797,6 +797,19 @@ async def test_count_site_control_groups_by_fsa_id(extra_site_control_groups):
 
 
 @pytest.mark.anyio
+async def test_count_site_control_groups_by_fsa_id_with_nones(extra_site_control_groups):
+    async with generate_async_session(extra_site_control_groups) as session:
+        await session.execute(
+            update(SiteControlGroup).values(fsa_id=None).where(SiteControlGroup.site_control_group_id.in_([1, 3]))
+        )
+        await session.commit()
+    async with generate_async_session(extra_site_control_groups) as session:
+        result = await count_site_control_groups_by_fsa_id(session)
+        assert_dict_type(int, int, result, 2)
+        assert result == {1: 1, 3: 1}
+
+
+@pytest.mark.anyio
 async def test_count_site_control_groups_by_fsa_id_empty_db(pg_empty_config):
     async with generate_async_session(pg_empty_config) as session:
         result = await count_site_control_groups_by_fsa_id(session)

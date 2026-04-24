@@ -21,6 +21,7 @@ class SiteControlGroupListMapper:
             primacy=request.primacy,
             changed_time=changed_time,
             fsa_id=request.fsa_id,
+            display_id=request.display_id,
         )
 
     @staticmethod
@@ -32,6 +33,7 @@ class SiteControlGroupListMapper:
             created_time=site_control_group.created_time,
             changed_time=site_control_group.changed_time,
             fsa_id=site_control_group.fsa_id,
+            display_id=site_control_group.display_id,
         )
 
     @staticmethod
@@ -71,6 +73,7 @@ class SiteControlListMapper:
                 end_time=c.start_time + timedelta(seconds=c.duration_seconds),
                 ramp_time_seconds=c.ramp_time_seconds,
                 superseded=False,
+                display_id=c.display_id,
             )
             for c in control_list
         ]
@@ -95,6 +98,7 @@ class SiteControlListMapper:
             set_point_percentage=control.set_point_percentage,
             ramp_time_seconds=control.ramp_time_seconds,
             superseded=control.superseded,
+            display_id=control.display_id,
         )
 
     @staticmethod
