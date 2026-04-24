@@ -30,7 +30,7 @@ def upgrade() -> None:
     )
     op.add_column("site_control_group", sa.Column("display_id", sa.Integer(), nullable=True))
     op.alter_column(
-        "site_control_group", "fsa_id", existing_type=sa.INTEGER(), nullable=True, existing_server_default=sa.text("1")
+        "site_control_group", "fsa_id", existing_type=sa.INTEGER(), nullable=True, existing_server_default=None
     )
     op.create_index(op.f("ix_site_control_group_display_id"), "site_control_group", ["display_id"], unique=False)
     # ### end Alembic commands ###

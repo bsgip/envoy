@@ -521,7 +521,7 @@ async def select_site_control_group_by_id(
 async def select_site_control_group_fsa_ids(session: AsyncSession, changed_after: datetime) -> Sequence[int]:
     """Fetches the distinct values for "fsa_id" across all SiteControlGroup instances (optionally filtering
     on SiteControlGroup.changed_time that were changed after changed_after)"""
-    stmt = select(func.distinct(SiteControlGroup.fsa_id))
+    stmt = select(func.distinct(SiteControlGroup.fsa_id)).where(SiteControlGroup.fsa_id.is_not(None))
     if changed_after != datetime.min:
         stmt = stmt.where(SiteControlGroup.changed_time >= changed_after)
 

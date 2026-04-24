@@ -669,13 +669,29 @@ async def extra_site_control_groups(pg_base_config):
                 changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=timezone.utc),
             )
         )
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=202,
+                primacy=1,
+                site_control_group_id=5,
+                fsa_id=None,
+                changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=timezone.utc),
+            )
+        )
         await session.commit()
     yield pg_base_config
 
 
 @pytest.mark.parametrize(
     "site_control_group_id, expected_primacy, expected_default_import_limit_active_watts",
-    [(1, 0, Decimal("10.10")), (2, 1, None), (3, 2, Decimal("20.20")), (99, None, None), (None, None, None)],
+    [
+        (1, 0, Decimal("10.10")),
+        (2, 1, None),
+        (3, 2, Decimal("20.20")),
+        (99, None, None),
+        (None, None, None),
+    ],
 )
 @pytest.mark.anyio
 async def test_select_site_control_group_by_id(
@@ -721,18 +737,18 @@ async def test_select_site_control_group_by_id(
 @pytest.mark.parametrize(
     "start, limit, changed_after, fsa_id, expected_ids, expected_count",
     [
-        (0, 99, datetime.min, None, [1, 4, 2, 3], 4),
+        (0, 99, datetime.min, None, [1, 5, 4, 2, 3], 5),
         (0, 99, datetime.min, 1, [1, 2, 3], 3),
         (0, 99, datetime.min, 2, [], 0),
         (0, 99, datetime.min, 3, [4], 1),
-        (1, 2, datetime.min, None, [4, 2], 4),
+        (1, 2, datetime.min, None, [5, 4], 5),
         (1, 1, datetime.min, 1, [2], 3),
-        (99, 99, datetime.min, None, [], 4),
-        (0, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [1, 4, 2, 3], 4),
-        (3, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [3], 4),
-        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), None, [4, 2, 3], 3),
-        (0, 99, datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc), None, [4, 3], 2),
-        (0, 99, datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc), None, [4], 1),
+        (99, 99, datetime.min, None, [], 5),
+        (0, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [1, 5, 4, 2, 3], 5),
+        (3, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [2, 3], 5),
+        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), None, [5, 4, 2, 3], 4),
+        (0, 99, datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc), None, [5, 4, 3], 3),
+        (0, 99, datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc), None, [5, 4], 2),
         (0, 99, datetime(2021, 4, 5, 10, 5, 0, tzinfo=timezone.utc), None, [], 0),
         (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, [2, 3], 2),
     ],
