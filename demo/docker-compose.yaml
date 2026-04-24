@@ -5,6 +5,8 @@ x-envoy-common:
     ENABLE_NOTIFICATIONS: "True"
     RABBIT_MQ_BROKER_URL: "amqp://guest:guest@rabbit-mq:5672"
     ALLOW_DEVICE_REGISTRATION: "True"
+    NMI_VALIDATION_ENABLED: "True"
+    NMI_VALIDATION_PARTICIPANT_ID: "ENERGYAP"
 
 services:
   rabbit-mq:
