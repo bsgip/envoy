@@ -21,7 +21,14 @@ from envoy_schema.server.schema.sep2.types import (
 
 from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import InvalidMappingError
-from envoy.server.mapper.common import CaseInsensitiveDict, generate_href
+from envoy.server.mapper.common import (
+    CaseInsensitiveDict,
+    SEP2_INT8_MAX,
+    SEP2_INT8_MIN,
+    SEP2_INT48_MAX,
+    SEP2_INT48_MIN,
+    generate_href,
+)
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.request_scope import BaseRequestScope
@@ -153,6 +160,11 @@ class MirrorUsagePointMapper:
             power_of_ten_multiplier = 0
         else:
             power_of_ten_multiplier = rt.powerOfTenMultiplier
+        if not (SEP2_INT8_MIN <= power_of_ten_multiplier <= SEP2_INT8_MAX):
+            raise InvalidMappingError(
+                f"ReadingType.powerOfTenMultiplier {power_of_ten_multiplier} is outside the int8 range "
+                f"[{SEP2_INT8_MIN}, {SEP2_INT8_MAX}]"
+            )
         if rt.dataQualifier is None:
             data_qualifier = DataQualifierType.NOT_APPLICABLE
         else:
@@ -278,6 +290,11 @@ class MirrorMeterReadingMapper:
 
         if reading.timePeriod is None:
             raise InvalidMappingError("Reading.timePeriod was not specified")
+
+        if reading.value is not None and not (SEP2_INT48_MIN <= reading.value <= SEP2_INT48_MAX):
+            raise InvalidMappingError(
+                f"Reading.value {reading.value} is outside the int48 range [{SEP2_INT48_MIN}, {SEP2_INT48_MAX}]"
+            )
 
         if reading.localID is None:
             local_id = None
