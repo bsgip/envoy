@@ -19,6 +19,7 @@ from envoy.server.crud.doe import (
     count_site_control_groups,
     count_site_control_groups_by_fsa_id,
     select_active_does_include_deleted,
+    select_doe_by_display_id_include_deleted,
     select_doe_include_deleted,
     select_does_at_timestamp,
     select_site_control_group_by_id,
@@ -136,6 +137,45 @@ async def test_select_doe_include_deleted(
             expected_id = None
         else:
             expected_id = doe_id
+        assert_doe_for_id(expected_id, site_id, expected_dt, "Australia/Brisbane", actual, check_duration_seconds=False)
+
+
+@pytest.mark.parametrize(
+    "agg_id, site_id, display_id, expected_dt",
+    [
+        (1, 1, 50, datetime(2023, 5, 7, 1, 0, 0)),
+        (2, 3, 150, datetime(2023, 5, 7, 1, 5, 0)),
+        (1, 1, 180, datetime(2023, 5, 7, 1, 0, 0)),  # Archive record
+        (1, 1, 190, datetime(2023, 5, 7, 1, 5, 0)),  # Archive record
+        (1, 2, 50, None),  # wrong site id
+        (1, 1, 210, None),  # Archive record (but not deleted)
+        (1, 3, 150, None),
+        (0, 1, 10, None),
+        (2, 1, 150, None),
+        (1, 1, 999, None),
+        (1, 99, 50, None),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_doe_by_display_id_include_deleted(
+    pg_additional_does,
+    agg_id: int,
+    site_id: Optional[int],
+    display_id: int,
+    expected_dt: Optional[datetime],
+):
+    # We are going to munge the display_id to be 10x the PK so we have values
+    async with generate_async_session(pg_additional_does) as session:
+        await session.execute(update(DOE).values(display_id=DOE.dynamic_operating_envelope_id * 10))
+        await session.execute(update(ArchiveDOE).values(display_id=ArchiveDOE.dynamic_operating_envelope_id * 10))
+        await session.commit()
+
+    async with generate_async_session(pg_additional_does) as session:
+        actual = await select_doe_by_display_id_include_deleted(session, agg_id, site_id, display_id)
+        if expected_dt is None:
+            expected_id = None
+        else:
+            expected_id = int(display_id / 10)
         assert_doe_for_id(expected_id, site_id, expected_dt, "Australia/Brisbane", actual, check_duration_seconds=False)
 
 
@@ -754,6 +794,19 @@ async def test_count_site_control_groups_by_fsa_id(extra_site_control_groups):
         result = await count_site_control_groups_by_fsa_id(session)
         assert_dict_type(int, int, result, 2)
         assert result == {1: 3, 3: 1}
+
+
+@pytest.mark.anyio
+async def test_count_site_control_groups_by_fsa_id_with_nones(extra_site_control_groups):
+    async with generate_async_session(extra_site_control_groups) as session:
+        await session.execute(
+            update(SiteControlGroup).values(fsa_id=None).where(SiteControlGroup.site_control_group_id.in_([1, 3]))
+        )
+        await session.commit()
+    async with generate_async_session(extra_site_control_groups) as session:
+        result = await count_site_control_groups_by_fsa_id(session)
+        assert_dict_type(int, int, result, 2)
+        assert result == {1: 1, 3: 1}
 
 
 @pytest.mark.anyio

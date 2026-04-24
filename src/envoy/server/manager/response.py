@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from itertools import islice
-from typing import Union, cast
+from typing import Optional, Union, cast
 
 from envoy_schema.server.schema.sep2.response import (
     DERControlResponse,
@@ -13,7 +13,7 @@ from envoy_schema.server.schema.sep2.response import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.crud.doe import select_doe_include_deleted
+from envoy.server.crud.doe import select_doe_by_display_id_include_deleted, select_doe_include_deleted
 from envoy.server.crud.pricing import select_tariff_generated_rate_for_scope
 from envoy.server.crud.response import (
     count_doe_responses,
@@ -28,6 +28,9 @@ from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.mapper.constants import MridType, ResponseSetType
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import ResponseListMapper, ResponseMapper, ResponseSetMapper
+from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
+from envoy.server.model.doe import DynamicOperatingEnvelope
+from envoy.server.model.response import DynamicOperatingEnvelopeResponse
 from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
 
 logger = logging.getLogger(__name__)
@@ -69,7 +72,13 @@ class ResponseManager:
         if response_set_type == ResponseSetType.SITE_CONTROLS:
             doe_response = await select_doe_response_for_scope(session, scope.aggregator_id, scope.site_id, response_id)
             if doe_response is not None:
-                return ResponseMapper.map_to_doe_response(scope, doe_response)
+                original_doe = None
+                if scope.site_id:
+                    original_doe = await select_doe_include_deleted(
+                        session, scope.aggregator_id, scope.site_id, doe_response.dynamic_operating_envelope_id_snapshot
+                    )
+                return ResponseMapper.map_to_doe_response(scope, doe_response, original_doe)
+
         elif response_set_type == ResponseSetType.TARIFF_GENERATED_RATES:
             tariff_response = await select_rate_response_for_scope(
                 session, scope.aggregator_id, scope.site_id, response_id
@@ -104,7 +113,25 @@ class ResponseManager:
                 limit=limit,
                 created_after=after,
             )
-            return ResponseListMapper.map_to_doe_response(scope, doe_responses, total_doe_responses)
+            responses_and_does: list[
+                tuple[
+                    DynamicOperatingEnvelopeResponse,
+                    Optional[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+                ]
+            ] = []
+
+            # This could be made more efficient via a batch select - but this list resource should not be receiving much
+            # (if any) traffic. If this changes - select_doe_include_deleted can absolutely be made into a batch select
+            # without too much work.
+            for doe_response in doe_responses:
+                if scope.site_id is not None:
+                    original_doe = await select_doe_include_deleted(
+                        session, scope.aggregator_id, scope.site_id, doe_response.dynamic_operating_envelope_id_snapshot
+                    )
+                else:
+                    original_doe = None
+                responses_and_does.append((doe_response, original_doe))
+            return ResponseListMapper.map_to_doe_response(scope, responses_and_does, total_doe_responses)
         elif response_set_type == ResponseSetType.TARIFF_GENERATED_RATES:
             total_rate_responses = await count_tariff_generated_rate_responses(
                 session, scope.aggregator_id, scope.site_id, after
@@ -156,10 +183,15 @@ class ResponseManager:
             if mrid_type != MridType.DYNAMIC_OPERATING_ENVELOPE:
                 raise BadRequestError(f"{mrid_type} responses are not accepted to this list.")
 
-            doe_id = MridMapper.decode_doe_mrid(response.subject)
+            is_display_id, doe_or_display_id = MridMapper.decode_doe_mrid(response.subject)
 
             # Validate the referenced doe is accessible to this scope
-            doe = await select_doe_include_deleted(session, scope.aggregator_id, scope.site_id, doe_id)
+            if is_display_id:
+                doe = await select_doe_by_display_id_include_deleted(
+                    session, scope.aggregator_id, scope.site_id, doe_or_display_id
+                )
+            else:
+                doe = await select_doe_include_deleted(session, scope.aggregator_id, scope.site_id, doe_or_display_id)
             if doe is None:
                 raise BadRequestError(
                     f"subject '{response.subject}' references a DOE not available on this utility server"
