@@ -151,7 +151,9 @@ def test_all_default_encodings_unique():
 
     assert_and_append_mrid(MridMapper.encode_default_doe_mrid(scope1, scg_default), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope1, 0, 0), all_generated_mrids)
-    assert_and_append_mrid(MridMapper.encode_doe_mrid(scope1, 0), all_generated_mrids)
+    assert_and_append_mrid(MridMapper.encode_doe_program_display_id_mrid(scope1, 0), all_generated_mrids)
+    assert_and_append_mrid(MridMapper.encode_doe_mrid(scope1, False, 0), all_generated_mrids)
+    assert_and_append_mrid(MridMapper.encode_doe_mrid(scope1, True, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_function_set_assignment_mrid(scope1, 0, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_rate_component_mrid(scope1, 0, 0), all_generated_mrids)
     assert_and_append_mrid(MridMapper.encode_tariff_profile_mrid(scope1, 0), all_generated_mrids)
@@ -191,6 +193,10 @@ def test_encode_doe_program_mrid():
         assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope, 123, 456), all_generated_mrids)
         assert_and_append_mrid(MridMapper.encode_doe_program_mrid(scope, MAX_INT_32, MAX_INT_32), all_generated_mrids)
 
+        assert_and_append_mrid(MridMapper.encode_doe_program_display_id_mrid(scope, 0), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_doe_program_display_id_mrid(scope, 123), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_doe_program_display_id_mrid(scope, MAX_INT_32), all_generated_mrids)
+
     assert len(all_generated_mrids) == len(set(all_generated_mrids)), "Each MRID should be unique"
     assert all(decode_mrid_type(m) == MridType.DER_PROGRAM for m in all_generated_mrids)
 
@@ -201,10 +207,10 @@ def test_encode_doe_mrid():
 
     all_generated_mrids = []
 
-    for scope in [scope1, scope2]:
-        assert_and_append_mrid(MridMapper.encode_doe_mrid(scope, 0), all_generated_mrids)
-        assert_and_append_mrid(MridMapper.encode_doe_mrid(scope, 123), all_generated_mrids)
-        assert_and_append_mrid(MridMapper.encode_doe_mrid(scope, MAX_INT_64), all_generated_mrids)
+    for is_display_id, scope in product([True, False], [scope1, scope2]):
+        assert_and_append_mrid(MridMapper.encode_doe_mrid(scope, is_display_id, 0), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_doe_mrid(scope, is_display_id, 123), all_generated_mrids)
+        assert_and_append_mrid(MridMapper.encode_doe_mrid(scope, is_display_id, MAX_INT_64), all_generated_mrids)
 
     assert len(all_generated_mrids) == len(set(all_generated_mrids)), "Each MRID should be unique"
     assert all(decode_mrid_type(m) == MridType.DYNAMIC_OPERATING_ENVELOPE for m in all_generated_mrids)
@@ -322,7 +328,8 @@ def test_decode_and_validate_mrid_type():
     default_control = generate_class_instance(SiteControlGroupDefault)
     do_test(lambda s: MridMapper.encode_default_doe_mrid(s, default_control))
     do_test(lambda s: MridMapper.encode_doe_program_mrid(s, 1, 2))
-    do_test(lambda s: MridMapper.encode_doe_mrid(s, 1))
+    do_test(lambda s: MridMapper.encode_doe_program_display_id_mrid(s, 1))
+    do_test(lambda s: MridMapper.encode_doe_mrid(s, True, 1))
     do_test(lambda s: MridMapper.encode_function_set_assignment_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_rate_component_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_time_tariff_interval_mrid(s, 1))
@@ -330,15 +337,18 @@ def test_decode_and_validate_mrid_type():
     do_test(lambda s: MridMapper.encode_response_set_mrid(s, 1))
 
 
-@pytest.mark.parametrize("doe_id", [0, MAX_INT_32, MAX_INT_64, 123, 4])
-def test_decode_doe_mrid(doe_id: int):
+@pytest.mark.parametrize("is_display_id, doe_id", product([True, False], [0, MAX_INT_32, MAX_INT_64, 123, 4]))
+def test_decode_doe_mrid(is_display_id: bool, doe_id: int):
     scope = generate_class_instance(BaseRequestScope)
-    mrid = MridMapper.encode_doe_mrid(scope, doe_id)
+    mrid = MridMapper.encode_doe_mrid(scope, is_display_id, doe_id)
     assert_mrid(mrid)
-    decoded_id = MridMapper.decode_doe_mrid(mrid)
+    decoded_is_display, decoded_id = MridMapper.decode_doe_mrid(mrid)
 
     assert isinstance(decoded_id, int)
     assert decoded_id == doe_id
+
+    assert isinstance(decoded_is_display, bool)
+    assert decoded_is_display == is_display_id
 
 
 @pytest.mark.parametrize("rate_id", [0, MAX_INT_32, MAX_INT_64, 123, 4])

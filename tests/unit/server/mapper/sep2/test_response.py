@@ -15,7 +15,7 @@ from envoy_schema.server.schema.sep2.response import (
 )
 
 from envoy.server.mapper.constants import MridType, ResponseSetType
-from envoy.server.mapper.sep2.mrid import decode_mrid_type
+from envoy.server.mapper.sep2.mrid import MridMapper, decode_mrid_type
 from envoy.server.mapper.sep2.response import (
     ResponseListMapper,
     ResponseMapper,
@@ -97,8 +97,21 @@ def test_ResponseMapper_map_from_price_request(optional_is_none: bool, response_
     assert result.tariff_generated_rate_id_snapshot == tariff_generated_rate.tariff_generated_rate_id
 
 
-@pytest.mark.parametrize("href_prefix, optional_is_none", product([None, "/my/href/prefix/"], [True, False]))
-def test_ResponseMapper_map_to_doe_response(href_prefix: Optional[str], optional_is_none: bool):
+@pytest.mark.parametrize(
+    "href_prefix, optional_is_none, doe",
+    product(
+        [None, "/my/href/prefix/"],
+        [True, False],
+        [
+            generate_class_instance(DynamicOperatingEnvelope, optional_is_none=True),
+            generate_class_instance(DynamicOperatingEnvelope, optional_is_none=False),
+            None,
+        ],
+    ),
+)
+def test_ResponseMapper_map_to_doe_response(
+    href_prefix: Optional[str], optional_is_none: bool, doe: DynamicOperatingEnvelope
+):
     """Sanity checks that we generate valid models and avoid runtime errors"""
     # Arrange
     scope = generate_class_instance(BaseRequestScope, optional_is_none=optional_is_none, href_prefix=href_prefix)
@@ -109,7 +122,7 @@ def test_ResponseMapper_map_to_doe_response(href_prefix: Optional[str], optional
     )  # Includes the site relationship
 
     # Act
-    result = ResponseMapper.map_to_doe_response(scope, response)
+    result = ResponseMapper.map_to_doe_response(scope, response, doe)
 
     # Assert
     assert isinstance(result, DERControlResponse)
@@ -119,6 +132,11 @@ def test_ResponseMapper_map_to_doe_response(href_prefix: Optional[str], optional
     assert result.status == response.response_type
     assert isinstance(result.subject, str)
     assert len(result.subject) == 32, "Expected 128 bits of hex chars"
+
+    if doe and doe.display_id:
+        assert MridMapper.decode_doe_mrid(result.subject) == (True, doe.display_id)
+    else:
+        assert MridMapper.decode_doe_mrid(result.subject) == (False, response.dynamic_operating_envelope_id_snapshot)
 
 
 @pytest.mark.parametrize(
@@ -209,7 +227,7 @@ def test_ResponseListMapper_map_to_price_response(
 
 
 @pytest.mark.parametrize(
-    "href_prefix, optional_is_none, response_count", product([None, "/my/href/prefix/"], [True, False], [0, 2])
+    "href_prefix, optional_is_none, response_count", product([None, "/my/href/prefix/"], [True, False], [0, 4])
 )
 def test_ResponseListMapper_map_to_doe_response(
     href_prefix: Optional[str], optional_is_none: bool, response_count: int
@@ -226,9 +244,18 @@ def test_ResponseListMapper_map_to_doe_response(
     site = generate_class_instance(
         Site, lfdi="ffffffffffffffffffffffffffffffffffffffff", optional_is_none=optional_is_none
     )
-    responses: list[DynamicOperatingEnvelopeResponse] = [
-        generate_class_instance(
-            DynamicOperatingEnvelopeResponse, seed=101 * (i + 1), optional_is_none=optional_is_none, site=site
+    responses: list[tuple[DynamicOperatingEnvelopeResponse, DynamicOperatingEnvelope]] = [
+        (
+            generate_class_instance(
+                DynamicOperatingEnvelopeResponse, seed=101 * (i + 1), optional_is_none=optional_is_none, site=site
+            ),
+            (
+                None
+                if (i % 2) == 0
+                else generate_class_instance(
+                    DynamicOperatingEnvelope, seed=1001 * (i + 1), optional_is_none=optional_is_none
+                )
+            ),
         )
         for i in range(response_count)
     ]

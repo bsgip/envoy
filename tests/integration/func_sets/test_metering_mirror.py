@@ -409,7 +409,7 @@ async def test_create_update_mup_href_prefix(
     "min_val, max_val",
     [
         (9, -10),  # Normal values
-        (int("FFFFFFFFFFFF", 16), -int("FFFFFFFFFFFF", 16)),  # int48 max/min values (sep2 uses int48 value range)
+        ((2**47) - 1, -(2**47)),  # int48 max/min values (sep2 uses int48 value range)
         (0, 0),  # zero values
     ],
 )
@@ -471,7 +471,7 @@ async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config, 
     "min_val, max_val",
     [
         (9, -10),  # Normal values
-        (int("FFFFFFFFFFFF", 16), -int("FFFFFFFFFFFF", 16)),  # int48 max/min values (sep2 uses int48 value range)
+        ((2**47) - 1, -(2**47)),  # int48 max/min values (sep2 uses int48 value range)
         (0, 0),  # zero values
     ],
 )

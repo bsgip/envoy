@@ -58,6 +58,76 @@ async def test_create_site_control_group(admin_client_auth: AsyncClient):
     assert_class_instance_equality(SiteControlGroupRequest, group_request, group_response)
 
 
+@pytest.mark.parametrize("fsa_id", [1, 2, 99, None])
+@pytest.mark.anyio
+async def test_update_site_control_group_change(pg_base_config, admin_client_auth: AsyncClient, fsa_id: Optional[int]):
+    """Tests that site control groups can be updated"""
+
+    async with generate_async_session(pg_base_config) as session:
+        group_count = (await session.execute(select(func.count()).select_from(SiteControlGroup))).scalar_one()
+        archive_group_count = (
+            await session.execute(select(func.count()).select_from(ArchiveSiteControlGroup))
+        ).scalar_one()
+
+    site_control_group_id = 1
+    uri = SiteControlGroupUri.format(group_id=site_control_group_id)
+    group_request = generate_class_instance(SiteControlGroupRequest, fsa_id=fsa_id, display_id=None)
+    resp = await admin_client_auth.put(uri, content=group_request.model_dump_json())
+
+    assert resp.status_code == HTTPStatus.OK
+
+    # Check we can fetch it
+    resp = await admin_client_auth.get(uri)
+    assert resp.status_code == HTTPStatus.OK
+    body = read_response_body_string(resp)
+    assert len(body) > 0
+    group_response: SiteControlGroupResponse = SiteControlGroupResponse(**json.loads(body))
+
+    assert_nowish(group_response.changed_time)
+    assert_class_instance_equality(SiteControlGroupRequest, group_request, group_response)
+
+    async with generate_async_session(pg_base_config) as session:
+        group_count_after = (await session.execute(select(func.count()).select_from(SiteControlGroup))).scalar_one()
+        archive_group_count_after = (
+            await session.execute(select(func.count()).select_from(ArchiveSiteControlGroup))
+        ).scalar_one()
+
+        assert group_count_after == group_count
+        assert archive_group_count_after == archive_group_count + 1
+
+
+@pytest.mark.anyio
+async def test_update_site_control_group_change_failure_cases(pg_base_config, admin_client_auth: AsyncClient):
+    """Tests that site control groups prevent updates in certain circumstances"""
+
+    async with generate_async_session(pg_base_config) as session:
+        group_count = (await session.execute(select(func.count()).select_from(SiteControlGroup))).scalar_one()
+        archive_group_count = (
+            await session.execute(select(func.count()).select_from(ArchiveSiteControlGroup))
+        ).scalar_one()
+
+    # Can't update the display ID
+    uri = SiteControlGroupUri.format(group_id=1)
+    group_request = generate_class_instance(SiteControlGroupRequest, display_id=123)
+    resp = await admin_client_auth.put(uri, content=group_request.model_dump_json())
+    assert resp.status_code == HTTPStatus.BAD_REQUEST
+
+    # Group ID must exist
+    uri = SiteControlGroupUri.format(group_id=99)
+    group_request = generate_class_instance(SiteControlGroupRequest, display_id=None)
+    resp = await admin_client_auth.put(uri, content=group_request.model_dump_json())
+    assert resp.status_code == HTTPStatus.NOT_FOUND
+
+    async with generate_async_session(pg_base_config) as session:
+        group_count_after = (await session.execute(select(func.count()).select_from(SiteControlGroup))).scalar_one()
+        archive_group_count_after = (
+            await session.execute(select(func.count()).select_from(ArchiveSiteControlGroup))
+        ).scalar_one()
+
+        assert group_count_after == group_count
+        assert archive_group_count_after == archive_group_count
+
+
 @pytest.mark.parametrize("site_control_group_id, expected_primacy", [(1, 0), (99, None)])
 @pytest.mark.anyio
 async def test_get_site_control_group_by_id(

@@ -20,10 +20,12 @@ class ArchiveSiteControlGroup(ArchiveBase):
     site_control_group_id: Mapped[int] = mapped_column(INTEGER, index=True)
     description: Mapped[str] = mapped_column(VARCHAR(length=32))
     primacy: Mapped[int] = mapped_column(INTEGER)
-    fsa_id: Mapped[int] = mapped_column(INTEGER)
+    fsa_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    display_id: Mapped[Optional[int]] = mapped_column(nullable=True)
 
 
 class ArchiveSiteControlGroupDefault(ArchiveBase):
@@ -97,6 +99,8 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
 
+    display_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+
     # Storage extension
     storage_target_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
@@ -110,4 +114,9 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
             "deleted_time",
             "site_id",
         ),  # This is to support finding DOE's that have been deleted (or cancelled)
+        Index(
+            "archive_doe_display_id_site_id",
+            "display_id",
+            "site_id",
+        ),  # This is to support finding DOE's via display_id that may have been deleted (or cancelled)
     )

@@ -18,7 +18,9 @@ from envoy_schema.server.schema.sep2.event import EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.uri import DERProgramFSAListUri, DERProgramListUri
 
+from envoy.server.mapper.constants import MridType
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
+from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
@@ -499,3 +501,35 @@ def test_mrid_uniqueness():
     program = DERProgramMapper.doe_program_response(scope, 999, site_control_group, None)
     control = DERControlMapper.map_to_response(scope, site_control_group.site_control_group_id, doe, 1, now)
     assert program.mRID != control.mRID
+
+
+def test_doe_program_response_mrid_display_id():
+    """Tests the different ways the DERProgram mrid can be encoded"""
+
+    # These should all have distinct mrids
+    scg1 = generate_class_instance(SiteControlGroup, site_control_group_id=1, display_id=None)
+    scg2 = generate_class_instance(SiteControlGroup, site_control_group_id=1, display_id=2)
+    scg3 = generate_class_instance(SiteControlGroup, site_control_group_id=1, display_id=3)
+    scg4 = generate_class_instance(SiteControlGroup, site_control_group_id=2, display_id=None)
+
+    scope = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=11, display_site_id=11)
+
+    mrids = [
+        DERProgramMapper.doe_program_response(scope, 999, scg1, None).mRID,
+        DERProgramMapper.doe_program_response(scope, 999, scg2, None).mRID,
+        DERProgramMapper.doe_program_response(scope, 999, scg3, None).mRID,
+        DERProgramMapper.doe_program_response(scope, 999, scg4, None).mRID,
+    ]
+    assert len(mrids) == len(set(mrids))
+    assert all([MridMapper.decode_and_validate_mrid_type(scope, m) == MridType.DER_PROGRAM for m in mrids])
+
+    # Display ID should NOT consider site_id - but regular DERPs SHOULD
+    scope2 = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=22, display_site_id=22)
+    assert (
+        DERProgramMapper.doe_program_response(scope, 999, scg1, None).mRID
+        != DERProgramMapper.doe_program_response(scope2, 999, scg1, None).mRID
+    ), "No display ID - therefore site_id is considered"
+    assert (
+        DERProgramMapper.doe_program_response(scope, 999, scg2, None).mRID
+        == DERProgramMapper.doe_program_response(scope2, 999, scg2, None).mRID
+    ), "Display ID is set - site_id is not considered"

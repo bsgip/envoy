@@ -21,8 +21,8 @@ class SiteControlGroup(Base):
     primacy: Mapped[int] = (
         mapped_column()
     )  # The priority level of this group's controls relative to other groups. Lower is higher priority.
-    fsa_id: Mapped[int] = mapped_column(
-        index=True, server_default="1"
+    fsa_id: Mapped[Optional[int]] = mapped_column(
+        index=True, nullable=True
     )  # The function set assignment ID that "groups" this SiteControlGroup with other SiteControlGroups
 
     created_time: Mapped[datetime] = mapped_column(
@@ -31,6 +31,10 @@ class SiteControlGroup(Base):
     changed_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), index=True
     )  # When the group was created/changed
+
+    display_id: Mapped[Optional[int]] = mapped_column(
+        index=True, nullable=True
+    )  # If set - use this for MRID calculation instead of site_control_group_id
 
     dynamic_operating_envelopes: Mapped[list["DynamicOperatingEnvelope"]] = relationship(
         lazy="raise", back_populates="site_control_group"
@@ -148,6 +152,10 @@ class DynamicOperatingEnvelope(Base):
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Ramp time for this control - corresponds to rampTms. 100 corresponds to 100 seconds.
 
+    display_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, nullable=True
+    )  # If set - use this for MRID calculation instead of site_control_id
+
     # Storage extension
     storage_target_active_watts: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
@@ -169,4 +177,7 @@ class DynamicOperatingEnvelope(Base):
             "end_time",
             "site_id",
         ),  # Used by the primary csip-aus DERControl list endpoint
+        Index(
+            "ix_site_control_display_id_site_id", "display_id", "site_id"
+        ),  # Used for lookups via display_id - primarily via CSIP-Aus Responses
     )

@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 from decimal import Decimal
 from enum import IntEnum, auto
@@ -16,7 +17,6 @@ from envoy_schema.server.schema.sep2.der import (
 from envoy_schema.server.schema.sep2.event import EventStatus, EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
-import math
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
@@ -120,6 +120,11 @@ class DERControlMapper:
             event_status = EventStatusType.Active if is_intersecting_now else EventStatusType.Scheduled
             event_status_time = doe.changed_time
 
+        if doe.display_id is not None:
+            mrid = MridMapper.encode_doe_mrid(scope, True, doe.display_id)
+        else:
+            mrid = MridMapper.encode_doe_mrid(scope, False, doe.dynamic_operating_envelope_id)
+
         return DERControlResponse.model_validate(
             {
                 "href": generate_href(
@@ -129,7 +134,7 @@ class DERControlMapper:
                     der_program_id=site_control_group_id,
                     derc_id=doe.dynamic_operating_envelope_id,
                 ),
-                "mRID": MridMapper.encode_doe_mrid(scope, doe.dynamic_operating_envelope_id),
+                "mRID": mrid,
                 "version": 1,
                 "description": doe.start_time.isoformat(),
                 "replyTo": ResponseListMapper.response_list_href(
@@ -354,12 +359,17 @@ class DERProgramMapper:
         if total_controls is not None:
             active_der_control_count = 1 if total_controls > 0 else 0
 
+        if site_control_group.display_id is None:
+            mrid = MridMapper.encode_doe_program_mrid(
+                rq_scope, site_control_group.site_control_group_id, rq_scope.display_site_id
+            )
+        else:
+            mrid = MridMapper.encode_doe_program_display_id_mrid(rq_scope, site_control_group.display_id)
+
         return DERProgramResponse.model_validate(
             {
                 "href": DERProgramMapper.derp_href(rq_scope, site_control_group.site_control_group_id),
-                "mRID": MridMapper.encode_doe_program_mrid(
-                    rq_scope, site_control_group.site_control_group_id, rq_scope.display_site_id
-                ),
+                "mRID": mrid,
                 "primacy": site_control_group.primacy,
                 "description": site_control_group.description,
                 "DefaultDERControlLink": default_der_link,

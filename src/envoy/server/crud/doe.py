@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Union, cast
 
 from sqlalchemy import Select, func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,6 +50,56 @@ async def select_doe_include_deleted(
                 select(ArchiveDOE)
                 .where((ArchiveDOE.dynamic_operating_envelope_id == doe_id) & (ArchiveDOE.deleted_time.is_not(None)))
                 .order_by(ArchiveDOE.deleted_time.desc())
+            )
+        )
+    ).scalar_one_or_none()
+    if archive_table_doe is not None:
+        return localize_start_time_for_entity(archive_table_doe, site_timezone_id)
+
+    return None
+
+
+async def select_doe_by_display_id_include_deleted(
+    session: AsyncSession,
+    aggregator_id: int,
+    site_id: int,
+    display_id: int,
+) -> Optional[Union[DOE, ArchiveDOE]]:
+    """Attempts to fetch a doe using its' display id, also scoping it to a particular aggregator/site. The archive
+    table will also be checked for deleted instances (of which the most recent deletion will be matched).
+
+    site_control_group_id: The SiteControlGroup to select doe's from
+    aggregator_id: The aggregator id to constrain the lookup to
+    site_id: the query will apply a filter on site_id using this value"""
+
+    # Start by confirming the referenced site_id exists within the specified aggregator.
+    site_timezone_id = (
+        await session.execute(
+            select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
+        )
+    ).scalar_one_or_none()
+    if not site_timezone_id:
+        return None
+
+    # Check primary table first
+    primary_table_doe = (
+        await session.execute(select(DOE).where((DOE.display_id == display_id) & (DOE.site_id == site_id)))
+    ).scalar_one_or_none()
+    if primary_table_doe is not None:
+        return localize_start_time_for_entity(primary_table_doe, site_timezone_id)
+
+    # Check archive otherwise
+    archive_table_doe = (
+        await session.execute(
+            (
+                select(ArchiveDOE)
+                .where(
+                    (ArchiveDOE.display_id == display_id)
+                    & (ArchiveDOE.site_id == site_id)
+                    & (ArchiveDOE.deleted_time.is_not(None))
+                )
+                .order_by(ArchiveDOE.deleted_time.desc())
+                .limit(1)
             )
         )
     ).scalar_one_or_none()
@@ -196,6 +246,7 @@ async def select_active_does_include_deleted(
         DOE.set_connected,
         DOE.set_point_percentage,
         DOE.ramp_time_seconds,
+        DOE.display_id,
         DOE.storage_target_active_watts,  # Storage extension
         literal_column("NULL").label("archive_id"),
         literal_column("NULL").label("archive_time"),
@@ -223,6 +274,7 @@ async def select_active_does_include_deleted(
         ArchiveDOE.set_connected,
         ArchiveDOE.set_point_percentage,
         ArchiveDOE.ramp_time_seconds,
+        ArchiveDOE.display_id,
         ArchiveDOE.storage_target_active_watts,  # Storage extension
         ArchiveDOE.archive_id,
         ArchiveDOE.archive_time,
@@ -274,6 +326,7 @@ async def select_active_does_include_deleted(
                     set_connected=t.set_connected,
                     set_point_percentage=t.set_point_percentage,
                     ramp_time_seconds=t.ramp_time_seconds,
+                    display_id=t.display_id,
                     storage_target_active_watts=t.storage_target_active_watts,  # Storage extension
                     archive_id=t.archive_id,
                     archive_time=t.archive_time,
@@ -303,6 +356,7 @@ async def select_active_does_include_deleted(
                     set_connected=t.set_connected,
                     set_point_percentage=t.set_point_percentage,
                     ramp_time_seconds=t.ramp_time_seconds,
+                    display_id=t.display_id,
                     storage_target_active_watts=t.storage_target_active_watts,  # Storage extension
                 ),
                 site.timezone_id,
@@ -439,11 +493,19 @@ async def count_site_control_groups_by_fsa_id(session: AsyncSession) -> dict[int
     """Returns a dictionary keyed by the SiteControlGroup.fsa_id with a value indicating the count
     of SiteControlGroup's with that fsa_id"""
     kvps = (
-        (await session.execute(select(SiteControlGroup.fsa_id, func.count()).group_by(SiteControlGroup.fsa_id)))
+        (
+            await session.execute(
+                select(SiteControlGroup.fsa_id, func.count())
+                .group_by(SiteControlGroup.fsa_id)
+                .where(SiteControlGroup.fsa_id.is_not(None))
+            )
+        )
         .tuples()
         .all()
     )
-    return dict(kvps)
+
+    # We safely cast here because we've filtered out the None values during the SQL query
+    return dict(cast(list[tuple[int, int]], kvps))
 
 
 async def select_site_control_group_by_id(
@@ -463,7 +525,7 @@ async def select_site_control_group_by_id(
 async def select_site_control_group_fsa_ids(session: AsyncSession, changed_after: datetime) -> Sequence[int]:
     """Fetches the distinct values for "fsa_id" across all SiteControlGroup instances (optionally filtering
     on SiteControlGroup.changed_time that were changed after changed_after)"""
-    stmt = select(func.distinct(SiteControlGroup.fsa_id))
+    stmt = select(func.distinct(SiteControlGroup.fsa_id)).where(SiteControlGroup.fsa_id.is_not(None))
     if changed_after != datetime.min:
         stmt = stmt.where(SiteControlGroup.changed_time >= changed_after)
 

@@ -748,7 +748,7 @@ async def fetch_fsa_by_changed_at(
     active_groups, _ = await fetch_entities_with_archive_by_datetime(
         session, SiteControlGroup, ArchiveSiteControlGroup, timestamp
     )
-    new_fsa_ids = [scg.fsa_id for scg in active_groups]
+    new_fsa_ids = [scg.fsa_id for scg in active_groups if scg.fsa_id is not None]
 
     # If there isn't anything that's changed - don't encode any entities (there's nothing to Notify)
     if new_poll_rate is None and not new_fsa_ids:
