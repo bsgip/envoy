@@ -682,7 +682,7 @@ async def test_create_response_for_scope_doe_not_in_scope_display_id(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
-@mock.patch("envoy.server.manager.response.select_tariff_generated_rate_for_scope")
+@mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
 @mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_doe_created_normally(
@@ -855,7 +855,7 @@ async def test_create_response_for_scope_doe_created_normally_with_display_id(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
-@mock.patch("envoy.server.manager.response.select_tariff_generated_rate_for_scope")
+@mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
 @mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_price_with_doe_mrid(

@@ -85,7 +85,7 @@ def test_map_to_doe_response():
     assert all_mapped.import_limit_watts == all.import_limit_active_watts
     assert all_mapped.generation_limit_watts == all.generation_limit_active_watts
     assert all_mapped.load_limit_watts == all.load_limit_active_watts
-    assert all_mapped.storage_target_watts is None
+    assert all_mapped.storage_target_watts == all.storage_target_active_watts
 
     optional_mapped = ArchiveMapper.map_to_doe_response(optional)
     assert isinstance(optional_mapped, ArchiveSiteControlResponse)
@@ -108,7 +108,7 @@ def test_map_to_doe_response():
     assert optional_mapped.import_limit_watts == optional.import_limit_active_watts
     assert optional_mapped.generation_limit_watts == optional.generation_limit_active_watts
     assert optional_mapped.load_limit_watts == optional.load_limit_active_watts
-    assert optional_mapped.storage_target_watts is None
+    assert optional_mapped.storage_target_watts == optional.storage_target_active_watts
     assert_nowish(optional_mapped.archive_time)  # This is a workaround in case we get some bad data
 
 

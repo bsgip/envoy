@@ -1,8 +1,8 @@
 """dercontrol_display_id
 
-Revision ID: c230a2aa2615
-Revises: ed20565cc862
-Create Date: 2026-04-24 09:47:02.576306
+Revision ID: f91bfeaeca8f
+Revises: 7abb815cdbb3
+Create Date: 2026-04-28 12:09:02.126334
 
 """
 
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "c230a2aa2615"
-down_revision = "ed20565cc862"
+revision = "f91bfeaeca8f"
+down_revision = "7abb815cdbb3"
 branch_labels = None
 depends_on = None
 
