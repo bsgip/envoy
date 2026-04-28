@@ -26,9 +26,10 @@ from envoy.admin.mapper.site_control import SiteControlGroupListMapper, SiteCont
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.archive import copy_rows_into_archive
 from envoy.server.crud.doe import select_site_control_group_by_id, select_site_control_group_fsa_ids
+from envoy.server.exception import BadRequestError, NotFoundError
 from envoy.server.manager.time import utc_now
-from envoy.server.model.archive.doe import ArchiveSiteControlGroupDefault
-from envoy.server.model.doe import SiteControlGroupDefault
+from envoy.server.model.archive.doe import ArchiveSiteControlGroup, ArchiveSiteControlGroupDefault
+from envoy.server.model.doe import SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.subscription import SubscriptionResource
 
 
@@ -53,6 +54,60 @@ class SiteControlGroupManager:
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_CONTROL_GROUP, now)
 
         return new_site_control_group.site_control_group_id
+
+    @staticmethod
+    async def update_site_control_group(
+        session: AsyncSession, site_control_group_id: int, request: SiteControlGroupRequest
+    ) -> SiteControlGroupResponse:
+        """Updates an existing site control group - returns the updated value and archives the change.
+
+        Raises NotFoundError / BadRequestError"""
+
+        now = utc_now()
+
+        existing_scg = await select_site_control_group_by_id(session, site_control_group_id)
+        if existing_scg is None:
+            raise NotFoundError(f"Could not find a SiteControlGroup with ID {site_control_group_id}")
+
+        updated_scg = SiteControlGroupListMapper.map_from_request(request, now)
+
+        # We can only update certain fields - some fields have special considerations
+        if existing_scg.display_id != updated_scg.display_id:
+            # Changing the display_id is a surprisingly complex thing to implement - it's effectively a (partial)
+            # deletion of one DERProgram and a creation of another. This shouldn't be something that is required
+            # in a real system - we catch this here to be explicit.
+            raise BadRequestError(
+                f"Cannot alter display_id from {existing_scg.display_id} to {updated_scg.display_id}"
+                + f" for SiteControlGroup {site_control_group_id}. It's not a supported operation."
+            )
+
+        is_changed_fsa_id = False
+        if existing_scg.fsa_id != updated_scg.fsa_id:
+            # Changing the FSA ID requires notifications to the parent FunctionSetAssignmentList
+            is_changed_fsa_id = True
+            existing_scg.fsa_id = updated_scg.fsa_id
+
+        existing_scg.description = updated_scg.description
+        existing_scg.primacy = updated_scg.primacy
+        existing_scg.changed_time = now
+
+        # Archive the current record BEFORE we apply the new changes
+        await copy_rows_into_archive(
+            session,
+            SiteControlGroup,
+            ArchiveSiteControlGroup,
+            lambda q: q.where(SiteControlGroup.site_control_group_id == site_control_group_id),
+        )
+
+        await session.commit()
+
+        if is_changed_fsa_id:
+            await NotificationManager.notify_changed_deleted_entities(
+                SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now
+            )
+        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_CONTROL_GROUP, now)
+
+        return SiteControlGroupListMapper.map_to_response(existing_scg)
 
     @staticmethod
     async def delete_all_site_control_groups(session: AsyncSession) -> None:

@@ -3,13 +3,16 @@ from http import HTTPStatus
 from typing import Optional
 
 import pytest
+from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,
     FunctionSetAssignmentsResponse,
 )
 from httpx import AsyncClient
+from sqlalchemy import update
 
+from envoy.server.model.doe import SiteControlGroup
 from tests.integration.request import build_paging_params
 from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
 
@@ -99,6 +102,64 @@ async def test_get_function_set_assignments_list(
     actual_assignments = parsed_response.FunctionSetAssignments or []
     assert len(actual_assignments) == len(expected_fsa_ids)
     assert expected_fsa_ids == [int(fsa.href.split("/")[-1]) for fsa in actual_assignments]
+
+
+@pytest.mark.parametrize(
+    "scg_ids_to_none, expected_fsa_ids_counts",
+    [
+        ([], [(1, 2, 0), (2, 0, 0), (3, 1, 0)]),
+        ([1, 2, 3], [(1, 0, 0), (2, 0, 0)]),
+        ([1], [(1, 1, 0), (2, 0, 0), (3, 1, 0)]),
+    ],
+)
+@pytest.mark.anyio
+async def test_get_function_set_assignments_list_with_none_fsa_id(
+    pg_base_config,
+    client: AsyncClient,
+    valid_headers: dict,
+    scg_ids_to_none: list[int],
+    expected_fsa_ids_counts: list[tuple[int, int, int]],
+):
+    """Ensures that FSA_IDs reflect what is in the DB (and can handle None/NULL values)
+
+    expected_fsa_ids_counts: tuple[fsa_id, expected_derp_count, expected_tp_count]"""
+
+    # Arrange
+    site_id = 1
+    fsal_url = uri.FunctionSetAssignmentsListUri.format(site_id=site_id) + build_paging_params(0, 99)
+
+    # The DB Has Tariffs with fsa_id 1,2 and SiteControlGroups with fsa_id 1
+    # We want a bit more diversity so lets change SiteControlGroup #3 to have fsa_id 3
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(
+            update(SiteControlGroup).values(fsa_id=3).where(SiteControlGroup.site_control_group_id.in_([3]))
+        )
+        await session.execute(
+            update(SiteControlGroup)
+            .values(fsa_id=None)
+            .where(SiteControlGroup.site_control_group_id.in_(scg_ids_to_none))
+        )
+        await session.commit()
+
+    # Act
+    response = await client.get(fsal_url, headers=valid_headers)
+
+    # Assert
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    parsed_response: FunctionSetAssignmentsListResponse = FunctionSetAssignmentsListResponse.from_xml(body)
+    # Handle None case when there are no assignments
+    actual_assignments = parsed_response.FunctionSetAssignments or []
+    assert len(actual_assignments) == len(expected_fsa_ids_counts)
+
+    for fsa, expected_id_counts in zip(actual_assignments, expected_fsa_ids_counts):
+        expected_id, expected_derp_count, expected_tp_count = expected_id_counts
+
+        assert int(fsa.href.split("/")[-1]) == expected_id, fsa.href
+        assert fsa.DERProgramListLink.all_ or 0 == expected_derp_count, fsa.href
+        assert fsa.TariffProfileListLink.all_ or 0 == expected_tp_count, fsa.href
 
 
 @pytest.mark.anyio
