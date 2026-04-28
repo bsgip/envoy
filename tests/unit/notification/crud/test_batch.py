@@ -2659,6 +2659,28 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
         assert len(empty_batch.deleted_by_batch_key) == 0
 
 
+@pytest.mark.anyio
+async def test_fetch_site_control_groups_by_changed_at_poll_rate(pg_base_config):
+    """Tests runtime config timestamp triggers an empty-list notification per aggregator"""
+
+    # This matches the changed_time on the RuntimeServerConfig in pg_base_config
+    config_timestamp = datetime(2023, 5, 1, 1, 1, 1, 500000, tzinfo=timezone.utc)
+
+    async with generate_async_session(pg_base_config) as session:
+        batch = await fetch_site_control_groups_by_changed_at(session, config_timestamp)
+
+        # Should return one empty-list entry per aggregator (aggregator_id_instance pattern)
+        # select_all_aggregators excludes NULL_AGGREGATOR_ID (0); pg_base_config has aggregators 1, 2, 3
+        assert len(batch.deleted_by_batch_key) == 0
+        assert set(batch.models_by_batch_key.keys()) == {(1,), (2,), (3,)}
+        assert all(len(v) == 0 for v in batch.models_by_batch_key.values())
+
+        # A timestamp that doesn't match the config falls through to entity lookup and returns nothing
+        entity_batch = await fetch_site_control_groups_by_changed_at(session, config_timestamp - timedelta(seconds=1))
+        assert len(entity_batch.models_by_batch_key) == 0
+        assert len(entity_batch.deleted_by_batch_key) == 0
+
+
 @pytest.mark.parametrize(
     "timestamp, expected_agg_site_tariff_ids",
     [

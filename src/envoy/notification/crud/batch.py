@@ -775,7 +775,17 @@ async def fetch_site_control_groups_by_changed_at(
     """Fetches all SiteControlGroup instances matching the specified changed_at and returns them keyed by all existing
     site IDs
 
-    Also fetches any site control group from the archive that was deleted at the specified timestamp"""
+    Also fetches any site control group from the archive that was deleted at the specified timestamp.
+
+    If the runtime config changed at this timestamp (derpl_pollrate_seconds update), generates an empty-list
+    notification per aggregator so subscribers receive the updated pollRate."""
+
+    runtime_cfg = await select_server_config(session)
+    if runtime_cfg is not None and runtime_cfg.changed_time == timestamp:
+        aggregators = await select_all_aggregators(session, None, None)
+        return AggregatorBatchedEntities.aggregator_id_instance(
+            timestamp, SubscriptionResource.SITE_CONTROL_GROUP, aggregators
+        )
 
     active_groups, deleted_groups = await fetch_entities_with_archive_by_datetime(
         session, SiteControlGroup, ArchiveSiteControlGroup, timestamp
