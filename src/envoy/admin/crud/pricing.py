@@ -1,11 +1,15 @@
 from collections.abc import Iterable, Sequence
 from datetime import datetime
 
-from sqlalchemy import insert, select
+from sqlalchemy import func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
-from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffComponent, ArchiveTariffGeneratedRate
+from envoy.server.model.archive.tariff import (
+    ArchiveTariff,
+    ArchiveTariffComponent,
+    ArchiveTariffGeneratedRate,
+)
 from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 
 
@@ -20,7 +24,10 @@ async def update_single_tariff(session: AsyncSession, updated_tariff: Tariff, ch
     """Updates a single existing tariff entry in the DB. The old version will be archived"""
 
     await copy_rows_into_archive(
-        session, Tariff, ArchiveTariff, lambda q: q.where(Tariff.tariff_id == updated_tariff.tariff_id)
+        session,
+        Tariff,
+        ArchiveTariff,
+        lambda q: q.where(Tariff.tariff_id == updated_tariff.tariff_id),
     )
 
     resp = await session.execute(select(Tariff).where(Tariff.tariff_id == updated_tariff.tariff_id))
@@ -156,3 +163,45 @@ async def cancel_tariff_generated_rate(
         deleted_time,
         lambda q: q.where(TariffGeneratedRate.tariff_generated_rate_id == tariff_generated_rate_id),
     )
+
+
+async def count_tariff_generated_rates_for_period(
+    session: AsyncSession,
+    period_start: datetime,
+    period_end: datetime,
+    site_id: int | None = None,
+) -> int:
+    """Count tariff generated rates where start_time falls within [period_start, period_end)."""
+    stmt = (
+        select(func.count())
+        .select_from(TariffGeneratedRate)
+        .where((TariffGeneratedRate.start_time >= period_start) & (TariffGeneratedRate.start_time < period_end))
+    )
+    if site_id is not None:
+        stmt = stmt.where(TariffGeneratedRate.site_id == site_id)
+    result = await session.execute(stmt)
+    return result.scalar_one()
+
+
+async def select_tariff_generated_rates_for_period(
+    session: AsyncSession,
+    start: int,
+    limit: int,
+    period_start: datetime,
+    period_end: datetime,
+    site_id: int | None = None,
+) -> Sequence[TariffGeneratedRate]:
+    """Select tariff generated rates where start_time falls within [period_start, period_end).
+
+    Ordered by start_time ASC, site_id ASC for deterministic pagination."""
+    stmt = (
+        select(TariffGeneratedRate)
+        .where((TariffGeneratedRate.start_time >= period_start) & (TariffGeneratedRate.start_time < period_end))
+        .order_by(TariffGeneratedRate.start_time.asc(), TariffGeneratedRate.site_id.asc())
+        .offset(start)
+        .limit(limit)
+    )
+    if site_id is not None:
+        stmt = stmt.where(TariffGeneratedRate.site_id == site_id)
+    result = await session.execute(stmt)
+    return result.scalars().all()

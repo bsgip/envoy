@@ -1,13 +1,15 @@
 """Basic tests that valid no exceptions are being raised"""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
+    TariffGeneratedRatePageResponse,
     TariffGeneratedRateRequest,
+    TariffGeneratedRateResponse,
     TariffRequest,
     TariffResponse,
 )
@@ -129,3 +131,68 @@ def test_tariff_genrate_mapper_roundtrip(optional_is_none: bool):
     assert result.created_time == created_time
     assert result.tariff_id == tariff_id
     assert result.tariff_generated_rate_id == tariff_gen_rate_id
+
+
+@pytest.mark.parametrize("optional_is_none", [True, False])
+def test_tariff_genrate_mapper_to_response(optional_is_none: bool):
+    mdl = generate_class_instance(TariffGeneratedRate, optional_is_none=optional_is_none)
+
+    resp = TariffGeneratedRateListMapper.map_to_response(mdl)
+
+    assert isinstance(resp, TariffGeneratedRateResponse)
+    assert resp.tariff_generated_rate_id == mdl.tariff_generated_rate_id
+    assert resp.tariff_id == mdl.tariff_id
+    assert resp.site_id == mdl.site_id
+    assert resp.calculation_log_id == mdl.calculation_log_id
+    assert resp.start_time == mdl.start_time
+    assert resp.duration_seconds == mdl.duration_seconds
+    assert resp.import_active_price == mdl.import_active_price
+    assert resp.export_active_price == mdl.export_active_price
+    assert resp.import_reactive_price == mdl.import_reactive_price
+    assert resp.export_reactive_price == mdl.export_reactive_price
+    assert resp.created_time == mdl.created_time
+    assert resp.changed_time == mdl.changed_time
+
+
+def test_tariff_genrate_mapper_to_page_response():
+    rate1 = generate_class_instance(TariffGeneratedRate, seed=1)
+    rate2 = generate_class_instance(TariffGeneratedRate, seed=2)
+    period_start = datetime(2022, 1, 1, tzinfo=UTC)
+    period_end = datetime(2022, 1, 2, tzinfo=UTC)
+
+    page = TariffGeneratedRateListMapper.map_to_page_response(
+        total_count=42,
+        rates=[rate1, rate2],
+        start=5,
+        limit=10,
+        period_start=period_start,
+        period_end=period_end,
+        site_id=7,
+    )
+
+    assert isinstance(page, TariffGeneratedRatePageResponse)
+    assert page.total_count == 42
+    assert page.start == 5
+    assert page.limit == 10
+    assert page.period_start == period_start
+    assert page.period_end == period_end
+    assert page.site_id == 7
+    assert len(page.rates) == 2
+    assert page.rates[0].tariff_generated_rate_id == rate1.tariff_generated_rate_id
+    assert page.rates[1].tariff_generated_rate_id == rate2.tariff_generated_rate_id
+
+
+def test_tariff_genrate_mapper_to_page_response_no_site_filter():
+    page = TariffGeneratedRateListMapper.map_to_page_response(
+        total_count=0,
+        rates=[],
+        start=0,
+        limit=100,
+        period_start=datetime(2022, 1, 1, tzinfo=UTC),
+        period_end=datetime(2022, 1, 2, tzinfo=UTC),
+        site_id=None,
+    )
+
+    assert page.site_id is None
+    assert page.rates == []
+    assert page.total_count == 0

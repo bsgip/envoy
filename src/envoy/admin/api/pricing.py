@@ -1,11 +1,14 @@
 import logging
+from datetime import datetime
 from http import HTTPStatus
+from pathlib import Path
 
 from asyncpg.exceptions import CardinalityViolationError
 from envoy_schema.admin.schema.base import BatchCreateResponse
 from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
     TariffComponentResponse,
+    TariffGeneratedRatePageResponse,
     TariffGeneratedRateRequest,
     TariffGeneratedRateResponse,
     TariffRequest,
@@ -16,6 +19,7 @@ from envoy_schema.admin.schema.uri import (
     TariffComponentUpdateUri,
     TariffCreateUri,
     TariffGeneratedRateCreateUri,
+    TariffGeneratedRateListForPeriodUri,
     TariffGeneratedRateUpdateUri,
     TariffUpdateUri,
 )
@@ -23,8 +27,16 @@ from fastapi import APIRouter, Query, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
-from envoy.admin.manager.pricing import TariffComponentManager, TariffGeneratedRateManager, TariffManager
+from envoy.admin.manager.pricing import (
+    TariffComponentManager,
+    TariffGeneratedRateManager,
+    TariffManager,
+)
 from envoy.server.api.error_handler import LoggedHttpException
+from envoy.server.api.request import (
+    extract_limit_from_paging_param,
+    extract_start_from_paging_param,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +109,11 @@ async def update_tariff(tariff_id: int, tariff: TariffRequest) -> None:
         raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found") from exc
 
 
-@router.get(TariffComponentUpdateUri, status_code=HTTPStatus.OK, response_model=TariffComponentResponse)
+@router.get(
+    TariffComponentUpdateUri,
+    status_code=HTTPStatus.OK,
+    response_model=TariffComponentResponse,
+)
 async def get_tariff_component(tariff_component_id: int) -> TariffComponentResponse:
     """Fetch a singular TariffComponentResponse Object.
 
@@ -142,7 +158,11 @@ async def delete_tariff_component(tariff_component_id: int) -> None:
         raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found") from exc
 
 
-@router.post(TariffComponentCreateUri, status_code=HTTPStatus.CREATED, response_model=BatchCreateResponse)
+@router.post(
+    TariffComponentCreateUri,
+    status_code=HTTPStatus.CREATED,
+    response_model=BatchCreateResponse,
+)
 async def create_tariff_component(tariff_component: TariffComponentRequest, response: Response) -> BatchCreateResponse:
     """Creates a singular tariff component. The location (/tariff_component/{tariff_id}) of the created resource is
     provided in the 'Location' header of the response.
@@ -164,7 +184,9 @@ async def create_tariff_component(tariff_component: TariffComponentRequest, resp
 
 
 @router.post(TariffGeneratedRateCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
-async def create_tariff_genrate(tariff_generates: list[TariffGeneratedRateRequest]) -> BatchCreateResponse:
+async def create_tariff_genrate(
+    tariff_generates: list[TariffGeneratedRateRequest],
+) -> BatchCreateResponse:
     """Bulk creation of 'Tariff Generated Rates' associated with respective Tariffs (tariff_id) and Sites (site_id).
 
     Body:
@@ -178,15 +200,24 @@ async def create_tariff_genrate(tariff_generates: list[TariffGeneratedRateReques
 
     except CardinalityViolationError as exc:
         raise LoggedHttpException(
-            logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances"
+            logger,
+            exc,
+            HTTPStatus.BAD_REQUEST,
+            "The request contains duplicate instances",
         ) from exc
 
     except IntegrityError as exc:
         raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "tariff_id or site_id not found") from exc
 
 
-@router.get(TariffGeneratedRateUpdateUri, status_code=HTTPStatus.OK, response_model=TariffGeneratedRateResponse)
-async def get_tariff_genrate(tariff_generated_rate_id: int) -> TariffGeneratedRateResponse:
+@router.get(
+    TariffGeneratedRateUpdateUri,
+    status_code=HTTPStatus.OK,
+    response_model=TariffGeneratedRateResponse,
+)
+async def get_tariff_genrate(
+    tariff_generated_rate_id: int,
+) -> TariffGeneratedRateResponse:
     """Fetch a singular TariffGeneratedRateResponse Object.
 
     Path Param:
@@ -213,3 +244,39 @@ async def delete_tariff_genrate(tariff_generated_rate_id: int) -> None:
         return await TariffGeneratedRateManager.cancel_tariff_generated_rate(db.session, tariff_generated_rate_id)
     except NoResultFound as exc:
         raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found") from exc
+
+
+@router.get(
+    TariffGeneratedRateListForPeriodUri,
+    status_code=HTTPStatus.OK,
+    response_model=TariffGeneratedRatePageResponse,
+)
+async def get_tariff_generated_rates_for_period(
+    start: list[int] = Query([0]),
+    limit: list[int] = Query([100]),
+    period_start: datetime = Path(),
+    period_end: datetime = Path(),
+    site_id: int | None = Query(None),
+) -> TariffGeneratedRatePageResponse:
+    """Paginated list of tariff generated rates where start_time falls within [period_start, period_end).
+
+    Path Params:
+        period_start: Inclusive start of the time period (ISO 8601 datetime).
+        period_end: Exclusive end of the time period (ISO 8601 datetime).
+
+    Query Params:
+        start: Pagination offset. Default 0.
+        limit: Maximum number of rates to return. Default 100.
+        site_id: Optional filter to a specific site.
+
+    Returns:
+        TariffGeneratedRatePageResponse
+    """
+    return await TariffGeneratedRateManager.fetch_rates_for_period(
+        session=db.session,
+        start=extract_start_from_paging_param(start),
+        limit=extract_limit_from_paging_param(limit),
+        period_start=period_start,
+        period_end=period_end,
+        site_id=site_id,
+    )
