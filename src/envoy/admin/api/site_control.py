@@ -29,6 +29,7 @@ from envoy.admin.manager.site_control import SiteControlGroupManager, SiteContro
 from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import extract_limit_from_paging_param, extract_start_from_paging_param
 from envoy.server.api.response import LOCATION_HEADER_NAME
+from envoy.server.exception import BadRequestError, NotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,27 @@ async def get_site_control_group(group_id: int) -> SiteControlGroupResponse:
     if result is None:
         raise LoggedHttpException(logger, None, HTTPStatus.NOT_FOUND, f"site_group_id {group_id} not found")
     return result
+
+
+@router.put(SiteControlGroupUri, status_code=HTTPStatus.OK, response_model=SiteControlGroupResponse)
+async def update_site_control_group(
+    group_id: int, site_control_group: SiteControlGroupRequest
+) -> SiteControlGroupResponse:
+    """Endpoint for updating a single SiteControlGroupResponse by its ID
+
+    Returns:
+        SiteControlGroupResponse or 404 if it can't be found
+    """
+    try:
+        return await SiteControlGroupManager.update_site_control_group(
+            session=db.session,
+            site_control_group_id=group_id,
+            request=site_control_group,
+        )
+    except BadRequestError as exc:
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, exc.message)
+    except NotFoundError as exc:
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, exc.message)
 
 
 @router.get(SiteControlGroupListUri, status_code=HTTPStatus.OK, response_model=SiteControlGroupPageResponse)

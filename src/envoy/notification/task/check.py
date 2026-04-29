@@ -249,6 +249,7 @@ def entities_to_notification(  # noqa: C901
             sub=sub,
             scope=scope,
             notification_type=notification_type,
+            poll_rate_seconds=config.derpl_pollrate_seconds,
         )
     elif resource == SubscriptionResource.READING:
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)

@@ -643,7 +643,10 @@ def test_NotificationMapper_map_site_control_groups_to_response(notification_typ
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
     )
 
-    notification = NotificationMapper.map_site_control_groups_to_response([scg1, scg2], sub, scope, notification_type)
+    poll_rate = 99887
+    notification = NotificationMapper.map_site_control_groups_to_response(
+        [scg1, scg2], sub, scope, notification_type, poll_rate
+    )
     assert isinstance(notification, Notification)
     assert notification.subscribedResource.startswith("/custom/prefix")
     assert DERProgramListUri.format(site_id=scope.display_site_id) in notification.subscribedResource
@@ -655,6 +658,7 @@ def test_NotificationMapper_map_site_control_groups_to_response(notification_typ
         assert notification.status == NotificationStatus.DEFAULT
 
     assert notification.resource.type == XSI_TYPE_DER_PROGRAM_LIST
+    assert notification.resource.pollRate == poll_rate
     assert_list_type(DERProgramResponse, notification.resource.DERProgram, count=2)
     assert_entity_hrefs_contain_entity_id_and_prefix(
         [e.href for e in notification.resource.DERProgram],

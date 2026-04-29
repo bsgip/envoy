@@ -67,7 +67,8 @@ class ArchiveMapper:
             set_energized=doe.set_energized,
             set_connect=doe.set_connected,
             randomize_start_seconds=doe.randomize_start_seconds,
-            storage_target_watts=None,
+            storage_target_watts=doe.storage_target_active_watts,
+            display_id=doe.display_id,
         )
 
     @staticmethod

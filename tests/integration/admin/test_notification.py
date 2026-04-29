@@ -1462,6 +1462,134 @@ async def test_update_server_config_fsa_notification_no_change(
 
 
 @pytest.mark.anyio
+async def test_update_server_config_derpl_notification(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """Tests that updating server config generates subscription notifications for DERProgramList"""
+
+    subscription1_uri = "http://my.example:542/uri"
+    subscription2_uri = "https://my.other.example:542/uri"
+
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # Will pickup DERP notifications for site 2
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.SITE_CONTROL_GROUP,
+                resource_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        # Will pickup DERP notifications for site 3
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=2,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.SITE_CONTROL_GROUP,
+                resource_id=None,
+                scoped_site_id=3,
+                notification_uri=subscription2_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    # Update derpl config to a new value
+    derpl_poll_rate = 131009117
+    config_request = generate_class_instance(
+        RuntimeServerConfigRequest, optional_is_none=True, derpl_pollrate_seconds=derpl_poll_rate
+    )
+    resp = await admin_client_auth.post(ServerConfigRuntimeUri, content=config_request.model_dump_json())
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    # Give the notifications a chance to propagate
+    assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    await asyncio.sleep(1)  # Give a chance to any extra requests to also appear so we can consider them
+
+    assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription2_uri)] == 1
+
+    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+        notifications_enabled.logged_requests
+    ), "Expected unique notification ids for each request"
+    assert all([f'pollRate="{derpl_poll_rate}"' in r.content for r in notifications_enabled.logged_requests])
+    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
+
+
+@pytest.mark.parametrize("none_derpl_value", [True, False])
+@pytest.mark.anyio
+async def test_update_server_config_derpl_notification_no_change(
+    admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config, none_derpl_value: bool
+):
+    """Tests that updating server config (with no changed value for DERP) generates 0 notifications"""
+
+    subscription1_uri = "http://my.example:542/uri"
+    derpl_poll_rate = 123
+
+    async with generate_async_session(pg_base_config) as session:
+        # Clear any other subs first
+        await session.execute(delete(Subscription))
+
+        # Force the server DERP pollrate config to a known value
+        await session.execute(delete(RuntimeServerConfig))
+        await session.execute(
+            insert(RuntimeServerConfig).values(
+                changed_time=datetime.now(),
+                dcap_pollrate_seconds=None,
+                edevl_pollrate_seconds=None,
+                fsal_pollrate_seconds=None,
+                derpl_pollrate_seconds=derpl_poll_rate,
+                derl_pollrate_seconds=None,
+                mup_postrate_seconds=None,
+                site_control_pow10_encoding=None,
+                disable_edev_registration=False,
+            )
+        )
+
+        # Will pickup DERP notifications for site 2
+        await session.execute(
+            insert(Subscription).values(
+                aggregator_id=1,
+                changed_time=datetime.now(),
+                resource_type=SubscriptionResource.SITE_CONTROL_GROUP,
+                resource_id=None,
+                scoped_site_id=2,
+                notification_uri=subscription1_uri,
+                entity_limit=10,
+            )
+        )
+
+        await session.commit()
+
+    # Update config without actually changing the DERP poll rate
+    config_request = generate_class_instance(
+        RuntimeServerConfigRequest,
+        optional_is_none=True,
+        disable_edev_registration=True,
+        derpl_pollrate_seconds=None if none_derpl_value else derpl_poll_rate,
+    )
+    resp = await admin_client_auth.post(ServerConfigRuntimeUri, content=config_request.model_dump_json())
+    assert resp.status_code == HTTPStatus.NO_CONTENT
+
+    # Give any notifications a chance to propagate
+    await asyncio.sleep(3)
+
+    # No notifications should've been generated as we aren't actually changing any values associated with DERP
+    assert len(notifications_enabled.logged_requests) == 0
+
+
+@pytest.mark.anyio
 async def test_update_site_control_group_default_notification(
     admin_client_auth: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
 ):

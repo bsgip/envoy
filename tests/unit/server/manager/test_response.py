@@ -1,5 +1,6 @@
 import unittest.mock as mock
 from datetime import datetime
+from typing import Optional
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -70,16 +71,20 @@ def test_fetch_response_set_list_for_scope_pagination(start: int, limit: int, ex
         assert actual_set.mRID == MridMapper.encode_response_set_mrid(scope, expected)
 
 
+@pytest.mark.parametrize("snapshot_doe", [None, generate_class_instance(DynamicOperatingEnvelope)])
 @mock.patch("envoy.server.manager.response.ResponseMapper.map_to_price_response")
 @mock.patch("envoy.server.manager.response.ResponseMapper.map_to_doe_response")
 @mock.patch("envoy.server.manager.response.select_doe_response_for_scope")
 @mock.patch("envoy.server.manager.response.select_rate_response_for_scope")
+@mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @pytest.mark.anyio
 async def test_fetch_response_for_scope_doe_exists(
+    mock_select_doe_include_deleted: mock.MagicMock,
     mock_select_rate_response_for_scope: mock.MagicMock,
     mock_select_doe_response_for_scope: mock.MagicMock,
     mock_map_to_doe_response: mock.MagicMock,
     mock_map_to_price_response: mock.MagicMock,
+    snapshot_doe: Optional[DynamicOperatingEnvelope],
 ):
     """Checks that the flows for a response work OK with DOEs"""
     # Arrange
@@ -91,6 +96,7 @@ async def test_fetch_response_for_scope_doe_exists(
 
     mock_select_doe_response_for_scope.return_value = response_obj
     mock_map_to_doe_response.return_value = mapped_obj
+    mock_select_doe_include_deleted.return_value = snapshot_doe
 
     # Act
     result = await ResponseManager.fetch_response_for_scope(
@@ -100,20 +106,23 @@ async def test_fetch_response_for_scope_doe_exists(
     # Assert
     assert result is mapped_obj
     assert_mock_session(mock_session)
+    mock_select_doe_include_deleted.assert_called_once()
     mock_select_rate_response_for_scope.assert_not_called()
     mock_map_to_price_response.assert_not_called()
     mock_select_doe_response_for_scope.assert_called_once_with(
         mock_session, scope.aggregator_id, scope.site_id, response_id
     )
-    mock_map_to_doe_response.assert_called_once_with(scope, response_obj)
+    mock_map_to_doe_response.assert_called_once_with(scope, response_obj, snapshot_doe)
 
 
 @mock.patch("envoy.server.manager.response.ResponseMapper.map_to_price_response")
 @mock.patch("envoy.server.manager.response.ResponseMapper.map_to_doe_response")
 @mock.patch("envoy.server.manager.response.select_doe_response_for_scope")
 @mock.patch("envoy.server.manager.response.select_rate_response_for_scope")
+@mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @pytest.mark.anyio
-async def test_fetch_response_for_scope_doe_missing(
+async def test_fetch_response_for_scope_response_missing(
+    mock_select_doe_include_deleted: mock.MagicMock,
     mock_select_rate_response_for_scope: mock.MagicMock,
     mock_select_doe_response_for_scope: mock.MagicMock,
     mock_map_to_doe_response: mock.MagicMock,
@@ -133,6 +142,7 @@ async def test_fetch_response_for_scope_doe_missing(
 
     # Assert
     assert_mock_session(mock_session)
+    mock_select_doe_include_deleted.assert_not_called()
     mock_select_rate_response_for_scope.assert_not_called()
     mock_map_to_price_response.assert_not_called()
     mock_select_doe_response_for_scope.assert_called_once_with(
@@ -145,8 +155,10 @@ async def test_fetch_response_for_scope_doe_missing(
 @mock.patch("envoy.server.manager.response.ResponseMapper.map_to_doe_response")
 @mock.patch("envoy.server.manager.response.select_doe_response_for_scope")
 @mock.patch("envoy.server.manager.response.select_rate_response_for_scope")
+@mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @pytest.mark.anyio
 async def test_fetch_response_for_scope_rate_exists(
+    mock_select_doe_include_deleted: mock.MagicMock,
     mock_select_rate_response_for_scope: mock.MagicMock,
     mock_select_doe_response_for_scope: mock.MagicMock,
     mock_map_to_doe_response: mock.MagicMock,
@@ -171,6 +183,7 @@ async def test_fetch_response_for_scope_rate_exists(
     # Assert
     assert result is mapped_obj
     assert_mock_session(mock_session)
+    mock_select_doe_include_deleted.assert_not_called()
     mock_select_rate_response_for_scope.assert_called_once_with(
         mock_session, scope.aggregator_id, scope.site_id, response_id
     )
@@ -183,8 +196,10 @@ async def test_fetch_response_for_scope_rate_exists(
 @mock.patch("envoy.server.manager.response.ResponseMapper.map_to_doe_response")
 @mock.patch("envoy.server.manager.response.select_doe_response_for_scope")
 @mock.patch("envoy.server.manager.response.select_rate_response_for_scope")
+@mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @pytest.mark.anyio
 async def test_fetch_response_for_scope_rate_missing(
+    mock_select_doe_include_deleted: mock.MagicMock,
     mock_select_rate_response_for_scope: mock.MagicMock,
     mock_select_doe_response_for_scope: mock.MagicMock,
     mock_map_to_doe_response: mock.MagicMock,
@@ -206,6 +221,7 @@ async def test_fetch_response_for_scope_rate_missing(
 
     # Assert
     assert_mock_session(mock_session)
+    mock_select_doe_include_deleted.assert_not_called()
     mock_select_rate_response_for_scope.assert_called_once_with(
         mock_session, scope.aggregator_id, scope.site_id, response_id
     )
@@ -233,8 +249,10 @@ async def test_fetch_response_for_scope_bad_type():
 @mock.patch("envoy.server.manager.response.count_doe_responses")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_responses")
 @mock.patch("envoy.server.manager.response.count_tariff_generated_rate_responses")
+@mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @pytest.mark.anyio
 async def test_fetch_response_list_for_scope_does(
+    mock_select_doe_include_deleted: mock.MagicMock,
     mock_count_tariff_generated_rate_responses: mock.MagicMock,
     mock_select_tariff_generated_rate_responses: mock.MagicMock,
     mock_count_doe_responses: mock.MagicMock,
@@ -245,7 +263,11 @@ async def test_fetch_response_list_for_scope_does(
     """Checks that the flows for a response list work OK with DOEs"""
     # Arrange
     scope = generate_class_instance(DeviceOrAggregatorRequestScope)
-    response_objs = [generate_class_instance(DynamicOperatingEnvelopeResponse)]
+    response_objs = [
+        generate_class_instance(DynamicOperatingEnvelopeResponse, seed=101, dynamic_operating_envelope_id_snapshot=11),
+        generate_class_instance(DynamicOperatingEnvelopeResponse, seed=202, dynamic_operating_envelope_id_snapshot=22),
+    ]
+    snapshot_does = [generate_class_instance(DynamicOperatingEnvelope, seed=101), None]
     mapped_obj = generate_class_instance(ResponseListResponse)
     mock_session = create_mock_session()
     start = 101
@@ -256,6 +278,7 @@ async def test_fetch_response_list_for_scope_does(
     mock_count_doe_responses.return_value = mock_count
     mock_select_doe_responses.return_value = response_objs
     mock_map_to_doe_response.return_value = mapped_obj
+    mock_select_doe_include_deleted.side_effect = snapshot_does
 
     # Act
     result = await ResponseManager.fetch_response_list_for_scope(
@@ -265,6 +288,12 @@ async def test_fetch_response_list_for_scope_does(
     # Assert
     assert result is mapped_obj
     assert_mock_session(mock_session)
+    mock_select_doe_include_deleted.assert_has_calls(
+        [
+            mock.call(mock_session, scope.aggregator_id, scope.site_id, 11),
+            mock.call(mock_session, scope.aggregator_id, scope.site_id, 22),
+        ]
+    )
     mock_select_tariff_generated_rate_responses.assert_not_called()
     mock_count_tariff_generated_rate_responses.assert_not_called()
     mock_map_to_price_response.assert_not_called()
@@ -277,7 +306,7 @@ async def test_fetch_response_list_for_scope_does(
         created_after=created_after,
     )
     mock_count_doe_responses.assert_called_once_with(mock_session, scope.aggregator_id, scope.site_id, created_after)
-    mock_map_to_doe_response.assert_called_once_with(scope, response_objs, mock_count)
+    mock_map_to_doe_response.assert_called_once_with(scope, list(zip(response_objs, snapshot_does)), mock_count)
 
 
 @mock.patch("envoy.server.manager.response.ResponseListMapper.map_to_price_response")
@@ -286,8 +315,10 @@ async def test_fetch_response_list_for_scope_does(
 @mock.patch("envoy.server.manager.response.count_doe_responses")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_responses")
 @mock.patch("envoy.server.manager.response.count_tariff_generated_rate_responses")
+@mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @pytest.mark.anyio
 async def test_fetch_response_list_for_scope_rates(
+    mock_select_doe_include_deleted: mock.MagicMock,
     mock_count_tariff_generated_rate_responses: mock.MagicMock,
     mock_select_tariff_generated_rate_responses: mock.MagicMock,
     mock_count_doe_responses: mock.MagicMock,
@@ -333,6 +364,7 @@ async def test_fetch_response_list_for_scope_rates(
     mock_select_doe_responses.assert_not_called()
     mock_count_doe_responses.assert_not_called()
     mock_map_to_doe_response.assert_not_called()
+    mock_select_doe_include_deleted.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -354,8 +386,10 @@ async def test_fetch_response_list_for_scope_bad_type():
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_invalid_mrid(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
     mock_select_tariff_generated_rate_include_deleted: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
@@ -381,6 +415,7 @@ async def test_create_response_for_scope_invalid_mrid(
     mock_select_doe_include_deleted.assert_not_called()
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_not_called()
+    mock_select_doe_by_display_id_include_deleted.assert_not_called()
     mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
 
 
@@ -390,8 +425,10 @@ async def test_create_response_for_scope_invalid_mrid(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_lfdi_site_mismatch(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
     mock_select_tariff_generated_rate_include_deleted: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
@@ -424,6 +461,7 @@ async def test_create_response_for_scope_lfdi_site_mismatch(
     mock_select_doe_include_deleted.assert_not_called()
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_not_called()
+    mock_select_doe_by_display_id_include_deleted.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
@@ -432,8 +470,10 @@ async def test_create_response_for_scope_lfdi_site_mismatch(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_lfdi_not_found(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
     mock_select_tariff_generated_rate_include_deleted: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
@@ -462,6 +502,7 @@ async def test_create_response_for_scope_lfdi_not_found(
     mock_select_doe_include_deleted.assert_not_called()
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_not_called()
+    mock_select_doe_by_display_id_include_deleted.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
@@ -470,8 +511,10 @@ async def test_create_response_for_scope_lfdi_not_found(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_invalid_response_set_type(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
     mock_select_tariff_generated_rate_include_deleted: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
@@ -498,6 +541,7 @@ async def test_create_response_for_scope_invalid_response_set_type(
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_not_called()
     mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
+    mock_select_doe_by_display_id_include_deleted.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
@@ -506,8 +550,10 @@ async def test_create_response_for_scope_invalid_response_set_type(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_doe_with_price_mrid(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
     mock_select_tariff_generated_rate_include_deleted: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
@@ -534,6 +580,7 @@ async def test_create_response_for_scope_doe_with_price_mrid(
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_not_called()
     mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
+    mock_select_doe_by_display_id_include_deleted.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
@@ -542,8 +589,10 @@ async def test_create_response_for_scope_doe_with_price_mrid(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_doe_not_in_scope(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
     mock_select_tariff_generated_rate_include_deleted: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
@@ -559,7 +608,7 @@ async def test_create_response_for_scope_doe_not_in_scope(
     response = generate_class_instance(Response, seed=202)
     decoded_doe_id = 303
     mock_decode_and_validate_mrid_type.return_value = MridType.DYNAMIC_OPERATING_ENVELOPE
-    mock_decode_doe_mrid.return_value = decoded_doe_id
+    mock_decode_doe_mrid.return_value = (False, decoded_doe_id)
     mock_select_doe_include_deleted.return_value = None
 
     # Mock LFDI check - site matches
@@ -577,6 +626,7 @@ async def test_create_response_for_scope_doe_not_in_scope(
     mock_select_doe_include_deleted.assert_called_once_with(session, scope.aggregator_id, scope.site_id, decoded_doe_id)
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_called_once_with(response.subject)
+    mock_select_doe_by_display_id_include_deleted.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
@@ -585,8 +635,58 @@ async def test_create_response_for_scope_doe_not_in_scope(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
+@pytest.mark.anyio
+async def test_create_response_for_scope_doe_not_in_scope_display_id(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
+    mock_select_tariff_generated_rate_for_scope: mock.MagicMock,
+    mock_select_doe_include_deleted: mock.MagicMock,
+    mock_decode_time_tariff_interval_mrid: mock.MagicMock,
+    mock_decode_doe_mrid: mock.MagicMock,
+    mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
+):
+    """Tests that if a doe response references a doe not in scope (via display_id) - we get raise a bad request error"""
+    # Arrange
+
+    session = create_mock_session()
+    scope = generate_class_instance(SiteRequestScope, seed=101)
+    response = generate_class_instance(Response, seed=202)
+    decoded_display_id = 303
+    mock_decode_and_validate_mrid_type.return_value = MridType.DYNAMIC_OPERATING_ENVELOPE
+    mock_decode_doe_mrid.return_value = (True, decoded_display_id)
+    mock_select_doe_by_display_id_include_deleted.return_value = None
+
+    # Mock LFDI check - site matches
+    matched_site = generate_class_instance(Site, seed=404, site_id=scope.site_id)
+    mock_select_single_site_with_lfdi.return_value = matched_site
+
+    # Act
+    with pytest.raises(BadRequestError):
+        await ResponseManager.create_response_for_scope(session, scope, ResponseSetType.SITE_CONTROLS, response)
+
+    # Assert
+    mock_decode_and_validate_mrid_type.assert_called_once_with(scope, response.subject)
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
+    mock_select_tariff_generated_rate_for_scope.assert_not_called()
+    mock_select_doe_include_deleted.assert_not_called()
+    mock_decode_time_tariff_interval_mrid.assert_not_called()
+    mock_decode_doe_mrid.assert_called_once_with(response.subject)
+    mock_select_doe_by_display_id_include_deleted.assert_called_once_with(
+        session, scope.aggregator_id, scope.site_id, decoded_display_id
+    )
+
+
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
+@mock.patch("envoy.server.manager.response.select_doe_include_deleted")
+@mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_doe_created_normally(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
     mock_select_tariff_generated_rate_include_deleted: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
@@ -603,10 +703,14 @@ async def test_create_response_for_scope_doe_created_normally(
     response = generate_class_instance(Response, seed=202)
     decoded_doe_id = 2
     existing_doe = generate_class_instance(
-        DynamicOperatingEnvelope, seed=303, dynamic_operating_envelope_id=decoded_doe_id, site_id=site_id
+        DynamicOperatingEnvelope,
+        seed=303,
+        dynamic_operating_envelope_id=decoded_doe_id,
+        site_id=site_id,
+        display_id=None,
     )
     mock_decode_and_validate_mrid_type.return_value = MridType.DYNAMIC_OPERATING_ENVELOPE
-    mock_decode_doe_mrid.return_value = decoded_doe_id
+    mock_decode_doe_mrid.return_value = (False, decoded_doe_id)
     mock_select_doe_include_deleted.return_value = existing_doe
 
     # Mock LFDI check - site matches
@@ -631,6 +735,7 @@ async def test_create_response_for_scope_doe_created_normally(
     mock_select_doe_include_deleted.assert_called_once_with(session, scope.aggregator_id, scope.site_id, decoded_doe_id)
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_called_once_with(response.subject)
+    mock_select_doe_by_display_id_include_deleted.assert_not_called()
 
     # Check the href looks valid and matches the new record in the DB
     assert isinstance(returned_href, str)
@@ -664,8 +769,97 @@ async def test_create_response_for_scope_doe_created_normally(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
+@pytest.mark.anyio
+async def test_create_response_for_scope_doe_created_normally_with_display_id(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
+    mock_select_tariff_generated_rate_for_scope: mock.MagicMock,
+    mock_select_doe_include_deleted: mock.MagicMock,
+    mock_decode_time_tariff_interval_mrid: mock.MagicMock,
+    mock_decode_doe_mrid: mock.MagicMock,
+    mock_decode_and_validate_mrid_type: mock.MagicMock,
+    mock_select_single_site_with_lfdi: mock.MagicMock,
+    pg_base_config,
+):
+    """Tests that DOE responses can be added to the database and the appropriate href returned"""
+
+    # Arrange
+    site_id = 1
+    scope = generate_class_instance(SiteRequestScope, seed=101, site_id=site_id, href_prefix="/my_prefix/")
+    response = generate_class_instance(Response, seed=202)
+    decoded_display_id = 2
+    actual_doe_id = 3133
+    existing_doe = generate_class_instance(
+        DynamicOperatingEnvelope,
+        seed=303,
+        dynamic_operating_envelope_id=actual_doe_id,
+        display_id=decoded_display_id,
+        site_id=site_id,
+    )
+    mock_decode_and_validate_mrid_type.return_value = MridType.DYNAMIC_OPERATING_ENVELOPE
+    mock_decode_doe_mrid.return_value = (True, decoded_display_id)
+    mock_select_doe_by_display_id_include_deleted.return_value = existing_doe
+
+    # Mock LFDI check - site matches
+    matched_site = generate_class_instance(Site, seed=404, site_id=site_id)
+    mock_select_single_site_with_lfdi.return_value = matched_site
+
+    # Act
+    async with generate_async_session(pg_base_config) as session:
+        db_count_before = (
+            await session.execute(select(func.count()).select_from(DynamicOperatingEnvelopeResponse))
+        ).scalar_one()
+
+    async with generate_async_session(pg_base_config) as session:
+        returned_href = await ResponseManager.create_response_for_scope(
+            session, scope, ResponseSetType.SITE_CONTROLS, response
+        )
+
+    # Assert
+    mock_decode_and_validate_mrid_type.assert_called_once_with(scope, response.subject)
+    mock_select_single_site_with_lfdi.assert_called_once_with(session, response.endDeviceLFDI, scope.aggregator_id)
+    mock_select_tariff_generated_rate_for_scope.assert_not_called()
+    mock_select_doe_include_deleted.assert_not_called()
+    mock_decode_time_tariff_interval_mrid.assert_not_called()
+    mock_decode_doe_mrid.assert_called_once_with(response.subject)
+    mock_select_doe_by_display_id_include_deleted.assert_called_once_with(
+        session, scope.aggregator_id, scope.site_id, decoded_display_id
+    )
+
+    # Check the href looks valid and matches the new record in the DB
+    assert isinstance(returned_href, str)
+    assert returned_href.startswith(scope.href_prefix)
+    response_id = int(returned_href.split("/")[-1])  # Assume LAST component of href is the DB ID
+    assert response_set_type_to_href(ResponseSetType.SITE_CONTROLS) in returned_href
+    async with generate_async_session(pg_base_config) as session:
+        db_count_after = (
+            await session.execute(select(func.count()).select_from(DynamicOperatingEnvelopeResponse))
+        ).scalar_one()
+        db_response = (
+            await session.execute(
+                select(DynamicOperatingEnvelopeResponse).where(
+                    DynamicOperatingEnvelopeResponse.dynamic_operating_envelope_response_id == response_id
+                )
+            )
+        ).scalar_one()
+
+        assert db_count_after == (db_count_before + 1), "There should be a new response in the DB"
+        assert db_response.site_id == site_id, "This is double checking the mapper"
+        assert db_response.dynamic_operating_envelope_id_snapshot == actual_doe_id, "This is double checking the mapper"
+        assert_nowish(db_response.created_time)
+        assert db_response.response_type == response.status, "This is double checking the mapper"
+
+
+@mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_and_validate_mrid_type")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_doe_mrid")
+@mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
+@mock.patch("envoy.server.manager.response.select_doe_include_deleted")
+@mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_price_with_doe_mrid(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
     mock_select_tariff_generated_rate_include_deleted: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
@@ -693,6 +887,7 @@ async def test_create_response_for_scope_price_with_doe_mrid(
     mock_select_doe_include_deleted.assert_not_called()
     mock_decode_time_tariff_interval_mrid.assert_not_called()
     mock_decode_doe_mrid.assert_not_called()
+    mock_select_doe_by_display_id_include_deleted.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
@@ -701,8 +896,10 @@ async def test_create_response_for_scope_price_with_doe_mrid(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_price_not_in_scope(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
     mock_select_tariff_generated_rate_include_deleted: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
@@ -740,6 +937,7 @@ async def test_create_response_for_scope_price_not_in_scope(
     mock_select_doe_include_deleted.assert_not_called()
     mock_decode_time_tariff_interval_mrid.assert_called_once_with(response.subject)
     mock_decode_doe_mrid.assert_not_called()
+    mock_select_doe_by_display_id_include_deleted.assert_not_called()
 
 
 @mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
@@ -748,8 +946,10 @@ async def test_create_response_for_scope_price_not_in_scope(
 @mock.patch("envoy.server.manager.response.MridMapper.decode_time_tariff_interval_mrid")
 @mock.patch("envoy.server.manager.response.select_doe_include_deleted")
 @mock.patch("envoy.server.manager.response.select_tariff_generated_rate_include_deleted")
+@mock.patch("envoy.server.manager.response.select_doe_by_display_id_include_deleted")
 @pytest.mark.anyio
 async def test_create_response_for_scope_price_created_normally(
+    mock_select_doe_by_display_id_include_deleted: mock.MagicMock,
     mock_select_tariff_generated_rate_include_deleted: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
     mock_decode_time_tariff_interval_mrid: mock.MagicMock,
@@ -796,6 +996,7 @@ async def test_create_response_for_scope_price_created_normally(
     mock_select_doe_include_deleted.assert_not_called()
     mock_decode_time_tariff_interval_mrid.assert_called_once_with(response.subject)
     mock_decode_doe_mrid.assert_not_called()
+    mock_select_doe_by_display_id_include_deleted.assert_not_called()
 
     # Check the href looks valid and matches the new record in the DB
     assert isinstance(returned_href, str)

@@ -652,8 +652,9 @@ class NotificationMapper:
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
+        poll_rate_seconds: Optional[int],
     ) -> Notification:
-        """Turns a list of does into a notification"""
+        """Turns a list of site control groups into a notification"""
         group_list_href = generate_href(DERProgramListUri, scope, site_id=scope.display_site_id)
         return Notification.model_validate(
             {
@@ -663,6 +664,7 @@ class NotificationMapper:
                 "resource": {
                     "type": XSI_TYPE_DER_PROGRAM_LIST,
                     "href": group_list_href,
+                    "pollRate": poll_rate_seconds,
                     "all_": len(site_control_groups),
                     "results": len(site_control_groups),
                     "DERProgram": [

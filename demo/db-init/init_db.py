@@ -18,6 +18,7 @@ from envoy.server.model.doe import SiteControlGroup
 # while devices do not - envoy does not keep a record of non-aggregator
 # device certificates.
 AGG_CERT_PATH = os.environ.get("AGG_CERT_PATH", "/test_certs/testaggregator.crt")  # Aggregator Client
+AGG2_CERT_PATH = os.environ.get("AGG2_CERT_PATH", "/test_certs/testaggregator2.crt")  # Second Aggregator Client
 
 # When entering the resulting aggregator certificate LFDI into the database,
 # use uppercase (True) or lowercase (False, Default)
@@ -49,18 +50,25 @@ async def main() -> None:
         if agg_count == 0:
             now = datetime.now(tz=ZoneInfo("UTC"))
 
-            # load aggregator cert only
+            # load aggregator certs
             agg_cert = load_cert(AGG_CERT_PATH, now)
+            agg2_cert = load_cert(AGG2_CERT_PATH, now)
 
-            # add client aggregator
+            # add client aggregators
             agg = Aggregator(name="Test", created_time=now, changed_time=now)
             domain = AggregatorDomain(domain="example.com", created_time=now, changed_time=now)
             agg.domains = [domain]
 
-            # Add our client aggregator and special "NULL" aggregator (used for device clients) - the NULL aggregator
+            agg2 = Aggregator(name="Test2", created_time=now, changed_time=now)
+            domain2 = AggregatorDomain(domain="example2.com", created_time=now, changed_time=now)
+            agg2.domains = [domain2]
+
+            # Add our client aggregators and special "NULL" aggregator (used for device clients) - the NULL aggregator
             # should not be linked to any certificates.
             session.add(agg)
+            session.add(agg2)
             session.add(agg_cert)
+            session.add(agg2_cert)
 
             await session.execute(
                 insert(Aggregator).values(name="NULL AGGREGATOR", created_time=now, changed_time=now, aggregator_id=0)
@@ -69,6 +77,11 @@ async def main() -> None:
 
             session.add(
                 AggregatorCertificateAssignment(certificate_id=agg_cert.certificate_id, aggregator_id=agg.aggregator_id)
+            )
+            session.add(
+                AggregatorCertificateAssignment(
+                    certificate_id=agg2_cert.certificate_id, aggregator_id=agg2.aggregator_id
+                )
             )
 
             site_control_group = SiteControlGroup(

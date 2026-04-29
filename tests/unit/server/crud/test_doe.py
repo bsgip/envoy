@@ -19,6 +19,7 @@ from envoy.server.crud.doe import (
     count_site_control_groups,
     count_site_control_groups_by_fsa_id,
     select_active_does_include_deleted,
+    select_doe_by_display_id_include_deleted,
     select_doe_include_deleted,
     select_does_at_timestamp,
     select_site_control_group_by_id,
@@ -136,6 +137,45 @@ async def test_select_doe_include_deleted(
             expected_id = None
         else:
             expected_id = doe_id
+        assert_doe_for_id(expected_id, site_id, expected_dt, "Australia/Brisbane", actual, check_duration_seconds=False)
+
+
+@pytest.mark.parametrize(
+    "agg_id, site_id, display_id, expected_dt",
+    [
+        (1, 1, 50, datetime(2023, 5, 7, 1, 0, 0)),
+        (2, 3, 150, datetime(2023, 5, 7, 1, 5, 0)),
+        (1, 1, 180, datetime(2023, 5, 7, 1, 0, 0)),  # Archive record
+        (1, 1, 190, datetime(2023, 5, 7, 1, 5, 0)),  # Archive record
+        (1, 2, 50, None),  # wrong site id
+        (1, 1, 210, None),  # Archive record (but not deleted)
+        (1, 3, 150, None),
+        (0, 1, 10, None),
+        (2, 1, 150, None),
+        (1, 1, 999, None),
+        (1, 99, 50, None),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_doe_by_display_id_include_deleted(
+    pg_additional_does,
+    agg_id: int,
+    site_id: Optional[int],
+    display_id: int,
+    expected_dt: Optional[datetime],
+):
+    # We are going to munge the display_id to be 10x the PK so we have values
+    async with generate_async_session(pg_additional_does) as session:
+        await session.execute(update(DOE).values(display_id=DOE.dynamic_operating_envelope_id * 10))
+        await session.execute(update(ArchiveDOE).values(display_id=ArchiveDOE.dynamic_operating_envelope_id * 10))
+        await session.commit()
+
+    async with generate_async_session(pg_additional_does) as session:
+        actual = await select_doe_by_display_id_include_deleted(session, agg_id, site_id, display_id)
+        if expected_dt is None:
+            expected_id = None
+        else:
+            expected_id = int(display_id / 10)
         assert_doe_for_id(expected_id, site_id, expected_dt, "Australia/Brisbane", actual, check_duration_seconds=False)
 
 
@@ -629,13 +669,29 @@ async def extra_site_control_groups(pg_base_config):
                 changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=timezone.utc),
             )
         )
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=202,
+                primacy=1,
+                site_control_group_id=5,
+                fsa_id=None,
+                changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=timezone.utc),
+            )
+        )
         await session.commit()
     yield pg_base_config
 
 
 @pytest.mark.parametrize(
     "site_control_group_id, expected_primacy, expected_default_import_limit_active_watts",
-    [(1, 0, Decimal("10.10")), (2, 1, None), (3, 2, Decimal("20.20")), (99, None, None), (None, None, None)],
+    [
+        (1, 0, Decimal("10.10")),
+        (2, 1, None),
+        (3, 2, Decimal("20.20")),
+        (99, None, None),
+        (None, None, None),
+    ],
 )
 @pytest.mark.anyio
 async def test_select_site_control_group_by_id(
@@ -681,18 +737,18 @@ async def test_select_site_control_group_by_id(
 @pytest.mark.parametrize(
     "start, limit, changed_after, fsa_id, expected_ids, expected_count",
     [
-        (0, 99, datetime.min, None, [1, 4, 2, 3], 4),
+        (0, 99, datetime.min, None, [1, 5, 4, 2, 3], 5),
         (0, 99, datetime.min, 1, [1, 2, 3], 3),
         (0, 99, datetime.min, 2, [], 0),
         (0, 99, datetime.min, 3, [4], 1),
-        (1, 2, datetime.min, None, [4, 2], 4),
+        (1, 2, datetime.min, None, [5, 4], 5),
         (1, 1, datetime.min, 1, [2], 3),
-        (99, 99, datetime.min, None, [], 4),
-        (0, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [1, 4, 2, 3], 4),
-        (3, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [3], 4),
-        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), None, [4, 2, 3], 3),
-        (0, 99, datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc), None, [4, 3], 2),
-        (0, 99, datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc), None, [4], 1),
+        (99, 99, datetime.min, None, [], 5),
+        (0, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [1, 5, 4, 2, 3], 5),
+        (3, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [2, 3], 5),
+        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), None, [5, 4, 2, 3], 4),
+        (0, 99, datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc), None, [5, 4, 3], 3),
+        (0, 99, datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc), None, [5, 4], 2),
         (0, 99, datetime(2021, 4, 5, 10, 5, 0, tzinfo=timezone.utc), None, [], 0),
         (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, [2, 3], 2),
     ],
@@ -754,6 +810,19 @@ async def test_count_site_control_groups_by_fsa_id(extra_site_control_groups):
         result = await count_site_control_groups_by_fsa_id(session)
         assert_dict_type(int, int, result, 2)
         assert result == {1: 3, 3: 1}
+
+
+@pytest.mark.anyio
+async def test_count_site_control_groups_by_fsa_id_with_nones(extra_site_control_groups):
+    async with generate_async_session(extra_site_control_groups) as session:
+        await session.execute(
+            update(SiteControlGroup).values(fsa_id=None).where(SiteControlGroup.site_control_group_id.in_([1, 3]))
+        )
+        await session.commit()
+    async with generate_async_session(extra_site_control_groups) as session:
+        result = await count_site_control_groups_by_fsa_id(session)
+        assert_dict_type(int, int, result, 2)
+        assert result == {1: 1, 3: 1}
 
 
 @pytest.mark.anyio

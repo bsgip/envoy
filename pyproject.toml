@@ -49,7 +49,7 @@ name = "envoy"
 dynamic = ["version", "readme"]
 requires-python = ">=3.9,<4.0"
 dependencies = [
-    "envoy_schema==2.0.1",
+    "envoy_schema==2.1.0",
     "fastapi>=0.94.1",
     "sqlalchemy>=2.0.0",
     "alembic",
@@ -67,7 +67,7 @@ dependencies = [
     "cryptography",
     "httpx",
     "taskiq!=0.11.5,!=0.11.6",      # Known compatibiity issue with pydantic
-    "taskiq-aio-pika",
+    "taskiq-aio-pika!=0.6.0",
     "parse",
     "intervaltree",
 ]
