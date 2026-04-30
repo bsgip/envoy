@@ -1,12 +1,17 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11-slim
 
-# Copy app + dependencies
-COPY ./src /app/src
-COPY ./pyproject.toml /app/pyproject.toml
-COPY ./setup.cfg /app/setup.cfg
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Install app / dependencies
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -e /app
+ENV UV_SYSTEM_PYTHON=1
+ENV UV_COMPILE_BYTECODE=1
+
+# Install deps first so this layer is cached unless pyproject.toml/uv.lock change
+COPY ./pyproject.toml ./setup.cfg ./uv.lock /app/
+RUN uv sync --frozen --no-cache --no-install-project
+
+# Install the project itself
+COPY ./src /app/src
+RUN uv sync --frozen --no-cache
 
 # Setup execution environment
 ENV DATABASE_URL="postgresql+asyncpg://envoyuser:envoyuser@localhost:5432/envoy"
