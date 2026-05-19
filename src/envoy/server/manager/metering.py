@@ -83,9 +83,7 @@ class MirrorMeteringManager:
         group_srts = await fetch_site_reading_types_for_group_mrid(
             session, aggregator_id=scope.aggregator_id, site_id=site_id, group_mrid=mup.mRID
         )
-        srts_by_mrid: CaseInsensitiveDict[SiteReadingType] = CaseInsensitiveDict(
-            (srt.mrid, srt) for srt in group_srts
-        )
+        srts_by_mrid: CaseInsensitiveDict[SiteReadingType] = CaseInsensitiveDict((srt.mrid, srt) for srt in group_srts)
 
         new_mmr_mrids = [mmr.mRID for mmr in mup.mirrorMeterReadings if mmr.mRID not in srts_by_mrid]
         if new_mmr_mrids and await fetch_any_site_reading_type_for_mrids_other_site(

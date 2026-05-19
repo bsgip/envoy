@@ -522,7 +522,9 @@ async def test_create_or_update_mirror_usage_point_update(
         assert db_reading1.site_reading_type_id == srt1.site_reading_type_id
         assert db_reading2.site_reading_type_id == srt_new.site_reading_type_id
         assert db_reading3.site_reading_type_id == srt5.site_reading_type_id
-        for db_reading, src_reading in zip([db_reading1, db_reading2, db_reading3], [reading1, reading2, reading3], strict=False):
+        for db_reading, src_reading in zip(
+            [db_reading1, db_reading2, db_reading3], [reading1, reading2, reading3], strict=False
+        ):
             assert_nowish(db_reading.changed_time)
             assert_nowish(db_reading.created_time)
             assert db_reading.value == src_reading.value

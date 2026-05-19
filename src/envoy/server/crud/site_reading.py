@@ -104,7 +104,9 @@ async def _fetch_site_reading_type_groups(
     limit: int | None,
 ) -> int | list[GroupedSiteReadingTypeDetails]:
 
-    select_clause: Select[tuple[int]] | Select[tuple[int, str, str | None, int | None, int | None, int, str, RoleFlagsType]]
+    select_clause: (
+        Select[tuple[int]] | Select[tuple[int, str, str | None, int | None, int | None, int, str, RoleFlagsType]]
+    )
     if only_count:
         select_clause = select(func.count(distinct(SiteReadingType.group_id))).select_from(SiteReadingType)
     else:

@@ -47,11 +47,9 @@ async def select_doe_include_deleted(
     # Check archive otherwise
     archive_table_doe = (
         await session.execute(
-
-                select(ArchiveDOE)
-                .where((ArchiveDOE.dynamic_operating_envelope_id == doe_id) & (ArchiveDOE.deleted_time.is_not(None)))
-                .order_by(ArchiveDOE.deleted_time.desc())
-
+            select(ArchiveDOE)
+            .where((ArchiveDOE.dynamic_operating_envelope_id == doe_id) & (ArchiveDOE.deleted_time.is_not(None)))
+            .order_by(ArchiveDOE.deleted_time.desc())
         )
     ).scalar_one_or_none()
     if archive_table_doe is not None:
@@ -92,16 +90,14 @@ async def select_doe_by_display_id_include_deleted(
     # Check archive otherwise
     archive_table_doe = (
         await session.execute(
-
-                select(ArchiveDOE)
-                .where(
-                    (ArchiveDOE.display_id == display_id)
-                    & (ArchiveDOE.site_id == site_id)
-                    & (ArchiveDOE.deleted_time.is_not(None))
-                )
-                .order_by(ArchiveDOE.deleted_time.desc())
-                .limit(1)
-
+            select(ArchiveDOE)
+            .where(
+                (ArchiveDOE.display_id == display_id)
+                & (ArchiveDOE.site_id == site_id)
+                & (ArchiveDOE.deleted_time.is_not(None))
+            )
+            .order_by(ArchiveDOE.deleted_time.desc())
+            .limit(1)
         )
     ).scalar_one_or_none()
     if archive_table_doe is not None:

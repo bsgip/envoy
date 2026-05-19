@@ -421,7 +421,9 @@ async def test_get_dercontrol_list(
         assert parsed_response.results == len(expected_does)
         assert parsed_response.all_ == expected_total
         assert len(parsed_response.DERControl) == len(expected_does)
-        for (expected_start, expected_import, expected_output), ctrl in zip(expected_does, parsed_response.DERControl, strict=False):
+        for (expected_start, expected_import, expected_output), ctrl in zip(
+            expected_does, parsed_response.DERControl, strict=False
+        ):
             control: DERControlResponse = ctrl
             assert control.DERControlBase_
             assert control.DERControlBase_.opModImpLimW.value == expected_import

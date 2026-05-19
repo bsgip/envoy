@@ -308,9 +308,7 @@ class DERControlMapper:
 
 class DERProgramMapper:
     @staticmethod
-    def derp_href(
-        rq_scope: AggregatorRequestScope | DeviceOrAggregatorRequestScope, site_control_group_id: int
-    ) -> str:
+    def derp_href(rq_scope: AggregatorRequestScope | DeviceOrAggregatorRequestScope, site_control_group_id: int) -> str:
         """Returns a href for a particular site's DER Program for the specified site control group"""
         return generate_href(
             uri.DERProgramUri,

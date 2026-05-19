@@ -336,12 +336,8 @@ class MirrorMeterReadingMapper:
                 for mrs in mmr.mirrorReadingSets:
                     if mrs.readings:
                         readings.extend(
-
-                                MirrorMeterReadingMapper.map_reading_from_request(
-                                    r, srt.site_reading_type_id, changed_time
-                                )
-                                for r in mrs.readings
-
+                            MirrorMeterReadingMapper.map_reading_from_request(r, srt.site_reading_type_id, changed_time)
+                            for r in mrs.readings
                         )
 
         return readings

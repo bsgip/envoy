@@ -167,7 +167,9 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: int | None)
         DeviceOrAggregatorRequestScope, seed=1001, optional_is_none=optional_is_none, href_prefix="/fake/prefix"
     )
 
-    mapped = TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts, strict=False), tariff_count, fsa_id)
+    mapped = TariffProfileMapper.map_to_list_response(
+        scope, zip(tariffs, tariff_rate_counts, strict=False), tariff_count, fsa_id
+    )
     assert isinstance(mapped, TariffProfileListResponse)
 
     assert mapped.href.startswith(scope.href_prefix)

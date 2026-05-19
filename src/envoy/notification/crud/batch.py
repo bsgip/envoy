@@ -293,9 +293,7 @@ async def fetch_rates_by_changed_at(
 
     referenced_site_ids = {
         e.site_id
-        for e in cast(
-            Iterable[TariffGeneratedRate | ArchiveTariffGeneratedRate], chain(active_rates, deleted_rates)
-        )
+        for e in cast(Iterable[TariffGeneratedRate | ArchiveTariffGeneratedRate], chain(active_rates, deleted_rates))
     }
 
     active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
@@ -343,9 +341,7 @@ async def fetch_does_by_changed_at(
 
     # Map the "site" relationship
     orm_relationship_map_parent_entities(
-        cast(
-            Iterable[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope], chain(active_does, deleted_does)
-        ),
+        cast(Iterable[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope], chain(active_does, deleted_does)),
         lambda e: e.site_id,
         {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",

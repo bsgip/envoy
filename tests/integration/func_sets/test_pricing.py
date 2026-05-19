@@ -184,9 +184,7 @@ async def test_get_tariffprofilelist_fsa_scoped(
         (4, None),
     ],
 )
-async def test_get_tariffprofile_nosite(
-    client: AsyncClient, agg_1_headers, tariff_id: int, expected_href: str | None
-):
+async def test_get_tariffprofile_nosite(client: AsyncClient, agg_1_headers, tariff_id: int, expected_href: str | None):
     """Tests that the single entity fetch works correctly"""
     path = uri.TariffProfileUnscopedUri.format(tariff_id=tariff_id)
     response = await client.get(path, headers=agg_1_headers)

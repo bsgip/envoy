@@ -123,9 +123,7 @@ class RawRequestClaims:
             site_id=base_scope.site_id,
         )
 
-    def to_device_or_aggregator_request_scope(
-        self, requested_site_id: int | None
-    ) -> "DeviceOrAggregatorRequestScope":
+    def to_device_or_aggregator_request_scope(self, requested_site_id: int | None) -> "DeviceOrAggregatorRequestScope":
         """Attempt to convert these raw claims into a DeviceOrAggregatorRequestScope. If the request doesn't match the
         client credentials, this will raise a HTTPException
 

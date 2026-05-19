@@ -1,4 +1,3 @@
-
 from assertical.fixtures.postgres import SingleAsyncEngineState
 from psycopg import Connection
 from taskiq import BrokerMessage, InMemoryBroker

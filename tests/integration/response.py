@@ -22,9 +22,7 @@ def assert_response_header(
     the event of failure. Otherwise content stream will remain unread if this assert succeeds"""
 
     # short circuit success
-    actual_content_type: str | None = (
-        response.headers["Content-Type"] if "Content-Type" in response.headers else None
-    )
+    actual_content_type: str | None = response.headers["Content-Type"] if "Content-Type" in response.headers else None
     if response.status_code == expected_status_code:
         if expected_content_type is None or actual_content_type == expected_content_type:
             return

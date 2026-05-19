@@ -46,7 +46,9 @@ class CalculationLogMapper:
                     site_id_snapshot=0 if site_id is None else site_id,
                     label=value,
                 )
-                for label_id, site_id, value in zip(label_vals.label_ids, label_vals.site_ids, label_vals.values, strict=False)
+                for label_id, site_id, value in zip(
+                    label_vals.label_ids, label_vals.site_ids, label_vals.values, strict=False
+                )
             ]
 
         return CalculationLog(

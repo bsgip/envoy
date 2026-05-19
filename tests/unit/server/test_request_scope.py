@@ -1,4 +1,3 @@
-
 import pytest
 from fastapi import HTTPException
 
@@ -362,9 +361,7 @@ def test_RawRequestClaims_to_site_request_scope(
         ),
     ],
 )
-def test_RawRequestClaims_to_unregistered_scope(
-    raw_scope: RawRequestClaims, expected: UnregisteredRequestScope | type
-):
+def test_RawRequestClaims_to_unregistered_scope(raw_scope: RawRequestClaims, expected: UnregisteredRequestScope | type):
 
     if isinstance(expected, type):
         with pytest.raises(expected):

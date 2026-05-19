@@ -305,7 +305,9 @@ async def test_fetch_response_list_for_scope_does(
         created_after=created_after,
     )
     mock_count_doe_responses.assert_called_once_with(mock_session, scope.aggregator_id, scope.site_id, created_after)
-    mock_map_to_doe_response.assert_called_once_with(scope, list(zip(response_objs, snapshot_does, strict=False)), mock_count)
+    mock_map_to_doe_response.assert_called_once_with(
+        scope, list(zip(response_objs, snapshot_does, strict=False)), mock_count
+    )
 
 
 @mock.patch("envoy.server.manager.response.ResponseListMapper.map_to_price_response")

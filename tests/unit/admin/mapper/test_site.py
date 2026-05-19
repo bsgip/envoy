@@ -65,9 +65,7 @@ def test_map_to_der_status_response():
         ],
     ),
 )
-def test_map_to_der_config_response_no_bad_combinations(
-    setting: SiteDERSetting | None, rating: SiteDERRating | None
-):
+def test_map_to_der_config_response_no_bad_combinations(setting: SiteDERSetting | None, rating: SiteDERRating | None):
     """The failover logic for map_to_der_config_response can be a little finnicky - this is just trying
     to catch any potential slipups in the definitions"""
     cfg = SiteMapper.map_to_der_config_response(rating, setting)

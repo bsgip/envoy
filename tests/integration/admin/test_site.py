@@ -21,9 +21,7 @@ from envoy.server.model.site import Site
 from tests.integration.response import read_response_body_string
 
 
-def _build_query_string(
-    start: int | None, limit: int | None, group_filter: str | None, after: datetime | None
-) -> str:
+def _build_query_string(start: int | None, limit: int | None, group_filter: str | None, after: datetime | None) -> str:
     query = "?"
     if start is not None:
         query = query + f"&start={start}"

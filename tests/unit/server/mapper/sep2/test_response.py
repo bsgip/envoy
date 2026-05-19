@@ -184,9 +184,7 @@ def test_ResponseListMapper_response_list_href(
 @pytest.mark.parametrize(
     "href_prefix, optional_is_none, response_count", product([None, "/my/href/prefix/"], [True, False], [0, 2])
 )
-def test_ResponseListMapper_map_to_price_response(
-    href_prefix: str | None, optional_is_none: bool, response_count: int
-):
+def test_ResponseListMapper_map_to_price_response(href_prefix: str | None, optional_is_none: bool, response_count: int):
     """Attempts to trip up the list mappers with a runtime error for various input combinations"""
 
     # Arrange
@@ -229,9 +227,7 @@ def test_ResponseListMapper_map_to_price_response(
 @pytest.mark.parametrize(
     "href_prefix, optional_is_none, response_count", product([None, "/my/href/prefix/"], [True, False], [0, 4])
 )
-def test_ResponseListMapper_map_to_doe_response(
-    href_prefix: str | None, optional_is_none: bool, response_count: int
-):
+def test_ResponseListMapper_map_to_doe_response(href_prefix: str | None, optional_is_none: bool, response_count: int):
     """Attempts to trip up the list mappers with a runtime error for various input combinations"""
     # Arrange
     display_site_id = 87618732555

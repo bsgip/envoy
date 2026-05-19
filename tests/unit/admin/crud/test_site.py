@@ -49,9 +49,7 @@ from envoy.server.model.site import (
     ],
 )
 @pytest.mark.anyio
-async def test_count_all_sites(
-    pg_base_config, group: str | None, changed_after: datetime | None, expected_count: int
-):
+async def test_count_all_sites(pg_base_config, group: str | None, changed_after: datetime | None, expected_count: int):
     async with generate_async_session(pg_base_config) as session:
         assert (await count_all_sites(session, group, changed_after)) == expected_count
 

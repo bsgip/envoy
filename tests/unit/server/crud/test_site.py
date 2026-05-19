@@ -118,9 +118,7 @@ async def test_select_all_sites_with_aggregator_id_filters(pg_base_config):
         assert_list_type(Site, sites, count=0)
 
         # Add a datetime filter
-        sites = await select_all_sites_with_aggregator_id(
-            session, 1, 0, datetime(2022, 2, 3, 6, 0, 0, tzinfo=UTC), 100
-        )
+        sites = await select_all_sites_with_aggregator_id(session, 1, 0, datetime(2022, 2, 3, 6, 0, 0, tzinfo=UTC), 100)
         assert_list_type(Site, sites, count=1)
         assert sorted([s.site_id for s in sites]) == [4]  # Checks the id's match our expected filter
 

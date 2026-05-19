@@ -306,9 +306,7 @@ class SiteDERAvailability(Base):
     reserved_charge_percent: Mapped[Decimal | None] = mapped_column(
         DECIMAL(8, PERCENT_DECIMAL_PLACES), nullable=True
     )  # Needs to
-    reserved_deliver_percent: Mapped[Decimal | None] = mapped_column(
-        DECIMAL(8, PERCENT_DECIMAL_PLACES), nullable=True
-    )
+    reserved_deliver_percent: Mapped[Decimal | None] = mapped_column(DECIMAL(8, PERCENT_DECIMAL_PLACES), nullable=True)
     estimated_var_avail_value: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
     estimated_var_avail_multiplier: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
     estimated_w_avail_value: Mapped[int | None] = mapped_column(INTEGER, nullable=True)

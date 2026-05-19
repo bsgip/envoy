@@ -282,9 +282,7 @@ class DERStatusMapper:
             generator_connect_status_time=gen_conn_status_time,
             inverter_status=der_status.inverterStatus.value if der_status.inverterStatus else None,
             inverter_status_time=(
-                datetime.fromtimestamp(der_status.inverterStatus.dateTime, UTC)
-                if der_status.inverterStatus
-                else None
+                datetime.fromtimestamp(der_status.inverterStatus.dateTime, UTC) if der_status.inverterStatus else None
             ),
             local_control_mode_status=(
                 der_status.localControlModeStatus.value if der_status.localControlModeStatus else None

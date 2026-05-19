@@ -164,9 +164,7 @@ def doe(start_time: datetime, end_time: datetime, scg_id: int = 1, site_id: int 
             [
                 doe(datetime(1980, 1, 2, tzinfo=UTC), datetime(1999, 1, 2, tzinfo=UTC)),
                 doe(datetime(2050, 1, 2, tzinfo=UTC), datetime(2051, 1, 2, tzinfo=UTC)),
-                doe(
-                    datetime(2000, 1, 2, tzinfo=UTC), datetime(2025, 1, 2, tzinfo=UTC)
-                ),  # Will overlap everything
+                doe(datetime(2000, 1, 2, tzinfo=UTC), datetime(2025, 1, 2, tzinfo=UTC)),  # Will overlap everything
             ],
             [1, 4],  # doe 2 is already superseded so won't be updated by this
         ),  #
@@ -175,9 +173,7 @@ def doe(start_time: datetime, end_time: datetime, scg_id: int = 1, site_id: int 
                 doe(
                     datetime(2022, 5, 7, 1, 2, 1, tzinfo=AEST), datetime(2022, 5, 7, 1, 2, 10, tzinfo=AEST)
                 ),  # encapsulated by doe 1
-                doe(
-                    datetime(2000, 1, 2, tzinfo=UTC), datetime(2025, 1, 2, tzinfo=UTC)
-                ),  # Will overlap everything
+                doe(datetime(2000, 1, 2, tzinfo=UTC), datetime(2025, 1, 2, tzinfo=UTC)),  # Will overlap everything
             ],
             [1, 4],  # doe 2 is already superseded so won't be updated by this
         ),

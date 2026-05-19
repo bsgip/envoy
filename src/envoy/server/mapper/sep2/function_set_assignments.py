@@ -1,4 +1,3 @@
-
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,
