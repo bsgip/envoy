@@ -643,7 +643,6 @@ def test_entities_to_notification_sites(  # noqa: C901
                     assert notification.resource.all_ is None
                     assert notification.resource.results is None
                 else:
-
                     assert notification.resource is None
 
             else:

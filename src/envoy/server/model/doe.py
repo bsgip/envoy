@@ -44,11 +44,13 @@ class SiteControlGroup(Base):
         back_populates="site_control_group", lazy="raise", passive_deletes=True, uselist=False
     )  # The default DOE
 
-    Index(
-        "ix_site_control_group_primacy_site_control_group_id",
-        "primacy",
-        "site_control_group_id",
-    ),
+    (
+        Index(
+            "ix_site_control_group_primacy_site_control_group_id",
+            "primacy",
+            "site_control_group_id",
+        ),
+    )
 
 
 class SiteControlGroupDefault(Base):

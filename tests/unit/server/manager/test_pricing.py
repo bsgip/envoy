@@ -319,7 +319,13 @@ async def test_fetch_rate_component_list(
 
     # check mock assumptions
     mock_select_unique_rate_days.assert_called_once_with(
-        mock_session, scope.aggregator_id, tariff_id, scope.site_id, 1, changed_after, 2  # adjusted start
+        mock_session,
+        scope.aggregator_id,
+        tariff_id,
+        scope.site_id,
+        1,
+        changed_after,
+        2,  # adjusted start
     )  # adjusted limit
     mock_RateComponentMapper.map_to_list_response.assert_called_once_with(
         scope, input_dates, total_distinct_dates, 0, 0, tariff_id
@@ -465,9 +471,9 @@ async def test_fetch_rate_component_list_full_db(pg_base_config, page_data):
             session, scope, 1, start, datetime.min, limit
         )
 
-        assert (
-            list_response.all_ == 2 * TOTAL_PRICING_READING_TYPES
-        ), "There are 2 distinct dates in base config for these filters"
+        assert list_response.all_ == 2 * TOTAL_PRICING_READING_TYPES, (
+            "There are 2 distinct dates in base config for these filters"
+        )
         assert list_response.results == expected_count
         assert len(list_response.RateComponent) == expected_count
 

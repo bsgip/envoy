@@ -553,9 +553,9 @@ async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
 
         assert len(list_entities) == len(all_entities)
         assert set([1, 2, 3, 4, 5, 6]) == set([e.site_id for e in list_entities])
-        assert set([NULL_AGGREGATOR_ID, 1, 2]) == set(
-            [e.aggregator_id for e in list_entities]
-        ), "All aggregator IDs should be represented"
+        assert set([NULL_AGGREGATOR_ID, 1, 2]) == set([e.aggregator_id for e in list_entities]), (
+            "All aggregator IDs should be represented"
+        )
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
@@ -577,7 +577,6 @@ async def test_fetch_sites_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # One of these will be picked up
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(generate_class_instance(ArchiveSite, seed=22, aggregator_id=1, site_id=70, deleted_time=timestamp))
@@ -659,9 +658,9 @@ async def test_fetch_rates_by_timestamp(pg_base_config, timestamp: datetime, exp
 
         assert all([isinstance(e.site, Site) for e in list_entities]), "site relationship populated"
         assert all([e.site.site_id == e.site_id for e in list_entities]), "site relationship populated"
-        assert all(
-            [e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]
-        ), "start_time should be localized to the zone identified by the linked site"
+        assert all([e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]), (
+            "start_time should be localized to the zone identified by the linked site"
+        )
 
 
 @pytest.mark.anyio
@@ -690,9 +689,9 @@ async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
 
         assert len(list_entities) == len(all_entities)
         assert set([1, 2, 3, 4]) == set([e.tariff_generated_rate_id for e in list_entities])
-        assert set([1, 2]) == set(
-            [e.site.aggregator_id for e in list_entities]
-        ), "All aggregator IDs should be represented"
+        assert set([1, 2]) == set([e.site.aggregator_id for e in list_entities]), (
+            "All aggregator IDs should be represented"
+        )
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_rates_by_changed_at(session, timestamp - timedelta(milliseconds=50))
@@ -712,7 +711,6 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a parent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -913,9 +911,9 @@ async def test_fetch_does_by_timestamp(
 
         assert all([isinstance(e.site, Site) for e in list_entities]), "site relationship populated"
         assert all([e.site.site_id == e.site_id for e in list_entities]), "site relationship populated"
-        assert all(
-            [e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]
-        ), "start_time should be localized to the zone identified by the linked site"
+        assert all([e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]), (
+            "start_time should be localized to the zone identified by the linked site"
+        )
 
 
 @pytest.mark.anyio
@@ -944,9 +942,9 @@ async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
 
         assert len(list_entities) == len(all_entities)
         assert set([1, 2, 3, 4]) == set([e.dynamic_operating_envelope_id for e in list_entities])
-        assert set([1, 2]) == set(
-            [e.site.aggregator_id for e in list_entities]
-        ), "All aggregator IDs should be represented"
+        assert set([1, 2]) == set([e.site.aggregator_id for e in list_entities]), (
+            "All aggregator IDs should be represented"
+        )
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_does_by_changed_at(session, timestamp - timedelta(milliseconds=50))
@@ -966,7 +964,6 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a parent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -1158,12 +1155,12 @@ async def test_fetch_readings_by_timestamp(pg_base_config, timestamp: datetime, 
         for i in range(len(expected_readings)):
             assert_class_instance_equality(SiteReading, expected_readings[i], list_entities[i])
 
-        assert all(
-            [isinstance(e.site_reading_type, SiteReadingType) for e in list_entities]
-        ), "site_reading_type relationship populated"
-        assert all(
-            [e.site_reading_type.site_reading_type_id == e.site_reading_type_id for e in list_entities]
-        ), "site_reading_type relationship populated"
+        assert all([isinstance(e.site_reading_type, SiteReadingType) for e in list_entities]), (
+            "site_reading_type relationship populated"
+        )
+        assert all([e.site_reading_type.site_reading_type_id == e.site_reading_type_id for e in list_entities]), (
+            "site_reading_type relationship populated"
+        )
 
 
 @pytest.mark.anyio
@@ -1192,9 +1189,9 @@ async def test_fetch_readings_by_timestamp_multiple_aggs(pg_base_config):
 
         assert len(list_entities) == len(all_entities)
         assert set([1, 2, 3, 4]) == set([e.site_reading_id for e in list_entities])
-        assert set([1, 3]) == set(
-            [e.site_reading_type.aggregator_id for e in list_entities]
-        ), "All aggregator IDs should be represented"
+        assert set([1, 3]) == set([e.site_reading_type.aggregator_id for e in list_entities]), (
+            "All aggregator IDs should be represented"
+        )
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_readings_by_changed_at(session, timestamp - timedelta(milliseconds=50))
@@ -1214,7 +1211,6 @@ async def test_fetch_readings_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a parent "archive" site reading type that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSiteReadingType, seed=11, aggregator_id=1, site_reading_type_id=70))
         session.add(
@@ -1397,7 +1393,6 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -1621,7 +1616,6 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -1837,7 +1831,6 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -2054,7 +2047,6 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -2303,7 +2295,6 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject archive defaults (only most recent is used)
         session.add(
             generate_class_instance(
@@ -2482,7 +2473,6 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject archive defaults (only most recent is used)
         session.add(
             generate_class_instance(

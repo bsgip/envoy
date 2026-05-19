@@ -12,7 +12,6 @@ from envoy.server.model.subscription import SubscriptionResource
 
 
 class ConfigManager:
-
     @staticmethod
     async def update_current_config(session: AsyncSession, updated_values: RuntimeServerConfigRequest) -> None:
         """Applies updated_values to the current server configuration. Will only set the non None values"""

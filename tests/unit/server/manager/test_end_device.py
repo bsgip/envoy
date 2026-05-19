@@ -812,9 +812,9 @@ def test_generate_registration_pin():
     distinct_values = set(values_attempt_2)
     assert len(distinct_values) > 5, "If this is failing, either you're incredible unlucky or something is wrong"
 
-    assert sorted(values_attempt_1) != sorted(
-        values_attempt_2
-    ), "If this is failing, either you're incredible unlucky or something is wrong"
+    assert sorted(values_attempt_1) != sorted(values_attempt_2), (
+        "If this is failing, either you're incredible unlucky or something is wrong"
+    )
 
 
 @pytest.mark.parametrize(

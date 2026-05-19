@@ -1181,9 +1181,9 @@ async def test_create_site_control_groups_no_new_fsa(
     # Give any notifications a chance to propagate
     await asyncio.sleep(2)
 
-    assert (
-        len(notifications_enabled.logged_requests) == 0
-    ), "This is NOT a new fsa_id - There shouldn't be a notification"
+    assert len(notifications_enabled.logged_requests) == 0, (
+        "This is NOT a new fsa_id - There shouldn't be a notification"
+    )
 
 
 @pytest.mark.anyio

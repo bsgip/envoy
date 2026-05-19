@@ -34,7 +34,6 @@ from envoy.server.model.subscription import SubscriptionResource
 
 
 class SiteControlGroupManager:
-
     @staticmethod
     async def create_site_control_group(session: AsyncSession, request: SiteControlGroupRequest) -> int:
         """Creates a new site control group"""

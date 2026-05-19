@@ -53,12 +53,12 @@ def test_parse_from_jwks_json():
     assert all([isinstance(v.value, JWK) for v in result_dict.values()])
     assert all([v.expiry is None for v in result_dict.values()]), "Public keys dont explicitly expire"
     assert all([isinstance(k, str) for k in result_dict.keys()])
-    assert len(set([v.value.rsa_modulus for v in result_dict.values()])) == len(
-        result_dict
-    ), "All modulus values should be distinct"
-    assert len(set([v.value.pem_public for v in result_dict.values()])) == len(
-        result_dict
-    ), "All PEM keys should be distinct"
+    assert len(set([v.value.rsa_modulus for v in result_dict.values()])) == len(result_dict), (
+        "All modulus values should be distinct"
+    )
+    assert len(set([v.value.pem_public for v in result_dict.values()])) == len(result_dict), (
+        "All PEM keys should be distinct"
+    )
 
     expiring_val = result_dict["DqUu8gf-nAgcyjP3-SuplNAXAnc"]
     assert expiring_val.expiry is None, "Public keys dont explicitly expire"
@@ -349,6 +349,6 @@ async def test_update_azure_ad_token_cache(mock_request_azure_ad_token: mock.Mag
     expiring_val = token_cache["my-resource-id"]
     assert isinstance(expiring_val, ExpiringValue)
     assert expiring_val.value == expected_token.token
-    assert expiring_val.expiry == (
-        expected_token.expiry + timedelta(seconds=-TOKEN_EXPIRY_BUFFER_SECONDS)
-    ), "Expiry buffer should be applied"
+    assert expiring_val.expiry == (expected_token.expiry + timedelta(seconds=-TOKEN_EXPIRY_BUFFER_SECONDS)), (
+        "Expiry buffer should be applied"
+    )

@@ -141,9 +141,9 @@ async def test_get_all_sites(
     """expected_der_changed_times is the combination of the changed_time properties from
     (der_config, der_availability, der_status) that correspond 1-1 with the sites with expected_site_ids.
     It's there to validate the DER metadata being correctly assigned"""
-    assert len(expected_site_ids) == len(
-        expected_der_changed_times
-    ), "There should be a 1-1 correspondence or this test is invalid"
+    assert len(expected_site_ids) == len(expected_der_changed_times), (
+        "There should be a 1-1 correspondence or this test is invalid"
+    )
 
     expected_total_sites: int
     async with generate_async_session(pg_base_config) as session:
@@ -162,9 +162,9 @@ async def test_get_all_sites(
     assert len(site_page.sites) == len(expected_site_ids)
     assert all([isinstance(s, SiteResponse) for s in site_page.sites])
 
-    assert (
-        site_page.total_count == expected_total_sites
-    ), f"There are only {expected_total_sites} sites available in the current config for group {group}"
+    assert site_page.total_count == expected_total_sites, (
+        f"There are only {expected_total_sites} sites available in the current config for group {group}"
+    )
     if limit is not None:
         assert site_page.limit == limit
     if start is not None:
@@ -220,9 +220,9 @@ async def test_get_all_site_groups(
     assert len(group_page.groups) == len(expected_group_count)
     assert all([isinstance(s, SiteGroupResponse) for s in group_page.groups])
 
-    assert (
-        group_page.total_count == expected_total_groups
-    ), f"There are only {expected_total_groups} sites available in the current config"
+    assert group_page.total_count == expected_total_groups, (
+        f"There are only {expected_total_groups} sites available in the current config"
+    )
     if limit is not None:
         assert group_page.limit == limit
     if start is not None:

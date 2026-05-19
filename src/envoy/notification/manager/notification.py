@@ -22,9 +22,10 @@ class NotificationManager:
             return False
 
         try:
-
-            await check_db_change_or_delete.kicker().with_broker(enabled_broker).kiq(
-                resource=resource, timestamp_epoch=timestamp.timestamp()
+            await (
+                check_db_change_or_delete.kicker()
+                .with_broker(enabled_broker)
+                .kiq(resource=resource, timestamp_epoch=timestamp.timestamp())
             )
             return True
         except Exception as ex:

@@ -193,9 +193,9 @@ async def test_force_update():
 
     # Assert
     total_seconds = (end - start).seconds
-    assert (
-        total_seconds >= 3 and total_seconds <= 4
-    ), f"{total_seconds} should roughly match the number of errors (3) * delay_secs ({delay_secs})"
+    assert total_seconds >= 3 and total_seconds <= 4, (
+        f"{total_seconds} should roughly match the number of errors (3) * delay_secs ({delay_secs})"
+    )
     assert mock_update_fn.call_count == 4, "3 errors and 1 valid update"
     assert all([len(a.args) == 1 for a in mock_update_fn.call_args_list]), "Only a single arg passed to update_fn"
     assert [a.args[0] for a in mock_update_fn.call_args_list] == [

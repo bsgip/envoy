@@ -109,9 +109,9 @@ async def test_get_mirror_usage_point_list_pagination(
         assert parsed_response.mirrorUsagePoints, f"received body:\n{body}"
         assert [mup.href for mup in parsed_response.mirrorUsagePoints] == expected_mup_hrefs
     else:
-        assert (
-            parsed_response.mirrorUsagePoints is None or len(parsed_response.mirrorUsagePoints) == 0
-        ), f"received body:\n{body}"
+        assert parsed_response.mirrorUsagePoints is None or len(parsed_response.mirrorUsagePoints) == 0, (
+            f"received body:\n{body}"
+        )
 
 
 @pytest.mark.parametrize(

@@ -37,7 +37,6 @@ async def test_select_calculation_log_by_id_missing(pg_base_config, id: int):
 async def test_select_calculation_log_by_id(pg_base_config, include_variables: bool, include_labels: bool):
     """Tests that the correct log with child relations are returned"""
     async with generate_async_session(pg_base_config) as session:
-
         # Calculation log 1 has no children - sanity check the contents
         calc_log_1 = await select_calculation_log_by_id(session, 1, include_variables, include_labels)
         assert calc_log_1 is not None and isinstance(calc_log_1, CalculationLog)

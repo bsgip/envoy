@@ -160,9 +160,9 @@ def assert_rate_for_id(
         if expected_date is not None and expected_time is not None:
             tz = ZoneInfo(expected_tz)
             assert_datetime_equal(actual_rate.start_time, datetime.combine(expected_date, expected_time, tzinfo=tz))
-            assert actual_rate.start_time.tzname() == tz.tzname(
-                actual_rate.start_time
-            ), "Start time should be returned in local time"
+            assert actual_rate.start_time.tzname() == tz.tzname(actual_rate.start_time), (
+                "Start time should be returned in local time"
+            )
 
 
 @pytest.mark.parametrize(
@@ -329,9 +329,9 @@ async def test_select_unique_rate_days_filtering(
             session, agg_id, tariff_id, site_id, 0, after, 99
         )
         unique_rate_days_count = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
-        assert unique_rate_days_count == len(
-            unique_rate_days
-        ), "Without pagination limits the total count will equal the page count"
+        assert unique_rate_days_count == len(unique_rate_days), (
+            "Without pagination limits the total count will equal the page count"
+        )
         assert select_count == unique_rate_days_count, "These should always align"
         assert unique_rate_days == output_list
         assert_list_type(date, unique_rate_days)
@@ -353,9 +353,9 @@ async def test_select_unique_rate_days_filtering_la_time(
             session, agg_id, tariff_id, site_id, 0, after, 99
         )
         unique_rate_days_count = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
-        assert unique_rate_days_count == len(
-            unique_rate_days
-        ), "Without pagination limits the total count will equal the page count"
+        assert unique_rate_days_count == len(unique_rate_days), (
+            "Without pagination limits the total count will equal the page count"
+        )
         assert select_count == unique_rate_days_count, "These should always align"
         assert unique_rate_days == output_list
         assert_list_type(date, unique_rate_days)

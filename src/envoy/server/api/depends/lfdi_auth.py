@@ -123,7 +123,6 @@ class LFDIAuthDepends:
             logger.debug(f"{self.cert_header} contains a valid lFDI.")
             lfdi = cert_header_val
         else:
-
             # NOTE: Respond with INTERNAL_SERVER_ERROR due to missing or malformed certificate data.
             # TLS termination is handled by a reverse proxy upstream of envoy. The proxy is expected to forward a
             # custom header containing either the full client certificate PEM or its fingerprint. If the request

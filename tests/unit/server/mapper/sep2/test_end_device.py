@@ -136,9 +136,9 @@ def test_list_map_to_response():
     assert result.results == len(all_sites)
     assert result.pollRate == 10
     assert_list_type(EndDeviceResponse, result.EndDevice, len(all_sites))
-    assert len(set([ed.lFDI for ed in result.EndDevice])) == len(
-        all_sites
-    ), f"Expected {len(all_sites)} unique LFDI's in the children"
+    assert len(set([ed.lFDI for ed in result.EndDevice])) == len(all_sites), (
+        f"Expected {len(all_sites)} unique LFDI's in the children"
+    )
 
     empty_result = EndDeviceListMapper.map_to_response(
         scope,

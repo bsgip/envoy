@@ -255,9 +255,9 @@ async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_pref
             new_uri = match.group(1)
 
             if expected_href_prefix is not None:
-                assert new_uri.startswith(
-                    expected_href_prefix
-                ), f"GET uri {uri} returned a href {new_uri} NOT prefixed with {expected_href_prefix}\n{body}"
+                assert new_uri.startswith(expected_href_prefix), (
+                    f"GET uri {uri} returned a href {new_uri} NOT prefixed with {expected_href_prefix}\n{body}"
+                )
 
                 # The actual URI that our server will respond to is sans the prefix value
                 new_uri = new_uri[len(expected_href_prefix) :]  # noqa E203

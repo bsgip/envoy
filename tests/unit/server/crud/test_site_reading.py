@@ -463,21 +463,23 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
 
         # Assert other fields are untouched
         sr_1 = all_db_readings[0]
-        assert_class_instance_equality(
-            SiteReading,
-            SiteReading(
-                site_reading_id=1,
-                site_reading_type_id=1,
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                changed_time=datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=timezone.utc),
-                local_id=11111,
-                quality_flags=QualityFlagsType.VALID,
-                time_period_start=datetime(2022, 6, 7, 1, 0, 0, tzinfo=aest),  # Will match existing reading
-                time_period_seconds=300,
-                value=11,
+        (
+            assert_class_instance_equality(
+                SiteReading,
+                SiteReading(
+                    site_reading_id=1,
+                    site_reading_type_id=1,
+                    created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
+                    changed_time=datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=timezone.utc),
+                    local_id=11111,
+                    quality_flags=QualityFlagsType.VALID,
+                    time_period_start=datetime(2022, 6, 7, 1, 0, 0, tzinfo=aest),  # Will match existing reading
+                    time_period_seconds=300,
+                    value=11,
+                ),
+                sr_1,
             ),
-            sr_1,
-        ),
+        )
 
         # Check the archive - should've archived the updated record
         archive_records = (await session.execute(select(ArchiveSiteReading))).scalars().all()
@@ -503,9 +505,11 @@ async def snapshot_all_srt_tables(
             SiteReadingType,
             None,
             ArchiveSiteReadingType,
-            lambda q: q.where(SiteReadingType.aggregator_id == agg_id)
-            .where(or_(site_id is None, SiteReadingType.site_id == site_id))
-            .where(SiteReadingType.site_reading_type_id.in_(srt_ids)),
+            lambda q: (
+                q.where(SiteReadingType.aggregator_id == agg_id)
+                .where(or_(site_id is None, SiteReadingType.site_id == site_id))
+                .where(SiteReadingType.site_reading_type_id.in_(srt_ids))
+            ),
         )
     )
 
@@ -602,17 +606,17 @@ async def test_delete_site_reading_type_group(
             # Check the counts migrated as expected
             assert after.archive_count == before.filtered_count, f"{before.t} All matched records should archive"
             assert after.filtered_count == 0, f"{before.t} All matched records should archive and be removed"
-            assert (
-                after.total_count == before.total_count - before.filtered_count
-            ), f"{before.t} Other records left alone"
+            assert after.total_count == before.total_count - before.filtered_count, (
+                f"{before.t} Other records left alone"
+            )
 
             # Check the archive records
             async with generate_async_session(pg_base_config) as session:
                 archives: list[ArchiveBase] = (await session.execute(select(after.archive_t))).scalars().all()
                 assert all((a.deleted_time == deleted_time for a in archives)), f"{before.t} deleted time is wrong"
-                assert all(
-                    (abs((a.archive_time - now).seconds) < 20 for a in archives)
-                ), f"{before.t} archive time should be nowish"
+                assert all((abs((a.archive_time - now).seconds) < 20 for a in archives)), (
+                    f"{before.t} archive time should be nowish"
+                )
         else:
             assert after.archive_count == 0, f"{before.t} Nothing should've persisted/deleted"
             assert after.filtered_count == before.filtered_count, f"{before.t} Nothing should've persisted/deleted"
@@ -627,6 +631,6 @@ async def test_delete_site_reading_type_group(
         elif expected_delete:
             assert len(srts) == len(srt_ids), "If the delete was NOT committed - the SiteReadingType should still exist"
         else:
-            assert (
-                len(srts) == 0
-            ), "If the delete was NOT committed but the SiteReadingType DNE - it should continue to not exist"
+            assert len(srts) == 0, (
+                "If the delete was NOT committed but the SiteReadingType DNE - it should continue to not exist"
+            )

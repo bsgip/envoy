@@ -162,7 +162,6 @@ async def test_create_many_certificates_on_conflict_do_nothing_empty_iter(pg_emp
 @pytest.mark.anyio
 async def test_select_certificate(pg_base_config: psycopg.Connection) -> None:
     async with pg_fixtures.generate_async_session(pg_base_config) as session:
-
         cert_1 = await crud.certificate.select_certificate(session, 1)
         assert isinstance(cert_1, base.Certificate)
         assert cert_1.lfdi == "854d10a201ca99e5e90d3c3e1f9bc1c3bd075f3b"

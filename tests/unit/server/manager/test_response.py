@@ -756,9 +756,9 @@ async def test_create_response_for_scope_doe_created_normally(
 
         assert db_count_after == (db_count_before + 1), "There should be a new response in the DB"
         assert db_response.site_id == site_id, "This is double checking the mapper"
-        assert (
-            db_response.dynamic_operating_envelope_id_snapshot == decoded_doe_id
-        ), "This is double checking the mapper"
+        assert db_response.dynamic_operating_envelope_id_snapshot == decoded_doe_id, (
+            "This is double checking the mapper"
+        )
         assert_nowish(db_response.created_time)
         assert db_response.response_type == response.status, "This is double checking the mapper"
 

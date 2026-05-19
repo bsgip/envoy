@@ -185,9 +185,7 @@ async def count_tariff_rates_for_day(
 
     changed_after: Only tariffs with a changed_time greater than this value will be counted (0 will count everything)"""
 
-    return await _tariff_rates_for_day(
-        True, session, aggregator_id, tariff_id, site_id, day, 0, changed_after, None
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    return await _tariff_rates_for_day(True, session, aggregator_id, tariff_id, site_id, day, 0, changed_after, None)  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
 
 
 async def select_tariff_rates_for_day(

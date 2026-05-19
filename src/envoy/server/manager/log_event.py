@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class LogEventManager:
-
     @staticmethod
     async def fetch_log_event_for_scope(
         session: AsyncSession,

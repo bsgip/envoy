@@ -812,17 +812,17 @@ async def test_delete_site_for_aggregator(
             # Check the counts migrated as expected
             assert after.archive_count == before.filtered_count, f"{before.t} All matched records should archive"
             assert after.filtered_count == 0, f"{before.t} All matched records should archive and be removed"
-            assert (
-                after.total_count == before.total_count - before.filtered_count
-            ), f"{before.t} Other records left alone"
+            assert after.total_count == before.total_count - before.filtered_count, (
+                f"{before.t} Other records left alone"
+            )
 
             # Check the archive records
             async with generate_async_session(pg_base_config) as session:
                 archives: list[ArchiveBase] = (await session.execute(select(after.archive_t))).scalars().all()
                 assert all((a.deleted_time == deleted_time for a in archives)), f"{before.t} deleted time is wrong"
-                assert all(
-                    (abs((a.archive_time - now).seconds) < 20 for a in archives)
-                ), f"{before.t} archive time should be nowish"
+                assert all((abs((a.archive_time - now).seconds) < 20 for a in archives)), (
+                    f"{before.t} archive time should be nowish"
+                )
         else:
             assert after.archive_count == 0, f"{before.t} Nothing should've persisted/deleted"
             assert after.filtered_count == before.filtered_count, f"{before.t} Nothing should've persisted/deleted"

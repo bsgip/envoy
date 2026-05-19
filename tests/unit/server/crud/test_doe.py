@@ -87,9 +87,9 @@ def assert_doe_for_id(
 
         if expected_tz:
             tz = ZoneInfo(expected_tz)
-            assert actual_doe.start_time.tzname() == tz.tzname(
-                actual_doe.start_time
-            ), "Start time should be returned in local time"
+            assert actual_doe.start_time.tzname() == tz.tzname(actual_doe.start_time), (
+                "Start time should be returned in local time"
+            )
 
             if expected_datetime:
                 expected_in_local = datetime(
@@ -102,9 +102,9 @@ def assert_doe_for_id(
                     tzinfo=tz,
                 )
                 assert_datetime_equal(actual_doe.start_time, expected_in_local)
-                assert actual_doe.start_time.tzname() == tz.tzname(
-                    actual_doe.start_time
-                ), "Start time should be returned in local time"
+                assert actual_doe.start_time.tzname() == tz.tzname(actual_doe.start_time), (
+                    "Start time should be returned in local time"
+                )
                 assert_datetime_equal(actual_doe.created_time, datetime(2000, 1, 1, 0, 0, 0, 0, tzinfo=timezone.utc))
 
 
@@ -791,12 +791,12 @@ async def test_select_and_count_site_control_groups(
                     if expected_import_default is None:
                         assert g.site_control_group_default is None
                     else:
-                        assert (
-                            g.site_control_group_default is not None
-                        ), f"SiteControlGroup ID: {g.site_control_group_id}"
-                        assert (
-                            g.site_control_group_default.import_limit_active_watts == expected_import_default
-                        ), f"SiteControlGroup ID: {g.site_control_group_id}"
+                        assert g.site_control_group_default is not None, (
+                            f"SiteControlGroup ID: {g.site_control_group_id}"
+                        )
+                        assert g.site_control_group_default.import_limit_active_watts == expected_import_default, (
+                            f"SiteControlGroup ID: {g.site_control_group_id}"
+                        )
 
             else:
                 for g in actual_groups:

@@ -86,7 +86,6 @@ def decode_iana_pen(mrid: str) -> int:
 
 
 class MridMapper:
-
     @staticmethod
     def encode_default_doe_mrid(scope: BaseRequestScope, scg_default: SiteControlGroupDefault) -> str:
         """Encodes a valid MRID for representing the default DOE"""

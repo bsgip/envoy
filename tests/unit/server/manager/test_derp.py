@@ -578,9 +578,9 @@ async def test_fetch_default_doe_controls_for_site_no_default(
     empty_default: SiteControlGroupDefault = mock_map_to_default_response.call_args_list[0].args[1]
     assert isinstance(empty_default, SiteControlGroupDefault)
     assert empty_default.created_time == returned_scg.created_time
-    assert (
-        empty_default.changed_time == returned_scg.created_time
-    ), "Yes - changed_time should be set to parent creation time"
+    assert empty_default.changed_time == returned_scg.created_time, (
+        "Yes - changed_time should be set to parent creation time"
+    )
     assert empty_default.site_control_group_id == returned_scg.site_control_group_id, "We want to track this for mrids"
     assert empty_default.version == 0
     assert empty_default.export_limit_active_watts is None

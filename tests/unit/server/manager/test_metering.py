@@ -487,9 +487,9 @@ async def test_create_or_update_mirror_usage_point_update(
         else:
             # Just the updated SiteReadingType on mmr5
             assert 1 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
-            assert srt1.changed_time == datetime(
-                2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc
-            ), "Unchanged from base config"
+            assert srt1.changed_time == datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc), (
+                "Unchanged from base config"
+            )
 
         # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
         for db_srt, mmr in zip([srt1, srt_new, srt5], [mmr1, mmr_new, mmr5]):
@@ -629,12 +629,12 @@ async def test_create_or_update_mirror_usage_point_update_non_role_flags(
             assert_nowish(srt5.changed_time)
         else:
             assert 0 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
-            assert srt1.changed_time == datetime(
-                2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc
-            ), "Unchanged from base config"
-            assert srt5.changed_time == datetime(
-                2022, 5, 6, 15, 22, 33, 500000, tzinfo=timezone.utc
-            ), "Unchanged from base config"
+            assert srt1.changed_time == datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc), (
+                "Unchanged from base config"
+            )
+            assert srt5.changed_time == datetime(2022, 5, 6, 15, 22, 33, 500000, tzinfo=timezone.utc), (
+                "Unchanged from base config"
+            )
 
         # Spot check the group values - make sure we properly group everything. Mapper tests do this in more detail
         for db_srt in [srt1, srt5]:
@@ -1113,9 +1113,9 @@ async def test_add_or_update_readings_no_readings_mup_insert(pg_base_config, as_
         assert new_srt.power_of_ten_multiplier == mmr.readingType.powerOfTenMultiplier
         assert new_srt.role_flags == 1, "Inherited from other SiteReadingTypes in group"
         assert new_srt.group_id == 1, "Inherited from other SiteReadingTypes in group"
-        assert (
-            new_srt.group_mrid == "10000000000000000000000000000def"
-        ), "Inherited from other SiteReadingTypes in group"
+        assert new_srt.group_mrid == "10000000000000000000000000000def", (
+            "Inherited from other SiteReadingTypes in group"
+        )
         assert new_srt.site_id == 1, "Inherited from other SiteReadingTypes in group"
         assert new_srt.aggregator_id == 1, "Inherited from other SiteReadingTypes in group"
 

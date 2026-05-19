@@ -37,7 +37,6 @@ class NmiValidationSettings(BaseSettings):
 
 
 class AppSettings(CommonSettings):
-
     debug: bool = False
     docs_url: str = "/docs"
     openapi_prefix: str = ""

@@ -79,9 +79,9 @@ async def test_copy_rows_into_archive_all_matches(
         # Ensure everything is copied
         archive_count = (await session.execute(select(func.count()).select_from(archive_type))).scalar_one()
 
-        assert original_values == await fetch_all_values_as_tuples(
-            session, original_type
-        ), "Original table should be unchanged"
+        assert original_values == await fetch_all_values_as_tuples(session, original_type), (
+            "Original table should be unchanged"
+        )
 
         if commit:
             assert archive_count == original_count_before
@@ -149,9 +149,9 @@ async def test_copy_rows_into_archive_complex_filter(pg_base_config):
 
     async with generate_async_session(pg_base_config) as session:
         # Ensure everything is copied
-        assert (
-            await session.execute(select(func.count()).select_from(ArchiveSite))
-        ).scalar_one() == 2, "Only 2 sites should've matched and been brought across"
+        assert (await session.execute(select(func.count()).select_from(ArchiveSite))).scalar_one() == 2, (
+            "Only 2 sites should've matched and been brought across"
+        )
 
         # Validate the archive values (partially)
         assert (await fetch_single_column(session, ArchiveSite, "site_id")) == [1, 3]

@@ -145,9 +145,9 @@ async def test_calculation_log_get_with_includes(
 
         if include_variables:
             assert len(returned_log.variable_metadata) == 3, f"labels={include_labels}, variables={include_variables}"
-            assert (
-                len(returned_log.variable_values.values) == 6
-            ), f"labels={include_labels}, variables={include_variables}"
+            assert len(returned_log.variable_values.values) == 6, (
+                f"labels={include_labels}, variables={include_variables}"
+            )
         else:
             assert len(returned_log.variable_metadata) == 0, f"labels={include_labels}, variables={include_variables}"
             assert returned_log.variable_values is None, f"labels={include_labels}, variables={include_variables}"

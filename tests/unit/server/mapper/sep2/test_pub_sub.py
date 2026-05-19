@@ -151,9 +151,9 @@ def test_SubscriptionMapper_calculate_resource_href_all_support_site_unscoped(re
         except InvalidMappingError:
             pass
 
-    assert (
-        len(hrefs) > 0
-    ), f"Expected at least one combo of unscoped site/resource ID to generate a validate href for {resource}"
+    assert len(hrefs) > 0, (
+        f"Expected at least one combo of unscoped site/resource ID to generate a validate href for {resource}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -214,9 +214,9 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
         href_with_prefix = None
 
     if href_with_prefix is None or href_no_prefix is None:
-        assert (
-            href_with_prefix is None and href_no_prefix is None
-        ), "If prefix raises InvalidMappingError - so must no prefix"
+        assert href_with_prefix is None and href_no_prefix is None, (
+            "If prefix raises InvalidMappingError - so must no prefix"
+        )
     else:
         # The hrefs should be identical (sans prefix)
         assert href_with_prefix.startswith(prefix)
@@ -250,7 +250,6 @@ def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
     ]
 
     for resource, site_id, resource_id in unique_combos:
-
         display_site_id = VIRTUAL_END_DEVICE_SITE_ID if site_id is None else site_id
         scope: DeviceOrAggregatorRequestScope = generate_class_instance(
             DeviceOrAggregatorRequestScope, display_site_id=display_site_id, site_id=site_id
@@ -643,9 +642,9 @@ def test_NotificationMapper_map_readings_to_response(notification_type: Notifica
 
     assert notification.resource.type == XSI_TYPE_READING_LIST
     assert_list_type(Reading, notification.resource.Readings, count=2)
-    assert all(
-        [e.href is None for e in notification.resource.Readings]
-    ), "If this fails - starting testing using assert_entity_hrefs_contain_entity_id_and_prefix (see other tests)"
+    assert all([e.href is None for e in notification.resource.Readings]), (
+        "If this fails - starting testing using assert_entity_hrefs_contain_entity_id_and_prefix (see other tests)"
+    )
 
 
 @pytest.mark.parametrize("notification_type", list(NotificationType))

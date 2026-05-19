@@ -713,9 +713,7 @@ async def fetch_fsa_by_changed_at(
 
     # If there isn't anything that's changed - don't encode any entities (there's nothing to Notify)
     if new_poll_rate is None and not new_fsa_ids:
-        return AggregatorBatchedEntities(
-            timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, [], []
-        )  # type: ignore
+        return AggregatorBatchedEntities(timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, [], [])  # type: ignore
 
     # The fsa update will need to vary per Site so we generate an instance per site_id
     aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
@@ -725,9 +723,7 @@ async def fetch_fsa_by_changed_at(
         for agg_id, site_id in aggregator_site_ids
     ]
 
-    return AggregatorBatchedEntities(
-        timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, site_scoped_cfgs, []
-    )  # type: ignore
+    return AggregatorBatchedEntities(timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, site_scoped_cfgs, [])  # type: ignore
 
 
 async def fetch_site_control_groups_by_changed_at(

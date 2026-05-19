@@ -58,7 +58,6 @@ def find_paired_archive_modules() -> list[tuple[str, str]]:
 
     pairings: list[tuple[str, str]] = []
     for m, a in find_paired_unpaired_archive_modules():
-
         if m is None or a is None:
             continue
 
@@ -75,7 +74,6 @@ def find_paired_unpaired_archive_classes() -> set[Optional[type], Optional[type]
     Noting that a model class like Site will be prefixed on the archive side as ArchiveSite"""
     pairings: set[Optional[type], Optional[type]] = set()
     for m, a in find_paired_archive_modules():
-
         model_types_by_name: dict[str, type] = dict(
             (t.__name__, t)
             for _, t in inspect.getmembers(importlib.import_module(m), inspect.isclass)
@@ -111,7 +109,6 @@ def find_paired_archive_classes() -> list[tuple[type, type]]:
     It's expected that all archive classes will map to a corresponding model type"""
     pairings: list[tuple[type, type]] = []
     for m, a in find_paired_unpaired_archive_classes():
-
         if m is None or a is None:
             continue
         pairings.append((m, a))
@@ -173,8 +170,7 @@ def test_archive_models_match_original_basic_schema(model_type: type, archive_ty
     # Check tablename is the same (minus the ARCHIVE_TABLE_PREFIX)
     assert archive_type.__tablename__.startswith(ARCHIVE_TABLE_PREFIX)
     assert (
-        model_type.__tablename__
-        and model_type.__tablename__ == archive_type.__tablename__[len(ARCHIVE_TABLE_PREFIX) :]  # noqa: E203
+        model_type.__tablename__ and model_type.__tablename__ == archive_type.__tablename__[len(ARCHIVE_TABLE_PREFIX) :]  # noqa: E203
     )
 
     errors: list[str] = []

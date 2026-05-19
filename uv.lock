@@ -643,11 +643,6 @@ test = [
     { name = "pytest-xdist" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "types-lxml" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "alembic" },
@@ -694,9 +689,6 @@ requires-dist = [
     { name = "uvicorn" },
 ]
 provides-extras = ["dev", "test"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "types-lxml", specifier = ">=2026.2.16" }]
 
 [[package]]
 name = "envoy-schema"

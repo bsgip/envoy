@@ -45,7 +45,6 @@ def href_to_response_set_type(href_part: str) -> ResponseSetType:
 
 
 class ResponseMapper:
-
     @staticmethod
     def price_response_href(scope: BaseRequestScope, rate_response: TariffGeneratedRateResponse) -> str:
         """Generates the href for the specified TariffGeneratedRateResponse. Requires the primary key to be set"""

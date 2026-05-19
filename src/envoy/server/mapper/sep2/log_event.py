@@ -10,7 +10,6 @@ from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorReque
 
 
 class LogEventMapper:
-
     @staticmethod
     def log_event_href(scope: BaseRequestScope, site_id: int, log_event_id: int) -> str:
         return generate_href(
@@ -54,7 +53,6 @@ class LogEventMapper:
 
 
 class LogEventListMapper:
-
     @staticmethod
     def map_to_list_response(
         scope: DeviceOrAggregatorRequestScope,

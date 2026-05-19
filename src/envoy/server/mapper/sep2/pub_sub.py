@@ -150,7 +150,6 @@ class SubscriptionMapper:
 
             return generate_href(DERAvailabilityUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_RATING:
-
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DERCapability requires resource_id on sub {sub.subscription_id}"
@@ -158,7 +157,6 @@ class SubscriptionMapper:
 
             return generate_href(DERCapabilityUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_SETTING:
-
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DERSettings requires resource_id on sub {sub.subscription_id}"
@@ -166,13 +164,11 @@ class SubscriptionMapper:
 
             return generate_href(DERSettingsUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_STATUS:
-
             if sub.resource_id is None:
                 raise InvalidMappingError(f"Subscribing to DERStatus requires resource_id on sub {sub.subscription_id}")
 
             return generate_href(DERStatusUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.DEFAULT_SITE_CONTROL:
-
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DefaultDERControl requires resource_id on sub {sub.subscription_id}"
@@ -439,7 +435,6 @@ class SubscriptionListMapper:
 
 
 class NotificationMapper:
-
     @staticmethod
     def map_sites_to_response(
         sites: Sequence[Site],

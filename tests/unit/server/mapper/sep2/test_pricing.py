@@ -86,9 +86,9 @@ def test_tariff_profile_nosite_mapping():
     assert mapped_all_set.RateComponentListLink
     assert mapped_all_set.RateComponentListLink.href
     assert mapped_all_set.RateComponentListLink.href.startswith(mapped_all_set.href)
-    assert (
-        mapped_all_set.RateComponentListLink.all_ == 0
-    ), "Raw tariff mappings have no rates - need site info to get this information"
+    assert mapped_all_set.RateComponentListLink.all_ == 0, (
+        "Raw tariff mappings have no rates - need site info to get this information"
+    )
 
     some_set: Tariff = generate_class_instance(Tariff, seed=202, optional_is_none=True)
     mapped_some_set = TariffProfileMapper.map_to_nosite_response(scope, some_set)
@@ -100,9 +100,9 @@ def test_tariff_profile_nosite_mapping():
     assert mapped_some_set.RateComponentListLink
     assert mapped_some_set.RateComponentListLink.href
     assert mapped_some_set.RateComponentListLink.href.startswith(mapped_some_set.href)
-    assert (
-        mapped_some_set.RateComponentListLink.all_ == 0
-    ), "Raw tariff mappings have no rates - need site info to get this information"
+    assert mapped_some_set.RateComponentListLink.all_ == 0, (
+        "Raw tariff mappings have no rates - need site info to get this information"
+    )
 
 
 def test_tariff_profile_mapping():

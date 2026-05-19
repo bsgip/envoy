@@ -296,9 +296,9 @@ def test_map_derc_to_list_response():
     assert result.all_ == doe_count
     assert result.results == len(all_does)
     assert_list_type(DERControlResponse, result.DERControl, len(all_does))
-    assert len(set([derc.mRID for derc in result.DERControl])) == len(
-        all_does
-    ), f"Expected {len(all_does)} unique mrid's in the children"
+    assert len(set([derc.mRID for derc in result.DERControl])) == len(all_does), (
+        f"Expected {len(all_does)} unique mrid's in the children"
+    )
     assert str(scope.display_site_id) in result.href
     assert f"/{site_control_group_id}" in result.href
     assert result.DERControl[0].DERControlBase_.opModGenLimW.multiplier == 1

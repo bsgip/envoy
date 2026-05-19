@@ -235,7 +235,12 @@ def entities_to_notification(
     scope = scope_for_subscription(sub, href_prefix)
     if resource == SubscriptionResource.SITE:
         return NotificationMapper.map_sites_to_response(
-            cast(Sequence[Site], entities), sub, scope, notification_type, config.disable_edev_registration, config.edevl_pollrate_seconds  # type: ignore # mypy quirk # noqa: E501
+            cast(Sequence[Site], entities),
+            sub,
+            scope,
+            notification_type,
+            config.disable_edev_registration,
+            config.edevl_pollrate_seconds,  # type: ignore # mypy quirk # noqa: E501
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         if pricing_reading_type is None:
@@ -276,7 +281,11 @@ def entities_to_notification(
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
         _, _, group_id = batch_key
         return NotificationMapper.map_readings_to_response(
-            group_id, cast(Sequence[SiteReading], entities), sub, scope, notification_type  # type: ignore
+            group_id,
+            cast(Sequence[SiteReading], entities),
+            sub,
+            scope,
+            notification_type,  # type: ignore
         )
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
@@ -395,7 +404,6 @@ async def check_db_change_or_delete(
     for batch_key, agg_id, entities, notification_type in all_entity_batches(
         batched_entities.models_by_batch_key, batched_entities.deleted_by_batch_key
     ):
-
         # We enumerate by aggregator ID at the top level (as a way of minimising the size of entities)
         # We also cache the per aggregator subscriptions to minimise round trips to the db
         candidate_subscriptions = aggregator_subs_cache.get(agg_id, None)
@@ -461,13 +469,17 @@ async def check_db_change_or_delete(
         scope = scope_for_subscription(n.subscription, href_prefix)
 
         try:
-            await transmit_notification.kicker().with_broker(broker).kiq(
-                remote_uri=n.subscription.notification_uri,
-                content=content,
-                notification_id=str(n.notification_id),
-                subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, scope),
-                subscription_id=n.subscription.subscription_id,
-                attempt=0,
+            await (
+                transmit_notification.kicker()
+                .with_broker(broker)
+                .kiq(
+                    remote_uri=n.subscription.notification_uri,
+                    content=content,
+                    notification_id=str(n.notification_id),
+                    subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, scope),
+                    subscription_id=n.subscription.subscription_id,
+                    attempt=0,
+                )
             )
         except Exception as ex:
             logger.error("Error adding transmission task", exc_info=ex)

@@ -131,9 +131,9 @@ def test_map_to_der_config_response_optional_decimal_failovers(attr_name, attr_t
 
         all_values.append(value)
 
-    assert len(all_values) == len(
-        set(all_values)
-    ), "Expected all generated values to be unique (are the failovers working?)"
+    assert len(all_values) == len(set(all_values)), (
+        "Expected all generated values to be unique (are the failovers working?)"
+    )
 
 
 def test_site_single_entity_mapper():

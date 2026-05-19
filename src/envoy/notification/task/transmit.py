@@ -96,13 +96,18 @@ async def schedule_retry_transmission(
         return
 
     try:
-        await transmit_notification.kicker().with_broker(broker).with_labels(delay=int(delay.seconds)).kiq(
-            remote_uri=remote_uri,
-            content=content,
-            subscription_href=subscription_href,
-            subscription_id=subscription_id,
-            notification_id=notification_id,
-            attempt=attempt + 1,
+        await (
+            transmit_notification.kicker()
+            .with_broker(broker)
+            .with_labels(delay=int(delay.seconds))
+            .kiq(
+                remote_uri=remote_uri,
+                content=content,
+                subscription_href=subscription_href,
+                subscription_id=subscription_id,
+                notification_id=notification_id,
+                attempt=attempt + 1,
+            )
         )
     except Exception as ex:
         logger.error(

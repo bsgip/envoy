@@ -210,9 +210,9 @@ async def test_fetch_entities_with_archive_by_id_site_der(
 
         # Ensure we get the expected values too
         for e in source_entities:
-            assert e.changed_time == datetime(
-                2024, 3, 14, 3 + e.site_der_id, 55, 44, 500000, tzinfo=timezone.utc
-            ), "This is just the convention for pg_base_config"
+            assert e.changed_time == datetime(2024, 3, 14, 3 + e.site_der_id, 55, 44, 500000, tzinfo=timezone.utc), (
+                "This is just the convention for pg_base_config"
+            )
         for e in archive_entities:
             assert e.changed_time == expected_changed_time, "This is just a convention for this test (setup above)"
 

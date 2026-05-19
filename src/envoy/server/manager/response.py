@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 
 
 class ResponseManager:
-
     @staticmethod
     def fetch_response_set_for_scope(
         scope: DeviceOrAggregatorRequestScope, response_set_type: ResponseSetType
@@ -179,7 +178,6 @@ class ResponseManager:
             )
 
         if response_set_type == ResponseSetType.SITE_CONTROLS:
-
             if mrid_type != MridType.DYNAMIC_OPERATING_ENVELOPE:
                 raise BadRequestError(f"{mrid_type} responses are not accepted to this list.")
 
@@ -209,7 +207,6 @@ class ResponseManager:
             return href
 
         elif response_set_type == ResponseSetType.TARIFF_GENERATED_RATES:
-
             if mrid_type != MridType.TIME_TARIFF_INTERVAL:
                 raise BadRequestError(f"{mrid_type} responses are not accepted to this list.")
 

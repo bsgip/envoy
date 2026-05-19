@@ -86,9 +86,7 @@ async def count_site_log_events(
     created_after: Only logs with a created_time greater than this value will be counted (0 will count everything)
     """
 
-    return await _log_responses(
-        True, session, aggregator_id, site_id, 0, None, created_after
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    return await _log_responses(True, session, aggregator_id, site_id, 0, None, created_after)  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
 
 
 async def select_site_log_events(
@@ -103,6 +101,4 @@ async def select_site_log_events(
 
     Orders by 2030.5 requirements on LogEvent which is created DESC, logEventID DESC"""
 
-    return await _log_responses(
-        False, session, aggregator_id, site_id, start, limit, created_after
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    return await _log_responses(False, session, aggregator_id, site_id, start, limit, created_after)  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list

@@ -17,7 +17,6 @@ from envoy.server.model.log import (
 
 
 class CalculationLogMapper:
-
     @staticmethod
     def map_from_request(changed_time: datetime, calculation_log: CalculationLogRequest) -> CalculationLog:
 

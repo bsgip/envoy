@@ -145,9 +145,9 @@ async def test_count_and_select_consistency(pg_base_config):
             readings = await select_site_readings_for_site_and_time(
                 session, site_type_ids, start_time, end_time, 0, 500
             )
-            assert count == len(
-                readings
-            ), f"Count mismatch for site_type_ids {site_type_ids}: expected {count}, got {len(readings)}"
+            assert count == len(readings), (
+                f"Count mismatch for site_type_ids {site_type_ids}: expected {count}, got {len(readings)}"
+            )
 
 
 @pytest.mark.anyio

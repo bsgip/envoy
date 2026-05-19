@@ -114,9 +114,9 @@ async def test_enable_dynamic_azure_ad_database_credentials(
         # Lets dig into the guts of the current setup to pull out the db connections to see that
         # it includes our injected token
         assert len(db_connection_creds) == 1
-        assert db_connection_creds[0][1] == CUSTOM_DB_TOKEN.format(
-            idx=0
-        ), "All attempts to access the DB should be using our CUSTOM_DB_TOKEN"
+        assert db_connection_creds[0][1] == CUSTOM_DB_TOKEN.format(idx=0), (
+            "All attempts to access the DB should be using our CUSTOM_DB_TOKEN"
+        )
     finally:
         event.remove(Pool, "connect", on_db_connect)
 
@@ -161,9 +161,9 @@ async def test_refresh_seconds_updating_cache(
 
         token_requests = mocked_client.call_count_by_method_uri[(HTTPMethod.GET, TOKEN_URI)]
         jw_requests = mocked_client.call_count_by_method_uri[(HTTPMethod.GET, JWK_URI)]
-        assert (
-            token_requests >= 3 and token_requests <= 5
-        ), "Depending on delays - should have 3 or 4 requests given the retry frequency and delay. +1 in case of load"
+        assert token_requests >= 3 and token_requests <= 5, (
+            "Depending on delays - should have 3 or 4 requests given the retry frequency and delay. +1 in case of load"
+        )
         assert jw_requests == 1
 
         # Lets dig into the guts of the current setup to pull out the db connections to see that

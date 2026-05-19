@@ -348,7 +348,6 @@ class EndDeviceManager:
 
 
 class RegistrationManager:
-
     @staticmethod
     def generate_registration_pin() -> int:
         """Generates a random integer from 0 -> 99999 (5 digits) that can be used as a end device registration PIN.

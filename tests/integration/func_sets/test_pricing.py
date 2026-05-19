@@ -467,9 +467,9 @@ async def test_get_timetariffintervallist(
         ):
             assert tti.href == tti_href, f"[{idx}]: expected href {tti_href} but got {tti.href}"
             assert tti.ConsumptionTariffIntervalListLink
-            assert tti.ConsumptionTariffIntervalListLink.href.endswith(
-                f"/{price}"
-            ), f"[{idx}] expected CTI href {tti.ConsumptionTariffIntervalListLink.href} to encode price {price}"
+            assert tti.ConsumptionTariffIntervalListLink.href.endswith(f"/{price}"), (
+                f"[{idx}] expected CTI href {tti.ConsumptionTariffIntervalListLink.href} to encode price {price}"
+            )
 
 
 @pytest.mark.anyio

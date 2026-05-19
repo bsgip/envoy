@@ -31,7 +31,6 @@ DT2 = DT1 + timedelta(hours=1.24)
 
 async def populate_archive_with_type(pg_base_config, t: type):
     async with generate_async_session(pg_base_config) as session:
-
         # Archive 1 sits at DT1 for both archive times and delete times
         session.add(generate_class_instance(t, seed=1001, archive_id=1, archive_time=DT1, deleted_time=DT1))
 

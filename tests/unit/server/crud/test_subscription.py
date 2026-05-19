@@ -51,7 +51,6 @@ async def test_select_subscription_by_id_filters(
 ):
     """Validates select_subscription_by_id filters correctly for some expected values"""
     async with generate_async_session(pg_base_config) as session:
-
         sub = await select_subscription_by_id(session, aggregator_id, sub_id)
         if sub is None:
             assert expected_sub_id is None
@@ -66,7 +65,6 @@ async def test_select_subscription_by_id_filters(
 async def test_select_subscription_by_id_content(pg_base_config):
     """Validates select_subscription_by_id filters correctly for some expected values"""
     async with generate_async_session(pg_base_config) as session:
-
         sub_5 = await select_subscription_by_id(session, 1, 5)
         assert isinstance(sub_5, Subscription)
 
@@ -119,7 +117,6 @@ async def test_select_count_subscriptions_for_aggregator(
 ):
     """Simple tests to ensure the select/counts work for various filters"""
     async with generate_async_session(pg_base_config) as session:
-
         subs = await select_subscriptions_for_aggregator(session, aggregator_id, start, changed_after, limit)
         assert_list_type(Subscription, subs, len(expected_sub_ids))
         assert all([len(s.conditions) >= 0 for s in subs])
@@ -220,7 +217,6 @@ async def test_select_count_subscriptions_for_site(
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
-
         subs = await select_subscriptions_for_site(session, aggregator_id, site_id, start, changed_after, limit)
         assert_list_type(Subscription, subs, len(expected_sub_ids))
         assert all([len(s.conditions) >= 0 for s in subs])
@@ -403,9 +399,9 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
         )
         assert_nowish(new_sub.created_time)
 
-        assert (
-            await session.execute(select(func.count()).select_from(ArchiveSubscription))
-        ).scalar_one() == 0, "Nothing archived on insert"
+        assert (await session.execute(select(func.count()).select_from(ArchiveSubscription))).scalar_one() == 0, (
+            "Nothing archived on insert"
+        )
         assert (
             await session.execute(select(func.count()).select_from(ArchiveSubscriptionCondition))
         ).scalar_one() == 0, "Nothing archived on insert"
@@ -525,9 +521,9 @@ async def test_upsert_subscription_update_subscription(pg_base_config, sub: Subs
         cond_count_after = (await session.execute(select(func.count()).select_from(SubscriptionCondition))).scalar_one()
 
         assert sub_count_before == sub_count_after, "There should be NO new subscription in the table"
-        assert (
-            cond_count_before + cond_count_to_add - cond_count_for_sub_before == cond_count_after
-        ), "Conditions count only change if the new set of conditions are bigger/smaller"
+        assert cond_count_before + cond_count_to_add - cond_count_for_sub_before == cond_count_after, (
+            "Conditions count only change if the new set of conditions are bigger/smaller"
+        )
 
         new_sub = await select_subscription_by_id(session, sub.aggregator_id, sub_id)
         assert new_sub.subscription_id == expected_sub_id

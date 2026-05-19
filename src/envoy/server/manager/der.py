@@ -110,7 +110,6 @@ class DERManager:
 
 
 class DERCapabilityManager:
-
     @staticmethod
     async def fetch_der_capability_for_site(
         session: AsyncSession,
@@ -176,7 +175,6 @@ class DERCapabilityManager:
 
 
 class DERSettingsManager:
-
     @staticmethod
     async def fetch_der_settings_for_site(
         session: AsyncSession,
@@ -243,7 +241,6 @@ class DERSettingsManager:
 
 
 class DERAvailabilityManager:
-
     @staticmethod
     async def fetch_der_availability_for_site(
         session: AsyncSession,
@@ -312,7 +309,6 @@ class DERAvailabilityManager:
 
 
 class DERStatusManager:
-
     @staticmethod
     async def fetch_der_status_for_site(
         session: AsyncSession,

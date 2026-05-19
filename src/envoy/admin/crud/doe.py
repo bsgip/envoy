@@ -240,7 +240,6 @@ async def supersede_matching_does_for_site(
         existing_connected,
         existing_set_point,
     ) in potential_matches:
-
         # Build field set for existing DOE
         existing_fields = DOEFieldSet(
             has_import_limit=existing_import_limit is not None,
