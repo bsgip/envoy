@@ -1,7 +1,6 @@
 import os
 import unittest.mock as mock
 from datetime import datetime, timedelta
-from typing import Optional, Union
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -144,9 +143,9 @@ async def test_fetch_sites_and_count_for_claims(
     scope: UnregisteredRequestScope,
     start: int,
     limit: int,
-    returned_site: Union[Exception, Optional[Site]],
-    returned_site_list: Union[Exception, list[Site]],
-    returned_count: Union[Exception, int],
+    returned_site: Exception | Site | None,
+    returned_site_list: Exception | list[Site],
+    returned_count: Exception | int,
     expected_count: int,
     expected_sites: list[Site],
 ):
@@ -404,7 +403,7 @@ async def test_delete_enddevice_for_scope(
         ("AbC123", "ABC123", True),
     ],
 )
-def test_lfdi_matches(lhs: Optional[str], rhs: Optional[str], expected: bool):
+def test_lfdi_matches(lhs: str | None, rhs: str | None, expected: bool):
     actual = EndDeviceManager.lfdi_matches(lhs, rhs)
     assert isinstance(actual, bool)
     assert actual is expected
@@ -801,14 +800,14 @@ def test_generate_registration_pin():
     values_attempt_1 = []
     for _ in range(100):
         values_attempt_1.append(RegistrationManager.generate_registration_pin())
-    assert all((v <= MAX_REGISTRATION_PIN and v >= 0 for v in values_attempt_1)), "All values should be in range"
+    assert all(v <= MAX_REGISTRATION_PIN and v >= 0 for v in values_attempt_1), "All values should be in range"
     distinct_values = set(values_attempt_1)
     assert len(distinct_values) > 5, "If this is failing, either you're incredible unlucky or something is wrong"
 
     values_attempt_2 = []
     for _ in range(len(values_attempt_1)):
         values_attempt_2.append(RegistrationManager.generate_registration_pin())
-    assert all((v <= MAX_REGISTRATION_PIN and v >= 0 for v in values_attempt_2)), "All values should be in range"
+    assert all(v <= MAX_REGISTRATION_PIN and v >= 0 for v in values_attempt_2), "All values should be in range"
     distinct_values = set(values_attempt_2)
     assert len(distinct_values) > 5, "If this is failing, either you're incredible unlucky or something is wrong"
 

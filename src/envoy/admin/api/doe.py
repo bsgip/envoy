@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime
 from http import HTTPStatus
-from typing import Optional
 
 from asyncpg.exceptions import CardinalityViolationError  # type: ignore
 from envoy_schema.admin.schema.doe import DoePageResponse, DynamicOperatingEnvelopeRequest
@@ -44,7 +43,7 @@ async def create_doe(doe_list: list[DynamicOperatingEnvelopeRequest]) -> None:
 async def get_all_does(
     start: list[int] = Query([0]),
     limit: list[int] = Query([100]),
-    after: Optional[datetime] = Query(None),
+    after: datetime | None = Query(None),
 ) -> DoePageResponse:
     """Endpoint for a paginated list of DynamicOperatingEnvelope Objects, ordered by dynamic_operating_envelope_id
     attribute.

@@ -3,7 +3,6 @@ import unittest.mock as mock
 from datetime import datetime
 from http import HTTPStatus
 from itertools import chain
-from typing import Optional
 
 import pytest
 from assertical.fake.http import MockedAsyncClient
@@ -103,7 +102,7 @@ async def test_get_resource_unauthorised(valid_methods: list[HTTPMethod], uri: s
     """Runs through the basic unauthorised tests for all parametrized requests on a server that supports
     unrecognised certs being registered as device certs"""
     for method in valid_methods:
-        body: Optional[str] = None
+        body: str | None = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             body = EMPTY_XML_DOC
 
@@ -118,7 +117,7 @@ async def test_get_resource_unauthorised_no_device_certs(
 ):
     """Runs through the basic unauthorised tests for all parametrized requests (but will validate unknown certs fail)"""
     for method in valid_methods:
-        body: Optional[str] = None
+        body: str | None = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             body = EMPTY_XML_DOC
 
@@ -141,7 +140,7 @@ async def test_get_resource_unauthorised_with_azure_ad(
     mock_AsyncClient.return_value = mocked_client
 
     for method in valid_methods:
-        body: Optional[str] = None
+        body: str | None = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             body = EMPTY_XML_DOC
 
@@ -180,7 +179,7 @@ async def test_get_resource_valid_auth_with_valid_azure_ad(
     mock_AsyncClient.return_value = mocked_client
 
     for method in valid_methods:
-        body: Optional[str] = None
+        body: str | None = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             # We don't have a consistent way of testing POST/PUT methods -
             # We will operate under the assumption that if the GET methods are functioning with auth
@@ -205,7 +204,7 @@ async def test_resource_with_invalid_methods(
 ):
     """Runs through invalid HTTP methods for each endpoint"""
     for method in [m for m in HTTPMethod if m not in valid_methods]:
-        body: Optional[str] = None
+        body: str | None = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             body = EMPTY_XML_DOC
 
@@ -225,7 +224,7 @@ async def test_fingerprint_auth(
         assert_response_header(response, HTTPStatus.OK, expected_content_type=None)
 
 
-async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_prefix: Optional[str]) -> set[str]:
+async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_prefix: str | None) -> set[str]:
     """Internal utility - crawls all ALL_ENDPOINTS_WITH_SUPPORTED_METHODS. Returns all crawled URIs"""
     uris_to_visit = [
         (uri, ["."]) for (methods, uri) in ALL_ENDPOINTS_WITH_SUPPORTED_METHODS if HTTPMethod.GET in methods

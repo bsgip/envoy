@@ -1,6 +1,5 @@
 import unittest.mock as mock
 from datetime import datetime
-from typing import Optional
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -84,7 +83,7 @@ async def test_fetch_response_for_scope_doe_exists(
     mock_select_doe_response_for_scope: mock.MagicMock,
     mock_map_to_doe_response: mock.MagicMock,
     mock_map_to_price_response: mock.MagicMock,
-    snapshot_doe: Optional[DynamicOperatingEnvelope],
+    snapshot_doe: DynamicOperatingEnvelope | None,
 ):
     """Checks that the flows for a response work OK with DOEs"""
     # Arrange

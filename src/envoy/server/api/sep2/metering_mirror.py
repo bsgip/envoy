@@ -1,6 +1,5 @@
 import logging
 from http import HTTPStatus
-from typing import Union
 
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.metering_mirror import (
@@ -176,7 +175,7 @@ async def delete_mirror_usage_point(
 async def post_mirror_usage_point(
     request: Request,
     mup_id: int,
-    payload: Union[MirrorMeterReadingRequest, MirrorMeterReadingListRequest] = Depends(
+    payload: MirrorMeterReadingRequest | MirrorMeterReadingListRequest = Depends(
         XmlRequest(MirrorMeterReadingRequest, MirrorMeterReadingListRequest)
     ),
 ) -> Response:

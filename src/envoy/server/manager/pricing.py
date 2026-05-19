@@ -1,6 +1,5 @@
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.pricing import (
     ConsumptionTariffIntervalListResponse,
@@ -15,7 +14,6 @@ from envoy_schema.server.schema.sep2.pricing import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.api.request import extract_date_from_iso_string
-from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.crud.pricing import (
     count_tariff_rates_for_day,
     count_unique_rate_days,
@@ -26,6 +24,7 @@ from envoy.server.crud.pricing import (
     select_tariff_rates_for_day,
     select_unique_rate_days,
 )
+from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.exception import InvalidIdError, NotFoundError
 from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pricing import (
@@ -43,7 +42,7 @@ class TariffProfileManager:
     @staticmethod
     async def fetch_tariff_profile(
         session: AsyncSession, scope: SiteRequestScope, tariff_id: int
-    ) -> Optional[TariffProfileResponse]:
+    ) -> TariffProfileResponse | None:
         """Fetches a single tariff in the form of a sep2 TariffProfile thats specific to a single site."""
 
         tariff = await select_single_tariff(session, tariff_id)
@@ -62,8 +61,8 @@ class TariffProfileManager:
         start: int,
         changed_after: datetime,
         limit: int,
-        fsa_id: Optional[int],
-    ) -> Optional[TariffProfileListResponse]:
+        fsa_id: int | None,
+    ) -> TariffProfileListResponse | None:
         """Fetches all tariffs accessible to a specific site (and optionally scoped to a specific function set
         assignment id)."""
 
@@ -83,7 +82,7 @@ class TariffProfileManager:
     @staticmethod
     async def fetch_tariff_profile_no_site(
         session: AsyncSession, scope: BaseRequestScope, tariff_id: int
-    ) -> Optional[TariffProfileResponse]:
+    ) -> TariffProfileResponse | None:
         """Fetches a single tariff in the form of a sep2 TariffProfile. This tariff will NOT contain
         any useful RateComponent links due to a lack of a site ID scope
 
@@ -97,7 +96,7 @@ class TariffProfileManager:
     @staticmethod
     async def fetch_tariff_profile_list_no_site(
         session: AsyncSession, scope: BaseRequestScope, start: int, changed_after: datetime, limit: int
-    ) -> Optional[TariffProfileListResponse]:
+    ) -> TariffProfileListResponse | None:
         """Fetches a tariff list in the form of a sep2 TariffProfileList. These tariffs will NOT contain
         any useful RateComponent links due to a lack of a site ID scope.
 
@@ -239,7 +238,7 @@ class TimeTariffIntervalManager:
         rate_component_id: str,
         time_tariff_interval: str,
         pricing_type: PricingReadingType,
-    ) -> Optional[TimeTariffIntervalResponse]:
+    ) -> TimeTariffIntervalResponse | None:
         """Fetches a single TimeTariffInterval entity matching the date/time. Time must be an exact
         match.
 

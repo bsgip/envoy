@@ -1,13 +1,11 @@
-from typing import Sequence, Iterable
-
 import itertools
+from collections.abc import Iterable, Sequence
 
 import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.model import aggregator
-from envoy.server.model import base
+from envoy.server.model import aggregator, base
 
 
 async def count_certificates_for_aggregator(session: AsyncSession, aggregator_id: int) -> int:
@@ -107,7 +105,7 @@ async def create_many_certificates(session: AsyncSession, certificates: list[bas
     """
     table = base.Certificate.__table__
     create_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
-    stmt = sa.insert(base.Certificate).values(([{k: getattr(cert, k) for k in create_cols} for cert in certificates]))
+    stmt = sa.insert(base.Certificate).values([{k: getattr(cert, k) for k in create_cols} for cert in certificates])
     await session.execute(stmt)
 
 
@@ -137,7 +135,7 @@ async def create_many_certificates_on_conflict_do_nothing(
     create_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     stmt = (
         postgresql.insert(base.Certificate)
-        .values(([{k: getattr(cert, k) for k in create_cols} for cert in producer]))
+        .values([{k: getattr(cert, k) for k in create_cols} for cert in producer])
         .on_conflict_do_nothing(index_elements=["lfdi"])
         .returning(base.Certificate)
     )

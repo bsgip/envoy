@@ -1,8 +1,9 @@
 import logging
+from collections.abc import Generator, Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import islice
-from typing import Annotated, Generator, Generic, Iterable, Optional, Sequence, TypeVar, cast
+from typing import Annotated, Generic, TypeVar, cast
 from uuid import UUID, uuid4
 
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
@@ -73,13 +74,13 @@ class NotificationEntities(Generic[TResourceModel]):
     notification_id: UUID  # Unique ID for this notification (to detect retries)
     notification_type: NotificationType  # Is this notification for a change in or deletion of these entities
     batch_key: tuple  # The batch key representing this particular batch of entities (see get_batch_key())
-    pricing_reading_type: Optional[PricingReadingType]
+    pricing_reading_type: PricingReadingType | None
 
 
 T = TypeVar("T")
 
 
-def scope_for_subscription(sub: Subscription, href_prefix: Optional[str]) -> AggregatorRequestScope:
+def scope_for_subscription(sub: Subscription, href_prefix: str | None) -> AggregatorRequestScope:
     """Generates a request scope for use with a subscription when mapping elements"""
     return AggregatorRequestScope(
         aggregator_id=sub.aggregator_id,
@@ -225,10 +226,10 @@ def entities_to_notification(
     resource: SubscriptionResource,
     sub: Subscription,
     batch_key: tuple,
-    href_prefix: Optional[str],
+    href_prefix: str | None,
     notification_type: NotificationType,
     entities: Sequence[TResourceModel],
-    pricing_reading_type: Optional[PricingReadingType],
+    pricing_reading_type: PricingReadingType | None,
     config: RuntimeServerConfig,
 ) -> Sep2Notification:
     """Givens a subscription and associated entities - generate the notification content that will be sent out"""
@@ -380,7 +381,7 @@ async def fetch_batched_entities(
 async def check_db_change_or_delete(
     resource: SubscriptionResource,
     timestamp_epoch: float,
-    href_prefix: Annotated[Optional[str], TaskiqDepends(href_prefix_dependency)] = TaskiqDepends(),
+    href_prefix: Annotated[str | None, TaskiqDepends(href_prefix_dependency)] = TaskiqDepends(),
     session: Annotated[AsyncSession, TaskiqDepends(session_dependency)] = TaskiqDepends(),
     broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)] = TaskiqDepends(),
 ) -> None:
@@ -393,7 +394,7 @@ async def check_db_change_or_delete(
     resource_name: The name of the resource that is being checked for changes
     timestamp: The datetime.timestamp() that will be used for finding resources (must be exact match)"""
 
-    timestamp = datetime.fromtimestamp(timestamp_epoch, tz=timezone.utc)
+    timestamp = datetime.fromtimestamp(timestamp_epoch, tz=UTC)
     logger.debug("check_db_change_or_delete for resource %s at timestamp %s", resource, timestamp)
 
     batched_entities = await fetch_batched_entities(session, resource, timestamp)

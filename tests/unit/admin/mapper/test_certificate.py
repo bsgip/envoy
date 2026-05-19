@@ -2,9 +2,9 @@ import pytest
 from assertical.asserts import generator as asserts_generator
 from assertical.fake import generator as fake_generator
 from envoy_schema.admin.schema.certificate import (
-    CertificateResponse,
-    CertificatePageResponse,
     CertificateAssignmentRequest,
+    CertificatePageResponse,
+    CertificateResponse,
 )
 
 from envoy.admin import mapper

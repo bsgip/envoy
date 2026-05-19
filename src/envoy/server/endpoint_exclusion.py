@@ -1,9 +1,9 @@
+import logging
 from copy import deepcopy
 from enum import Enum
-import logging
 
-from starlette.routing import BaseRoute, Route
 from fastapi import APIRouter
+from starlette.routing import BaseRoute, Route
 
 logging.basicConfig(style="{", level=logging.INFO)
 logger = logging.getLogger(__name__)

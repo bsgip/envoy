@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.admin.schema.log import CalculationLogListResponse, CalculationLogRequest, CalculationLogResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +16,7 @@ class CalculationLogManager:
     @staticmethod
     async def get_calculation_log_by_id(
         session: AsyncSession, calculation_log_id: int, include_variables: bool, include_labels: bool
-    ) -> Optional[CalculationLogResponse]:
+    ) -> CalculationLogResponse | None:
         """Fetches a specific calculation log with a specific ID. Allows the fine grained choice to include
         child variable/label data too."""
         log = await select_calculation_log_by_id(

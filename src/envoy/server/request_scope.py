@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from enum import IntEnum, auto
 from http import HTTPStatus
-from typing import Optional
 
 from fastapi import HTTPException
 
@@ -28,7 +27,7 @@ class BaseRequestScope:
 
     lfdi: str  # The lowercase lfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
     sfdi: int  # The sfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
-    href_prefix: Optional[str]  # If set - all outgoing href's should be prefixed with this value
+    href_prefix: str | None  # If set - all outgoing href's should be prefixed with this value
     iana_pen: int  # The IANA Private Enterprise Number of the org hosting this utility server instance
 
 
@@ -52,15 +51,15 @@ class RawRequestClaims:
 
     lfdi: str  # The lfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
     sfdi: int  # The sfdi associated with the aggregator/site ID (sourced from the client TLS certificate)
-    href_prefix: Optional[str]  # If set - all outgoing href's should be prefixed with this value
+    href_prefix: str | None  # If set - all outgoing href's should be prefixed with this value
     iana_pen: int  # The IANA Private Enterprise Number of the org hosting this utility server instance
 
     # The aggregator id that a request is scoped to (sourced from auth dependencies)
     # This can be None if the request does not have access to any aggregator (NOT unscoped access)
-    aggregator_id_scope: Optional[int]
+    aggregator_id_scope: int | None
     # The site id that a request is scoped to (sourced from auth dependencies)
     # This can be None if the request does not have a single site scope
-    site_id_scope: Optional[int]
+    site_id_scope: int | None
 
     def to_unregistered_request_scope(self) -> "UnregisteredRequestScope":
         """Attempt to convert these raw claims into a UnregisteredRequestScope, raising a HTTPException if not
@@ -125,7 +124,7 @@ class RawRequestClaims:
         )
 
     def to_device_or_aggregator_request_scope(
-        self, requested_site_id: Optional[int]
+        self, requested_site_id: int | None
     ) -> "DeviceOrAggregatorRequestScope":
         """Attempt to convert these raw claims into a DeviceOrAggregatorRequestScope. If the request doesn't match the
         client credentials, this will raise a HTTPException
@@ -165,7 +164,7 @@ class RawRequestClaims:
             site_id=requested_site_id,
         )
 
-    def to_aggregator_request_scope(self, requested_site_id: Optional[int]) -> "AggregatorRequestScope":
+    def to_aggregator_request_scope(self, requested_site_id: int | None) -> "AggregatorRequestScope":
         """Attempt to convert these raw claims into an AggregatorRequestScope. If the request doesn't match the
         client credentials, this will raise a HTTPException
 
@@ -251,7 +250,7 @@ class DeviceOrAggregatorRequestScope(BaseRequestScope):
     display_site_id: int
 
     # If specified - What specific site_id is this request scoped to (otherwise no site scope)
-    site_id: Optional[int]
+    site_id: int | None
 
 
 @dataclass(frozen=True)
@@ -273,7 +272,7 @@ class MUPListRequestScope(BaseRequestScope):
 
     # If specified - What specific site_id is this request scoped to. This is only applicable to device certificates
     # This can be None for a device certificate indicating that NO EndDevice has been registered.
-    device_site_id: Optional[int]
+    device_site_id: int | None
 
 
 @dataclass(frozen=True)
@@ -322,7 +321,7 @@ class AggregatorRequestScope(BaseRequestScope):
     display_site_id: int
 
     # If specified - What specific site_id is this request scoped to (otherwise no site scope)
-    site_id: Optional[int]
+    site_id: int | None
 
 
 @dataclass(frozen=True)

@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import DOUBLE_PRECISION, INTEGER, VARCHAR, DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -146,25 +145,25 @@ class CalculationLog(Base):
     # Number of seconds for the fixed width intervals that comprise this calculation log
     interval_width_seconds: Mapped[int] = mapped_column(INTEGER)
 
-    topology_id: Mapped[Optional[str]] = mapped_column(
+    topology_id: Mapped[str | None] = mapped_column(
         VARCHAR(length=64), nullable=True
     )  # id for topology used in this calculation (eg - Feeder ID)
 
-    external_id: Mapped[Optional[str]] = mapped_column(VARCHAR(length=64), nullable=True)  # External unique reference
-    description: Mapped[Optional[str]] = mapped_column(VARCHAR(length=1024), nullable=True)  # Free text description
+    external_id: Mapped[str | None] = mapped_column(VARCHAR(length=64), nullable=True)  # External unique reference
+    description: Mapped[str | None] = mapped_column(VARCHAR(length=1024), nullable=True)  # Free text description
 
-    power_forecast_creation_time: Mapped[Optional[datetime]] = mapped_column(
+    power_forecast_creation_time: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )  # When was the power forecast made (not when it's for)
 
     # When was the last (most recent) historical lag. The time between this and the calculation_range_start
     # represents how stale the lag data was.
-    power_forecast_basis_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    power_forecast_basis_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    weather_forecast_creation_time: Mapped[Optional[datetime]] = mapped_column(
+    weather_forecast_creation_time: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )  # When was the weather forecast made (not when it's for)
-    weather_forecast_location_id: Mapped[Optional[str]] = mapped_column(
+    weather_forecast_location_id: Mapped[str | None] = mapped_column(
         VARCHAR(length=128), nullable=True
     )  # External unique identifier for the location that the weather forecast was drawn from
 

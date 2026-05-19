@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.types import CurrencyCode
 from sqlalchemy import DECIMAL, INTEGER, BigInteger, DateTime, Integer, String
@@ -26,7 +25,7 @@ class ArchiveTariffGeneratedRate(ArchiveBase):
     tariff_generated_rate_id: Mapped[int] = mapped_column(BigInteger, index=True)
     tariff_id: Mapped[int] = mapped_column(INTEGER)
     site_id: Mapped[int] = mapped_column(INTEGER)
-    calculation_log_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    calculation_log_id: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))

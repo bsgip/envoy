@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime
 from decimal import Decimal
 from http import HTTPStatus
-from typing import Union
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -47,7 +46,7 @@ async def test_create_does_no_active_subscription(
     pg_base_config,
     admin_client_auth: AsyncClient,
     notifications_enabled: MockedAsyncClient,
-    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
+    body_type: type[DynamicOperatingEnvelopeRequest] | type[SiteControlRequest],
     uri: str,
 ):
     # There is currently a DOE sub in place - delete it before the test
@@ -82,7 +81,7 @@ async def test_create_does_with_active_subscription(
     admin_client_auth: AsyncClient,
     notifications_enabled: MockedAsyncClient,
     pg_base_config,
-    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
+    body_type: type[DynamicOperatingEnvelopeRequest] | type[SiteControlRequest],
     uri: str,
 ):
     """Tests creating DOEs with an active subscription generates notifications via the MockedAsyncClient"""
@@ -208,7 +207,7 @@ async def test_supersede_doe_with_active_subscription(
     admin_client_auth: AsyncClient,
     notifications_enabled: MockedAsyncClient,
     pg_base_config,
-    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
+    body_type: type[DynamicOperatingEnvelopeRequest] | type[SiteControlRequest],
     uri: str,
 ):
     """Tests superseding a DOE with an active subscription generates notifications for the superseded and inserted
@@ -295,7 +294,7 @@ async def test_create_does_with_paginated_notifications(
     admin_client_auth: AsyncClient,
     notifications_enabled: MockedAsyncClient,
     pg_base_config,
-    body_type: Union[type[DynamicOperatingEnvelopeRequest], type[SiteControlRequest]],
+    body_type: type[DynamicOperatingEnvelopeRequest] | type[SiteControlRequest],
     uri: str,
 ):
     """Tests creating DOEs with an active subscription respected the subscription entity_limit"""

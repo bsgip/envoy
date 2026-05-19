@@ -1,4 +1,3 @@
-from typing import Optional
 
 from fastapi import Request
 
@@ -6,10 +5,10 @@ from fastapi import Request
 class RequestStateSettingsDepends:
     """Dependency class for populating the request state href_prefix and iana_pen"""
 
-    href_prefix: Optional[str]
+    href_prefix: str | None
     iana_pen: int
 
-    def __init__(self, href_prefix: Optional[str], iana_pen: int):
+    def __init__(self, href_prefix: str | None, iana_pen: int):
         self.href_prefix = href_prefix
         self.iana_pen = iana_pen
 

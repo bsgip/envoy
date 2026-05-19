@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -19,7 +19,7 @@ from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 
 # Arbitrary datetimes indicating the range of times where we have archived records for. Will constitute a few
 # hours of range
-DT1 = datetime(2022, 5, 6, 7, 8, 9, 500000, tzinfo=timezone.utc)
+DT1 = datetime(2022, 5, 6, 7, 8, 9, 500000, tzinfo=UTC)
 DT2 = DT1 + timedelta(hours=1.53)
 DT3 = DT2 + timedelta(hours=8.42)
 

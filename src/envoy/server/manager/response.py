@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from itertools import islice
-from typing import Optional, Union, cast
+from typing import cast
 
 from envoy_schema.server.schema.sep2.response import (
     DERControlResponse,
@@ -115,7 +115,7 @@ class ResponseManager:
             responses_and_does: list[
                 tuple[
                     DynamicOperatingEnvelopeResponse,
-                    Optional[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+                    DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope | None,
                 ]
             ] = []
 
@@ -154,7 +154,7 @@ class ResponseManager:
         session: AsyncSession,
         scope: SiteRequestScope,
         response_set_type: ResponseSetType,
-        response: Union[DERControlResponse, PriceResponse, Response],
+        response: DERControlResponse | PriceResponse | Response,
     ) -> str:
         """Creates a new Response entry in the database for the specified subject.
 

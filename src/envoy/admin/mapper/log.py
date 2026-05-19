@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence
 
 from envoy_schema.admin.schema.log import CalculationLogLabelMetadata as PublicLabelMetadata
 from envoy_schema.admin.schema.log import CalculationLogLabelValues as PublicLabelValues
@@ -91,7 +91,7 @@ class CalculationLogMapper:
         ]
 
         variable_ids: list[int] = []
-        variable_site_ids: list[Optional[int]] = []
+        variable_site_ids: list[int | None] = []
         variable_interval_periods: list[int] = []
         variable_values: list[float] = []
         for variable_val in calculation_log.variable_values:
@@ -117,7 +117,7 @@ class CalculationLogMapper:
         ]
 
         label_ids: list[int] = []
-        label_site_ids: list[Optional[int]] = []
+        label_site_ids: list[int | None] = []
         label_values: list[str] = []
         for label_val in calculation_log.label_values:
             label_ids.append(label_val.label_id)

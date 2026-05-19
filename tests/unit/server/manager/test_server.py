@@ -1,4 +1,3 @@
-from typing import Optional
 from unittest import mock
 
 import pytest
@@ -68,7 +67,7 @@ from envoy.server.model.server import RuntimeServerConfig as entity_mdl
         (None, domain_mdl(), domain_mdl()),
     ],
 )
-def test_map_server_config(entity: Optional[entity_mdl], default_domain: domain_mdl, expected_domain: domain_mdl):
+def test_map_server_config(entity: entity_mdl | None, default_domain: domain_mdl, expected_domain: domain_mdl):
 
     # Act
     with mock.patch("envoy.server.manager.server.default", default_domain):  # replace default with test instance

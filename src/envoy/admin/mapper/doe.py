@@ -1,6 +1,6 @@
+from collections.abc import Iterable
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Iterable, Optional
 
 from envoy_schema.admin.schema.doe import (
     DoePageResponse,
@@ -54,7 +54,7 @@ class DoeListMapper:
 
     @staticmethod
     def map_to_paged_response(
-        total_count: int, limit: int, start: int, after: Optional[datetime], does: Iterable[DynamicOperatingEnvelope]
+        total_count: int, limit: int, start: int, after: datetime | None, does: Iterable[DynamicOperatingEnvelope]
     ) -> DoePageResponse:
         return DoePageResponse(
             total_count=total_count,

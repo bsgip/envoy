@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Annotated, Optional, Union
+from typing import Annotated
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,11 +30,11 @@ class TransmitResult:
     success: bool
     transmit_start: datetime  # tz aware start of transmission
     transmit_end: datetime  # tz aware end of transmission
-    http_status_code: Optional[int]  # Can be None if there was a failure connecting / timeout
+    http_status_code: int | None  # Can be None if there was a failure connecting / timeout
 
 
 def create_transmit_notification_log(
-    result: Union[TransmitResult, NotificationTransmitError], attempt: int, subscription_id: int, content: str
+    result: TransmitResult | NotificationTransmitError, attempt: int, subscription_id: int, content: str
 ) -> TransmitNotificationLog:
     duration_ms = int((result.transmit_end - result.transmit_start).total_seconds() * 1000)
     return TransmitNotificationLog(
@@ -49,7 +49,7 @@ def create_transmit_notification_log(
 
 async def safely_log_transmit_result(
     session: AsyncSession,
-    result: Union[TransmitResult, NotificationTransmitError],
+    result: TransmitResult | NotificationTransmitError,
     attempt: int,
     subscription_id: int,
     content: str,
@@ -72,7 +72,7 @@ async def safely_log_transmit_result(
         return False
 
 
-def attempt_to_retry_delay(attempt: int) -> Optional[timedelta]:
+def attempt_to_retry_delay(attempt: int) -> timedelta | None:
     """Given the number of attempt just tried - return a delay that should be applied before attempting again (or none
     if no more attempts should be made)"""
     if attempt >= len(RETRY_DELAYS):

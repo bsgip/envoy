@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from envoy_schema.server.schema.sep2.error import ErrorResponse
@@ -16,13 +16,13 @@ from tests.unit.jwt import generate_rs256_jwt
 
 
 def assert_response_header(
-    response: httpx.Response, expected_status_code: int, expected_content_type: Optional[str] = SEP_XML_MIME
+    response: httpx.Response, expected_status_code: int, expected_content_type: str | None = SEP_XML_MIME
 ):
     """Simple assert on a response for a particular response code. Will include response body in assert message in
     the event of failure. Otherwise content stream will remain unread if this assert succeeds"""
 
     # short circuit success
-    actual_content_type: Optional[str] = (
+    actual_content_type: str | None = (
         response.headers["Content-Type"] if "Content-Type" in response.headers else None
     )
     if response.status_code == expected_status_code:
@@ -64,7 +64,7 @@ def read_response_body_string(response: httpx.Response) -> str:
     return response.read().decode("utf-8")
 
 
-def _apply_headers(base_headers: Optional[dict[str, str]], add_headers: dict[str, str]) -> dict[str, str]:
+def _apply_headers(base_headers: dict[str, str] | None, add_headers: dict[str, str]) -> dict[str, str]:
     if base_headers:
         return dict(base_headers) | add_headers
     else:
@@ -75,8 +75,8 @@ async def run_basic_unauthorised_tests(
     client: httpx.AsyncClient,
     uri: str,
     method: str = "GET",
-    body: Optional[Any] = None,
-    base_headers: Optional[dict[str, str]] = None,
+    body: Any | None = None,
+    base_headers: dict[str, str] | None = None,
     test_unrecognised_cert: bool = True,
 ):
     """Runs common "unauthorised" GET requests on a particular endpoint and ensures that the endpoint is properly
@@ -129,7 +129,7 @@ async def run_basic_unauthorised_tests(
 
 
 async def run_azure_ad_unauthorised_tests(
-    client: httpx.AsyncClient, uri: str, method: str = "GET", body: Optional[Any] = None
+    client: httpx.AsyncClient, uri: str, method: str = "GET", body: Any | None = None
 ):
     """Runs Unauthorised tests with respect to Azure Active Directory bearer tokens, These will only
     pass if the Azure AD auth dependency is enabled.

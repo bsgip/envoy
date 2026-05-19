@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings
@@ -7,9 +7,9 @@ from pydantic_settings import BaseSettings
 def generate_middleware_kwargs(
     database_url: str,
     commit_on_exit: bool,
-    sqlalchemy_engine_args: Optional[dict[str, Any]],
-    azure_ad_db_resource_id: Optional[str],
-    azure_ad_db_refresh_secs: Optional[int],
+    sqlalchemy_engine_args: dict[str, Any] | None,
+    azure_ad_db_resource_id: str | None,
+    azure_ad_db_refresh_secs: int | None,
 ) -> dict[str, Any]:
     """Generates kwargs for SQLAlchemyMiddleware for a given set of settings values"""
     settings = {"db_url": database_url, "commit_on_exit": commit_on_exit}
@@ -31,13 +31,13 @@ class CommonSettings(BaseSettings):
 
     model_config = {"validate_assignment": True, "env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
-    enable_notifications: Optional[bool] = None  # Will pub/sub generate outgoing Notifications to active subs?
-    rabbit_mq_broker_url: Optional[str] = None  # RabbitMQ URL pointing to a running server (for pub/sub)
+    enable_notifications: bool | None = None  # Will pub/sub generate outgoing Notifications to active subs?
+    rabbit_mq_broker_url: str | None = None  # RabbitMQ URL pointing to a running server (for pub/sub)
 
-    azure_ad_tenant_id: Optional[str] = None  # Tenant ID of the Azure AD deployment (if none - disables Azure AD Auth)
-    azure_ad_client_id: Optional[str] = None  # Client ID of the app in the Azure AD (if none - disables Azure AD Auth)
-    azure_ad_valid_issuer: Optional[str] = None  # Valid Issuer of tokens in the Azure AD (if none - no Azure AD Auth)
-    azure_ad_db_resource_id: Optional[str] = None  # Will be used to mint AD tokens as a database password alternative
+    azure_ad_tenant_id: str | None = None  # Tenant ID of the Azure AD deployment (if none - disables Azure AD Auth)
+    azure_ad_client_id: str | None = None  # Client ID of the app in the Azure AD (if none - disables Azure AD Auth)
+    azure_ad_valid_issuer: str | None = None  # Valid Issuer of tokens in the Azure AD (if none - no Azure AD Auth)
+    azure_ad_db_resource_id: str | None = None  # Will be used to mint AD tokens as a database password alternative
     azure_ad_db_refresh_secs: int = (
         14400  # How frequently (in seconds) will the Azure AD DB token be manually refreshed. Default 4 hours.
     )
@@ -45,13 +45,13 @@ class CommonSettings(BaseSettings):
     database_url: PostgresDsn
     default_timezone: str = "Australia/Brisbane"
 
-    href_prefix: Optional[str] = None  # Will ensure all outgoing href's are prefixed with this value (None = disabled)
+    href_prefix: str | None = None  # Will ensure all outgoing href's are prefixed with this value (None = disabled)
     iana_pen: int = 0  # The IANA Private Enterprise Number of the organisation hosting this instance. Encoded in mrids
 
-    sqlalchemy_engine_arguments: Optional[dict[str, Union[str, int, float]]] = None
+    sqlalchemy_engine_arguments: dict[str, str | int | float] | None = None
 
     @property
-    def db_middleware_kwargs(self) -> Dict[str, Any]:
+    def db_middleware_kwargs(self) -> dict[str, Any]:
         return generate_middleware_kwargs(
             database_url=str(self.database_url),
             commit_on_exit=False,
@@ -61,7 +61,7 @@ class CommonSettings(BaseSettings):
         )
 
     @property
-    def azure_ad_kwargs(self) -> Optional[dict[str, Any]]:
+    def azure_ad_kwargs(self) -> dict[str, Any] | None:
         """Returns the Azure Active Directory configuration (if fully specified) or none otherwise"""
         client_id = self.azure_ad_client_id
         tenant_id = self.azure_ad_tenant_id

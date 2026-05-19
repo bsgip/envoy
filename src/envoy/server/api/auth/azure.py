@@ -1,8 +1,8 @@
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
-from typing import Iterable
 from urllib.parse import quote
 
 import jwt
@@ -174,7 +174,7 @@ async def request_azure_ad_token(cfg: AzureADResourceTokenConfig) -> AzureADToke
 
         body = response.json()
         access_token = body["access_token"]
-        expiry = datetime.fromtimestamp(int(body["expires_on"]), tz=timezone.utc)
+        expiry = datetime.fromtimestamp(int(body["expires_on"]), tz=UTC)
         return AzureADToken(token=access_token, resource_id=cfg.resource_id, expiry=expiry)
 
 

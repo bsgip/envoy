@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime
 from http import HTTPStatus
-from typing import Optional
 
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse, SiteUpdateRequest
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
@@ -71,7 +70,7 @@ async def get_all_sites(
     start: list[int] = Query([0]),
     limit: list[int] = Query([100]),
     group: list[str] = Query([]),
-    after: Optional[datetime] = Query(None),
+    after: datetime | None = Query(None),
 ) -> SitePageResponse:
     """Endpoint for a paginated list of Site Objects, ordered by site_id attribute.
 
@@ -85,7 +84,7 @@ async def get_all_sites(
         SitePageResponse
 
     """
-    group_filter: Optional[str] = None
+    group_filter: str | None = None
     if group is not None and len(group) > 0:
         group_filter = group[0]
 

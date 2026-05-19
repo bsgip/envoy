@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence, Union
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,9 +13,9 @@ from envoy.server.model.site import Site
 async def select_doe_response_for_scope(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     doe_response_id: int,
-) -> Optional[DOEResponse]:
+) -> DOEResponse | None:
     """Attempts to fetch a doe response using its' primary key, also scoping it to a particular aggregator/site
 
     Will populate the "site" relationship
@@ -42,9 +42,9 @@ async def select_doe_response_for_scope(
 async def select_rate_response_for_scope(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     tariff_generated_rate_response_id: int,
-) -> Optional[RateResponse]:
+) -> RateResponse | None:
     """Attempts to fetch a tariff generated rate response using its' primary key, also scoping it to a particular
     aggregator/site
 
@@ -73,11 +73,11 @@ async def _doe_responses(
     is_counting: bool,
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     start: int,
-    limit: Optional[int],
+    limit: int | None,
     created_after: datetime,
-) -> Union[Sequence[DOEResponse], int]:
+) -> Sequence[DOEResponse] | int:
     """Internal utility for fetching doe responses
 
     site_id: If None - no site_id filter applied, otherwise filter on site_id = Value
@@ -86,7 +86,7 @@ async def _doe_responses(
 
     Will populate the "site" relationship for all returned entities"""
 
-    select_clause: Union[Select[tuple[int]], Select[tuple[DOEResponse]]]
+    select_clause: Select[tuple[int]] | Select[tuple[DOEResponse]]
     if is_counting:
         select_clause = select(func.count()).select_from(DOEResponse)
     else:
@@ -121,11 +121,11 @@ async def _rate_responses(
     is_counting: bool,
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     start: int,
-    limit: Optional[int],
+    limit: int | None,
     created_after: datetime,
-) -> Union[Sequence[RateResponse], int]:
+) -> Sequence[RateResponse] | int:
     """Internal utility for fetching rate responses's
 
     site_id: If None - no site_id filter applied, otherwise filter on site_id = Value
@@ -134,7 +134,7 @@ async def _rate_responses(
 
     Will populate the "site" relationship for all returned entities"""
 
-    select_clause: Union[Select[tuple[int]], Select[tuple[RateResponse]]]
+    select_clause: Select[tuple[int]] | Select[tuple[RateResponse]]
     if is_counting:
         select_clause = select(func.count()).select_from(RateResponse)
     else:
@@ -166,7 +166,7 @@ async def _rate_responses(
 
 
 async def count_doe_responses(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], created_after: datetime
+    session: AsyncSession, aggregator_id: int, site_id: int | None, created_after: datetime
 ) -> int:
     """Fetches the number of DynamicOperatingEnvelopeResponse's stored.
 
@@ -177,7 +177,7 @@ async def count_doe_responses(
 
 
 async def select_doe_responses(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], start: int, limit: int, created_after: datetime
+    session: AsyncSession, aggregator_id: int, site_id: int | None, start: int, limit: int, created_after: datetime
 ) -> Sequence[DOEResponse]:
     """Selects DynamicOperatingEnvelopeResponse entities (with pagination). Will populate the "site" relationship for
     all returned entities.
@@ -193,7 +193,7 @@ async def select_doe_responses(
 
 
 async def count_tariff_generated_rate_responses(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], created_after: datetime
+    session: AsyncSession, aggregator_id: int, site_id: int | None, created_after: datetime
 ) -> int:
     """Fetches the number of TariffGeneratedRateResponse's stored.
 
@@ -204,7 +204,7 @@ async def count_tariff_generated_rate_responses(
 
 
 async def select_tariff_generated_rate_responses(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], start: int, limit: int, created_after: datetime
+    session: AsyncSession, aggregator_id: int, site_id: int | None, start: int, limit: int, created_after: datetime
 ) -> Sequence[RateResponse]:
     """Selects TariffGeneratedRateResponse entities (with pagination). Will populate the "site" relationship for all
     returned entities

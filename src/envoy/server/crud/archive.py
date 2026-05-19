@@ -1,6 +1,7 @@
+from collections.abc import Callable
 from datetime import datetime
 from itertools import chain
-from typing import Any, Callable
+from typing import Any
 
 from sqlalchemy import Delete, Select, delete, insert, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession

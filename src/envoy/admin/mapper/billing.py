@@ -1,6 +1,6 @@
+from collections.abc import Generator, Iterable
 from datetime import datetime
 from decimal import Decimal
-from typing import Generator, Iterable, Optional
 
 from envoy_schema.admin.schema.billing import (
     AggregatorBillingResponse,
@@ -122,8 +122,8 @@ class BillingMapper:
 
         The final result is a set of readings that have had their phasing info added together."""
 
-        def combine_readings_to_billing_reading(readings: Iterable[SiteReading]) -> Optional[BillingReading]:
-            combined_reading: Optional[BillingReading] = None
+        def combine_readings_to_billing_reading(readings: Iterable[SiteReading]) -> BillingReading | None:
+            combined_reading: BillingReading | None = None
             for reading in readings:
                 if combined_reading:
                     combined_reading.value += BillingMapper.map_reading(reading).value

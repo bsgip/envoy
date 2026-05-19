@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
 from sqlalchemy import INTEGER, VARCHAR, DateTime
@@ -18,8 +17,8 @@ class ArchiveSubscription(ArchiveBase):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     resource_type: Mapped[original_models.SubscriptionResource] = mapped_column(INTEGER)
-    resource_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
-    scoped_site_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    resource_id: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
+    scoped_site_id: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
     notification_uri: Mapped[str] = mapped_column(VARCHAR(length=2048))
     entity_limit: Mapped[int] = mapped_column(INTEGER)

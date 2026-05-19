@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence, Union, cast
+from typing import cast
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,13 +11,13 @@ from envoy.server.model.log import CalculationLog
 
 async def select_calculation_log_by_id(
     session: AsyncSession, calculation_log_id: int, include_variables: bool, include_labels: bool
-) -> Optional[CalculationLog]:
+) -> CalculationLog | None:
     """Admin fetching of a calculation log by ID - returns the log with (optionally) child entities included
 
     include_variables - If set, variable_metadata and variable_values will be populated. Otherwise will be set to []
     include_labels - If set, label_metadata and label_values will be populated. Otherwise will be set to []
     """
-    stmt = select(CalculationLog).where((CalculationLog.calculation_log_id == calculation_log_id))
+    stmt = select(CalculationLog).where(CalculationLog.calculation_log_id == calculation_log_id)
 
     if include_variables and include_labels:
         stmt = stmt.options(
@@ -57,10 +58,10 @@ async def _calculation_logs_for_period(
     period_start: datetime,
     period_end: datetime,
     start: int,
-    limit: Optional[int],
-) -> Union[Sequence[CalculationLog], int]:
+    limit: int | None,
+) -> Sequence[CalculationLog] | int:
 
-    select_clause: Union[Select[tuple[int]], Select[tuple[CalculationLog]]]
+    select_clause: Select[tuple[int]] | Select[tuple[CalculationLog]]
     if is_counting:
         select_clause = select(func.count()).select_from(CalculationLog)
     else:

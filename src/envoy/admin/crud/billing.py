@@ -1,7 +1,7 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from itertools import chain
-from typing import Optional, Sequence
 
 from envoy_schema.server.schema.sep2.types import UomType
 from sqlalchemy import select
@@ -292,7 +292,7 @@ async def fetch_sites_billing_data(
     )
 
 
-async def fetch_aggregator(session: AsyncSession, aggregator_id: int) -> Optional[Aggregator]:
+async def fetch_aggregator(session: AsyncSession, aggregator_id: int) -> Aggregator | None:
     """Fetches a particular Aggregator by its ID"""
-    result = await session.execute(select(Aggregator).where((Aggregator.aggregator_id == aggregator_id)))
+    result = await session.execute(select(Aggregator).where(Aggregator.aggregator_id == aggregator_id))
     return result.scalar_one_or_none()

@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from itertools import product
-from typing import Callable
 
 import pytest
 from assertical.fake.generator import generate_class_instance
@@ -159,7 +159,7 @@ def test_all_default_encodings_unique():
     assert_and_append_mrid(MridMapper.encode_function_set_assignment_mrid(scope1, 0, 0), all_generated_mrids)
     for prt in PricingReadingType:
         assert_and_append_mrid(
-            MridMapper.encode_rate_component_mrid(scope1, 0, 0, datetime.min.replace(tzinfo=timezone.utc), prt),
+            MridMapper.encode_rate_component_mrid(scope1, 0, 0, datetime.min.replace(tzinfo=UTC), prt),
             all_generated_mrids,
         )
         assert_and_append_mrid(MridMapper.encode_time_tariff_interval_mrid(scope1, 0, prt), all_generated_mrids)
@@ -272,10 +272,10 @@ def test_encode_rate_component_mrid():
         [0, 123, MAX_INT_32],
         [0, 123, MAX_INT_32],
         [
-            datetime(2000, 1, 1, tzinfo=timezone.utc),
-            datetime(2000, 1, 1, tzinfo=timezone.utc) - timedelta(minutes=1),
-            datetime(2000, 1, 1, tzinfo=timezone.utc) + timedelta(minutes=1),
-            datetime(2000, 1, 1, tzinfo=timezone.utc) + timedelta(minutes=MAX_INT_26 - 1),
+            datetime(2000, 1, 1, tzinfo=UTC),
+            datetime(2000, 1, 1, tzinfo=UTC) - timedelta(minutes=1),
+            datetime(2000, 1, 1, tzinfo=UTC) + timedelta(minutes=1),
+            datetime(2000, 1, 1, tzinfo=UTC) + timedelta(minutes=MAX_INT_26 - 1),
         ],
         PricingReadingType,
     ):
@@ -293,7 +293,7 @@ def test_encode_rate_component_mrid_bad_pricing_reading_type():
     scope = generate_class_instance(BaseRequestScope)
     tariff_id = 1
     site_id = 2
-    timestamp = datetime(2024, 1, 2, tzinfo=timezone.utc)
+    timestamp = datetime(2024, 1, 2, tzinfo=UTC)
 
     # Valid values to act as a sanity check - these should all be OK
     assert_mrid(MridMapper.encode_rate_component_mrid(scope, tariff_id, site_id, timestamp, 1))
@@ -391,7 +391,7 @@ def test_decode_and_validate_mrid_type():
     do_test(lambda s: MridMapper.encode_function_set_assignment_mrid(s, 1, 2))
     do_test(
         lambda s: MridMapper.encode_rate_component_mrid(
-            s, 1, 2, datetime(2021, 2, 3, tzinfo=timezone.utc), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH
+            s, 1, 2, datetime(2021, 2, 3, tzinfo=UTC), PricingReadingType.EXPORT_REACTIVE_POWER_KVARH
         )
     )
     do_test(lambda s: MridMapper.encode_time_tariff_interval_mrid(s, 1, PricingReadingType.EXPORT_REACTIVE_POWER_KVARH))

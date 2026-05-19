@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -270,11 +269,11 @@ async def test_fetch_calculation_log_billing_data(
     pg_billing_data,
     calculation_log_id: int,
     tariff_id: int,
-    expected_tariff_imports: Optional[list],
-    expected_doe_imports: Optional[list],
-    expected_wh_readings: Optional[list],
-    expected_varh_readings: Optional[list],
-    expected_watt_readings: Optional[list],
+    expected_tariff_imports: list | None,
+    expected_doe_imports: list | None,
+    expected_wh_readings: list | None,
+    expected_varh_readings: list | None,
+    expected_watt_readings: list | None,
 ):
     """Assert fetch billing data fetches the correct data given a pg_billing_data database
 

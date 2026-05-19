@@ -1,7 +1,6 @@
 """Managers for pricing/tariff endpoints"""
 
 from datetime import datetime
-from typing import List
 
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
 from sqlalchemy.exc import NoResultFound
@@ -59,7 +58,7 @@ class TariffListManager:
 
 class TariffGeneratedRateListManager:
     @staticmethod
-    async def add_many_tariff_genrate(session: AsyncSession, tariff_genrates: List[TariffGeneratedRateRequest]) -> None:
+    async def add_many_tariff_genrate(session: AsyncSession, tariff_genrates: list[TariffGeneratedRateRequest]) -> None:
         """Map a TariffGeneratedRateRequest object to a TariffGeneratedRate model and insert into DB.
         Return the tariff_generated_rate_id only."""
 

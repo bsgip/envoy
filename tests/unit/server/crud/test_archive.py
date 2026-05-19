@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import product
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -22,7 +22,7 @@ from tests.unit.server.model.archive.test_archive_models import find_paired_arch
 
 
 async def fetch_all_values_as_tuples(
-    session: AsyncSession, t: type, ignore_columns: Optional[set[str]] = None
+    session: AsyncSession, t: type, ignore_columns: set[str] | None = None
 ) -> list[tuple]:
     """Fetches all rows from a table as a list of tuples"""
 
@@ -91,10 +91,10 @@ async def test_copy_rows_into_archive_all_matches(
 
             # Validate the archive specific metadata
             deleted_time_vals = await fetch_single_column(session, archive_type, "deleted_time")
-            assert all((v is None for v in deleted_time_vals)), "Nothing should be marked as deleted"
+            assert all(v is None for v in deleted_time_vals), "Nothing should be marked as deleted"
             for archive_time in await fetch_single_column(session, archive_type, "archive_time"):
                 assert_nowish(archive_time)
-            assert all((v is None for v in deleted_time_vals))
+            assert all(v is None for v in deleted_time_vals)
         else:
             assert archive_count == 0
 
@@ -127,7 +127,7 @@ async def test_copy_rows_into_archive_multiple_times(pg_base_config, original_ty
 
         # Validate the archive specific metadata
         deleted_time_vals = await fetch_single_column(session, archive_type, "deleted_time")
-        assert all((v is None for v in deleted_time_vals)), "Nothing should be marked as deleted"
+        assert all(v is None for v in deleted_time_vals), "Nothing should be marked as deleted"
         for archive_time in await fetch_single_column(session, archive_type, "archive_time"):
             assert_nowish(archive_time)
 
@@ -142,7 +142,7 @@ async def test_copy_rows_into_archive_complex_filter(pg_base_config):
             Site,
             ArchiveSite,
             lambda q: q.where(
-                or_(Site.site_id == 3, Site.changed_time == datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc))
+                or_(Site.site_id == 3, Site.changed_time == datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=UTC))
             ),
         )
         await session.commit()
@@ -163,7 +163,7 @@ async def test_copy_rows_into_archive_complex_filter(pg_base_config):
 
         # Validate the archive specific metadata
         deleted_time_vals = await fetch_single_column(session, ArchiveSite, "deleted_time")
-        assert all((v is None for v in deleted_time_vals)), "Nothing should be marked as deleted"
+        assert all(v is None for v in deleted_time_vals), "Nothing should be marked as deleted"
         for archive_time in await fetch_single_column(session, ArchiveSite, "archive_time"):
             assert_nowish(archive_time)
 
@@ -176,7 +176,7 @@ async def test_copy_rows_into_archive_complex_filter(pg_base_config):
 async def test_delete_rows_into_archive_no_matches(pg_base_config, original_type: type, archive_type: type):
     """Check that delete_rows_into_archive does nothing if the where clause matches nothing"""
 
-    deleted_time = datetime(2021, 5, 6, 7, 8, 9, 1234, tzinfo=timezone.utc)
+    deleted_time = datetime(2021, 5, 6, 7, 8, 9, 1234, tzinfo=UTC)
 
     async with generate_async_session(pg_base_config) as session:
         count_before = (await session.execute(select(func.count()).select_from(original_type))).scalar_one()
@@ -215,7 +215,7 @@ async def test_delete_rows_into_archive_all_matches(
 
     NOTE - this test won't cover types that have FK dependencies"""
 
-    deleted_time = datetime(2021, 5, 6, 7, 8, 9, 1234, tzinfo=timezone.utc)
+    deleted_time = datetime(2021, 5, 6, 7, 8, 9, 1234, tzinfo=UTC)
 
     async with generate_async_session(pg_base_config) as session:
         original_count_before = (await session.execute(select(func.count()).select_from(original_type))).scalar_one()
@@ -240,7 +240,7 @@ async def test_delete_rows_into_archive_all_matches(
 
             # Validate the archive specific metadata
             deleted_time_vals = await fetch_single_column(session, ArchiveSite, "deleted_time")
-            assert all((v == deleted_time for v in deleted_time_vals)), "Should match supplied datetime"
+            assert all(v == deleted_time for v in deleted_time_vals), "Should match supplied datetime"
             for archive_time in await fetch_single_column(session, ArchiveSite, "archive_time"):
                 assert_nowish(archive_time)
         else:
@@ -255,7 +255,7 @@ async def test_delete_rows_into_archive_complex_filter(pg_base_config):
 
     The filter will delete The first and last TariffGeneratedRate"""
 
-    deleted_time = datetime(2022, 1, 2, 3, 8, 9, 1234, tzinfo=timezone.utc)
+    deleted_time = datetime(2022, 1, 2, 3, 8, 9, 1234, tzinfo=UTC)
 
     async with generate_async_session(pg_base_config) as session:
         original_count_before = (
@@ -295,7 +295,7 @@ async def test_delete_rows_into_archive_complex_filter(pg_base_config):
 
         # Validate the archive specific metadata
         deleted_time_vals = await fetch_single_column(session, ArchiveSite, "deleted_time")
-        assert all((v == deleted_time for v in deleted_time_vals)), "Should match supplied datetime"
+        assert all(v == deleted_time for v in deleted_time_vals), "Should match supplied datetime"
         for archive_time in await fetch_single_column(session, ArchiveSite, "archive_time"):
             assert_nowish(archive_time)
 
@@ -304,7 +304,7 @@ async def test_delete_rows_into_archive_complex_filter(pg_base_config):
 async def test_delete_rows_into_archive_cascade_deletes(pg_base_config):
     """Check we can us delete_rows_into_archive to cascade deletes over multiple queries."""
 
-    deleted_time = datetime(2021, 9, 2, 3, 8, 9, 12345, tzinfo=timezone.utc)
+    deleted_time = datetime(2021, 9, 2, 3, 8, 9, 12345, tzinfo=UTC)
 
     async with generate_async_session(pg_base_config) as session:
         # We can't do joins via this method, instead we hardcode all the SiteReadingType IDs that belong to site 1
@@ -374,7 +374,7 @@ async def test_delete_rows_into_archive_cascade_deletes(pg_base_config):
 async def test_delete_after_copy(pg_base_config):
     """Check that delete_rows_into_archive can run after copy_rows_into_archive"""
 
-    deleted_time = datetime(2024, 1, 2, 3, 8, 9, 1234, tzinfo=timezone.utc)
+    deleted_time = datetime(2024, 1, 2, 3, 8, 9, 1234, tzinfo=UTC)
 
     async with generate_async_session(pg_base_config) as session:
         original_count_before = (

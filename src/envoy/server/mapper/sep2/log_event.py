@@ -1,4 +1,4 @@
-from typing import Sequence
+from collections.abc import Sequence
 
 import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.sep2.log_events import LogEvent, LogEventList

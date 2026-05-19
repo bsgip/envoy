@@ -1,5 +1,5 @@
 import importlib.metadata
-from typing import Any, Dict
+from typing import Any
 
 from envoy.settings import CommonSettings
 
@@ -22,7 +22,7 @@ class AppSettings(CommonSettings):
     read_only_keys: list[str] = []  # Passwords that match with read_only_user and grant access to GET endpoints
 
     @property
-    def fastapi_kwargs(self) -> Dict[str, Any]:
+    def fastapi_kwargs(self) -> dict[str, Any]:
         return {
             "debug": self.debug,
             "docs_url": self.docs_url,

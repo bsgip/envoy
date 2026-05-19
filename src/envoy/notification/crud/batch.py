@@ -1,6 +1,7 @@
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 from itertools import chain
-from typing import Any, Generic, Iterable, Optional, Sequence, Union, cast
+from typing import Any, Generic, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -293,7 +294,7 @@ async def fetch_rates_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]], chain(active_rates, deleted_rates)
+            Iterable[TariffGeneratedRate | ArchiveTariffGeneratedRate], chain(active_rates, deleted_rates)
         )
     }
 
@@ -303,9 +304,9 @@ async def fetch_rates_by_changed_at(
 
     # Map the "site" relationship
     orm_relationship_map_parent_entities(
-        cast(Iterable[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]], chain(active_rates, deleted_rates)),
+        cast(Iterable[TariffGeneratedRate | ArchiveTariffGeneratedRate], chain(active_rates, deleted_rates)),
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -332,7 +333,7 @@ async def fetch_does_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]], chain(active_does, deleted_does)
+            Iterable[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope], chain(active_does, deleted_does)
         )
     }
 
@@ -343,10 +344,10 @@ async def fetch_does_by_changed_at(
     # Map the "site" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]], chain(active_does, deleted_does)
+            Iterable[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope], chain(active_does, deleted_does)
         ),
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -373,7 +374,7 @@ async def fetch_readings_by_changed_at(
     referenced_site_reading_type_ids = {
         e.site_reading_type_id
         for e in cast(
-            Iterable[Union[SiteReading, ArchiveSiteReading]],
+            Iterable[SiteReading | ArchiveSiteReading],
             chain(active_readings, deleted_readings),
         )
     }
@@ -385,14 +386,14 @@ async def fetch_readings_by_changed_at(
     # Map the "site_reading_type" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[SiteReading, ArchiveSiteReading]],
+            Iterable[SiteReading | ArchiveSiteReading],
             chain(active_readings, deleted_readings),
         ),
         lambda e: e.site_reading_type_id,
         {
             e.site_reading_type_id: e
             for e in cast(
-                Iterable[Union[SiteReadingType, ArchiveSiteReadingType]],
+                Iterable[SiteReadingType | ArchiveSiteReadingType],
                 chain(active_site_reading_types, deleted_site_reading_types),
             )
         },
@@ -417,7 +418,7 @@ async def fetch_der_availability_by_changed_at(
     referenced_site_der_ids = {
         e.site_der_id
         for e in cast(
-            Iterable[Union[SiteDERAvailability, ArchiveSiteDERAvailability]],
+            Iterable[SiteDERAvailability | ArchiveSiteDERAvailability],
             chain(active_der_avails, deleted_der_avails),
         )
     }
@@ -429,13 +430,13 @@ async def fetch_der_availability_by_changed_at(
     # Map the "site_der" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[SiteDERAvailability, ArchiveSiteDERAvailability]],
+            Iterable[SiteDERAvailability | ArchiveSiteDERAvailability],
             chain(active_der_avails, deleted_der_avails),
         ),
         lambda e: e.site_der_id,
         {
             e.site_der_id: e
-            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
         },
         "site_der",
     )
@@ -444,7 +445,7 @@ async def fetch_der_availability_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            Iterable[SiteDER | ArchiveSiteDER],
             chain(active_site_ders, deleted_site_ders),
         )
     }
@@ -458,7 +459,7 @@ async def fetch_der_availability_by_changed_at(
     orm_relationship_map_parent_entities(
         all_site_ders,
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -482,7 +483,7 @@ async def fetch_der_rating_by_changed_at(
     referenced_site_der_ids = {
         e.site_der_id
         for e in cast(
-            Iterable[Union[SiteDERRating, ArchiveSiteDERRating]],
+            Iterable[SiteDERRating | ArchiveSiteDERRating],
             chain(active_der_ratings, deleted_der_ratings),
         )
     }
@@ -494,13 +495,13 @@ async def fetch_der_rating_by_changed_at(
     # Map the "site_der" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[SiteDERRating, ArchiveSiteDERRating]],
+            Iterable[SiteDERRating | ArchiveSiteDERRating],
             chain(active_der_ratings, deleted_der_ratings),
         ),
         lambda e: e.site_der_id,
         {
             e.site_der_id: e
-            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
         },
         "site_der",
     )
@@ -509,7 +510,7 @@ async def fetch_der_rating_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            Iterable[SiteDER | ArchiveSiteDER],
             chain(active_site_ders, deleted_site_ders),
         )
     }
@@ -523,7 +524,7 @@ async def fetch_der_rating_by_changed_at(
     orm_relationship_map_parent_entities(
         all_site_ders,
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -547,7 +548,7 @@ async def fetch_der_setting_by_changed_at(
     referenced_site_der_ids = {
         e.site_der_id
         for e in cast(
-            Iterable[Union[SiteDERSetting, ArchiveSiteDERSetting]],
+            Iterable[SiteDERSetting | ArchiveSiteDERSetting],
             chain(active_der_settings, deleted_der_settings),
         )
     }
@@ -559,13 +560,13 @@ async def fetch_der_setting_by_changed_at(
     # Map the "site_der" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[SiteDERSetting, ArchiveSiteDERSetting]],
+            Iterable[SiteDERSetting | ArchiveSiteDERSetting],
             chain(active_der_settings, deleted_der_settings),
         ),
         lambda e: e.site_der_id,
         {
             e.site_der_id: e
-            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
         },
         "site_der",
     )
@@ -574,7 +575,7 @@ async def fetch_der_setting_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            Iterable[SiteDER | ArchiveSiteDER],
             chain(active_site_ders, deleted_site_ders),
         )
     }
@@ -588,7 +589,7 @@ async def fetch_der_setting_by_changed_at(
     orm_relationship_map_parent_entities(
         all_site_ders,
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -612,7 +613,7 @@ async def fetch_der_status_by_changed_at(
     referenced_site_der_ids = {
         e.site_der_id
         for e in cast(
-            Iterable[Union[SiteDERStatus, ArchiveSiteDERStatus]],
+            Iterable[SiteDERStatus | ArchiveSiteDERStatus],
             chain(active_der_statuses, deleted_der_statuses),
         )
     }
@@ -624,13 +625,13 @@ async def fetch_der_status_by_changed_at(
     # Map the "site_der" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[SiteDERStatus, ArchiveSiteDERStatus]],
+            Iterable[SiteDERStatus | ArchiveSiteDERStatus],
             chain(active_der_statuses, deleted_der_statuses),
         ),
         lambda e: e.site_der_id,
         {
             e.site_der_id: e
-            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
         },
         "site_der",
     )
@@ -639,7 +640,7 @@ async def fetch_der_status_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            Iterable[SiteDER | ArchiveSiteDER],
             chain(active_site_ders, deleted_site_ders),
         )
     }
@@ -653,7 +654,7 @@ async def fetch_der_status_by_changed_at(
     orm_relationship_map_parent_entities(
         all_site_ders,
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -701,7 +702,7 @@ async def fetch_fsa_by_changed_at(
 
     # Two things can trigger a FSA Notification - a change in pollrate...
     runtime_cfg = await select_server_config(session)
-    new_poll_rate: Optional[int] = None
+    new_poll_rate: int | None = None
     if runtime_cfg is not None and runtime_cfg.changed_time == timestamp:
         new_poll_rate = runtime_cfg.fsal_pollrate_seconds
 

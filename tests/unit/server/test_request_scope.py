@@ -1,4 +1,3 @@
-from typing import Optional, Union
 
 import pytest
 from fastapi import HTTPException
@@ -117,7 +116,7 @@ from envoy.server.request_scope import (
     ],
 )
 def test_RawRequestClaims_to_device_or_aggregator_request_scope(
-    raw_scope: RawRequestClaims, requested_site_id: Optional[int], expected: Union[DeviceOrAggregatorRequestScope, type]
+    raw_scope: RawRequestClaims, requested_site_id: int | None, expected: DeviceOrAggregatorRequestScope | type
 ):
 
     if isinstance(expected, type):
@@ -229,7 +228,7 @@ def test_RawRequestClaims_to_device_or_aggregator_request_scope(
     ],
 )
 def test_RawRequestClaims_to_aggregator_request_scope(
-    raw_scope: RawRequestClaims, requested_site_id: Optional[int], expected: Union[AggregatorRequestScope, type]
+    raw_scope: RawRequestClaims, requested_site_id: int | None, expected: AggregatorRequestScope | type
 ):
 
     if isinstance(expected, type):
@@ -313,7 +312,7 @@ def test_RawRequestClaims_to_aggregator_request_scope(
     ],
 )
 def test_RawRequestClaims_to_site_request_scope(
-    raw_scope: RawRequestClaims, requested_site_id: Optional[int], expected: Union[SiteRequestScope, type]
+    raw_scope: RawRequestClaims, requested_site_id: int | None, expected: SiteRequestScope | type
 ):
 
     if isinstance(expected, type):
@@ -364,7 +363,7 @@ def test_RawRequestClaims_to_site_request_scope(
     ],
 )
 def test_RawRequestClaims_to_unregistered_scope(
-    raw_scope: RawRequestClaims, expected: Union[UnregisteredRequestScope, type]
+    raw_scope: RawRequestClaims, expected: UnregisteredRequestScope | type
 ):
 
     if isinstance(expected, type):
@@ -414,7 +413,7 @@ def test_RawRequestClaims_to_unregistered_scope(
         ),
     ],
 )
-def test_RawRequestClaims_to_mup_list_scope(raw_scope: RawRequestClaims, expected: Union[MUPListRequestScope, type]):
+def test_RawRequestClaims_to_mup_list_scope(raw_scope: RawRequestClaims, expected: MUPListRequestScope | type):
 
     if isinstance(expected, type):
         with pytest.raises(expected):
@@ -454,7 +453,7 @@ def test_RawRequestClaims_to_mup_list_scope(raw_scope: RawRequestClaims, expecte
         ),
     ],
 )
-def test_RawRequestClaims_to_mup_scope(raw_scope: RawRequestClaims, expected: Union[MUPRequestScope, type]):
+def test_RawRequestClaims_to_mup_scope(raw_scope: RawRequestClaims, expected: MUPRequestScope | type):
 
     if isinstance(expected, type):
         with pytest.raises(expected):

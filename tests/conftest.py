@@ -1,7 +1,7 @@
 import json
 import os
+from collections.abc import Generator
 from decimal import Decimal
-from typing import Generator
 
 import pytest
 from assertical.fixtures.environment import environment_snapshot

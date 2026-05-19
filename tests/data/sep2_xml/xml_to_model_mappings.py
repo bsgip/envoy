@@ -6,7 +6,7 @@ model parsed from the given file name, and the output XML model (ElementTree.Ele
 and return True if the comparison conditions implied by that Callable are passed.
 """
 
-from typing import List, Tuple, TypeVar
+from typing import TypeVar
 from xml.etree import ElementTree as ET
 
 from envoy_schema.server.schema.sep2.device_capability import DeviceCapabilityResponse
@@ -25,7 +25,7 @@ TXmlSchemaType = TypeVar("TXmlSchemaType", bound=BaseXmlModel)
 
 def compare_ET_Element_to_reference_ET_Element(
     ref: ET.Element, model: ET.Element, xml_type: TXmlSchemaType, allowed_missing: list[str], strict: bool
-) -> Tuple[bool, List[str]]:
+) -> tuple[bool, list[str]]:
     """Compare an ElementTree.Element object against some reference object of the
     same type. We expect each element in ref to exist in model. The model is considered
     equivalent to ref iff:

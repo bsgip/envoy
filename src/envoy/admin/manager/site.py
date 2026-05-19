@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse, SiteUpdateRequest
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
@@ -25,7 +24,7 @@ from envoy.server.model.subscription import SubscriptionResource
 class SiteManager:
     @staticmethod
     async def get_all_sites(
-        session: AsyncSession, start: int, limit: int, group_filter: Optional[str], changed_after: Optional[datetime]
+        session: AsyncSession, start: int, limit: int, group_filter: str | None, changed_after: datetime | None
     ) -> SitePageResponse:
         """Admin specific (paginated) fetch of sites that covers all aggregators.
         group_filter: If specified - filter to sites that belong to a group with this name
@@ -50,7 +49,7 @@ class SiteManager:
         )
 
     @staticmethod
-    async def get_single_site(session: AsyncSession, site_id: int) -> Optional[SiteResponse]:
+    async def get_single_site(session: AsyncSession, site_id: int) -> SiteResponse | None:
         """Admin specific fetch of a single site that covers all aggregators."""
         site = await select_single_site_no_scoping(session, site_id, include_der=True, include_groups=True)
         if site is None:
@@ -118,7 +117,7 @@ class SiteManager:
         )
 
     @staticmethod
-    async def get_all_site_group_by_name(session: AsyncSession, group_name: str) -> Optional[SiteGroupResponse]:
+    async def get_all_site_group_by_name(session: AsyncSession, group_name: str) -> SiteGroupResponse | None:
         """Admin specific (paginated) fetch of a specific site group by name."""
         groups = await select_all_site_groups(session, group_filter=group_name, start=0, limit=1)
         if len(groups) > 0:

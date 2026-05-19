@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -345,7 +345,7 @@ def test_map_rate(optional_is_none: bool):
 def test_map_to_aggregator_response(optional_is_none: bool):
     agg: Aggregator = generate_class_instance(Aggregator, seed=101, optional_is_none=optional_is_none)
     period_start = datetime(2023, 4, 5, 6, 7)
-    period_end = datetime(2023, 6, 7, 8, 9, tzinfo=timezone.utc)
+    period_end = datetime(2023, 6, 7, 8, 9, tzinfo=UTC)
     tariff_id = 456
     billing_data: BillingData = BillingData(
         varh_readings=[
@@ -395,7 +395,7 @@ def test_map_to_aggregator_response(optional_is_none: bool):
 def test_map_to_sites_response(optional_is_none: bool):
     site_ids = [44, 1, 69]
     period_start = datetime(2023, 4, 5, 6, 7)
-    period_end = datetime(2023, 6, 7, 8, 9, tzinfo=timezone.utc)
+    period_end = datetime(2023, 6, 7, 8, 9, tzinfo=UTC)
     tariff_id = 456
     billing_data: BillingData = BillingData(
         varh_readings=[

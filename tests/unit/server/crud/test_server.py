@@ -1,7 +1,6 @@
-from datetime import datetime, timezone
-from typing import Optional
-import pytest
+from datetime import UTC, datetime
 
+import pytest
 from assertical.fixtures.postgres import generate_async_session
 
 from envoy.server.crud.server import select_server_config
@@ -19,8 +18,8 @@ def entity_to_dict(instance):
         (
             RuntimeServerConfig(
                 runtime_server_config_id=1,
-                changed_time=datetime(2025, 1, 1, tzinfo=timezone.utc),
-                created_time=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                changed_time=datetime(2025, 1, 1, tzinfo=UTC),
+                created_time=datetime(2025, 1, 1, tzinfo=UTC),
                 dcap_pollrate_seconds=1,
                 edevl_pollrate_seconds=2,
                 fsal_pollrate_seconds=3,
@@ -33,8 +32,8 @@ def entity_to_dict(instance):
         (
             RuntimeServerConfig(
                 runtime_server_config_id=1,
-                changed_time=datetime(2025, 1, 1, tzinfo=timezone.utc),
-                created_time=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                changed_time=datetime(2025, 1, 1, tzinfo=UTC),
+                created_time=datetime(2026, 1, 1, tzinfo=UTC),
                 dcap_pollrate_seconds=10,
                 edevl_pollrate_seconds=20,
                 fsal_pollrate_seconds=30,
@@ -47,7 +46,7 @@ def entity_to_dict(instance):
     ],
 )
 @pytest.mark.anyio
-async def test_select_server_config(pg_base_config, expected: Optional[RuntimeServerConfig]):
+async def test_select_server_config(pg_base_config, expected: RuntimeServerConfig | None):
     """Basic success test"""
     # Arrange
     if expected:

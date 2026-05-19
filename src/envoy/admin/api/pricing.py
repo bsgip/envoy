@@ -1,6 +1,5 @@
 import logging
 from http import HTTPStatus
-from typing import List
 
 from asyncpg.exceptions import CardinalityViolationError  # type: ignore
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
@@ -17,11 +16,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get(TariffCreateUri, status_code=HTTPStatus.OK, response_model=List[TariffResponse])
+@router.get(TariffCreateUri, status_code=HTTPStatus.OK, response_model=list[TariffResponse])
 async def get_all_tariffs(
     start: list[int] = Query([0]),
     limit: list[int] = Query([5]),
-) -> List[TariffResponse]:
+) -> list[TariffResponse]:
     """Endpoint for a paginated list of TariffResponse Objects, ordered by changed_time datetime attribute (descending).
 
 
@@ -83,7 +82,7 @@ async def update_tariff(tariff_id: int, tariff: TariffRequest) -> None:
 
 
 @router.post(TariffGeneratedRateCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
-async def create_tariff_genrate(tariff_generates: List[TariffGeneratedRateRequest]) -> None:
+async def create_tariff_genrate(tariff_generates: list[TariffGeneratedRateRequest]) -> None:
     """Bulk creation of 'Tariff Generated Rates' associated with respective Tariffs (tariff_id) and Sites (site_id).
 
     Body:

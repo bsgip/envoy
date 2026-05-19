@@ -6,9 +6,8 @@ from typing import Optional, get_type_hints
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.fake.generator import CLASS_MEMBER_FETCHERS, generate_class_instance, get_generatable_class_base
-from envoy_schema.admin.schema.site import DERAvailability, DERConfiguration, DERStatus
+from envoy_schema.admin.schema.site import DERAvailability, DERConfiguration, DERStatus, SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site import SiteGroup as AdminSiteGroup
-from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
 
 from envoy.admin.mapper.site import SiteGroupMapper, SiteMapper
@@ -67,7 +66,7 @@ def test_map_to_der_status_response():
     ),
 )
 def test_map_to_der_config_response_no_bad_combinations(
-    setting: Optional[SiteDERSetting], rating: Optional[SiteDERRating]
+    setting: SiteDERSetting | None, rating: SiteDERRating | None
 ):
     """The failover logic for map_to_der_config_response can be a little finnicky - this is just trying
     to catch any potential slipups in the definitions"""

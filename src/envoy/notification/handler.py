@@ -1,6 +1,7 @@
 import logging
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
-from typing import Annotated, AsyncGenerator, AsyncIterator, Callable, Optional
+from typing import Annotated
 
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,13 +20,13 @@ STATE_DISABLE_TLS_VERIFY = "disable_tls_verify"
 
 
 # Reference to the shared InMemoryBroker. Will be lazily instantiated
-ENABLED_IN_MEMORY_BROKER: Optional[InMemoryBroker] = None
+ENABLED_IN_MEMORY_BROKER: InMemoryBroker | None = None
 
 
-_enabled_broker: Optional[AsyncBroker] = None
+_enabled_broker: AsyncBroker | None = None
 
 
-def get_enabled_broker() -> Optional[AsyncBroker]:
+def get_enabled_broker() -> AsyncBroker | None:
     """The currently enabled broker (if any). Will point to the last broker instantiated by enable_notification_workers
     This will normally NOT be available at import time for the purposes of decorating task functions
 
@@ -40,7 +41,7 @@ def get_enabled_broker() -> Optional[AsyncBroker]:
     return _enabled_broker
 
 
-def generate_broker(rabbit_mq_broker_url: Optional[str]) -> AsyncBroker:
+def generate_broker(rabbit_mq_broker_url: str | None) -> AsyncBroker:
     """Creates a AsyncBroker for the specified config (startup/shutdown will not initialised)"""
 
     use_rabbit_mq = bool(rabbit_mq_broker_url)
@@ -61,7 +62,7 @@ def generate_broker(rabbit_mq_broker_url: Optional[str]) -> AsyncBroker:
 
 
 def enable_notification_client(
-    rabbit_mq_broker_url: Optional[str],
+    rabbit_mq_broker_url: str | None,
 ) -> Callable[[FastAPI], _AsyncGeneratorContextManager]:
     """If executed - will generate a context manager (compatible with FastAPI lifetime managers) that when installed
     will (on app startup) enable the async notification client
@@ -93,7 +94,7 @@ async def broker_dependency(context: Annotated[Context, TaskiqDepends()]) -> Asy
     return context.broker
 
 
-async def href_prefix_dependency(context: Annotated[Context, TaskiqDepends()]) -> Optional[str]:
+async def href_prefix_dependency(context: Annotated[Context, TaskiqDepends()]) -> str | None:
     return getattr(context.state, STATE_HREF_PREFIX, None)
 
 

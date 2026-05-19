@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 
 import pytest
@@ -25,7 +25,7 @@ from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from tests.integration.response import read_response_body_string
 
-DT1 = datetime(2024, 1, 2, 3, 8, 9, 500000, tzinfo=timezone.utc)
+DT1 = datetime(2024, 1, 2, 3, 8, 9, 500000, tzinfo=UTC)
 DT2 = DT1 + timedelta(hours=1.24)
 
 

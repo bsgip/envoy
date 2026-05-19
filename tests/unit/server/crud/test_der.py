@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from assertical.asserts.time import assert_datetime_equal
@@ -38,8 +38,8 @@ async def test_select_site_der_for_site_with_relationships(pg_base_config):
         assert isinstance(site_1_der, SiteDER)
         assert site_1_der.site_id == 1
         assert site_1_der.site_der_id == 2
-        assert_datetime_equal(site_1_der.created_time, datetime(2000, 1, 1, 0, 0, 0, 0, tzinfo=timezone.utc))
-        assert_datetime_equal(site_1_der.changed_time, datetime(2024, 3, 14, 5, 55, 44, 500000, tzinfo=timezone.utc))
+        assert_datetime_equal(site_1_der.created_time, datetime(2000, 1, 1, 0, 0, 0, 0, tzinfo=UTC))
+        assert_datetime_equal(site_1_der.changed_time, datetime(2024, 3, 14, 5, 55, 44, 500000, tzinfo=UTC))
         assert isinstance(site_1_der.site_der_availability, SiteDERAvailability)
         assert isinstance(site_1_der.site_der_rating, SiteDERRating)
         assert isinstance(site_1_der.site_der_setting, SiteDERSetting)
@@ -55,8 +55,8 @@ async def test_select_site_der_for_site_with_relationships(pg_base_config):
         site_2_der = await select_site_der_for_site(session, 1, 2)
         assert site_2_der.site_id == 2
         assert site_2_der.site_der_id == 1
-        assert_datetime_equal(site_2_der.created_time, datetime(2000, 1, 1, 0, 0, 0, 0, tzinfo=timezone.utc))
-        assert_datetime_equal(site_2_der.changed_time, datetime(2024, 3, 14, 4, 55, 44, 500000, tzinfo=timezone.utc))
+        assert_datetime_equal(site_2_der.created_time, datetime(2000, 1, 1, 0, 0, 0, 0, tzinfo=UTC))
+        assert_datetime_equal(site_2_der.changed_time, datetime(2024, 3, 14, 4, 55, 44, 500000, tzinfo=UTC))
 
         assert isinstance(site_2_der, SiteDER)
         assert site_2_der.site_der_availability is None

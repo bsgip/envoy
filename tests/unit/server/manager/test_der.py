@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -171,7 +171,7 @@ async def test_fetch_der_for_site_bad_der_id(
     assert_mock_session(mock_session)
 
 
-AFTER_EPOCH = datetime(2022, 10, 9, 8, 7, 6, tzinfo=timezone.utc)
+AFTER_EPOCH = datetime(2022, 10, 9, 8, 7, 6, tzinfo=UTC)
 
 
 @mock.patch("envoy.server.manager.der.site_der_for_site")

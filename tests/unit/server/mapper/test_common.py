@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 from envoy_schema.server.schema.sep2.types import DeviceCategory
@@ -30,7 +30,7 @@ from envoy.server.request_scope import BaseRequestScope
         (55, -3, Decimal("0.055")),
     ],
 )
-def test_to_decimal_value(value: Optional[int], multiplier: Optional[int], expected: Optional[Decimal]):
+def test_to_decimal_value(value: int | None, multiplier: int | None, expected: Decimal | None):
     actual = pow10_to_decimal_value(value, multiplier)
     if actual is not None:
         assert isinstance(actual, Decimal)
@@ -65,7 +65,7 @@ def test_to_decimal_value(value: Optional[int], multiplier: Optional[int], expec
         ("/abc/{val1}/", "/prefix/with/parts/", None, {"val1": "1234"}, "/prefix/with/parts/abc/1234"),
     ],
 )
-def test_generate_href(uri_format: str, prefix: Optional[str], args: Any, kwargs: Any, expected: str):
+def test_generate_href(uri_format: str, prefix: str | None, args: Any, kwargs: Any, expected: str):
     """Tests various combinations of args/kwargs/prefixes"""
     request_state_parameters = BaseRequestScope("lfdi-val", 1234, prefix, 5678)
 
@@ -91,7 +91,7 @@ def test_generate_href(uri_format: str, prefix: Optional[str], args: Any, kwargs
         ("/path/part/thats/longer/", "/path/part/", "/thats/longer/"),
     ],
 )
-def test_remove_href_prefix(uri: str, prefix: Optional[str], expected: str):
+def test_remove_href_prefix(uri: str, prefix: str | None, expected: str):
     ps = BaseRequestScope("lfdi", 111, prefix, 222)
     assert remove_href_prefix(uri, ps) == expected
 
@@ -115,7 +115,7 @@ def test_generate_href_format_errors():
         (None, DeviceCategory(0)),
     ],
 )
-def test_parse_device_category(device_category_str: Optional[str], expected_value: DeviceCategory):
+def test_parse_device_category(device_category_str: str | None, expected_value: DeviceCategory):
     """Test parse_device_category string conversion to DeviceCategory"""
     result = parse_device_category(device_category_str)
     assert isinstance(result, DeviceCategory)

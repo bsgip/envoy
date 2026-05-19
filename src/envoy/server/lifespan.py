@@ -1,12 +1,13 @@
+from collections.abc import AsyncIterator, Callable
 from contextlib import AsyncExitStack, _AsyncGeneratorContextManager, asynccontextmanager
-from typing import Any, AsyncIterator, Callable, Optional
+from typing import Any
 
 from fastapi import FastAPI
 
 
 def generate_combined_lifespan_manager(
     managers: list[Callable[[FastAPI], _AsyncGeneratorContextManager]],
-) -> Optional[Callable[[FastAPI], _AsyncGeneratorContextManager]]:
+) -> Callable[[FastAPI], _AsyncGeneratorContextManager] | None:
     """Given a (possibly empty) set of lifespan managers - create a single
     lifespan manager that will enter/exit them all sequentially
 
@@ -19,7 +20,7 @@ def generate_combined_lifespan_manager(
         """This context manager will run all the supplied managers"""
 
         async with AsyncExitStack() as exit_stack:
-            state: Optional[dict[str, Any]] = None
+            state: dict[str, Any] | None = None
 
             for manager in managers:
                 sub_state = await exit_stack.enter_async_context(manager(app))

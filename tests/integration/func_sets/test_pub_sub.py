@@ -1,8 +1,7 @@
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
 from itertools import product
-from typing import Optional
 
 import envoy_schema.server.schema.uri as uris
 import pytest
@@ -148,10 +147,10 @@ async def test_get_subscription_list_by_aggregator_forbidden_cases(
     "start, limit, after, expected_sub_ids",
     [
         (0, 99, None, [4, 5]),
-        (0, 99, datetime(2024, 1, 2, 14, 22, 33, tzinfo=timezone.utc), [4, 5]),
-        (0, None, datetime(2024, 1, 2, 14, 22, 34, tzinfo=timezone.utc), [5]),
-        (0, None, datetime(2024, 1, 2, 15, 22, 34, tzinfo=timezone.utc), []),
-        (1, 1, datetime(2024, 1, 2, 14, 22, 34, tzinfo=timezone.utc), []),
+        (0, 99, datetime(2024, 1, 2, 14, 22, 33, tzinfo=UTC), [4, 5]),
+        (0, None, datetime(2024, 1, 2, 14, 22, 34, tzinfo=UTC), [5]),
+        (0, None, datetime(2024, 1, 2, 15, 22, 34, tzinfo=UTC), []),
+        (1, 1, datetime(2024, 1, 2, 14, 22, 34, tzinfo=UTC), []),
         (0, 1, None, [4]),
         (1, 1, None, [5]),
         (2, 1, None, []),
@@ -162,9 +161,9 @@ async def test_get_subscription_list_by_page(
     pg_base_config,
     client: AsyncClient,
     expected_sub_ids: list[int],
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     sub_list_uri_format,
 ):
     """Tests the pagination on the sub list endpoint"""
@@ -220,7 +219,7 @@ async def test_get_subscription_by_aggregator(
     sub_id: int,
     cert: str,
     site_id: int,
-    expected_subscribed_resource: Optional[str],
+    expected_subscribed_resource: str | None,
     sub_uri_format,
 ):
     """Simple test of a valid get for different aggregator certs - validates that the response looks like XML
@@ -613,7 +612,7 @@ async def test_create_end_device_subscription(client: AsyncClient, notifications
     insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     insert_request.lFDI = "abc123DEF"
     insert_request.postRate = 123
-    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
+    insert_request.deviceCategory = f"{int(DeviceCategory.HOT_TUB):x}"
     response = await client.post(
         EndDeviceListUri,
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},

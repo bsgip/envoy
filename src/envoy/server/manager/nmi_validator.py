@@ -5,9 +5,9 @@ but the pattern for runtime model configurations is clunky so a custom approach
 was taken.
 """
 
-from enum import Enum
 import logging
 import re
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 

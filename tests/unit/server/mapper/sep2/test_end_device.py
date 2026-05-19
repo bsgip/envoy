@@ -1,6 +1,5 @@
 import unittest.mock as mock
 from datetime import datetime
-from typing import Optional
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -173,7 +172,7 @@ def test_list_map_to_response():
 
 @mock.patch("envoy.server.mapper.sep2.end_device.settings")
 @pytest.mark.parametrize("lfdi", ["", None])
-def test_map_from_request_missing_lfdi(mock_settings: mock.MagicMock, lfdi: Optional[str]):
+def test_map_from_request_missing_lfdi(mock_settings: mock.MagicMock, lfdi: str | None):
     """A None lfdi is an error and should raise an appropriate exception."""
     mock_settings.default_timezone = "abc/123"
 
@@ -289,7 +288,7 @@ def test_add_checksum_to_registration_pin(pin, expected):
 
 
 @pytest.mark.parametrize("href_prefix", [None, "/foo/bar"])
-def test_RegistrationMapper_map_to_response(href_prefix: Optional[str]):
+def test_RegistrationMapper_map_to_response(href_prefix: str | None):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
     site_all_set: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
     site_optional: Site = generate_class_instance(Site, seed=202, optional_is_none=True)

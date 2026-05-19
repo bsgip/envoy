@@ -1,12 +1,11 @@
-from typing import Iterable
-
 import datetime as dt
+from collections.abc import Iterable
 
 from envoy_schema.admin.schema.aggregator import (
     AggregatorDomain,
     AggregatorPageResponse,
-    AggregatorResponse,
     AggregatorRequest,
+    AggregatorResponse,
 )
 
 from envoy.server.model.aggregator import Aggregator

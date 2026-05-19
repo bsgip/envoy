@@ -1,6 +1,5 @@
 import logging
 from http import HTTPStatus
-from typing import Union
 
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.response import DERControlResponse, PriceResponse
@@ -202,7 +201,7 @@ async def create_response(
     request: Request,
     site_id: int,
     response_list_id: str,
-    payload: Union[DERControlResponse, PriceResponse, Sep2Response] = Depends(
+    payload: DERControlResponse | PriceResponse | Sep2Response = Depends(
         XmlRequest(DERControlResponse, PriceResponse, Sep2Response)
     ),
 ) -> Response:

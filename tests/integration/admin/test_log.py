@@ -1,7 +1,6 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
 from itertools import product
-from typing import Optional
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -26,7 +25,7 @@ from envoy.server.api.response import LOCATION_HEADER_NAME
 def assert_calc_log_2(calc_log_2: CalculationLogResponse) -> None:
     assert calc_log_2 is not None and isinstance(calc_log_2, CalculationLogResponse)
     assert calc_log_2.external_id == "external-id-2"
-    assert_datetime_equal(calc_log_2.calculation_range_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc))
+    assert_datetime_equal(calc_log_2.calculation_range_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=UTC))
     assert calc_log_2.calculation_range_duration_seconds == 86402
 
     assert_list_type(CalculationLogVariableMetadata, calc_log_2.variable_metadata, count=3)
@@ -114,7 +113,7 @@ async def test_calculation_log_roundtrip_with_children(
 @pytest.mark.parametrize("true_value, false_value", product(["true", "True", "1"], ["false", "False", None, "0"]))
 @pytest.mark.anyio
 async def test_calculation_log_get_with_includes(
-    admin_client_auth: AsyncClient, true_value: str, false_value: Optional[str]
+    admin_client_auth: AsyncClient, true_value: str, false_value: str | None
 ):
     """Fetches calc log 2 with variations on the includes to ensure they are parsed correctly"""
 
@@ -196,8 +195,8 @@ async def test_get_calculation_logs_for_period(
     admin_client_auth: AsyncClient,
     period_start: str,
     period_end: str,
-    start: Optional[int],
-    limit: Optional[int],
+    start: int | None,
+    limit: int | None,
     expected_ids: list[int],
     expected_count: int,
 ):

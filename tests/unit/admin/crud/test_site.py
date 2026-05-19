@@ -1,7 +1,6 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from itertools import product
-from typing import Optional
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -40,18 +39,18 @@ from envoy.server.model.site import (
         ("", datetime(2020, 11, 1), 6),
         ("", datetime.min, 6),
         ("", datetime.max, 0),
-        ("", datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc), 6),
-        ("", datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc), 5),
-        ("", datetime(2022, 2, 3, 8, 5, 6, tzinfo=timezone.utc), 4),
-        ("", datetime(2022, 2, 3, 10, 5, 6, tzinfo=timezone.utc), 3),
-        ("Group-1", datetime(2022, 2, 3, 0, 0, 0, tzinfo=timezone.utc), 3),
-        ("Group-1", datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc), 2),
-        ("Group-1", datetime(2022, 2, 3, 8, 0, 0, tzinfo=timezone.utc), 1),
+        ("", datetime(2022, 2, 3, 4, 5, 6, tzinfo=UTC), 6),
+        ("", datetime(2022, 2, 3, 5, 0, 0, tzinfo=UTC), 5),
+        ("", datetime(2022, 2, 3, 8, 5, 6, tzinfo=UTC), 4),
+        ("", datetime(2022, 2, 3, 10, 5, 6, tzinfo=UTC), 3),
+        ("Group-1", datetime(2022, 2, 3, 0, 0, 0, tzinfo=UTC), 3),
+        ("Group-1", datetime(2022, 2, 3, 5, 0, 0, tzinfo=UTC), 2),
+        ("Group-1", datetime(2022, 2, 3, 8, 0, 0, tzinfo=UTC), 1),
     ],
 )
 @pytest.mark.anyio
 async def test_count_all_sites(
-    pg_base_config, group: Optional[str], changed_after: Optional[datetime], expected_count: int
+    pg_base_config, group: str | None, changed_after: datetime | None, expected_count: int
 ):
     async with generate_async_session(pg_base_config) as session:
         assert (await count_all_sites(session, group, changed_after)) == expected_count
@@ -81,7 +80,7 @@ async def test_count_all_sites_empty(pg_empty_config):
             0,
             500,
             None,
-            datetime(2022, 2, 3, 8, 5, 6, tzinfo=timezone.utc),
+            datetime(2022, 2, 3, 8, 5, 6, tzinfo=UTC),
             [3, 4, 5, 6],
             [[1], [], [], []],
             [None, None, None, None],
@@ -96,7 +95,7 @@ async def test_count_all_sites_empty(pg_empty_config):
             [(2, 1, 1, 1, 1), (1, None, None, None, None), None, None, None, None],
         ),
         (0, 500, "Group-1", None, [1, 2, 3], [[1, 2], [1], [1]], [(2, 1, 1, 1, 1), (1, None, None, None, None), None]),
-        (0, 500, "Group-1", datetime(2022, 2, 3, 8, 5, 6, tzinfo=timezone.utc), [3], [[1]], [None]),
+        (0, 500, "Group-1", datetime(2022, 2, 3, 8, 5, 6, tzinfo=UTC), [3], [[1]], [None]),
         (0, 500, "Group-2", None, [1], [[1, 2]], [(2, 1, 1, 1, 1)]),
         (0, 500, "Group-3", None, [], [], []),
         (0, 500, "Group-DNE", None, [], [], []),
@@ -123,11 +122,11 @@ async def test_select_all_sites(
     pg_base_config,
     start: int,
     limit: int,
-    group: Optional[str],
-    changed_after: Optional[datetime],
+    group: str | None,
+    changed_after: datetime | None,
     expected_site_ids: list[int],
     expected_group_ids: list[list[int]],
-    expected_der_ids: list[Optional[tuple[int, Optional[int], Optional[int], Optional[int], Optional[int]]]],
+    expected_der_ids: list[tuple[int, int | None, int | None, int | None, int | None] | None],
 ):
     """
     expected_der_ids: Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
@@ -171,7 +170,7 @@ async def test_select_all_sites(
     # Validate the DER were returned as expected
     def der_to_expected_tuple(
         ders: list[SiteDER],
-    ) -> Optional[tuple[int, Optional[int], Optional[int], Optional[int], Optional[int]]]:
+    ) -> tuple[int, int | None, int | None, int | None, int | None] | None:
         """Returns Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
         if not ders:
             return None
@@ -290,7 +289,7 @@ async def test_count_all_site_groups_empty(pg_empty_config):
 )
 @pytest.mark.anyio
 async def test_select_all_site_groups(
-    pg_base_config, start: int, limit: int, group: Optional[str], expected_id_count: list[tuple[int, int]]
+    pg_base_config, start: int, limit: int, group: str | None, expected_id_count: list[tuple[int, int]]
 ):
     """Selects groups with their counts and makes sure everything lines up"""
     async with generate_async_session(pg_base_config) as session:
@@ -327,15 +326,15 @@ async def test_select_single_site_no_scoping(
     pg_base_config,
     site_id,
     expected_group_ids: list[int],
-    expected_der_ids: Optional[tuple[int, Optional[int], Optional[int], Optional[int], Optional[int]]],
-    expected_site_import_watts: Optional[Decimal],
+    expected_der_ids: tuple[int, int | None, int | None, int | None, int | None] | None,
+    expected_site_import_watts: Decimal | None,
 ):
     """
     expected_der_ids: Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
 
     def der_to_expected_tuple(
         ders: list[SiteDER],
-    ) -> Optional[tuple[int, Optional[int], Optional[int], Optional[int], Optional[int]]]:
+    ) -> tuple[int, int | None, int | None, int | None, int | None] | None:
         """Returns Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
         if not ders:
             return None

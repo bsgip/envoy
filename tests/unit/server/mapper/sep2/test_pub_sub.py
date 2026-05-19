@@ -1,6 +1,6 @@
 from datetime import datetime
 from itertools import product
-from typing import Optional, Union, cast
+from typing import cast
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -21,11 +21,13 @@ from envoy_schema.server.schema.sep2.pub_sub import (
     XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST,
     XSI_TYPE_READING_LIST,
     XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
+    ConditionAttributeIdentifier,
+    Notification,
+    NotificationStatus,
+    SubscriptionListResponse,
 )
 from envoy_schema.server.schema.sep2.pub_sub import Condition as Sep2Condition
-from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier, Notification, NotificationStatus
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
-from envoy_schema.server.schema.sep2.pub_sub import SubscriptionListResponse
 from envoy_schema.server.schema.uri import (
     DefaultDERControlUri,
     DERAvailabilityUri,
@@ -160,7 +162,7 @@ def test_SubscriptionMapper_calculate_resource_href_all_support_site_unscoped(re
     "site_id, resource", product([999, None], [r for r in list(SubscriptionResource) if r != SubscriptionResource.SITE])
 )
 def test_SubscriptionMapper_calculate_resource_href_encodes_site_id(
-    site_id: Optional[int], resource: SubscriptionResource
+    site_id: int | None, resource: SubscriptionResource
 ):
 
     display_site_id = VIRTUAL_END_DEVICE_SITE_ID if site_id is None else site_id
@@ -184,7 +186,7 @@ def test_SubscriptionMapper_calculate_resource_href_encodes_site_id(
 
 @pytest.mark.parametrize("resource, site_id, resource_id", product(SubscriptionResource, [1, None], [2, None]))
 def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
-    resource: SubscriptionResource, site_id: Optional[int], resource_id: Optional[int]
+    resource: SubscriptionResource, site_id: int | None, resource_id: int | None
 ):
     """Validates the various inputs/expected outputs apply the href_prefix"""
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, href_prefix=None)
@@ -194,7 +196,7 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
     sub.resource_id = resource_id
 
     # set output to None if we hit an unsupported combo of inputs
-    href_no_prefix: Optional[str]
+    href_no_prefix: str | None
     try:
         href_no_prefix = SubscriptionMapper.calculate_resource_href(sub, scope)
         assert href_no_prefix
@@ -206,7 +208,7 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
     scope_prefix: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, href_prefix=prefix
     )
-    href_with_prefix: Optional[str]
+    href_with_prefix: str | None
     try:
         href_with_prefix = SubscriptionMapper.calculate_resource_href(sub, scope_prefix)
         assert href_with_prefix
@@ -506,7 +508,7 @@ def test_SubscriptionMapper_map_from_request():
         ("/edev/123/subbutnotreally/1", InvalidMappingError),
     ],
 )
-def test_SubscriptionMapper_parse_resource_href(href: str, expected: Union[tuple, Exception]):
+def test_SubscriptionMapper_parse_resource_href(href: str, expected: tuple | Exception):
     if isinstance(expected, tuple):
         assert SubscriptionMapper.parse_resource_href(href) == expected
     else:

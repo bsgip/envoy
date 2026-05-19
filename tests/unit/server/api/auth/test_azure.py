@@ -2,7 +2,6 @@ import json
 import unittest.mock as mock
 from datetime import datetime, timedelta
 from http import HTTPStatus
-from typing import Optional
 from urllib.parse import quote
 
 import jwt
@@ -237,8 +236,8 @@ class TokenContainer:
 @pytest.mark.anyio
 async def test_validate_azure_ad_token(
     token: TokenContainer,
-    cache_result: Optional[ExpiringValue[JWK]],
-    expected_error: Optional[type],
+    cache_result: ExpiringValue[JWK] | None,
+    expected_error: type | None,
     expected_kid: str,
 ):
     """Runs through all the ways we validate tokens to ensure the behaviour is valid for all the ways a token

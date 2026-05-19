@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 
 from sqlalchemy import and_, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +33,7 @@ async def update_single_tariff(session: AsyncSession, updated_tariff: Tariff) ->
 
 
 async def upsert_many_tariff_genrate(
-    session: AsyncSession, tariff_genrates: List[TariffGeneratedRate], deleted_time: datetime
+    session: AsyncSession, tariff_genrates: list[TariffGeneratedRate], deleted_time: datetime
 ) -> None:
     """Inserts multiple tariff generated rate entries into the DB. If any rates conflict on site/start_time, they
     will replace those values (with the old values being archived)"""
@@ -57,5 +56,5 @@ async def upsert_many_tariff_genrate(
     table = TariffGeneratedRate.__table__
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     await session.execute(
-        insert(TariffGeneratedRate).values(([{k: getattr(r, k) for k in update_cols} for r in tariff_genrates]))
+        insert(TariffGeneratedRate).values([{k: getattr(r, k) for k in update_cols} for r in tariff_genrates])
     )

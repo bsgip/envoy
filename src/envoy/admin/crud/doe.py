@@ -1,6 +1,7 @@
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Callable, Iterable, Optional, Sequence, cast
+from datetime import UTC, datetime
+from typing import cast
 
 from intervaltree import Interval, IntervalTree  # type: ignore
 from sqlalchemy import Delete, and_, func, insert, or_, select, update
@@ -56,7 +57,7 @@ class DOEFieldSet:
 async def delete_does_with_start_time_in_range(
     session: AsyncSession,
     site_control_group_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     period_start: datetime,
     period_end: datetime,
     deleted_time: datetime,
@@ -115,7 +116,7 @@ async def cancel_then_insert_does(
     table = DynamicOperatingEnvelope.__table__
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     await session.execute(
-        insert(DynamicOperatingEnvelope).values(([{k: getattr(doe, k) for k in update_cols} for doe in doe_list]))
+        insert(DynamicOperatingEnvelope).values([{k: getattr(doe, k) for k in update_cols} for doe in doe_list])
     )
 
 
@@ -152,7 +153,7 @@ async def supersede_then_insert_does(
     table = DynamicOperatingEnvelope.__table__
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     await session.execute(
-        insert(DynamicOperatingEnvelope).values(([{k: getattr(doe, k) for k in update_cols} for doe in doe_list]))
+        insert(DynamicOperatingEnvelope).values([{k: getattr(doe, k) for k in update_cols} for doe in doe_list])
     )
 
 
@@ -182,8 +183,8 @@ async def supersede_matching_does_for_site(
         return
 
     # Figure out the date range of the incoming controls so we can narrow our search space
-    min_date = datetime.max.replace(tzinfo=timezone.utc)
-    max_date = datetime.min.replace(tzinfo=timezone.utc)
+    min_date = datetime.max.replace(tzinfo=UTC)
+    max_date = datetime.min.replace(tzinfo=UTC)
     for control in doe_list:
         if control.start_time < min_date:
             min_date = control.start_time
@@ -222,7 +223,7 @@ async def supersede_matching_does_for_site(
     )
 
     # Build an efficient tree for quick lookups based on start/end time
-    doe_list_tree = IntervalTree((Interval(doe.start_time, doe.end_time, doe) for doe in doe_list))
+    doe_list_tree = IntervalTree(Interval(doe.start_time, doe.end_time, doe) for doe in doe_list)
 
     # validate each potential match against the new controls - the aim is to find existing controls at the same/higher
     # primacy (i.e. candidates for superseding) that also have conflicting control fields
@@ -280,7 +281,7 @@ async def supersede_matching_does_for_site(
     )
 
 
-async def count_all_does(session: AsyncSession, site_control_group_id: int, changed_after: Optional[datetime]) -> int:
+async def count_all_does(session: AsyncSession, site_control_group_id: int, changed_after: datetime | None) -> int:
     """Admin counting of does - no filtering on aggregator is made. If changed_after is specified, only
     does that have their changed_time >= changed_after will be included"""
     stmt = (
@@ -301,7 +302,7 @@ async def select_all_does(
     site_control_group_id: int,
     start: int,
     limit: int,
-    changed_after: Optional[datetime],
+    changed_after: datetime | None,
 ) -> Sequence[DynamicOperatingEnvelope]:
     """Admin selecting of does - no filtering on aggregator is made. Returns ordered by dynamic_operating_envelope_id
 
@@ -324,7 +325,7 @@ async def select_all_does(
     return resp.scalars().all()
 
 
-async def count_all_site_control_groups(session: AsyncSession, changed_after: Optional[datetime]) -> int:
+async def count_all_site_control_groups(session: AsyncSession, changed_after: datetime | None) -> int:
     """Admin counting of site control groups. If changed_after is specified, only groups that have their
     changed_time >= changed_after will be included"""
     stmt = select(func.count()).select_from(SiteControlGroup)
@@ -340,7 +341,7 @@ async def select_all_site_control_groups(
     session: AsyncSession,
     start: int,
     limit: int,
-    changed_after: Optional[datetime],
+    changed_after: datetime | None,
 ) -> Sequence[SiteControlGroup]:
     """Admin selecting of site control groups - no filtering on aggregator is made. Returns ordered by
     site_control_group_id ASC

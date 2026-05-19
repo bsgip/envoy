@@ -1,4 +1,3 @@
-from typing import Optional
 
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.function_set_assignments import (
@@ -19,8 +18,8 @@ class FunctionSetAssignmentsMapper:
         scope: BaseRequestScope,
         site_id: int,
         fsa_id: int,
-        total_tp_links: Optional[int],
-        total_derp_links: Optional[int],
+        total_tp_links: int | None,
+        total_derp_links: int | None,
     ) -> FunctionSetAssignmentsResponse:
         return FunctionSetAssignmentsResponse.model_validate(
             {
@@ -46,7 +45,7 @@ class FunctionSetAssignmentsMapper:
 
     @staticmethod
     def map_to_response(
-        scope: SiteRequestScope, fsa_id: int, total_tp_links: Optional[int], total_derp_links: Optional[int]
+        scope: SiteRequestScope, fsa_id: int, total_tp_links: int | None, total_derp_links: int | None
     ) -> FunctionSetAssignmentsResponse:
         return FunctionSetAssignmentsMapper.map_to_response_unscoped(
             scope, scope.site_id, fsa_id, total_tp_links, total_derp_links

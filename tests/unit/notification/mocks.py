@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from typing import Any, Optional
+from typing import Any
 
 from taskiq import AsyncBroker
 
@@ -9,7 +9,7 @@ def create_mock_broker() -> mock.Mock:
     return mock.AsyncMock(spec_set=AsyncBroker)
 
 
-def configure_mock_task(m: mock.MagicMock, raise_on_kiq: Optional[Exception] = None):
+def configure_mock_task(m: mock.MagicMock, raise_on_kiq: Exception | None = None):
     """Given a mock - configure it as if it were a TaskIQ task"""
     kicker_instance = mock.Mock()
     m.kicker.return_value = kicker_instance
@@ -40,7 +40,7 @@ def assert_task_kicked_with_broker_and_args(m: mock.MagicMock, broker: AsyncBrok
 
 
 def assert_task_kicked_with_broker_delay_and_args(
-    m: mock.MagicMock, broker: AsyncBroker, delay_seconds: Optional[int], **kwargs: Any
+    m: mock.MagicMock, broker: AsyncBroker, delay_seconds: int | None, **kwargs: Any
 ):
     """Asserts that a particular task mock was kicked with a particular broker (and optionally validating the
     passed params were included)"""

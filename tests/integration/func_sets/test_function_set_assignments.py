@@ -1,6 +1,5 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Optional
 
 import pytest
 from assertical.fixtures.postgres import generate_async_session
@@ -69,18 +68,18 @@ async def test_get_function_set_assignments(
         (None, None, None, [1]),
         (0, 99, None, [1, 2]),
         (1, 99, None, [2]),
-        (0, 99, datetime(2000, 1, 1, tzinfo=timezone.utc), [1, 2]),
-        (0, 99, datetime(2030, 1, 1, tzinfo=timezone.utc), []),
-        (0, 99, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc), [2]),
+        (0, 99, datetime(2000, 1, 1, tzinfo=UTC), [1, 2]),
+        (0, 99, datetime(2030, 1, 1, tzinfo=UTC), []),
+        (0, 99, datetime(2023, 1, 2, 12, 1, 3, tzinfo=UTC), [2]),
     ],
 )
 @pytest.mark.anyio
 async def test_get_function_set_assignments_list(
     client: AsyncClient,
     valid_headers: dict,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     expected_fsa_ids,
 ):
     """Simple test of a valid get/pagination - validates that the response contains the FSA IDs we expect"""

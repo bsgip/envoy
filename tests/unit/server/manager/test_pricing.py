@@ -1,7 +1,6 @@
 import unittest.mock as mock
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Union
 
 import pytest
 from assertical.fake.generator import generate_class_instance
@@ -47,7 +46,7 @@ from envoy.server.request_scope import BaseRequestScope, SiteRequestScope
         ("2022-Nov-02", InvalidIdError),
     ],
 )
-def test_parse_rate_component_id(input: str, output: Union[date, type]):
+def test_parse_rate_component_id(input: str, output: date | type):
     """Simple test on parser generating valid values / catching errors"""
     if isinstance(output, date):
         assert RateComponentManager.parse_rate_component_id(input) == output
@@ -75,7 +74,7 @@ def test_parse_rate_component_id(input: str, output: Union[date, type]):
         (" 12:13 ", InvalidIdError),
     ],
 )
-def test_parse_time_tariff_interval_id(input: str, output: Union[time, type]):
+def test_parse_time_tariff_interval_id(input: str, output: time | type):
     """Simple test on parser generating valid values / catching errors"""
     if isinstance(output, time):
         assert TimeTariffIntervalManager.parse_time_tariff_interval_id(input) == output

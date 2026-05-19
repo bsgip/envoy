@@ -1,6 +1,5 @@
 from datetime import datetime
 from itertools import chain
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.function_set_assignments import (
     FunctionSetAssignmentsListResponse,
@@ -22,7 +21,7 @@ class FunctionSetAssignmentsManager:
         session: AsyncSession,
         scope: SiteRequestScope,
         fsa_id: int,
-    ) -> Optional[FunctionSetAssignmentsResponse]:
+    ) -> FunctionSetAssignmentsResponse | None:
         site = await select_single_site_with_site_id(
             session=session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
         )
@@ -53,7 +52,7 @@ class FunctionSetAssignmentsManager:
         start: int,
         limit: int,
         changed_after: datetime,
-    ) -> Optional[FunctionSetAssignmentsListResponse]:
+    ) -> FunctionSetAssignmentsListResponse | None:
 
         site = await select_single_site_with_site_id(
             session=session, site_id=scope.site_id, aggregator_id=scope.aggregator_id

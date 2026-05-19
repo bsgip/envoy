@@ -1,7 +1,7 @@
 import unittest.mock as mock
 from collections import defaultdict
+from collections.abc import AsyncGenerator
 from http import HTTPStatus
-from typing import AsyncGenerator
 
 import pytest
 from assertical.fake.http import MockedAsyncClient

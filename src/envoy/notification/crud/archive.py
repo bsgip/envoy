@@ -1,5 +1,6 @@
+from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime
-from typing import Any, Callable, Iterable, Sequence, Union, cast
+from typing import Any, cast
 
 from sqlalchemy import Column, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -133,8 +134,8 @@ async def fetch_entities_with_archive_by_datetime(
 
 
 def orm_relationship_map_parent_entities(
-    source_entities: Iterable[Union[TResourceModel, TArchiveResourceModel]],
-    get_parent_pk_id: Callable[[Union[TResourceModel, TArchiveResourceModel]], int],
+    source_entities: Iterable[TResourceModel | TArchiveResourceModel],
+    get_parent_pk_id: Callable[[TResourceModel | TArchiveResourceModel], int],
     parent_entities_by_pk: dict[int, Any],
     source_relationship_prop_name: str,
 ) -> None:

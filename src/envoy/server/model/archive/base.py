@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -31,11 +30,11 @@ class ArchiveBase(Base):
     # When the archived row was copied into the archived table
     # This is NOT guaranteed to align with the changed_time (for notification server lookups)
     # it's purely an auditing value for when the row archived
-    archive_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    archive_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # If set, this will be when the row in the original table was deleted (meaning this should be the archived row).
     # This WILL align with the changed_times shared with the notification server.
-    deleted_time: Mapped[Optional[datetime]] = mapped_column(
+    deleted_time: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=None, nullable=True, index=True
     )
 

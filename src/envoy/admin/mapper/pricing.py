@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
 
@@ -33,8 +32,8 @@ class TariffMapper:
 class TariffGeneratedRateListMapper:
     @staticmethod
     def map_from_request(
-        changed_time: datetime, tariff_genrate_list: List[TariffGeneratedRateRequest]
-    ) -> List[TariffGeneratedRate]:
+        changed_time: datetime, tariff_genrate_list: list[TariffGeneratedRateRequest]
+    ) -> list[TariffGeneratedRate]:
         return [
             TariffGeneratedRate(
                 tariff_id=tariff_genrate.tariff_id,

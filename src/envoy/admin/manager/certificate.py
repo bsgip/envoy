@@ -1,15 +1,14 @@
 import itertools
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from envoy_schema.admin.schema.certificate import (
-    CertificatePageResponse,
     CertificateAssignmentRequest,
+    CertificatePageResponse,
     CertificateRequest,
     CertificateResponse,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.admin import crud
-from envoy.admin import mapper
+from envoy.admin import crud, mapper
 from envoy.server import crud as server_crud
 from envoy.server import exception
 

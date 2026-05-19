@@ -1,9 +1,10 @@
 import asyncio
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from envoy_schema.admin.schema.site_reading import CSIPAusSiteReadingPageResponse, CSIPAusSiteReadingUnit
 from envoy_schema.server.schema.sep2.types import UomType
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from envoy.admin.crud.site import select_single_site_no_scoping
 from envoy.admin.crud.site_reading import (
     count_site_readings_for_site_and_time,
@@ -11,8 +12,6 @@ from envoy.admin.crud.site_reading import (
     select_site_readings_for_site_and_time,
 )
 from envoy.admin.mapper.site_reading import AdminSiteReadingMapper
-from envoy_schema.admin.schema.site_reading import CSIPAusSiteReadingUnit, CSIPAusSiteReadingPageResponse
-
 from envoy.server.model.site import Site
 
 
@@ -35,7 +34,7 @@ class AdminSiteReadingManager:
         uom: UomType = AdminSiteReadingMapper.csip_unit_to_uom(csip_unit)
 
         # Query 1: get the aggregator id from site to help hit the index of SiteReadingType
-        site: Optional[Site] = await select_single_site_no_scoping(session=session, site_id=site_id)
+        site: Site | None = await select_single_site_no_scoping(session=session, site_id=site_id)
 
         empty_return = AdminSiteReadingMapper.map_to_csip_aus_reading_page_response(
             site_readings=[],

@@ -1,8 +1,8 @@
 import importlib
 import inspect
 import pkgutil
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator, Optional
 
 import pytest
 from assertical.asserts.type import assert_set_type
@@ -25,7 +25,7 @@ def find_submodules(module_path: str) -> set[str]:
     return {modname for _, modname, ispkg in pkgutil.iter_modules([str(models_dir)]) if not ispkg}
 
 
-def find_paired_unpaired_archive_modules() -> set[tuple[Optional[str], Optional[str]]]:
+def find_paired_unpaired_archive_modules() -> set[tuple[str | None, str | None]]:
     """Finds modules from the models/archive packages that have the same name.
 
     Returns a list of these pairs in the form of (model_module, archive_module)
@@ -35,7 +35,7 @@ def find_paired_unpaired_archive_modules() -> set[tuple[Optional[str], Optional[
     models_submodules = find_submodules(MODELS_PACKAGE)
     archive_submodules = find_submodules(ARCHIVE_PACKAGE)
 
-    result: set[tuple[Optional[str], Optional[str]]] = set()
+    result: set[tuple[str | None, str | None]] = set()
     for a in archive_submodules:
         if a in models_submodules:
             result.add((MODELS_PACKAGE + "." + a, ARCHIVE_PACKAGE + "." + a))
@@ -67,12 +67,12 @@ def find_paired_archive_modules() -> list[tuple[str, str]]:
     return pairings
 
 
-def find_paired_unpaired_archive_classes() -> set[Optional[type], Optional[type]]:
+def find_paired_unpaired_archive_classes() -> set[type | None, type | None]:
     """Enumerates submodules from find_paired_archive_modules and identifies classes from
     each pairing that have the same name. Returns the paired types (or None if unpaired)
 
     Noting that a model class like Site will be prefixed on the archive side as ArchiveSite"""
-    pairings: set[Optional[type], Optional[type]] = set()
+    pairings: set[type | None, type | None] = set()
     for m, a in find_paired_archive_modules():
         model_types_by_name: dict[str, type] = dict(
             (t.__name__, t)
@@ -128,10 +128,10 @@ def test_find_paired_archive_modules():
     """Sanity checks find_paired_archive_modules"""
     items = find_paired_archive_modules()
     assert len(items) != 0
-    assert all((m[0].startswith(MODELS_PACKAGE) for m in items))
-    assert all((m[1].startswith(ARCHIVE_PACKAGE) for m in items))
-    assert all(("base" not in m[0] for m in items))
-    assert all(("base" not in m[1] for m in items))
+    assert all(m[0].startswith(MODELS_PACKAGE) for m in items)
+    assert all(m[1].startswith(ARCHIVE_PACKAGE) for m in items)
+    assert all("base" not in m[0] for m in items)
+    assert all("base" not in m[1] for m in items)
 
 
 def test_all_archive_modules_pair():

@@ -1,7 +1,6 @@
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from dateutil import tz
@@ -16,7 +15,7 @@ class DaylightSavingsTimeInfo:
     dst_offset: int  # Daylight savings time offset (in seconds) from local time (if DST in effect), 0 otherwise.
 
 
-def get_tz_key(dt: datetime) -> Optional[str]:
+def get_tz_key(dt: datetime) -> str | None:
     """Extracts the tzinfo key for the specified datetime (if available) or None otherwise. Capable of handling
     pytz shim timezones or ZoneInfo timezones"""
     tzinfo = dt.tzinfo
@@ -27,9 +26,9 @@ def get_tz_key(dt: datetime) -> Optional[str]:
     # tzlocal.get_localzone can return a _PytzShimTimezone which defines _key instead of key. Need to check
     # for this and respond accordingly
     if hasattr(tzinfo, "key"):
-        return getattr(tzinfo, "key")
+        return tzinfo.key
     elif hasattr(tzinfo, "_key"):
-        return getattr(tzinfo, "_key")
+        return tzinfo._key
     else:
         logger.warning(f"No timezone key accessible for supplied datetime's tzinfo: {tzinfo}")
         return None
@@ -88,4 +87,4 @@ def get_dst_info(now_time: datetime) -> DaylightSavingsTimeInfo:
 
 def utc_now() -> datetime:
     """Returns an unambiguous timezone aware (UTC) datetime representing this moment (according to server time)"""
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)

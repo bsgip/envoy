@@ -2,7 +2,6 @@ import unittest.mock as mock
 from datetime import date, datetime, time
 from decimal import Decimal
 from itertools import product
-from typing import Optional
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -155,7 +154,7 @@ def test_tariff_profile_list_nosite_mapping():
 
 
 @pytest.mark.parametrize("optional_is_none, fsa_id", product([True, False], [1234321, None]))
-def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: Optional[int]):
+def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: int | None):
     """Non exhaustive test of the tariff profile list mapping - mainly to sanity check important fields and ensure
     that exceptions aren't being raised"""
     tariffs: list[Tariff] = [

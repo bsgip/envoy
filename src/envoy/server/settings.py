@@ -1,6 +1,6 @@
 import importlib.metadata
 from functools import cached_property
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
@@ -52,10 +52,10 @@ class AppSettings(CommonSettings):
     nmi_validation: NmiValidationSettings = Field(default_factory=NmiValidationSettings)
 
     allow_nmi_updates: bool = DEFAULT_ALLOW_NMI_UPDATES
-    exclude_endpoints: Optional[EndpointExclusionSet] = None
+    exclude_endpoints: EndpointExclusionSet | None = None
 
     @property
-    def fastapi_kwargs(self) -> Dict[str, Any]:
+    def fastapi_kwargs(self) -> dict[str, Any]:
         return {
             "debug": self.debug,
             "docs_url": self.docs_url,

@@ -1,7 +1,6 @@
 import unittest.mock as mock
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import product
-from typing import Optional
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -474,8 +473,8 @@ async def test_create_or_update_mirror_usage_point_update(
 
         assert_nowish(srt_new.changed_time)
         assert_nowish(srt_new.created_time)
-        assert srt1.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "Unchanged from base config"
-        assert srt5.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "Unchanged from base config"
+        assert srt1.created_time == datetime(2000, 1, 1, tzinfo=UTC), "Unchanged from base config"
+        assert srt5.created_time == datetime(2000, 1, 1, tzinfo=UTC), "Unchanged from base config"
         assert_nowish(srt5.changed_time)
 
         if update_role_flags:
@@ -487,7 +486,7 @@ async def test_create_or_update_mirror_usage_point_update(
         else:
             # Just the updated SiteReadingType on mmr5
             assert 1 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
-            assert srt1.changed_time == datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc), (
+            assert srt1.changed_time == datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=UTC), (
                 "Unchanged from base config"
             )
 
@@ -620,8 +619,8 @@ async def test_create_or_update_mirror_usage_point_update_non_role_flags(
             await session.execute(select(SiteReadingType).where(SiteReadingType.site_reading_type_id == 5))
         ).scalar_one()
 
-        assert srt1.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "Unchanged from base config"
-        assert srt5.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "Unchanged from base config"
+        assert srt1.created_time == datetime(2000, 1, 1, tzinfo=UTC), "Unchanged from base config"
+        assert srt5.created_time == datetime(2000, 1, 1, tzinfo=UTC), "Unchanged from base config"
 
         if has_any_update:
             assert 0 < (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
@@ -629,10 +628,10 @@ async def test_create_or_update_mirror_usage_point_update_non_role_flags(
             assert_nowish(srt5.changed_time)
         else:
             assert 0 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
-            assert srt1.changed_time == datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc), (
+            assert srt1.changed_time == datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=UTC), (
                 "Unchanged from base config"
             )
-            assert srt5.changed_time == datetime(2022, 5, 6, 15, 22, 33, 500000, tzinfo=timezone.utc), (
+            assert srt5.changed_time == datetime(2022, 5, 6, 15, 22, 33, 500000, tzinfo=UTC), (
                 "Unchanged from base config"
             )
 
@@ -661,7 +660,7 @@ async def test_fetch_mirror_usage_point(
     mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
     cert_type: CertificateType,
-    scope_site_id: Optional[int],
+    scope_site_id: int | None,
 ):
     """Check that the manager will handle interacting with the DB and its responses"""
 
@@ -728,7 +727,7 @@ async def test_fetch_mirror_usage_point_no_srts(
     mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
     cert_type: CertificateType,
-    scope_site_id: Optional[int],
+    scope_site_id: int | None,
 ):
     """Check that the manager will raise a NotFoundError if there are no SiteReadingTypes with that mup id"""
 
@@ -774,7 +773,7 @@ async def test_fetch_mirror_usage_point_no_site(
     mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
     cert_type: CertificateType,
-    scope_site_id: Optional[int],
+    scope_site_id: int | None,
 ):
     """Check that the manager will raise a NotFoundError if the linked site can't be accessed"""
 
@@ -821,7 +820,7 @@ async def test_delete_mirror_usage_point(
     mock_utc_now: mock.MagicMock,
     mock_delete_site_reading_type_group: mock.MagicMock,
     return_value: bool,
-    site_id: Optional[int],
+    site_id: int | None,
 ):
     """Check that the manager will handle interacting with the crud layer / managing the session transaction"""
 

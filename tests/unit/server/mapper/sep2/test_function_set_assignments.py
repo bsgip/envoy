@@ -1,4 +1,3 @@
-from typing import Optional
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -14,7 +13,7 @@ from envoy.server.request_scope import SiteRequestScope
 
 
 @pytest.mark.parametrize("tp_count, derp_count", [(0, 0), (None, 123), (456, None), (456, 444)])
-def test_map_to_response(tp_count: Optional[int], derp_count: Optional[int]):
+def test_map_to_response(tp_count: int | None, derp_count: int | None):
     """Simple sanity check on the mapper"""
     fsa_id = 214214
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=101, site_id=5616119, href_prefix="/foo")

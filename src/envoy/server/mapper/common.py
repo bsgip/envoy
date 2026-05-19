@@ -1,7 +1,8 @@
 from collections import abc
+from collections.abc import Iterator
 from decimal import Decimal
 from itertools import chain
-from typing import Any, Generic, Iterator, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
@@ -54,7 +55,7 @@ def remove_href_prefix(href: str, request_scope: BaseRequestScope) -> str:
         return "/" + href
 
 
-def parse_device_category(device_category_str: Optional[str]) -> DeviceCategory:
+def parse_device_category(device_category_str: str | None) -> DeviceCategory:
     """Parse a hex string representation of a device category into a DeviceCategory"""
     if not device_category_str:
         return DeviceCategory(0)
@@ -67,7 +68,7 @@ def parse_device_category(device_category_str: Optional[str]) -> DeviceCategory:
     return DeviceCategory(raw_dc)
 
 
-def pow10_to_decimal_value(value: Optional[int], pow10_multiplier: Optional[int]) -> Optional[Decimal]:
+def pow10_to_decimal_value(value: int | None, pow10_multiplier: int | None) -> Decimal | None:
     """Converts a value and a power of ten multiplier into a raw Decimal value.
 
     If multiplier is not specified - it will be assumed to be 0

@@ -1,7 +1,8 @@
 import logging
+from collections.abc import AsyncIterator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Callable
+from typing import Any
 
 from fastapi import FastAPI
 from sqlalchemy import Dialect, event

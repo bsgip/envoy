@@ -1,5 +1,4 @@
-from datetime import date, datetime, timezone
-from typing import Optional, Union
+from datetime import UTC, date, datetime
 
 import pytest
 from fastapi import HTTPException
@@ -30,7 +29,7 @@ from envoy.server.api.request import (
         ([-99], HTTPException),
     ],
 )
-def test_extract_limit_from_paging_param(query_val: Optional[list[int]], expected_output: Union[int, type]):
+def test_extract_limit_from_paging_param(query_val: list[int] | None, expected_output: int | type):
     if isinstance(expected_output, type):
         with pytest.raises(expected_output):
             extract_limit_from_paging_param(query_val)
@@ -52,7 +51,7 @@ def test_extract_limit_from_paging_param(query_val: Optional[list[int]], expecte
         ([-99], HTTPException),
     ],
 )
-def test_extract_start_from_paging_param(query_val: Optional[list[int]], expected_output: Union[int, type]):
+def test_extract_start_from_paging_param(query_val: list[int] | None, expected_output: int | type):
 
     if isinstance(expected_output, type):
         with pytest.raises(expected_output):
@@ -64,13 +63,13 @@ def test_extract_start_from_paging_param(query_val: Optional[list[int]], expecte
 @pytest.mark.parametrize(
     "query_val, expected_output",
     [
-        ([0], datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc)),
-        ([1683074628], datetime(2023, 5, 3, 0, 43, 48, tzinfo=timezone.utc)),
+        ([0], datetime(1970, 1, 1, 0, 0, 0, tzinfo=UTC)),
+        ([1683074628], datetime(2023, 5, 3, 0, 43, 48, tzinfo=UTC)),
         (None, DEFAULT_DATETIME),
         ([], DEFAULT_DATETIME),
     ],
 )
-def test_extract_datetime_from_paging_param(query_val: Optional[list[int]], expected_output: datetime):
+def test_extract_datetime_from_paging_param(query_val: list[int] | None, expected_output: datetime):
     assert extract_datetime_from_paging_param(query_val) == expected_output
 
 
@@ -90,5 +89,5 @@ def test_extract_datetime_from_paging_param(query_val: Optional[list[int]], expe
         ("2022-1-2", None),
     ],
 )
-def test_parse_rate_component_id(input: str, output: Optional[date]):
+def test_parse_rate_component_id(input: str, output: date | None):
     assert extract_date_from_iso_string(input) == output

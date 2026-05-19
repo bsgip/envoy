@@ -1,12 +1,11 @@
-from http import HTTPStatus
 import urllib
-import pytest
+from http import HTTPStatus
 
+import pytest
+from envoy_schema.server.schema.uri import EndDeviceUri, TimeUri
 from httpx import AsyncClient
-from envoy_schema.server.schema.uri import TimeUri, EndDeviceUri
 
 from envoy.server.endpoint_exclusion import HTTPMethod
-
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT
 from tests.integration.integration_server import cert_header
 

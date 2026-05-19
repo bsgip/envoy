@@ -21,7 +21,7 @@ class SiteControlGroup(Base):
     primacy: Mapped[int] = (
         mapped_column()
     )  # The priority level of this group's controls relative to other groups. Lower is higher priority.
-    fsa_id: Mapped[Optional[int]] = mapped_column(
+    fsa_id: Mapped[int | None] = mapped_column(
         index=True, nullable=True
     )  # The function set assignment ID that "groups" this SiteControlGroup with other SiteControlGroups
 
@@ -32,7 +32,7 @@ class SiteControlGroup(Base):
         DateTime(timezone=True), index=True
     )  # When the group was created/changed
 
-    display_id: Mapped[Optional[int]] = mapped_column(
+    display_id: Mapped[int | None] = mapped_column(
         index=True, nullable=True
     )  # If set - use this for MRID calculation instead of site_control_group_id
 
@@ -70,17 +70,17 @@ class SiteControlGroupDefault(Base):
 
     version: Mapped[int] = mapped_column(INTEGER, server_default="0")  # Incremented whenever this record is changed
 
-    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    import_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on imported active power
-    export_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    export_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on exported active power
-    generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    generation_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )
-    load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
-    ramp_rate_percent_per_second: Mapped[Optional[int]] = mapped_column(nullable=True)  # hundredths of percent per sec
+    load_limit_active_watts: Mapped[Decimal | None] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
+    ramp_rate_percent_per_second: Mapped[int | None] = mapped_column(nullable=True)  # hundredths of percent per sec
 
     site_control_group: Mapped["SiteControlGroup"] = relationship(
         back_populates="site_control_group_default", lazy="raise"
@@ -98,7 +98,7 @@ class DynamicOperatingEnvelope(Base):
         ForeignKey("site_control_group.site_control_group_id")
     )  # The group that this doe belongs to
     site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id"))  # The site that this doe applies to
-    calculation_log_id: Mapped[Optional[int]] = mapped_column(
+    calculation_log_id: Mapped[int | None] = mapped_column(
         ForeignKey("calculation_log.calculation_log_id"), nullable=True, index=True
     )  # The calculation log that resulted in this DOE or None if there is no such link
 
@@ -110,13 +110,13 @@ class DynamicOperatingEnvelope(Base):
     )  # When the doe was created/changed
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # Time that the doe comes into effect
     duration_seconds: Mapped[int] = mapped_column()  # number of seconds that this doe applies for
-    randomize_start_seconds: Mapped[Optional[int]] = mapped_column(
+    randomize_start_seconds: Mapped[int | None] = mapped_column(
         nullable=True
     )  # Client directive to randomize the actual start_time by this many seconds
-    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    import_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on imported active power
-    export_limit_watts: Mapped[Optional[Decimal]] = mapped_column(
+    export_limit_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on exported active power TODO: rename to ..active_watts
 
@@ -136,21 +136,21 @@ class DynamicOperatingEnvelope(Base):
     # NOTE: We've decided to include these 'non-DOE' related fields (that map to DERControl elements) here and
     # eventually generalise this to capture specifically the DERControl that are of interest to CSIP-AUS (i.e. not
     # necessarily everything in core IEEE2030.5).
-    generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    generation_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )
-    load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
-    set_energized: Mapped[Optional[bool]] = mapped_column(nullable=True)
-    set_connected: Mapped[Optional[bool]] = mapped_column(nullable=True)
-    set_point_percentage: Mapped[Optional[Decimal]] = mapped_column(
+    load_limit_active_watts: Mapped[Decimal | None] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
+    set_energized: Mapped[bool | None] = mapped_column(nullable=True)
+    set_connected: Mapped[bool | None] = mapped_column(nullable=True)
+    set_point_percentage: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Percentage of device max power settings to charge at (if negative) or discharge at (if positive). 100 = 100%
 
-    ramp_time_seconds: Mapped[Optional[Decimal]] = mapped_column(
+    ramp_time_seconds: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Ramp time for this control - corresponds to rampTms. 100 corresponds to 100 seconds.
 
-    display_id: Mapped[Optional[int]] = mapped_column(
+    display_id: Mapped[int | None] = mapped_column(
         BigInteger, nullable=True
     )  # If set - use this for MRID calculation instead of site_control_id
 

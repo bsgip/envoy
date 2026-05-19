@@ -1,6 +1,5 @@
 import unittest.mock as mock
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -45,7 +44,7 @@ async def test_program_fetch_list_for_scope(
     existing_site = generate_class_instance(Site)
     mapped_list = generate_class_instance(DERProgramListResponse)
     scope = generate_class_instance(SiteRequestScope)
-    now = datetime(2020, 1, 2, tzinfo=timezone.utc)
+    now = datetime(2020, 1, 2, tzinfo=UTC)
     start = 111
     limit = 222
     fsa_id = 333
@@ -136,7 +135,7 @@ async def test_program_fetch_for_scope(
     existing_site = generate_class_instance(Site)
     mapped_program = generate_class_instance(DERProgramResponse)
     scope = generate_class_instance(SiteRequestScope)
-    now = datetime(2011, 2, 3, tzinfo=timezone.utc)
+    now = datetime(2011, 2, 3, tzinfo=UTC)
     group = generate_class_instance(SiteControlGroup)
 
     mock_session = create_mock_session()
@@ -237,7 +236,7 @@ async def test_fetch_doe_control_for_scope(
     mock_fetch_current_config: mock.MagicMock,
     mock_DERControlMapper: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
-    selected_doe: Optional[DynamicOperatingEnvelope],
+    selected_doe: DynamicOperatingEnvelope | None,
 ):
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
     doe_id = 15115
@@ -313,7 +312,7 @@ async def test_fetch_doe_controls_for_scope(
         generate_class_instance(DynamicOperatingEnvelope, seed=101, optional_is_none=False),
         generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True),
     ]
-    now = datetime(2023, 6, 7, 8, 9, 0, tzinfo=timezone.utc)
+    now = datetime(2023, 6, 7, 8, 9, 0, tzinfo=UTC)
     mapped_list = generate_class_instance(DERControlListResponse)
 
     mock_session = create_mock_session()
@@ -376,7 +375,7 @@ async def test_fetch_doe_controls_for_scope_site_dne(
     limit = 34
     derp_id = 51512
     changed_after = datetime(2022, 11, 12, 4, 5, 6)
-    now = datetime(2023, 6, 7, 8, 9, 0, tzinfo=timezone.utc)
+    now = datetime(2023, 6, 7, 8, 9, 0, tzinfo=UTC)
     mapped_list = generate_class_instance(DERControlListResponse)
 
     mock_session = create_mock_session()
@@ -450,7 +449,7 @@ async def test_fetch_active_doe_controls_for_site(
     # The timestamp should be (roughly) utc now and should match for both calls
     actual_now: datetime = mock_select_does_at_timestamp.call_args_list[0].args[4]
     assert actual_now == mock_count_does_at_timestamp.call_args_list[0].args[4]
-    assert actual_now.tzinfo == timezone.utc
+    assert actual_now.tzinfo == UTC
     assert_nowish(actual_now)
     mock_select_does_at_timestamp.assert_called_once_with(
         mock_session, derp_id, scope.aggregator_id, scope.site_id, actual_now, start, changed_after, limit

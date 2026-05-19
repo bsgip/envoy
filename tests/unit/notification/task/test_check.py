@@ -1,6 +1,6 @@
 import unittest.mock as mock
-from datetime import datetime, timezone
-from typing import Optional, cast
+from datetime import UTC, datetime
+from typing import cast
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -87,7 +87,7 @@ from tests.unit.notification.mocks import (
         ),
     ],
 )
-def test_scope_for_subscription(sub: Subscription, href_prefix: Optional[str], expected_display_id: int):
+def test_scope_for_subscription(sub: Subscription, href_prefix: str | None, expected_display_id: int):
     result = scope_for_subscription(sub, href_prefix)
     assert isinstance(result, AggregatorRequestScope)
     assert result.href_prefix == href_prefix
@@ -495,7 +495,7 @@ def test_entities_to_notification_unknown_resource():
         )
 
 
-def assert_hex_binary_enum_matches(expected: Optional[str], actual: Optional[int]):
+def assert_hex_binary_enum_matches(expected: str | None, actual: int | None):
     """Asserts that a known enum matches its hex binary representation (considering nullability)"""
     if expected is None or actual is None:
         assert actual == expected
@@ -596,7 +596,7 @@ def test_all_entity_batches(input_changed: dict[tuple, list], input_deleted: dic
     ],
 )
 def test_entities_to_notification_sites(  # noqa: C901
-    resource: SubscriptionResource, entity_class: type, sub_site_id_scope: Optional[int]
+    resource: SubscriptionResource, entity_class: type, sub_site_id_scope: int | None
 ):
     """For every resource/type mapping - generate a notification and do some cursory examination of the
     resulting notification - the majority of the test are captured in the mapper unit tests - this is here
@@ -662,7 +662,7 @@ def test_entities_to_notification_sites(  # noqa: C901
                     assert notification.resource.results == len(entities)
 
             # The underlying sub site scope should dictate how the top level object encodes site id in the hrefs
-            expected_sub_resource_href_snippet: Optional[str] = None
+            expected_sub_resource_href_snippet: str | None = None
             if notification.resource is not None:
                 if sub_site_id_scope is None:
                     expected_sub_resource_href_snippet = f"/{VIRTUAL_END_DEVICE_SITE_ID}"
@@ -736,7 +736,7 @@ async def test_check_db_change_or_delete(
     mock_broker = create_mock_broker()
     href_prefix = "/href/prefix"
     resource = SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE
-    timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
+    timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=UTC)
 
     # Create some entities that will form 2 batches
     batch1_entity1: DynamicOperatingEnvelope = generate_class_instance(
@@ -882,7 +882,7 @@ async def test_check_db_change_or_delete_rates(
     mock_broker = create_mock_broker()
     href_prefix = "/href/prefix"
     resource = SubscriptionResource.TARIFF_GENERATED_RATE
-    timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
+    timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=UTC)
 
     # Create some entities that will form 2 batches
     rate1: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=101, generate_relationships=True)

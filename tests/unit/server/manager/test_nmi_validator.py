@@ -1,6 +1,6 @@
 import pytest
 
-from envoy.server.manager.nmi_validator import NmiValidator, MultiPatternRegexValidator, PatternGroup
+from envoy.server.manager.nmi_validator import MultiPatternRegexValidator, NmiValidator, PatternGroup
 
 
 @pytest.mark.parametrize(

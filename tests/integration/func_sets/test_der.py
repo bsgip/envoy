@@ -1,6 +1,5 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Optional
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -34,8 +33,8 @@ from tests.integration.response import assert_error_response, assert_response_he
         (1, 0, 99, None, [PUBLIC_SITE_DER_ID]),
         (2, 0, 99, None, [PUBLIC_SITE_DER_ID]),
         (4, 0, 99, None, [PUBLIC_SITE_DER_ID]),  # Has no site_der (will use the virtual element instead)
-        (1, 0, 99, datetime(2024, 3, 14, 5, 55, 44, tzinfo=timezone.utc), [PUBLIC_SITE_DER_ID]),
-        (1, 0, 99, datetime(2024, 3, 14, 5, 55, 45, tzinfo=timezone.utc), []),
+        (1, 0, 99, datetime(2024, 3, 14, 5, 55, 44, tzinfo=UTC), [PUBLIC_SITE_DER_ID]),
+        (1, 0, 99, datetime(2024, 3, 14, 5, 55, 45, tzinfo=UTC), []),
         (1, 1, 99, None, []),
         (1, None, None, None, [PUBLIC_SITE_DER_ID]),
     ],
@@ -45,9 +44,9 @@ async def test_get_der_list(
     client: AsyncClient,
     valid_headers: dict,
     site_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     expected_sub_ids: list[int],
 ):
     """Simple test of pagination"""
@@ -91,7 +90,7 @@ async def test_get_der(
     client: AsyncClient,
     valid_headers: dict,
     site_id: int,
-    expected_der_id: Optional[int],
+    expected_der_id: int | None,
 ):
     """Simple test of fetch"""
 
@@ -226,7 +225,7 @@ async def assert_sub_entity_count(
     if expected_update:
         assert before_count == after_count
         assert_nowish(changed_time)
-        assert_datetime_equal(created_time, datetime(2000, 1, 1, tzinfo=timezone.utc))  # unchanged
+        assert_datetime_equal(created_time, datetime(2000, 1, 1, tzinfo=UTC))  # unchanged
     else:
         assert (before_count + 1) == after_count
         assert_nowish(changed_time)
@@ -531,7 +530,7 @@ async def test_get_associated_derprogram_list(
     client: AsyncClient,
     site_id: int,
     der_id: int,
-    expected_doe_count: Optional[int],
+    expected_doe_count: int | None,
     valid_headers: dict,
 ):
     """Tests getting DERPrograms for various sites/der and validates access constraints"""

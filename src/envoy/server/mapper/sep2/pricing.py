@@ -1,7 +1,7 @@
-from datetime import date, datetime, time, timezone
+from collections.abc import Iterator, Sequence
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from itertools import islice, product
-from typing import Iterator, Optional, Sequence
 
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.event import EventStatus
@@ -95,7 +95,7 @@ class TariffProfileMapper:
         scope: DeviceOrAggregatorRequestScope,
         tariffs: Iterator[tuple[Tariff, int]],
         total_tariffs: int,
-        fsa_id: Optional[int],
+        fsa_id: int | None,
     ) -> TariffProfileListResponse:
         """Returns a list containing multiple sep2 entities. The href's will be to the site specific
         TimeTariffProfile and RateComponentListLink
@@ -212,7 +212,7 @@ class RateComponentMapper:
         """Maps/Creates a single rate component response describing a single type of reading"""
         rate_component_id = day.isoformat()
         # Timezone doesn't really matter here - It just needs to be consistent
-        start_time = datetime.combine(day, time(), tzinfo=timezone.utc)
+        start_time = datetime.combine(day, time(), tzinfo=UTC)
         rc_href = generate_href(
             uri.RateComponentUri,
             scope,

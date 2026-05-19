@@ -1,10 +1,10 @@
 import asyncio
 import urllib.parse
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
-from typing import Any, Optional
+from typing import Any
 from zoneinfo import ZoneInfo
-from envoy.server.model.server import RuntimeServerConfig as DbRuntimeServerConfig
+
 import envoy_schema.server.schema.uri as uri
 import pytest
 from assertical.asserts.time import assert_datetime_equal
@@ -26,6 +26,7 @@ from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.doe import DERControlMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
+from envoy.server.model.server import RuntimeServerConfig as DbRuntimeServerConfig
 from envoy.server.model.site import Site
 from tests.conftest import (
     DEFAULT_DOE_EXPORT_ACTIVE_WATTS,
@@ -94,7 +95,7 @@ LOS_ANGELES_TZ = ZoneInfo("America/Los_Angeles")
     "start, limit, after, site_id, expected_derp_ids_with_count, expected_status",
     [
         (None, 99, None, 1, [(1, 3), (2, 0), (3, 0)], HTTPStatus.OK),
-        (None, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, [(2, 0), (3, 0)], HTTPStatus.OK),
+        (None, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=UTC), 1, [(2, 0), (3, 0)], HTTPStatus.OK),
         (0, 2, None, 1, [(1, 3), (2, 0)], HTTPStatus.OK),
         (1, 99, None, 1, [(2, 0), (3, 0)], HTTPStatus.OK),
         (None, 99, None, 2, [(1, 1), (2, 0), (3, 0)], HTTPStatus.OK),
@@ -110,12 +111,12 @@ async def test_get_derprogram_list(
     client: AsyncClient,
     pg_base_config,
     uri_derp_list_format,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     site_id: int,
-    expected_derp_ids_with_count: Optional[list[tuple[int, int]]],
-    expected_status: Optional[HTTPStatus],
+    expected_derp_ids_with_count: list[tuple[int, int]] | None,
+    expected_status: HTTPStatus | None,
     agg_1_headers,
 ):
     """Tests getting DERPrograms for various sites and validates access constraints"""
@@ -147,7 +148,7 @@ async def test_get_derprogram_list(
         (None, 99, None, 1, 1, [(1, 3), (2, 0), (3, 0)], HTTPStatus.OK),
         (None, 99, None, 1, 2, [], HTTPStatus.OK),
         (None, 99, None, 1, 3, [(4, 0)], HTTPStatus.OK),
-        (None, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, 1, [(2, 0), (3, 0)], HTTPStatus.OK),
+        (None, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=UTC), 1, 1, [(2, 0), (3, 0)], HTTPStatus.OK),
         (None, 1, None, 1, 1, [(1, 3)], HTTPStatus.OK),
         (1, 99, None, 1, 1, [(2, 0), (3, 0)], HTTPStatus.OK),
         (None, 99, None, 3, 1, None, HTTPStatus.NOT_FOUND),  # Belongs to agg 2
@@ -162,13 +163,13 @@ async def test_get_derprogram_list_fsa_scoped(
     client: AsyncClient,
     pg_base_config,
     uri_derp_list_fsa_format,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     site_id: int,
     fsa_id: int,
-    expected_derp_ids_with_count: Optional[list[tuple[int, int]]],
-    expected_status: Optional[HTTPStatus],
+    expected_derp_ids_with_count: list[tuple[int, int]] | None,
+    expected_status: HTTPStatus | None,
     agg_1_headers,
 ):
     """Tests getting DERPrograms (with FSA filter in place) for various sites and validates access constraints"""
@@ -181,7 +182,7 @@ async def test_get_derprogram_list_fsa_scoped(
                 seed=303,
                 site_control_group_id=4,
                 fsa_id=3,
-                changed_time=datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc),
+                changed_time=datetime(2021, 4, 5, 10, 4, 0, tzinfo=UTC),
             )
         )
         await session.commit()
@@ -224,7 +225,7 @@ async def test_get_derprogram_doe(
     uri_derp_doe_format,
     uri_derc_list_format,
     site_id: int,
-    expected_doe_count: Optional[int],
+    expected_doe_count: int | None,
     agg_1_headers,
 ):
     """Tests getting DERPrograms for various sites and validates access constraints"""
@@ -320,7 +321,7 @@ async def test_get_derprogram_doe(
             1,
             None,
             99,
-            datetime(2022, 5, 6, 11, 22, 32, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 11, 22, 32, tzinfo=UTC),
             AGG_1_VALID_CERT,
             HTTPStatus.OK,
             3,
@@ -334,7 +335,7 @@ async def test_get_derprogram_doe(
             1,
             None,
             99,
-            datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 11, 22, 34, tzinfo=UTC),
             AGG_1_VALID_CERT,
             HTTPStatus.OK,
             2,
@@ -347,7 +348,7 @@ async def test_get_derprogram_doe(
             1,
             None,
             99,
-            datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 12, 22, 34, tzinfo=UTC),
             AGG_1_VALID_CERT,
             HTTPStatus.OK,
             1,
@@ -363,7 +364,7 @@ async def test_get_derprogram_doe(
             1,
             None,
             99,
-            datetime(2022, 5, 6, 14, 22, 34, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 14, 22, 34, tzinfo=UTC),
             AGG_1_VALID_CERT,
             HTTPStatus.OK,
             0,
@@ -393,9 +394,9 @@ async def test_get_dercontrol_list(
     uri_derc_list_format: str,
     cert: str,
     site_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_status: HTTPStatus,
     expected_total: int,
     expected_does: list[tuple[datetime, float, float]],
@@ -602,7 +603,7 @@ async def test_get_active_doe(client: AsyncClient, pg_base_config, uri_derc_acti
         resp = await session.execute(stmt)
         doe_to_edit: DynamicOperatingEnvelope = resp.scalars().one()
         doe_to_edit.duration_seconds = 3
-        doe_to_edit.start_time = datetime.now(tz=timezone.utc)
+        doe_to_edit.start_time = datetime.now(tz=UTC)
         doe_to_edit.end_time = doe_to_edit.start_time + timedelta(seconds=doe_to_edit.duration_seconds)
         await session.commit()
 
@@ -654,7 +655,7 @@ async def test_get_active_doe_for_aggregator(
         resp = await session.execute(stmt)
         doe_to_edit: DynamicOperatingEnvelope = resp.scalars().one()
         doe_to_edit.duration_seconds = 3
-        doe_to_edit.start_time = datetime.now(tz=timezone.utc)
+        doe_to_edit.start_time = datetime.now(tz=UTC)
         await session.commit()
 
     path = uri_derc_active_control_list_format.format(site_id=0, der_program_id=1)

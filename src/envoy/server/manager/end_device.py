@@ -1,8 +1,8 @@
 import logging
 import os
+from collections.abc import Sequence
 from datetime import datetime
 from secrets import randbelow, token_bytes
-from typing import Optional, Sequence
 
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
 from envoy_schema.server.schema.sep2.end_device import (
@@ -103,7 +103,7 @@ class EndDeviceManager:
     @staticmethod
     async def fetch_enddevice_for_scope(
         session: AsyncSession, scope: DeviceOrAggregatorRequestScope
-    ) -> Optional[EndDeviceResponse]:
+    ) -> EndDeviceResponse | None:
 
         # site_id of 0 refers to a virtual end-device (associated with the aggregator)
         if scope.site_id is None:
@@ -177,7 +177,7 @@ class EndDeviceManager:
         raise UnableToGenerateIdError(f"Unable to generate a unique sfdi within {MAX_ATTEMPTS} attempts. Failing.")
 
     @staticmethod
-    def lfdi_matches(a: Optional[str], b: Optional[str]) -> bool:
+    def lfdi_matches(a: str | None, b: str | None) -> bool:
         """Case insensitive matching of LFDIs"""
         return (None if a is None else a.lower()) == (None if b is None else b.lower())
 
@@ -235,7 +235,7 @@ class EndDeviceManager:
     @staticmethod
     async def fetch_connection_point_for_site(
         session: AsyncSession, scope: SiteRequestScope
-    ) -> Optional[ConnectionPointResponse]:
+    ) -> ConnectionPointResponse | None:
         """Given a site scoped request. Fetch the connection point associated with a particular site"""
         site = await select_single_site_with_site_id(
             session=session, site_id=scope.site_id, aggregator_id=scope.aggregator_id
@@ -248,9 +248,9 @@ class EndDeviceManager:
     async def insert_or_update_nmi_for_site(
         session: AsyncSession,
         scope: SiteRequestScope,
-        nmi: Optional[str],
+        nmi: str | None,
         allow_nmi_updates: bool,
-        nmi_validator: Optional[NmiValidator] = None,
+        nmi_validator: NmiValidator | None = None,
     ) -> None:
         """Attempts to update the NMI for a designated site. Returns True if the update proceeded successfully,
         False if the Site doesn't exist / belongs to another aggregator_id"""
@@ -299,7 +299,7 @@ class EndDeviceManager:
         start = 1 return [site_1, site_2, site_3, ...]
         start = 2 return [site_2, site_3, ...]
         """
-        virtual_site: Optional[Site] = None
+        virtual_site: Site | None = None
         includes_virtual_site = scope.source == CertificateType.AGGREGATOR_CERTIFICATE
         subscription_count = 0  # This is lazily evaluated
         fsa_count = len(

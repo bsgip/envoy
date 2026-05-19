@@ -158,8 +158,8 @@ async def test_update_single_aggregator(pg_base_config: psycopg.Connection) -> N
             model.Aggregator(
                 aggregator_id=1,
                 name="Some_new_name",
-                changed_time=dt.datetime.now(tz=dt.timezone.utc),
-                created_time=dt.datetime.now(tz=dt.timezone.utc),
+                changed_time=dt.datetime.now(tz=dt.UTC),
+                created_time=dt.datetime.now(tz=dt.UTC),
             ),
         )
 
@@ -183,7 +183,7 @@ async def test_insert_single_aggregator(pg_base_config: psycopg.Connection) -> N
         original_aggregators = await crud.aggregator.select_all_aggregators(session, 0, 500)
 
     async with generate_async_session(pg_base_config) as session:
-        fake_time = dt.datetime(1234, 12, 3, 4, 5, 6, tzinfo=dt.timezone.utc)
+        fake_time = dt.datetime(1234, 12, 3, 4, 5, 6, tzinfo=dt.UTC)
         agg = model.Aggregator(
             name="SOMEFAKEAGG",
             changed_time=fake_time,

@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote_from_bytes
 
 import pytest
@@ -214,8 +214,8 @@ async def test_lfdiauthdepends_aggregator_specific_cert(
     AGG_ID = 51412
     # Arrange
     mock_select_all_client_id_details.return_value = [
-        ClientIdDetails("doesnotexist", 1, datetime.now(timezone.utc) + timedelta(hours=1)),
-        ClientIdDetails(TEST_CERTIFICATE_LFDI_1, AGG_ID, datetime.now(timezone.utc) + timedelta(hours=1)),
+        ClientIdDetails("doesnotexist", 1, datetime.now(UTC) + timedelta(hours=1)),
+        ClientIdDetails(TEST_CERTIFICATE_LFDI_1, AGG_ID, datetime.now(UTC) + timedelta(hours=1)),
     ]
     mock_select_single_site_with_sfdi.return_value = None
     req = Request(
@@ -255,8 +255,8 @@ async def test_lfdiauthdepends_aggregator_specific_cert_thats_expired(
     AGG_ID = 51412
     # Arrange
     mock_select_all_client_id_details.return_value = [
-        ClientIdDetails("doesnotexist", 1, datetime.now(timezone.utc) + timedelta(hours=1)),
-        ClientIdDetails(TEST_CERTIFICATE_LFDI_1, AGG_ID, datetime.now(timezone.utc) - timedelta(hours=1)),
+        ClientIdDetails("doesnotexist", 1, datetime.now(UTC) + timedelta(hours=1)),
+        ClientIdDetails(TEST_CERTIFICATE_LFDI_1, AGG_ID, datetime.now(UTC) - timedelta(hours=1)),
     ]
     mock_select_single_site_with_sfdi.return_value = None
     req = Request(

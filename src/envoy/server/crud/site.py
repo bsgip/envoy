@@ -1,6 +1,6 @@
 # TODO: rename module to site.py
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence
 
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from sqlalchemy import delete, func, select
@@ -86,8 +86,8 @@ async def select_all_sites_with_aggregator_id(
 
 
 async def get_virtual_site_for_aggregator(
-    session: AsyncSession, aggregator_id: int, aggregator_lfdi: str, post_rate_seconds: Optional[int]
-) -> Optional[Site]:
+    session: AsyncSession, aggregator_id: int, aggregator_lfdi: str, post_rate_seconds: int | None
+) -> Site | None:
     """Returns a virtual site to represent the aggregator.
 
     Returns None if the aggregator isn't found.
@@ -95,12 +95,12 @@ async def get_virtual_site_for_aggregator(
     """
 
     # Check if the aggregator exists
-    aggregator: Optional[Aggregator] = await select_aggregator(session=session, aggregator_id=aggregator_id)
+    aggregator: Aggregator | None = await select_aggregator(session=session, aggregator_id=aggregator_id)
     if aggregator is None:
         return None
 
     # The virtual site shares attributes (e.g. timezone) with the first site under the aggregator.
-    first_site_under_aggregator: Optional[Site] = await select_first_site_under_aggregator(
+    first_site_under_aggregator: Site | None = await select_first_site_under_aggregator(
         session=session, aggregator_id=aggregator_id
     )
 
@@ -137,28 +137,28 @@ async def get_virtual_site_for_aggregator(
     )
 
 
-async def select_first_site_under_aggregator(session: AsyncSession, aggregator_id: int) -> Optional[Site]:
+async def select_first_site_under_aggregator(session: AsyncSession, aggregator_id: int) -> Site | None:
     """Selects the Site with the lowest site_id and aggregator_id. Returns None if a match isn't found"""
     stmt = select(Site).where(Site.aggregator_id == aggregator_id).limit(1).order_by(Site.site_id)
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
 
 
-async def select_single_site_with_site_id(session: AsyncSession, site_id: int, aggregator_id: int) -> Optional[Site]:
+async def select_single_site_with_site_id(session: AsyncSession, site_id: int, aggregator_id: int) -> Site | None:
     """Selects the unique Site with the specified site_id and aggregator_id. Returns None if a match isn't found"""
     stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.site_id == site_id))
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
 
 
-async def select_single_site_with_sfdi(session: AsyncSession, sfdi: int, aggregator_id: int) -> Optional[Site]:
+async def select_single_site_with_sfdi(session: AsyncSession, sfdi: int, aggregator_id: int) -> Site | None:
     """Selects the unique Site with the specified sfdi and aggregator_id. Returns None if a match isn't found"""
     stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.sfdi == sfdi))
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
 
 
-async def select_single_site_with_lfdi(session: AsyncSession, lfdi: str, aggregator_id: int) -> Optional[Site]:
+async def select_single_site_with_lfdi(session: AsyncSession, lfdi: str, aggregator_id: int) -> Site | None:
     """Site and aggregator id need to be used to make sure the aggregator owns this site."""
     stmt = select(Site).where((Site.aggregator_id == aggregator_id) & (Site.lfdi == lfdi))
     resp = await session.execute(stmt)
@@ -234,7 +234,7 @@ async def delete_site_for_aggregator(
     # Assumption - We shouldn't normally have more than 10-20 MUPs per site - if this gets us into trouble,
     #              we can always paginate this step
     mup_id_resp = await session.execute(
-        (select(SiteReadingType.site_reading_type_id).where(SiteReadingType.site_id == site_id))
+        select(SiteReadingType.site_reading_type_id).where(SiteReadingType.site_id == site_id)
     )
     mup_ids_to_delete = mup_id_resp.scalars().all()
     await delete_rows_into_archive(
@@ -293,11 +293,11 @@ async def delete_site_for_aggregator(
         DynamicOperatingEnvelope,
         ArchiveDynamicOperatingEnvelope,
         deleted_time,
-        lambda q: q.where((DynamicOperatingEnvelope.site_id == site_id)),
+        lambda q: q.where(DynamicOperatingEnvelope.site_id == site_id),
     )
 
     # Cleanup DER - again, similar to MUPs/SUBs, we need the DER IDs first
-    der_id_resp = await session.execute((select(SiteDER.site_der_id).where(SiteDER.site_id == site_id)))
+    der_id_resp = await session.execute(select(SiteDER.site_der_id).where(SiteDER.site_id == site_id))
     der_ids_to_delete = der_id_resp.scalars().all()
     await delete_rows_into_archive(
         session,

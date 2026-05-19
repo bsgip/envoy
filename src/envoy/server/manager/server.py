@@ -1,5 +1,4 @@
 from dataclasses import asdict, replace
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +12,7 @@ default = RuntimeServerConfig()
 
 # NOTE: Too simple so decided to skip mapping layer
 def _map_server_config(
-    live_config: Optional[ConfigEntity],
+    live_config: ConfigEntity | None,
 ) -> RuntimeServerConfig:
     if not live_config:
         return default

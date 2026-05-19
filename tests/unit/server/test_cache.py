@@ -1,8 +1,7 @@
 import unittest.mock as mock
 from asyncio import sleep
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from assertical.fake.asyncio import create_async_result
@@ -21,11 +20,11 @@ class MyCustomError(Exception):
         super().__init__(*args)
 
 
-def make_delta_now(delta: Optional[timedelta]) -> Optional[datetime]:
+def make_delta_now(delta: timedelta | None) -> datetime | None:
     if delta is None:
         return None
     else:
-        return datetime.now(tz=timezone.utc) + delta
+        return datetime.now(tz=UTC) + delta
 
 
 @pytest.mark.parametrize(
@@ -39,7 +38,7 @@ def make_delta_now(delta: Optional[timedelta]) -> Optional[datetime]:
         (None, False),
     ],
 )
-def test_expiring_value(delta_now: Optional[timedelta], expired: bool):
+def test_expiring_value(delta_now: timedelta | None, expired: bool):
     """Tests is_expired behaves for a variety of values based on datetime.now"""
     expiry = make_delta_now(delta_now)
     assert ExpiringValue(expiry, "string val").is_expired() == expired

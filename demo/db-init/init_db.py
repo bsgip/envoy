@@ -23,7 +23,7 @@ AGG2_CERT_PATH = os.environ.get("AGG2_CERT_PATH", "/test_certs/testaggregator2.c
 
 def load_cert(cert_path: str, now: datetime) -> Certificate:
     """Load certs, extract expiry and lfdi"""
-    with open(cert_path, "r") as cert_file:
+    with open(cert_path) as cert_file:
         cert_pem = cert_file.read()
         cert = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
         cert_expiry = cert.not_valid_after_utc

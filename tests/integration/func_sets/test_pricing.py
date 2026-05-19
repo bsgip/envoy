@@ -1,7 +1,6 @@
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Optional
 
 import pytest
 from envoy_schema.server.schema import uri
@@ -53,16 +52,16 @@ async def test_get_pricingreadingtype(client: AsyncClient, price_reading_type: P
     [
         (None, None, None, ["/tp/3"]),
         (0, 99, None, ["/tp/3", "/tp/2", "/tp/1"]),
-        (0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), ["/tp/3", "/tp/2"]),
+        (0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), ["/tp/3", "/tp/2"]),
         (1, 1, None, ["/tp/2"]),
     ],
 )
 async def test_get_tariffprofilelist_nosite(
     client: AsyncClient,
     agg_1_headers,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_tariffs: list[str],
 ):
     """Tests that the list pagination works correctly on the unscoped tariff profile list"""
@@ -85,7 +84,7 @@ async def test_get_tariffprofilelist_nosite(
         # basic pagination
         (1, None, None, None, [("/edev/1/tp/3", 0)]),
         (1, 0, 99, None, [("/edev/1/tp/3", 0), ("/edev/1/tp/2", 0), ("/edev/1/tp/1", 8)]),
-        (1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), [("/edev/1/tp/3", 0), ("/edev/1/tp/2", 0)]),
+        (1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), [("/edev/1/tp/3", 0), ("/edev/1/tp/2", 0)]),
         (1, 1, 1, None, [("/edev/1/tp/2", 0)]),
         # changing site id
         (2, 0, 99, None, [("/edev/2/tp/3", 0), ("/edev/2/tp/2", 0), ("/edev/2/tp/1", 4)]),
@@ -96,9 +95,9 @@ async def test_get_tariffprofilelist(
     client: AsyncClient,
     agg_1_headers,
     site_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_tariffs_with_count: list[tuple[str, int]],
 ):
     """Tests that the list pagination works correctly on the site scoped tariff profile list"""
@@ -128,12 +127,12 @@ async def test_get_tariffprofilelist(
         # basic pagination
         (1, 1, None, None, None, [("/edev/1/tp/2", 0)]),
         (1, 1, 0, 99, None, [("/edev/1/tp/2", 0), ("/edev/1/tp/1", 8)]),
-        (1, 1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), [("/edev/1/tp/2", 0)]),
+        (1, 1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), [("/edev/1/tp/2", 0)]),
         (1, 1, 1, 1, None, [("/edev/1/tp/1", 8)]),
         # changing FSA ID
         (1, 2, 0, 99, None, [("/edev/1/tp/3", 0)]),
-        (1, 2, None, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), [("/edev/1/tp/3", 0)]),
-        (1, 2, None, 99, datetime(2023, 1, 3, 12, 1, 2, tzinfo=timezone.utc), []),
+        (1, 2, None, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), [("/edev/1/tp/3", 0)]),
+        (1, 2, None, 99, datetime(2023, 1, 3, 12, 1, 2, tzinfo=UTC), []),
         # changing site id
         (2, 1, 0, 99, None, [("/edev/2/tp/2", 0), ("/edev/2/tp/1", 4)]),
         (3, 1, 0, 99, None, [("/edev/3/tp/2", 0), ("/edev/3/tp/1", 0)]),  # no access to this site
@@ -144,9 +143,9 @@ async def test_get_tariffprofilelist_fsa_scoped(
     agg_1_headers,
     site_id: int,
     fsa_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_tariffs_with_count: list[tuple[str, int]],
 ):
     """Tests that the list pagination works correctly on the site scoped tariff profile list"""
@@ -186,7 +185,7 @@ async def test_get_tariffprofilelist_fsa_scoped(
     ],
 )
 async def test_get_tariffprofile_nosite(
-    client: AsyncClient, agg_1_headers, tariff_id: int, expected_href: Optional[str]
+    client: AsyncClient, agg_1_headers, tariff_id: int, expected_href: str | None
 ):
     """Tests that the single entity fetch works correctly"""
     path = uri.TariffProfileUnscopedUri.format(tariff_id=tariff_id)
@@ -225,8 +224,8 @@ async def test_get_tariffprofile(
     agg_1_headers,
     tariff_id: int,
     site_id: int,
-    expected_href: Optional[str],
-    expected_ratecount: Optional[int],
+    expected_href: str | None,
+    expected_ratecount: int | None,
 ):
     """Tests that the list pagination works correctly"""
     path = uri.TariffProfileUri.format(tariff_id=tariff_id, site_id=site_id)
@@ -341,9 +340,9 @@ async def test_get_ratecomponentlist(
     agg_1_headers,
     tariff_id: int,
     site_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_rates: list[str],
 ):
     """Validates the complicated virtual mapping of RateComponents"""
@@ -384,7 +383,7 @@ async def test_get_ratecomponent(
     site_id: int,
     rc_id: str,
     pricing_reading: int,
-    expected_href: Optional[str],
+    expected_href: str | None,
 ):
     """Tests that single rate component lookups ALWAYS return (they are virtual of course). The way we
     check whether it's working or not is by inspecting the count of TimeTariffIntervals (tti) underneath
@@ -436,9 +435,9 @@ async def test_get_timetariffintervallist(
     site_id: int,
     rc_id: str,
     pricing_reading: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_ttis: list[tuple[str, int]],
 ):
     """Tests time tariff interval paging - validates the encoded URIs and prices"""
@@ -495,7 +494,7 @@ async def test_get_timetariffinterval(
     rc_id: str,
     pricing_reading: int,
     tti_id: str,
-    expected_price: Optional[int],
+    expected_price: int | None,
 ):
     """Tests time tariff interval paging - validates the encoded URIs and prices"""
     path = uri.TimeTariffIntervalUri.format(
@@ -534,7 +533,7 @@ async def test_get_cti_list(
     rc_id: str,
     pricing_reading: int,
     tti_id: str,
-    expected_price: Optional[int],
+    expected_price: int | None,
 ):
     """Consumption Tariff Intervals aren't really a list - they're just a wrapper around a single already encoded
     price. This test validates that the prices sent match the prices returned and that the response is always a
@@ -583,7 +582,7 @@ async def test_get_cti(
     rc_id: str,
     pricing_reading: int,
     tti_id: str,
-    expected_price: Optional[int],
+    expected_price: int | None,
 ):
     """Consumption Tariff Intervals don't map to anything in the db - they're just a wrapper around a single already
     encoded price. This test validates that the prices sent match the prices returned and that requesting an

@@ -1,7 +1,6 @@
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
-from typing import Sequence
-from envoy_schema.server.schema.sep2.types import UomType
 
 from envoy_schema.admin.schema.site_reading import (
     CSIPAusSiteReading,
@@ -9,8 +8,9 @@ from envoy_schema.admin.schema.site_reading import (
     CSIPAusSiteReadingUnit,
     PhaseEnum,
 )
+from envoy_schema.server.schema.sep2.types import FlowDirectionType, UomType
+
 from envoy.server.model.site_reading import SiteReading
-from envoy_schema.server.schema.sep2.types import FlowDirectionType
 
 
 class AdminSiteReadingMapper:

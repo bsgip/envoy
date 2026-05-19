@@ -1,13 +1,13 @@
 import base64
 import binascii
 import logging
-import urllib.parse
 import re
+import urllib.parse
 from http import HTTPStatus
-from typing import Any, Optional
+from typing import Any
 
-from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives import hashes
+from cryptography.x509 import load_pem_x509_certificate
 from fastapi import Request
 from fastapi_async_sqlalchemy import db
 
@@ -144,8 +144,8 @@ class LFDIAuthDepends:
 
         # get client id details from cache, will return None if expired or never existed.
         expirable_client_id = await self.aggregator_cert_cache.get_value_ignore_expiry(None, lfdi)
-        site_id: Optional[int] = None
-        aggregator_id: Optional[int] = None
+        site_id: int | None = None
+        aggregator_id: int | None = None
         if expirable_client_id:
             # We have identified that this certificate lives in the certificate table and is therefore
             # an aggregator cert (expired or not)

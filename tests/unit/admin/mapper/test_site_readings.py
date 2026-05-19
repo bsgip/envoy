@@ -1,9 +1,8 @@
+from datetime import datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
+
 import pytest
-from datetime import datetime
-from envoy.admin.mapper.site_reading import AdminSiteReadingMapper
-from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.site_reading import (
     CSIPAusSiteReading,
@@ -11,8 +10,10 @@ from envoy_schema.admin.schema.site_reading import (
     CSIPAusSiteReadingUnit,
     PhaseEnum,
 )
-from envoy_schema.server.schema.sep2.types import UomType
-from envoy_schema.server.schema.sep2.types import FlowDirectionType
+from envoy_schema.server.schema.sep2.types import FlowDirectionType, UomType
+
+from envoy.admin.mapper.site_reading import AdminSiteReadingMapper
+from envoy.server.model.site_reading import SiteReading, SiteReadingType
 
 TZ = ZoneInfo("Australia/Brisbane")
 

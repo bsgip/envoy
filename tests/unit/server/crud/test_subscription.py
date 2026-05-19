@@ -1,6 +1,5 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import product
-from typing import Optional
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -46,8 +45,8 @@ async def test_select_subscription_by_id_filters(
     pg_base_config,
     aggregator_id: int,
     sub_id: int,
-    expected_sub_id: Optional[int],
-    expected_condition_count: Optional[int],
+    expected_sub_id: int | None,
+    expected_condition_count: int | None,
 ):
     """Validates select_subscription_by_id filters correctly for some expected values"""
     async with generate_async_session(pg_base_config) as session:
@@ -70,7 +69,7 @@ async def test_select_subscription_by_id_content(pg_base_config):
 
         assert sub_5.subscription_id == 5
         assert sub_5.aggregator_id == 1
-        assert_datetime_equal(sub_5.changed_time, datetime(2024, 1, 2, 15, 22, 33, 500000, tzinfo=timezone.utc))
+        assert_datetime_equal(sub_5.changed_time, datetime(2024, 1, 2, 15, 22, 33, 500000, tzinfo=UTC))
         assert sub_5.resource_type == SubscriptionResource.READING
         assert sub_5.scoped_site_id is None
         assert sub_5.resource_id == 1
@@ -96,10 +95,10 @@ async def test_select_subscription_by_id_content(pg_base_config):
         (1, 99, None, datetime.min, []),
         (1, 0, 99, datetime.min, [1, 2, 4, 5]),
         # Test datetime filter
-        (1, 0, None, datetime(2024, 1, 2, 12, 20, 0, tzinfo=timezone.utc), [2, 4, 5]),
-        (1, 0, None, datetime(2024, 1, 2, 15, 22, 33, tzinfo=timezone.utc), [5]),
-        (1, 0, None, datetime(2024, 1, 2, 15, 22, 34, tzinfo=timezone.utc), []),
-        (1, 1, 1, datetime(2024, 1, 2, 12, 20, 0, tzinfo=timezone.utc), [4]),
+        (1, 0, None, datetime(2024, 1, 2, 12, 20, 0, tzinfo=UTC), [2, 4, 5]),
+        (1, 0, None, datetime(2024, 1, 2, 15, 22, 33, tzinfo=UTC), [5]),
+        (1, 0, None, datetime(2024, 1, 2, 15, 22, 34, tzinfo=UTC), []),
+        (1, 1, 1, datetime(2024, 1, 2, 12, 20, 0, tzinfo=UTC), [4]),
         # Test aggregator filters
         (2, 0, None, datetime.min, [3]),
         (3, 0, None, datetime.min, []),
@@ -111,7 +110,7 @@ async def test_select_count_subscriptions_for_aggregator(
     pg_base_config,
     aggregator_id: int,
     start: int,
-    limit: Optional[int],
+    limit: int | None,
     changed_after: datetime,
     expected_sub_ids: list[int],
 ):
@@ -143,7 +142,7 @@ async def test_select_subscriptions_for_aggregator_content_only(pg_base_config):
         sub_4 = subs[0]
         assert sub_4.subscription_id == 4
         assert sub_4.aggregator_id == 1
-        assert_datetime_equal(sub_4.changed_time, datetime(2024, 1, 2, 14, 22, 33, 500000, tzinfo=timezone.utc))
+        assert_datetime_equal(sub_4.changed_time, datetime(2024, 1, 2, 14, 22, 33, 500000, tzinfo=UTC))
         assert sub_4.resource_type == SubscriptionResource.SITE
         assert sub_4.scoped_site_id == 4
         assert sub_4.resource_id == 4
@@ -154,7 +153,7 @@ async def test_select_subscriptions_for_aggregator_content_only(pg_base_config):
         sub_5 = subs[1]
         assert sub_5.subscription_id == 5
         assert sub_5.aggregator_id == 1
-        assert_datetime_equal(sub_5.changed_time, datetime(2024, 1, 2, 15, 22, 33, 500000, tzinfo=timezone.utc))
+        assert_datetime_equal(sub_5.changed_time, datetime(2024, 1, 2, 15, 22, 33, 500000, tzinfo=UTC))
         assert sub_5.resource_type == SubscriptionResource.READING
         assert sub_5.scoped_site_id is None
         assert sub_5.resource_id == 1
@@ -187,11 +186,11 @@ async def test_select_subscriptions_for_aggregator_content_only(pg_base_config):
         (1, 4, 1, None, datetime.min, [5]),
         (1, None, 1, 2, datetime.min, [2, 4]),
         # Test datetime filter
-        (1, 4, 0, None, datetime(2024, 1, 2, 12, 20, 0, tzinfo=timezone.utc), [4, 5]),
-        (1, None, 0, None, datetime(2024, 1, 2, 12, 20, 0, tzinfo=timezone.utc), [2, 4, 5]),
-        (1, 4, 0, None, datetime(2024, 1, 2, 15, 22, 33, tzinfo=timezone.utc), [5]),
-        (1, None, 0, None, datetime(2024, 1, 2, 15, 22, 33, tzinfo=timezone.utc), [5]),
-        (1, 4, 0, None, datetime(2024, 1, 2, 15, 22, 34, tzinfo=timezone.utc), []),
+        (1, 4, 0, None, datetime(2024, 1, 2, 12, 20, 0, tzinfo=UTC), [4, 5]),
+        (1, None, 0, None, datetime(2024, 1, 2, 12, 20, 0, tzinfo=UTC), [2, 4, 5]),
+        (1, 4, 0, None, datetime(2024, 1, 2, 15, 22, 33, tzinfo=UTC), [5]),
+        (1, None, 0, None, datetime(2024, 1, 2, 15, 22, 33, tzinfo=UTC), [5]),
+        (1, 4, 0, None, datetime(2024, 1, 2, 15, 22, 34, tzinfo=UTC), []),
         # Test aggregator filters
         (2, 4, 0, None, datetime.min, []),
         (-1, 4, 0, None, datetime.min, []),
@@ -202,10 +201,10 @@ async def test_select_subscriptions_for_aggregator_content_only(pg_base_config):
 async def test_select_count_subscriptions_for_site(
     pg_base_config,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     start: int,
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    limit: int | None,
+    changed_after: datetime | None,
     expected_sub_ids: list[int],
 ):
     """Simple tests to ensure the select/counts work for various filters"""
@@ -250,7 +249,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
         sub_4 = subs[0]
         assert sub_4.subscription_id == 4
         assert sub_4.aggregator_id == 1
-        assert_datetime_equal(sub_4.changed_time, datetime(2024, 1, 2, 14, 22, 33, 500000, tzinfo=timezone.utc))
+        assert_datetime_equal(sub_4.changed_time, datetime(2024, 1, 2, 14, 22, 33, 500000, tzinfo=UTC))
         assert sub_4.resource_type == SubscriptionResource.SITE
         assert sub_4.scoped_site_id == 4
         assert sub_4.resource_id == 4
@@ -261,7 +260,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
         sub_5 = subs[1]
         assert sub_5.subscription_id == 5
         assert sub_5.aggregator_id == 1
-        assert_datetime_equal(sub_5.changed_time, datetime(2024, 1, 2, 15, 22, 33, 500000, tzinfo=timezone.utc))
+        assert_datetime_equal(sub_5.changed_time, datetime(2024, 1, 2, 15, 22, 33, 500000, tzinfo=UTC))
         assert sub_5.resource_type == SubscriptionResource.READING
         assert sub_5.scoped_site_id == 4
         assert sub_5.resource_id == 1
@@ -280,7 +279,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
         [
             Subscription(
                 aggregator_id=3,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.SITE,
                 scoped_site_id=1,
                 resource_id=None,
@@ -289,7 +288,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
             ),  # Different aggregator_id
             Subscription(
                 aggregator_id=1,
-                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.SITE_DER_AVAILABILITY,
                 scoped_site_id=1,
                 resource_id=None,
@@ -298,7 +297,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
             ),  # Different resource_type
             Subscription(
                 aggregator_id=1,
-                changed_time=datetime(2023, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2023, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.SITE,
                 scoped_site_id=1,
                 resource_id=3,
@@ -307,7 +306,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
             ),  # Different resource_id (the db value is NULL)
             Subscription(
                 aggregator_id=2,
-                changed_time=datetime(2024, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2024, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
                 scoped_site_id=None,
                 resource_id=None,
@@ -316,7 +315,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
             ),  # Different resource_id (the db value is 3)
             Subscription(
                 aggregator_id=2,
-                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
                 scoped_site_id=None,
                 resource_id=4,
@@ -325,7 +324,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
             ),  # Different resource_id (the db value is 3)
             Subscription(
                 aggregator_id=1,
-                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.SITE,
                 scoped_site_id=3,  # Changed to an int from a NULL value
                 resource_id=None,
@@ -334,7 +333,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
             ),  # Different scoped_site_id (the db value is NULL)
             Subscription(
                 aggregator_id=2,
-                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
                 scoped_site_id=None,  # Changed to None from an existing int
                 resource_id=3,
@@ -343,7 +342,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
             ),  # Different scoped_site_id (the db value is 3)
             Subscription(
                 aggregator_id=2,
-                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
                 scoped_site_id=4,  # Changed to a different int
                 resource_id=3,
@@ -413,9 +412,9 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
         [
             Subscription(
                 subscription_id=1,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),  # Test metadata, won't be sent to the DB
+                created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
                 aggregator_id=1,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.SITE,
                 scoped_site_id=None,
                 resource_id=None,
@@ -424,9 +423,9 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
             ),  # Will rewrite sub 1
             Subscription(
                 subscription_id=2,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),  # Test metadata, won't be sent to the DB
+                created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
                 aggregator_id=1,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
                 scoped_site_id=2,
                 resource_id=1,
@@ -435,9 +434,9 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
             ),  # Will rewrite sub 2
             Subscription(
                 subscription_id=3,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),  # Test metadata, won't be sent to the DB
+                created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
                 aggregator_id=2,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
                 scoped_site_id=3,
                 resource_id=3,
@@ -446,9 +445,9 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
             ),  # Will rewrite sub 3
             Subscription(
                 subscription_id=4,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),  # Test metadata, won't be sent to the DB
+                created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
                 aggregator_id=1,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.SITE,
                 scoped_site_id=4,
                 resource_id=4,
@@ -457,9 +456,9 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
             ),  # Will rewrite sub 4
             Subscription(
                 subscription_id=5,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),  # Test metadata, won't be sent to the DB
+                created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
                 aggregator_id=1,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
                 resource_type=SubscriptionResource.READING,
                 scoped_site_id=None,
                 resource_id=1,
@@ -566,10 +565,10 @@ async def test_upsert_subscription_update_subscription(pg_base_config, sub: Subs
     ],
 )
 async def test_delete_subscription_for_site_filter_values(
-    pg_base_config, agg_id: int, site_id: Optional[int], sub_id: int, expected_deletion: bool, condition_count: int
+    pg_base_config, agg_id: int, site_id: int | None, sub_id: int, expected_deletion: bool, condition_count: int
 ):
     """Tests the various ways we can filter down the deletion of a subscription"""
-    deleted_time = datetime(2005, 6, 2, 1, 2, 3, tzinfo=timezone.utc)
+    deleted_time = datetime(2005, 6, 2, 1, 2, 3, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         count_before = (await session.execute(select(func.count()).select_from(Subscription))).scalar_one()
         condition_count_before = (
@@ -598,9 +597,9 @@ async def test_delete_subscription_for_site_filter_values(
             assert archive_cond_count_after == condition_count
 
             archived_subs = (await session.execute(select(ArchiveSubscription))).scalars().all()
-            assert all((e.deleted_time == deleted_time for e in archived_subs))
+            assert all(e.deleted_time == deleted_time for e in archived_subs)
             archived_conds = (await session.execute(select(ArchiveSubscriptionCondition))).scalars().all()
-            assert all((e.deleted_time == deleted_time for e in archived_conds))
+            assert all(e.deleted_time == deleted_time for e in archived_conds)
         else:
             assert count_before == count_after
             assert condition_count_before == condition_count_after
@@ -611,7 +610,7 @@ async def test_delete_subscription_for_site_filter_values(
 @pytest.mark.anyio
 async def test_delete_subscription_for_site(pg_base_config):
 
-    deleted_time = datetime(2017, 5, 2, 1, 2, 3, tzinfo=timezone.utc)
+    deleted_time = datetime(2017, 5, 2, 1, 2, 3, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         assert await delete_subscription_for_site(session, 1, 4, 4, deleted_time)
         assert not await delete_subscription_for_site(session, 1, 4, 5, deleted_time)  # not scoped to site_id 4
@@ -646,15 +645,15 @@ async def test_delete_subscription_for_site(pg_base_config):
 
         # Archived records get populated from the source row
         archived_subs = (await session.execute(select(ArchiveSubscription))).scalars().all()
-        assert all((e.deleted_time == deleted_time for e in archived_subs))
+        assert all(e.deleted_time == deleted_time for e in archived_subs)
         assert len(archived_subs) == 1
         assert_class_instance_equality(
             Subscription,
             Subscription(
                 subscription_id=4,
                 aggregator_id=1,
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                changed_time=datetime(2024, 1, 2, 14, 22, 33, 500000, tzinfo=timezone.utc),
+                created_time=datetime(2000, 1, 1, tzinfo=UTC),
+                changed_time=datetime(2024, 1, 2, 14, 22, 33, 500000, tzinfo=UTC),
                 resource_type=1,
                 resource_id=4,
                 scoped_site_id=4,
@@ -677,7 +676,7 @@ async def test_delete_subscription_for_site_with_conditions(pg_base_config):
         assert len(resp.scalars().all()) == 2
         await session.commit()
 
-    deleted_time = datetime(2017, 5, 2, 1, 2, 3, tzinfo=timezone.utc)
+    deleted_time = datetime(2017, 5, 2, 1, 2, 3, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         assert await delete_subscription_for_site(session, 1, 4, 5, deleted_time)  # not scoped to site_id 4
         await session.commit()
@@ -699,7 +698,7 @@ async def test_delete_subscription_for_site_with_conditions(pg_base_config):
 
         # Validate archival of SubscriptionCondition
         archived_conds = (await session.execute(select(ArchiveSubscriptionCondition))).scalars().all()
-        assert all((e.deleted_time == deleted_time for e in archived_conds))
+        assert all(e.deleted_time == deleted_time for e in archived_conds)
         assert len(archived_conds) == 2
         assert_class_instance_equality(
             SubscriptionCondition,

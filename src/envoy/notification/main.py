@@ -2,7 +2,6 @@ import json
 import logging
 import logging.config
 import os
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from taskiq import TaskiqEvents, TaskiqState
@@ -39,7 +38,7 @@ broker = generate_broker(settings.rabbit_mq_broker_url)
 
 
 # Now setup the lifecycle events for the worker
-azure_ad_handler_details: Optional[HandlerDetails] = None
+azure_ad_handler_details: HandlerDetails | None = None
 
 
 @broker.on_event(TaskiqEvents.WORKER_STARTUP)

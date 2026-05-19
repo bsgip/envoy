@@ -1,10 +1,10 @@
-from typing import Iterable
+from collections.abc import Iterable
 
 from envoy_schema.admin.schema.certificate import (
-    CertificateResponse,
-    CertificatePageResponse,
     CertificateAssignmentRequest,
+    CertificatePageResponse,
     CertificateRequest,
+    CertificateResponse,
 )
 
 from envoy.server import model

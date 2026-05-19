@@ -14,7 +14,7 @@ from envoy.server.api.request import (
     extract_start_from_paging_param,
 )
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
-from envoy.server.exception import BadRequestError, ForbiddenError, NotFoundError, ConflictError
+from envoy.server.exception import BadRequestError, ConflictError, ForbiddenError, NotFoundError
 from envoy.server.manager.end_device import EndDeviceManager, RegistrationManager
 from envoy.server.mapper.common import generate_href
 
