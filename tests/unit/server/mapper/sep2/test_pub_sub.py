@@ -76,7 +76,7 @@ def assert_entity_hrefs_contain_entity_id_and_prefix(
     """
     assert len(hrefs) == len(expected_site_ids), "If this fails, its a misconfigured test"
 
-    for href, expected_site_id in zip(hrefs, expected_site_ids):
+    for href, expected_site_id in zip(hrefs, expected_site_ids, strict=False):
         assert f"/{expected_site_id}" in href
         assert href.startswith(expected_prefix)
 

@@ -32,7 +32,7 @@ class CalculationLogMapper:
                     value=value,
                 )
                 for variable_id, site_id, interval_period, value in zip(
-                    var_vals.variable_ids, var_vals.site_ids, var_vals.interval_periods, var_vals.values
+                    var_vals.variable_ids, var_vals.site_ids, var_vals.interval_periods, var_vals.values, strict=False
                 )
             ]
 
@@ -46,7 +46,7 @@ class CalculationLogMapper:
                     site_id_snapshot=0 if site_id is None else site_id,
                     label=value,
                 )
-                for label_id, site_id, value in zip(label_vals.label_ids, label_vals.site_ids, label_vals.values)
+                for label_id, site_id, value in zip(label_vals.label_ids, label_vals.site_ids, label_vals.values, strict=False)
             ]
 
         return CalculationLog(

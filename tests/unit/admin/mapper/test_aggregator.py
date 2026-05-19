@@ -28,7 +28,7 @@ def test_aggregator_to_response(optional_is_none: bool, has_domains: bool):
         assert len(agg.domains) > 0
         assert len(mdl.domains) == len(agg.domains)
         assert_list_type(AggregatorDomainResponse, mdl.domains)
-        for e, a in zip(agg.domains, mdl.domains):
+        for e, a in zip(agg.domains, mdl.domains, strict=False):
             assert_class_instance_equality(AggregatorDomainResponse, e, a)
     else:
         assert len(mdl.domains) == 0

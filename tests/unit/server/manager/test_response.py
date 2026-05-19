@@ -66,7 +66,7 @@ def test_fetch_response_set_list_for_scope_pagination(start: int, limit: int, ex
 
     # Check the response is the sets we expected
     # We don't need to check the models too closely - the mapper unit tests will do that
-    for expected, actual_set in zip(expected_rst, result.ResponseSet_):
+    for expected, actual_set in zip(expected_rst, result.ResponseSet_, strict=False):
         assert actual_set.mRID == MridMapper.encode_response_set_mrid(scope, expected)
 
 
@@ -305,7 +305,7 @@ async def test_fetch_response_list_for_scope_does(
         created_after=created_after,
     )
     mock_count_doe_responses.assert_called_once_with(mock_session, scope.aggregator_id, scope.site_id, created_after)
-    mock_map_to_doe_response.assert_called_once_with(scope, list(zip(response_objs, snapshot_does)), mock_count)
+    mock_map_to_doe_response.assert_called_once_with(scope, list(zip(response_objs, snapshot_does, strict=False)), mock_count)
 
 
 @mock.patch("envoy.server.manager.response.ResponseListMapper.map_to_price_response")

@@ -155,7 +155,7 @@ async def test_fetch_subscriptions_for_site(
 @pytest.mark.anyio
 @pytest.mark.parametrize(
     "retval, scope_site_id",
-    zip([True, False], [111, None]),
+    zip([True, False], [111, None], strict=False),
 )
 @mock.patch("envoy.server.manager.subscription.delete_subscription_for_site")
 @mock.patch("envoy.server.manager.subscription.utc_now")

@@ -46,7 +46,7 @@ class XmlRequest(Generic[TBaseXmlModel]):
     If passing fails for all the request representations, then a HTTP Bad Request is raised.
     """
 
-    def __init__(self, *model_classes: type[TBaseXmlModel]):
+    def __init__(self, *model_classes: type[TBaseXmlModel]) -> None:
         self.model_classes = model_classes
 
     async def __call__(self, request: Request) -> TBaseXmlModel:

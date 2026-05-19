@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from enum import Enum
+from enum import StrEnum
 
 from fastapi import APIRouter
 from starlette.routing import BaseRoute, Route
@@ -9,8 +9,7 @@ logging.basicConfig(style="{", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# This should be replaced with http.HTTPMethod when this project is ported to Python 3.11
-class HTTPMethod(str, Enum):
+class HTTPMethod(StrEnum):
     DELETE = "DELETE"
     GET = "GET"
     HEAD = "HEAD"

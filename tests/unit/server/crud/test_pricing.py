@@ -111,7 +111,7 @@ async def test_select_all_tariffs(
         assert [t.tariff_id for t in tariffs] == expected_ids
 
         # check contents of each entry
-        for id, tariff in zip(expected_ids, tariffs):
+        for id, tariff in zip(expected_ids, tariffs, strict=False):
             assert_tariff_by_id(id, tariff)
 
 
@@ -228,7 +228,7 @@ async def test_select_tariff_rates_for_day_pagination(
     async with generate_async_session(pg_base_config) as session:
         rates = await select_tariff_rates_for_day(session, 1, 1, 1, date(2022, 3, 5), start, after, limit)
     assert len(rates) == len(expected_ids)
-    for id, rate in zip(expected_ids, rates):
+    for id, rate in zip(expected_ids, rates, strict=False):
         assert_rate_for_id(id, 1, 1, None, None, None, rate)
 
 
@@ -258,7 +258,7 @@ async def test_select_and_count_tariff_rates_for_day_filters(
     assert isinstance(count, int)
     assert len(rates) == len(expected_id_and_starts)
     assert len(rates) == count
-    for (id, expected_datetime), rate in zip(expected_id_and_starts, rates):
+    for (id, expected_datetime), rate in zip(expected_id_and_starts, rates, strict=False):
         assert_rate_for_id(
             id, tariff_id, site_id, expected_datetime.date(), expected_datetime.time(), "Australia/Brisbane", rate
         )
@@ -294,7 +294,7 @@ async def test_select_and_count_tariff_rates_for_day_filters_la_time(
         assert isinstance(count, int)
         assert len(rates) == len(expected_id_and_starts)
         assert len(rates) == count
-        for (id, expected_datetime), rate in zip(expected_id_and_starts, rates):
+        for (id, expected_datetime), rate in zip(expected_id_and_starts, rates, strict=False):
             assert_rate_for_id(
                 id, tariff_id, site_id, expected_datetime.date(), expected_datetime.time(), "America/Los_Angeles", rate
             )

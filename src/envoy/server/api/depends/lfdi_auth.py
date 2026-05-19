@@ -94,7 +94,7 @@ class LFDIAuthDepends:
     allow_device_registration: bool
     aggregator_cert_cache: AsyncCache[str, ClientIdDetails]
 
-    def __init__(self, cert_header: str, allow_device_registration: bool):
+    def __init__(self, cert_header: str, allow_device_registration: bool) -> None:
         # fastapi will always return headers in lowercase form
         self.cert_header = cert_header.lower()
         self.allow_device_registration = allow_device_registration

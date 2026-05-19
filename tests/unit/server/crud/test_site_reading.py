@@ -597,7 +597,7 @@ async def test_delete_site_reading_type_group(
         snapshot_after = await snapshot_all_srt_tables(session, agg_id=agg_id, site_id=site_id, srt_ids=srt_ids)
 
     # Compare our before/after snapshots based on whether a delete occurred (or didn't)
-    for before, after in zip(snapshot_before, snapshot_after):
+    for before, after in zip(snapshot_before, snapshot_after, strict=False):
         assert before.t == after.t, "This is a sanity check on snapshot_all_srt_tables doing a consistent order"
         assert before.archive_t == after.archive_t, "This is a sanity check on snapshot_all_srt_tables"
         assert before.archive_count == 0, f"{before.t}: Archive should've been empty at the start"

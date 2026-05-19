@@ -247,7 +247,7 @@ async def test_select_and_count_active_does_include_deleted_pagination(
         count = await count_active_does_include_deleted(session, site_control_group_id, existing_site, now, after)
         assert len(does) == len(expected_ids)
         assert count == expected_count
-        for id, doe in zip(expected_ids, does):
+        for id, doe in zip(expected_ids, does, strict=False):
             assert_doe_for_id(id, 1, None, None, doe, check_duration_seconds=False)
 
 
@@ -283,7 +283,7 @@ async def test_select_and_count_active_does_include_deleted_filtered(
         assert expected_ids == [d.dynamic_operating_envelope_id for d in does]
         assert len(does) == count
 
-        for doe_id, doe in zip(expected_ids, does):
+        for doe_id, doe in zip(expected_ids, does, strict=False):
             assert_doe_for_id(doe_id, site_id, None, "Australia/Brisbane", doe, check_duration_seconds=False)
 
 
@@ -335,7 +335,7 @@ async def test_select_and_count_active_does_include_deleted_multiple_groups(
         assert expected_ids == [d.dynamic_operating_envelope_id for d in does]
         assert len(does) == count
 
-        for doe_id, doe in zip(expected_ids, does):
+        for doe_id, doe in zip(expected_ids, does, strict=False):
             assert doe.dynamic_operating_envelope_id == doe_id
             assert doe.site_control_group_id == site_control_group_id
 
@@ -369,7 +369,7 @@ async def test_select_and_count_doe_filters_la_time(
         assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count
-        for (id, expected_datetime), doe in zip(expected_id_and_starts, does):
+        for (id, expected_datetime), doe in zip(expected_id_and_starts, does, strict=False):
             assert_doe_for_id(id, site_id, expected_datetime, "America/Los_Angeles", doe)
 
 
@@ -601,7 +601,7 @@ async def test_select_and_count_doe_for_timestamp_filters(
         assert isinstance(count, int)
         assert len(does) == len(expected_id_and_starts)
         assert len(does) == count
-        for (id, expected_datetime), doe in zip(expected_id_and_starts, does):
+        for (id, expected_datetime), doe in zip(expected_id_and_starts, does, strict=False):
             assert_doe_for_id(id, site_id, expected_datetime, "Australia/Brisbane", doe, check_duration_seconds=False)
 
 
@@ -647,7 +647,7 @@ async def test_select_doe_at_timestamp_pagination(
     async with generate_async_session(pg_additional_does) as session:
         does = await select_does_at_timestamp(session, 1, 1, 1, timestamp, start, after, limit)
         assert len(does) == len(expected_ids)
-        for id, doe in zip(expected_ids, does):
+        for id, doe in zip(expected_ids, does, strict=False):
             assert_doe_for_id(id, 1, None, None, doe, check_duration_seconds=False)
 
 

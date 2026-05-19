@@ -170,7 +170,7 @@ async def test_fetch_sites_and_count_for_claims(
     assert actual_count == expected_count
     assert_iterable_type(Site, actual_sites, count=len(expected_sites))
     assert actual_count == expected_count
-    for actual, expected in zip(actual_sites, expected_sites):
+    for actual, expected in zip(actual_sites, expected_sites, strict=False):
         assert_class_instance_equality(Site, expected, actual)
 
     # The mocks should EITHER be called as we'd expected or NOT called at all

@@ -371,7 +371,7 @@ def test_MirrorUsagePointMapper_map_to_response(group_has_nones: bool):
         assert result.status == group.group_status
     assert result.mirrorMeterReadings
     assert len(result.mirrorMeterReadings) == len(srts)
-    for mmr, srt in zip(result.mirrorMeterReadings, srts):
+    for mmr, srt in zip(result.mirrorMeterReadings, srts, strict=False):
         assert mmr.mRID == srt.mrid
         assert mmr.version == srt.version
         assert mmr.description == srt.description

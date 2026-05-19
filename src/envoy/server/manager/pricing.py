@@ -77,7 +77,7 @@ class TariffProfileManager:
             )
             tariff_rate_counts.append(rate_days * TOTAL_PRICING_READING_TYPES)
 
-        return TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts), tariff_count, fsa_id)
+        return TariffProfileMapper.map_to_list_response(scope, zip(tariffs, tariff_rate_counts, strict=False), tariff_count, fsa_id)
 
     @staticmethod
     async def fetch_tariff_profile_no_site(

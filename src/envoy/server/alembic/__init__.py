@@ -13,13 +13,13 @@ ALEMBIC_CFG = Config(ROOT_PATH / "alembic.ini")
 ALEMBIC_CFG.set_main_option("script_location", str((ROOT_PATH / "alembic").resolve()))
 
 
-def current(verbose=False):
+def current(verbose=False) -> None:
     command.current(ALEMBIC_CFG, verbose=verbose)
 
 
-def upgrade(revision="head"):
+def upgrade(revision="head") -> None:
     command.upgrade(ALEMBIC_CFG, revision)
 
 
-def downgrade(revision):
+def downgrade(revision) -> None:
     command.downgrade(ALEMBIC_CFG, revision)

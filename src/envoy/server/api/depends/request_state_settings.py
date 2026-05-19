@@ -8,7 +8,7 @@ class RequestStateSettingsDepends:
     href_prefix: str | None
     iana_pen: int
 
-    def __init__(self, href_prefix: str | None, iana_pen: int):
+    def __init__(self, href_prefix: str | None, iana_pen: int) -> None:
         self.href_prefix = href_prefix
         self.iana_pen = iana_pen
 

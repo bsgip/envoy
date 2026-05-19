@@ -163,7 +163,7 @@ def test_site_single_entity_mapper():
 
     # Validating each of the groups maps back to the original group
     # we can get away with check_class_instance_equality as the field names are all the same
-    for exp, act in zip(with_groups_and_der.assignments, with_groups_der_mapped.groups):
+    for exp, act in zip(with_groups_and_der.assignments, with_groups_der_mapped.groups, strict=False):
         assert_class_instance_equality(AdminSiteGroup, exp.group, act)
 
     assert isinstance(with_groups_der_mapped.der_availability, DERAvailability)

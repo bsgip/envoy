@@ -7,7 +7,7 @@ was taken.
 
 import logging
 import re
-from enum import Enum
+from enum import StrEnum
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ class MultiPatternRegexValidator:
         return inclusion_matched and not exclusion_matched
 
 
-class DNSPParticipantId(str, Enum):
+class DNSPParticipantId(StrEnum):
     # ACT
     EvoEnergy = "ACTEWP"
 

@@ -289,7 +289,7 @@ def test_aggregate_readings_for_site_timestamp(
     assert_list_type(BillingReading, actual, len(expected_outputs))
 
     # Validate that the returned values aggregate in the expected way
-    for tuple_vals, actual_billing_report in zip(expected_outputs, actual):
+    for tuple_vals, actual_billing_report in zip(expected_outputs, actual, strict=False):
         site_id, time_period_start, value = tuple_vals
         expected_billing_report = BillingReading(
             site_id=site_id, period_start=time_period_start, duration_seconds=duration_seconds, value=value

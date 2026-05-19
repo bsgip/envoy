@@ -2556,11 +2556,11 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
             (e.aggregator_id, e.site_id, e.original.site_control_group_id) for e in deleted_list_entities
         ]
 
-        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_active_default_ids):
+        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_active_default_ids, strict=False):
             expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
             assert expected_tuple in active_agg_site_group_ids
 
-        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_deleted_default_ids):
+        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_deleted_default_ids, strict=False):
             expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
             assert expected_tuple in deleted_agg_site_group_ids
 

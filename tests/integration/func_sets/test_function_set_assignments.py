@@ -153,7 +153,7 @@ async def test_get_function_set_assignments_list_with_none_fsa_id(
     actual_assignments = parsed_response.FunctionSetAssignments or []
     assert len(actual_assignments) == len(expected_fsa_ids_counts)
 
-    for fsa, expected_id_counts in zip(actual_assignments, expected_fsa_ids_counts):
+    for fsa, expected_id_counts in zip(actual_assignments, expected_fsa_ids_counts, strict=False):
         expected_id, expected_derp_count, expected_tp_count = expected_id_counts
 
         assert int(fsa.href.split("/")[-1]) == expected_id, fsa.href

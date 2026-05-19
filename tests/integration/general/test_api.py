@@ -243,7 +243,7 @@ async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_pref
         # make the request
         response = await client.get(uri, headers=valid_headers)
         if response.status_code == HTTPStatus.NOT_FOUND:
-            assert False, f"URI {uri} is not found. It was sourced from {src_uris}"
+            raise AssertionError(f"URI {uri} is not found. It was sourced from {src_uris}")
         assert_response_header(response, HTTPStatus.OK)
         body = read_response_body_string(response)
         assert len(body) > 0, f"Empty body for {uri}"

@@ -23,7 +23,7 @@ class AzureADAuthDepends:
     ad_config: AzureADManagedIdentityConfig
     cache: AsyncCache[str, JWK]
 
-    def __init__(self, tenant_id: str, client_id: str, valid_issuer: str):
+    def __init__(self, tenant_id: str, client_id: str, valid_issuer: str) -> None:
         # fastapi will always return headers in lowercase form
         self.ad_config = AzureADManagedIdentityConfig(
             tenant_id=tenant_id, client_id=client_id, valid_issuer=valid_issuer

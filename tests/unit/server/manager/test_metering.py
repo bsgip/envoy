@@ -234,7 +234,7 @@ async def test_create_or_update_mirror_usage_point_created_no_readings(pg_base_c
         srt2 = (await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr2.mRID))).scalar_one()
 
         # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
-        for db_srt, mmr in zip([srt1, srt2], [mmr1, mmr2]):
+        for db_srt, mmr in zip([srt1, srt2], [mmr1, mmr2], strict=False):
             assert db_srt.group_mrid == mup.mRID
             assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
             assert db_srt.group_id == result.mup_id
@@ -328,7 +328,7 @@ async def test_create_or_update_mirror_usage_point_created_with_readings(pg_base
         srt2 = (await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr2.mRID))).scalar_one()
 
         # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
-        for db_srt, mmr in zip([srt1, srt2], [mmr1, mmr2]):
+        for db_srt, mmr in zip([srt1, srt2], [mmr1, mmr2], strict=False):
             assert db_srt.group_mrid == mup.mRID
             assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
             assert db_srt.group_id == result.mup_id
@@ -354,7 +354,7 @@ async def test_create_or_update_mirror_usage_point_created_with_readings(pg_base
             .all()
         )
         assert len(new_readings) == 3
-        for db_reading, src_reading in zip(new_readings, [reading3, reading2, reading1]):
+        for db_reading, src_reading in zip(new_readings, [reading3, reading2, reading1], strict=False):
             assert_nowish(db_reading.changed_time)
             assert_nowish(db_reading.created_time)
             assert db_reading.value == src_reading.value
@@ -491,7 +491,7 @@ async def test_create_or_update_mirror_usage_point_update(
             )
 
         # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
-        for db_srt, mmr in zip([srt1, srt_new, srt5], [mmr1, mmr_new, mmr5]):
+        for db_srt, mmr in zip([srt1, srt_new, srt5], [mmr1, mmr_new, mmr5], strict=False):
             assert db_srt.group_mrid.casefold() == mup.mRID.casefold()
             assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
             assert db_srt.group_id == result.mup_id
@@ -522,7 +522,7 @@ async def test_create_or_update_mirror_usage_point_update(
         assert db_reading1.site_reading_type_id == srt1.site_reading_type_id
         assert db_reading2.site_reading_type_id == srt_new.site_reading_type_id
         assert db_reading3.site_reading_type_id == srt5.site_reading_type_id
-        for db_reading, src_reading in zip([db_reading1, db_reading2, db_reading3], [reading1, reading2, reading3]):
+        for db_reading, src_reading in zip([db_reading1, db_reading2, db_reading3], [reading1, reading2, reading3], strict=False):
             assert_nowish(db_reading.changed_time)
             assert_nowish(db_reading.created_time)
             assert db_reading.value == src_reading.value
@@ -1194,7 +1194,7 @@ async def test_add_or_update_readings_multiple_readings_no_mup_updates(pg_base_c
             .all()
         )
         assert len(new_readings) == 3
-        for db_reading, src_reading in zip(new_readings, [reading3, reading2, reading1]):
+        for db_reading, src_reading in zip(new_readings, [reading3, reading2, reading1], strict=False):
             assert_nowish(db_reading.changed_time)
             assert_nowish(db_reading.created_time)
             assert db_reading.value == src_reading.value
