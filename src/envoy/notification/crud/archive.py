@@ -20,7 +20,7 @@ def extract_source_archive_pk_columns(
     if not hasattr(source_type.__table__.primary_key, "columns"):
         raise ValueError(f"Table {source_type} primary key has no configured columns")
 
-    archive_pk_cols = source_type.__table__.primary_key.columns
+    archive_pk_cols: list[Column] = cast(list, source_type.__table__.primary_key.columns)
     if len(archive_pk_cols) != 1:
         raise Exception(f"source_type: {source_type} should only have a single primary key column defined,")
     source_pk_col: Column = archive_pk_cols[0]  # The archive type will have the same column - we can reuse this
@@ -39,7 +39,7 @@ def extract_source_archive_changed_deleted_columns(
     if not hasattr(source_type, "changed_time"):
         raise ValueError(f"Type {source_type} has no changed_time column to filter for modified entities")
 
-    return (source_type.changed_time, cast(Column, archive_type.deleted_time))
+    return (cast(Column, source_type.changed_time), cast(Column, archive_type.deleted_time))
 
 
 async def fetch_entities_with_archive_by_id(

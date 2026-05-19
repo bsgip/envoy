@@ -46,13 +46,13 @@ from envoy.server.request_scope import BaseRequestScope, SiteRequestScope
         ("2022-Nov-02", InvalidIdError),
     ],
 )
-def test_parse_rate_component_id(input: str, output: date | type):
+def test_parse_rate_component_id(input: str, output: date | type[Exception]):
     """Simple test on parser generating valid values / catching errors"""
     if isinstance(output, date):
         assert RateComponentManager.parse_rate_component_id(input) == output
     else:
         with pytest.raises(output):
-            RateComponentManager.parse_rate_component_id(input) == output
+            RateComponentManager.parse_rate_component_id(input)
 
 
 @pytest.mark.parametrize(
@@ -74,13 +74,13 @@ def test_parse_rate_component_id(input: str, output: date | type):
         (" 12:13 ", InvalidIdError),
     ],
 )
-def test_parse_time_tariff_interval_id(input: str, output: time | type):
+def test_parse_time_tariff_interval_id(input: str, output: time | type[Exception]):
     """Simple test on parser generating valid values / catching errors"""
     if isinstance(output, time):
         assert TimeTariffIntervalManager.parse_time_tariff_interval_id(input) == output
     else:
         with pytest.raises(output):
-            TimeTariffIntervalManager.parse_time_tariff_interval_id(input) == output
+            TimeTariffIntervalManager.parse_time_tariff_interval_id(input)
 
 
 @pytest.mark.anyio

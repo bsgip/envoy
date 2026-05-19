@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import cast
 
-from intervaltree import Interval, IntervalTree  # type: ignore
+from intervaltree import Interval, IntervalTree
 from sqlalchemy import Delete, and_, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -114,7 +114,7 @@ async def cancel_then_insert_does(
 
     # Now we can do the inserts
     table = DynamicOperatingEnvelope.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     await session.execute(
         insert(DynamicOperatingEnvelope).values([{k: getattr(doe, k) for k in update_cols} for doe in doe_list])
     )
@@ -151,7 +151,7 @@ async def supersede_then_insert_does(
 
     # Now we can do the inserts
     table = DynamicOperatingEnvelope.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     await session.execute(
         insert(DynamicOperatingEnvelope).values([{k: getattr(doe, k) for k in update_cols} for doe in doe_list])
     )
@@ -252,7 +252,7 @@ async def supersede_matching_does_for_site(
             has_set_point_percentage=existing_set_point is not None,
         )
 
-        for interval in cast(set[Interval], doe_list_tree[existing_start_time:existing_end_time]):  # type: ignore
+        for interval in cast(set[Interval], doe_list_tree[existing_start_time:existing_end_time]):
             incoming_doe: DynamicOperatingEnvelope = interval.data
             # At this point we know this incoming DOE intersects our existing_doe in time
 

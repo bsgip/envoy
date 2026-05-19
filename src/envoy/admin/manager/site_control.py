@@ -191,6 +191,9 @@ class SiteControlGroupManager:
             )
             scg.site_control_group_default.changed_time = now
 
+        if scg.site_control_group_default is None:
+            raise Exception("SiteControlGroupDefault was not properly initialised.")
+
         if request.import_limit_watts is not None:
             scg.site_control_group_default.import_limit_active_watts = request.import_limit_watts.value
 

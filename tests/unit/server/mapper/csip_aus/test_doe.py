@@ -479,7 +479,7 @@ def test_map_derp_doe_program_list_response(
         assert result.results == len(control_groups_with_counts)
         assert_list_type(DERProgramResponse, result.DERProgram, len(control_groups_with_counts))
         for derp, (group, group_count) in zip(result.DERProgram, control_groups_with_counts, strict=False):
-            derp.DERControlListLink.all_ == group_count
+            assert derp.DERControlListLink and derp.DERControlListLink.all_ == group_count
             assert derp.DefaultDERControlLink is not None
             assert f"/{group.site_control_group_id}" in derp.DefaultDERControlLink.href
 

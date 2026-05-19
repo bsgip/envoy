@@ -40,7 +40,7 @@ def assert_doe_for_id(
     expected_site_id: int | None,
     expected_datetime: datetime | None,
     expected_tz: str | None,
-    actual_doe: DOE | None,
+    actual_doe: ArchiveDOE | DOE | None,
     check_duration_seconds: bool = True,
 ):
     """Asserts the supplied doe matches the expected values for a doe with that id. These values are based
@@ -48,6 +48,8 @@ def assert_doe_for_id(
     if expected_doe_id is None:
         assert actual_doe is None
     else:
+        assert actual_doe is not None
+
         # This is just by convention
         if actual_doe.dynamic_operating_envelope_id in {18, 19, 20}:
             assert isinstance(actual_doe, ArchiveDOE)
@@ -126,7 +128,7 @@ def assert_doe_for_id(
 async def test_select_doe_include_deleted(
     pg_additional_does,
     agg_id: int,
-    site_id: int | None,
+    site_id: int,
     doe_id: int,
     expected_dt: datetime | None,
 ):
@@ -159,7 +161,7 @@ async def test_select_doe_include_deleted(
 async def test_select_doe_by_display_id_include_deleted(
     pg_additional_does,
     agg_id: int,
-    site_id: int | None,
+    site_id: int,
     display_id: int,
     expected_dt: datetime | None,
 ):
@@ -190,7 +192,7 @@ async def test_select_doe_by_display_id_include_deleted(
 async def test_select_doe_include_deleted_la_timezone(
     pg_la_timezone,
     agg_id: int,
-    site_id: int | None,
+    site_id: int,
     doe_id: int,
     expected_dt: datetime | None,
 ):
@@ -212,10 +214,11 @@ async def test_select_and_count_active_does_fails_none_site(pg_additional_does):
     now = datetime(2022, 11, 4, tzinfo=UTC)
     after = datetime.min
     async with generate_async_session(pg_additional_does) as session:
-        with pytest.raises(Exception):
-            await select_active_does_include_deleted(session, 1, None, now, 0, after, 99)
-        with pytest.raises(Exception):
-            await count_active_does_include_deleted(session, 1, None, now, after)
+        with pytest.raises(AttributeError):
+            await select_active_does_include_deleted(session, 1, None, now, 0, after, 99)  # ty:ignore[invalid-argument-type]
+
+        with pytest.raises(AttributeError):
+            await count_active_does_include_deleted(session, 1, None, now, after)  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -241,6 +244,7 @@ async def test_select_and_count_active_does_include_deleted_pagination(
 
     async with generate_async_session(pg_additional_does) as session:
         existing_site = await select_single_site_with_site_id(session, 1, 1)
+        assert existing_site
         does = await select_active_does_include_deleted(
             session, site_control_group_id, existing_site, now, start, after, limit
         )
@@ -271,6 +275,7 @@ async def test_select_and_count_active_does_include_deleted_filtered(
     """Tests out the basic filters features and validates the associated count function too"""
     async with generate_async_session(pg_additional_does) as session:
         existing_site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=agg_id)
+        assert existing_site
 
         does = await select_active_does_include_deleted(
             session, site_control_group_id, existing_site, now, 0, datetime.min, 99
@@ -323,6 +328,7 @@ async def test_select_and_count_active_does_include_deleted_multiple_groups(
 
     async with generate_async_session(pg_additional_does) as session:
         existing_site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=agg_id)
+        assert existing_site
 
         does = await select_active_does_include_deleted(
             session, site_control_group_id, existing_site, now, 0, datetime.min, 99
@@ -360,6 +366,8 @@ async def test_select_and_count_doe_filters_la_time(
     site_control_group_id = 1
     async with generate_async_session(pg_la_timezone) as session:
         existing_site = await select_single_site_with_site_id(session, site_id=site_id, aggregator_id=agg_id)
+        assert existing_site
+
         does = await select_active_does_include_deleted(
             session, site_control_group_id, existing_site, now, 0, datetime.min, 99
         )
@@ -730,7 +738,7 @@ async def test_select_site_control_group_by_id(
             assert result is None
         else:
             with pytest.raises(InvalidRequestError):
-                result.site_control_group_default.created_time
+                result.site_control_group_default.created_time  # ty:ignore[unresolved-attribute]  # noqa: B018
 
 
 @pytest.mark.parametrize(
@@ -800,7 +808,8 @@ async def test_select_and_count_site_control_groups(
             else:
                 for g in actual_groups:
                     with pytest.raises(InvalidRequestError):
-                        g.site_control_group_default.created_time
+                        assert g.site_control_group_default
+                        g.site_control_group_default.created_time  # noqa: B018
 
 
 @pytest.mark.anyio

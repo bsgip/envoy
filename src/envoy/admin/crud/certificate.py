@@ -104,7 +104,7 @@ async def create_many_certificates(session: AsyncSession, certificates: list[bas
         certificates: All certificates to be created
     """
     table = base.Certificate.__table__
-    create_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    create_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     stmt = sa.insert(base.Certificate).values([{k: getattr(cert, k) for k in create_cols} for cert in certificates])
     await session.execute(stmt)
 
@@ -132,7 +132,7 @@ async def create_many_certificates_on_conflict_do_nothing(
         return []
 
     table = base.Certificate.__table__
-    create_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    create_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     stmt = (
         postgresql.insert(base.Certificate)
         .values([{k: getattr(cert, k) for k in create_cols} for cert in producer])
@@ -161,7 +161,7 @@ async def insert_single_certificate(session: AsyncSession, certificate: base.Cer
 async def update_single_certificate(session: AsyncSession, certificate: base.Certificate) -> None:
     """Update a single certificate"""
     table = base.Certificate.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     stmt = (
         sa.update(base.Certificate)
         .where(base.Certificate.certificate_id == certificate.certificate_id)
