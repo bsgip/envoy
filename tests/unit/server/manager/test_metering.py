@@ -240,6 +240,7 @@ async def test_create_or_update_mirror_usage_point_created_no_readings(pg_base_c
             assert db_srt.group_id == result.mup_id
             assert_nowish(db_srt.changed_time)
             assert_nowish(db_srt.created_time)
+            assert mmr.readingType is not None
             assert db_srt.accumulation_behaviour == mmr.readingType.accumulationBehaviour
             assert db_srt.uom == mmr.readingType.uom
             assert db_srt.aggregator_id == 1
@@ -334,6 +335,7 @@ async def test_create_or_update_mirror_usage_point_created_with_readings(pg_base
             assert db_srt.group_id == result.mup_id
             assert_nowish(db_srt.changed_time)
             assert_nowish(db_srt.created_time)
+            assert mmr.readingType is not None
             assert db_srt.accumulation_behaviour == mmr.readingType.accumulationBehaviour
             assert db_srt.uom == mmr.readingType.uom
             assert db_srt.aggregator_id == 1
@@ -358,7 +360,7 @@ async def test_create_or_update_mirror_usage_point_created_with_readings(pg_base
             assert_nowish(db_reading.changed_time)
             assert_nowish(db_reading.created_time)
             assert db_reading.value == src_reading.value
-            assert db_reading.local_id == int(src_reading.localID, 16)
+            assert db_reading.local_id == int(src_reading.localID or "", 16)
 
 
 def force_case(force_upper_case: bool, val: str) -> str:
@@ -495,6 +497,7 @@ async def test_create_or_update_mirror_usage_point_update(
             assert db_srt.group_mrid.casefold() == mup.mRID.casefold()
             assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
             assert db_srt.group_id == result.mup_id
+            assert mmr.readingType is not None
             assert db_srt.accumulation_behaviour == mmr.readingType.accumulationBehaviour
             assert db_srt.uom == mmr.readingType.uom
             assert db_srt.aggregator_id == 1
@@ -528,7 +531,7 @@ async def test_create_or_update_mirror_usage_point_update(
             assert_nowish(db_reading.changed_time)
             assert_nowish(db_reading.created_time)
             assert db_reading.value == src_reading.value
-            assert db_reading.local_id == int(src_reading.localID, 16)
+            assert db_reading.local_id == int(src_reading.localID or "", 16)
 
 
 @pytest.mark.parametrize(
@@ -1067,6 +1070,7 @@ async def test_add_or_update_readings_no_readings_mup_update(pg_base_config, as_
         updated_srt = (
             await session.execute(select(SiteReadingType).where(SiteReadingType.site_reading_type_id == 5))
         ).scalar_one()
+        assert mmr.readingType is not None
         assert updated_srt.uom == mmr.readingType.uom
         assert updated_srt.power_of_ten_multiplier == mmr.readingType.powerOfTenMultiplier
 
@@ -1110,6 +1114,7 @@ async def test_add_or_update_readings_no_readings_mup_insert(pg_base_config, as_
         ).scalar_one()
         assert_nowish(new_srt.changed_time)
         assert_nowish(new_srt.created_time)
+        assert mmr.readingType is not None
         assert new_srt.uom == mmr.readingType.uom
         assert new_srt.power_of_ten_multiplier == mmr.readingType.powerOfTenMultiplier
         assert new_srt.role_flags == 1, "Inherited from other SiteReadingTypes in group"
@@ -1200,4 +1205,4 @@ async def test_add_or_update_readings_multiple_readings_no_mup_updates(pg_base_c
             assert_nowish(db_reading.changed_time)
             assert_nowish(db_reading.created_time)
             assert db_reading.value == src_reading.value
-            assert db_reading.local_id == int(src_reading.localID, 16)
+            assert db_reading.local_id == int(src_reading.localID or "", 16)
