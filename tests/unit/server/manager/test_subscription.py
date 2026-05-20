@@ -387,6 +387,7 @@ async def test_add_subscription_for_site_validate_errors(
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_reading_type_id = 5432
     sub = generate_class_instance(Sep2Subscription)
+    assert scope.site_id is not None
     mapped_sub = Subscription(
         resource_type=SubscriptionResource.READING, scoped_site_id=scope.site_id + 2, resource_id=site_reading_type_id
     )

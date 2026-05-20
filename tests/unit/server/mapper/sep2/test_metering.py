@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 import envoy_schema.server.schema.uri as uris
@@ -50,7 +51,7 @@ from envoy.server.request_scope import BaseRequestScope
         generate_class_instance(MirrorMeterReading, readingType=generate_class_instance(ReadingType, uom=None)),
     ],
 )
-def test_MirrorUsagePointMapper_map_from_request_no_uom(mmr: MirrorUsagePoint):
+def test_MirrorUsagePointMapper_map_from_request_no_uom(mmr: MirrorMeterReading):
     """uom is an important field - test the various ways it can go missing"""
     aggregator_id = 123
     site_id = 456
@@ -389,7 +390,7 @@ def test_MirrorUsagePointMapper_map_to_response(group_has_nones: bool):
 def test_MirrorUsagePointMapper_map_to_list_response():
     group_count = 252
 
-    groups = [
+    groups: list[tuple[GroupedSiteReadingTypeDetails, Sequence[SiteReadingType]]] = [
         (
             generate_class_instance(
                 GroupedSiteReadingTypeDetails,
@@ -433,7 +434,9 @@ def test_MirrorUsagePointMapper_map_to_list_response():
     assert result_all_set.all_ == group_count
     assert result_all_set.results == len(groups)
     assert len(result_all_set.mirrorUsagePoints) == len(groups)
+    assert result_all_set.mirrorUsagePoints[0].mirrorMeterReadings is not None
     assert len(result_all_set.mirrorUsagePoints[0].mirrorMeterReadings) == 2
+    assert result_all_set.mirrorUsagePoints[1].mirrorMeterReadings is not None
     assert len(result_all_set.mirrorUsagePoints[1].mirrorMeterReadings) == 1
 
     assert result_all_set.mirrorUsagePoints[0].deviceLFDI == groups[0][0].site_lfdi

@@ -95,4 +95,5 @@ def test_map_to_list_response(href_prefix: str | None, optional_is_none: bool, r
     if href_prefix is not None:
         assert result.href is not None
         assert result.href.startswith(href_prefix)
+    assert result.href is not None
     assert str(display_site_id) in result.href

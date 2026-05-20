@@ -1,5 +1,6 @@
 import pytest
 from fastapi import APIRouter, FastAPI
+from fastapi.routing import APIRoute
 
 from envoy.server.endpoint_exclusion import (
     ExcludeEndpointException,
@@ -20,8 +21,10 @@ def test_generate_routers_with_excluded_endpoints():
 
     # Assert
     assert len(filtered_routers[0].routes) == 1
-    assert filtered_routers[0].routes[0].path == "/somepath"
-    assert filtered_routers[0].routes[0].methods == {"GET", "HEAD"}
+    route0 = filtered_routers[0].routes[0]
+    assert isinstance(route0, APIRoute)
+    assert route0.path == "/somepath"
+    assert route0.methods == {"GET", "HEAD"}
 
 
 def test_generate_routers_with_excluded_endpoints_single_method():
@@ -31,12 +34,14 @@ def test_generate_routers_with_excluded_endpoints_single_method():
     router.add_api_route("/somepath", lambda x: x, methods=[HTTPMethod.GET, HTTPMethod.HEAD, HTTPMethod.DELETE])
 
     # Act
-    filtered_routers = generate_routers_with_excluded_endpoints([router], {("DELETE", "/somepath")})
+    filtered_routers = generate_routers_with_excluded_endpoints([router], {(HTTPMethod.DELETE, "/somepath")})
 
     # Assert
     assert len(filtered_routers[0].routes) == 1
-    assert filtered_routers[0].routes[0].path == "/somepath"
-    assert filtered_routers[0].routes[0].methods == {"GET", "HEAD"}
+    route0 = filtered_routers[0].routes[0]
+    assert isinstance(route0, APIRoute)
+    assert route0.path == "/somepath"
+    assert route0.methods == {"GET", "HEAD"}
 
 
 def test_generate_routers_with_excluded_endpoints_raises_error_on_unmatched_endpoint():
@@ -51,8 +56,10 @@ def test_generate_routers_with_excluded_endpoints_raises_error_on_unmatched_endp
 
     # Assert
     assert len(router.routes) == 1
-    assert router.routes[0].path == "/somepath"
-    assert router.routes[0].methods == {"GET", "HEAD"}
+    route0 = router.routes[0]
+    assert isinstance(route0, APIRoute)
+    assert route0.path == "/somepath"
+    assert route0.methods == {"GET", "HEAD"}
 
 
 def test_generate_routers_with_excluded_endpoints_raises_error_no_side_effects():
@@ -63,12 +70,16 @@ def test_generate_routers_with_excluded_endpoints_raises_error_no_side_effects()
 
     # Act / Assert
     with pytest.raises(ExcludeEndpointException):
-        generate_routers_with_excluded_endpoints([router], {("HEAD", "/somepath"), ("GET", "/someotherepath")})
+        generate_routers_with_excluded_endpoints(
+            [router], {(HTTPMethod.HEAD, "/somepath"), (HTTPMethod.GET, "/someotherepath")}
+        )
 
     # Assert
     assert len(router.routes) == 1
-    assert router.routes[0].path == "/somepath"
-    assert router.routes[0].methods == {"GET", "HEAD"}
+    route0 = router.routes[0]
+    assert isinstance(route0, APIRoute)
+    assert route0.path == "/somepath"
+    assert route0.methods == {"GET", "HEAD"}
 
 
 def test_generate_routers_with_excluded_endpoints_includes_successfully():
@@ -79,9 +90,10 @@ def test_generate_routers_with_excluded_endpoints_includes_successfully():
     router.add_api_route("/somepath", lambda x: x, methods=[HTTPMethod.GET, HTTPMethod.HEAD])
 
     # Act
-    filtered_routers = generate_routers_with_excluded_endpoints([router], {("HEAD", "/somepath")})
+    filtered_routers = generate_routers_with_excluded_endpoints([router], {(HTTPMethod.HEAD, "/somepath")})
     app.include_router(filtered_routers[0])
 
     # Assert
-    route = [r for r in app.routes if r.path == "/somepath"].pop()
+    api_routes = [r for r in app.routes if isinstance(r, APIRoute)]
+    route = next(r for r in api_routes if r.path == "/somepath")
     assert route.methods == {"GET"}

@@ -414,15 +414,18 @@ async def test_fetch_rate_component_list_pagination(mock_select_unique_rate_days
     )
     assert list_response.all_ == total_distinct_dates * TOTAL_PRICING_READING_TYPES
     assert list_response.results == expected_count
+    assert list_response.RateComponent is not None
     assert len(list_response.RateComponent) == expected_count
 
     # validate the first / last RateComponents
     if expected_count > 0:
         first = list_response.RateComponent[0]
+        assert first.href is not None
         assert first.href.endswith(f"/{first_price_type}"), f"{first.href} should end with /{first_price_type}"
         assert f"/{first_date.isoformat()}/" in first.href
 
         last = list_response.RateComponent[-1]
+        assert last.href is not None
         assert last.href.endswith(f"/{last_price_type}"), f"{last.href} should end with /{last_price_type}"
         assert f"/{last_date.isoformat()}/" in last.href
 
@@ -474,14 +477,17 @@ async def test_fetch_rate_component_list_full_db(pg_base_config, page_data):
             "There are 2 distinct dates in base config for these filters"
         )
         assert list_response.results == expected_count
+        assert list_response.RateComponent is not None
         assert len(list_response.RateComponent) == expected_count
 
         if expected_count > 0:
             first = list_response.RateComponent[0]
+            assert first.href is not None
             assert first.href.endswith(f"/{first_price_type}"), f"{first.href} should end with /{first_price_type}"
             assert f"/{first_date.isoformat()}/" in first.href
 
             last = list_response.RateComponent[-1]
+            assert last.href is not None
             assert last.href.endswith(f"/{last_price_type}"), f"{last.href} should end with /{last_price_type}"
             assert f"/{last_date.isoformat()}/" in last.href
 

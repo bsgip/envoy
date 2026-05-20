@@ -56,7 +56,7 @@ def test_response_set_type_to_href_roundtrip(t: ResponseSetType):
 @pytest.mark.parametrize("bad_value", [None, "foo", "/doe", "doe/"])
 def test_href_to_response_set_type_bad_values(bad_value: str | None):
     with pytest.raises(ValueError):
-        href_to_response_set_type(bad_value)
+        href_to_response_set_type(bad_value)  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize("href_prefix, optional_is_none", product([None, "/my/href/prefix/"], [True, False]))
@@ -218,9 +218,11 @@ def test_ResponseListMapper_map_to_price_response(href_prefix: str | None, optio
     if href_prefix is not None:
         assert result.href is not None
         assert result.href.startswith(href_prefix)
+    assert result.href is not None
     assert str(display_site_id) in result.href
 
     # Check the child mrids
+    assert result.Response_ is not None
     child_mrids = [e.subject for e in result.Response_]
     assert all([len(mrid) == 32 for mrid in child_mrids])
     assert all([decode_mrid_type(mrid) == MridType.TIME_TARIFF_INTERVAL for mrid in child_mrids])
@@ -243,7 +245,7 @@ def test_ResponseListMapper_map_to_doe_response(href_prefix: str | None, optiona
     site = generate_class_instance(
         Site, lfdi="ffffffffffffffffffffffffffffffffffffffff", optional_is_none=optional_is_none
     )
-    responses: list[tuple[DynamicOperatingEnvelopeResponse, DynamicOperatingEnvelope]] = [
+    responses: list[tuple[DynamicOperatingEnvelopeResponse, DynamicOperatingEnvelope | None]] = [
         (
             generate_class_instance(
                 DynamicOperatingEnvelopeResponse, seed=101 * (i + 1), optional_is_none=optional_is_none, site=site
@@ -271,9 +273,11 @@ def test_ResponseListMapper_map_to_doe_response(href_prefix: str | None, optiona
     if href_prefix is not None:
         assert result.href is not None
         assert result.href.startswith(href_prefix)
+    assert result.href is not None
     assert str(display_site_id) in result.href
 
     # Check the child mrids
+    assert result.Response_ is not None
     child_mrids = [e.subject for e in result.Response_]
     assert all([len(mrid) == 32 for mrid in child_mrids])
     assert all([decode_mrid_type(mrid) == MridType.DYNAMIC_OPERATING_ENVELOPE for mrid in child_mrids])
@@ -300,14 +304,16 @@ def test_ResponseSetMapper_map_to_set_response(href_prefix: str | None, optional
         assert decode_mrid_type(result.mRID) == MridType.RESPONSE_SET
         all_mrids.append(result.mRID)
 
+        assert result.ResponseListLink is not None
+        assert result.ResponseListLink.href is not None
         assert result.href != result.ResponseListLink.href
+        assert result.href is not None
         assert str(display_site_id) in result.href
         assert str(display_site_id) in result.ResponseListLink.href
         all_hrefs.append(result.href)
         all_hrefs.append(result.ResponseListLink.href)
 
         if href_prefix is not None:
-            assert result.href is not None
             assert result.href.startswith(href_prefix)
             assert result.ResponseListLink.href.startswith(href_prefix)
 
@@ -337,10 +343,10 @@ def test_ResponseSetMapper_map_to_list_response(href_prefix: str | None, optiona
     assert isinstance(result, ResponseSetList)
     assert_list_type(ResponseSet, result.ResponseSet_, count=set_count)
 
+    assert result.href is not None
     assert str(display_site_id) in result.href
     assert result.all_ == total_sets
     assert result.results == set_count
 
     if href_prefix is not None:
-        assert result.href is not None
         assert result.href.startswith(href_prefix)

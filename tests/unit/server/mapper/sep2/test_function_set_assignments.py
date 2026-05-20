@@ -20,6 +20,8 @@ def test_map_to_response(tp_count: int | None, derp_count: int | None):
         scope=scope, fsa_id=fsa_id, total_tp_links=tp_count, total_derp_links=derp_count
     )
     assert result is not None
+    assert result.href is not None
+    assert scope.href_prefix is not None
     assert scope.href_prefix in result.href
     assert isinstance(result.mRID, str)
     assert len(result.mRID) == 32, "Expected 128 bits of hex characters"
@@ -32,8 +34,11 @@ def test_map_to_response(tp_count: int | None, derp_count: int | None):
     assert result.DERProgramListLink.all_ == derp_count
 
     # Ensure href prefix is encoded
+    assert result.TimeLink.href is not None
     assert result.TimeLink.href.startswith(scope.href_prefix)
+    assert result.DERProgramListLink.href is not None
     assert result.DERProgramListLink.href.startswith(scope.href_prefix)
+    assert result.TariffProfileListLink.href is not None
     assert result.TariffProfileListLink.href.startswith(scope.href_prefix)
 
     # Ensure site id and FSA ID are being encoded
@@ -59,6 +64,8 @@ def test_map_to_list_response():
     )
 
     assert result is not None
+    assert result.href is not None
+    assert scope.href_prefix is not None
     assert scope.href_prefix in result.href
     assert isinstance(result, FunctionSetAssignmentsListResponse)
 
@@ -66,5 +73,8 @@ def test_map_to_list_response():
     assert result.pollRate == 12
     assert result.all_ == total_fsa_ids
     assert result.results == len(fsa_ids)
+    assert result.FunctionSetAssignments is not None
+    assert result.FunctionSetAssignments[0].DERProgramListLink is not None
     assert result.FunctionSetAssignments[0].DERProgramListLink.all_ == 99
+    assert result.FunctionSetAssignments[1].DERProgramListLink is not None
     assert result.FunctionSetAssignments[1].DERProgramListLink.all_ is None

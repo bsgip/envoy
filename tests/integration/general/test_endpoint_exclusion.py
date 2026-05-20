@@ -1,4 +1,4 @@
-import urllib
+import urllib.parse
 from http import HTTPStatus
 
 import pytest

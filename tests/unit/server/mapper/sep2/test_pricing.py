@@ -112,12 +112,13 @@ def test_tariff_profile_mapping():
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001)
     mapped_all_set = TariffProfileMapper.map_to_response(scope, all_set, total_rates)
     assert mapped_all_set
+    assert mapped_all_set.href is not None
     assert f"/{scope.display_site_id}" in mapped_all_set.href
     assert mapped_all_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES, "We send $1 as 10000 * 10^-4"
     assert mapped_all_set.rateCode == all_set.dnsp_code
     assert mapped_all_set.currency == all_set.currency_code
-    assert mapped_all_set.RateComponentListLink
-    assert mapped_all_set.RateComponentListLink.href
+    assert mapped_all_set.RateComponentListLink is not None
+    assert mapped_all_set.RateComponentListLink.href is not None
     assert mapped_all_set.RateComponentListLink.href.startswith(mapped_all_set.href)
     assert f"/{scope.display_site_id}" in mapped_all_set.RateComponentListLink.href
     assert mapped_all_set.RateComponentListLink.all_ == total_rates
@@ -125,12 +126,13 @@ def test_tariff_profile_mapping():
     some_set: Tariff = generate_class_instance(Tariff, seed=202, optional_is_none=True)
     mapped_some_set = TariffProfileMapper.map_to_response(scope, some_set, total_rates)
     assert mapped_some_set
+    assert mapped_some_set.href is not None
     assert f"/{scope.display_site_id}" in mapped_some_set.href
     assert mapped_some_set.pricePowerOfTenMultiplier == -PRICE_DECIMAL_PLACES, "We send $1 as 10000 * 10^-4"
     assert mapped_some_set.rateCode == some_set.dnsp_code
     assert mapped_some_set.currency == some_set.currency_code
-    assert mapped_some_set.RateComponentListLink
-    assert mapped_some_set.RateComponentListLink.href
+    assert mapped_some_set.RateComponentListLink is not None
+    assert mapped_some_set.RateComponentListLink.href is not None
     assert mapped_some_set.RateComponentListLink.href.startswith(mapped_some_set.href)
     assert f"/{scope.display_site_id}" in mapped_some_set.RateComponentListLink.href
     assert mapped_some_set.RateComponentListLink.all_ == total_rates
@@ -173,6 +175,7 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: int | None)
     assert isinstance(mapped, TariffProfileListResponse)
 
     assert mapped.href is not None
+    assert scope.href_prefix is not None
     assert mapped.href.startswith(scope.href_prefix)
     if fsa_id is None:
         assert mapped.href.endswith(TariffProfileListUri.format(site_id=scope.display_site_id))
@@ -182,11 +185,19 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: int | None)
     assert mapped.all_ == tariff_count
     assert mapped.results == 2
     assert_list_type(TariffProfileResponse, mapped.TariffProfile, 2)
-    assert all([f"/{scope.display_site_id}" in tp.href for tp in mapped.TariffProfile])
-    assert all([f"/{scope.display_site_id}" in tp.RateComponentListLink.href for tp in mapped.TariffProfile])
+    assert mapped.TariffProfile is not None
+    assert all(tp.href is not None and f"/{scope.display_site_id}" in tp.href for tp in mapped.TariffProfile)
+    assert all(
+        tp.RateComponentListLink is not None
+        and tp.RateComponentListLink.href is not None
+        and f"/{scope.display_site_id}" in tp.RateComponentListLink.href
+        for tp in mapped.TariffProfile
+    )
 
     # Double check our rate component counts get handed down to the child lists correctly
+    assert mapped.TariffProfile[0].RateComponentListLink is not None
     assert mapped.TariffProfile[0].RateComponentListLink.all_ == tariff_rate_counts[0]
+    assert mapped.TariffProfile[1].RateComponentListLink is not None
     assert mapped.TariffProfile[1].RateComponentListLink.all_ == tariff_rate_counts[1]
 
 
@@ -278,16 +289,19 @@ def test_rate_component_list_mapping_paging(rates):
 
     # check the overall structure of the list
     assert list_response.all_ == total_unique_rate_days * TOTAL_PRICING_READING_TYPES
+    assert list_response.RateComponent is not None
     assert list_response.results == len(list_response.RateComponent)
     assert len(list_response.RateComponent) == expected_count
 
     # validate the first / last RateComponents
     if expected_count > 0:
         first = list_response.RateComponent[0]
+        assert first.href is not None
         assert first.href.endswith(f"/{first_price_type}"), f"{first.href} should end with /{first_price_type}"
         assert f"/{first_date.isoformat()}/" in first.href
 
         last = list_response.RateComponent[-1]
+        assert last.href is not None
         assert last.href.endswith(f"/{last_price_type}"), f"{last.href} should end with /{last_price_type}"
         assert f"/{last_date.isoformat()}/" in last.href
 
@@ -322,10 +336,12 @@ def test_consumption_tariff_interval_mapping_prices(input_price: Decimal, expect
     mapped_list = ConsumptionTariffIntervalMapper.map_to_list_response(
         scope, tariff_id, pricing_reading, day, time_of_day, input_price
     )
+    assert mapped_list.href is not None
     assert str(expected_price) in mapped_list.href
     assert mapped_list.ConsumptionTariffInterval
     assert len(mapped_list.ConsumptionTariffInterval) == 1
     child = mapped_list.ConsumptionTariffInterval[0]
+    assert child.href is not None
     assert str(expected_price) in child.href
     assert child.href != mapped_list.href
 
@@ -388,6 +404,7 @@ def test_time_tariff_interval_list_mapping(
     assert mapped.all_ == total
     assert mapped.results == len(rates)
     assert_list_type(TimeTariffIntervalResponse, mapped.TimeTariffInterval, len(rates))
+    assert mapped.TimeTariffInterval is not None
     list_items_mrids = [x.mRID for x in mapped.TimeTariffInterval]
     assert len(list_items_mrids) == len(set(list_items_mrids)), "Checking all list items are unique"
 

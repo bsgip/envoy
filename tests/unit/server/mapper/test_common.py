@@ -38,6 +38,8 @@ def test_to_decimal_value(value: int | None, multiplier: int | None, expected: D
 
     # Also test negation of value
     if actual is not None:
+        assert value is not None
+        assert expected is not None
         assert pow10_to_decimal_value(-value, multiplier) == -expected
 
 
