@@ -65,7 +65,7 @@ def infill_path_format_variables(path_format: str) -> str:
 @pytest.mark.anyio
 @pytest.mark.admin_ro_user
 async def test_readonly_client_can_only_access_get(
-    admin_client_readonly_auth: AsyncClient, admin_path_methods: dict[list]
+    admin_client_readonly_auth: AsyncClient, admin_path_methods: defaultdict[str, list[str]]
 ):
     """Enumerates admin endpoints (that are protected) and ensures that the GET endpoints allow access but other methods
     are locked down"""
@@ -82,7 +82,9 @@ async def test_readonly_client_can_only_access_get(
 
 
 @pytest.mark.anyio
-async def test_readonly_client_not_installed(admin_client_readonly_auth: AsyncClient, admin_path_methods: dict[list]):
+async def test_readonly_client_not_installed(
+    admin_client_readonly_auth: AsyncClient, admin_path_methods: defaultdict[str, list[str]]
+):
     """Similar to test_readonly_client_can_only_access_get but with a bad set of credentials"""
     for path, methods in admin_path_methods.items():
         if path in NO_AUTH_ROUTES:

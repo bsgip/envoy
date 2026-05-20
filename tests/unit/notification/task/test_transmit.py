@@ -265,7 +265,7 @@ async def test_do_transmit_notification_success(mock_AsyncClient: mock.MagicMock
     assert mocked_client.call_count_by_method_uri[(HTTPMethod.POST, remote_uri)] == 1
     assert mocked_client.logged_requests[0].uri == remote_uri
     assert mocked_client.logged_requests[0].content == content
-    headers = mocked_client.logged_requests[0].headers
+    headers = mocked_client.logged_requests[0].headers_dict
     assert headers is not None
     assert headers.get(HEADER_SUBSCRIPTION_ID, None) == subscription_href
     assert headers.get(HEADER_NOTIFICATION_ID, None) == str(notification_id)
@@ -310,7 +310,7 @@ async def test_do_transmit_notification_immediately_abort(mock_AsyncClient: mock
     assert mocked_client.call_count_by_method_uri[(HTTPMethod.POST, remote_uri)] == 1
     assert mocked_client.logged_requests[0].uri == remote_uri
     assert mocked_client.logged_requests[0].content == content
-    headers = mocked_client.logged_requests[0].headers
+    headers = mocked_client.logged_requests[0].headers_dict
     assert headers is not None
     assert headers.get(HEADER_SUBSCRIPTION_ID, None) == subscription_href
     assert headers.get(HEADER_NOTIFICATION_ID, None) == str(notification_id)

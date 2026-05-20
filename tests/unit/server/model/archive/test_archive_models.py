@@ -21,6 +21,7 @@ ARCHIVE_BASE_MEMBERS: set[str] = {p.name for p in enumerate_class_properties(Arc
 def find_submodules(module_path: str) -> set[str]:
     """Finds all submodules that are immediately below the specified module_path"""
     models_module = importlib.import_module(module_path)
+    assert models_module.__file__ is not None
     models_dir = Path(models_module.__file__).parent
     return {modname for _, modname, ispkg in pkgutil.iter_modules([str(models_dir)]) if not ispkg}
 
@@ -67,19 +68,19 @@ def find_paired_archive_modules() -> list[tuple[str, str]]:
     return pairings
 
 
-def find_paired_unpaired_archive_classes() -> set[type | None, type | None]:
+def find_paired_unpaired_archive_classes() -> set[tuple[type[Base] | None, type[ArchiveBase] | None]]:
     """Enumerates submodules from find_paired_archive_modules and identifies classes from
     each pairing that have the same name. Returns the paired types (or None if unpaired)
 
     Noting that a model class like Site will be prefixed on the archive side as ArchiveSite"""
-    pairings: set[type | None, type | None] = set()
+    pairings: set[tuple[type[Base] | None, type[ArchiveBase] | None]] = set()
     for m, a in find_paired_archive_modules():
-        model_types_by_name: dict[str, type] = dict(
+        model_types_by_name: dict[str, type[Base]] = dict(
             (t.__name__, t)
             for _, t in inspect.getmembers(importlib.import_module(m), inspect.isclass)
             if t.__module__ == m
         )
-        archive_types_by_name: dict[str, type] = dict(
+        archive_types_by_name: dict[str, type[ArchiveBase]] = dict(
             (t.__name__, t)
             for _, t in inspect.getmembers(importlib.import_module(a), inspect.isclass)
             if t.__module__ == a
@@ -100,14 +101,14 @@ def find_paired_unpaired_archive_classes() -> set[type | None, type | None]:
     return pairings
 
 
-def find_paired_archive_classes() -> list[tuple[type, type]]:
+def find_paired_archive_classes() -> list[tuple[type[Base], type[ArchiveBase]]]:
     """Returns a list of types from the archive submodule paired with the "same" type from the original models
     submodule.
 
     returns (model_type, archive_type)
 
     It's expected that all archive classes will map to a corresponding model type"""
-    pairings: list[tuple[type, type]] = []
+    pairings: list[tuple[type[Base], type[ArchiveBase]]] = []
     for m, a in find_paired_unpaired_archive_classes():
         if m is None or a is None:
             continue

@@ -239,10 +239,10 @@ async def test_max_limit_select_all_sites(pg_base_config):
         assert_list_type(Site, sites, count=MAX_LIMIT)
 
         site_der_ids = [s.site_ders[0].site_der_id for s in sites]
-        site_status_ids = [s.site_ders[0].site_der_status.site_der_status_id for s in sites]
-        site_avail_ids = [s.site_ders[0].site_der_availability.site_der_availability_id for s in sites]
-        site_rating_ids = [s.site_ders[0].site_der_rating.site_der_rating_id for s in sites]
-        site_settings_ids = [s.site_ders[0].site_der_setting.site_der_setting_id for s in sites]
+        site_status_ids = [s.site_ders[0].site_der_status.site_der_status_id for s in sites]  # ty:ignore[unresolved-attribute]
+        site_avail_ids = [s.site_ders[0].site_der_availability.site_der_availability_id for s in sites]  # ty:ignore[unresolved-attribute]
+        site_rating_ids = [s.site_ders[0].site_der_rating.site_der_rating_id for s in sites]  # ty:ignore[unresolved-attribute]
+        site_settings_ids = [s.site_ders[0].site_der_setting.site_der_setting_id for s in sites]  # ty:ignore[unresolved-attribute]
 
         assert len(site_der_ids) == MAX_LIMIT
         assert len(site_der_ids) == len(set(site_der_ids)), "All Unique values"
@@ -355,6 +355,7 @@ async def test_select_single_site_no_scoping(
                 include_groups=include_groups,
                 include_der=include_der,
             )
+            assert site is not None
 
             if include_groups:
                 assert expected_group_ids == [a.group.site_group_id for a in site.assignments]

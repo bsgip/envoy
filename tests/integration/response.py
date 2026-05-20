@@ -29,11 +29,13 @@ def assert_response_header(
 
     body = read_response_body_string(response)
     assert response.status_code == expected_status_code, (
-        f"Got HTTP {response.status_code} expected HTTP {expected_status_code} request: {response.request.method} {response.request.url.path}\nResponse body:\n{body}"
-    )  # noqa E501
+        f"Got HTTP {response.status_code} expected HTTP {expected_status_code}"
+        + f" request: {response.request.method} {response.request.url.path}\nResponse body:\n{body}"
+    )
     assert expected_content_type is not None and actual_content_type == expected_content_type, (
-        f"Got Content {actual_content_type} expected {expected_content_type} request:  {response.request.method} {response.request.url.path}\nResponse body:\n{body}"
-    )  # noqa E501
+        f"Got Content {actual_content_type} expected {expected_content_type}"
+        + f" request:  {response.request.method} {response.request.url.path}\nResponse body:\n{body}"
+    )
 
 
 def assert_error_response(response: httpx.Response):
@@ -82,7 +84,7 @@ async def run_basic_unauthorised_tests(
 
     # check expired certs don't work
     response = await client.request(
-        method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: EXPIRED_PEM})
+        method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: EXPIRED_PEM.decode()})
     )
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
@@ -95,7 +97,10 @@ async def run_basic_unauthorised_tests(
     # check unregistered certs don't work
     if test_unrecognised_cert:
         response = await client.request(
-            method=method, url=uri, content=body, headers=_apply_headers(base_headers, {cert_header: UNKNOWN_PEM})
+            method=method,
+            url=uri,
+            content=body,
+            headers=_apply_headers(base_headers, {cert_header: UNKNOWN_PEM.decode()}),
         )
         assert_response_header(response, HTTPStatus.FORBIDDEN)
         assert_error_response(response)

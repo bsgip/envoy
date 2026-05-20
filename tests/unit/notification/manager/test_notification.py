@@ -19,7 +19,7 @@ from tests.unit.notification.mocks import (
 async def test_notify_changed_deleted_entities_no_config(
     mock_get_enabled_broker: mock.MagicMock, mock_check_db_change_or_delete: mock.MagicMock
 ):
-    resource = SubscriptionResource
+    resource = SubscriptionResource.SITE
     timestamp = datetime(2024, 3, 4, 5, 6)
 
     configure_mock_task(mock_check_db_change_or_delete)
@@ -38,7 +38,7 @@ async def test_notify_changed_deleted_entities_no_config(
 async def test_notify_changed_deleted_entities_with_config(
     mock_get_enabled_broker: mock.MagicMock, mock_check_db_change_or_delete: mock.MagicMock
 ):
-    resource = SubscriptionResource
+    resource = SubscriptionResource.SITE
     timestamp = datetime(2024, 3, 4, 5, 6)
 
     mock_broker = create_mock_broker()
@@ -61,7 +61,7 @@ async def test_notify_changed_deleted_entities_with_config(
 async def test_notify_changed_deleted_entities_with_config_on_error(
     mock_get_enabled_broker: mock.MagicMock, mock_check_db_change_or_delete: mock.MagicMock
 ):
-    resource = SubscriptionResource
+    resource = SubscriptionResource.SITE
     timestamp = datetime(2024, 3, 4, 5, 6)
 
     mock_broker = create_mock_broker()

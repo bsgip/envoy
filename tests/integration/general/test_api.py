@@ -276,6 +276,7 @@ async def test_crawl_hrefs(pg_base_config, client: AsyncClient, valid_headers: d
     # want /edev/1 at the head so we update the DB before crawling
     async with generate_async_session(pg_base_config) as session:
         site = await select_single_site_with_site_id(session, 1, 1)
+        assert site is not None
         site.changed_time = datetime(2028, 11, 10)
         await session.commit()
 
@@ -298,6 +299,7 @@ async def test_crawl_hrefs_with_prefix(pg_base_config, client: AsyncClient, vali
     # want /edev/1 at the head so we update the DB before crawling
     async with generate_async_session(pg_base_config) as session:
         site = await select_single_site_with_site_id(session, 1, 1)
+        assert site is not None
         site.changed_time = datetime(2028, 11, 10)
         await session.commit()
 

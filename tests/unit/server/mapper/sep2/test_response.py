@@ -76,6 +76,7 @@ def test_ResponseMapper_map_to_price_response(href_prefix: str | None, optional_
     # Assert
     assert isinstance(result, PriceResponse)
     if href_prefix is not None:
+        assert result.href is not None
         assert result.href.startswith(href_prefix)
     assert result.endDeviceLFDI == site.lfdi
     assert result.status == response.response_type
@@ -127,6 +128,7 @@ def test_ResponseMapper_map_to_doe_response(
     # Assert
     assert isinstance(result, DERControlResponse)
     if href_prefix is not None:
+        assert result.href is not None
         assert result.href.startswith(href_prefix)
     assert result.endDeviceLFDI == site.lfdi
     assert result.status == response.response_type
@@ -214,6 +216,7 @@ def test_ResponseListMapper_map_to_price_response(href_prefix: str | None, optio
     assert result.all_ == total_responses
     assert result.results == response_count
     if href_prefix is not None:
+        assert result.href is not None
         assert result.href.startswith(href_prefix)
     assert str(display_site_id) in result.href
 
@@ -266,6 +269,7 @@ def test_ResponseListMapper_map_to_doe_response(href_prefix: str | None, optiona
     assert result.all_ == total_responses
     assert result.results == response_count
     if href_prefix is not None:
+        assert result.href is not None
         assert result.href.startswith(href_prefix)
     assert str(display_site_id) in result.href
 
@@ -303,6 +307,7 @@ def test_ResponseSetMapper_map_to_set_response(href_prefix: str | None, optional
         all_hrefs.append(result.ResponseListLink.href)
 
         if href_prefix is not None:
+            assert result.href is not None
             assert result.href.startswith(href_prefix)
             assert result.ResponseListLink.href.startswith(href_prefix)
 
@@ -337,4 +342,5 @@ def test_ResponseSetMapper_map_to_list_response(href_prefix: str | None, optiona
     assert result.results == set_count
 
     if href_prefix is not None:
+        assert result.href is not None
         assert result.href.startswith(href_prefix)

@@ -1,5 +1,6 @@
 import unittest.mock as mock
 from datetime import datetime
+from typing import cast
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -36,7 +37,7 @@ def test_device_category_round_trip(disable_registration: bool):
 
         end_device = EndDeviceMapper.map_to_response(scope, site, disable_registration, 11)
 
-        roundtrip_site = EndDeviceMapper.map_from_request(end_device, 1, datetime.now(), 2)
+        roundtrip_site = EndDeviceMapper.map_from_request(cast(EndDeviceRequest, end_device), 1, datetime.now(), 2)
         assert roundtrip_site.device_category == site.device_category
 
 
@@ -50,6 +51,7 @@ def test_map_to_response(disable_registration: bool):
 
     result_all_set = EndDeviceMapper.map_to_response(scope, site_all_set, disable_registration, total_fsa_links)
     assert result_all_set is not None
+    assert result_all_set.href is not None
     assert isinstance(result_all_set, EndDeviceResponse)
     assert result_all_set.postRate == site_all_set.post_rate_seconds
     assert result_all_set.changedTime == site_all_set.changed_time.timestamp()
@@ -57,6 +59,7 @@ def test_map_to_response(disable_registration: bool):
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_all_set.ConnectionPointLink, ConnectionPointLink)
     assert isinstance(result_all_set.DERListLink, ListLink)
+    assert result_all_set.FunctionSetAssignmentsListLink is not None
     assert result_all_set.FunctionSetAssignmentsListLink.all_ == total_fsa_links
     assert result_all_set.SubscriptionListLink is None, "This should only be set on an Aggregator EndDevice"
 
@@ -79,6 +82,7 @@ def test_map_to_response(disable_registration: bool):
 
     result_optional = EndDeviceMapper.map_to_response(scope, site_optional, disable_registration, total_fsa_links + 1)
     assert result_optional is not None
+    assert result_optional.href is not None
     assert isinstance(result_optional, EndDeviceResponse)
     assert result_optional.postRate is None
     assert result_optional.changedTime == site_optional.changed_time.timestamp()
@@ -86,6 +90,7 @@ def test_map_to_response(disable_registration: bool):
     assert result_optional.deviceCategory == hex(site_optional.device_category)[2:], "Expected hex string with no 0x"
     assert isinstance(result_optional.ConnectionPointLink, ConnectionPointLink)
     assert isinstance(result_optional.DERListLink, ListLink)
+    assert result_optional.FunctionSetAssignmentsListLink is not None
     assert result_optional.FunctionSetAssignmentsListLink.all_ == total_fsa_links + 1
     assert result_optional.SubscriptionListLink is None, "This should only be set on an Aggregator EndDevice"
 
@@ -135,7 +140,7 @@ def test_list_map_to_response():
     assert result.results == len(all_sites)
     assert result.pollRate == 10
     assert_list_type(EndDeviceResponse, result.EndDevice, len(all_sites))
-    assert len(set([ed.lFDI for ed in result.EndDevice])) == len(all_sites), (
+    assert len(set([ed.lFDI for ed in result.EndDevice or []])) == len(all_sites), (
         f"Expected {len(all_sites)} unique LFDI's in the children"
     )
 
@@ -256,6 +261,7 @@ def test_virtual_end_device_map_to_response():
     assert result_all_set.lFDI == site_all_set.lfdi
     assert result_all_set.deviceCategory == hex(site_all_set.device_category)[2:], "Expected hex string with no 0x"
     assert result_all_set.postRate == site_all_set.post_rate_seconds
+    assert result_all_set.SubscriptionListLink is not None
     assert result_all_set.SubscriptionListLink.all_ == sub_count
 
     result_optional = EndDeviceMapper.map_to_response(scope, site_optional, False, fsa_count)
@@ -298,6 +304,7 @@ def test_RegistrationMapper_map_to_response(href_prefix: str | None):
     assert result_all_set is not None
     assert isinstance(result_all_set, RegistrationResponse)
     if scope.href_prefix is not None:
+        assert result_all_set.href is not None
         assert result_all_set.href.startswith(scope.href_prefix)
     assert result_all_set.dateTimeRegistered == site_all_set.created_time.timestamp()
     assert result_all_set.pIN == RegistrationMapper.add_checksum_to_registration_pin(site_all_set.registration_pin)
@@ -306,6 +313,7 @@ def test_RegistrationMapper_map_to_response(href_prefix: str | None):
     assert result_optional is not None
     assert isinstance(result_optional, RegistrationResponse)
     if scope.href_prefix is not None:
+        assert result_optional.href is not None
         assert result_optional.href.startswith(scope.href_prefix)
     assert result_optional.dateTimeRegistered == site_optional.created_time.timestamp()
     assert result_optional.pIN == RegistrationMapper.add_checksum_to_registration_pin(site_optional.registration_pin)

@@ -359,6 +359,7 @@ def test_MirrorUsagePointMapper_map_to_response(group_has_nones: bool):
 
     assert result is not None
     assert isinstance(result, MirrorUsagePoint)
+    assert result.href is not None
     assert result.href.startswith(href_prefix)
     assert result.href.endswith(uris.MirrorUsagePointUri.format(mup_id=group.group_id))
     assert isinstance(result.mRID, str)
@@ -427,6 +428,7 @@ def test_MirrorUsagePointMapper_map_to_list_response():
     result_all_set = MirrorUsagePointListMapper.map_to_list_response(scope, group_count, groups, post_rate_seconds)
     assert result_all_set is not None
     assert isinstance(result_all_set, MirrorUsagePointListResponse)
+    assert result_all_set.href is not None
     assert result_all_set.href.startswith(href_prefix)
     assert result_all_set.all_ == group_count
     assert result_all_set.results == len(groups)

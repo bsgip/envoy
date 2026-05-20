@@ -91,7 +91,7 @@ async def test_enable_dynamic_azure_ad_database_credentials(
 
     def on_db_connect(dbapi_connection, connection_record: _ConnectionRecord):
         """Pull out the password used to connect"""
-        protocol = connection_record.driver_connection._protocol
+        protocol = connection_record.driver_connection._protocol  # ty:ignore[unresolved-attribute]
         db_connection_creds.append((protocol.user, protocol.password))
         return
 
@@ -138,7 +138,7 @@ async def test_refresh_seconds_updating_cache(
 
     def on_db_connect(dbapi_connection, connection_record: _ConnectionRecord):
         """Pull out the password used to connect"""
-        protocol = connection_record.driver_connection._protocol
+        protocol = connection_record.driver_connection._protocol  # ty:ignore[unresolved-attribute]
         db_connection_creds.append((protocol.user, protocol.password))
         return
 

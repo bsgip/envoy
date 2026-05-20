@@ -188,7 +188,7 @@ async def test_get_virtual_site_for_aggregator(
         virtual_site = await get_virtual_site_for_aggregator(
             session, aggregator_id=aggregator_id, aggregator_lfdi=aggregator_lfdi, post_rate_seconds=post_rate_seconds
         )
-
+        assert virtual_site is not None
         assert virtual_site.site_id == 0  # Virtual sites always have a site_id of 0
         assert virtual_site.aggregator_id == aggregator_id
         assert_nowish(virtual_site.changed_time)  # Virtual sites have a changed time set to when they are requested
@@ -240,6 +240,7 @@ async def test_select_first_site_under_aggregator(pg_base_config, aggregator_id:
     """Tests select_first_site_under_aggregator. Returns first site under aggregator"""
     async with generate_async_session(pg_base_config) as session:
         site = await select_first_site_under_aggregator(session, aggregator_id=aggregator_id)
+        assert site is not None
         assert site.site_id == first_site_id
 
 
@@ -487,6 +488,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         # check it exists
         site_db = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
+        assert site_db is not None
 
         assert_class_instance_equality(
             Site, site_to_upsert, site_db, ignored_properties={"site_id", "created_time", "registration_pin"}
@@ -532,6 +534,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
             ),
             archive_data,
         )
+        assert archive_data.archive_time is not None
         assert_nowish(archive_data.archive_time)
         assert archive_data.deleted_time is None
 
@@ -542,12 +545,9 @@ async def test_upsert_site_for_aggregator_cant_change_agg_id(pg_base_config):
     site_id_to_update = 1
     aggregator_id = 1
 
-    original_site: Site
-    update_attempt_site: Site
-    original_registration_pin: int
     async with generate_async_session(pg_base_config) as session:
         original_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
-        assert original_site
+        assert original_site is not None
         original_registration_pin = original_site.registration_pin
 
         update_attempt_site = clone_class_instance(
@@ -589,7 +589,7 @@ async def count_table_rows(
     t: type[Base],
     join_t: type[Base] | list[type[Base]] | None,
     archive_t: type[ArchiveBase],
-    where_clause: Callable[[Select[int]], Select[int]],
+    where_clause: Callable[[Select[tuple[int]]], Select[tuple[int]]],
 ) -> SnapshotTableCount:
     """Counts the number of rows in the specified source table for t. Also counts again, but with the where_clause
     applied to the query.
@@ -816,9 +816,10 @@ async def test_delete_site_for_aggregator(
 
             # Check the archive records
             async with generate_async_session(pg_base_config) as session:
-                archives: list[ArchiveBase] = (await session.execute(select(after.archive_t))).scalars().all()
+                archives = (await session.execute(select(after.archive_t))).scalars().all()
                 assert all(a.deleted_time == deleted_time for a in archives), f"{before.t} deleted time is wrong"
-                assert all(abs((a.archive_time - now).seconds) < 20 for a in archives), (
+                assert all(a.archive_time is not None for a in archives)
+                assert all(abs((a.archive_time - now).seconds) < 20 for a in archives), (  # ty:ignore[unsupported-operator]
                     f"{before.t} archive time should be nowish"
                 )
         else:
@@ -925,9 +926,6 @@ async def test_insert_site_for_aggregator_cant_change_agg_id(pg_base_config):
     site_id_to_update = 1
     aggregator_id = 1
 
-    original_site: Site
-    update_attempt_site: Site
-    original_registration_pin: int
     async with generate_async_session(pg_base_config) as session:
         original_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
         assert original_site

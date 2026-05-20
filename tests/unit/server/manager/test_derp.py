@@ -19,7 +19,7 @@ from envoy.server.mapper.csip_aus.doe import DERControlListSource
 from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.site import Site
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import SiteRequestScope
 
 
 @pytest.mark.anyio
@@ -238,7 +238,7 @@ async def test_fetch_doe_control_for_scope(
     mock_select_doe_include_deleted: mock.MagicMock,
     selected_doe: DynamicOperatingEnvelope | None,
 ):
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
     doe_id = 15115
     derp_id = 123  # Must match the selected_doe site_control_group_id
     mock_session = create_mock_session()
@@ -269,7 +269,7 @@ async def test_fetch_doe_control_for_scope(
 @mock.patch("envoy.server.manager.derp.select_doe_include_deleted")
 async def test_fetch_doe_control_for_scope_derp_id_mismatch(mock_select_doe_include_deleted: mock.MagicMock):
     """Tests that if the DERProgram ID differs from the returned control - None is returned instead"""
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
     doe_id = 15115
     derp_id = 199666
     mock_session = create_mock_session()
@@ -301,7 +301,7 @@ async def test_fetch_doe_controls_for_scope(
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
-    scope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
     existing_site = generate_class_instance(Site)
     doe_count = 789
     start = 11
@@ -370,7 +370,7 @@ async def test_fetch_doe_controls_for_scope_site_dne(
 ):
     """Tests that if the site isn't accessible that the resulting list is empty"""
     # Arrange
-    scope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
     start = 11
     limit = 34
     derp_id = 51512
@@ -431,7 +431,7 @@ async def test_fetch_active_doe_controls_for_site(
     mock_select_does_at_timestamp.return_value = returned_does
     mock_count_does_at_timestamp.return_value = returned_count
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
 
     config = RuntimeServerConfig()
     mock_fetch_current_config.return_value = config

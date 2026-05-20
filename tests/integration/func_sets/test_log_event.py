@@ -196,6 +196,7 @@ async def test_get_log_event_list_pagination_for_aggregator_cert(
 
     assert_response_header(response, expected_http_response)
     if expected_http_response == HTTPStatus.OK:
+        assert expected_details is not None
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response = LogEventList.from_xml(body)
@@ -277,6 +278,7 @@ async def test_get_log_event_list_pagination_for_device_cert(
 
     assert_response_header(response, expected_http_response)
     if expected_http_response == HTTPStatus.OK:
+        assert expected_details is not None
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response = LogEventList.from_xml(body)

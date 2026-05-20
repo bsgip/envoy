@@ -53,6 +53,7 @@ async def test_select_site_der_for_site_with_relationships(pg_base_config):
 
         # Site 2 DER has no relationships
         site_2_der = await select_site_der_for_site(session, 1, 2)
+        assert site_2_der is not None
         assert site_2_der.site_id == 2
         assert site_2_der.site_der_id == 1
         assert_datetime_equal(site_2_der.created_time, datetime(2000, 1, 1, 0, 0, 0, 0, tzinfo=UTC))

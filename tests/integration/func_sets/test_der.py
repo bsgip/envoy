@@ -70,8 +70,8 @@ async def test_get_der_list(
     assert parsed_response.results == len(expected_sub_ids)
 
     if len(expected_sub_ids) > 0:
-        assert len(parsed_response.DER_) == len(expected_sub_ids)
-        assert all(d.href == uri.DERUri.format(site_id=site_id, der_id=der_id) for d in parsed_response.DER_)
+        assert len(parsed_response.DER_ or []) == len(expected_sub_ids)
+        assert all(d.href == uri.DERUri.format(site_id=site_id, der_id=der_id) for d in parsed_response.DER_ or [])
     else:
         assert parsed_response.DER_ is None
 
@@ -197,11 +197,11 @@ async def snapshot_sub_entity_changed_created_changed_time(
 ) -> tuple[datetime, datetime]:
     """Fetches the created/changed times for the subentity associated with site_id"""
     stmt = (
-        select(sub_entity_type.created_time, sub_entity_type.changed_time)
+        select(sub_entity_type.created_time, sub_entity_type.changed_time)  # type: ignore
         .join(SiteDER)
         .where(SiteDER.site_id == site_id)
     )
-    return (await session.execute(stmt)).one()
+    return (await session.execute(stmt)).one()  # type: ignore
 
 
 async def assert_sub_entity_count(
@@ -482,9 +482,9 @@ async def test_roundtrip_upsert_der_status(
     status_uri = uri.DERStatusUri.format(site_id=site_id, der_id=der_id)
     status: DERStatus = generate_class_instance(DERStatus, seed=13, generate_relationships=True)
     status.alarmStatus = "01"
-    status.genConnectStatus.value = "02"
-    status.storConnectStatus.value = "04"
-    status.manufacturerStatus.value = "sts"
+    status.genConnectStatus.value = "02"  # ty:ignore[invalid-assignment]
+    status.storConnectStatus.value = "04"  # ty:ignore[invalid-assignment]
+    status.manufacturerStatus.value = "sts"  # ty:ignore[invalid-assignment]
     response = await client.put(
         status_uri,
         headers=valid_headers,
@@ -550,4 +550,6 @@ async def test_get_associated_derprogram_list(
         parsed_response: DERProgramListResponse = DERProgramListResponse.from_xml(body)
         assert parsed_response.all_ == 3
         assert parsed_response.results == 3
+        assert parsed_response.DERProgram is not None
+        assert parsed_response.DERProgram[0].DERControlListLink is not None
         assert parsed_response.DERProgram[0].DERControlListLink.all_ == expected_doe_count

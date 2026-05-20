@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from itertools import product
-from typing import Optional, get_type_hints
+from typing import get_type_hints
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -85,7 +85,9 @@ def test_map_to_der_config_response_no_bad_combinations(setting: SiteDERSetting 
 def get_attrs_for_type(base_type: type) -> list[tuple[str, type]]:
     type_hints = get_type_hints(base_type)
     results: list[tuple[str, type]] = []
-    for name in CLASS_MEMBER_FETCHERS[get_generatable_class_base(base_type)](base_type):
+    gen_base = get_generatable_class_base(base_type)
+    assert gen_base is not None, "This is a test setup issue"
+    for name in CLASS_MEMBER_FETCHERS[gen_base](base_type):
         t = type_hints.get(name, None)
         if t is not None:
             results.append((name, t))

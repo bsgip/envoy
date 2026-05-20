@@ -137,7 +137,9 @@ async def test_get_response_set_list(
     else:
         assert len(parsed_response.ResponseSet_) == expected_count
         set_link_hrefs = [e.href for e in parsed_response.ResponseSet_]
-        list_link_hrefs = [e.ResponseListLink.href for e in parsed_response.ResponseSet_]
+        list_link_hrefs = [
+            e.ResponseListLink.href for e in parsed_response.ResponseSet_ if e.ResponseListLink is not None
+        ]
         all_hrefs = set_link_hrefs + list_link_hrefs
         assert len(all_hrefs) == len(set(all_hrefs)), "Every href should be unique"
 
@@ -665,6 +667,7 @@ async def test_create_response_for_aggregator(
         parsed_response = expected_response_type.from_xml(read_response_body_string(response))
         assert parsed_response.status == request_body.status
         assert parsed_response.subject == subject
+        assert parsed_response.createdDateTime is not None
         assert_nowish(parsed_response.createdDateTime)
 
         assert (doe_count_before + rate_count_before + 1) == (doe_count_after + rate_count_after), "One new response"
@@ -770,6 +773,7 @@ async def test_create_response_for_doe_with_display_id(
         assert parsed_response.status == request_body.status
         assert parsed_response.subject == subject
         assert parsed_response.endDeviceLFDI == site_lfdi
+        assert parsed_response.createdDateTime is not None
         assert_nowish(parsed_response.createdDateTime)
 
         assert (doe_count_before + 1) == (doe_count_after), "One new response"

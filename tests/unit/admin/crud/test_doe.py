@@ -99,6 +99,8 @@ async def test_cancel_then_insert_does_update(pg_base_config):
             original_doe,
             ignored_properties={"dynamic_operating_envelope_id", "created_time", "site", "site_control_group"},
         )
+        assert doe_to_update.export_limit_watts is not None
+        assert doe_to_update.import_limit_active_watts is not None
         doe_to_update.export_limit_watts += Decimal("99.1")
         doe_to_update.import_limit_active_watts += Decimal("98.2")
         doe_to_update.changed_time = datetime(2026, 1, 3, tzinfo=UTC)
@@ -126,6 +128,7 @@ async def test_cancel_then_insert_does_update(pg_base_config):
             original_doe_copy,
             archive_data,
         )
+        assert archive_data.archive_time is not None
         assert_nowish(archive_data.archive_time)
         assert archive_data.deleted_time == deleted_time
 

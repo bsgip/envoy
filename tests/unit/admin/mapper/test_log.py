@@ -31,6 +31,8 @@ def test_map_to_response_handles_zero_to_none():
     ]
 
     response: CalculationLogResponse = CalculationLogMapper.map_to_response(log)
+    assert response.variable_values is not None
+    assert response.label_values is not None
     assert response.variable_values.site_ids == [None, 10]
     assert response.label_values.site_ids == [None, 11]
 
@@ -58,6 +60,7 @@ def test_map_to_response_handles_empty_labels():
     log.label_values = []
 
     response: CalculationLogResponse = CalculationLogMapper.map_to_response(log)
+    assert response.variable_values is not None
     assert response.variable_values.site_ids == [None, 10]
     assert response.label_values is None, "If there are no values - they should map to None"
 
@@ -73,6 +76,7 @@ def test_map_to_response_handles_empty_variables():
 
     response: CalculationLogResponse = CalculationLogMapper.map_to_response(log)
     assert response.variable_values is None, "If there are no values - they should map to None"
+    assert response.label_values is not None
     assert response.label_values.site_ids == [None, 11]
 
 

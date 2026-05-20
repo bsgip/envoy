@@ -9,6 +9,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
+from envoy.server.model import Base
+from envoy.server.model.archive import ArchiveBase
 from envoy.server.model.archive.base import ARCHIVE_BASE_COLUMNS
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import ArchiveSite
@@ -29,12 +31,12 @@ async def fetch_all_values_as_tuples(
     if ignore_columns is None:
         ignore_columns = set()
 
-    return (await session.execute(select(*[c for c in t.__table__.columns if c.name not in ignore_columns]))).all()
+    return (await session.execute(select(*[c for c in t.__table__.columns if c.name not in ignore_columns]))).all()  # type: ignore
 
 
 async def fetch_single_column(session: AsyncSession, t: type, column_name: str) -> list[Any]:
     """Fetches all rows from a table as a list of that value"""
-    tuple_wrapped = (await session.execute(select(*[c for c in t.__table__.columns if c.name == column_name]))).all()
+    tuple_wrapped = (await session.execute(select(*[c for c in t.__table__.columns if c.name == column_name]))).all()  # type: ignore
     return [v[0] for v in tuple_wrapped]
 
 
@@ -43,10 +45,12 @@ async def fetch_single_column(session: AsyncSession, t: type, column_name: str) 
     find_paired_archive_classes(),
 )
 @pytest.mark.anyio
-async def test_copy_rows_into_archive_no_matches(pg_base_config, original_type: type, archive_type: type):
+async def test_copy_rows_into_archive_no_matches(
+    pg_base_config, original_type: type[Base], archive_type: type[ArchiveBase]
+):
     """Tests the copy into archive function when the where clause matches nothing (i.e. - it should do nothing)"""
     async with generate_async_session(pg_base_config) as session:
-        await copy_rows_into_archive(session, original_type, archive_type, lambda q: q.where(False))
+        await copy_rows_into_archive(session, original_type, archive_type, lambda q: q.where(False))  # ty:ignore[invalid-argument-type]
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
@@ -60,7 +64,7 @@ async def test_copy_rows_into_archive_no_matches(pg_base_config, original_type: 
 )
 @pytest.mark.anyio
 async def test_copy_rows_into_archive_all_matches(
-    pg_base_config, original_type: type, archive_type: type, commit: bool
+    pg_base_config, original_type: type[Base], archive_type: type[ArchiveBase], commit: bool
 ):
     """Tests the copy into archive function when the where clause matches EVERYTHING (i.e. - it should copy all rows).
 
@@ -70,7 +74,7 @@ async def test_copy_rows_into_archive_all_matches(
         assert original_count_before > 0
         original_values = await fetch_all_values_as_tuples(session, original_type)
 
-        await copy_rows_into_archive(session, original_type, archive_type, lambda q: q.where(True))
+        await copy_rows_into_archive(session, original_type, archive_type, lambda q: q.where(True))  # ty:ignore[invalid-argument-type]
 
         if commit:
             await session.commit()
@@ -104,7 +108,9 @@ async def test_copy_rows_into_archive_all_matches(
     find_paired_archive_classes(),
 )
 @pytest.mark.anyio
-async def test_copy_rows_into_archive_multiple_times(pg_base_config, original_type: type, archive_type: type):
+async def test_copy_rows_into_archive_multiple_times(
+    pg_base_config, original_type: type[Base], archive_type: type[ArchiveBase]
+):
     """Tests the copy into archive function can repeatedly add to the archive without issue"""
     async with generate_async_session(pg_base_config) as session:
         original_count_before = (await session.execute(select(func.count()).select_from(original_type))).scalar_one()
@@ -113,7 +119,7 @@ async def test_copy_rows_into_archive_multiple_times(pg_base_config, original_ty
     loop_count = 3
     for _ in range(loop_count):
         async with generate_async_session(pg_base_config) as session:
-            await copy_rows_into_archive(session, original_type, archive_type, lambda q: q.where(True))
+            await copy_rows_into_archive(session, original_type, archive_type, lambda q: q.where(True))  # ty:ignore[invalid-argument-type]
             await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
@@ -173,7 +179,9 @@ async def test_copy_rows_into_archive_complex_filter(pg_base_config):
     find_paired_archive_classes(),
 )
 @pytest.mark.anyio
-async def test_delete_rows_into_archive_no_matches(pg_base_config, original_type: type, archive_type: type):
+async def test_delete_rows_into_archive_no_matches(
+    pg_base_config, original_type: type[Base], archive_type: type[ArchiveBase]
+):
     """Check that delete_rows_into_archive does nothing if the where clause matches nothing"""
 
     deleted_time = datetime(2021, 5, 6, 7, 8, 9, 1234, tzinfo=UTC)
@@ -183,7 +191,7 @@ async def test_delete_rows_into_archive_no_matches(pg_base_config, original_type
         assert count_before > 0, "This isn't testing anything if this fails"
         original_values = await fetch_all_values_as_tuples(session, original_type)
 
-        await delete_rows_into_archive(session, original_type, archive_type, deleted_time, lambda q: q.where(False))
+        await delete_rows_into_archive(session, original_type, archive_type, deleted_time, lambda q: q.where(False))  # ty:ignore[invalid-argument-type]
         await session.commit()
 
     async with generate_async_session(pg_base_config) as session:
@@ -209,7 +217,7 @@ async def test_delete_rows_into_archive_no_matches(pg_base_config, original_type
 )
 @pytest.mark.anyio
 async def test_delete_rows_into_archive_all_matches(
-    pg_base_config, original_type: type, archive_type: type, commit: bool
+    pg_base_config, original_type: type[Base], archive_type: type[ArchiveBase], commit: bool
 ):
     """Check that delete_rows_into_archive can delete everything if the where clause matches everything
 
@@ -222,7 +230,7 @@ async def test_delete_rows_into_archive_all_matches(
         assert original_count_before > 0, "This isn't testing anything if this fails"
         original_values = await fetch_all_values_as_tuples(session, original_type)
 
-        await delete_rows_into_archive(session, original_type, archive_type, deleted_time, lambda q: q.where(True))
+        await delete_rows_into_archive(session, original_type, archive_type, deleted_time, lambda q: q.where(True))  # ty:ignore[invalid-argument-type]
 
         if commit:
             await session.commit()

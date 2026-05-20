@@ -36,7 +36,7 @@ TZ = ZoneInfo("Australia/Brisbane")
 )
 @pytest.mark.anyio
 async def test_select_csip_aus_site_type_ids(
-    pg_base_config, aggregator_id: int, site_id: int, uom: int, expected_site_type_ids: list[int]
+    pg_base_config, aggregator_id: int, site_id: int, uom: UomType, expected_site_type_ids: list[int]
 ):
     async with generate_async_session(pg_base_config) as session:
         site_type_ids = await select_csip_aus_site_type_ids(session, aggregator_id, site_id, uom)

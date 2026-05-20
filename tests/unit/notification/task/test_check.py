@@ -18,6 +18,7 @@ from envoy.notification.crud.common import (
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     SiteScopedSiteControlGroupDefault,
+    TResourceModel,
 )
 from envoy.notification.exception import NotificationError
 from envoy.notification.task.check import (
@@ -42,7 +43,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import PRICE_DECIMAL_POWER, TariffGeneratedRate
-from envoy.server.request_scope import AggregatorRequestScope, DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import AggregatorRequestScope
 from tests.unit.notification.mocks import (
     assert_task_kicked_n_times,
     assert_task_kicked_with_broker_and_args,
@@ -484,7 +485,7 @@ def test_entities_to_notification_unknown_resource():
     """We catch bad SubscriptionResource with our own error"""
     with pytest.raises(NotificationError):
         entities_to_notification(
-            9999,
+            9999,  # ty:ignore[invalid-argument-type]
             Subscription(resource_type=9999),
             (1, 2, 3),
             None,
@@ -596,7 +597,7 @@ def test_all_entity_batches(input_changed: dict[tuple, list], input_deleted: dic
     ],
 )
 def test_entities_to_notification_sites(  # noqa: C901
-    resource: SubscriptionResource, entity_class: type, sub_site_id_scope: int | None
+    resource: SubscriptionResource, entity_class: type[TResourceModel], sub_site_id_scope: int | None
 ):
     """For every resource/type mapping - generate a notification and do some cursory examination of the
     resulting notification - the majority of the test are captured in the mapper unit tests - this is here
@@ -670,36 +671,64 @@ def test_entities_to_notification_sites(  # noqa: C901
                     expected_sub_resource_href_snippet = f"/{sub_site_id_scope}"
 
             if resource == SubscriptionResource.SITE:
+                assert notification.resource is not None
+                assert notification.resource.EndDevice is not None
                 assert len(notification.resource.EndDevice) == len(entities)
             elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
+                assert notification.resource is not None
+                assert notification.resource.DERControl is not None
                 assert len(notification.resource.DERControl) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.READING:
+                assert notification.resource is not None
+                assert notification.resource.Readings is not None
                 assert len(notification.resource.Readings) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
+                assert notification.resource is not None
+                assert notification.resource.TimeTariffInterval is not None
                 assert len(notification.resource.TimeTariffInterval) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_DER_AVAILABILITY and entity_length:
+                assert notification.resource is not None
+                assert notification.resource.statWAvail is not None
                 assert notification.resource.statWAvail.value == entities[0].estimated_w_avail_value
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_DER_RATING and entity_length:
+                assert notification.resource is not None
                 assert_hex_binary_enum_matches(notification.resource.doeModesSupported, entities[0].doe_modes_supported)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_DER_SETTING and entity_length:
+                assert notification.resource is not None
                 assert_hex_binary_enum_matches(notification.resource.doeModesEnabled, entities[0].doe_modes_enabled)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_DER_STATUS and entity_length:
+                assert notification.resource is not None
+                assert notification.resource.inverterStatus is not None
                 assert notification.resource.inverterStatus.value == entities[0].inverter_status
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS and entity_length:
+                assert notification.resource is not None
                 assert notification.resource.pollRate == entities[0].function_set_assignment_poll_rate
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL and entity_length:
+                assert notification.resource is not None
                 assert notification.resource.setGradW == entities[0].original.ramp_rate_percent_per_second
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_CONTROL_GROUP and entity_length:
+                assert notification.resource is not None
+                assert notification.resource.DERProgram is not None
                 assert len(notification.resource.DERProgram) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
 
 
@@ -707,7 +736,7 @@ def test_entities_to_notification_sites(  # noqa: C901
 async def test_fetch_batched_entities_bad_resource():
     mock_session = create_mock_session()
     with pytest.raises(NotificationError):
-        await fetch_batched_entities(mock_session, 9999, datetime.now())
+        await fetch_batched_entities(mock_session, 9999, datetime.now())  # ty:ignore[invalid-argument-type]
     assert_mock_session(mock_session, committed=False)
 
 
@@ -801,7 +830,7 @@ async def test_check_db_change_or_delete(
         subscription_href=SubscriptionMapper.calculate_subscription_href(
             agg1_sub2,
             generate_class_instance(
-                DeviceOrAggregatorRequestScope, display_site_id=VIRTUAL_END_DEVICE_SITE_ID, href_prefix=href_prefix
+                AggregatorRequestScope, display_site_id=VIRTUAL_END_DEVICE_SITE_ID, href_prefix=href_prefix
             ),
         ),
         subscription_id=agg1_sub2.subscription_id,
@@ -814,7 +843,7 @@ async def test_check_db_change_or_delete(
         subscription_href=SubscriptionMapper.calculate_subscription_href(
             agg2_sub1,
             generate_class_instance(
-                DeviceOrAggregatorRequestScope, display_site_id=agg2_sub1.scoped_site_id, href_prefix=href_prefix
+                AggregatorRequestScope, display_site_id=agg2_sub1.scoped_site_id, href_prefix=href_prefix
             ),
         ),
         subscription_id=agg2_sub1.subscription_id,

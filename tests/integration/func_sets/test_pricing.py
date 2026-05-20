@@ -73,8 +73,8 @@ async def test_get_tariffprofilelist_nosite(
 
     parsed_response: TariffProfileListResponse = TariffProfileListResponse.from_xml(body)
     assert parsed_response.results == len(expected_tariffs)
-    assert len(parsed_response.TariffProfile) == len(expected_tariffs)
-    assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile]
+    assert len(parsed_response.TariffProfile or []) == len(expected_tariffs)
+    assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile or []]
 
 
 @pytest.mark.anyio
@@ -111,13 +111,17 @@ async def test_get_tariffprofilelist(
     assert parsed_response
     assert parsed_response.href == uri.TariffProfileListUri.format(site_id=site_id)
     assert parsed_response.results == len(expected_tariffs_with_count)
-    assert len(parsed_response.TariffProfile) == len(expected_tariffs_with_count)
+    assert len(parsed_response.TariffProfile or []) == len(expected_tariffs_with_count)
 
     # Check that the rate counts and referenced rate component counts match our expectations
     expected_tariffs = [href for (href, _) in expected_tariffs_with_count]
     expected_rate_counts = [rate_count for (_, rate_count) in expected_tariffs_with_count]
-    assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile]
-    assert expected_rate_counts == [tp.RateComponentListLink.all_ for tp in parsed_response.TariffProfile]
+    assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile or []]
+    assert expected_rate_counts == [
+        tp.RateComponentListLink.all_
+        for tp in parsed_response.TariffProfile or []
+        if tp.RateComponentListLink is not None
+    ]
 
 
 @pytest.mark.anyio
@@ -165,13 +169,17 @@ async def test_get_tariffprofilelist_fsa_scoped(
     if len(expected_tariffs_with_count) == 0:
         assert parsed_response.TariffProfile is None or len(parsed_response.TariffProfile) == 0
     else:
-        assert len(parsed_response.TariffProfile) == len(expected_tariffs_with_count)
+        assert len(parsed_response.TariffProfile or []) == len(expected_tariffs_with_count)
 
         # Check that the rate counts and referenced rate component counts match our expectations
         expected_tariffs = [href for (href, _) in expected_tariffs_with_count]
         expected_rate_counts = [rate_count for (_, rate_count) in expected_tariffs_with_count]
-        assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile]
-        assert expected_rate_counts == [tp.RateComponentListLink.all_ for tp in parsed_response.TariffProfile]
+        assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile or []]
+        assert expected_rate_counts == [
+            tp.RateComponentListLink.all_
+            for tp in parsed_response.TariffProfile or []
+            if tp.RateComponentListLink is not None
+        ]
 
 
 @pytest.mark.anyio
@@ -358,8 +366,8 @@ async def test_get_ratecomponentlist(
     if len(expected_rates) == 0:
         assert parsed_response.RateComponent is None or len(parsed_response.RateComponent) == len(expected_rates)
     else:
-        assert len(parsed_response.RateComponent) == len(expected_rates)
-        assert expected_rates == [tp.href for tp in parsed_response.RateComponent]
+        assert len(parsed_response.RateComponent or []) == len(expected_rates)
+        assert expected_rates == [tp.href for tp in parsed_response.RateComponent or []]
 
 
 @pytest.mark.anyio
@@ -456,11 +464,11 @@ async def test_get_timetariffintervallist(
             expected_ttis
         )
     else:
-        assert len(parsed_response.TimeTariffInterval) == len(expected_ttis)
+        assert len(parsed_response.TimeTariffInterval or []) == len(expected_ttis)
 
         # validate each of the TTI hrefs and that the CTI link encodes the correct price
         for idx, (tti_href, price), tti in zip(
-            range(len(expected_ttis)), expected_ttis, parsed_response.TimeTariffInterval, strict=False
+            range(len(expected_ttis)), expected_ttis, parsed_response.TimeTariffInterval or [], strict=False
         ):
             assert tti.href == tti_href, f"[{idx}]: expected href {tti_href} but got {tti.href}"
             assert tti.ConsumptionTariffIntervalListLink
@@ -557,6 +565,7 @@ async def test_get_cti_list(
         parsed_response: ConsumptionTariffIntervalListResponse = ConsumptionTariffIntervalListResponse.from_xml(body)
         assert parsed_response.all_ == 1
         assert parsed_response.results == 1
+        assert parsed_response.ConsumptionTariffInterval is not None
         assert len(parsed_response.ConsumptionTariffInterval) == 1
         cti_href = parsed_response.ConsumptionTariffInterval[0].href
         assert cti_href

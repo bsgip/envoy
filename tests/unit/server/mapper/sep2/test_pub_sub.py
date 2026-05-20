@@ -323,6 +323,7 @@ def test_SubscriptionMapper_map_to_response():
     # check prefix is applied
     sep2_prefix = SubscriptionMapper.map_to_response(sub_all_set, scope_prefix)
     assert sep2_prefix.href and isinstance(sep2_prefix.href, str)
+    assert sep2_prefix.href is not None
     assert sep2_prefix.href.startswith(scope_prefix.href_prefix)
     assert sep2_prefix.subscribedResource and isinstance(sep2_prefix.subscribedResource, str)
     assert sep2_prefix.subscribedResource.startswith(scope_prefix.href_prefix)
@@ -934,6 +935,7 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(
 
     assert len(notification_all_set.resource.FunctionSetAssignments) == len(fsa_ids)
     for fsa in notification_all_set.resource.FunctionSetAssignments:
+        assert fsa.href is not None
         assert fsa.href.startswith("/custom/prefix")
 
 

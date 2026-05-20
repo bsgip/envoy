@@ -72,18 +72,17 @@ def test_reading_type_to_billing_primacy_all_unique(optional_is_none: bool):
             primacy = BillingMapper.reading_type_to_billing_primacy(srt)
             assert isinstance(primacy, int)
 
-            alternative_primacy = BillingMapper.reading_type_to_billing_primacy(
-                generate_class_instance(
-                    SiteReadingType,
-                    seed=1001,
-                    optional_is_none=optional_is_none,
-                    data_qualifier=dq,
-                    accumulation_behaviour=ab,
-                )
+            srt = generate_class_instance(
+                SiteReadingType,
+                seed=1001,
+                optional_is_none=optional_is_none,
+                data_qualifier=dq,
+                accumulation_behaviour=ab,
             )
+            alternative_primacy = BillingMapper.reading_type_to_billing_primacy(srt)
             assert alternative_primacy == primacy, "Values should be consistent (based on data_qual and accum behavior)"
 
-            all_srts.append(SiteReadingType)
+            all_srts.append(srt)
             all_primacies.append(primacy)
 
     assert len(all_primacies) == len(all_srts)
@@ -264,7 +263,8 @@ TS_2 = datetime(2023, 2, 2, 2, 2, 2)
     ],
 )
 def test_aggregate_readings_for_site_timestamp(
-    expected_inputs: tuple[int, datetime, int, int, SiteReadingType], expected_outputs: tuple[int, datetime, Decimal]
+    expected_inputs: list[tuple[int, datetime, int, int, SiteReadingType]],
+    expected_outputs: list[tuple[int, datetime, Decimal]],
 ):
     """Tests aggregate_readings_for_site_timestamp using a shorthand definition for input/output readings
 

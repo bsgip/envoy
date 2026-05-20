@@ -95,6 +95,7 @@ async def test_get_subscription_list_by_aggregator(
     # Start by updating our subscription 5 to appear under site 4 (to ensure we get multiple in a list)
     async with generate_async_session(pg_base_config) as session:
         sub_5 = await select_subscription_by_id(session, 1, 5)
+        assert sub_5 is not None
         sub_5.scoped_site_id = 4
         await session.commit()
 
@@ -114,7 +115,7 @@ async def test_get_subscription_list_by_aggregator(
         assert len(parsed_response.subscriptions) == len(expected_sub_ids), f"received body:\n{body}"
 
         # Pull sub id from the href - hacky but will work for this test
-        assert [int(ed.href[-1]) for ed in parsed_response.subscriptions] == expected_sub_ids
+        assert [int(ed.href[-1]) for ed in parsed_response.subscriptions if ed.href is not None] == expected_sub_ids
 
 
 @pytest.mark.parametrize(
@@ -174,6 +175,7 @@ async def test_get_subscription_list_by_page(
     # Start by updating our subscription 5 to appear under site 4 (to ensure we get multiple in a list)
     async with generate_async_session(pg_base_config) as session:
         sub_5 = await select_subscription_by_id(session, 1, 5)
+        assert sub_5 is not None
         sub_5.scoped_site_id = 4
         await session.commit()
 
@@ -193,7 +195,7 @@ async def test_get_subscription_list_by_page(
         assert len(parsed_response.subscriptions) == len(expected_sub_ids), f"received body:\n{body}"
 
         # Pull sub id from the href - hacky but will work for this test
-        assert [int(ed.href[-1]) for ed in parsed_response.subscriptions] == expected_sub_ids
+        assert [int(ed.href[-1]) for ed in parsed_response.subscriptions if ed.href is not None] == expected_sub_ids
 
 
 @pytest.mark.parametrize(
@@ -239,6 +241,7 @@ async def test_get_subscription_by_aggregator(
         assert len(body) > 0
         parsed_response: Sep2Subscription = Sep2Subscription.from_xml(body)
         assert parsed_response.subscribedResource == expected_subscribed_resource
+        assert parsed_response.href is not None
         assert int(parsed_response.href[-1]) == sub_id
 
 
@@ -312,6 +315,7 @@ async def test_create_derp_default_subscription(
     response_body = read_response_body_string(response)
     assert len(response_body) > 0
     parsed_response: Sep2Subscription = Sep2Subscription.from_xml(response_body)
+    assert parsed_response.href
     assert parsed_response.href in inserted_href
     assert parsed_response.notificationURI == insert_request.notificationURI
     assert parsed_response.subscribedResource == insert_request.subscribedResource
@@ -326,6 +330,7 @@ async def test_create_derp_default_subscription(
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(Subscription).order_by(Subscription.subscription_id.desc()).limit(1))
         created_sub = resp.scalars().first()
+        assert created_sub is not None
         assert_nowish(created_sub.changed_time)
         assert_nowish(created_sub.created_time)
         if use_aggregator_edev:
@@ -369,6 +374,7 @@ async def test_create_doe_subscription(
     response_body = read_response_body_string(response)
     assert len(response_body) > 0
     parsed_response: Sep2Subscription = Sep2Subscription.from_xml(response_body)
+    assert parsed_response.href
     assert parsed_response.href in inserted_href
     assert parsed_response.notificationURI == insert_request.notificationURI
     assert parsed_response.subscribedResource == insert_request.subscribedResource
@@ -383,6 +389,7 @@ async def test_create_doe_subscription(
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(Subscription).order_by(Subscription.subscription_id.desc()).limit(1))
         created_sub = resp.scalars().first()
+        assert created_sub is not None
         assert_nowish(created_sub.changed_time)
         assert_nowish(created_sub.created_time)
         if use_aggregator_edev:
@@ -422,6 +429,7 @@ async def do_test_renewal(
         sub_count_after = (await session.execute(select(func.count()).select_from(Subscription))).scalar_one()
         resp = await session.execute(select(Subscription).order_by(Subscription.subscription_id.desc()).limit(1))
         created_sub = resp.scalars().first()
+        assert created_sub is not None
         assert_nowish(created_sub.changed_time)
         assert_nowish(created_sub.created_time)
         assert created_sub.notification_uri == request.notificationURI
@@ -534,6 +542,7 @@ async def test_create_site_scoped_subscription_entry_added_to_db(
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(Subscription).where(Subscription.subscription_id == sub_id).limit(1))
         created_sub = resp.scalars().first()
+        assert created_sub is not None
         assert created_sub.scoped_site_id == 1, "Expected a site scoped sub"
         assert_nowish(created_sub.changed_time)
 
@@ -567,6 +576,7 @@ async def test_create_unscoped_subscription_entry_added_to_db(
     async with generate_async_session(pg_base_config) as session:
         resp = await session.execute(select(Subscription).where(Subscription.subscription_id == sub_id).limit(1))
         created_sub = resp.scalars().first()
+        assert created_sub is not None
         assert created_sub.scoped_site_id is None, "Expected a unscoped sub"
         assert_nowish(created_sub.changed_time)
 
@@ -631,6 +641,7 @@ async def test_create_end_device_subscription(client: AsyncClient, notifications
     assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, expected_notification_uri)] == 1
 
     # Simple check on the notification content
+    assert notifications_enabled.logged_requests[0].content
     assert inserted_href in notifications_enabled.logged_requests[0].content
     assert insert_request.lFDI in notifications_enabled.logged_requests[0].content
     assert str(insert_request.sFDI) in notifications_enabled.logged_requests[0].content
@@ -680,6 +691,7 @@ async def test_submit_conditional_reading(client: AsyncClient, notifications_ena
     assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, expected_notification_uri)] == 1
 
     # Simple check on the notification content
+    assert notifications_enabled.logged_requests[0].content
     assert "DEAD" not in notifications_enabled.logged_requests[0].content
     assert "BEEF" in notifications_enabled.logged_requests[0].content
 
@@ -719,6 +731,7 @@ async def test_der_capability_subscription(
     assert notifications_enabled.call_count_by_method[HTTPMethod.GET] == 0
     assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
     assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, expected_notification_uri)] == 1
+    assert notifications_enabled.logged_requests[0].content
 
     notification = Sep2Notification.from_xml(notifications_enabled.logged_requests[0].content)
     assert notification.subscribedResource == insert_request.subscribedResource

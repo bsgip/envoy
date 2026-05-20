@@ -236,8 +236,8 @@ async def test_supersede_site_control(pg_base_config, admin_client_auth: AsyncCl
         start_time=datetime(2022, 5, 7, 1, 2, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
         duration_seconds=5,
         calculation_log_id=3,  # This is how we'll look this record up in the DB later
-        export_limit_watts=44,
-        import_limit_watts=55,
+        export_limit_watts=Decimal(44),
+        import_limit_watts=Decimal(55),
     )
 
     resp = await admin_client_auth.post(
@@ -463,7 +463,7 @@ async def test_supersede_site_control_different_fields_coexist(pg_base_config, a
 
     # Create first DOE with load_limit
     doe_with_load_limit = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, load_limit_watts=0
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, load_limit_watts=Decimal(0)
     )
 
     resp = await admin_client_auth.post(
@@ -474,7 +474,7 @@ async def test_supersede_site_control_different_fields_coexist(pg_base_config, a
 
     # Create second DOE with import_limit at the same time
     doe_with_import_limit = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=5000
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=Decimal(5000)
     )
 
     resp = await admin_client_auth.post(
@@ -547,14 +547,14 @@ async def test_supersede_site_control_same_field_does_supersede(pg_base_config, 
 
     # DOE1
     doe1 = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, import_limit_watts=1000
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, import_limit_watts=Decimal(1000)
     )
     resp = await admin_client_auth.post(SiteControlUri.format(group_id=1), content=f"[{doe1.model_dump_json()}]")
     assert resp.status_code == HTTPStatus.CREATED
 
     # DOE2 with import_limit at the same time - should supersede DOE1
     doe2 = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=2000
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=Decimal(2000)
     )
     resp = await admin_client_auth.post(SiteControlUri.format(group_id=1), content=f"[{doe2.model_dump_json()}]")
     assert resp.status_code == HTTPStatus.CREATED

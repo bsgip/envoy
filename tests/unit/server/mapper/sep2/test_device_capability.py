@@ -36,10 +36,10 @@ def test_map_to_response(scope: BaseRequestScope):
 
     assert device_capability.TimeLink == Link(href=_form_href(scope.href_prefix, TimeUri))
     assert device_capability.EndDeviceListLink == ListLink(
-        href=_form_href(scope.href_prefix, EndDeviceListUri), all_=f"{edev_cnt}"
+        href=_form_href(scope.href_prefix, EndDeviceListUri), all_=edev_cnt
     )
     assert device_capability.MirrorUsagePointListLink == ListLink(
-        href=_form_href(scope.href_prefix, MirrorUsagePointListUri), all_=f"{mup_cnt}"
+        href=_form_href(scope.href_prefix, MirrorUsagePointListUri), all_=mup_cnt
     )
     assert device_capability.href == _form_href(scope.href_prefix, DeviceCapabilityUri)
     assert device_capability.pollRate == 10

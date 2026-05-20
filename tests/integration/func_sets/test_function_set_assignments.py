@@ -52,9 +52,11 @@ async def test_get_function_set_assignments(
 
         parsed_response: FunctionSetAssignmentsResponse = FunctionSetAssignmentsResponse.from_xml(body)
         assert parsed_response.href == uri.FunctionSetAssignmentsUri.format(site_id=site_id, fsa_id=fsa_id)
+        assert parsed_response.DERProgramListLink is not None
         assert parsed_response.DERProgramListLink.href == uri.DERProgramFSAListUri.format(
             site_id=site_id, fsa_id=fsa_id
         ), "DERP list should use FSA scoped variant"
+        assert parsed_response.TariffProfileListLink is not None
         assert parsed_response.TariffProfileListLink.href == uri.TariffProfileFSAListUri.format(
             site_id=site_id, fsa_id=fsa_id
         ), "Tariff list should use FSA scoped variant"
@@ -100,7 +102,7 @@ async def test_get_function_set_assignments_list(
     # Handle None case when there are no assignments
     actual_assignments = parsed_response.FunctionSetAssignments or []
     assert len(actual_assignments) == len(expected_fsa_ids)
-    assert expected_fsa_ids == [int(fsa.href.split("/")[-1]) for fsa in actual_assignments]
+    assert expected_fsa_ids == [int(fsa.href.split("/")[-1]) for fsa in actual_assignments if fsa.href is not None]
 
 
 @pytest.mark.parametrize(
@@ -156,6 +158,9 @@ async def test_get_function_set_assignments_list_with_none_fsa_id(
     for fsa, expected_id_counts in zip(actual_assignments, expected_fsa_ids_counts, strict=False):
         expected_id, expected_derp_count, expected_tp_count = expected_id_counts
 
+        assert fsa.href is not None
+        assert fsa.DERProgramListLink is not None
+        assert fsa.TariffProfileListLink is not None
         assert int(fsa.href.split("/")[-1]) == expected_id, fsa.href
         assert fsa.DERProgramListLink.all_ or 0 == expected_derp_count, fsa.href
         assert fsa.TariffProfileListLink.all_ or 0 == expected_tp_count, fsa.href

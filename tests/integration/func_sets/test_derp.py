@@ -1,6 +1,7 @@
 import asyncio
 import urllib.parse
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from http import HTTPStatus
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -116,7 +117,7 @@ async def test_get_derprogram_list(
     after: datetime | None,
     site_id: int,
     expected_derp_ids_with_count: list[tuple[int, int]] | None,
-    expected_status: HTTPStatus | None,
+    expected_status: HTTPStatus,
     agg_1_headers,
 ):
     """Tests getting DERPrograms for various sites and validates access constraints"""
@@ -133,10 +134,11 @@ async def test_get_derprogram_list(
         parsed_response: DERProgramListResponse = DERProgramListResponse.from_xml(body)
         assert parsed_response.href == uri_derp_list_format.format(site_id=site_id)
         assert parsed_response.results == len(expected_derp_ids_with_count)
-        assert len(parsed_response.DERProgram) == len(expected_derp_ids_with_count)
+        assert len(parsed_response.DERProgram or []) == len(expected_derp_ids_with_count)
 
         actual_derp_ids_with_count = [
-            (int(derp.href.split("/")[-1]), derp.DERControlListLink.all_) for derp in parsed_response.DERProgram
+            (int(derp.href.split("/")[-1]), derp.DERControlListLink.all_)  # ty:ignore[unresolved-attribute]
+            for derp in parsed_response.DERProgram or []
         ]
         assert expected_derp_ids_with_count == actual_derp_ids_with_count
 
@@ -169,7 +171,7 @@ async def test_get_derprogram_list_fsa_scoped(
     site_id: int,
     fsa_id: int,
     expected_derp_ids_with_count: list[tuple[int, int]] | None,
-    expected_status: HTTPStatus | None,
+    expected_status: HTTPStatus,
     agg_1_headers,
 ):
     """Tests getting DERPrograms (with FSA filter in place) for various sites and validates access constraints"""
@@ -203,7 +205,7 @@ async def test_get_derprogram_list_fsa_scoped(
         derps = [] if parsed_response.DERProgram is None else parsed_response.DERProgram
         assert len(derps) == len(expected_derp_ids_with_count)
 
-        actual_derp_ids_with_count = [(int(derp.href.split("/")[-1]), derp.DERControlListLink.all_) for derp in derps]
+        actual_derp_ids_with_count = [(int(derp.href.split("/")[-1]), derp.DERControlListLink.all_) for derp in derps]  # ty:ignore[unresolved-attribute]
         assert expected_derp_ids_with_count == actual_derp_ids_with_count
 
 
@@ -243,6 +245,7 @@ async def test_get_derprogram_doe(
         assert len(body) > 0
         parsed_response: DERProgramResponse = DERProgramResponse.from_xml(body)
         assert parsed_response.href == uri_derp_doe_format.format(site_id=site_id, der_program_id=1)
+        assert parsed_response.DERControlListLink is not None
         assert parsed_response.DERControlListLink.all_ == expected_doe_count
         assert parsed_response.DERControlListLink.href == uri_derc_list_format.format(site_id=site_id, der_program_id=1)
 
@@ -417,7 +420,7 @@ async def test_get_dercontrol_list(
         parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
         if not parsed_response.DERControl:
             parsed_response.DERControl = []  # Makes it easier to compare
-        assert path.startswith(parsed_response.href), "The derc href should be included in the response"
+        assert path.startswith(parsed_response.href or ""), "The derc href should be included in the response"
         assert parsed_response.results == len(expected_does)
         assert parsed_response.all_ == expected_total
         assert len(parsed_response.DERControl) == len(expected_does)
@@ -425,7 +428,9 @@ async def test_get_dercontrol_list(
             expected_does, parsed_response.DERControl, strict=False
         ):
             control: DERControlResponse = ctrl
-            assert control.DERControlBase_
+            assert control.DERControlBase_ is not None
+            assert control.DERControlBase_.opModImpLimW is not None
+            assert control.DERControlBase_.opModExpLimW is not None
             assert control.DERControlBase_.opModImpLimW.value == expected_import
             assert control.DERControlBase_.opModImpLimW.multiplier == DEFAULT_SITE_CONTROL_POW10_ENCODING
             assert control.DERControlBase_.opModExpLimW.value == expected_output
@@ -487,7 +492,7 @@ async def test_get_dercontrol_list_intersecting_some(
     # This will just return our newly minted DOEs - we aren't going to inspect the contents too closely (other tests
     # do that for us).
     parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
-    assert len(parsed_response.DERControl) == 2, "One deleted, one active control"
+    assert len(parsed_response.DERControl or []) == 2, "One deleted, one active control"
 
 
 @pytest.mark.anyio
@@ -562,6 +567,8 @@ async def test_get_site_specific_default_doe(client: AsyncClient, uri_derc_defau
     parsed_response: DefaultDERControl = DefaultDERControl.from_xml(body)
 
     assert parsed_response.href == path
+    assert parsed_response.DERControlBase_.opModImpLimW is not None
+    assert parsed_response.DERControlBase_.opModExpLimW is not None
     assert (
         parsed_response.DERControlBase_.opModImpLimW.value
         != DERControlMapper.map_to_active_power(
@@ -619,10 +626,14 @@ async def test_get_active_doe(client: AsyncClient, pg_base_config, uri_derc_acti
     parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
     assert parsed_response.href == path, "The active doe href should be included in the response"
     assert parsed_response.all_ == 1
+    assert parsed_response.DERControl is not None
     assert len(parsed_response.DERControl) == 1
 
-    parsed_response.DERControl[0].DERControlBase_.opModImpLimW.value == 211
-    parsed_response.DERControl[0].DERControlBase_.opModExpLimW.value == 212
+    assert parsed_response.DERControl[0].DERControlBase_ is not None
+    assert parsed_response.DERControl[0].DERControlBase_.opModImpLimW is not None
+    assert parsed_response.DERControl[0].DERControlBase_.opModExpLimW is not None
+    assert parsed_response.DERControl[0].DERControlBase_.opModImpLimW.value == Decimal(211)
+    assert parsed_response.DERControl[0].DERControlBase_.opModExpLimW.value == Decimal(212)
 
     # Now let the DOE expire
     await asyncio.sleep(3)
@@ -771,6 +782,7 @@ async def test_large_power_value_fits_int16(
 
     body = read_response_body_string(response)
     parsed_response: DERControlListResponse = DERControlListResponse.from_xml(body)
+    assert parsed_response.DERControl is not None
 
     # Find newly created control
     large_control = None
@@ -784,6 +796,9 @@ async def test_large_power_value_fits_int16(
 
     # Verify value correct
     assert large_control is not None
+    assert large_control.DERControlBase_ is not None
+    assert large_control.DERControlBase_.opModExpLimW is not None
+    assert large_control.DERControlBase_.opModImpLimW is not None
     actual_exp_watts = large_control.DERControlBase_.opModExpLimW.value * (
         10**large_control.DERControlBase_.opModExpLimW.multiplier
     )

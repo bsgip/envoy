@@ -50,7 +50,7 @@ def test_csip_unit_to_uom_mapping():
 
 def test_csip_unit_to_uom_invalid_unit():
     with pytest.raises(KeyError):
-        AdminSiteReadingMapper.csip_unit_to_uom(999)
+        AdminSiteReadingMapper.csip_unit_to_uom(999)  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(

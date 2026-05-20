@@ -120,12 +120,12 @@ def test_AggregatorBatchedEntities_single_batch(mock_get_batch_key: mock.MagicMo
     b = AggregatorBatchedEntities(
         ts,
         resource,
-        [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4],
-        [delete_entity_1, delete_entity_2, delete_entity_3],
+        [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4],  # ty:ignore[invalid-argument-type]
+        [delete_entity_1, delete_entity_2, delete_entity_3],  # ty:ignore[invalid-argument-type]
     )
 
     assert b.timestamp == ts
-    assert_batched_entities(b, type(fake_entity_1), type(delete_entity_1), 4, 3)
+    assert_batched_entities(b, type(fake_entity_1), type(delete_entity_1), 4, 3)  # ty:ignore[invalid-argument-type]
     assert len(b.models_by_batch_key) == 1, "Expecting a single unique key"
     assert b.models_by_batch_key[(1, 2)] == [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4]
 
@@ -156,12 +156,12 @@ def test_AggregatorBatchedEntities_multi_batch(mock_get_batch_key: mock.MagicMoc
     b = AggregatorBatchedEntities(
         ts,
         resource,
-        [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4],
-        [delete_entity_1, delete_entity_2, delete_entity_3],
+        [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4],  # ty:ignore[invalid-argument-type]
+        [delete_entity_1, delete_entity_2, delete_entity_3],  # ty:ignore[invalid-argument-type]
     )
 
     assert b.timestamp == ts
-    assert_batched_entities(b, type(fake_entity_1), type(delete_entity_1), 4, 3)
+    assert_batched_entities(b, type(fake_entity_1), type(delete_entity_1), 4, 3)  # ty:ignore[invalid-argument-type]
     assert len(b.models_by_batch_key) == 3
     assert b.models_by_batch_key[(1, 2)] == [fake_entity_1, fake_entity_3]
     assert b.models_by_batch_key[(1, 3)] == [fake_entity_2]
@@ -178,7 +178,7 @@ def test_AggregatorBatchedEntities_multi_batch(mock_get_batch_key: mock.MagicMoc
 def test_get_batch_key_invalid():
     """Validates we raise our own custom exception"""
     with pytest.raises(NotificationError):
-        get_batch_key(9999, generate_class_instance(Site))
+        get_batch_key(9999, generate_class_instance(Site))  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -313,7 +313,7 @@ def test_get_batch_key(resource: SubscriptionResource, entity: TResourceModel, e
 def test_get_subscription_filter_id_invalid():
     """Validates we raise our own custom exception"""
     with pytest.raises(NotificationError):
-        get_subscription_filter_id(9999, generate_class_instance(Site))
+        get_subscription_filter_id(9999, generate_class_instance(Site))  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -367,7 +367,7 @@ def test_get_subscription_filter_id(resource: SubscriptionResource, entity: TRes
 def test_get_site_id_invalid():
     """Validates we raise our own custom exception"""
     with pytest.raises(NotificationError):
-        get_site_id(9999, generate_class_instance(Site))
+        get_site_id(9999, generate_class_instance(Site))  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -1552,7 +1552,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
             [
                 hasattr(e, "site_der")
                 and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))
+                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -1771,7 +1771,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
             [
                 hasattr(e, "site_der")
                 and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))
+                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -1986,7 +1986,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
             [
                 hasattr(e, "site_der")
                 and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))
+                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -2212,7 +2212,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
             [
                 hasattr(e, "site_der")
                 and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))
+                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -2264,8 +2264,8 @@ async def test_fetch_default_site_controls_by_changed_at(
         batch = await fetch_default_site_controls_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedSiteControlGroupDefault,
-            ArchiveSiteScopedSiteControlGroupDefault,
+            SiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
             len(expected_agg_site_scg_ids),
             0,
         )
@@ -2343,8 +2343,8 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
         batch = await fetch_default_site_controls_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedSiteControlGroupDefault,
-            ArchiveSiteScopedSiteControlGroupDefault,
+            SiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
             len(expected_active_default_ids),
             len(expected_deleted_default_ids),
         )
@@ -2379,7 +2379,11 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
         assert_batched_entities(
-            empty_batch, SiteScopedSiteControlGroupDefault, ArchiveSiteScopedSiteControlGroupDefault, 0, 0
+            empty_batch,
+            SiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
+            0,
+            0,
         )
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
@@ -2391,7 +2395,11 @@ async def test_fetch_fsa_by_changed_at(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
         empty_batch = await fetch_fsa_by_changed_at(session, datetime(2000, 1, 1, 1, 1, 1, tzinfo=UTC))
         assert_batched_entities(
-            empty_batch, SiteScopedFunctionSetAssignment, ArchiveSiteScopedFunctionSetAssignment, 0, 0
+            empty_batch,
+            SiteScopedFunctionSetAssignment,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedFunctionSetAssignment,  # ty:ignore[invalid-argument-type]
+            0,
+            0,
         )
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
@@ -2409,8 +2417,8 @@ async def test_fetch_fsa_by_changed_at(pg_base_config):
         batch = await fetch_fsa_by_changed_at(session, datetime(2023, 5, 1, 1, 1, 1, 500000, tzinfo=UTC))
         assert_batched_entities(
             batch,
-            SiteScopedFunctionSetAssignment,
-            ArchiveSiteScopedFunctionSetAssignment,
+            SiteScopedFunctionSetAssignment,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedFunctionSetAssignment,  # ty:ignore[invalid-argument-type]
             len(expected_agg_site_poll_rate),
             0,
         )
@@ -2446,8 +2454,8 @@ async def test_fetch_site_control_groups_by_changed_at(
         batch = await fetch_site_control_groups_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedSiteControlGroup,
-            ArchiveSiteScopedSiteControlGroup,
+            SiteScopedSiteControlGroup,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroup,  # ty:ignore[invalid-argument-type]
             len(expected_agg_site_group_ids),
             0,
         )
@@ -2539,8 +2547,8 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
         batch = await fetch_site_control_groups_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedSiteControlGroup,
-            ArchiveSiteScopedSiteControlGroup,
+            SiteScopedSiteControlGroup,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroup,  # ty:ignore[invalid-argument-type]
             len(expected_active_default_ids) * len(expected_site_agg_ids),
             len(expected_deleted_default_ids) * len(expected_site_agg_ids),
         )
@@ -2580,7 +2588,7 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert_batched_entities(empty_batch, SiteScopedSiteControlGroup, ArchiveSiteScopedSiteControlGroup, 0, 0)
+        assert_batched_entities(empty_batch, SiteScopedSiteControlGroup, ArchiveSiteScopedSiteControlGroup, 0, 0)  # ty:ignore[invalid-argument-type]
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
 

@@ -23,16 +23,17 @@ async def _select_latest_tariff_generated_rate(session) -> TariffGeneratedRate:
 @pytest.mark.anyio
 async def test_insert_single_tariff(pg_empty_config):
     async with generate_async_session(pg_empty_config) as session:
-        tariff_in = generate_class_instance(Tariff)
-        tariff_in.tariff_id = None
+        tariff_in = generate_class_instance(Tariff, tariff_id=None)
         await insert_single_tariff(session, tariff_in)
 
         await session.flush()
 
         assert tariff_in.tariff_id == 1
         tariff = await select_single_tariff(session, tariff_in.tariff_id)
+        assert tariff is not None
 
         assert_class_instance_equality(Tariff, tariff, tariff_in)
+        assert tariff.created_time is not None
         assert_nowish(tariff.created_time)
 
         # No archival on insert
@@ -48,6 +49,7 @@ async def test_update_single_tariff(pg_base_config):
         await session.flush()
 
         tariff = await select_single_tariff(session, tariff_in.tariff_id)
+        assert tariff is not None
 
         assert_class_instance_equality(Tariff, tariff, tariff_in, ignored_properties={"created_time"})
         assert tariff.created_time == datetime(2000, 1, 1, 0, 0, 0, tzinfo=UTC), "created_time doesn't update"
@@ -68,6 +70,7 @@ async def test_update_single_tariff(pg_base_config):
             ),
             archive_data,
         )
+        assert archive_data.archive_time is not None
         assert_nowish(archive_data.archive_time)
         assert archive_data.deleted_time is None
 
@@ -157,5 +160,6 @@ async def test_upsert_many_tariff_genrate_update(pg_base_config):
         assert_class_instance_equality(
             TariffGeneratedRate, cloned_original_rate, archive_data, ignored_properties={"tariff", "site"}
         )
+        assert archive_data.archive_time
         assert_nowish(archive_data.archive_time)
         assert archive_data.deleted_time == deleted_time

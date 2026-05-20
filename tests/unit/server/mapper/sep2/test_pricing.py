@@ -172,6 +172,7 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: int | None)
     )
     assert isinstance(mapped, TariffProfileListResponse)
 
+    assert mapped.href is not None
     assert mapped.href.startswith(scope.href_prefix)
     if fsa_id is None:
         assert mapped.href.endswith(TariffProfileListUri.format(site_id=scope.display_site_id))

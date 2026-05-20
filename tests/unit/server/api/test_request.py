@@ -29,7 +29,7 @@ from envoy.server.api.request import (
         ([-99], HTTPException),
     ],
 )
-def test_extract_limit_from_paging_param(query_val: list[int] | None, expected_output: int | type):
+def test_extract_limit_from_paging_param(query_val: list[int] | None, expected_output: int | type[Exception]):
     if isinstance(expected_output, type):
         with pytest.raises(expected_output):
             extract_limit_from_paging_param(query_val)
@@ -51,7 +51,7 @@ def test_extract_limit_from_paging_param(query_val: list[int] | None, expected_o
         ([-99], HTTPException),
     ],
 )
-def test_extract_start_from_paging_param(query_val: list[int] | None, expected_output: int | type):
+def test_extract_start_from_paging_param(query_val: list[int] | None, expected_output: int | type[Exception]):
 
     if isinstance(expected_output, type):
         with pytest.raises(expected_output):

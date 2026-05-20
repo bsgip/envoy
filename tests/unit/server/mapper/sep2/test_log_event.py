@@ -41,6 +41,7 @@ def test_map_to_log_event_response(href_prefix: str | None, optional_is_none: bo
     # Assert
     assert isinstance(result, LogEvent)
     if href_prefix is not None:
+        assert result.href is not None
         assert result.href.startswith(href_prefix)
     assert result.logEventCode == site_log_event.log_event_code
     assert result.logEventID == site_log_event.log_event_id
@@ -92,5 +93,6 @@ def test_map_to_list_response(href_prefix: str | None, optional_is_none: bool, r
     assert result.all_ == total_responses
     assert result.results == response_count
     if href_prefix is not None:
+        assert result.href is not None
         assert result.href.startswith(href_prefix)
     assert str(display_site_id) in result.href

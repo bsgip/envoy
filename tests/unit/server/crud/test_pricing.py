@@ -137,7 +137,7 @@ async def test_select_single_tariff(pg_base_config, expected_id: int | None, req
 def assert_rate_for_id(
     expected_rate_id: int | None,
     expected_tariff_id: int,
-    expected_site_id: int,
+    expected_site_id: int | None,
     expected_date: date | None,
     expected_time: time | None,
     expected_tz: str | None,
@@ -157,6 +157,7 @@ def assert_rate_for_id(
         assert actual_rate.import_reactive_price == Decimal(f"{expected_rate_id}.333")
         assert actual_rate.export_reactive_price == Decimal(f"-{expected_rate_id}.4444")
         if expected_date is not None and expected_time is not None:
+            assert expected_tz is not None
             tz = ZoneInfo(expected_tz)
             assert_datetime_equal(actual_rate.start_time, datetime.combine(expected_date, expected_time, tzinfo=tz))
             assert actual_rate.start_time.tzname() == tz.tzname(actual_rate.start_time), (

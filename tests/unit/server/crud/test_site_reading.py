@@ -24,7 +24,6 @@ from envoy.server.crud.site_reading import (
     upsert_site_readings,
 )
 from envoy.server.manager.time import utc_now
-from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from tests.unit.server.crud.test_site import SnapshotTableCount, count_table_rows
@@ -90,7 +89,7 @@ async def test_fetch_site_reading_types_for_group(
 )
 @pytest.mark.anyio
 async def test_fetch_site_reading_types_for_group_mrid(
-    pg_base_config, agg_id: int, site_id: int | None, group_mrid: int, expected_srt_ids: list[int]
+    pg_base_config, agg_id: int, site_id: int | None, group_mrid: str, expected_srt_ids: list[int]
 ):
     async with generate_async_session(pg_base_config) as session:
         results = await fetch_site_reading_types_for_group_mrid(session, agg_id, site_id, group_mrid)
@@ -490,6 +489,7 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         assert archive_records[0].time_period_seconds == 300, "This is the original value from the DB"
         assert archive_records[0].deleted_time == deleted_time
         assert_datetime_equal(datetime(2000, 1, 1, tzinfo=UTC), archive_records[0].created_time)
+        assert archive_records[0].archive_time is not None
         assert_nowish(archive_records[0].archive_time)
 
 
@@ -507,7 +507,7 @@ async def snapshot_all_srt_tables(
             ArchiveSiteReadingType,
             lambda q: (
                 q.where(SiteReadingType.aggregator_id == agg_id)
-                .where(or_(site_id is None, SiteReadingType.site_id == site_id))
+                .where(or_(site_id is None, SiteReadingType.site_id == site_id))  # ty:ignore[invalid-argument-type]
                 .where(SiteReadingType.site_reading_type_id.in_(srt_ids))
             ),
         )
@@ -612,9 +612,10 @@ async def test_delete_site_reading_type_group(
 
             # Check the archive records
             async with generate_async_session(pg_base_config) as session:
-                archives: list[ArchiveBase] = (await session.execute(select(after.archive_t))).scalars().all()
+                archives = (await session.execute(select(after.archive_t))).scalars().all()
                 assert all(a.deleted_time == deleted_time for a in archives), f"{before.t} deleted time is wrong"
-                assert all(abs((a.archive_time - now).seconds) < 20 for a in archives), (
+                assert all(a.archive_time is not None for a in archives)
+                assert all(abs((a.archive_time - now).seconds) < 20 for a in archives), (  # ty:ignore[unsupported-operator]
                     f"{before.t} archive time should be nowish"
                 )
         else:

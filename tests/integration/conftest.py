@@ -114,7 +114,7 @@ def admin_path_methods() -> defaultdict[str, list[str]]:
     app = admin_gen_app(admin_gen_settings())
     path_methods = defaultdict(list)
     for route in app.routes:
-        path_methods[route.path] = path_methods[route.path] + list(route.methods)
+        path_methods[route.path] = path_methods[route.path] + list(route.methods)  # type: ignore
     return path_methods
 
 

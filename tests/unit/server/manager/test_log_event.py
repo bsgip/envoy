@@ -153,6 +153,7 @@ async def test_create_log_event_for_scope_created_normally(
     site_id = 1
     log_event = generate_class_instance(LogEvent)
     scope = generate_class_instance(SiteRequestScope, seed=101, site_id=site_id, href_prefix="/my_prefix/")
+    assert scope.href_prefix
     existing_site = generate_class_instance(Site, seed=303, site_id=site_id)
 
     mock_select_single_site_with_site_id.return_value = existing_site

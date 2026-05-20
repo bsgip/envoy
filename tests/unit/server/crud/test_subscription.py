@@ -212,6 +212,7 @@ async def test_select_count_subscriptions_for_site(
     # Start by updating our subscription 5 to appear under site 4 (to ensure we get multiple in a list)
     async with generate_async_session(pg_base_config) as session:
         sub_5 = await select_subscription_by_id(session, 1, 5)
+        assert sub_5 is not None
         sub_5.scoped_site_id = 4
         await session.commit()
 
@@ -238,6 +239,7 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
     # Start by updating our subscription 5 to appear under site 4 (to ensure we get multiple in a list)
     async with generate_async_session(pg_base_config) as session:
         sub_5 = await select_subscription_by_id(session, 1, 5)
+        assert sub_5 is not None
         sub_5.scoped_site_id = 4
         await session.commit()
 
@@ -393,6 +395,7 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
         assert cond_count_before + cond_count == cond_count_after, "There should be new condition(s) in the table"
 
         new_sub = await select_subscription_by_id(session, sub.aggregator_id, sub_id)
+        assert new_sub is not None
         assert_class_instance_equality(
             Subscription, sub, new_sub, ignored_properties=set(["subscription_id", "created_time"])
         )
@@ -525,6 +528,7 @@ async def test_upsert_subscription_update_subscription(pg_base_config, sub: Subs
         )
 
         new_sub = await select_subscription_by_id(session, sub.aggregator_id, sub_id)
+        assert new_sub is not None
         assert new_sub.subscription_id == expected_sub_id
         assert_class_instance_equality(
             Subscription, sub, new_sub, ignored_properties=set(["subscription_id", "created_time"])
@@ -662,6 +666,7 @@ async def test_delete_subscription_for_site(pg_base_config):
             ),
             archived_subs[0],
         )
+        assert archived_subs[0].archive_time is not None
         assert_nowish(archived_subs[0].archive_time)
 
 
@@ -670,6 +675,7 @@ async def test_delete_subscription_for_site_with_conditions(pg_base_config):
     # Start by updating our subscription 5 to appear under site 4 so we can delete it
     async with generate_async_session(pg_base_config) as session:
         sub_5 = await select_subscription_by_id(session, 1, 5)
+        assert sub_5 is not None
         sub_5.scoped_site_id = 4
 
         resp = await session.execute(select(SubscriptionCondition))

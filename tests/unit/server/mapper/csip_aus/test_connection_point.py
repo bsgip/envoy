@@ -19,6 +19,7 @@ def test_map_to_response():
     assert result_all_set is not None
     assert isinstance(result_all_set, ConnectionPointResponse)
     assert result_all_set.id == site_all_set.nmi
+    assert result_all_set.href is not None
     assert result_all_set.href.startswith("/my/prefix")
     assert f"/{site_all_set.site_id}/" in result_all_set.href
 

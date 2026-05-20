@@ -139,10 +139,10 @@ def test_map_derc_to_response(
     result_all_set = DERControlMapper.map_to_response(scope, site_control_group_id, doe, -4, now)
     assert result_all_set is not None
     assert isinstance(result_all_set, DERControlResponse)
-    assert result_all_set.href is not None
     assert result_all_set.interval.start == doe.start_time.timestamp()
     assert result_all_set.interval.duration == doe.duration_seconds
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
+    assert result_all_set.href is not None
     assert result_all_set.href.startswith(scope.href_prefix)
     assert f"/{scope.display_site_id}" in result_all_set.href
     assert f"/{site_control_group_id}" in result_all_set.href

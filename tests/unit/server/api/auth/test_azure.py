@@ -237,7 +237,7 @@ class TokenContainer:
 async def test_validate_azure_ad_token(
     token: TokenContainer,
     cache_result: ExpiringValue[JWK] | None,
-    expected_error: type | None,
+    expected_error: type[Exception] | None,
     expected_kid: str,
 ):
     """Runs through all the ways we validate tokens to ensure the behaviour is valid for all the ways a token
@@ -283,7 +283,7 @@ async def test_request_azure_ad_token(mock_AsyncClient: mock.MagicMock):
     assert output_token.expiry == datetime.fromtimestamp(1690938812, tz=UTC)
     assert mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
-    assert mocked_client.logged_requests[0].headers == {"Metadata": "true"}
+    assert mocked_client.logged_requests[0].headers_dict == {"Metadata": "true"}
     assert quote(resource_id) in mocked_client.logged_requests[0].uri, "Resource ID should be included in request"
     assert quote(cfg.client_id) in mocked_client.logged_requests[0].uri, "Client ID should be included in request"
 
