@@ -15,7 +15,7 @@ TBaseXmlModel = TypeVar("TBaseXmlModel", bound=BaseXmlModel)
 class XmlResponse(Response):
     media_type = SEP_XML_MIME
 
-    def render(self, content: BaseXmlModel) -> str | bytes:  # type: ignore [override] # Base is too restrictive
+    def render(self, content: BaseXmlModel) -> str | bytes:  # ty:ignore[invalid-method-override] # Base is too restrictive
         return content.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
 
 
@@ -63,4 +63,4 @@ class XmlRequest(Generic[TBaseXmlModel]):
         if not model:
             raise HTTPException(HTTPStatus.BAD_REQUEST.value, detail="request body couldn't map to model XML")
 
-        return model  # type: ignore [return-value] # The pydantic XML return type hint isn't quite correct
+        return model  # ty:ignore[invalid-return-type] # The pydantic XML return type hint isn't quite correct

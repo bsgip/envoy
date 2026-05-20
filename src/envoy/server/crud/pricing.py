@@ -140,7 +140,7 @@ async def _tariff_rates_for_day(
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    select_clause: Select[tuple[int]] | Select[tuple[TariffGeneratedRate, str]]
+    select_clause: Select[tuple[int]] | Select[tuple[TariffGeneratedRate]]
     if only_count:
         select_clause = select(func.count()).select_from(TariffGeneratedRate)
     else:
@@ -185,7 +185,7 @@ async def count_tariff_rates_for_day(
 
     changed_after: Only tariffs with a changed_time greater than this value will be counted (0 will count everything)"""
 
-    return await _tariff_rates_for_day(True, session, aggregator_id, tariff_id, site_id, day, 0, changed_after, None)  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    return await _tariff_rates_for_day(True, session, aggregator_id, tariff_id, site_id, day, 0, changed_after, None)  # ty:ignore[invalid-return-type]  # Test coverage will ensure that it's an int and not an entity
 
 
 async def select_tariff_rates_for_day(
@@ -212,7 +212,7 @@ async def select_tariff_rates_for_day(
 
     return await _tariff_rates_for_day(
         False, session, aggregator_id, tariff_id, site_id, day, start, changed_after, limit
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    )  # ty:ignore[invalid-return-type] # Test coverage will ensure that it's an entity list
 
 
 async def select_tariff_rate_for_day_time(

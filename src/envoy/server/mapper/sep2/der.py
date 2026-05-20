@@ -55,7 +55,7 @@ def set_value_multiplier(
         return (None, None)
 
     if hasattr(vm, "value"):
-        return (vm.value, vm.multiplier)
+        return (cast(int | None, vm.value), vm.multiplier)
     else:
         return (vm.displacement, vm.multiplier)
 

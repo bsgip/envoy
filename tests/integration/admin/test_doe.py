@@ -57,8 +57,8 @@ async def test_supersede_doe(pg_base_config, admin_client_auth: AsyncClient):
         start_time=datetime(2022, 5, 7, 1, 2, 3, tzinfo=ZoneInfo("Australia/Brisbane")),
         duration_seconds=2,
         calculation_log_id=3,  # This is how we'll look this record up in the DB later
-        export_limit_watts=44,
-        import_limit_active_watts=55,
+        export_limit_watts=Decimal(44),
+        import_limit_active_watts=Decimal(55),
     )
 
     resp = await admin_client_auth.post(
@@ -303,6 +303,7 @@ async def test_get_and_update_site_control_default(
             archive_records = (await session.execute(select(ArchiveSiteControlGroupDefault))).scalars().all()
             if default_exists:
                 assert len(archive_records) == 1
+                assert expected is not None
                 assert archive_records[0].import_limit_active_watts == expected[0]
                 assert archive_records[0].export_limit_active_watts == expected[1]
                 assert archive_records[0].generation_limit_active_watts == expected[2]

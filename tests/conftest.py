@@ -99,7 +99,7 @@ def execute_sql_file_for_connection(cfg: Connection, path_to_sql_file: str) -> N
     with open(path_to_sql_file) as f:
         sql = f.read()
     with cfg.cursor() as cursor:
-        cursor.execute(sql)
+        cursor.execute(sql)  # type: ignore
         cfg.commit()
 
 

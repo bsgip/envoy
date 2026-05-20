@@ -72,7 +72,7 @@ def generate_settings() -> AppSettings:
 
     # Silenced complaints about database_url - keeping mypy happy here is tricky (for certain python versions).
     # The "cost" of not having it set will be caught by our test coverage - this is an error we can ignore
-    return AppSettings()  # type: ignore  [call-arg]
+    return AppSettings()  # ty:ignore[missing-argument]
 
 
 settings = generate_settings()

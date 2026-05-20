@@ -185,7 +185,7 @@ async def upsert_site_readings(session: AsyncSession, now: datetime, site_readin
 
     # Now we can do the inserts
     table = SiteReading.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     await session.execute(
         insert(SiteReading).values([{k: getattr(sr, k) for k in update_cols} for sr in site_readings])
     )

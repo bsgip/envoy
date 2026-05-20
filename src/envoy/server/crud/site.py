@@ -109,8 +109,8 @@ async def get_virtual_site_for_aggregator(
     # lfdi is hex string, convert to sfdi (integer)
     try:
         aggregator_sfdi = common.convert_lfdi_to_sfdi(lfdi=aggregator_lfdi)
-    except ValueError:
-        raise ValueError(f"Invalid aggregator LFDI. Cannot convert '{aggregator_lfdi}' to an SFDI.")
+    except ValueError as exc:
+        raise ValueError(f"Invalid aggregator LFDI. Cannot convert '{aggregator_lfdi}' to an SFDI.") from exc
 
     # The aggregator doesn't have a changed time of it own.
     # Virtual sites will have a changed_time representing when they were requested.
@@ -203,7 +203,7 @@ async def upsert_site_for_aggregator(session: AsyncSession, aggregator_id: int, 
 
     # Perform the upsert - remembering that we can only ever insert the registration_pin, never update it
     table = Site.__table__
-    insert_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    insert_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     update_cols = [c for c in insert_cols if c != Site.registration_pin.name]
     stmt = psql_insert(Site).values(**{k: getattr(site, k) for k in insert_cols})
     resp = await session.execute(

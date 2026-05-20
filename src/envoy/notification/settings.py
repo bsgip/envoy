@@ -15,7 +15,7 @@ class AppSettings(CommonSettings):
 def generate_settings() -> AppSettings:
     """Generates and configures a new instance of the AppSettings"""
 
-    return AppSettings()  # type: ignore  [call-arg]
+    return AppSettings()  # ty:ignore[missing-argument]
 
 
 settings = generate_settings()

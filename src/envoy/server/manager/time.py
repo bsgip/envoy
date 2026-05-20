@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import cast
 from zoneinfo import ZoneInfo
 
 from dateutil import tz
@@ -26,9 +27,9 @@ def get_tz_key(dt: datetime) -> str | None:
     # tzlocal.get_localzone can return a _PytzShimTimezone which defines _key instead of key. Need to check
     # for this and respond accordingly
     if hasattr(tzinfo, "key"):
-        return tzinfo.key
+        return cast(str | None, tzinfo.key)
     elif hasattr(tzinfo, "_key"):
-        return tzinfo._key
+        return cast(str | None, tzinfo._key)
     else:
         logger.warning(f"No timezone key accessible for supplied datetime's tzinfo: {tzinfo}")
         return None

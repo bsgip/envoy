@@ -302,15 +302,15 @@ class NmiValidator(MultiPatternRegexValidator):
             excludes=self._resolved_excludes + self.GLOBAL_EXCLUDES,
         )
 
-    def validate(self, nmi: str) -> bool:
+    def validate(self, target: str) -> bool:
         """Validate an 11-character NMI against structure, pattern, and checksum."""
-        if len(nmi) != 11:
+        if len(target) != 11:
             logger.debug("Failed validation - expected 11 characters.")
             return False
 
-        if not super().validate(nmi[:10]):
+        if not super().validate(target[:10]):
             return False
-        return self._validate_checksum(nmi)
+        return self._validate_checksum(target)
 
     @classmethod
     def _validate_checksum(cls, nmi: str) -> bool:

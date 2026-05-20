@@ -136,6 +136,7 @@ async def test_calculation_log_get_with_includes(
         returned_log = CalculationLogResponse.model_validate_json(resp.content)
 
         if include_labels:
+            assert returned_log.label_values is not None
             assert len(returned_log.label_metadata) == 2, f"labels={include_labels}, variables={include_variables}"
             assert len(returned_log.label_values.values) == 3, f"labels={include_labels}, variables={include_variables}"
         else:
@@ -143,6 +144,7 @@ async def test_calculation_log_get_with_includes(
             assert returned_log.label_values is None, f"labels={include_labels}, variables={include_variables}"
 
         if include_variables:
+            assert returned_log.variable_values is not None
             assert len(returned_log.variable_metadata) == 3, f"labels={include_labels}, variables={include_variables}"
             assert len(returned_log.variable_values.values) == 6, (
                 f"labels={include_labels}, variables={include_variables}"

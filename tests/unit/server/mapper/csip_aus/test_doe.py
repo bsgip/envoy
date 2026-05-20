@@ -128,13 +128,18 @@ def test_map_derc_to_response(
         end_time=doe_end_time,
         duration_seconds=doe_duration,
     )
+    assert doe.set_point_percentage is not None
+    assert doe.ramp_time_seconds is not None
+
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/foo/bar"
     )
+    assert scope.href_prefix is not None
 
     result_all_set = DERControlMapper.map_to_response(scope, site_control_group_id, doe, -4, now)
     assert result_all_set is not None
     assert isinstance(result_all_set, DERControlResponse)
+    assert result_all_set.href is not None
     assert result_all_set.interval.start == doe.start_time.timestamp()
     assert result_all_set.interval.duration == doe.duration_seconds
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
@@ -183,6 +188,7 @@ def test_map_derc_to_response(
     assert result_optional.interval.start == doe_opt.start_time.timestamp()
     assert result_optional.interval.duration == doe_opt.duration_seconds
     assert isinstance(result_optional.DERControlBase_, DERControlBase)
+    assert result_optional.href is not None
     assert result_optional.href.startswith(scope.href_prefix)
     assert f"/{scope.display_site_id}" in result_optional.href
     assert f"/{site_control_group_id}" in result_optional.href
@@ -227,6 +233,7 @@ def test_map_default_to_response(optional_is_none: bool):
     assert isinstance(result.DERControlBase_, DERControlBase)
     assert isinstance(result.mRID, str)
     assert len(result.mRID) == 32, "Expected 128 bits encoded as hex"
+    assert result.href is not None
     assert result.href.startswith("/my/prefix/")
     assert f"/{site_id}/" in result.href
     assert f"/{derp_id}/" in result.href
@@ -294,12 +301,15 @@ def test_map_derc_to_list_response():
     assert isinstance(result, DERControlListResponse)
     assert result.all_ == doe_count
     assert result.results == len(all_does)
+    assert result.DERControl is not None
     assert_list_type(DERControlResponse, result.DERControl, len(all_does))
     assert len(set([derc.mRID for derc in result.DERControl])) == len(all_does), (
         f"Expected {len(all_does)} unique mrid's in the children"
     )
+    assert result.href is not None
     assert str(scope.display_site_id) in result.href
     assert f"/{site_control_group_id}" in result.href
+    assert result.DERControl[0].DERControlBase_.opModGenLimW is not None
     assert result.DERControl[0].DERControlBase_.opModGenLimW.multiplier == 1
 
     empty_result = DERControlMapper.map_to_list_response(
@@ -386,6 +396,7 @@ def test_map_derp_doe_program_response_no_default_doe(scg_type: type[SiteControl
     assert isinstance(result.DefaultDERControlLink, Link)
     assert result.DefaultDERControlLink.href
     assert f"/{site_control_group_id}" in result.DefaultDERControlLink.href
+    assert result.href is not None
     assert f"/{site_control_group_id}" in result.href
 
 
@@ -463,8 +474,8 @@ def test_map_derp_doe_program_list_response(
     assert result is not None
     assert isinstance(result, DERProgramListResponse)
     assert result.pollRate == poll_rate
-
-    assert result.href.startswith(scope.href_prefix)
+    assert result.href is not None
+    assert result.href.startswith(scope.href_prefix or "")
     if fsa_id is None:
         assert result.href.endswith(DERProgramListUri.format(site_id=scope.display_site_id))
     else:

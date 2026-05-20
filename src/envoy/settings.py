@@ -12,7 +12,7 @@ def generate_middleware_kwargs(
     azure_ad_db_refresh_secs: int | None,
 ) -> dict[str, Any]:
     """Generates kwargs for SQLAlchemyMiddleware for a given set of settings values"""
-    settings = {"db_url": database_url, "commit_on_exit": commit_on_exit}
+    settings: dict[str, str | bool | dict] = {"db_url": database_url, "commit_on_exit": commit_on_exit}
 
     engine_args = sqlalchemy_engine_args.copy() if sqlalchemy_engine_args is not None else {}
 

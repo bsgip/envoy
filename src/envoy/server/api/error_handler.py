@@ -4,7 +4,7 @@ from http import HTTPStatus
 from envoy_schema.server.schema.sep2.error import ErrorResponse
 from envoy_schema.server.schema.sep2.types import ReasonCodeType
 from fastapi import HTTPException, Request, Response
-from lxml.etree import XMLSyntaxError  # type: ignore # nosec: This will need to be addressed with pydantic-xml
+from lxml.etree import XMLSyntaxError  # nosec: This will need to be addressed with pydantic-xml
 from pydantic_core import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -59,7 +59,7 @@ def validation_exception_handler(request: Request, exc: ValidationError | Except
         return general_exception_handler(request, exc)
 
     logger.exception(f"{request.path_params} generated validation exception {exc}")
-    return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.json())
+    return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.json())  # ty:ignore[call-non-callable] # We check for this above
 
 
 def xml_exception_handler(request: Request, exc: XMLSyntaxError | Exception) -> Response:
@@ -73,7 +73,7 @@ def xml_exception_handler(request: Request, exc: XMLSyntaxError | Exception) -> 
         return general_exception_handler(request, exc)
 
     logger.exception(f"{request.path_params} generated validation exception {exc}")
-    return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.msg)
+    return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.msg)  # ty:ignore[invalid-argument-type] # This is checked above
 
 
 def general_exception_handler(request: Request, exc: Exception) -> Response:

@@ -173,7 +173,7 @@ async def count_doe_responses(
     created_after: Only responses with a created_time greater than this value will be counted (0 will count everything)
     """
 
-    return await _doe_responses(True, session, aggregator_id, site_id, 0, None, created_after)  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    return await _doe_responses(True, session, aggregator_id, site_id, 0, None, created_after)  # ty:ignore[invalid-return-type]  # Test coverage will ensure that it's an int and not an entity
 
 
 async def select_doe_responses(
@@ -189,7 +189,7 @@ async def select_doe_responses(
 
     Orders by 2030.5 requirements on Response which is created DESC, site ASC"""
 
-    return await _doe_responses(False, session, aggregator_id, site_id, start, limit, created_after)  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    return await _doe_responses(False, session, aggregator_id, site_id, start, limit, created_after)  # ty:ignore[invalid-return-type]  # Test coverage will ensure that it's an entity list
 
 
 async def count_tariff_generated_rate_responses(
@@ -200,7 +200,7 @@ async def count_tariff_generated_rate_responses(
     created_after: Only responses with a created_time greater than this value will be counted (0 will count everything)
     """
 
-    return await _rate_responses(True, session, aggregator_id, site_id, 0, None, created_after)  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    return await _rate_responses(True, session, aggregator_id, site_id, 0, None, created_after)  # ty:ignore[invalid-return-type]  # Test coverage will ensure that it's an int and not an entity
 
 
 async def select_tariff_generated_rate_responses(
@@ -216,4 +216,4 @@ async def select_tariff_generated_rate_responses(
 
     Orders by 2030.5 requirements on Response which is created DESC, site ASC"""
 
-    return await _rate_responses(False, session, aggregator_id, site_id, start, limit, created_after)  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    return await _rate_responses(False, session, aggregator_id, site_id, start, limit, created_after)  # ty:ignore[invalid-return-type]  # Test coverage will ensure that it's an entity list

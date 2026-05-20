@@ -34,6 +34,7 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "S", "C90", "B", "UP", "ANN", "N"]
+ignore = ["N817"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15
@@ -98,7 +99,7 @@ test = [
     "httpx",
     "defusedxml",
     "asgi_lifespan",
-    "assertical>=0.3.1",
+    "assertical>=0.5.0",
     "pytest-env",
     "freezegun",
 ]
