@@ -463,9 +463,7 @@ def test_RawRequestClaims_to_mup_list_scope(
         ),
     ],
 )
-def test_RawRequestClaims_to_mup_scope(
-    raw_scope: RawRequestClaims, expected: MUPRequestScope | type[BaseException]
-):
+def test_RawRequestClaims_to_mup_scope(raw_scope: RawRequestClaims, expected: MUPRequestScope | type[BaseException]):
 
     if isinstance(expected, type):
         with pytest.raises(expected):
