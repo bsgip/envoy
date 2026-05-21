@@ -63,11 +63,11 @@ async def get_mirror_usage_point_list(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except ForbiddenError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(mup_list)
 
@@ -93,11 +93,11 @@ async def post_mirror_usage_point_list(
             db.session, scope=scope, mup=payload
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except ForbiddenError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return Response(
         status_code=HTTPStatus.CREATED if mup_result.created else HTTPStatus.NO_CONTENT,
@@ -133,11 +133,11 @@ async def get_mirror_usage_point(
             mup_id=mup_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except ForbiddenError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(mup_list)
 
@@ -200,10 +200,10 @@ async def post_mirror_usage_point(
             request=payload,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except ForbiddenError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return Response(status_code=HTTPStatus.CREATED)

@@ -122,8 +122,8 @@ class MirrorUsagePointMapper:
         else:
             try:
                 return RoleFlagsType(int(mup.roleFlags, 16))
-            except Exception:
-                raise InvalidMappingError(f"Unable to map {mup.roleFlags} to a RoleFlagsType")
+            except Exception as exc:
+                raise InvalidMappingError(f"Unable to map {mup.roleFlags} to a RoleFlagsType") from exc
 
     @staticmethod
     def map_from_request(

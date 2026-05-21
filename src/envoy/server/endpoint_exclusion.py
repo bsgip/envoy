@@ -18,7 +18,7 @@ class HTTPMethod(StrEnum):
     PUT = "PUT"
 
 
-class ExcludeEndpointException(Exception): ...  # noqa: E701
+class ExcludeEndpointError(Exception): ...  # noqa: E701
 
 
 EndpointExclusionSet = set[tuple[HTTPMethod, str]]
@@ -36,7 +36,7 @@ def generate_routers_with_excluded_endpoints(
     managed during APIRouter setup, this approach may need to be revisited.
 
     Raises:
-        ExcludeEndpointException: if any endpoints cannot be found across the given routers
+        ExcludeEndpointError: if any endpoints cannot be found across the given routers
     """
 
     logger.info(f"Disabling the following endpoints from routers: {exclude_endpoints}")
@@ -66,7 +66,5 @@ def generate_routers_with_excluded_endpoints(
         router.routes = remaining_routes
 
     if endpoint_filters:
-        raise ExcludeEndpointException(
-            f"The following endpoints cannot be found in provided routers: {endpoint_filters}"
-        )
+        raise ExcludeEndpointError(f"The following endpoints cannot be found in provided routers: {endpoint_filters}")
     return routers

@@ -3,7 +3,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.routing import APIRoute
 
 from envoy.server.endpoint_exclusion import (
-    ExcludeEndpointException,
+    ExcludeEndpointError,
     HTTPMethod,
     generate_routers_with_excluded_endpoints,
 )
@@ -51,7 +51,7 @@ def test_generate_routers_with_excluded_endpoints_raises_error_on_unmatched_endp
     router.add_api_route("/somepath", lambda x: x, methods=[HTTPMethod.GET, HTTPMethod.HEAD])
 
     # Act / Assert
-    with pytest.raises(ExcludeEndpointException):
+    with pytest.raises(ExcludeEndpointError):
         generate_routers_with_excluded_endpoints([router], {(HTTPMethod.DELETE, "/sometherepath")})
 
     # Assert
@@ -69,7 +69,7 @@ def test_generate_routers_with_excluded_endpoints_raises_error_no_side_effects()
     router.add_api_route("/somepath", lambda x: x, methods=[HTTPMethod.GET, HTTPMethod.HEAD])
 
     # Act / Assert
-    with pytest.raises(ExcludeEndpointException):
+    with pytest.raises(ExcludeEndpointError):
         generate_routers_with_excluded_endpoints(
             [router], {(HTTPMethod.HEAD, "/somepath"), (HTTPMethod.GET, "/someotherepath")}
         )

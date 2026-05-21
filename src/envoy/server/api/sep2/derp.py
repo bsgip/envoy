@@ -51,9 +51,9 @@ async def get_derprogram_list(
             fsa_id=None,  # Don't scope to a specific function set assignment
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
+    except NotFoundError as ex:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found") from ex
 
     return XmlResponse(derp_list)
 
@@ -91,9 +91,9 @@ async def get_derprogram_list_fsa_scoped(
             fsa_id=fsa_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
+    except NotFoundError as ex:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found") from ex
 
     return XmlResponse(derp_list)
 
@@ -117,9 +117,9 @@ async def get_derprogram_doe(request: Request, site_id: int, der_program_id: int
             der_program_id=der_program_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
+    except NotFoundError as ex:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found") from ex
 
     return XmlResponse(derp)
 
@@ -158,9 +158,9 @@ async def get_dercontrol_list(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
+    except NotFoundError as ex:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found") from ex
 
     return XmlResponse(derc_list)
 
@@ -199,9 +199,9 @@ async def get_active_dercontrol_list(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
+    except NotFoundError as ex:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found") from ex
 
     return XmlResponse(derc_list)
 
@@ -234,9 +234,9 @@ async def get_default_dercontrol(
             der_program_id=der_program_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
+    except NotFoundError as ex:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found") from ex
 
     return XmlResponse(derc_list)
 
@@ -275,4 +275,4 @@ async def get_dercontrol_by_id(
 
         return XmlResponse(derc)
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex

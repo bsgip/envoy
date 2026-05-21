@@ -65,7 +65,7 @@ class AsyncCache(Generic[K, V]):
         else:
             return (None, expiring_value)
 
-    async def get_value_ignore_expiry(self, update_arg: Any, key: K) -> ExpiringValue[V] | None:
+    async def get_value_ignore_expiry(self, update_arg: object, key: K) -> ExpiringValue[V] | None:
         """Attempts to fetch the specified value by key. The internal cache will be utilised
         first and updated if the key is not found / has expired.
 
@@ -101,7 +101,7 @@ class AsyncCache(Generic[K, V]):
             value, expiring_value = self._fetch_from_cache(key)
             return expiring_value
 
-    async def get_value(self, update_arg: Any, key: K) -> V | None:
+    async def get_value(self, update_arg: object, key: K) -> V | None:
         """Attempts to fetch the specified value by key. The internal cache will be utilised first and updated
         if the key is not found / has expired.
 
@@ -119,7 +119,7 @@ class AsyncCache(Generic[K, V]):
 
         return expiring_value.value
 
-    async def force_update(self, update_arg: Any) -> None:
+    async def force_update(self, update_arg: object) -> None:
         """Forces an update to occur - will hold the internal cache lock and repeatedly attempt
         to update the cache until successful. Exceptions will be caught and logged but will not be raised.
 
@@ -133,7 +133,7 @@ class AsyncCache(Generic[K, V]):
                     logger.error(f"force_update error. Retry : {ex}")
                     await sleep(self._force_update_delay_seconds)
 
-    def get_value_sync(self, update_arg: Any, key: K) -> V | None:
+    def get_value_sync(self, update_arg: object, key: K) -> V | None:
         """Similar to get_value but without the async. This will ONLY utilise the internal cache, in the event
         of a cache miss/expired value None will be returned but force_update will be triggered in a background
         async task on the current asyncio event loop

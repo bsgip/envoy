@@ -130,11 +130,13 @@ async def create_end_device(
         location_href = generate_href(uri.EndDeviceUri, scope, site_id=site_id)
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
     except BadRequestError as exc:
-        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)
+        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST) from exc
     except ForbiddenError as exc:
-        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.FORBIDDEN)
+        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.FORBIDDEN) from exc
     except ConflictError as exc:
-        raise LoggedHttpException(logger, exc, detail="lFDI or sFDI conflict.", status_code=HTTPStatus.CONFLICT)
+        raise LoggedHttpException(
+            logger, exc, detail="lFDI or sFDI conflict.", status_code=HTTPStatus.CONFLICT
+        ) from exc
 
 
 @router.head(uri.RegistrationUri)
@@ -159,4 +161,4 @@ async def get_enddevice_registration(site_id: int, request: Request) -> XmlRespo
         )
         return XmlResponse(end_device_registration)
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=exc.message)
+        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=exc.message) from exc

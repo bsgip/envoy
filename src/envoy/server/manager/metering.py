@@ -388,7 +388,7 @@ class MirrorMeteringManager:
                     session,
                     SiteReadingType,
                     ArchiveSiteReadingType,
-                    lambda q: q.where(SiteReadingType.site_reading_type_id == target_srt.site_reading_type_id),
+                    lambda q: q.where(SiteReadingType.site_reading_type_id == target_srt.site_reading_type_id),  # noqa: B023 # Looks like a ruff issue
                 )
                 MirrorUsagePointMapper.merge_site_reading_type(target_srt, src_srt, changed_time)
 

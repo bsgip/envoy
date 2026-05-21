@@ -206,8 +206,8 @@ class TimeTariffIntervalManager:
 
         try:
             return time.fromisoformat(id)
-        except ValueError:
-            raise InvalidIdError(f"Expected HH:MM for time_tariff_interval_id but got {id}")
+        except ValueError as exc:
+            raise InvalidIdError(f"Expected HH:MM for time_tariff_interval_id but got {id}") from exc
 
     @staticmethod
     async def fetch_time_tariff_interval_list(

@@ -73,7 +73,7 @@ async def update_certificate(certificate_id: int, certificate: CertificateReques
     try:
         await manager.CertificateManager.update_existing_certificate(db.session, certificate_id, certificate)
     except exception.NotFoundError as err:
-        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}")
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err
 
 
 @router.delete(uri.CertificateUri, status_code=http.HTTPStatus.NO_CONTENT, response_model=None)
@@ -82,4 +82,4 @@ async def delete_certificate(certificate_id: int) -> None:
     try:
         await manager.CertificateManager.delete_certificate(db.session, certificate_id)
     except exception.NotFoundError as err:
-        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}")
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err

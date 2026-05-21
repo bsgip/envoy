@@ -162,7 +162,7 @@ class EndDeviceManager:
         # be a little overkill)
 
         # something has gone seriously wrong if we cant generate a new random value after this many attempts
-        MAX_ATTEMPTS = 20
+        MAX_ATTEMPTS = 20  # noqa: N806
         for _ in range(MAX_ATTEMPTS):
             # We want 63 bits of randomness to avoid overflows when writing to db BIGINTEGER
             random_bytes = token_bytes(nbytes=8)
@@ -224,7 +224,7 @@ class EndDeviceManager:
             raise ConflictError(
                 f"EndDevice with provided sFDI ({site.sfdi}) or lFDI ({site.lfdi})"
                 f"already exists for aggregator ({site.aggregator_id})."
-            )
+            ) from exc
 
         await session.commit()
 

@@ -169,7 +169,7 @@ class ResponseManager:
             logger.error(f"{response.subject} doesn't validate/decode for iana pen {scope.iana_pen}", exc_info=exc)
             raise BadRequestError(
                 f"subject '{response.subject}' doesn't reference a valid MRID from this utility server"
-            )
+            ) from exc
 
         lfdi_matched_site = await select_single_site_with_lfdi(session, response.endDeviceLFDI, scope.aggregator_id)
         if lfdi_matched_site is None or lfdi_matched_site.site_id != scope.site_id:

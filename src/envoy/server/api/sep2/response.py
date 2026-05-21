@@ -37,7 +37,7 @@ def try_parse_response_set_type(site_id: int, response_list_id: str) -> Response
         )
         raise LoggedHttpException(
             logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=f"ResponseSet '{response_list_id}' does not exist"
-        )
+        ) from exc
 
 
 @router.head(uri.ResponseSetUri)
@@ -71,7 +71,7 @@ async def get_response_set(
         )
         return XmlResponse(response)
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.") from exc
 
 
 @router.head(uri.ResponseSetListUri)
@@ -110,7 +110,7 @@ async def get_response_set_list(
         )
         return XmlResponse(response)
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.") from exc
 
 
 @router.head(uri.ResponseUri)
@@ -148,7 +148,7 @@ async def get_response(
         )
         return XmlResponse(response)
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.") from exc
 
 
 @router.head(uri.ResponseListUri)
@@ -193,7 +193,7 @@ async def get_response_list(
         )
         return XmlResponse(response)
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.") from exc
 
 
 @router.post(uri.ResponseListUri, status_code=HTTPStatus.CREATED)
@@ -231,4 +231,4 @@ async def create_response(
 
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
     except BadRequestError as exc:
-        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)
+        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST) from exc

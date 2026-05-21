@@ -59,9 +59,9 @@ async def get_der_list(
             after=extract_datetime_from_paging_param(after),
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(der_list)
 
@@ -84,9 +84,9 @@ async def get_der(request: Request, site_id: int, der_id: int) -> Response:
             site_der_id=der_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(der)
 
@@ -109,9 +109,9 @@ async def get_der_availability(request: Request, site_id: int, der_id: int) -> R
             site_der_id=der_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(result)
 
@@ -141,9 +141,9 @@ async def put_der_availability(
             der_availability=payload,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -166,9 +166,9 @@ async def get_der_capability(request: Request, site_id: int, der_id: int) -> Res
             site_der_id=der_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(result)
 
@@ -198,9 +198,9 @@ async def put_der_capability(
             der_capability=payload,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -223,9 +223,9 @@ async def get_der_status(request: Request, site_id: int, der_id: int) -> Respons
             site_der_id=der_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(result)
 
@@ -255,9 +255,9 @@ async def put_der_status(
             der_status=payload,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -280,9 +280,9 @@ async def get_der_settings(request: Request, site_id: int, der_id: int) -> Respo
             site_der_id=der_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(result)
 
@@ -312,9 +312,9 @@ async def put_der_settings(
             der_settings=payload,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -353,8 +353,8 @@ async def get_derprogram_list(
             fsa_id=None,  # We won't be scoping this to a specific function set assignment
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
+    except NotFoundError as ex:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found") from ex
 
     return XmlResponse(derp_list)

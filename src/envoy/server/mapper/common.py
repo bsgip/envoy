@@ -10,7 +10,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.request_scope import BaseRequestScope
 
 
-def generate_href(uri_format: str, request_scope: BaseRequestScope, *args: Any, **kwargs: Any) -> str:
+def generate_href(uri_format: str, request_scope: BaseRequestScope, *args: object, **kwargs: object) -> str:
     """Generates a href from a format string and an optional static prefix. Any args/kwargs will be forwarded to
     str.format (being applied to uri_format).
 
@@ -94,7 +94,7 @@ class CaseInsensitiveDict(abc.MutableMapping, Generic[ValueType]):
 
     _raw_dict: dict[str, tuple[str, ValueType]]
 
-    def __init__(self, data: Any = None, **kwargs: Any) -> None:
+    def __init__(self, data: Any = None, **kwargs: object) -> None:  # noqa: ANN401
         self._raw_dict = dict()
         if data is None:
             data = {}
@@ -119,7 +119,7 @@ class CaseInsensitiveDict(abc.MutableMapping, Generic[ValueType]):
         """Similar to iteritems(), but with all casefolded keys."""
         return ((orig_key, keyval[1]) for (orig_key, keyval) in self._raw_dict.items())
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, abc.Mapping):
             other = CaseInsensitiveDict(other)
         else:

@@ -142,6 +142,6 @@ async def create_subscription(
         location_href = generate_href(uri.SubscriptionUri, scope, site_id=site_id, subscription_id=sub_id)
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.NOT_FOUND)
+        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.NOT_FOUND) from exc
     except BadRequestError as exc:
-        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST)
+        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.BAD_REQUEST) from exc

@@ -105,7 +105,7 @@ async def update_jwk_cache(cfg: AzureADManagedIdentityConfig) -> dict[str, Expir
             response = await client.get(uri)
         except Exception as ex:
             logger.error(f"Exception {ex} trying to access Azure keys from {uri}")
-            raise UnableToContactAzureServicesError("Exception trying to access Azure keys")
+            raise UnableToContactAzureServicesError("Exception trying to access Azure keys") from ex
 
         if response.status_code != HTTPStatus.OK:
             logger.error(f"Received HTTP {response.status_code} trying to access Azure keys from {uri}")
@@ -166,7 +166,7 @@ async def request_azure_ad_token(cfg: AzureADResourceTokenConfig) -> AzureADToke
             response = await client.get(uri, headers={"Metadata": "true"})
         except Exception as ex:
             logger.error(f"Exception {ex} trying to access token from {uri}")
-            raise UnableToContactAzureServicesError("Exception trying to access Azure token service")
+            raise UnableToContactAzureServicesError("Exception trying to access Azure token service") from ex
 
         if response.status_code != HTTPStatus.OK:
             logger.error(f"Received HTTP {response.status_code} trying to access Azure token from {uri}")

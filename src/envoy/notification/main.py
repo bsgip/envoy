@@ -24,7 +24,7 @@ if logging_config_file:
         with open(logging_config_file) as fp:
             logging_config = json.load(fp)
         logging.config.dictConfig(logging_config)
-    except Exception:
+    except Exception:  # noqa: S110
         # Normally this would be very naughty - but a failure here is fine - just proceed as per normal
         # and failover whatever default logging is currently in place
         pass  # nosec
