@@ -633,7 +633,7 @@ async def test_get_active_doe(client: AsyncClient, pg_base_config, uri_derc_acti
     assert parsed_response.DERControl[0].DERControlBase_.opModImpLimW is not None
     assert parsed_response.DERControl[0].DERControlBase_.opModExpLimW is not None
     assert parsed_response.DERControl[0].DERControlBase_.opModImpLimW.value == Decimal(211)
-    assert parsed_response.DERControl[0].DERControlBase_.opModExpLimW.value == Decimal(212)
+    assert parsed_response.DERControl[0].DERControlBase_.opModExpLimW.value == Decimal(-222)
 
     # Now let the DOE expire
     await asyncio.sleep(3)

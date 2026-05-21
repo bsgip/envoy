@@ -63,4 +63,4 @@ class XmlRequest(Generic[TBaseXmlModel]):
         if not model:
             raise HTTPException(HTTPStatus.BAD_REQUEST.value, detail="request body couldn't map to model XML")
 
-        return model  # ty:ignore[invalid-return-type] # The pydantic XML return type hint isn't quite correct
+        return model

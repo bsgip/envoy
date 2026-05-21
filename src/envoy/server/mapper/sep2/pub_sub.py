@@ -41,7 +41,7 @@ from envoy_schema.server.schema.uri import (
     SubscriptionUri,
     TimeTariffIntervalListUri,
 )
-from parse import parse  # type: ignore
+from parse import parse
 
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import InvalidMappingError
@@ -235,8 +235,8 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["site_reading_type_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Reading resource")
+            except ValueError as exc:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Reading resource") from exc
 
         # Try Rate
         result = parse(RateComponentListUri, href)
@@ -247,8 +247,8 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["tariff_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Rate resource")
+            except ValueError as exc:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Rate resource") from exc
 
         # Try DOE
         result = parse(DERControlListUri, href)
@@ -259,8 +259,8 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_program_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DOE resource")
+            except ValueError as exc:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DOE resource") from exc
 
         # Try DERAvailability
         result = parse(DERAvailabilityUri, href)
@@ -271,8 +271,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERAvailability resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERAvailability resource"
+                ) from exc
 
         # Try DERCapability
         result = parse(DERCapabilityUri, href)
@@ -283,8 +285,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERRating resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERRating resource"
+                ) from exc
 
         # Try DERSetting
         result = parse(DERSettingsUri, href)
@@ -295,8 +299,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERSetting resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERSetting resource"
+                ) from exc
 
         # Try DERStatus
         result = parse(DERStatusUri, href)
@@ -307,8 +313,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERStatus resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERStatus resource"
+                ) from exc
 
         # Try DefaultDERControl
         result = parse(DefaultDERControlUri, href)
@@ -319,8 +327,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_program_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DefaultDERControl resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DefaultDERControl resource"
+                ) from exc
 
         # Try DERProgramList (FSA scoped)
         result = parse(DERProgramFSAListUri, href)
@@ -331,8 +341,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["fsa_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource"
+                ) from exc
 
         # Try FunctionSetAssignmentsList
         result = parse(FunctionSetAssignmentsListUri, href)
@@ -343,10 +355,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     None,
                 )
-            except ValueError:
+            except ValueError as exc:
                 raise InvalidMappingError(
                     f"Unable to interpret {href} parsed {result} as a FunctionSetAssignmentList resource"
-                )
+                ) from exc
 
         # Try DERProgramList
         result = parse(DERProgramListUri, href)
@@ -357,16 +369,20 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     None,
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource"
+                ) from exc
 
         # Try EndDevice
         result = parse(EndDeviceUri, href)
         if result:
             try:
                 return (SubscriptionResource.SITE, _parse_site_id_from_match(result["site_id"]), None)
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a EndDevice resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a EndDevice resource"
+                ) from exc
 
         raise InvalidMappingError(f"Unable to interpret {href} as valid subscription resource")
 
@@ -390,7 +406,7 @@ class SubscriptionMapper:
         try:
             uri = urlparse(subscription.notificationURI)
         except Exception as ex:
-            raise InvalidMappingError(f"Error validating notificationURI: {ex}")
+            raise InvalidMappingError(f"Error validating notificationURI: {ex}") from ex
 
         # Dont allow adding webhooks to arbitrary domains
         if uri.hostname not in aggregator_domains:

@@ -40,6 +40,8 @@ ignore = ["N817"]
 max-complexity = 15
 
 [tool.ruff.lint.per-file-ignores]
+"**/api/**" = ["B008"] # FastAPI makes extensive use of functions for default parameters (eg param: int = Query([0]) )
+"src/envoy/notification/task/**" = ["B008"] # TaskIQ use of functions for default parameters (eg TaskiqDepends() )
 "tests/**" = ["S", "ANN", "N"]
 
 [tool.ty.src]

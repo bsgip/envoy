@@ -1,7 +1,7 @@
 import logging
 from http import HTTPStatus
 
-from asyncpg.exceptions import CardinalityViolationError  # type: ignore
+from asyncpg.exceptions import CardinalityViolationError
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
 from envoy_schema.admin.schema.uri import TariffCreateUri, TariffGeneratedRateCreateUri, TariffUpdateUri
 from fastapi import APIRouter, Query, Response
@@ -78,7 +78,7 @@ async def update_tariff(tariff_id: int, tariff: TariffRequest) -> None:
     try:
         await TariffManager.update_existing_tariff(db.session, tariff_id, tariff)
     except NoResultFound as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found")
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found") from exc
 
 
 @router.post(TariffGeneratedRateCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
@@ -95,7 +95,9 @@ async def create_tariff_genrate(tariff_generates: list[TariffGeneratedRateReques
         await TariffGeneratedRateListManager.add_many_tariff_genrate(db.session, tariff_generates)
 
     except CardinalityViolationError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances")
+        raise LoggedHttpException(
+            logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances"
+        ) from exc
 
     except IntegrityError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "tariff_id or site_id not found")
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "tariff_id or site_id not found") from exc

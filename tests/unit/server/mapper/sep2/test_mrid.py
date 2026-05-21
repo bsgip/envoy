@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from itertools import product
+from typing import no_type_check
 
 import pytest
 from assertical.fake.generator import generate_class_instance
@@ -96,6 +97,7 @@ def test_encode_mrid_stable_values(mrid_type, id, iana_pen):
     assert encode_mrid(mrid_type, id, iana_pen) == encode_mrid(mrid_type, id, iana_pen)
 
 
+@no_type_check
 def test_encode_mrid_unique_values():
     """All values of MridType enum should generate valid mrids that are distinct from eachother"""
 
@@ -119,6 +121,7 @@ def test_encode_mrid_unique_values():
     assert len(all_generated_mrids) == len(set(all_generated_mrids)), "All values should be unique"
 
 
+@no_type_check
 def test_encode_mrid_out_of_range_values():
     """Check encode_mrid raises ValueError on invalid values"""
 
@@ -143,6 +146,7 @@ def test_encode_mrid_out_of_range_values():
         encode_mrid(MAX_MRID_TYPE + 1, 0, 0)
 
 
+@no_type_check
 def test_all_default_encodings_unique():
     """Sanity check that all the encoding methods when called with default values will still return unique mrids (due
     to the mrid type)"""
@@ -288,6 +292,7 @@ def test_encode_rate_component_mrid():
     assert all(decode_mrid_type(m) == MridType.RATE_COMPONENT for m in all_generated_mrids)
 
 
+@no_type_check
 def test_encode_rate_component_mrid_bad_pricing_reading_type():
     """Checks that invalid values for pricing_reading_type raise ValueError"""
     scope = generate_class_instance(BaseRequestScope)
@@ -342,6 +347,7 @@ def test_encode_time_tariff_interval_mrid():
     assert all(decode_mrid_type(m) == MridType.TIME_TARIFF_INTERVAL for m in all_generated_mrids)
 
 
+@no_type_check
 def test_encode_time_tariff_interval_mrid_bad_pricing_reading_type():
     """Checks that invalid values for pricing_reading_type raise ValueError"""
     scope = generate_class_instance(BaseRequestScope)
@@ -362,6 +368,7 @@ def test_encode_time_tariff_interval_mrid_bad_pricing_reading_type():
         MridMapper.encode_time_tariff_interval_mrid(scope, tariff_generated_rate_id, 5)  # Too high
 
 
+@no_type_check
 def test_decode_and_validate_mrid_type():
     """Validates that decode_and_validate_mrid_type works for the various encodings"""
 

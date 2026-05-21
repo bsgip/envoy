@@ -18,7 +18,7 @@ def test_settings_missing_mandatory(preserved_environment):
     """Do we get errors if the mandatory setting keys are missing"""
     remove_mandatory_settings()
     with pytest.raises(ValidationError):
-        CommonSettings(_env_file=None)
+        CommonSettings(_env_file=None)  # ty:ignore[missing-argument, unknown-argument]
 
 
 def test_settings_defaults(preserved_environment):
@@ -28,7 +28,7 @@ def test_settings_defaults(preserved_environment):
     remove_mandatory_settings()
     os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
-    settings = CommonSettings()
+    settings = CommonSettings()  # ty:ignore[missing-argument]
 
     assert settings.enable_notifications is None
     assert settings.sqlalchemy_engine_arguments is None
@@ -44,7 +44,7 @@ def test_settings_engine_args(preserved_environment):
     os.environ["DATABASE_URL"] = TEST_DATABASE_URL
     os.environ["SQLALCHEMY_ENGINE_ARGUMENTS"] = '{"foo": "bar", "num": 123, "bool": true, "float": 1.23}'
 
-    settings = CommonSettings()
+    settings = CommonSettings()  # ty:ignore[missing-argument]
     assert settings.sqlalchemy_engine_arguments == {"foo": "bar", "num": 123, "bool": True, "float": 1.23}
 
 

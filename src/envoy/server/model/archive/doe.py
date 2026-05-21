@@ -14,7 +14,7 @@ class ArchiveSiteControlGroup(ArchiveBase):
 
     A group contains metadata and a "primacy" to distinguish it's controls from other SiteControlGroups"""
 
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.SiteControlGroup.__tablename__  # type: ignore
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.SiteControlGroup.__tablename__
 
     site_control_group_id: Mapped[int] = mapped_column(INTEGER, index=True)
     description: Mapped[str] = mapped_column(VARCHAR(length=32))
@@ -31,7 +31,7 @@ class ArchiveSiteControlGroupDefault(ArchiveBase):
     """Represents fields that map to a subset of the attributes defined in CSIP-AUS' DefaultDERControl resource. These
     default values fall underneath a specific SiteControlGroup."""
 
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.SiteControlGroupDefault.__tablename__  # type: ignore
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.SiteControlGroupDefault.__tablename__
     site_control_group_default_id: Mapped[int] = mapped_column(INTEGER, index=True)
     site_control_group_id: Mapped[int] = mapped_column(INTEGER, nullable=False)
 
@@ -56,7 +56,7 @@ class ArchiveSiteControlGroupDefault(ArchiveBase):
 class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     """Represents a dynamic operating envelope for a site at a particular time interval"""
 
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.DynamicOperatingEnvelope.__tablename__  # type: ignore
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.DynamicOperatingEnvelope.__tablename__
     dynamic_operating_envelope_id: Mapped[int] = mapped_column(BigInteger, index=True)
     site_control_group_id: Mapped[int] = mapped_column(INTEGER)
     site_id: Mapped[int] = mapped_column(INTEGER)

@@ -1,6 +1,5 @@
 from datetime import datetime
 from itertools import product
-from typing import cast
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -58,7 +57,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope
 
 
 def assert_entity_hrefs_contain_entity_id_and_prefix(
@@ -105,9 +104,8 @@ def test_SubscriptionMapper_calculate_resource_href_at_least_one_supported_combo
     """Validates the various SubscriptionResource values should have at least 1 supported combo of site/resource id"""
     display_site_id = 2518761283
     hrefs: list[str] = []
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, display_site_id=display_site_id, href_prefix="/foo/bar"
-    )
+    scope = generate_class_instance(AggregatorRequestScope, display_site_id=display_site_id, href_prefix="/foo/bar")
+    assert scope.href_prefix is not None
     for site_id, resource_id in product([1129414, None], [82521517, None]):
         sub: Subscription = generate_class_instance(Subscription)
         sub.resource_type = resource
@@ -137,9 +135,7 @@ def test_SubscriptionMapper_calculate_resource_href_all_support_site_unscoped(re
     either a specified resource id or none"""
 
     hrefs: list[str] = []
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, optional_is_none=True
-    )
+    scope = generate_class_instance(AggregatorRequestScope, optional_is_none=True)
     for resource_id in [1, None]:
         sub: Subscription = generate_class_instance(Subscription)
         sub.resource_type = resource
@@ -166,9 +162,7 @@ def test_SubscriptionMapper_calculate_resource_href_encodes_site_id(
 ):
 
     display_site_id = VIRTUAL_END_DEVICE_SITE_ID if site_id is None else site_id
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, display_site_id=display_site_id
-    )
+    scope = generate_class_instance(AggregatorRequestScope, display_site_id=display_site_id)
 
     sub: Subscription = generate_class_instance(Subscription)
     sub.resource_type = resource
@@ -189,7 +183,7 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
     resource: SubscriptionResource, site_id: int | None, resource_id: int | None
 ):
     """Validates the various inputs/expected outputs apply the href_prefix"""
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, href_prefix=None)
+    scope = generate_class_instance(AggregatorRequestScope, href_prefix=None)
     sub: Subscription = generate_class_instance(Subscription)
     sub.resource_type = resource
     sub.scoped_site_id = site_id
@@ -205,9 +199,7 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
 
     # set output to None if we hit an unsupported combo of inputs
     prefix = "/my/prefix/for/tests"
-    scope_prefix: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, href_prefix=prefix
-    )
+    scope_prefix = generate_class_instance(AggregatorRequestScope, href_prefix=prefix)
     href_with_prefix: str | None
     try:
         href_with_prefix = SubscriptionMapper.calculate_resource_href(sub, scope_prefix)
@@ -227,9 +219,9 @@ def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
 
 
 def test_SubscriptionMapper_calculate_resource_href_bad_type():
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(AggregatorRequestScope)
     sub: Subscription = generate_class_instance(Subscription)
-    sub.resource_type = 9876  # invalid type
+    sub.resource_type = 9876  # invalid type  # ty:ignore[invalid-assignment]
     with pytest.raises(InvalidMappingError):
         SubscriptionMapper.calculate_resource_href(sub, scope)
 
@@ -253,9 +245,7 @@ def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
 
     for resource, site_id, resource_id in unique_combos:
         display_site_id = VIRTUAL_END_DEVICE_SITE_ID if site_id is None else site_id
-        scope: DeviceOrAggregatorRequestScope = generate_class_instance(
-            DeviceOrAggregatorRequestScope, display_site_id=display_site_id, site_id=site_id
-        )
+        scope = generate_class_instance(AggregatorRequestScope, display_site_id=display_site_id, site_id=site_id)
 
         sub.resource_type = resource
         sub.scoped_site_id = display_site_id + 999  # Ensure this isn't considered for href creation
@@ -310,15 +300,14 @@ def test_SubscriptionMapper_map_to_response():
     sub_optional.notification_uri = "https://my.example:22/foo"
     sub_optional.resource_type = SubscriptionResource.SITE
     sub_with_condition: Subscription = generate_class_instance(Subscription, seed=101, optional_is_none=True)
-    sub_with_condition.conditions = [cast(SubscriptionCondition, generate_class_instance(SubscriptionCondition))]
+    sub_with_condition.conditions = [generate_class_instance(SubscriptionCondition)]
     sub_with_condition.conditions[0].attribute = ConditionAttributeIdentifier.READING_VALUE
     sub_with_condition.notification_uri = "http://my.example:33/foo"
     sub_with_condition.resource_type = SubscriptionResource.SITE
 
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, href_prefix=None)
-    scope_prefix: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, href_prefix="/my/prefix"
-    )
+    scope = generate_class_instance(AggregatorRequestScope, href_prefix=None)
+    scope_prefix = generate_class_instance(AggregatorRequestScope, href_prefix="/my/prefix")
+    assert scope_prefix.href_prefix is not None
 
     # check prefix is applied
     sep2_prefix = SubscriptionMapper.map_to_response(sub_all_set, scope_prefix)
@@ -367,13 +356,13 @@ def test_SubscriptionListMapper_map_to_site_response():
     sub_list[1].scoped_site_id = 1
     sub_list[1].resource_id = 2
     sub_count = 43
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, seed=1001, optional_is_none=True, href_prefix="/custom/prefix"
+    scope = generate_class_instance(
+        AggregatorRequestScope, seed=1001, optional_is_none=True, href_prefix="/custom/prefix"
     )
 
     mapped = SubscriptionListMapper.map_to_site_response(scope, sub_list, sub_count)
-
     assert isinstance(mapped, SubscriptionListResponse)
+    assert mapped.href is not None
     assert str(scope.display_site_id) in mapped.href
     assert mapped.results == len(sub_list)
     assert mapped.all_ == sub_count
@@ -386,10 +375,8 @@ def test_SubscriptionMapper_calculate_subscription_href():
     sub_all_set = generate_class_instance(Subscription, seed=101, optional_is_none=False)
     sub_optional = generate_class_instance(Subscription, seed=101, optional_is_none=True)
 
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, href_prefix=None)
-    scope_prefix: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, href_prefix="/my/prefix"
-    )
+    scope = generate_class_instance(AggregatorRequestScope, href_prefix=None)
+    scope_prefix = generate_class_instance(AggregatorRequestScope, href_prefix="/my/prefix")
 
     # Subscriptions scoped to a EndDevice are different to those that are "global"
     assert SubscriptionMapper.calculate_subscription_href(
@@ -423,9 +410,7 @@ def test_SubscriptionMapper_map_from_request():
     sub_condition.condition = generate_class_instance(Sep2Condition)
     sub_condition.condition.attributeIdentifier = ConditionAttributeIdentifier.READING_VALUE
 
-    scope_prefix: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, seed=1001, site_id=None, href_prefix="/prefix"
-    )
+    scope_prefix = generate_class_instance(AggregatorRequestScope, seed=1001, site_id=None, href_prefix="/prefix")
     valid_domains = set(["foo.bar", "example.com"])
     changed_time = datetime(2022, 3, 4, 5, 6, 7)
 
@@ -509,7 +494,7 @@ def test_SubscriptionMapper_map_from_request():
         ("/edev/123/subbutnotreally/1", InvalidMappingError),
     ],
 )
-def test_SubscriptionMapper_parse_resource_href(href: str, expected: tuple | Exception):
+def test_SubscriptionMapper_parse_resource_href(href: str, expected: tuple | type[Exception]):
     if isinstance(expected, tuple):
         assert SubscriptionMapper.parse_resource_href(href) == expected
     else:
@@ -523,9 +508,7 @@ def test_NotificationMapper_map_sites_to_response(notification_type: Notificatio
     site2: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
-    )
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
 
     notification = NotificationMapper.map_sites_to_response([site1, site2], sub, scope, notification_type, False, 9876)
     assert isinstance(notification, Notification)
@@ -538,12 +521,15 @@ def test_NotificationMapper_map_sites_to_response(notification_type: Notificatio
     else:
         assert notification.status == NotificationStatus.DEFAULT
 
+    assert notification.resource is not None
     assert notification.resource.type == XSI_TYPE_END_DEVICE_LIST
     assert notification.resource.pollRate == 9876
     assert notification.resource.href and notification.resource.href.startswith("/custom/prefix")
     assert_list_type(EndDeviceResponse, notification.resource.EndDevice, count=2)
     assert_entity_hrefs_contain_entity_id_and_prefix(
-        [e.href for e in notification.resource.EndDevice], [site1.site_id, site2.site_id], scope.href_prefix
+        [e.href for e in notification.resource.EndDevice],  # type: ignore
+        [site1.site_id, site2.site_id],
+        scope.href_prefix,  # ty:ignore[invalid-argument-type]
     )
 
 
@@ -554,9 +540,7 @@ def test_NotificationMapper_map_does_to_response(notification_type: Notification
     site_control_group_id = 51521251
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
-    )
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
 
     notification = NotificationMapper.map_does_to_response(
         site_control_group_id, [doe1, doe2], sub, scope, notification_type, -3
@@ -574,12 +558,13 @@ def test_NotificationMapper_map_does_to_response(notification_type: Notification
     else:
         assert notification.status == NotificationStatus.DEFAULT
 
+    assert notification.resource is not None
     assert notification.resource.type == XSI_TYPE_DER_CONTROL_LIST
     assert_list_type(DERControlResponse, notification.resource.DERControl, count=2)
     assert_entity_hrefs_contain_entity_id_and_prefix(
-        [e.href for e in notification.resource.DERControl],
+        [e.href for e in notification.resource.DERControl],  # type: ignore
         [doe1.dynamic_operating_envelope_id, doe2.dynamic_operating_envelope_id],
-        scope.href_prefix,
+        scope.href_prefix,  # ty:ignore[invalid-argument-type]
     )
 
 
@@ -589,9 +574,7 @@ def test_NotificationMapper_map_site_control_groups_to_response(notification_typ
     scg2 = generate_class_instance(SiteControlGroup, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
-    )
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
 
     poll_rate = 99887
     notification = NotificationMapper.map_site_control_groups_to_response(
@@ -607,13 +590,14 @@ def test_NotificationMapper_map_site_control_groups_to_response(notification_typ
     else:
         assert notification.status == NotificationStatus.DEFAULT
 
+    assert notification.resource is not None
     assert notification.resource.type == XSI_TYPE_DER_PROGRAM_LIST
     assert notification.resource.pollRate == poll_rate
     assert_list_type(DERProgramResponse, notification.resource.DERProgram, count=2)
     assert_entity_hrefs_contain_entity_id_and_prefix(
-        [e.href for e in notification.resource.DERProgram],
+        [e.href for e in notification.resource.DERProgram],  # type: ignore
         [scg1.site_control_group_id, scg2.site_control_group_id],
-        scope.href_prefix,
+        scope.href_prefix,  # ty:ignore[invalid-argument-type]
     )
 
 
@@ -623,9 +607,7 @@ def test_NotificationMapper_map_readings_to_response(notification_type: Notifica
     sr2: SiteReading = generate_class_instance(SiteReading, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
-    )
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
     site_reading_type_id = 456
 
     notification = NotificationMapper.map_readings_to_response(
@@ -643,9 +625,10 @@ def test_NotificationMapper_map_readings_to_response(notification_type: Notifica
     else:
         assert notification.status == NotificationStatus.DEFAULT
 
+    assert notification.resource is not None
     assert notification.resource.type == XSI_TYPE_READING_LIST
     assert_list_type(Reading, notification.resource.Readings, count=2)
-    assert all([e.href is None for e in notification.resource.Readings]), (
+    assert all([e.href is None for e in notification.resource.Readings or []]), (
         "If this fails - starting testing using assert_entity_hrefs_contain_entity_id_and_prefix (see other tests)"
     )
 
@@ -656,9 +639,7 @@ def test_NotificationMapper_map_rates_to_response(notification_type: Notificatio
     rate2: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=True)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(
-        DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/custom/prefix"
-    )
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
     tariff_id = 888
     day = datetime.now().date()
     pricing_reading_type = PricingReadingType.IMPORT_ACTIVE_POWER_KWH
@@ -679,17 +660,20 @@ def test_NotificationMapper_map_rates_to_response(notification_type: Notificatio
     else:
         assert notification.status == NotificationStatus.DEFAULT
 
+    assert notification.resource is not None
     assert notification.resource.type == XSI_TYPE_TIME_TARIFF_INTERVAL_LIST
     assert_list_type(TimeTariffIntervalResponse, notification.resource.TimeTariffInterval, count=2)
     assert_entity_hrefs_contain_entity_id_and_prefix(
-        [e.href for e in notification.resource.TimeTariffInterval], [rate1.site_id, rate2.site_id], scope.href_prefix
+        [e.href for e in notification.resource.TimeTariffInterval],  # type: ignore
+        [rate1.site_id, rate2.site_id],
+        scope.href_prefix,  # type: ignore
     )
 
 
 def test_NotificationMapper_map_der_availability_to_response_missing():
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
     notification_all_set = NotificationMapper.map_der_availability_to_response(
@@ -710,9 +694,10 @@ def test_NotificationMapper_map_der_availability_to_response_missing():
 @pytest.mark.parametrize("notification_type", list(NotificationType))
 def test_NotificationMapper_map_der_availability_to_response(notification_type: NotificationType):
     all_set: SiteDERAvailability = generate_class_instance(SiteDERAvailability, seed=1, optional_is_none=False)
+    assert all_set.reserved_deliver_percent is not None
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
     der_id = 456
     site_id = 789
 
@@ -728,6 +713,8 @@ def test_NotificationMapper_map_der_availability_to_response(notification_type: 
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
+
+    assert notification_all_set.resource is not None and notification_all_set.resource.href is not None
     assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
     if notification_type == NotificationType.ENTITY_DELETED:
         assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
@@ -737,6 +724,7 @@ def test_NotificationMapper_map_der_availability_to_response(notification_type: 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
     assert notification_all_set.resource.type == XSI_TYPE_DER_AVAILABILITY
+    assert notification_all_set.resource.statWAvail is not None
     assert notification_all_set.resource.statWAvail.value == all_set.estimated_w_avail_value
     assert notification_all_set.resource.statWAvail.multiplier == all_set.estimated_w_avail_multiplier
     assert notification_all_set.resource.reservePercent == int(all_set.reserved_deliver_percent * 100)
@@ -745,7 +733,7 @@ def test_NotificationMapper_map_der_availability_to_response(notification_type: 
 @pytest.mark.parametrize("notification_type", list(NotificationType))
 def test_NotificationMapper_map_der_rating_to_response_missing(notification_type: NotificationType):
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
     notification_all_set = NotificationMapper.map_der_rating_to_response(
@@ -771,7 +759,7 @@ def test_NotificationMapper_map_der_rating_to_response(notification_type: Notifi
     all_set: SiteDERRating = generate_class_instance(SiteDERRating, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
     der_id = 456
     site_id = 789
 
@@ -786,6 +774,7 @@ def test_NotificationMapper_map_der_rating_to_response(notification_type: Notifi
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
+    assert notification_all_set.resource is not None and notification_all_set.resource.href is not None
     assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
     if notification_type == NotificationType.ENTITY_DELETED:
         assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
@@ -795,14 +784,16 @@ def test_NotificationMapper_map_der_rating_to_response(notification_type: Notifi
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
     assert notification_all_set.resource.type == XSI_TYPE_DER_CAPABILITY
+    assert notification_all_set.resource.rtgMaxW is not None
     assert notification_all_set.resource.rtgMaxW.value == all_set.max_w_value
     assert notification_all_set.resource.rtgMaxW.multiplier == all_set.max_w_multiplier
+    assert notification_all_set.resource.rtgMaxV is not None
     assert notification_all_set.resource.rtgMaxV.value == all_set.max_v_value
 
 
 def test_NotificationMapper_map_der_settings_to_response_missing():
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
     notification_all_set = NotificationMapper.map_der_settings_to_response(
@@ -824,7 +815,7 @@ def test_NotificationMapper_map_der_settings_to_response(notification_type: Noti
     all_set: SiteDERSetting = generate_class_instance(SiteDERSetting, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
     der_id = 456
     site_id = 789
 
@@ -839,6 +830,7 @@ def test_NotificationMapper_map_der_settings_to_response(notification_type: Noti
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
+    assert notification_all_set.resource and notification_all_set.resource.href
     assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
     if notification_type == NotificationType.ENTITY_DELETED:
         assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
@@ -848,6 +840,7 @@ def test_NotificationMapper_map_der_settings_to_response(notification_type: Noti
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
     assert notification_all_set.resource.type == XSI_TYPE_DER_SETTINGS
+    assert notification_all_set.resource.setMaxW and notification_all_set.resource.setMaxV
     assert notification_all_set.resource.setMaxW.value == all_set.max_w_value
     assert notification_all_set.resource.setMaxW.multiplier == all_set.max_w_multiplier
     assert notification_all_set.resource.setMaxV.value == all_set.max_v_value
@@ -856,7 +849,7 @@ def test_NotificationMapper_map_der_settings_to_response(notification_type: Noti
 
 def test_NotificationMapper_map_der_status_to_response_missing():
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, href_prefix="/custom/prefix")
     der_id = 456
 
     notification_all_set = NotificationMapper.map_der_status_to_response(
@@ -875,7 +868,7 @@ def test_NotificationMapper_map_der_status_to_response(notification_type: Notifi
     all_set: SiteDERStatus = generate_class_instance(SiteDERStatus, seed=1, optional_is_none=False)
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
     der_id = 456
     site_id = 789
 
@@ -888,6 +881,7 @@ def test_NotificationMapper_map_der_status_to_response(notification_type: Notifi
     assert notification_all_set.subscriptionURI.startswith("/custom/prefix")
     assert "/sub" in notification_all_set.subscriptionURI
     assert f"/{scope.display_site_id}" in notification_all_set.subscribedResource, "Subscription uses display site ID"
+    assert notification_all_set.resource and notification_all_set.resource.href
     assert f"/{site_id}" in notification_all_set.resource.href, "Resource uses the actual site id"
     if notification_type == NotificationType.ENTITY_DELETED:
         assert notification_all_set.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
@@ -897,9 +891,12 @@ def test_NotificationMapper_map_der_status_to_response(notification_type: Notifi
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
     assert notification_all_set.resource.type == XSI_TYPE_DER_STATUS
+    assert notification_all_set.resource.inverterStatus and all_set.inverter_status_time
     assert notification_all_set.resource.inverterStatus.value == all_set.inverter_status
     assert notification_all_set.resource.inverterStatus.dateTime == int(all_set.inverter_status_time.timestamp())
+    assert notification_all_set.resource.operationalModeStatus
     assert notification_all_set.resource.operationalModeStatus.value == all_set.operational_mode_status
+    assert notification_all_set.resource.genConnectStatus
     assert notification_all_set.resource.genConnectStatus.value == to_hex_binary(all_set.generator_connect_status)
 
 
@@ -908,7 +905,7 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(
     notification_type: NotificationType, fsa_ids: list[int]
 ):
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
     poll_rate_seconds = 1234566
 
     notification_all_set = NotificationMapper.map_function_set_assignments_list_to_response(
@@ -929,10 +926,12 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
+    assert notification_all_set.resource is not None
     assert notification_all_set.resource.type == XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST
     assert notification_all_set.resource.pollRate == poll_rate_seconds
     assert notification_all_set.resource.href and notification_all_set.resource.href.startswith("/custom/prefix")
 
+    assert notification_all_set.resource.FunctionSetAssignments is not None
     assert len(notification_all_set.resource.FunctionSetAssignments) == len(fsa_ids)
     for fsa in notification_all_set.resource.FunctionSetAssignments:
         assert fsa.href is not None
@@ -942,9 +941,11 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(
 @pytest.mark.parametrize("notification_type", list(NotificationType))
 def test_NotificationMapper_map_default_site_control_response(notification_type: NotificationType):
     all_set = generate_class_instance(SiteControlGroupDefault, seed=1, optional_is_none=False)
+    assert all_set.import_limit_active_watts
+    assert all_set.export_limit_active_watts
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
     pow10_mult = -3
     derp_id = 21315415
 
@@ -964,17 +965,20 @@ def test_NotificationMapper_map_default_site_control_response(notification_type:
     else:
         assert notification_all_set.status == NotificationStatus.DEFAULT
 
+    assert notification_all_set.resource and notification_all_set.resource.href
     assert expected_dderc_href in notification_all_set.resource.href
     assert notification_all_set.resource.href.startswith("/custom/prefix")
 
     # Sanity check to ensure we have some of the right fields set - the heavy lifting is done on the entity
     # mapper unit tests
     assert notification_all_set.resource.type == XSI_TYPE_DEFAULT_DER_CONTROL
+    assert notification_all_set.resource.DERControlBase_ and notification_all_set.resource.DERControlBase_.opModImpLimW
     assert notification_all_set.resource.DERControlBase_.opModImpLimW.multiplier == pow10_mult
     assert (
         notification_all_set.resource.DERControlBase_.opModImpLimW.value
         == DERControlMapper.map_to_active_power(all_set.import_limit_active_watts, pow10_mult).value
     )
+    assert notification_all_set.resource.DERControlBase_.opModExpLimW
     assert notification_all_set.resource.DERControlBase_.opModExpLimW.multiplier == pow10_mult
     assert (
         notification_all_set.resource.DERControlBase_.opModExpLimW.value
@@ -985,7 +989,7 @@ def test_NotificationMapper_map_default_site_control_response(notification_type:
 def test_NotificationMapper_map_default_site_control_response_none_value():
 
     sub = generate_class_instance(Subscription, seed=303)
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001, href_prefix="/custom/prefix")
+    scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
     pow10_mult = -3
     derp_id = 142
 

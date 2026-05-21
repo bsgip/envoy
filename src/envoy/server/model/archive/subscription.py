@@ -9,7 +9,7 @@ from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX, ArchiveBase
 
 
 class ArchiveSubscription(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.Subscription.__tablename__  # type: ignore
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.Subscription.__tablename__
 
     subscription_id: Mapped[int] = mapped_column(INTEGER, index=True)
     aggregator_id: Mapped[int] = mapped_column(INTEGER)
@@ -25,7 +25,7 @@ class ArchiveSubscription(ArchiveBase):
 
 
 class ArchiveSubscriptionCondition(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SubscriptionCondition.__tablename__  # type: ignore
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SubscriptionCondition.__tablename__
 
     subscription_condition_id: Mapped[int] = mapped_column(INTEGER, index=True)
     subscription_id: Mapped[int] = mapped_column(INTEGER)

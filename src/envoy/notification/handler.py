@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq import AsyncBroker, Context, InMemoryBroker, SimpleRetryMiddleware, TaskiqDepends
 from taskiq.result_backends.dummy import DummyResultBackend
-from taskiq_aio_pika import AioPikaBroker  # type: ignore # https://github.com/taskiq-python/taskiq-aio-pika/pull/28
+from taskiq_aio_pika import AioPikaBroker
 
 logger = logging.getLogger(__name__)
 

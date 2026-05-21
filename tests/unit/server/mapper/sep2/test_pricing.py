@@ -422,7 +422,7 @@ def test_mrid_uniqueness():
     tariff: Tariff = generate_class_instance(Tariff)
     rate: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate)
     tariff.tariff_id = id
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
 
     rate.tariff_generated_rate_id = id
     rate.tariff_id = id

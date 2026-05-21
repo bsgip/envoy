@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from http import HTTPStatus
 
-from asyncpg.exceptions import CardinalityViolationError  # type: ignore
+from asyncpg.exceptions import CardinalityViolationError
 from envoy_schema.admin.schema.doe import DoePageResponse, DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.uri import DoeUri
 from fastapi import APIRouter, Query
@@ -33,17 +33,19 @@ async def create_doe(doe_list: list[DynamicOperatingEnvelopeRequest]) -> None:
         await DoeListManager.add_many_doe(db.session, doe_list)
 
     except CardinalityViolationError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances")
+        raise LoggedHttpException(
+            logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances"
+        ) from exc
 
     except IntegrityError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_id not found")
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_id not found") from exc
 
 
 @router.get(DoeUri, status_code=HTTPStatus.OK, response_model=DoePageResponse)
 async def get_all_does(
-    start: list[int] = Query([0]),
-    limit: list[int] = Query([100]),
-    after: datetime | None = Query(None),
+    start: list[int] = Query([0]),  # noqa: B008
+    limit: list[int] = Query([100]),  # noqa: B008
+    after: datetime | None = Query(None),  # noqa: B008
 ) -> DoePageResponse:
     """Endpoint for a paginated list of DynamicOperatingEnvelope Objects, ordered by dynamic_operating_envelope_id
     attribute.

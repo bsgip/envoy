@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from http import HTTPStatus
 
-from asyncpg.exceptions import CardinalityViolationError  # type: ignore
+from asyncpg.exceptions import CardinalityViolationError
 from envoy_schema.admin.schema.site_control import (
     SiteControlGroupDefaultRequest,
     SiteControlGroupDefaultResponse,
@@ -81,9 +81,9 @@ async def update_site_control_group(
             request=site_control_group,
         )
     except BadRequestError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, exc.message)
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, exc.message) from exc
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, exc.message)
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, exc.message) from exc
 
 
 @router.get(SiteControlGroupListUri, status_code=HTTPStatus.OK, response_model=SiteControlGroupPageResponse)
@@ -125,9 +125,11 @@ async def create_site_controls(group_id: int, control_list: list[SiteControlRequ
     try:
         await SiteControlListManager.add_many_site_control(db.session, group_id, control_list)
     except CardinalityViolationError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances")
+        raise LoggedHttpException(
+            logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances"
+        ) from exc
     except IntegrityError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_id not found")
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_id not found") from exc
 
 
 @router.get(SiteControlUri, status_code=HTTPStatus.OK, response_model=SiteControlPageResponse)

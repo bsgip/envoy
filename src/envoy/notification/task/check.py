@@ -182,7 +182,7 @@ def entities_serviced_by_subscription(
                 if c.attribute == ConditionAttributeIdentifier.READING_VALUE:
                     # If the reading is within the condition thresholds - don't include it
                     # (we only want values out of range)
-                    reading_value = cast(SiteReading, e).value  # type: ignore # mypy quirk
+                    reading_value = cast(SiteReading, e).value
                     low_range = c.lower_threshold is None or reading_value < c.lower_threshold
                     high_range = c.upper_threshold is None or reading_value > c.upper_threshold
 
@@ -241,7 +241,7 @@ def entities_to_notification(
             scope,
             notification_type,
             config.disable_edev_registration,
-            config.edevl_pollrate_seconds,  # type: ignore # mypy quirk # noqa: E501
+            config.edevl_pollrate_seconds,
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         if pricing_reading_type is None:
@@ -253,7 +253,7 @@ def entities_to_notification(
             tariff_id=tariff_id,
             day=day,
             pricing_reading_type=pricing_reading_type,
-            rates=cast(Sequence[TariffGeneratedRate], entities),  # type: ignore # mypy quirk
+            rates=cast(Sequence[TariffGeneratedRate], entities),
             sub=sub,
             scope=scope,
             notification_type=notification_type,
@@ -263,7 +263,7 @@ def entities_to_notification(
         _, _, site_control_group_id = batch_key
         return NotificationMapper.map_does_to_response(
             site_control_group_id=site_control_group_id,
-            does=cast(Sequence[DynamicOperatingEnvelope], entities),  # type: ignore
+            does=cast(Sequence[DynamicOperatingEnvelope], entities),
             sub=sub,
             scope=scope,
             notification_type=notification_type,
@@ -272,7 +272,7 @@ def entities_to_notification(
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         # SITE_CONTROL_GROUP: (aggregator_id: int, site_control_group_id: int)
         return NotificationMapper.map_site_control_groups_to_response(
-            site_control_groups=[e.original for e in cast(Sequence[SiteScopedSiteControlGroup], entities)],  # type: ignore # noqa: E501
+            site_control_groups=[e.original for e in cast(Sequence[SiteScopedSiteControlGroup], entities)],
             sub=sub,
             scope=scope,
             notification_type=notification_type,
@@ -286,33 +286,33 @@ def entities_to_notification(
             cast(Sequence[SiteReading], entities),
             sub,
             scope,
-            notification_type,  # type: ignore
+            notification_type,
         )
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
         _, site_id, site_der_id = batch_key
-        availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None  # type: ignore
+        availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_availability_to_response(
             site_der_id, availability, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_RATING:
         # SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
         _, site_id, site_der_id = batch_key
-        rating = cast(SiteDERRating, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
+        rating = cast(SiteDERRating, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_rating_to_response(
             site_der_id, rating, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_SETTING:
         # SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
         _, site_id, site_der_id = batch_key
-        settings = cast(SiteDERSetting, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
+        settings = cast(SiteDERSetting, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_settings_to_response(
             site_der_id, settings, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         # SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
         _, site_id, site_der_id = batch_key
-        status = cast(SiteDERStatus, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
+        status = cast(SiteDERStatus, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_status_to_response(
             site_der_id, status, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource

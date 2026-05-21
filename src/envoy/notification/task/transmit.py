@@ -165,7 +165,7 @@ async def do_transmit_notification(
                 transmit_start=transmit_start,
                 transmit_end=utc_now(),
                 http_status_code=None,
-            )
+            ) from ex
 
         transmit_end = utc_now()
 
