@@ -101,7 +101,6 @@ class TariffProfileManager:
 
 
 class RateComponentManager:
-
     @staticmethod
     async def fetch_reading_type(
         session: AsyncSession, scope: SiteRequestScope, tariff_id: int, rate_component_id: int
@@ -169,7 +168,6 @@ class RateComponentManager:
 
 
 class TimeTariffIntervalManager:
-
     @staticmethod
     async def fetch_time_tariff_interval_list(
         session: AsyncSession,

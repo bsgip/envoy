@@ -91,9 +91,9 @@ async def test_copy_rows_into_archive_all_matches(
             assert archive_count == original_count_before
 
             archive_vals = await fetch_all_values_as_tuples(session, archive_type, ignore_columns=ARCHIVE_BASE_COLUMNS)
-            assert (
-                original_values == archive_vals
-            ), "Columns archived should be a straight copy from original table (ignoring the archive columns)"
+            assert original_values == archive_vals, (
+                "Columns archived should be a straight copy from original table (ignoring the archive columns)"
+            )
 
             # Validate the archive specific metadata
             deleted_time_vals = await fetch_single_column(session, archive_type, "deleted_time")

@@ -225,7 +225,6 @@ def entities_to_notification(  # noqa: C901
             config.edevl_pollrate_seconds,
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-
         # TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, tariff_component_id: int)
         _, tariff_id, _, tariff_component_id = batch_key
         return NotificationMapper.map_rates_to_response(
@@ -338,7 +337,6 @@ def entities_to_notification(  # noqa: C901
 
         return NotificationMapper.map_tariffs_to_response(tariffs, sub, scope, notification_type)
     elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
-
         # COMBINED_TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int)
         _, tariff_id, _ = batch_key
         return NotificationMapper.map_rates_to_response(
@@ -401,7 +399,6 @@ async def handle_batch(
     for batch_key, agg_id, entities, notification_type in all_entity_batches(
         batch.models_by_batch_key, batch.deleted_by_batch_key
     ):
-
         # We enumerate by aggregator ID at the top level (as a way of minimising the size of entities)
         # We also cache the per aggregator subscriptions to minimise round trips to the db
         candidate_subscriptions = aggregator_subs_cache.get(agg_id, None)
@@ -467,13 +464,17 @@ async def handle_batch(
         scope = scope_for_subscription(n.subscription, href_prefix)
 
         try:
-            await transmit_notification.kicker().with_broker(broker).kiq(
-                remote_uri=n.subscription.notification_uri,
-                content=content,
-                notification_id=str(n.notification_id),
-                subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, scope),
-                subscription_id=n.subscription.subscription_id,
-                attempt=0,
+            await (
+                transmit_notification.kicker()
+                .with_broker(broker)
+                .kiq(
+                    remote_uri=n.subscription.notification_uri,
+                    content=content,
+                    notification_id=str(n.notification_id),
+                    subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, scope),
+                    subscription_id=n.subscription.subscription_id,
+                    attempt=0,
+                )
             )
         except Exception as ex:
             logger.error("Error adding transmission task", exc_info=ex)

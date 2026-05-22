@@ -83,7 +83,6 @@ class TariffComponentMapper:
 
 
 class TariffGeneratedRateListMapper:
-
     @staticmethod
     def map_to_single_rate_response(rate: TariffGeneratedRate) -> TariffGeneratedRateResponse:
         return TariffGeneratedRateResponse(

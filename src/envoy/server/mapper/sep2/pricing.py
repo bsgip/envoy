@@ -216,7 +216,7 @@ class ConsumptionTariffIntervalMapper:
         """Extracts the (start, price) for the specified cti_id (block_id). The first block is cti_id=1. Raises a
         NotFoundError if the rate does NOT have a price/start value at that block."""
 
-        match (cti_id):
+        match cti_id:
             case 1:
                 return (0, rate.price_pow10_encoded)
             case 2:
@@ -301,7 +301,6 @@ class ConsumptionTariffIntervalMapper:
 
 
 class TimeTariffIntervalMapper:
-
     @staticmethod
     def map_to_response(
         scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],

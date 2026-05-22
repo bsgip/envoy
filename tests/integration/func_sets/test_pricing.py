@@ -554,9 +554,9 @@ async def test_get_timetariffintervallist(
             assert tti.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].startValue == 0, tti.href
 
             if expected_price_count > 1:
-                assert (
-                    tti.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[1].price == block1_price
-                ), tti.href
+                assert tti.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[1].price == block1_price, (
+                    tti.href
+                )
                 assert (
                     tti.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[1].startValue == block1_start
                 ), tti.href

@@ -267,7 +267,6 @@ def test_SubscriptionMapper_calculate_resource_href_unique_hrefs():
     ]
 
     for resource, site_id, resource_id, resource_parent_id in unique_combos:
-
         display_site_id = VIRTUAL_END_DEVICE_SITE_ID if site_id is None else site_id
         scope = generate_class_instance(AggregatorRequestScope, display_site_id=display_site_id, site_id=site_id)
 

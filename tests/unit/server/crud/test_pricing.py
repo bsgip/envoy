@@ -150,7 +150,7 @@ def assert_tariff_component_for_id(
     else:
         assert isinstance(actual_tariff_component, TariffComponent)
         assert actual_tariff_component.tariff_component_id == expected_tariff_component_id
-        match (expected_tariff_component_id):
+        match expected_tariff_component_id:
             case 1:
                 assert actual_tariff_component.role_flags == 1
                 assert actual_tariff_component.accumulation_behaviour == 3
@@ -277,7 +277,7 @@ def assert_rate_for_id(
             assert actual_rate.price_pow10_encoded_block_1 == (expected_rate_id * 1000) + 1
 
         # Other things are specific to the individual records
-        match (expected_rate_id):
+        match expected_rate_id:
             case 1:
                 assert actual_rate.tariff_id == 1
                 assert actual_rate.tariff_component_id == 1

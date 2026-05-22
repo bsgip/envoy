@@ -720,9 +720,9 @@ async def test_fetch_rates_by_timestamp(pg_base_config, timestamp: datetime, exp
 
             assert all([isinstance(e.site, Site) for e in list_entities]), "site relationship populated"
             assert all([e.site.site_id == e.site_id for e in list_entities]), "site relationship populated"
-            assert all(
-                [e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]
-            ), "start_time should be localized to the zone identified by the linked site"
+            assert all([e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]), (
+                "start_time should be localized to the zone identified by the linked site"
+            )
 
 
 @pytest.mark.anyio
@@ -753,9 +753,9 @@ async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
 
             assert len(list_entities) == len(all_entities)
             assert set([1, 2, 3, 4, 5, 6, 7]) == set([e.tariff_generated_rate_id for e in list_entities])
-            assert set([1, 2]) == set(
-                [e.site.aggregator_id for e in list_entities]
-            ), "All aggregator IDs should be represented"
+            assert set([1, 2]) == set([e.site.aggregator_id for e in list_entities]), (
+                "All aggregator IDs should be represented"
+            )
 
         # Sanity check that a different timestamp yields nothing
         empty_batches = await fetch_rates_by_changed_at(session, timestamp - timedelta(milliseconds=50))
@@ -2732,7 +2732,6 @@ async def test_fetch_tariff_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject archive defaults (only most recent is used)
         session.add(
             generate_class_instance(
@@ -2889,7 +2888,6 @@ async def test_fetch_tariff_component_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject archive defaults (only most recent is used)
         session.add(
             generate_class_instance(
