@@ -11,6 +11,7 @@ from envoy_schema.admin.schema.pricing import (
     TariffRequest,
     TariffResponse,
 )
+from envoy_schema.server.schema.sep2.types import CurrencyCode
 
 from envoy.admin.mapper.pricing import TariffComponentMapper, TariffGeneratedRateListMapper, TariffMapper
 from envoy.server.exception import InvalidMappingError

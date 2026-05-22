@@ -645,10 +645,10 @@ def test_MirrorMeterReadingMapper_reading_round_trip():
     )
 
 
-def _make_reading(value: Optional[int]) -> Reading:
+def _make_reading(value: int | None) -> Reading:
     reading: Reading = generate_class_instance(Reading, optional_is_none=True)
     reading.timePeriod = generate_class_instance(DateTimeIntervalType)
-    reading.timePeriod.start = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
+    reading.timePeriod.start = int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
     reading.timePeriod.duration = 300
     reading.qualityFlags = f"{QualityFlagsType.NONE:0X}"
     reading.value = value
@@ -674,13 +674,13 @@ def test_MirrorMeterReadingMapper_map_reading_from_request_value_overflow(bad_va
     "ok_value",
     [SEP2_INT48_MAX, SEP2_INT48_MIN, 100_000, 0, None],
 )
-def test_MirrorMeterReadingMapper_map_reading_from_request_value_in_range(ok_value: Optional[int]):
+def test_MirrorMeterReadingMapper_map_reading_from_request_value_in_range(ok_value: int | None):
     """Reading.value within int48 range (and None) must be accepted"""
     result = MirrorMeterReadingMapper.map_reading_from_request(_make_reading(ok_value), 1, datetime.now())
     assert result.value == ok_value
 
 
-def _make_mmr_with_multiplier(multiplier: Optional[int]) -> MirrorMeterReading:
+def _make_mmr_with_multiplier(multiplier: int | None) -> MirrorMeterReading:
     mmr = generate_class_instance(MirrorMeterReading, mRID="abc123")
     mmr.readingType = generate_class_instance(ReadingType, uom=UomType.REAL_POWER_WATT, optional_is_none=False)
     mmr.readingType.powerOfTenMultiplier = multiplier
@@ -716,7 +716,7 @@ def test_MirrorUsagePointMapper_map_from_request_bad_multiplier(bad_mult: int):
     "ok_mult",
     [SEP2_INT8_MAX, SEP2_INT8_MIN, 0, 1, None],
 )
-def test_MirrorUsagePointMapper_map_from_request_ok_multiplier(ok_mult: Optional[int]):
+def test_MirrorUsagePointMapper_map_from_request_ok_multiplier(ok_mult: int | None):
     """powerOfTenMultiplier within int8 range (and None) must be accepted"""
     result = _map_mup(_make_mmr_with_multiplier(ok_mult))
     expected = ok_mult if ok_mult is not None else 0

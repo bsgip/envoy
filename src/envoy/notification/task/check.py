@@ -391,7 +391,7 @@ async def fetch_batched_entities(
 
 
 async def handle_batch(
-    session: AsyncSession, batch: AggregatorBatchedEntities, href_prefix: Optional[str], broker: AsyncBroker
+    session: AsyncSession, batch: AggregatorBatchedEntities, href_prefix: str | None, broker: AsyncBroker
 ) -> None:
     """Given a batch of entities for a subscription type - turn those entities into a series of notifications"""
     all_notifications: list[NotificationEntities] = []

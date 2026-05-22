@@ -110,7 +110,7 @@ def test_ResponseMapper_map_from_price_request(optional_is_none: bool, response_
     ),
 )
 def test_ResponseMapper_map_to_doe_response(
-    href_prefix: Optional[str], optional_is_none: bool, doe: DynamicOperatingEnvelope
+    href_prefix: str | None, optional_is_none: bool, doe: DynamicOperatingEnvelope
 ):
     """Sanity checks that we generate valid models and avoid runtime errors"""
     # Arrange

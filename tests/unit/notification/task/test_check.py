@@ -20,6 +20,7 @@ from envoy.notification.crud.common import (
     SiteScopedSiteControlGroupDefault,
     SiteScopedTariff,
     SiteScopedTariffComponent,
+    TResourceModel,
 )
 from envoy.notification.exception import NotificationError
 from envoy.notification.task.check import (
@@ -726,13 +727,22 @@ def test_entities_to_notification_sites(  # noqa: C901
                 assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.TARIFF_COMPONENT:
+                assert notification.resource is not None
+                assert notification.resource.RateComponent is not None
                 assert len(notification.resource.RateComponent) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.TARIFF:
+                assert notification.resource is not None
+                assert notification.resource.TariffProfile is not None
                 assert len(notification.resource.TariffProfile) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
+                assert notification.resource is not None
+                assert notification.resource.TimeTariffInterval is not None
                 assert len(notification.resource.TimeTariffInterval) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
 
 

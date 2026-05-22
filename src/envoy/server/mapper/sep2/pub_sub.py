@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from enum import IntEnum
 from urllib.parse import urlparse
@@ -333,8 +334,10 @@ class SubscriptionMapper:
                     int(result["tariff_id"]),
                     None,
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a combined Rate resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a combined Rate resource"
+                ) from exc
 
         # Try TimeTariffInterval list
         result = parse(TimeTariffIntervalListUri, href)
@@ -359,8 +362,10 @@ class SubscriptionMapper:
                     int(result["tariff_id"]),
                     None,
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Tariff Component resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a Tariff Component resource"
+                ) from exc
 
         # Try TariffProfile list (via FSA)
         result = parse(TariffProfileFSAListUri, href)
@@ -372,8 +377,8 @@ class SubscriptionMapper:
                     int(result["fsa_id"]),
                     None,
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Tariff resource")
+            except ValueError as exc:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Tariff resource") from exc
 
         # Try TariffProfile list
         result = parse(TariffProfileListUri, href)
@@ -385,8 +390,8 @@ class SubscriptionMapper:
                     None,
                     None,
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Tariff resource")
+            except ValueError as exc:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Tariff resource") from exc
 
         # Try DOE
         result = parse(DERControlListUri, href)
@@ -526,8 +531,10 @@ class SubscriptionMapper:
         if result:
             try:
                 return (SubscriptionResource.SITE, _parse_site_id_from_match(result["site_id"]), None, None)
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a EndDevice resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a EndDevice resource"
+                ) from exc
 
         raise InvalidMappingError(f"Unable to interpret {href} as valid subscription resource")
 

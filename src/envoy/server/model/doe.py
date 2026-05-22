@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import BOOLEAN, DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -40,7 +39,7 @@ class SiteControlGroup(Base):
         lazy="raise", back_populates="site_control_group"
     )
 
-    site_control_group_default: Mapped[Optional["SiteControlGroupDefault"]] = relationship(
+    site_control_group_default: Mapped["SiteControlGroupDefault" | None] = relationship(
         back_populates="site_control_group", lazy="raise", passive_deletes=True, uselist=False
     )  # The default DOE
 
@@ -159,9 +158,7 @@ class DynamicOperatingEnvelope(Base):
     )  # If set - use this for MRID calculation instead of site_control_id
 
     # Storage extension
-    storage_target_active_watts: Mapped[Decimal | None] = mapped_column(
-        DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
-    )
+    storage_target_active_watts: Mapped[Decimal | None] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
 
     site: Mapped["Site"] = relationship(lazy="raise")
 

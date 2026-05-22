@@ -38,7 +38,7 @@ def repeat_every(
         The number of seconds to wait between repeated calls
     wait_first: bool (default False)
         If True, the function will wait for a single period before the first call
-    logger: Optional[logging.Logger] (default None)
+    logger: logging.Logger | None (default None)
         The logger to use to log any exceptions raised by calls to the decorated function.
         If not provided, exceptions will not be logged by this function (though they may be handled by the event loop).
     raise_exceptions: bool (default False)
@@ -46,7 +46,7 @@ def repeat_every(
         Note that if an error is raised, the repeated execution will stop.
         Otherwise, exceptions are just logged and the execution continues to repeat.
         See https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.set_exception_handler for more info.
-    max_repetitions: Optional[int] (default None)
+    max_repetitions: int | None (default None)
         The maximum number of times to call the repeated function. If `None`, the function is repeated forever.
     """
 

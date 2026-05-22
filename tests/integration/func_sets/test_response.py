@@ -264,7 +264,7 @@ async def test_get_response_for_device_cert(
                 changed_time=datetime(2025, 1, 2, tzinfo=UTC),
                 start_time=datetime(2025, 1, 2, tzinfo=UTC),
                 duration_seconds=300,
-                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=timezone.utc),
+                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=UTC),
                 price_pow10_encoded=101,
             )
         )
@@ -439,7 +439,7 @@ async def test_get_response_list_pagination_for_device_cert(
                 changed_time=datetime(2025, 1, 2, tzinfo=UTC),
                 start_time=datetime(2025, 1, 2, tzinfo=UTC),
                 duration_seconds=300,
-                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=timezone.utc),
+                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=UTC),
                 price_pow10_encoded=101,
             )
         )

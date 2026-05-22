@@ -163,7 +163,9 @@ class RateComponentManager:
                 )
             )
 
-        return RateComponentMapper.map_to_list_response(scope, tariff_id, list(zip(tcs, tcs_rate_counts, strict=False)), tc_count)
+        return RateComponentMapper.map_to_list_response(
+            scope, tariff_id, list(zip(tcs, tcs_rate_counts, strict=False)), tc_count
+        )
 
 
 class TimeTariffIntervalManager:

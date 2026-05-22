@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from itertools import product
 from typing import no_type_check
 
@@ -337,7 +338,7 @@ def test_decode_and_validate_mrid_type():
     do_test(lambda s: MridMapper.encode_rate_component_mrid(s, 1, 2))
     do_test(lambda s: MridMapper.encode_time_tariff_interval_mrid(s, 1))
     do_test(lambda s: MridMapper.encode_tariff_profile_mrid(s, 1))
-    do_test(lambda s: MridMapper.encode_response_set_mrid(s, 1))
+    do_test(lambda s: MridMapper.encode_response_set_mrid(s, 1))  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize("is_display_id, doe_id", product([True, False], [0, MAX_INT_32, MAX_INT_64, 123, 4]))

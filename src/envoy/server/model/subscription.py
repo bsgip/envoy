@@ -46,10 +46,10 @@ class Subscription(Base):
     resource_id: Mapped[int | None] = mapped_column(
         INTEGER, nullable=True
     )  # Represents the ID of a single resource being subscribed or if NULL, the list of all available resources
-    resource_parent_id: Mapped[Optional[int]] = mapped_column(
+    resource_parent_id: Mapped[int | None] = mapped_column(
         INTEGER, nullable=True
     )  # Like resource_id but only for subscriptions with a multi part ID - this represents an ID of a parent list
-    scoped_site_id: Mapped[Optional[int]] = mapped_column(
+    scoped_site_id: Mapped[int | None] = mapped_column(
         ForeignKey("site.site_id"), nullable=True
     )  # If set - this subscription is scoped to this specific site_id
 

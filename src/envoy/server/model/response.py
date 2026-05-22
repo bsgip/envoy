@@ -51,7 +51,7 @@ class TariffGeneratedRateResponse(Base):
         DateTime(timezone=True), server_default=func.now()
     )  # When the response was created
 
-    response_type: Mapped[Optional[ResponseType]] = mapped_column(INTEGER, nullable=True)
+    response_type: Mapped[ResponseType | None] = mapped_column(INTEGER, nullable=True)
 
     site: Mapped[Site] = relationship(lazy="raise")
 

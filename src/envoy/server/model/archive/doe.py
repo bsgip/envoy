@@ -19,12 +19,12 @@ class ArchiveSiteControlGroup(ArchiveBase):
     site_control_group_id: Mapped[int] = mapped_column(INTEGER, index=True)
     description: Mapped[str] = mapped_column(VARCHAR(length=32))
     primacy: Mapped[int] = mapped_column(INTEGER)
-    fsa_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    fsa_id: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    display_id: Mapped[Optional[int]] = mapped_column(nullable=True)
+    display_id: Mapped[int | None] = mapped_column(nullable=True)
 
 
 class ArchiveSiteControlGroupDefault(ArchiveBase):
@@ -53,7 +53,7 @@ class ArchiveSiteControlGroupDefault(ArchiveBase):
     ramp_rate_percent_per_second: Mapped[int | None] = mapped_column(nullable=True)  # hundredths of percent per sec
 
     # Storage extension
-    storage_target_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    storage_target_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on storage active watts
 
@@ -98,10 +98,10 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
 
-    display_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    display_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     # Storage extension
-    storage_target_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    storage_target_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
 

@@ -1,5 +1,5 @@
 import urllib.parse
-from datetime import datetime
+from datetime import UTC, datetime
 from http import HTTPStatus
 from zoneinfo import ZoneInfo
 
@@ -70,7 +70,7 @@ async def test_get_tariff_profile_list_poll_rate(
             1,
             0,
             99,
-            datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc),
+            datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC),
             [("/edev/1/tp/2", 1, 1)],
         ),
         (1, 1, 1, 1, None, [("/edev/1/tp/1", 3, 4)]),
@@ -91,7 +91,7 @@ async def test_get_tariffprofilelist(
     start: int | None,
     limit: int | None,
     changed_after: datetime | None,
-    expected_tariffs_with_count: list[tuple[str, int]],
+    expected_tariffs_with_count: list[tuple[str, int, int]],
 ):
     """Tests that the list pagination works correctly on the site scoped tariff profile list
 
@@ -118,7 +118,9 @@ async def test_get_tariffprofilelist(
     expected_component_counts = [rate_component_count for (_, rate_component_count, _) in expected_tariffs_with_count]
     expected_ctti_counts = [combined_tti_count for (_, _, combined_tti_count) in expected_tariffs_with_count]
     assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile]
-    assert expected_component_counts == [tp.RateComponentListLink.all_ for tp in parsed_response.TariffProfile]
+    assert expected_component_counts == [
+        tp.RateComponentListLink.all_ for tp in parsed_response.TariffProfile if tp.RateComponentListLink is not None
+    ]
     assert expected_ctti_counts == [tp.CombinedTimeTariffIntervalListLink.all_ for tp in parsed_response.TariffProfile]
 
 
@@ -248,6 +250,7 @@ async def test_get_ratecomponentlist(
             expected_rates_with_count
         )
     else:
+        assert parsed_response.RateComponent
         assert len(parsed_response.RateComponent) == len(expected_rates_with_count)
         assert [href for href, _ in expected_rates_with_count] == [tp.href for tp in parsed_response.RateComponent]
         assert [count for _, count in expected_rates_with_count] == [
@@ -449,7 +452,7 @@ async def test_get_tti_ctti_list_poll_rate(
             1,
             0,
             99,
-            datetime(2022, 3, 4, 12, 22, 33, tzinfo=timezone.utc),  # Will exclude tti/1
+            datetime(2022, 3, 4, 12, 22, 33, tzinfo=UTC),  # Will exclude tti/1
             [
                 ("/edev/1/tp/1/rc/1/tti/2", 2222, None, None),
                 ("/edev/1/tp/1/rc/1/tti/3", 3333, 3000, 3001),
@@ -549,6 +552,7 @@ async def test_get_timetariffintervallist(
                 count=expected_price_count,
             )
 
+            assert tti.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval
             assert tti.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].price == price, tti.href
             assert tti.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].startValue == 0, tti.href
 
@@ -614,6 +618,7 @@ async def test_get_timetariffinterval(
         assert parsed_response.ConsumptionTariffIntervalListSummary.all_ == expected_block_count
         assert parsed_response.ConsumptionTariffIntervalListSummary.results == expected_block_count
 
+        assert parsed_response.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval
         assert parsed_response.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].price == expected_price
         assert parsed_response.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].startValue == 0
         if expected_block_count > 1:
@@ -686,6 +691,7 @@ async def test_get_cti_list_and_ctis(
         assert parsed_response.all_ == expected_block_count
         assert parsed_response.results == expected_block_count
 
+        assert parsed_response.ConsumptionTariffInterval
         assert parsed_response.ConsumptionTariffInterval[0].price == expected_price
         assert parsed_response.ConsumptionTariffInterval[0].startValue == 0
         if expected_block_count > 1:
@@ -694,7 +700,7 @@ async def test_get_cti_list_and_ctis(
 
         # Now resolve the CTI hrefs directly to ensure they match up
         for cti in parsed_response.ConsumptionTariffInterval:
-            response = await client.get(cti.href, headers=agg_1_headers)
+            response = await client.get(cti.href or "", headers=agg_1_headers)
             assert_response_header(response, HTTPStatus.OK)
             cti_response = ConsumptionTariffIntervalResponse.from_xml(read_response_body_string(response))
             assert cti_response.price == cti.price, cti.href

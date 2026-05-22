@@ -28,7 +28,7 @@ from envoy.server.mapper.sep2.pricing import (
 )
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
 def test_tariff_profile_mapping():
@@ -123,8 +123,14 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: int | None)
     # Double check our counts get handed down to the child lists correctly
     assert mapped.TariffProfile[0].CombinedTimeTariffIntervalListLink.all_ == tariff_rate_counts[0]
     assert mapped.TariffProfile[1].CombinedTimeTariffIntervalListLink.all_ == tariff_rate_counts[1]
-    assert mapped.TariffProfile[0].RateComponentListLink.all_ == tariff_component_counts[0]
-    assert mapped.TariffProfile[1].RateComponentListLink.all_ == tariff_component_counts[1]
+    assert (
+        mapped.TariffProfile[0].RateComponentListLink
+        and mapped.TariffProfile[0].RateComponentListLink.all_ == tariff_component_counts[0]
+    )
+    assert (
+        mapped.TariffProfile[1].RateComponentListLink
+        and mapped.TariffProfile[1].RateComponentListLink.all_ == tariff_component_counts[1]
+    )
 
 
 @pytest.mark.parametrize("optional_is_none", [True, False])
@@ -156,7 +162,7 @@ def test_rate_component_map_to_response(optional_is_none: bool):
 
 
 def test_rate_component_map_to_list_response():
-    scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=101, href_prefix="/pfx")
+    scope = generate_class_instance(SiteRequestScope, seed=101, href_prefix="/pfx")
     tcs = [
         generate_class_instance(TariffComponent, seed=202, optional_is_none=True),
         generate_class_instance(TariffComponent, seed=303, optional_is_none=False),
@@ -165,18 +171,21 @@ def test_rate_component_map_to_list_response():
     tariff_id = 5151968
     total_tcs = 97914
 
-    result = RateComponentMapper.map_to_list_response(scope, tariff_id, list(zip(tcs, total_rates, strict=False)), total_tcs)
+    result = RateComponentMapper.map_to_list_response(
+        scope, tariff_id, list(zip(tcs, total_rates, strict=False)), total_tcs
+    )
     assert isinstance(result, RateComponentListResponse)
 
     assert result.href and result.href.startswith("/pfx")
     assert_list_type(RateComponentResponse, result.RateComponent, count=len(tcs))
     assert result.all_ == total_tcs
     assert result.results == len(tcs)
+    assert result.RateComponent is not None
 
     all_hrefs = [result.href]
     for rc, expected_count in zip(result.RateComponent, total_rates, strict=False):
         assert rc.TimeTariffIntervalListLink.all_ == expected_count
-        all_hrefs.append(rc.href)
+        all_hrefs.append(rc.href or "")
         all_hrefs.append(rc.ReadingTypeLink.href)
         all_hrefs.append(rc.TimeTariffIntervalListLink.href)
 
@@ -231,6 +240,7 @@ def test_consumption_tariff_interval_map_to_list_response(
     if rate.block_1_start_pow10_encoded is None or rate.price_pow10_encoded_block_1 is None:
         assert mapped.all_ == 1
         assert mapped.results == 1
+        assert mapped.ConsumptionTariffInterval
         assert_list_type(ConsumptionTariffIntervalResponse, mapped.ConsumptionTariffInterval, count=1)
 
         assert mapped.ConsumptionTariffInterval[0].startValue == 0
@@ -238,6 +248,7 @@ def test_consumption_tariff_interval_map_to_list_response(
     else:
         assert mapped.all_ == 2
         assert mapped.results == 2
+        assert mapped.ConsumptionTariffInterval
         assert_list_type(ConsumptionTariffIntervalResponse, mapped.ConsumptionTariffInterval, count=2)
         assert mapped.ConsumptionTariffInterval[0].startValue == 0
         assert mapped.ConsumptionTariffInterval[0].price == rate.price_pow10_encoded
@@ -245,7 +256,12 @@ def test_consumption_tariff_interval_map_to_list_response(
         assert mapped.ConsumptionTariffInterval[1].startValue == rate.block_1_start_pow10_encoded
         assert mapped.ConsumptionTariffInterval[1].price == rate.price_pow10_encoded_block_1
 
-    assert mapped.href and mapped.href.startswith("/pfx")
+    assert (
+        mapped.href
+        and mapped.href.startswith("/pfx")
+        and mapped.ConsumptionTariffInterval
+        and mapped.ConsumptionTariffInterval[0].href
+    )
     assert mapped.ConsumptionTariffInterval[0].href.startswith("/pfx")
     assert mapped.ConsumptionTariffInterval[0].href != mapped.href
 
@@ -268,6 +284,7 @@ def test_consumption_tariff_interval_map_to_summary_list_response(
         assert mapped.results == 1
         assert_list_type(ConsumptionTariffIntervalResponse, mapped.ConsumptionTariffInterval, count=1)
 
+        assert mapped.ConsumptionTariffInterval and mapped.ConsumptionTariffInterval[0].href
         assert mapped.ConsumptionTariffInterval[0].startValue == 0
         assert mapped.ConsumptionTariffInterval[0].price == rate.price_pow10_encoded
         assert mapped.ConsumptionTariffInterval[0].href.startswith("/pfx")
@@ -275,6 +292,11 @@ def test_consumption_tariff_interval_map_to_summary_list_response(
         assert mapped.all_ == 2
         assert mapped.results == 2
         assert_list_type(ConsumptionTariffIntervalResponse, mapped.ConsumptionTariffInterval, count=2)
+        assert (
+            mapped.ConsumptionTariffInterval
+            and mapped.ConsumptionTariffInterval[0].href
+            and mapped.ConsumptionTariffInterval[1].href
+        )
         assert mapped.ConsumptionTariffInterval[0].startValue == 0
         assert mapped.ConsumptionTariffInterval[0].price == rate.price_pow10_encoded
         assert mapped.ConsumptionTariffInterval[0].href.startswith("/pfx")
@@ -309,9 +331,9 @@ def test_time_tariff_interval_map_to_response(
     mapped = TimeTariffIntervalMapper.map_to_response(scope, now, rate)
     assert isinstance(mapped, TimeTariffIntervalResponse)
 
-    if type == ArchiveTariffGeneratedRate and rate.deleted_time is not None:
+    if type == ArchiveTariffGeneratedRate and rate.deleted_time is not None:  # ty:ignore[unresolved-attribute]
         assert mapped.EventStatus_.currentStatus == EventStatusType.Cancelled
-        assert mapped.EventStatus_.dateTime == int(rate.deleted_time.timestamp())
+        assert mapped.EventStatus_.dateTime == int(rate.deleted_time.timestamp())  # ty:ignore[unresolved-attribute]
     elif now < rate.start_time:
         assert mapped.EventStatus_.currentStatus == EventStatusType.Scheduled
         assert mapped.EventStatus_.dateTime == int(rate.changed_time.timestamp())
@@ -335,15 +357,19 @@ def test_time_tariff_interval_map_to_response(
         mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval,
         count=expected_consumption_blocks,
     )
-    mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].price == rate.price_pow10_encoded
-    mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].startValue == 0
+
+    assert mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval is not None
+    assert mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].price == rate.price_pow10_encoded
+    assert mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[0].startValue == 0
     if expected_consumption_blocks > 1:
-        mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[
-            1
-        ].price == rate.price_pow10_encoded_block_1
-        mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[
-            1
-        ].startValue == rate.block_1_start_pow10_encoded
+        assert (
+            mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[1].price
+            == rate.price_pow10_encoded_block_1
+        )
+        assert (
+            mapped.ConsumptionTariffIntervalListSummary.ConsumptionTariffInterval[1].startValue
+            == rate.block_1_start_pow10_encoded
+        )
 
     all_hrefs = [mapped.href, mapped.RateComponentLink.href, mapped.ConsumptionTariffIntervalListLink.href]
     for href in all_hrefs:

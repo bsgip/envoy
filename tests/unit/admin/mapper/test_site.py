@@ -97,7 +97,7 @@ def get_attrs_for_type(base_type: type) -> list[tuple[str, type]]:
 @pytest.mark.parametrize(
     "attr_name, attr_type",
     # min_wh is not assigned using failover
-    [(n, t) for (n, t) in get_attrs_for_type(DERConfiguration) if t == Optional[Decimal] and n != "min_wh"],
+    [(n, t) for (n, t) in get_attrs_for_type(DERConfiguration) if t == (Decimal | None) and n != "min_wh"],
 )
 def test_map_to_der_config_response_optional_decimal_failovers(attr_name, attr_type):
     """Tests that the decimal values in DERConfiguration get correctly mapped depending on whether setting/rating

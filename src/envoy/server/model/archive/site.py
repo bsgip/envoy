@@ -108,7 +108,7 @@ class ArchiveSiteDERRating(ArchiveBase):
     doe_modes_supported: Mapped[DOESupportedMode | None] = mapped_column(INTEGER, nullable=True)
 
     # Storage Extension
-    vpp_modes_supported: Mapped[Optional[VPPControlType]] = mapped_column(INTEGER, nullable=True)
+    vpp_modes_supported: Mapped[VPPControlType | None] = mapped_column(INTEGER, nullable=True)
 
 
 class ArchiveSiteDERSetting(ArchiveBase):
@@ -168,9 +168,9 @@ class ArchiveSiteDERSetting(ArchiveBase):
     doe_modes_enabled: Mapped[DOESupportedMode | None] = mapped_column(INTEGER, nullable=True)
 
     # Storage Extension
-    vpp_modes_enabled: Mapped[Optional[VPPControlType]] = mapped_column(INTEGER, nullable=True)
-    min_wh_value: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
-    min_wh_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    vpp_modes_enabled: Mapped[VPPControlType | None] = mapped_column(INTEGER, nullable=True)
+    min_wh_value: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
+    min_wh_multiplier: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
 
 class ArchiveSiteDERAvailability(ArchiveBase):

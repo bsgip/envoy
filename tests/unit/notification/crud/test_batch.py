@@ -592,7 +592,7 @@ async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
     # start by setting all entities to a particular timestamp
     async with generate_async_session(pg_base_config) as session:
         all_entities_resp = await session.execute(select(Site))
-        all_entities: Sequence[Site] = all_entities_resp.scalars().all()
+        all_entities = all_entities_resp.scalars().all()
         for e in all_entities:
             e.changed_time = timestamp
         await session.commit()
@@ -734,7 +734,7 @@ async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
     # start by setting all entities to a particular timestamp
     async with generate_async_session(pg_base_config) as session:
         all_entities_resp = await session.execute(select(TariffGeneratedRate))
-        all_entities: Sequence[TariffGeneratedRate] = all_entities_resp.scalars().all()
+        all_entities = all_entities_resp.scalars().all()
         for e in all_entities:
             e.changed_time = timestamp
 
@@ -992,7 +992,7 @@ async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
     # start by setting all entities to a particular timestamp
     async with generate_async_session(pg_base_config) as session:
         all_entities_resp = await session.execute(select(DynamicOperatingEnvelope))
-        all_entities: Sequence[DynamicOperatingEnvelope] = all_entities_resp.scalars().all()
+        all_entities = all_entities_resp.scalars().all()
         for e in all_entities:
             e.changed_time = timestamp
 
@@ -1239,7 +1239,7 @@ async def test_fetch_readings_by_timestamp_multiple_aggs(pg_base_config):
     # start by setting all entities to a particular timestamp
     async with generate_async_session(pg_base_config) as session:
         all_entities_resp = await session.execute(select(SiteReading))
-        all_entities: Sequence[SiteReading] = all_entities_resp.scalars().all()
+        all_entities = all_entities_resp.scalars().all()
         for e in all_entities:
             e.changed_time = timestamp
 
@@ -2707,8 +2707,8 @@ async def test_fetch_tariffs_by_changed_at(
         batch = await fetch_tariffs_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedTariff,
-            ArchiveSiteScopedTariff,
+            SiteScopedTariff,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedTariff,  # ty:ignore[invalid-argument-type]
             len(expected_agg_site_tariff_ids),
             0,
         )
@@ -2798,8 +2798,8 @@ async def test_fetch_tariff_by_timestamp_with_archive(pg_base_config):
         batch = await fetch_tariffs_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedTariff,
-            ArchiveSiteScopedTariff,
+            SiteScopedTariff,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedTariff,  # ty:ignore[invalid-argument-type]
             len(expected_active_tariff_ids) * len(expected_site_agg_ids),
             len(expected_deleted_tariff_ids) * len(expected_site_agg_ids),
         )
@@ -2811,11 +2811,15 @@ async def test_fetch_tariff_by_timestamp_with_archive(pg_base_config):
         active_agg_site_group_ids = [(e.aggregator_id, e.site_id, e.original.tariff_id) for e in active_list_entities]
         deleted_agg_site_group_ids = [(e.aggregator_id, e.site_id, e.original.tariff_id) for e in deleted_list_entities]
 
-        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_active_tariff_ids, strict=False):
+        for expected_site_agg_tuple, expected_group_id in zip(
+            expected_site_agg_ids, expected_active_tariff_ids, strict=False
+        ):
             expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
             assert expected_tuple in active_agg_site_group_ids
 
-        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_deleted_tariff_ids, strict=False):
+        for expected_site_agg_tuple, expected_group_id in zip(
+            expected_site_agg_ids, expected_deleted_tariff_ids, strict=False
+        ):
             expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
             assert expected_tuple in deleted_agg_site_group_ids
 
@@ -2831,7 +2835,7 @@ async def test_fetch_tariff_by_timestamp_with_archive(pg_base_config):
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert_batched_entities(empty_batch, SiteScopedTariff, ArchiveSiteScopedTariff, 0, 0)
+        assert_batched_entities(empty_batch, SiteScopedTariff, ArchiveSiteScopedTariff, 0, 0)  # ty:ignore[invalid-argument-type]
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
 
@@ -2861,8 +2865,8 @@ async def test_fetch_tariff_components_by_changed_at(
         batch = await fetch_tariff_components_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedTariffComponent,
-            ArchiveSiteScopedTariffComponent,
+            SiteScopedTariffComponent,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedTariffComponent,  # ty:ignore[invalid-argument-type]
             len(expected_agg_site_component_ids),
             0,
         )
@@ -2954,8 +2958,8 @@ async def test_fetch_tariff_component_by_timestamp_with_archive(pg_base_config):
         batch = await fetch_tariff_components_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedTariffComponent,
-            ArchiveSiteScopedTariffComponent,
+            SiteScopedTariffComponent,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedTariffComponent,  # ty:ignore[invalid-argument-type]
             len(expected_active_tariff_ids) * len(expected_site_agg_ids),
             len(expected_deleted_tariff_ids) * len(expected_site_agg_ids),
         )
@@ -2971,11 +2975,15 @@ async def test_fetch_tariff_component_by_timestamp_with_archive(pg_base_config):
             (e.aggregator_id, e.site_id, e.original.tariff_component_id) for e in deleted_list_entities
         ]
 
-        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_active_tariff_ids, strict=False):
+        for expected_site_agg_tuple, expected_group_id in zip(
+            expected_site_agg_ids, expected_active_tariff_ids, strict=False
+        ):
             expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
             assert expected_tuple in active_agg_site_group_ids
 
-        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_deleted_tariff_ids, strict=False):
+        for expected_site_agg_tuple, expected_group_id in zip(
+            expected_site_agg_ids, expected_deleted_tariff_ids, strict=False
+        ):
             expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
             assert expected_tuple in deleted_agg_site_group_ids
 
@@ -2991,6 +2999,6 @@ async def test_fetch_tariff_component_by_timestamp_with_archive(pg_base_config):
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert_batched_entities(empty_batch, SiteScopedTariffComponent, ArchiveSiteScopedTariffComponent, 0, 0)
+        assert_batched_entities(empty_batch, SiteScopedTariffComponent, ArchiveSiteScopedTariffComponent, 0, 0)  # ty:ignore[invalid-argument-type]
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0

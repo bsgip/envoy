@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.der import (
     AbnormalCategoryType,
@@ -141,16 +140,16 @@ class SiteDER(Base):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
     site: Mapped["Site"] = relationship(back_populates="site_ders", lazy="raise")
-    site_der_rating: Mapped[Optional["SiteDERRating"]] = relationship(
+    site_der_rating: Mapped["SiteDERRating | None"] = relationship(
         back_populates="site_der", uselist=False, lazy="raise"
     )
-    site_der_setting: Mapped[Optional["SiteDERSetting"]] = relationship(
+    site_der_setting: Mapped["SiteDERSetting | None"] = relationship(
         back_populates="site_der", uselist=False, lazy="raise"
     )
-    site_der_availability: Mapped[Optional["SiteDERAvailability"]] = relationship(
+    site_der_availability: Mapped["SiteDERAvailability | None"] = relationship(
         back_populates="site_der", uselist=False, lazy="raise"
     )
-    site_der_status: Mapped[Optional["SiteDERStatus"]] = relationship(
+    site_der_status: Mapped["SiteDERStatus | None"] = relationship(
         back_populates="site_der", uselist=False, lazy="raise"
     )
 

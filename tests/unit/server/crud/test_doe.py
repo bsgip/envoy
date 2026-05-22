@@ -161,9 +161,9 @@ async def test_select_doe_include_deleted(
 async def test_select_doe_by_display_id_include_deleted(
     pg_additional_does,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int,
     display_id: int,
-    expected_dt: Optional[datetime],
+    expected_dt: datetime | None,
 ):
     # We are going to munge the display_id to be 10x the PK so we have values
     async with generate_async_session(pg_additional_does) as session:
@@ -693,7 +693,7 @@ async def extra_site_control_groups(pg_base_config):
                 primacy=1,
                 site_control_group_id=5,
                 fsa_id=None,
-                changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=UTC),
             )
         )
         await session.commit()
@@ -761,13 +761,13 @@ async def test_select_site_control_group_by_id(
         (1, 2, datetime.min, None, [5, 4], 5),
         (1, 1, datetime.min, 1, [2], 3),
         (99, 99, datetime.min, None, [], 5),
-        (0, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [1, 5, 4, 2, 3], 5),
-        (3, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), None, [2, 3], 5),
-        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), None, [5, 4, 2, 3], 4),
-        (0, 99, datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc), None, [5, 4, 3], 3),
-        (0, 99, datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc), None, [5, 4], 2),
-        (0, 99, datetime(2021, 4, 5, 10, 5, 0, tzinfo=timezone.utc), None, [], 0),
-        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 1, [2, 3], 2),
+        (0, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=UTC), None, [1, 5, 4, 2, 3], 5),
+        (3, 99, datetime(2021, 4, 5, 10, 1, 0, tzinfo=UTC), None, [2, 3], 5),
+        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=UTC), None, [5, 4, 2, 3], 4),
+        (0, 99, datetime(2021, 4, 5, 10, 3, 0, tzinfo=UTC), None, [5, 4, 3], 3),
+        (0, 99, datetime(2021, 4, 5, 10, 4, 0, tzinfo=UTC), None, [5, 4], 2),
+        (0, 99, datetime(2021, 4, 5, 10, 5, 0, tzinfo=UTC), None, [], 0),
+        (0, 99, datetime(2021, 4, 5, 10, 2, 0, tzinfo=UTC), 1, [2, 3], 2),
     ],
 )
 @pytest.mark.anyio

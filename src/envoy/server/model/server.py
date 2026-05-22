@@ -25,12 +25,12 @@ class RuntimeServerConfig(Base):
     derl_pollrate_seconds: Mapped[int | None] = mapped_column(
         INTEGER, nullable=True
     )  # der list + all associated der resources
-    mup_postrate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # mirror usage point
+    mup_postrate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)  # mirror usage point
 
-    tp_pollrate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # tariff profile list
-    tti_pollrate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # time tariff interval list
+    tp_pollrate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)  # tariff profile list
+    tti_pollrate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)  # time tariff interval list
 
-    site_control_pow10_encoding: Mapped[Optional[int]] = mapped_column(
+    site_control_pow10_encoding: Mapped[int | None] = mapped_column(
         INTEGER, nullable=True
     )  # power of 10 encoding for site controls
 

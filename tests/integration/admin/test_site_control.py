@@ -59,7 +59,7 @@ async def test_create_site_control_group(admin_client_auth: AsyncClient):
 
 @pytest.mark.parametrize("fsa_id", [1, 2, 99, None])
 @pytest.mark.anyio
-async def test_update_site_control_group_change(pg_base_config, admin_client_auth: AsyncClient, fsa_id: Optional[int]):
+async def test_update_site_control_group_change(pg_base_config, admin_client_auth: AsyncClient, fsa_id: int | None):
     """Tests that site control groups can be updated"""
 
     async with generate_async_session(pg_base_config) as session:
