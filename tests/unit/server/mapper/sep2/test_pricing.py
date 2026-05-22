@@ -95,7 +95,7 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: int | None)
     )
 
     mapped = TariffProfileMapper.map_to_list_response(
-        scope, zip(tariffs, tariff_component_counts, tariff_rate_counts), tariff_count, fsa_id, poll_rate
+        scope, zip(tariffs, tariff_component_counts, tariff_rate_counts, strict=False), tariff_count, fsa_id, poll_rate
     )
     assert isinstance(mapped, TariffProfileListResponse)
 
@@ -165,7 +165,7 @@ def test_rate_component_map_to_list_response():
     tariff_id = 5151968
     total_tcs = 97914
 
-    result = RateComponentMapper.map_to_list_response(scope, tariff_id, list(zip(tcs, total_rates)), total_tcs)
+    result = RateComponentMapper.map_to_list_response(scope, tariff_id, list(zip(tcs, total_rates, strict=False)), total_tcs)
     assert isinstance(result, RateComponentListResponse)
 
     assert result.href and result.href.startswith("/pfx")
@@ -174,7 +174,7 @@ def test_rate_component_map_to_list_response():
     assert result.results == len(tcs)
 
     all_hrefs = [result.href]
-    for rc, expected_count in zip(result.RateComponent, total_rates):
+    for rc, expected_count in zip(result.RateComponent, total_rates, strict=False):
         assert rc.TimeTariffIntervalListLink.all_ == expected_count
         all_hrefs.append(rc.href)
         all_hrefs.append(rc.ReadingTypeLink.href)

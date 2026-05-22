@@ -235,7 +235,7 @@ async def test_create_tariff_genrates_with_fetch(admin_client_auth: AsyncClient)
 
     assert rate_resp.ids == [8, 9], "We know that the DB sequence is set to 8 in base_config.sql"
 
-    for new_id, expected_genrate in zip(rate_resp.ids, [tariff_genrate_1, tariff_genrate_2]):
+    for new_id, expected_genrate in zip(rate_resp.ids, [tariff_genrate_1, tariff_genrate_2], strict=False):
         # Now refetch each newly created record
         resp = await admin_client_auth.get(TariffGeneratedRateUpdateUri.format(tariff_generated_rate_id=new_id))
         assert resp.status_code == HTTPStatus.OK

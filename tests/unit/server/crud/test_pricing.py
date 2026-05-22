@@ -242,7 +242,7 @@ async def test_select_and_count_tariff_components_by_tariff(
 
         tariff_components = await select_tariff_components_by_tariff(session, tariff_id, start, changed_after, limit)
         assert_list_type(TariffComponent, tariff_components, count=len(expected_ids))
-        for expected_id, tc in zip(expected_ids, tariff_components):
+        for expected_id, tc in zip(expected_ids, tariff_components, strict=False):
             assert_tariff_component_for_id(expected_id, tc)
 
 
@@ -458,7 +458,7 @@ async def test_select_and_count_active_rates_include_deleted(
         )
 
         assert expected_ids == [r.tariff_generated_rate_id for r in actual_rates]
-        for actual_rate, expected_id in zip(actual_rates, expected_ids):
+        for actual_rate, expected_id in zip(actual_rates, expected_ids, strict=False):
             assert_rate_for_id(expected_rate_id=expected_id, actual_rate=actual_rate)
         assert len(actual_rates) == len(expected_ids)
 

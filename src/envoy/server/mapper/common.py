@@ -132,7 +132,7 @@ class CaseInsensitiveDict(abc.MutableMapping, Generic[ValueType]):
         return CaseInsensitiveDict(self._raw_dict.values())
 
     def __repr__(self) -> str:
-        return "%s(%r)" % (self.__class__.__name__, dict(self.items()))
+        return f"{self.__class__.__name__}({dict(self.items())!r})"
 
 
 # IEEE 2030.5 integer type bounds used for inbound payload validation

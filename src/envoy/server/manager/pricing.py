@@ -92,7 +92,7 @@ class TariffProfileManager:
 
         return TariffProfileMapper.map_to_list_response(
             scope,
-            zip(tariffs, tariff_component_counts, tariff_rate_counts),
+            zip(tariffs, tariff_component_counts, tariff_rate_counts, strict=False),
             tariff_count,
             fsa_id,
             config.tp_pollrate_seconds,
@@ -163,7 +163,7 @@ class RateComponentManager:
                 )
             )
 
-        return RateComponentMapper.map_to_list_response(scope, tariff_id, list(zip(tcs, tcs_rate_counts)), tc_count)
+        return RateComponentMapper.map_to_list_response(scope, tariff_id, list(zip(tcs, tcs_rate_counts, strict=False)), tc_count)
 
 
 class TimeTariffIntervalManager:

@@ -533,7 +533,7 @@ async def test_get_timetariffintervallist(
 
         # validate each of the TTI hrefs and that the CTI link encodes the correct price
         for idx, (tti_href, price, block1_start, block1_price), tti in zip(
-            range(len(expected_ttis)), expected_ttis, parsed_response.TimeTariffInterval
+            range(len(expected_ttis)), expected_ttis, parsed_response.TimeTariffInterval, strict=False
         ):
             assert tti.href == tti_href, f"[{idx}]: expected href {tti_href} but got {tti.href}"
 

@@ -352,7 +352,7 @@ async def test_supersede_then_insert_does_many_sites(
         assert after_doe_count == original_doe_count + len(does)
 
         # Do a deep inspection on the DOEs one by one
-        for expected_doe, expected_id in zip(does, returned_ids):
+        for expected_doe, expected_id in zip(does, returned_ids, strict=False):
             actual_doe = (
                 await session.execute(
                     select(DynamicOperatingEnvelope).where(
