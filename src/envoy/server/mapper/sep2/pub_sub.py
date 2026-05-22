@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import IntEnum
-from typing import Optional
 from urllib.parse import urlparse
 
 from envoy_schema.server.schema.sep2.pub_sub import (
@@ -18,12 +17,12 @@ from envoy_schema.server.schema.sep2.pub_sub import (
     XSI_TYPE_TARIFF_PROFILE_LIST,
     XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
     Notification,
+    NotificationResourceCombined,
     NotificationStatus,
     SubscriptionEncoding,
     SubscriptionListResponse,
 )
 from envoy_schema.server.schema.sep2.pub_sub import Condition as Sep2Condition
-from envoy_schema.server.schema.sep2.pub_sub import Notification, NotificationResourceCombined, NotificationStatus
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
 from envoy_schema.server.schema.uri import (
     CombinedTimeTariffIntervalListUri,
@@ -303,7 +302,7 @@ class SubscriptionMapper:
     @staticmethod
     def parse_resource_href(  # noqa C901
         href: str,
-    ) -> tuple[SubscriptionResource, Optional[int], Optional[int], Optional[int]]:
+    ) -> tuple[SubscriptionResource, int | None, int | None, int | None]:
         """Takes a subscription subscribed resource href (sans any href_prefix) and attempts to decompose it into
         (resource, scoped_site_id, resource_id, resource_parent_id) - raises InvalidMappingError if there is no way to
         accomplish this
@@ -668,7 +667,7 @@ class NotificationMapper:
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
-        poll_rate_seconds: Optional[int],
+        poll_rate_seconds: int | None,
     ) -> Notification:
         """Turns a list of site control groups into a notification"""
         group_list_href = generate_href(DERProgramListUri, scope, site_id=scope.display_site_id)
@@ -724,7 +723,7 @@ class NotificationMapper:
     @staticmethod
     def map_rates_to_response(
         tariff_id: int,
-        tariff_component_id: Optional[int],
+        tariff_component_id: int | None,
         rates: Sequence[TariffGeneratedRate],
         sub: Subscription,
         scope: AggregatorRequestScope,

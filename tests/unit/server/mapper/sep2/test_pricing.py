@@ -1,6 +1,5 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from itertools import product
-from typing import Optional, Union
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -187,7 +186,7 @@ def test_rate_component_map_to_list_response():
     product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate], [1, 2, 3]),
 )
 def test_consumption_tariff_interval_map_to_response(
-    optional_is_none: bool, type: Union[type[ArchiveTariffGeneratedRate], type[TariffGeneratedRate]], cti_id: int
+    optional_is_none: bool, type: type[ArchiveTariffGeneratedRate] | type[TariffGeneratedRate], cti_id: int
 ):
     scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=101, href_prefix="/pfx")
     rate = generate_class_instance(type, seed=202, optional_is_none=optional_is_none)
@@ -220,7 +219,7 @@ def test_consumption_tariff_interval_map_to_response(
     "optional_is_none, type", product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate])
 )
 def test_consumption_tariff_interval_map_to_list_response(
-    optional_is_none: bool, type: Union[type[ArchiveTariffGeneratedRate], type[TariffGeneratedRate]]
+    optional_is_none: bool, type: type[ArchiveTariffGeneratedRate] | type[TariffGeneratedRate]
 ):
     """Tests that the resulting object encodes all price blocks"""
     scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=101, href_prefix="/pfx")
@@ -255,7 +254,7 @@ def test_consumption_tariff_interval_map_to_list_response(
     "optional_is_none, type", product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate])
 )
 def test_consumption_tariff_interval_map_to_summary_list_response(
-    optional_is_none: bool, type: Union[type[ArchiveTariffGeneratedRate], type[TariffGeneratedRate]]
+    optional_is_none: bool, type: type[ArchiveTariffGeneratedRate] | type[TariffGeneratedRate]
 ):
     """Tests that the resulting object is a singleton list"""
     scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=101, href_prefix="/pfx")
@@ -298,7 +297,7 @@ def test_consumption_tariff_interval_map_to_summary_list_response(
 def test_time_tariff_interval_map_to_response(
     optional_is_none: bool,
     time_diff: timedelta,
-    type: Union[type[ArchiveTariffGeneratedRate], type[TariffGeneratedRate]],
+    type: type[ArchiveTariffGeneratedRate] | type[TariffGeneratedRate],
 ):
     """Non exhaustive test on TimeTariffInterval mapping - mainly to catch any validation issues"""
 
@@ -356,14 +355,14 @@ def test_time_tariff_interval_map_to_response(
 
 
 @pytest.mark.parametrize("tariff_component_id", [None, 716874614])
-def test_time_tariff_interval_map_to_list_response(tariff_component_id: Optional[int]):
+def test_time_tariff_interval_map_to_list_response(tariff_component_id: int | None):
     """Non exhaustive test on TimeTariffIntervalList mapping - mainly to catch any validation issues"""
     scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/pfx")
     rates: list[TariffGeneratedRate] = [
         generate_class_instance(TariffGeneratedRate, seed=101, optional_is_none=False),
         generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=True),
     ]
-    now = datetime(2022, 1, 5, tzinfo=timezone.utc)
+    now = datetime(2022, 1, 5, tzinfo=UTC)
     tariff_id = 198774112
     total = 63251
     poll_rate = 9871414
@@ -392,7 +391,7 @@ def test_time_tariff_interval_map_to_list_response(tariff_component_id: Optional
 def test_mrid_uniqueness():
     """Test our mrid's for the mapped entities differ from each other despite sharing database ids"""
     id = 1
-    now = datetime(2026, 1, 4, tzinfo=timezone.utc)
+    now = datetime(2026, 1, 4, tzinfo=UTC)
 
     tariff = generate_class_instance(Tariff)
     component = generate_class_instance(TariffComponent)

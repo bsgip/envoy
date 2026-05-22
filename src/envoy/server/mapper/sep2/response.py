@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, Union
+from collections.abc import Sequence
 
 import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.sep2.identification import ListLink
@@ -83,7 +83,7 @@ class ResponseMapper:
 
     @staticmethod
     def map_from_price_request(
-        r: Union[PriceResponse, Response], tariff_generated_rate: Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]
+        r: PriceResponse | Response, tariff_generated_rate: TariffGeneratedRate | ArchiveTariffGeneratedRate
     ) -> TariffGeneratedRateResponse:
         """Maps a sep2 PriceResponse to an internal TariffGeneratedRateResponse model that references a specific
         PricingReadingType within a TariffGeneratedRate"""
@@ -99,7 +99,7 @@ class ResponseMapper:
     def map_to_doe_response(
         scope: BaseRequestScope,
         doe_response: DynamicOperatingEnvelopeResponse,
-        doe: Optional[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+        doe: DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope | None,
     ) -> DERControlResponse:
         """Generates a sep2 DERControlResponse for a given DynamicOperatingEnvelopeResponse.
 
@@ -166,7 +166,7 @@ class ResponseListMapper:
         responses: Sequence[
             tuple[
                 DynamicOperatingEnvelopeResponse,
-                Optional[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+                DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope | None,
             ]
         ],
         total_responses: int,

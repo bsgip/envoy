@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -682,8 +682,8 @@ async def test_fetch_sites_by_timestamp_with_archive(pg_base_config):
                     tariff_component_id=1,
                     site_id=1,
                     calculation_log_id=2,
-                    created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                    changed_time=datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=timezone.utc),
+                    created_time=datetime(2000, 1, 1, tzinfo=UTC),
+                    changed_time=datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=UTC),
                     start_time=datetime(2022, 3, 5, 1, 0, 0, 0, tzinfo=timezone(timedelta(hours=10))),
                     end_time=datetime(2022, 3, 5, 1, 0, 11, 0, tzinfo=timezone(timedelta(hours=10))),
                     duration_seconds=11,
@@ -2665,7 +2665,7 @@ async def test_fetch_site_control_groups_by_changed_at_poll_rate(pg_base_config)
     """Tests runtime config timestamp triggers an empty-list notification per aggregator"""
 
     # This matches the changed_time on the RuntimeServerConfig in pg_base_config
-    config_timestamp = datetime(2023, 5, 1, 1, 1, 1, 500000, tzinfo=timezone.utc)
+    config_timestamp = datetime(2023, 5, 1, 1, 1, 1, 500000, tzinfo=UTC)
 
     async with generate_async_session(pg_base_config) as session:
         batch = await fetch_site_control_groups_by_changed_at(session, config_timestamp)
@@ -2686,11 +2686,11 @@ async def test_fetch_site_control_groups_by_changed_at_poll_rate(pg_base_config)
     "timestamp, expected_agg_site_tariff_ids",
     [
         (
-            datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc),
+            datetime(2023, 1, 2, 11, 1, 2, tzinfo=UTC),
             [(1, 1, 1), (1, 2, 1), (2, 3, 1), (1, 4, 1), (0, 5, 1), (0, 6, 1)],
         ),
         (
-            datetime(2022, 2, 3, 4, 5, 8, tzinfo=timezone.utc),  # timestamp mismatch
+            datetime(2022, 2, 3, 4, 5, 8, tzinfo=UTC),  # timestamp mismatch
             [],
         ),
     ],
@@ -2725,7 +2725,7 @@ async def test_fetch_tariff_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on tariff 1
-    timestamp = datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc)
+    timestamp = datetime(2023, 1, 2, 11, 1, 2, tzinfo=UTC)
     expected_active_tariff_ids = [1]
     expected_deleted_tariff_ids = [21, 24, 25]
     expected_site_agg_ids = [(1, 1), (1, 2), (2, 3), (1, 4), (0, 5), (0, 6)]
@@ -2844,7 +2844,7 @@ async def test_fetch_tariff_by_timestamp_with_archive(pg_base_config):
             [(1, 1, 1), (1, 2, 1), (2, 3, 1), (1, 4, 1), (0, 5, 1), (0, 6, 1)],
         ),
         (
-            datetime(2022, 2, 3, 4, 5, 8, tzinfo=timezone.utc),  # timestamp mismatch
+            datetime(2022, 2, 3, 4, 5, 8, tzinfo=UTC),  # timestamp mismatch
             [],
         ),
     ],

@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -30,7 +29,7 @@ async def _select_latest_tariff_generated_rate(session) -> TariffGeneratedRate:
     return resp.scalar_one()
 
 
-async def _select_tariff_generated_rate_by_id(session, id: int) -> Optional[TariffGeneratedRate]:
+async def _select_tariff_generated_rate_by_id(session, id: int) -> TariffGeneratedRate | None:
     stmt = select(TariffGeneratedRate).where(TariffGeneratedRate.tariff_generated_rate_id == id)
     resp = await session.execute(stmt)
     return resp.scalar_one()
@@ -58,7 +57,7 @@ async def test_insert_single_tariff(pg_empty_config):
 
 @pytest.mark.anyio
 async def test_update_single_tariff(pg_base_config):
-    changed_time = datetime(2016, 6, 7, 14, 6, 8, tzinfo=timezone.utc)
+    changed_time = datetime(2016, 6, 7, 14, 6, 8, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         tariff_in = generate_class_instance(Tariff)
         tariff_in.tariff_id = 1
@@ -71,7 +70,7 @@ async def test_update_single_tariff(pg_base_config):
         assert_class_instance_equality(
             Tariff, tariff, tariff_in, ignored_properties={"created_time", "changed_time", "version"}
         )
-        assert tariff.created_time == datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc), "created_time doesn't update"
+        assert tariff.created_time == datetime(2000, 1, 1, 0, 0, 0, tzinfo=UTC), "created_time doesn't update"
         assert tariff.changed_time == changed_time
         assert tariff.version == 1, "The DB has version=None so we roll straight to version 1"
 
@@ -88,8 +87,8 @@ async def test_update_single_tariff(pg_base_config):
                 primacy=1,
                 price_power_of_ten_multiplier=0,
                 fsa_id=1,
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                changed_time=datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc),
+                created_time=datetime(2000, 1, 1, tzinfo=UTC),
+                changed_time=datetime(2023, 1, 2, 11, 1, 2, tzinfo=UTC),
             ),
             archive_data,
         )
@@ -110,7 +109,7 @@ async def test_update_single_tariff(pg_base_config):
 
 @pytest.mark.anyio
 async def test_update_single_tariff_component(pg_base_config):
-    changed_time = datetime(2016, 6, 7, 14, 6, 8, tzinfo=timezone.utc)
+    changed_time = datetime(2016, 6, 7, 14, 6, 8, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         tc_in = generate_class_instance(TariffComponent)
         tc_in.tariff_component_id = 1
@@ -122,7 +121,7 @@ async def test_update_single_tariff_component(pg_base_config):
         assert_class_instance_equality(
             TariffComponent, tc, tc_in, ignored_properties={"created_time", "changed_time", "version", "tariff_id"}
         )
-        assert tc.created_time == datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc), "created_time doesn't update"
+        assert tc.created_time == datetime(2000, 1, 1, 0, 0, 0, tzinfo=UTC), "created_time doesn't update"
         assert tc.changed_time == changed_time
         assert tc.version == 1, "The DB has version=None so we roll straight to version 1"
         assert tc.tariff_id == 1, "This should NOT be updateable"
@@ -145,7 +144,7 @@ async def test_update_single_tariff_component(pg_base_config):
                 phase=0,
                 power_of_ten_multiplier=3,
                 uom=38,
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
+                created_time=datetime(2000, 1, 1, tzinfo=UTC),
                 changed_time=datetime(2022, 2, 1, 1, 0, 0, tzinfo=timezone(timedelta(hours=10))),
             ),
             archive_data,
@@ -232,8 +231,8 @@ async def test_insert_many_tariff_genrate_overlapping(pg_base_config):
             ignored_properties={"tariff_generated_rate_id", "created_time", "site", "tariff", "tariff_component"},
         )
         rate_to_insert.price_pow10_encoded += 123
-        rate_to_insert.changed_time = datetime(2026, 1, 3, tzinfo=timezone.utc)
-        rate_to_insert.created_time = datetime(2027, 1, 3, tzinfo=timezone.utc)  # This shouldn't do anything
+        rate_to_insert.changed_time = datetime(2026, 1, 3, tzinfo=UTC)
+        rate_to_insert.created_time = datetime(2027, 1, 3, tzinfo=UTC)  # This shouldn't do anything
 
         inserted_ids = await insert_many_tariff_genrate(session, [rate_to_insert])
         await session.commit()
@@ -322,7 +321,7 @@ async def test_select_single_tariff_generated_rate(pg_base_config):
 )
 @pytest.mark.anyio
 async def test_cancel_tariff_generated_rate(pg_base_config, tariff_generated_rate_id, expected_deleted_price):
-    deleted_time = datetime(2028, 4, 1, tzinfo=timezone.utc)
+    deleted_time = datetime(2028, 4, 1, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         await cancel_tariff_generated_rate(session, tariff_generated_rate_id, deleted_time)
 
@@ -358,9 +357,9 @@ async def test_cancel_tariff_generated_rate(pg_base_config, tariff_generated_rat
 )
 @pytest.mark.anyio
 async def test_cancel_and_delete_tariff_component(
-    pg_base_config, tariff_component_id: int, expected_deleted_prices: Optional[list[int]]
+    pg_base_config, tariff_component_id: int, expected_deleted_prices: list[int] | None
 ):
-    deleted_time = datetime(2028, 4, 1, tzinfo=timezone.utc)
+    deleted_time = datetime(2028, 4, 1, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         await cancel_and_delete_tariff_component(session, tariff_component_id, deleted_time)
 

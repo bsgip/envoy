@@ -1,5 +1,5 @@
+from collections.abc import Iterable, Sequence
 from datetime import datetime
-from typing import Iterable, List, Optional, Sequence
 
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -78,7 +78,7 @@ async def update_single_tariff_component(
 
 
 async def insert_many_tariff_genrate(
-    session: AsyncSession, tariff_genrates: List[TariffGeneratedRate]
+    session: AsyncSession, tariff_genrates: list[TariffGeneratedRate]
 ) -> Sequence[int]:
     """Inserts multiple tariff generated rate entries into the DB. There will be NO marking of superseded / updating
     of existing records as CSIP-Aus v1.3 requires all prices to overlap."""
@@ -88,7 +88,7 @@ async def insert_many_tariff_genrate(
     update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
     insert_ids = await session.execute(
         insert(TariffGeneratedRate)
-        .values(([{k: getattr(r, k) for k in update_cols} for r in tariff_genrates]))
+        .values([{k: getattr(r, k) for k in update_cols} for r in tariff_genrates])
         .returning(TariffGeneratedRate.tariff_generated_rate_id)
     )
 
@@ -111,7 +111,7 @@ async def select_tariff_ids_for_component_ids(
 
 async def select_single_tariff_generated_rate(
     session: AsyncSession, tariff_generated_rate_id: int
-) -> Optional[TariffGeneratedRate]:
+) -> TariffGeneratedRate | None:
     """Admin lookup of a single TariffGeneratedRate by ID - no scoping for aggregators"""
     resp = await session.execute(
         select(TariffGeneratedRate).where(TariffGeneratedRate.tariff_generated_rate_id == tariff_generated_rate_id)

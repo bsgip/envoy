@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.metering import ReadingType
 from envoy_schema.server.schema.sep2.pricing import (
@@ -123,7 +122,7 @@ class RateComponentManager:
         scope: SiteRequestScope,
         tariff_id: int,
         rate_component_id: int,
-    ) -> Optional[RateComponentResponse]:
+    ) -> RateComponentResponse | None:
         """Fetches a RateComponent underneath a specific tariff_id - returns None if it DNE"""
 
         site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
@@ -146,7 +145,7 @@ class RateComponentManager:
         scope: SiteRequestScope,
         tariff_id: int,
         start: int,
-        changed_after: Optional[datetime],
+        changed_after: datetime | None,
         limit: int,
     ) -> RateComponentListResponse:
         """Fetches all RateComponent's underneath a specific Tariff via a list endpoint"""
@@ -242,7 +241,7 @@ class TimeTariffIntervalManager:
         tariff_id: int,
         rate_component_id: int,
         time_tariff_interval_id: int,
-    ) -> Optional[TimeTariffIntervalResponse]:
+    ) -> TimeTariffIntervalResponse | None:
         """Fetches a single TimeTariffInterval entity for the specified id
 
         Returns None if no rate exists for that id/site"""

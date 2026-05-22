@@ -1,7 +1,7 @@
 """Managers for pricing/tariff endpoints"""
 
 from datetime import datetime
-from typing import List, cast
+from typing import cast
 
 from envoy_schema.admin.schema.base import BatchCreateResponse
 from envoy_schema.admin.schema.pricing import (
@@ -151,7 +151,7 @@ class TariffGeneratedRateManager:
 
     @staticmethod
     async def add_many_tariff_genrate(
-        session: AsyncSession, tariff_genrates: List[TariffGeneratedRateRequest]
+        session: AsyncSession, tariff_genrates: list[TariffGeneratedRateRequest]
     ) -> BatchCreateResponse:
         """Map a TariffGeneratedRateRequest object to a TariffGeneratedRate model and insert into DB.
 

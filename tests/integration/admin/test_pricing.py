@@ -1,8 +1,6 @@
 import json
 from datetime import datetime
-from decimal import Decimal
 from http import HTTPStatus
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -185,7 +183,7 @@ async def test_update_tariff_component(
     # Before doing anything - snapshot the original value
     uri = TariffComponentUpdateUri.format(tariff_component_id=tariff_component_id)
     resp = await admin_client_auth.get(uri)
-    original_tc: Optional[TariffComponentResponse] = None
+    original_tc: TariffComponentResponse | None = None
     if resp.status_code == HTTPStatus.OK:
         original_tc = TariffComponentResponse(**json.loads(resp.content))
 

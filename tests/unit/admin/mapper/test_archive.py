@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_nowish

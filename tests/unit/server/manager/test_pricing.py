@@ -1,7 +1,6 @@
 import unittest.mock as mock
 from datetime import datetime
 from itertools import product
-from typing import Optional
 
 import pytest
 from assertical.fake.generator import generate_class_instance
@@ -29,7 +28,7 @@ async def test_fetch_tariff_profile_list_counts_members(
     mock_select_tariff_count: mock.MagicMock,
     mock_select_all_tariffs: mock.MagicMock,
     mock_map_to_list_response: mock.MagicMock,
-    fsa_id: Optional[int],
+    fsa_id: int | None,
     n_tariffs: int,
 ):
     """Tests that the function correctly interrogates the counts for each list item returned and correctly passes

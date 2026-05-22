@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence, Union, cast
+from typing import cast
 
 from sqlalchemy import Select, func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -111,7 +111,7 @@ async def select_doe_by_display_id_include_deleted(
     aggregator_id: int,
     site_id: int,
     display_id: int,
-) -> Optional[Union[DOE, ArchiveDOE]]:
+) -> DOE | ArchiveDOE | None:
     """Attempts to fetch a doe using its' display id, also scoping it to a particular aggregator/site. The archive
     table will also be checked for deleted instances (of which the most recent deletion will be matched).
 
@@ -138,7 +138,7 @@ async def select_doe_by_display_id_include_deleted(
     # Check archive otherwise
     archive_table_doe = (
         await session.execute(
-            (
+
                 select(ArchiveDOE)
                 .where(
                     (ArchiveDOE.display_id == display_id)
@@ -147,7 +147,7 @@ async def select_doe_by_display_id_include_deleted(
                 )
                 .order_by(ArchiveDOE.deleted_time.desc())
                 .limit(1)
-            )
+
         )
     ).scalar_one_or_none()
     if archive_table_doe is not None:

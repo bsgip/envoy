@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Union
+from datetime import UTC, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -23,7 +22,7 @@ from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
 
 AEST = timezone(timedelta(hours=10))
-UTC = timezone.utc
+UTC = UTC
 BASE = datetime(2000, 1, 1, tzinfo=UTC)  # Convenience - used a lot for initial creation times
 
 
@@ -140,8 +139,8 @@ async def test_select_single_tariff(pg_base_config, expected_id: int | None, req
 
 
 def assert_tariff_component_for_id(
-    expected_tariff_component_id: Optional[int],
-    actual_tariff_component: Optional[TariffComponent],
+    expected_tariff_component_id: int | None,
+    actual_tariff_component: TariffComponent | None,
 ):
     """Asserts the supplied tariff component matches the expected values for a rate with that id (defined in
     base_config.sql)"""
@@ -204,7 +203,7 @@ def assert_tariff_component_for_id(
     ],
 )
 @pytest.mark.anyio
-async def test_select_tariff_component_by_id(pg_base_config, requested_id: int, expected_id: Optional[int]):
+async def test_select_tariff_component_by_id(pg_base_config, requested_id: int, expected_id: int | None):
     async with generate_async_session(pg_base_config) as session:
         tariff_component = await select_tariff_component_by_id(session, requested_id)
         assert_tariff_component_for_id(expected_id, tariff_component)
@@ -231,7 +230,7 @@ async def test_select_and_count_tariff_components_by_tariff(
     pg_base_config,
     tariff_id: int,
     start: int,
-    changed_after: Optional[datetime],
+    changed_after: datetime | None,
     limit: int,
     expected_ids: list[int],
     expected_count: int,
@@ -248,8 +247,8 @@ async def test_select_and_count_tariff_components_by_tariff(
 
 
 def assert_rate_for_id(
-    expected_rate_id: Optional[int],
-    actual_rate: Optional[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate, None]],
+    expected_rate_id: int | None,
+    actual_rate: TariffGeneratedRate | ArchiveTariffGeneratedRate | None | None,
 ):
     """Asserts the supplied rate matches the expected values for a rate with that id - sourced from base_config.sql"""
     if expected_rate_id is None:
@@ -364,7 +363,7 @@ def assert_rate_for_id(
 )
 @pytest.mark.anyio
 async def test_select_tariff_generated_rate_include_deleted(
-    pg_additional_prices, agg_id: int, site_id: Optional[int], rate_id: int, expected_rate_id: Optional[int]
+    pg_additional_prices, agg_id: int, site_id: int | None, rate_id: int, expected_rate_id: int | None
 ):
 
     async with generate_async_session(pg_additional_prices) as session:
@@ -383,7 +382,7 @@ async def test_select_tariff_generated_rate_include_deleted(
 )
 @pytest.mark.anyio
 async def test_select_tariff_generated_rate_for_scope_la_timezone(
-    pg_la_timezone, pg_additional_prices, agg_id: int, site_id: Optional[int], rate_id: int
+    pg_la_timezone, pg_additional_prices, agg_id: int, site_id: int | None, rate_id: int
 ):
     async with generate_async_session(pg_la_timezone) as session:
         actual = await select_tariff_generated_rate_include_deleted(session, agg_id, site_id, rate_id)
@@ -432,11 +431,11 @@ async def test_select_and_count_active_rates_include_deleted(
     expected_ids: list[int],
     expected_count: int,
     tariff_id: int,
-    tariff_component_id: Optional[int],
+    tariff_component_id: int | None,
     site_id: int,
     now: datetime,
     start: int,
-    changed_after: Optional[datetime],
+    changed_after: datetime | None,
     limit: int,
 ):
     """Tests that count_active_rates_include_deleted and select_active_rates_include_deleted both handle archives

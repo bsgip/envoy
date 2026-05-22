@@ -219,7 +219,7 @@ class SiteDERRating(Base):
     doe_modes_supported: Mapped[DOESupportedMode | None] = mapped_column(INTEGER, nullable=True)
 
     # Storage extension
-    vpp_modes_supported: Mapped[Optional[VPPControlType]] = mapped_column(INTEGER, nullable=True)
+    vpp_modes_supported: Mapped[VPPControlType | None] = mapped_column(INTEGER, nullable=True)
 
     site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_rating", lazy="raise", single_parent=True)
     __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERRating allowed per SiteDER)
@@ -288,9 +288,9 @@ class SiteDERSetting(Base):
     doe_modes_enabled: Mapped[DOESupportedMode | None] = mapped_column(INTEGER, nullable=True)
 
     # Storage extension
-    vpp_modes_enabled: Mapped[Optional[VPPControlType]] = mapped_column(INTEGER, nullable=True)
-    min_wh_value: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
-    min_wh_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    vpp_modes_enabled: Mapped[VPPControlType | None] = mapped_column(INTEGER, nullable=True)
+    min_wh_value: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
+    min_wh_multiplier: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
     site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_setting", lazy="raise", single_parent=True)
     __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)

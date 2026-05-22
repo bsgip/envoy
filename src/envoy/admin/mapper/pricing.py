@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from typing import List, Optional
 
 from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
@@ -102,7 +101,7 @@ class TariffGeneratedRateListMapper:
 
     @staticmethod
     def map_from_single_rate_request(
-        changed_time: datetime, rate: TariffGeneratedRateRequest, tariff_id: Optional[int]
+        changed_time: datetime, rate: TariffGeneratedRateRequest, tariff_id: int | None
     ) -> TariffGeneratedRate:
         if tariff_id is None:
             raise InvalidMappingError(f"Unable to identify Tariff id for TariffComponent {rate.tariff_component_id}")
@@ -126,9 +125,9 @@ class TariffGeneratedRateListMapper:
     @staticmethod
     def map_from_request(
         changed_time: datetime,
-        tariff_genrate_list: List[TariffGeneratedRateRequest],
+        tariff_genrate_list: list[TariffGeneratedRateRequest],
         tariff_ids_by_component_id: dict[int, int],
-    ) -> List[TariffGeneratedRate]:
+    ) -> list[TariffGeneratedRate]:
         return [
             TariffGeneratedRateListMapper.map_from_single_rate_request(
                 changed_time, tariff_genrate, tariff_ids_by_component_id.get(tariff_genrate.tariff_component_id, None)

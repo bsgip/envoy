@@ -43,7 +43,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
-from envoy.server.request_scope import AggregatorRequestScope, DeviceOrAggregatorRequestScope
+from envoy.server.request_scope import AggregatorRequestScope
 from tests.unit.notification.mocks import (
     assert_task_kicked_n_times,
     assert_task_kicked_with_broker_and_args,

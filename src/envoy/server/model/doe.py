@@ -21,7 +21,7 @@ class SiteControlGroup(Base):
     primacy: Mapped[int] = (
         mapped_column()
     )  # The priority level of this group's controls relative to other groups. Lower is higher priority.
-    fsa_id: Mapped[Optional[int]] = mapped_column(
+    fsa_id: Mapped[int | None] = mapped_column(
         index=True, nullable=True
     )  # The function set assignment ID that "groups" this SiteControlGroup with other SiteControlGroups
 
@@ -32,7 +32,7 @@ class SiteControlGroup(Base):
         DateTime(timezone=True), index=True
     )  # When the group was created/changed
 
-    display_id: Mapped[Optional[int]] = mapped_column(
+    display_id: Mapped[int | None] = mapped_column(
         index=True, nullable=True
     )  # If set - use this for MRID calculation instead of site_control_group_id
 
@@ -83,7 +83,7 @@ class SiteControlGroupDefault(Base):
     ramp_rate_percent_per_second: Mapped[int | None] = mapped_column(nullable=True)  # hundredths of percent per sec
 
     # Storage Extension
-    storage_target_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    storage_target_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on storage active power
 
@@ -150,16 +150,16 @@ class DynamicOperatingEnvelope(Base):
     set_point_percentage: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Percentage of device max power settings to charge at (if negative) or discharge at (if positive). 100 = 100%
-    ramp_time_seconds: Mapped[Optional[Decimal]] = mapped_column(
+    ramp_time_seconds: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Ramp time for this control - corresponds to rampTms. 100 corresponds to 100 seconds.
 
-    display_id: Mapped[Optional[int]] = mapped_column(
+    display_id: Mapped[int | None] = mapped_column(
         BigInteger, nullable=True
     )  # If set - use this for MRID calculation instead of site_control_id
 
     # Storage extension
-    storage_target_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    storage_target_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )
 

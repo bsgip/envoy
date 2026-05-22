@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.types import (
     AccumulationBehaviourType,
@@ -25,11 +24,11 @@ class Tariff(Base):
 
     __tablename__ = "tariff"
     tariff_id: Mapped[int] = mapped_column(primary_key=True)
-    version: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    version: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
     name: Mapped[str] = mapped_column(String(64))  # descriptive name of the tariff
     dnsp_code: Mapped[str] = mapped_column(String(20))  # code assigned by the DNSP for their own internal processes
     currency_code: Mapped[CurrencyCode] = mapped_column(Integer)  # ISO 4217 numerical currency code - eg AUD = 36
-    price_power_of_ten_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    price_power_of_ten_multiplier: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
     primacy: Mapped[int] = mapped_column(INTEGER)
 
     fsa_id: Mapped[int] = mapped_column(
@@ -52,19 +51,19 @@ class TariffComponent(Base):
     tariff_component_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     tariff_id: Mapped[int] = mapped_column(ForeignKey("tariff.tariff_id"))  # The tariff that owns this component
 
-    description: Mapped[Optional[str]] = mapped_column(VARCHAR(length=32), nullable=True)
-    version: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    description: Mapped[str | None] = mapped_column(VARCHAR(length=32), nullable=True)
+    version: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
     role_flags: Mapped[RoleFlagsType] = mapped_column(INTEGER)
 
     # ReadingType fields
-    accumulation_behaviour: Mapped[Optional[AccumulationBehaviourType]] = mapped_column(INTEGER, nullable=True)
-    commodity: Mapped[Optional[CommodityType]] = mapped_column(INTEGER, nullable=True)
-    data_qualifier: Mapped[Optional[DataQualifierType]] = mapped_column(INTEGER, nullable=True)
-    flow_direction: Mapped[Optional[FlowDirectionType]] = mapped_column(INTEGER, nullable=True)
-    kind: Mapped[Optional[KindType]] = mapped_column(INTEGER, nullable=True)
-    phase: Mapped[Optional[PhaseCode]] = mapped_column(INTEGER, nullable=True)
-    power_of_ten_multiplier: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
-    uom: Mapped[Optional[UomType]] = mapped_column(INTEGER, nullable=True)
+    accumulation_behaviour: Mapped[AccumulationBehaviourType | None] = mapped_column(INTEGER, nullable=True)
+    commodity: Mapped[CommodityType | None] = mapped_column(INTEGER, nullable=True)
+    data_qualifier: Mapped[DataQualifierType | None] = mapped_column(INTEGER, nullable=True)
+    flow_direction: Mapped[FlowDirectionType | None] = mapped_column(INTEGER, nullable=True)
+    kind: Mapped[KindType | None] = mapped_column(INTEGER, nullable=True)
+    phase: Mapped[PhaseCode | None] = mapped_column(INTEGER, nullable=True)
+    power_of_ten_multiplier: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
+    uom: Mapped[UomType | None] = mapped_column(INTEGER, nullable=True)
 
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -116,11 +115,11 @@ class TariffGeneratedRate(Base):
     #
     # This represents the block 0 price (and is the ONLY price if price_pow10_encoded_block_1 is None)
 
-    block_1_start_pow10_encoded: Mapped[Optional[int]] = mapped_column(
+    block_1_start_pow10_encoded: Mapped[int | None] = mapped_column(
         INTEGER, nullable=True
     )  # price_pow_10_encoded is only valid until this much usage has occurred - encoded using RateComponent pow10
 
-    price_pow10_encoded_block_1: Mapped[Optional[int]] = mapped_column(
+    price_pow10_encoded_block_1: Mapped[int | None] = mapped_column(
         INTEGER, nullable=True
     )  # Similar to price_pow10_encoded but is only applicable after block_1_start_pow10_encoded usage has occurred
 

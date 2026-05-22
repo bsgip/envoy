@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import product
 
 import pytest
@@ -62,7 +62,7 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 from envoy.server.model.site_reading import SiteReading
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import DeviceOrAggregatorRequestScope
 
 
 def assert_entity_hrefs_contain_entity_id_and_prefix(
@@ -700,7 +700,7 @@ def test_NotificationMapper_map_rates_to_response(
     sub = generate_class_instance(Subscription, seed=303)
     scope = generate_class_instance(AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix")
     tariff_id = 888
-    now = datetime(2021, 5, 7, tzinfo=timezone.utc)
+    now = datetime(2021, 5, 7, tzinfo=UTC)
 
     notification = NotificationMapper.map_rates_to_response(
         tariff_id, tariff_component_id, [rate1, rate2], sub, scope, notification_type, now

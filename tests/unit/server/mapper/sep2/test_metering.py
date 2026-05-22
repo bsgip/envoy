@@ -28,11 +28,11 @@ from envoy_schema.server.schema.sep2.types import (
 from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import (
-    CaseInsensitiveDict,
     SEP2_INT8_MAX,
     SEP2_INT8_MIN,
     SEP2_INT48_MAX,
     SEP2_INT48_MIN,
+    CaseInsensitiveDict,
 )
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.metering import (

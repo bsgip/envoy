@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, cast
+from typing import cast
 
 from envoy_schema.admin.schema.base import BatchCreateResponse
 from envoy_schema.admin.schema.site_control import (
