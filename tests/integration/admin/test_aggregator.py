@@ -1,25 +1,24 @@
-import json
 import datetime as dt
+import json
 from http import HTTPStatus
-from typing import Optional
 
-import pytest
 import psycopg
+import pytest
 import sqlalchemy as sa
-from assertical.fixtures.postgres import generate_async_session
 from assertical.fake.generator import generate_class_instance
+from assertical.fixtures.postgres import generate_async_session
+from envoy_schema.admin.schema import uri
 from envoy_schema.admin.schema.aggregator import (
-    AggregatorResponse,
-    AggregatorPageResponse,
     AggregatorDomain,
+    AggregatorPageResponse,
     AggregatorRequest,
+    AggregatorResponse,
 )
 from envoy_schema.admin.schema.certificate import (
-    CertificateResponse,
-    CertificatePageResponse,
     CertificateAssignmentRequest,
+    CertificatePageResponse,
+    CertificateResponse,
 )
-from envoy_schema.admin.schema import uri
 from httpx import AsyncClient
 
 from envoy.admin import crud
@@ -27,7 +26,7 @@ from envoy.server.model import AggregatorCertificateAssignment, Certificate
 from tests.integration import response
 
 
-def _build_query_string(start: Optional[int], limit: Optional[int]) -> str:
+def _build_query_string(start: int | None, limit: int | None) -> str:
     query = "?"
     if start is not None:
         query = query + f"&start={start}"
@@ -93,8 +92,8 @@ async def test_get_all_aggregators(
 async def test_get_aggregator(
     admin_client_auth: AsyncClient,
     agg_id: int,
-    expected_name: Optional[str],
-    expected_domains: Optional[list[str]],
+    expected_name: str | None,
+    expected_domains: list[str] | None,
 ) -> None:
     res = await admin_client_auth.get(uri.AggregatorUri.format(aggregator_id=agg_id))
     if expected_name is None or expected_domains is None:
@@ -184,7 +183,7 @@ async def test_assign_certificates_to_aggregator(
             CertificateAssignmentRequest(lfdi="SOMEFAKELFDI1", expiry=dt.datetime.now() + dt.timedelta(365)),
             CertificateAssignmentRequest(lfdi="SOMEFAKELFDI2", expiry=dt.datetime.now() + dt.timedelta(365)),
         ]
-        content = ",".join((c.model_dump_json() for c in certs))
+        content = ",".join(c.model_dump_json() for c in certs)
         res_post = await admin_client_auth.post(
             uri.AggregatorCertificateListUri.format(aggregator_id=1), content=f"[{content}]"
         )
@@ -223,7 +222,7 @@ async def test_assign_certificates_to_aggregator_bad_id(admin_client_auth: Async
         CertificateAssignmentRequest(certificate_id=4),
         CertificateAssignmentRequest(lfdi="SOMEFAKELFDI1", expiry=dt.datetime.now() + dt.timedelta(365)),
     ]
-    content = ",".join((c.model_dump_json() for c in certs))
+    content = ",".join(c.model_dump_json() for c in certs)
     res_post = await admin_client_auth.post(
         uri.AggregatorCertificateListUri.format(aggregator_id=1111), content=f"[{content}]"
     )
@@ -238,7 +237,7 @@ async def test_assign_certificates_to_aggregator_bad_certificate_id(admin_client
         CertificateAssignmentRequest(certificate_id=4444),
         CertificateAssignmentRequest(lfdi="SOMEFAKELFDI1", expiry=dt.datetime.now() + dt.timedelta(365)),
     ]
-    content = ",".join((c.model_dump_json() for c in certs))
+    content = ",".join(c.model_dump_json() for c in certs)
     res_post = await admin_client_auth.post(
         uri.AggregatorCertificateListUri.format(aggregator_id=1), content=f"[{content}]"
     )

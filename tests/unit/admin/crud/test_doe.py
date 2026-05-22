@@ -1,7 +1,6 @@
 import unittest.mock as mock
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -42,7 +41,7 @@ async def _select_latest_dynamic_operating_envelope(session) -> DynamicOperating
 @pytest.mark.anyio
 async def test_cancel_then_insert_does_inserts(pg_base_config):
     """Assert that we are able to successfully insert a valid DOERequest into a db"""
-    deleted_time = datetime(2022, 11, 4, 7, 4, 2, tzinfo=timezone.utc)
+    deleted_time = datetime(2022, 11, 4, 7, 4, 2, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         doe_in: DynamicOperatingEnvelope = generate_class_instance(
             DynamicOperatingEnvelope, generate_relationships=False, site_id=1, site_control_group_id=1
@@ -89,7 +88,7 @@ async def test_cancel_then_insert_does_inserts(pg_base_config):
 @pytest.mark.anyio
 async def test_cancel_then_insert_does_update(pg_base_config):
     """Assert that we are able to successfully update a valid DOERequest in the db"""
-    deleted_time = datetime(2022, 11, 4, 7, 4, 2, tzinfo=timezone.utc)
+    deleted_time = datetime(2022, 11, 4, 7, 4, 2, tzinfo=UTC)
     original_doe_copy: DynamicOperatingEnvelope
     async with generate_async_session(pg_base_config) as session:
         original_doe = await _select_latest_dynamic_operating_envelope(session)
@@ -100,10 +99,12 @@ async def test_cancel_then_insert_does_update(pg_base_config):
             original_doe,
             ignored_properties={"dynamic_operating_envelope_id", "created_time", "site", "site_control_group"},
         )
+        assert doe_to_update.export_limit_watts is not None
+        assert doe_to_update.import_limit_active_watts is not None
         doe_to_update.export_limit_watts += Decimal("99.1")
         doe_to_update.import_limit_active_watts += Decimal("98.2")
-        doe_to_update.changed_time = datetime(2026, 1, 3, tzinfo=timezone.utc)
-        doe_to_update.created_time = datetime(2027, 1, 3, tzinfo=timezone.utc)
+        doe_to_update.changed_time = datetime(2026, 1, 3, tzinfo=UTC)
+        doe_to_update.created_time = datetime(2027, 1, 3, tzinfo=UTC)
 
         await cancel_then_insert_does(session, [doe_to_update], deleted_time)
         await session.commit()
@@ -127,6 +128,7 @@ async def test_cancel_then_insert_does_update(pg_base_config):
             original_doe_copy,
             archive_data,
         )
+        assert archive_data.archive_time is not None
         assert_nowish(archive_data.archive_time)
         assert archive_data.deleted_time == deleted_time
 
@@ -147,27 +149,25 @@ def doe(start_time: datetime, end_time: datetime, scg_id: int = 1, site_id: int 
     [
         ([], []),
         (
-            [doe(datetime(1980, 1, 2, tzinfo=timezone.utc), datetime(1999, 1, 2, tzinfo=timezone.utc))],
+            [doe(datetime(1980, 1, 2, tzinfo=UTC), datetime(1999, 1, 2, tzinfo=UTC))],
             [],
         ),  # Complete miss of all DOEs
         (
-            [doe(datetime(2050, 1, 2, tzinfo=timezone.utc), datetime(2051, 1, 2, tzinfo=timezone.utc))],
+            [doe(datetime(2050, 1, 2, tzinfo=UTC), datetime(2051, 1, 2, tzinfo=UTC))],
             [],
         ),  # Complete miss of all DOEs
         (
             [
-                doe(datetime(1980, 1, 2, tzinfo=timezone.utc), datetime(1999, 1, 2, tzinfo=timezone.utc)),
-                doe(datetime(2050, 1, 2, tzinfo=timezone.utc), datetime(2051, 1, 2, tzinfo=timezone.utc)),
+                doe(datetime(1980, 1, 2, tzinfo=UTC), datetime(1999, 1, 2, tzinfo=UTC)),
+                doe(datetime(2050, 1, 2, tzinfo=UTC), datetime(2051, 1, 2, tzinfo=UTC)),
             ],
             [],
         ),  # Complete miss of all DOEs
         (
             [
-                doe(datetime(1980, 1, 2, tzinfo=timezone.utc), datetime(1999, 1, 2, tzinfo=timezone.utc)),
-                doe(datetime(2050, 1, 2, tzinfo=timezone.utc), datetime(2051, 1, 2, tzinfo=timezone.utc)),
-                doe(
-                    datetime(2000, 1, 2, tzinfo=timezone.utc), datetime(2025, 1, 2, tzinfo=timezone.utc)
-                ),  # Will overlap everything
+                doe(datetime(1980, 1, 2, tzinfo=UTC), datetime(1999, 1, 2, tzinfo=UTC)),
+                doe(datetime(2050, 1, 2, tzinfo=UTC), datetime(2051, 1, 2, tzinfo=UTC)),
+                doe(datetime(2000, 1, 2, tzinfo=UTC), datetime(2025, 1, 2, tzinfo=UTC)),  # Will overlap everything
             ],
             [1, 4],  # doe 2 is already superseded so won't be updated by this
         ),  #
@@ -176,9 +176,7 @@ def doe(start_time: datetime, end_time: datetime, scg_id: int = 1, site_id: int 
                 doe(
                     datetime(2022, 5, 7, 1, 2, 1, tzinfo=AEST), datetime(2022, 5, 7, 1, 2, 10, tzinfo=AEST)
                 ),  # encapsulated by doe 1
-                doe(
-                    datetime(2000, 1, 2, tzinfo=timezone.utc), datetime(2025, 1, 2, tzinfo=timezone.utc)
-                ),  # Will overlap everything
+                doe(datetime(2000, 1, 2, tzinfo=UTC), datetime(2025, 1, 2, tzinfo=UTC)),  # Will overlap everything
             ],
             [1, 4],  # doe 2 is already superseded so won't be updated by this
         ),
@@ -247,7 +245,7 @@ async def test_supersede_matching_does_for_site(
         site_id = doe_list[0].site_id
 
     all_site_control_group_ids = [1, 2, 3]
-    changed_time = datetime(2021, 11, 4, 2, 3, 4, tzinfo=timezone.utc)
+    changed_time = datetime(2021, 11, 4, 2, 3, 4, tzinfo=UTC)
 
     async with generate_async_session(pg_base_config) as session:
         await supersede_matching_does_for_site(session, doe_list, site_id, all_site_control_group_ids, changed_time)
@@ -286,7 +284,7 @@ async def test_supersede_then_insert_does_many_sites(
         await session.commit()
 
     expected_site_control_group_ids = [1, 2, 3]
-    changed_time = datetime(2021, 11, 4, 2, 3, 4, tzinfo=timezone.utc)
+    changed_time = datetime(2021, 11, 4, 2, 3, 4, tzinfo=UTC)
     does = [
         generate_class_instance(
             DynamicOperatingEnvelope,
@@ -388,18 +386,18 @@ async def test_supersede_then_insert_does_empty_list(mocker: pytest_mock.MockerF
         (1, None, 4),
         (1, datetime.min, 4),
         (1, datetime.max, 0),
-        (1, datetime(2022, 5, 6, 11, 22, 33, tzinfo=timezone.utc), 4),
-        (1, datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc), 3),
-        (1, datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc), 2),
-        (1, datetime(2022, 5, 6, 13, 22, 34, tzinfo=timezone.utc), 1),
-        (1, datetime(2022, 5, 6, 14, 22, 34, tzinfo=timezone.utc), 0),
+        (1, datetime(2022, 5, 6, 11, 22, 33, tzinfo=UTC), 4),
+        (1, datetime(2022, 5, 6, 11, 22, 34, tzinfo=UTC), 3),
+        (1, datetime(2022, 5, 6, 12, 22, 34, tzinfo=UTC), 2),
+        (1, datetime(2022, 5, 6, 13, 22, 34, tzinfo=UTC), 1),
+        (1, datetime(2022, 5, 6, 14, 22, 34, tzinfo=UTC), 0),
         (2, None, 0),
-        (2, datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc), 0),
+        (2, datetime(2022, 5, 6, 12, 22, 34, tzinfo=UTC), 0),
     ],
 )
 @pytest.mark.anyio
 async def test_count_all_does(
-    pg_base_config, site_control_group_id: int, changed_after: Optional[datetime], expected_count: int
+    pg_base_config, site_control_group_id: int, changed_after: datetime | None, expected_count: int
 ):
     async with generate_async_session(pg_base_config) as session:
         assert (await count_all_does(session, site_control_group_id, changed_after)) == expected_count
@@ -413,11 +411,11 @@ async def test_count_all_does(
         (1, 0, 2, None, [1, 2]),
         (1, 1, 2, None, [2, 3]),
         (1, 99, 99, None, []),
-        (1, 0, 99, datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc), [2, 3, 4]),
-        (1, 1, 99, datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc), [3, 4]),
-        (1, 1, 1, datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc), [3]),
+        (1, 0, 99, datetime(2022, 5, 6, 11, 22, 34, tzinfo=UTC), [2, 3, 4]),
+        (1, 1, 99, datetime(2022, 5, 6, 11, 22, 34, tzinfo=UTC), [3, 4]),
+        (1, 1, 1, datetime(2022, 5, 6, 11, 22, 34, tzinfo=UTC), [3]),
         (2, 0, 999, None, []),
-        (2, 1, 99, datetime(2022, 5, 6, 11, 22, 34, tzinfo=timezone.utc), []),
+        (2, 1, 99, datetime(2022, 5, 6, 11, 22, 34, tzinfo=UTC), []),
     ],
 )
 @pytest.mark.anyio
@@ -426,7 +424,7 @@ async def test_select_all_does(
     site_control_group_id: int,
     start: int,
     limit: int,
-    after: Optional[datetime],
+    after: datetime | None,
     expected_doe_ids: list[int],
 ):
     async with generate_async_session(pg_base_config) as session:
@@ -446,7 +444,7 @@ async def extra_site_control_groups(pg_base_config):
                 seed=303,
                 primacy=1,
                 site_control_group_id=4,
-                changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=timezone.utc),
+                changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=UTC),
             )
         )
         await session.commit()
@@ -459,15 +457,15 @@ async def extra_site_control_groups(pg_base_config):
         (None, 4),
         (datetime.min, 4),
         (datetime.max, 0),
-        (datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), 4),
-        (datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), 3),
-        (datetime(2021, 4, 5, 10, 3, 0, tzinfo=timezone.utc), 2),
-        (datetime(2021, 4, 5, 10, 4, 0, tzinfo=timezone.utc), 1),
+        (datetime(2021, 4, 5, 10, 1, 0, tzinfo=UTC), 4),
+        (datetime(2021, 4, 5, 10, 2, 0, tzinfo=UTC), 3),
+        (datetime(2021, 4, 5, 10, 3, 0, tzinfo=UTC), 2),
+        (datetime(2021, 4, 5, 10, 4, 0, tzinfo=UTC), 1),
     ],
 )
 @pytest.mark.anyio
 async def test_count_all_site_control_groups(
-    extra_site_control_groups, changed_after: Optional[datetime], expected_count: int
+    extra_site_control_groups, changed_after: datetime | None, expected_count: int
 ):
     async with generate_async_session(extra_site_control_groups) as session:
         assert (await count_all_site_control_groups(session, changed_after)) == expected_count
@@ -478,9 +476,9 @@ async def test_count_all_site_control_groups(
     [
         (0, 999, None, [1, 2, 3, 4]),
         (1, 2, None, [2, 3]),
-        (0, 999, datetime(2021, 4, 5, 10, 1, 0, tzinfo=timezone.utc), [1, 2, 3, 4]),
-        (0, 999, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), [2, 3, 4]),
-        (2, 999, datetime(2021, 4, 5, 10, 2, 0, tzinfo=timezone.utc), [4]),
+        (0, 999, datetime(2021, 4, 5, 10, 1, 0, tzinfo=UTC), [1, 2, 3, 4]),
+        (0, 999, datetime(2021, 4, 5, 10, 2, 0, tzinfo=UTC), [2, 3, 4]),
+        (2, 999, datetime(2021, 4, 5, 10, 2, 0, tzinfo=UTC), [4]),
     ],
 )
 @pytest.mark.anyio
@@ -488,7 +486,7 @@ async def test_select_all_site_control_groups(
     extra_site_control_groups,
     start: int,
     limit: int,
-    after: Optional[datetime],
+    after: datetime | None,
     expected_site_control_ids: list[int],
 ):
     async with generate_async_session(extra_site_control_groups) as session:
@@ -539,7 +537,7 @@ async def test_select_all_site_control_groups(
 async def test_delete_does_with_start_time_in_range(
     pg_base_config,
     site_control_group_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     period_start: datetime,
     period_end: datetime,
     expected_doe_ids: list[int],
@@ -547,7 +545,7 @@ async def test_delete_does_with_start_time_in_range(
     """Tests that delete_does_with_start_time_in_range only deletes (and archives) the appropriate DOE controls"""
 
     # Do the delete
-    deleted_time = datetime(2022, 5, 7, 2, 1, 2, tzinfo=timezone.utc)
+    deleted_time = datetime(2022, 5, 7, 2, 1, 2, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         original_doe_count = (
             await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))

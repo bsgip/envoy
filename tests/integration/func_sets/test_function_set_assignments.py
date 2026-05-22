@@ -1,6 +1,5 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Optional
 
 import pytest
 from assertical.fixtures.postgres import generate_async_session
@@ -53,9 +52,11 @@ async def test_get_function_set_assignments(
 
         parsed_response: FunctionSetAssignmentsResponse = FunctionSetAssignmentsResponse.from_xml(body)
         assert parsed_response.href == uri.FunctionSetAssignmentsUri.format(site_id=site_id, fsa_id=fsa_id)
+        assert parsed_response.DERProgramListLink is not None
         assert parsed_response.DERProgramListLink.href == uri.DERProgramFSAListUri.format(
             site_id=site_id, fsa_id=fsa_id
         ), "DERP list should use FSA scoped variant"
+        assert parsed_response.TariffProfileListLink is not None
         assert parsed_response.TariffProfileListLink.href == uri.TariffProfileFSAListUri.format(
             site_id=site_id, fsa_id=fsa_id
         ), "Tariff list should use FSA scoped variant"
@@ -69,18 +70,18 @@ async def test_get_function_set_assignments(
         (None, None, None, [1]),
         (0, 99, None, [1, 2]),
         (1, 99, None, [2]),
-        (0, 99, datetime(2000, 1, 1, tzinfo=timezone.utc), [1, 2]),
-        (0, 99, datetime(2030, 1, 1, tzinfo=timezone.utc), []),
-        (0, 99, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc), [2]),
+        (0, 99, datetime(2000, 1, 1, tzinfo=UTC), [1, 2]),
+        (0, 99, datetime(2030, 1, 1, tzinfo=UTC), []),
+        (0, 99, datetime(2023, 1, 2, 12, 1, 3, tzinfo=UTC), [2]),
     ],
 )
 @pytest.mark.anyio
 async def test_get_function_set_assignments_list(
     client: AsyncClient,
     valid_headers: dict,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     expected_fsa_ids,
 ):
     """Simple test of a valid get/pagination - validates that the response contains the FSA IDs we expect"""
@@ -101,7 +102,68 @@ async def test_get_function_set_assignments_list(
     # Handle None case when there are no assignments
     actual_assignments = parsed_response.FunctionSetAssignments or []
     assert len(actual_assignments) == len(expected_fsa_ids)
-    assert expected_fsa_ids == [int(fsa.href.split("/")[-1]) for fsa in actual_assignments]
+    assert expected_fsa_ids == [int(fsa.href.split("/")[-1]) for fsa in actual_assignments if fsa.href is not None]
+
+
+@pytest.mark.parametrize(
+    "scg_ids_to_none, expected_fsa_ids_counts",
+    [
+        ([], [(1, 2, 0), (2, 0, 0), (3, 1, 0)]),
+        ([1, 2, 3], [(1, 0, 0), (2, 0, 0)]),
+        ([1], [(1, 1, 0), (2, 0, 0), (3, 1, 0)]),
+    ],
+)
+@pytest.mark.anyio
+async def test_get_function_set_assignments_list_with_none_fsa_id(
+    pg_base_config,
+    client: AsyncClient,
+    valid_headers: dict,
+    scg_ids_to_none: list[int],
+    expected_fsa_ids_counts: list[tuple[int, int, int]],
+):
+    """Ensures that FSA_IDs reflect what is in the DB (and can handle None/NULL values)
+
+    expected_fsa_ids_counts: tuple[fsa_id, expected_derp_count, expected_tp_count]"""
+
+    # Arrange
+    site_id = 1
+    fsal_url = uri.FunctionSetAssignmentsListUri.format(site_id=site_id) + build_paging_params(0, 99)
+
+    # The DB Has Tariffs with fsa_id 1,2 and SiteControlGroups with fsa_id 1
+    # We want a bit more diversity so lets change SiteControlGroup #3 to have fsa_id 3
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(
+            update(SiteControlGroup).values(fsa_id=3).where(SiteControlGroup.site_control_group_id.in_([3]))
+        )
+        await session.execute(
+            update(SiteControlGroup)
+            .values(fsa_id=None)
+            .where(SiteControlGroup.site_control_group_id.in_(scg_ids_to_none))
+        )
+        await session.commit()
+
+    # Act
+    response = await client.get(fsal_url, headers=valid_headers)
+
+    # Assert
+    assert_response_header(response, HTTPStatus.OK)
+    body = read_response_body_string(response)
+    assert len(body) > 0
+
+    parsed_response: FunctionSetAssignmentsListResponse = FunctionSetAssignmentsListResponse.from_xml(body)
+    # Handle None case when there are no assignments
+    actual_assignments = parsed_response.FunctionSetAssignments or []
+    assert len(actual_assignments) == len(expected_fsa_ids_counts)
+
+    for fsa, expected_id_counts in zip(actual_assignments, expected_fsa_ids_counts, strict=False):
+        expected_id, expected_derp_count, expected_tp_count = expected_id_counts
+
+        assert fsa.href is not None
+        assert fsa.DERProgramListLink is not None
+        assert fsa.TariffProfileListLink is not None
+        assert int(fsa.href.split("/")[-1]) == expected_id, fsa.href
+        assert fsa.DERProgramListLink.all_ or 0 == expected_derp_count, fsa.href
+        assert fsa.TariffProfileListLink.all_ or 0 == expected_tp_count, fsa.href
 
 
 @pytest.mark.parametrize(

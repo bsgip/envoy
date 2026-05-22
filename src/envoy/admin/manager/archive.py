@@ -20,7 +20,6 @@ from envoy.admin.mapper.archive import ArchiveListMapper
 
 
 class ArchiveListManager:
-
     @staticmethod
     async def get_archive_sites_for_period(
         session: AsyncSession, start: int, limit: int, period_start: datetime, period_end: datetime, only_deletes: bool

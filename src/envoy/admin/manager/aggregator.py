@@ -1,13 +1,10 @@
-from typing import Optional
-
-from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorResponse, AggregatorRequest
+from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorRequest, AggregatorResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.admin import crud
-from envoy.admin import mapper
+from envoy.admin import crud, mapper
+from envoy.server import exception
 from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.manager.time import utc_now
-from envoy.server import exception
 
 
 class AggregatorManager:
@@ -21,7 +18,7 @@ class AggregatorManager:
         )
 
     @staticmethod
-    async def fetch_single_aggregator(session: AsyncSession, aggregator_id: int) -> Optional[AggregatorResponse]:
+    async def fetch_single_aggregator(session: AsyncSession, aggregator_id: int) -> AggregatorResponse | None:
         """Select a single aggregator and return the mapped AggregatorResponse object. Returns None if the
         aggregator ID does not exist"""
         aggregator = await select_aggregator(session, aggregator_id)

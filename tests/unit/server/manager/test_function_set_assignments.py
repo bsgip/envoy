@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest import mock
 
 import pytest
@@ -168,7 +168,7 @@ async def test_fetch_function_set_assignments_list_for_scope(
 
     derp_count_by_fsa_id = {1: 44, 5: 66}
 
-    changed_after = datetime(2022, 11, 14, tzinfo=timezone.utc)
+    changed_after = datetime(2022, 11, 14, tzinfo=UTC)
     mock_select_single_site_with_site_id.return_value = site
     mock_map_to_list_response.return_value = mapped_fsal
     mock_fetch_current_config.return_value = config

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from envoy.server.mapper.constants import MridType, ResponseSetType
 from envoy.server.model.doe import SiteControlGroupDefault
@@ -15,7 +15,7 @@ MAX_INT_64 = pow(2, 64) - 1
 # Constants associated with certain mrid types
 DEFAULT_DOE_ID = int("defa017", 16)
 DER_PROGRAM_PREFIX_DOE = int("d0e", 16) << (92 - 12)  # Sets the high 12 bits for an id
-RATE_COMPONENT_EPOCH = datetime(2000, 1, 1, tzinfo=timezone.utc)
+RATE_COMPONENT_EPOCH = datetime(2000, 1, 1, tzinfo=UTC)
 
 
 def encode_mrid(mrid_type: MridType, id: int, iana_pen: int) -> str:
@@ -86,7 +86,6 @@ def decode_iana_pen(mrid: str) -> int:
 
 
 class MridMapper:
-
     @staticmethod
     def encode_default_doe_mrid(scope: BaseRequestScope, scg_default: SiteControlGroupDefault) -> str:
         """Encodes a valid MRID for representing the default DOE"""

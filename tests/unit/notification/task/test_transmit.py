@@ -1,7 +1,6 @@
 import unittest.mock as mock
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
-from typing import Optional, Union
 from uuid import uuid4
 
 import pytest
@@ -54,8 +53,8 @@ def test_attempt_to_retry_delay():
         (
             TransmitResult(
                 True,
-                datetime(2022, 11, 14, 1, 0, 0, tzinfo=timezone.utc),
-                datetime(2022, 11, 14, 1, 1, 0, tzinfo=timezone.utc),
+                datetime(2022, 11, 14, 1, 0, 0, tzinfo=UTC),
+                datetime(2022, 11, 14, 1, 1, 0, tzinfo=UTC),
                 200,
             ),
             60000,
@@ -64,8 +63,8 @@ def test_attempt_to_retry_delay():
         (
             TransmitResult(
                 False,
-                datetime(2023, 11, 14, 2, 0, 0, tzinfo=timezone.utc),
-                datetime(2023, 11, 14, 2, 1, 1, tzinfo=timezone.utc),
+                datetime(2023, 11, 14, 2, 0, 0, tzinfo=UTC),
+                datetime(2023, 11, 14, 2, 1, 1, tzinfo=UTC),
                 404,
             ),
             61000,
@@ -74,8 +73,8 @@ def test_attempt_to_retry_delay():
         (
             TransmitResult(
                 False,
-                datetime(2023, 11, 14, 2, 0, 0, tzinfo=timezone.utc),
-                datetime(2023, 11, 14, 2, 1, 1, tzinfo=timezone.utc),
+                datetime(2023, 11, 14, 2, 0, 0, tzinfo=UTC),
+                datetime(2023, 11, 14, 2, 1, 1, tzinfo=UTC),
                 None,
             ),
             61000,
@@ -84,8 +83,8 @@ def test_attempt_to_retry_delay():
         (
             NotificationTransmitError(
                 "foo",
-                datetime(2023, 11, 14, 2, 0, 1, tzinfo=timezone.utc),
-                datetime(2023, 11, 14, 2, 0, 1, 100000, tzinfo=timezone.utc),
+                datetime(2023, 11, 14, 2, 0, 1, tzinfo=UTC),
+                datetime(2023, 11, 14, 2, 0, 1, 100000, tzinfo=UTC),
                 504,
             ),
             100,
@@ -94,8 +93,8 @@ def test_attempt_to_retry_delay():
         (
             NotificationTransmitError(
                 "foo",
-                datetime(2023, 11, 14, 2, 0, 1, tzinfo=timezone.utc),
-                datetime(2023, 11, 14, 2, 0, 1, 100000, tzinfo=timezone.utc),
+                datetime(2023, 11, 14, 2, 0, 1, tzinfo=UTC),
+                datetime(2023, 11, 14, 2, 0, 1, 100000, tzinfo=UTC),
                 None,
             ),
             100,
@@ -103,7 +102,7 @@ def test_attempt_to_retry_delay():
         ),
     ],
 )
-def test_create_transmit_notification_log(result, expected_ms: int, expected_code: Optional[int]):
+def test_create_transmit_notification_log(result, expected_ms: int, expected_code: int | None):
     attempt = 123
     subscription_id = 456
     content = "abc-123 def"
@@ -124,8 +123,8 @@ async def test_safely_log_transmit_result(pg_base_config):
             session,
             NotificationTransmitError(
                 "foo",
-                datetime(2023, 11, 14, 2, 0, 1, tzinfo=timezone.utc),
-                datetime(2023, 11, 14, 2, 0, 1, 100000, tzinfo=timezone.utc),
+                datetime(2023, 11, 14, 2, 0, 1, tzinfo=UTC),
+                datetime(2023, 11, 14, 2, 0, 1, 100000, tzinfo=UTC),
                 None,
             ),
             2,
@@ -266,7 +265,7 @@ async def test_do_transmit_notification_success(mock_AsyncClient: mock.MagicMock
     assert mocked_client.call_count_by_method_uri[(HTTPMethod.POST, remote_uri)] == 1
     assert mocked_client.logged_requests[0].uri == remote_uri
     assert mocked_client.logged_requests[0].content == content
-    headers = mocked_client.logged_requests[0].headers
+    headers = mocked_client.logged_requests[0].headers_dict
     assert headers is not None
     assert headers.get(HEADER_SUBSCRIPTION_ID, None) == subscription_href
     assert headers.get(HEADER_NOTIFICATION_ID, None) == str(notification_id)
@@ -311,7 +310,7 @@ async def test_do_transmit_notification_immediately_abort(mock_AsyncClient: mock
     assert mocked_client.call_count_by_method_uri[(HTTPMethod.POST, remote_uri)] == 1
     assert mocked_client.logged_requests[0].uri == remote_uri
     assert mocked_client.logged_requests[0].content == content
-    headers = mocked_client.logged_requests[0].headers
+    headers = mocked_client.logged_requests[0].headers_dict
     assert headers is not None
     assert headers.get(HEADER_SUBSCRIPTION_ID, None) == subscription_href
     assert headers.get(HEADER_NOTIFICATION_ID, None) == str(notification_id)
@@ -330,7 +329,7 @@ async def test_do_transmit_notification_immediately_abort(mock_AsyncClient: mock
 )
 @mock.patch("envoy.notification.task.transmit.AsyncClient")
 async def test_do_transmit_notification_potential_retry(
-    mock_AsyncClient: mock.MagicMock, response_code_or_ex: Union[HTTPStatus, Exception]
+    mock_AsyncClient: mock.MagicMock, response_code_or_ex: HTTPStatus | Exception
 ):
     """Tests various status codes that should raise an error indicating a retry might be in order (eg - HTTP 500)"""
     remote_uri = "http://foo.bar/example?a=b"
@@ -371,14 +370,14 @@ async def test_do_transmit_notification_potential_retry(
     [
         TransmitResult(
             True,
-            datetime(2022, 11, 14, 1, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 11, 14, 1, 1, 0, tzinfo=timezone.utc),
+            datetime(2022, 11, 14, 1, 0, 0, tzinfo=UTC),
+            datetime(2022, 11, 14, 1, 1, 0, tzinfo=UTC),
             200,
         ),
         TransmitResult(
             False,
-            datetime(2023, 11, 14, 2, 0, 0, tzinfo=timezone.utc),
-            datetime(2023, 11, 14, 2, 1, 1, tzinfo=timezone.utc),
+            datetime(2023, 11, 14, 2, 0, 0, tzinfo=UTC),
+            datetime(2023, 11, 14, 2, 1, 1, tzinfo=UTC),
             404,
         ),
     ],
@@ -449,8 +448,8 @@ async def test_transmit_notification_with_retry(
 
     mock_do_transmit_notification.side_effect = NotificationTransmitError(
         "My mock error",
-        datetime(2022, 11, 14, 1, 0, 0, tzinfo=timezone.utc),
-        datetime(2022, 11, 14, 1, 0, 1, tzinfo=timezone.utc),
+        datetime(2022, 11, 14, 1, 0, 0, tzinfo=UTC),
+        datetime(2022, 11, 14, 1, 0, 1, tzinfo=UTC),
         500,
     )
     await transmit_notification(

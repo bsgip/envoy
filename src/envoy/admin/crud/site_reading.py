@@ -1,12 +1,12 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Sequence
-from envoy_schema.server.schema.sep2.types import UomType
+
+from envoy_schema.server.schema.sep2.types import DataQualifierType, KindType, UomType
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy_schema.server.schema.sep2.types import DataQualifierType, KindType
 
 
 async def count_site_readings_for_site_and_time(

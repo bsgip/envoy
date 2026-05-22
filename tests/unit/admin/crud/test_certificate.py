@@ -1,15 +1,14 @@
-from typing import Iterable
-
 import datetime as dt
+from collections.abc import Iterable
 
-import pytest
 import psycopg
+import pytest
 import sqlalchemy as sa
 from assertical.fixtures import postgres as pg_fixtures
 
-from envoy.server.model import base
-from envoy.server import model
 from envoy.admin import crud
+from envoy.server import model
+from envoy.server.model import base
 
 
 @pytest.mark.anyio
@@ -92,7 +91,7 @@ async def test_create_many_certificates(pg_empty_config: psycopg.Connection) -> 
 async def test_create_many_certificates_on_conflict_do_nothing(pg_empty_config: psycopg.Connection) -> None:
     async with pg_fixtures.generate_async_session(pg_empty_config) as session:
         # Create certificates
-        expiry_two = dt.datetime(2029, 6, 16, 1, 2, 3, tzinfo=dt.timezone.utc)
+        expiry_two = dt.datetime(2029, 6, 16, 1, 2, 3, tzinfo=dt.UTC)
 
         certificates = [
             base.Certificate(lfdi="SOMELFDI1", expiry=dt.datetime(2026, 6, 16, 1, 2, 3)),
@@ -102,7 +101,7 @@ async def test_create_many_certificates_on_conflict_do_nothing(pg_empty_config: 
 
         certs = await crud.certificate.select_all_certificates(session, 0, 500)
 
-        original_created = next((c for c in certs if c.lfdi == "SOMELFDI2")).created
+        original_created = next(c for c in certs if c.lfdi == "SOMELFDI2").created
 
         # Create more using new function with same lfdis as before
         new_created = dt.datetime.now()
@@ -137,8 +136,8 @@ async def test_create_many_certificates_on_conflict_do_nothing(pg_empty_config: 
 async def test_create_many_certificates_on_conflict_do_nothing_empty_iter(pg_empty_config: psycopg.Connection) -> None:
     async with pg_fixtures.generate_async_session(pg_empty_config) as session:
         # Create certificates
-        created = dt.datetime.now(tz=dt.timezone.utc)
-        expiry_two = dt.datetime(2029, 6, 16, 1, 2, 3, tzinfo=dt.timezone.utc)
+        created = dt.datetime.now(tz=dt.UTC)
+        expiry_two = dt.datetime(2029, 6, 16, 1, 2, 3, tzinfo=dt.UTC)
 
         certificates = [
             base.Certificate(lfdi="SOMELFDI1", created=created, expiry=dt.datetime(2026, 6, 16, 1, 2, 3)),
@@ -162,7 +161,6 @@ async def test_create_many_certificates_on_conflict_do_nothing_empty_iter(pg_emp
 @pytest.mark.anyio
 async def test_select_certificate(pg_base_config: psycopg.Connection) -> None:
     async with pg_fixtures.generate_async_session(pg_base_config) as session:
-
         cert_1 = await crud.certificate.select_certificate(session, 1)
         assert isinstance(cert_1, base.Certificate)
         assert cert_1.lfdi == "854d10a201ca99e5e90d3c3e1f9bc1c3bd075f3b"
@@ -196,8 +194,8 @@ async def test_update_single_certificate(pg_base_config: psycopg.Connection) -> 
             base.Certificate(
                 certificate_id=1,
                 lfdi="SOMENEWFAKELFDI",
-                created=dt.datetime.now(tz=dt.timezone.utc),
-                expiry=dt.datetime(2123, 1, 2, 3, 4, 5, tzinfo=dt.timezone.utc),
+                created=dt.datetime.now(tz=dt.UTC),
+                expiry=dt.datetime(2123, 1, 2, 3, 4, 5, tzinfo=dt.UTC),
             ),
         )
 
@@ -243,10 +241,10 @@ async def test_insert_single_certificate(pg_base_config: psycopg.Connection) -> 
         original_certs = await crud.certificate.select_all_certificates(session, 0, 500)
 
     async with pg_fixtures.generate_async_session(pg_base_config) as session:
-        fake_created = dt.datetime(1234, 12, 3, 4, 5, 6, tzinfo=dt.timezone.utc)
+        fake_created = dt.datetime(1234, 12, 3, 4, 5, 6, tzinfo=dt.UTC)
         cert = base.Certificate(
             lfdi="SOMEFAKELFDI",
-            expiry=dt.datetime(4321, 12, 3, 4, 5, 6, tzinfo=dt.timezone.utc),
+            expiry=dt.datetime(4321, 12, 3, 4, 5, 6, tzinfo=dt.UTC),
             # Should reassign this to current time
             created=fake_created,
         )

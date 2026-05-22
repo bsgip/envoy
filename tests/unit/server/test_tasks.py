@@ -83,9 +83,7 @@ async def test_repeat_log_error(caplog: LogCaptureFixture) -> None:
     start_time = time.time()
     while n_record_tuples < 2:  # ensure multiple records are logged
         time_elapsed = time.time() - start_time
-        if time_elapsed > 1:
-            print(record_tuples)
-            assert False, "Test timed out"
+        assert time_elapsed <= 1, f"Test timed out {record_tuples}"
         await asyncio.sleep(0.05)
         record_tuples = [x for x in caplog.record_tuples if x[0] == __name__]
         n_record_tuples = len(record_tuples)

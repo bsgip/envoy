@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import BOOLEAN, DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
@@ -15,7 +14,7 @@ class ArchiveSiteControlGroup(ArchiveBase):
 
     A group contains metadata and a "primacy" to distinguish it's controls from other SiteControlGroups"""
 
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.SiteControlGroup.__tablename__  # type: ignore
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.SiteControlGroup.__tablename__
 
     site_control_group_id: Mapped[int] = mapped_column(INTEGER, index=True)
     description: Mapped[str] = mapped_column(VARCHAR(length=32))
@@ -32,7 +31,7 @@ class ArchiveSiteControlGroupDefault(ArchiveBase):
     """Represents fields that map to a subset of the attributes defined in CSIP-AUS' DefaultDERControl resource. These
     default values fall underneath a specific SiteControlGroup."""
 
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.SiteControlGroupDefault.__tablename__  # type: ignore
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.SiteControlGroupDefault.__tablename__
     site_control_group_default_id: Mapped[int] = mapped_column(INTEGER, index=True)
     site_control_group_id: Mapped[int] = mapped_column(INTEGER, nullable=False)
 
@@ -41,17 +40,17 @@ class ArchiveSiteControlGroupDefault(ArchiveBase):
 
     version: Mapped[int] = mapped_column(INTEGER)  # Incremented whenever this record is changed
 
-    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    import_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on imported active power
-    export_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    export_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )  # Constraint on exported active power
-    generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    generation_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True
     )
-    load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
-    ramp_rate_percent_per_second: Mapped[Optional[int]] = mapped_column(nullable=True)  # hundredths of percent per sec
+    load_limit_active_watts: Mapped[Decimal | None] = mapped_column(DECIMAL(16, DOE_DECIMAL_PLACES), nullable=True)
+    ramp_rate_percent_per_second: Mapped[int | None] = mapped_column(nullable=True)  # hundredths of percent per sec
 
     # Storage extension
     storage_target_active_watts: Mapped[Optional[Decimal]] = mapped_column(
@@ -62,21 +61,21 @@ class ArchiveSiteControlGroupDefault(ArchiveBase):
 class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     """Represents a dynamic operating envelope for a site at a particular time interval"""
 
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.DynamicOperatingEnvelope.__tablename__  # type: ignore
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.DynamicOperatingEnvelope.__tablename__
     dynamic_operating_envelope_id: Mapped[int] = mapped_column(BigInteger, index=True)
     site_control_group_id: Mapped[int] = mapped_column(INTEGER)
     site_id: Mapped[int] = mapped_column(INTEGER)
-    calculation_log_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    calculation_log_id: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     duration_seconds: Mapped[int] = mapped_column()
-    randomize_start_seconds: Mapped[Optional[int]] = mapped_column(nullable=True)
-    import_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    randomize_start_seconds: Mapped[int | None] = mapped_column(nullable=True)
+    import_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
-    export_limit_watts: Mapped[Optional[Decimal]] = mapped_column(
+    export_limit_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
 
@@ -84,18 +83,18 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
 
     superseded: Mapped[bool] = mapped_column(BOOLEAN)
 
-    generation_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    generation_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
-    load_limit_active_watts: Mapped[Optional[Decimal]] = mapped_column(
+    load_limit_active_watts: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
-    set_energized: Mapped[Optional[bool]] = mapped_column(nullable=True)
-    set_connected: Mapped[Optional[bool]] = mapped_column(nullable=True)
-    set_point_percentage: Mapped[Optional[Decimal]] = mapped_column(
+    set_energized: Mapped[bool | None] = mapped_column(nullable=True)
+    set_connected: Mapped[bool | None] = mapped_column(nullable=True)
+    set_point_percentage: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
-    ramp_time_seconds: Mapped[Optional[Decimal]] = mapped_column(
+    ramp_time_seconds: Mapped[Decimal | None] = mapped_column(
         DECIMAL(16, original_models.doe.DOE_DECIMAL_PLACES), nullable=True
     )
 

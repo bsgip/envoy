@@ -1,8 +1,7 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from http import HTTPStatus
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -131,7 +130,7 @@ async def test_update_site_control_group_change_failure_cases(pg_base_config, ad
 @pytest.mark.parametrize("site_control_group_id, expected_primacy", [(1, 0), (99, None)])
 @pytest.mark.anyio
 async def test_get_site_control_group_by_id(
-    admin_client_auth: AsyncClient, site_control_group_id: int, expected_primacy: Optional[int]
+    admin_client_auth: AsyncClient, site_control_group_id: int, expected_primacy: int | None
 ):
     """Tests that site control groups can be created and then fetched"""
 
@@ -156,17 +155,17 @@ async def test_get_site_control_group_by_id(
         (1, None, None, [2, 3]),
         (0, 1, None, [1]),
         (0, 0, None, []),
-        (None, None, datetime(2021, 4, 5, 10, 1, 0, 500000, tzinfo=timezone.utc), [1, 2, 3]),
-        (None, None, datetime(2021, 4, 5, 10, 2, 0, 500000, tzinfo=timezone.utc), [2, 3]),
+        (None, None, datetime(2021, 4, 5, 10, 1, 0, 500000, tzinfo=UTC), [1, 2, 3]),
+        (None, None, datetime(2021, 4, 5, 10, 2, 0, 500000, tzinfo=UTC), [2, 3]),
     ],
 )
 @pytest.mark.anyio
 async def test_get_all_site_control_groups(
     admin_client_auth: AsyncClient,
     pg_base_config,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     expected_group_ids: list[int],
 ):
     """Sanity check on the Fetch site control groups endpoint"""
@@ -245,8 +244,8 @@ async def test_supersede_site_control(pg_base_config, admin_client_auth: AsyncCl
         start_time=datetime(2022, 5, 7, 1, 2, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
         duration_seconds=5,
         calculation_log_id=3,  # This is how we'll look this record up in the DB later
-        export_limit_watts=44,
-        import_limit_watts=55,
+        export_limit_watts=Decimal(44),
+        import_limit_watts=Decimal(55),
     )
 
     resp = await admin_client_auth.post(
@@ -272,7 +271,7 @@ async def test_supersede_site_control(pg_base_config, admin_client_auth: AsyncCl
         assert doe_1.export_limit_watts == Decimal("-1.22"), "unchanged"
         assert doe_1.superseded is True
         assert_nowish(doe_1.changed_time)
-        assert doe_1.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "unchanged"
+        assert doe_1.created_time == datetime(2000, 1, 1, tzinfo=UTC), "unchanged"
 
         inserted_doe = (
             await session.execute(
@@ -338,21 +337,21 @@ async def test_supersede_site_control(pg_base_config, admin_client_auth: AsyncCl
             1,
             None,
             99,
-            datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 12, 22, 34, tzinfo=UTC),
             [3, 4],
         ),
         (
             1,
             1,
             99,
-            datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 12, 22, 34, tzinfo=UTC),
             [4],
         ),
         (
             2,
             1,
             99,
-            datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 12, 22, 34, tzinfo=UTC),
             [],
         ),  # Change site control group id
     ],
@@ -362,9 +361,9 @@ async def test_get_all_site_controls(
     admin_client_auth: AsyncClient,
     pg_base_config,
     site_control_group_id,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     expected_doe_ids: list[int],
 ):
     """Sanity check on the Fetch DOE endpoint"""
@@ -472,7 +471,7 @@ async def test_supersede_site_control_different_fields_coexist(pg_base_config, a
 
     # Create first DOE with load_limit
     doe_with_load_limit = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, load_limit_watts=0
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, load_limit_watts=Decimal(0)
     )
 
     resp = await admin_client_auth.post(
@@ -483,7 +482,7 @@ async def test_supersede_site_control_different_fields_coexist(pg_base_config, a
 
     # Create second DOE with import_limit at the same time
     doe_with_import_limit = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=5000
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=Decimal(5000)
     )
 
     resp = await admin_client_auth.post(
@@ -498,7 +497,7 @@ async def test_supersede_site_control_different_fields_coexist(pg_base_config, a
             (
                 await session.execute(
                     select(DynamicOperatingEnvelope)
-                    .where(DynamicOperatingEnvelope.start_time >= datetime(2025, 12, 15, tzinfo=timezone.utc))
+                    .where(DynamicOperatingEnvelope.start_time >= datetime(2025, 12, 15, tzinfo=UTC))
                     .order_by(DynamicOperatingEnvelope.created_time)
                 )
             )
@@ -536,7 +535,7 @@ async def test_supersede_site_control_different_fields_coexist(pg_base_config, a
             (
                 await session.execute(
                     select(ArchiveDynamicOperatingEnvelope).where(
-                        ArchiveDynamicOperatingEnvelope.start_time >= datetime(2025, 12, 15, tzinfo=timezone.utc)
+                        ArchiveDynamicOperatingEnvelope.start_time >= datetime(2025, 12, 15, tzinfo=UTC)
                     )
                 )
             )
@@ -556,14 +555,14 @@ async def test_supersede_site_control_same_field_does_supersede(pg_base_config, 
 
     # DOE1
     doe1 = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, import_limit_watts=1000
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, import_limit_watts=Decimal(1000)
     )
     resp = await admin_client_auth.post(SiteControlUri.format(group_id=1), content=f"[{doe1.model_dump_json()}]")
     assert resp.status_code == HTTPStatus.CREATED
 
     # DOE2 with import_limit at the same time - should supersede DOE1
     doe2 = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=2000
+        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=Decimal(2000)
     )
     resp = await admin_client_auth.post(SiteControlUri.format(group_id=1), content=f"[{doe2.model_dump_json()}]")
     assert resp.status_code == HTTPStatus.CREATED
@@ -574,7 +573,7 @@ async def test_supersede_site_control_same_field_does_supersede(pg_base_config, 
             (
                 await session.execute(
                     select(DynamicOperatingEnvelope)
-                    .where(DynamicOperatingEnvelope.start_time >= datetime(2025, 12, 1, tzinfo=timezone.utc))
+                    .where(DynamicOperatingEnvelope.start_time >= datetime(2025, 12, 1, tzinfo=UTC))
                     .order_by(DynamicOperatingEnvelope.created_time)
                 )
             )
@@ -601,7 +600,7 @@ async def test_supersede_site_control_same_field_does_supersede(pg_base_config, 
             (
                 await session.execute(
                     select(ArchiveDynamicOperatingEnvelope).where(
-                        ArchiveDynamicOperatingEnvelope.start_time >= datetime(2025, 12, 1, tzinfo=timezone.utc)
+                        ArchiveDynamicOperatingEnvelope.start_time >= datetime(2025, 12, 1, tzinfo=UTC)
                     )
                 )
             )

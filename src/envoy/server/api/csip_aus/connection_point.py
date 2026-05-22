@@ -10,7 +10,7 @@ from envoy.server.api.depends.allow_nmi_updates import fetch_allow_nmi_updates_s
 from envoy.server.api.depends.nmi_validator import fetch_nmi_validator
 from envoy.server.api.request import extract_request_claims
 from envoy.server.api.response import LOCATION_HEADER_NAME, XmlRequest, XmlResponse
-from envoy.server.exception import NmiValidationError, NotFoundError, ConflictError
+from envoy.server.exception import ConflictError, NmiValidationError, NotFoundError
 from envoy.server.manager.end_device import EndDeviceManager
 from envoy.server.manager.nmi_validator import NmiValidator
 from envoy.server.mapper.common import generate_href
@@ -72,13 +72,15 @@ async def insert_or_update_connectionpoint(
         )
     except NotFoundError as exc:
         logger.debug(exc)
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Not Found.") from exc
     except NmiValidationError as exc:
         logger.debug(exc)
-        raise HTTPException(status_code=HTTPStatus.UNPROCESSABLE_ENTITY, detail="Invalid ConnectionPoint.id format.")
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY, detail="Invalid ConnectionPoint.id format."
+        ) from exc
     except ConflictError as exc:
         logger.debug(exc)
-        raise HTTPException(status_code=HTTPStatus.CONFLICT, detail="A ConnectionPoint entity already exists.")
+        raise HTTPException(status_code=HTTPStatus.CONFLICT, detail="A ConnectionPoint entity already exists.") from exc
 
     location_href = generate_href(uri.ConnectionPointUri, scope, site_id=scope.display_site_id)
     return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})

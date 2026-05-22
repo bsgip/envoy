@@ -27,7 +27,7 @@ IS_CERTIFICATE_UPPERCASE = True if os.environ.get("IS_CERTIFICATE_UPPERCASE", "n
 
 def load_cert(cert_path: str, now: datetime) -> Certificate:
     """Load certs, extract expiry and lfdi"""
-    with open(cert_path, "r") as cert_file:
+    with open(cert_path) as cert_file:
         cert_pem = cert_file.read()
         cert = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
         cert_expiry = cert.not_valid_after_utc

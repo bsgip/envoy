@@ -31,6 +31,8 @@ def test_map_to_response_handles_zero_to_none():
     ]
 
     response: CalculationLogResponse = CalculationLogMapper.map_to_response(log)
+    assert response.variable_values is not None
+    assert response.label_values is not None
     assert response.variable_values.site_ids == [None, 10]
     assert response.label_values.site_ids == [None, 11]
 
@@ -58,6 +60,7 @@ def test_map_to_response_handles_empty_labels():
     log.label_values = []
 
     response: CalculationLogResponse = CalculationLogMapper.map_to_response(log)
+    assert response.variable_values is not None
     assert response.variable_values.site_ids == [None, 10]
     assert response.label_values is None, "If there are no values - they should map to None"
 
@@ -73,6 +76,7 @@ def test_map_to_response_handles_empty_variables():
 
     response: CalculationLogResponse = CalculationLogMapper.map_to_response(log)
     assert response.variable_values is None, "If there are no values - they should map to None"
+    assert response.label_values is not None
     assert response.label_values.site_ids == [None, 11]
 
 
@@ -97,14 +101,14 @@ def test_log_mapper_roundtrip(optional_as_none: bool):
 
     # Assert Variable Metadata
     assert len(actual.variable_metadata) == len(original.variable_metadata)
-    for actual_md, original_md in zip(actual.variable_metadata, original.variable_metadata):
+    for actual_md, original_md in zip(actual.variable_metadata, original.variable_metadata, strict=False):
         assert_class_instance_equality(
             CalculationLogVariableMetadata, original_md, actual_md, ignored_properties=set(["calculation_log_id"])
         )
 
     # Assert Variable Values
     assert len(actual.variable_values) == len(original.variable_values)
-    for actual_val, original_val in zip(actual.variable_values, original.variable_values):
+    for actual_val, original_val in zip(actual.variable_values, original.variable_values, strict=False):
         assert_class_instance_equality(
             CalculationLogVariableValue,
             original_val,
@@ -114,14 +118,14 @@ def test_log_mapper_roundtrip(optional_as_none: bool):
 
     # Assert Label Metadata
     assert len(actual.label_metadata) == len(original.label_metadata)
-    for actual_md, original_md in zip(actual.label_metadata, original.label_metadata):
+    for actual_md, original_md in zip(actual.label_metadata, original.label_metadata, strict=False):
         assert_class_instance_equality(
             CalculationLogLabelMetadata, original_md, actual_md, ignored_properties=set(["calculation_log_id"])
         )
 
     # Assert Label Values
     assert len(actual.label_values) == len(original.label_values)
-    for actual_val, original_val in zip(actual.label_values, original.label_values):
+    for actual_val, original_val in zip(actual.label_values, original.label_values, strict=False):
         assert_class_instance_equality(
             CalculationLogLabelValue,
             original_val,

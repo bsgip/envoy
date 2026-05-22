@@ -1,6 +1,5 @@
 import logging
 from http import HTTPStatus
-from typing import Union
 
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.metering_mirror import (
@@ -64,11 +63,11 @@ async def get_mirror_usage_point_list(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except ForbiddenError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(mup_list)
 
@@ -94,11 +93,11 @@ async def post_mirror_usage_point_list(
             db.session, scope=scope, mup=payload
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except ForbiddenError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return Response(
         status_code=HTTPStatus.CREATED if mup_result.created else HTTPStatus.NO_CONTENT,
@@ -134,11 +133,11 @@ async def get_mirror_usage_point(
             mup_id=mup_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except ForbiddenError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(mup_list)
 
@@ -176,7 +175,7 @@ async def delete_mirror_usage_point(
 async def post_mirror_usage_point(
     request: Request,
     mup_id: int,
-    payload: Union[MirrorMeterReadingRequest, MirrorMeterReadingListRequest] = Depends(
+    payload: MirrorMeterReadingRequest | MirrorMeterReadingListRequest = Depends(
         XmlRequest(MirrorMeterReadingRequest, MirrorMeterReadingListRequest)
     ),
 ) -> Response:
@@ -201,10 +200,10 @@ async def post_mirror_usage_point(
             request=payload,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
     except ForbiddenError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.FORBIDDEN, detail=ex.message) from ex
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return Response(status_code=HTTPStatus.CREATED)

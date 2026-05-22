@@ -1,7 +1,6 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Optional
 from urllib.parse import quote_plus
 
 import pytest
@@ -22,9 +21,7 @@ from envoy.server.model.site import Site
 from tests.integration.response import read_response_body_string
 
 
-def _build_query_string(
-    start: Optional[int], limit: Optional[int], group_filter: Optional[str], after: Optional[datetime]
-) -> str:
+def _build_query_string(start: int | None, limit: int | None, group_filter: str | None, after: datetime | None) -> str:
     query = "?"
     if start is not None:
         query = query + f"&start={start}"
@@ -37,9 +34,9 @@ def _build_query_string(
     return query
 
 
-SITE_1_DER_CFG_CHANGED_TIME = datetime(2022, 2, 9, 11, 6, 44, 500000, tzinfo=timezone.utc)  # This is from DERSetting
-SITE_1_DER_AVAIL_CHANGED_TIME = datetime(2022, 7, 23, 10, 3, 23, 500000, tzinfo=timezone.utc)  # This is from DERAvail
-SITE_1_DER_STATUS_CHANGED_TIME = datetime(2022, 11, 1, 11, 5, 4, 500000, tzinfo=timezone.utc)  # This is from DERStatus
+SITE_1_DER_CFG_CHANGED_TIME = datetime(2022, 2, 9, 11, 6, 44, 500000, tzinfo=UTC)  # This is from DERSetting
+SITE_1_DER_AVAIL_CHANGED_TIME = datetime(2022, 7, 23, 10, 3, 23, 500000, tzinfo=UTC)  # This is from DERAvail
+SITE_1_DER_STATUS_CHANGED_TIME = datetime(2022, 11, 1, 11, 5, 4, 500000, tzinfo=UTC)  # This is from DERStatus
 
 SITE_1_DER_EXPECTED = (SITE_1_DER_CFG_CHANGED_TIME, SITE_1_DER_AVAIL_CHANGED_TIME, SITE_1_DER_STATUS_CHANGED_TIME)
 SITE_X_NO_DER_EXPECTED = (None, None, None)
@@ -68,7 +65,7 @@ SITE_X_NO_DER_EXPECTED = (None, None, None)
             None,
             None,
             "Group-1",
-            datetime(2022, 2, 3, 5, 6, 7, tzinfo=timezone.utc),
+            datetime(2022, 2, 3, 5, 6, 7, tzinfo=UTC),
             [2, 3],
             [SITE_X_NO_DER_EXPECTED, SITE_X_NO_DER_EXPECTED],
         ),
@@ -106,7 +103,7 @@ SITE_X_NO_DER_EXPECTED = (None, None, None)
             None,
             None,
             None,
-            datetime(2022, 2, 3, 5, 6, 7, tzinfo=timezone.utc),
+            datetime(2022, 2, 3, 5, 6, 7, tzinfo=UTC),
             [2, 3, 4, 5, 6],
             [
                 SITE_X_NO_DER_EXPECTED,
@@ -120,11 +117,11 @@ SITE_X_NO_DER_EXPECTED = (None, None, None)
             0,
             2,
             None,
-            datetime(2022, 2, 3, 11, 12, 0, tzinfo=timezone.utc),
+            datetime(2022, 2, 3, 11, 12, 0, tzinfo=UTC),
             [4, 5],
             [SITE_X_NO_DER_EXPECTED, SITE_X_NO_DER_EXPECTED],
         ),
-        (3, 2, None, datetime(2022, 2, 3, 11, 12, 0, tzinfo=timezone.utc), [], []),
+        (3, 2, None, datetime(2022, 2, 3, 11, 12, 0, tzinfo=UTC), [], []),
     ],
 )
 @pytest.mark.anyio
@@ -133,17 +130,17 @@ async def test_get_all_sites(
     pg_base_config,
     start: int,
     limit: int,
-    group: Optional[str],
-    after: Optional[datetime],
+    group: str | None,
+    after: datetime | None,
     expected_site_ids: list[int],
-    expected_der_changed_times: list[tuple[Optional[datetime], Optional[datetime], Optional[datetime]]],
+    expected_der_changed_times: list[tuple[datetime | None, datetime | None, datetime | None]],
 ):
     """expected_der_changed_times is the combination of the changed_time properties from
     (der_config, der_availability, der_status) that correspond 1-1 with the sites with expected_site_ids.
     It's there to validate the DER metadata being correctly assigned"""
-    assert len(expected_site_ids) == len(
-        expected_der_changed_times
-    ), "There should be a 1-1 correspondence or this test is invalid"
+    assert len(expected_site_ids) == len(expected_der_changed_times), (
+        "There should be a 1-1 correspondence or this test is invalid"
+    )
 
     expected_total_sites: int
     async with generate_async_session(pg_base_config) as session:
@@ -162,9 +159,9 @@ async def test_get_all_sites(
     assert len(site_page.sites) == len(expected_site_ids)
     assert all([isinstance(s, SiteResponse) for s in site_page.sites])
 
-    assert (
-        site_page.total_count == expected_total_sites
-    ), f"There are only {expected_total_sites} sites available in the current config for group {group}"
+    assert site_page.total_count == expected_total_sites, (
+        f"There are only {expected_total_sites} sites available in the current config for group {group}"
+    )
     if limit is not None:
         assert site_page.limit == limit
     if start is not None:
@@ -180,7 +177,7 @@ async def test_get_all_sites(
         )
         for s in site_page.sites
     ] == expected_der_changed_times
-    assert all((s.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc) for s in site_page.sites))
+    assert all(s.created_time == datetime(2000, 1, 1, tzinfo=UTC) for s in site_page.sites)
 
 
 @pytest.mark.parametrize(
@@ -220,9 +217,9 @@ async def test_get_all_site_groups(
     assert len(group_page.groups) == len(expected_group_count)
     assert all([isinstance(s, SiteGroupResponse) for s in group_page.groups])
 
-    assert (
-        group_page.total_count == expected_total_groups
-    ), f"There are only {expected_total_groups} sites available in the current config"
+    assert group_page.total_count == expected_total_groups, (
+        f"There are only {expected_total_groups} sites available in the current config"
+    )
     if limit is not None:
         assert group_page.limit == limit
     if start is not None:
@@ -244,7 +241,7 @@ async def test_get_all_site_groups(
 async def test_get_site_groups(
     admin_client_auth: AsyncClient,
     group_name: str,
-    expected_group_count: Optional[tuple[int, int]],
+    expected_group_count: tuple[int, int] | None,
 ):
 
     response = await admin_client_auth.get(SiteGroupUri.format(group_name=group_name))
@@ -277,7 +274,7 @@ async def test_get_site_groups(
 async def test_get_site(
     admin_client_auth: AsyncClient,
     site_id: int,
-    expected_der_changed_time: Optional[tuple[Optional[datetime], Optional[datetime], Optional[datetime]]],
+    expected_der_changed_time: tuple[datetime | None, datetime | None, datetime | None] | None,
 ):
     """expected_der_changed_times is the combination of the changed_time properties from
     (der_config, der_availability, der_status) It's there to validate the DER metadata being correctly assigned"""
@@ -428,10 +425,10 @@ async def test_update_site_archives(
     site_id: int,
     update_request: SiteUpdateRequest,
     expected_status: HTTPStatus,
-    expected_nmi: Optional[str],
-    expected_tz: Optional[str],
-    expected_device_category: Optional[DeviceCategory],
-    expected_post_rate: Optional[int],
+    expected_nmi: str | None,
+    expected_tz: str | None,
+    expected_device_category: DeviceCategory | None,
+    expected_post_rate: int | None,
 ):
     """Tests that updating sites generates archive records"""
 

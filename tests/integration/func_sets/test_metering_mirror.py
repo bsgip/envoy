@@ -1,7 +1,7 @@
 import urllib.parse
-from datetime import datetime, timezone
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Optional, Sequence
 
 import envoy_schema.server.schema.uri as uris
 import pytest
@@ -60,7 +60,7 @@ HREF_PREFIX = "/prefix"
         # Changed time
         (
             0,
-            datetime(2022, 5, 6, 11, 22, 30, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 11, 22, 30, tzinfo=UTC),
             99,
             AGG_1_VALID_CERT,
             3,
@@ -68,15 +68,15 @@ HREF_PREFIX = "/prefix"
         ),
         (
             0,
-            datetime(2022, 5, 6, 11, 22, 35, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 11, 22, 35, tzinfo=UTC),
             99,
             AGG_1_VALID_CERT,
             3,
             ["/mup/1", "/mup/3", "/mup/4"],
         ),  # One of the grouped items in /mup/1 has a changed time in the future
-        (0, datetime(2022, 5, 6, 13, 22, 35, tzinfo=timezone.utc), 99, AGG_1_VALID_CERT, 2, ["/mup/1", "/mup/4"]),
-        (0, datetime(2022, 5, 6, 15, 22, 35, tzinfo=timezone.utc), 99, AGG_1_VALID_CERT, 0, []),
-        (1, datetime(2022, 5, 6, 13, 22, 36, tzinfo=timezone.utc), 2, AGG_1_VALID_CERT, 2, ["/mup/4"]),
+        (0, datetime(2022, 5, 6, 13, 22, 35, tzinfo=UTC), 99, AGG_1_VALID_CERT, 2, ["/mup/1", "/mup/4"]),
+        (0, datetime(2022, 5, 6, 15, 22, 35, tzinfo=UTC), 99, AGG_1_VALID_CERT, 0, []),
+        (1, datetime(2022, 5, 6, 13, 22, 36, tzinfo=UTC), 2, AGG_1_VALID_CERT, 2, ["/mup/4"]),
         # Changed cert
         (0, None, 99, AGG_2_VALID_CERT, 0, []),
         (0, None, 99, DEVICE_5_CERT, 0, []),
@@ -86,9 +86,9 @@ HREF_PREFIX = "/prefix"
 @pytest.mark.anyio
 async def test_get_mirror_usage_point_list_pagination(
     client: AsyncClient,
-    start: Optional[int],
-    changed_after: Optional[datetime],
-    limit: Optional[int],
+    start: int | None,
+    changed_after: datetime | None,
+    limit: int | None,
     cert: str,
     expected_count: int,
     expected_mup_hrefs: list[int],
@@ -109,9 +109,9 @@ async def test_get_mirror_usage_point_list_pagination(
         assert parsed_response.mirrorUsagePoints, f"received body:\n{body}"
         assert [mup.href for mup in parsed_response.mirrorUsagePoints] == expected_mup_hrefs
     else:
-        assert (
-            parsed_response.mirrorUsagePoints is None or len(parsed_response.mirrorUsagePoints) == 0
-        ), f"received body:\n{body}"
+        assert parsed_response.mirrorUsagePoints is None or len(parsed_response.mirrorUsagePoints) == 0, (
+            f"received body:\n{body}"
+        )
 
 
 @pytest.mark.parametrize(
@@ -293,7 +293,7 @@ async def test_create_update_mup(
     client: AsyncClient, mup: MirrorUsagePointRequest, expected_href: str, expected_status: HTTPStatus
 ):
     """Tests creating/updating a mup and seeing if the updates stick and can be fetched via list/direct requests"""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     # create/update the mup
     response = await client.post(
@@ -456,14 +456,14 @@ async def test_submit_mirror_meter_reading(client: AsyncClient, pg_base_config, 
         assert all_readings[-2].local_id == int("123", base=16)
         assert all_readings[-2].value == max_val
         assert all_readings[-2].time_period_seconds == 301
-        assert all_readings[-2].time_period_start == datetime.fromtimestamp(1341579365, tz=timezone.utc)
+        assert all_readings[-2].time_period_start == datetime.fromtimestamp(1341579365, tz=UTC)
         assert_nowish(all_readings[-2].changed_time)
 
         assert all_readings[-1].site_reading_type_id == mup_id
         assert all_readings[-1].local_id == int("0f0d", base=16)
         assert all_readings[-1].value == min_val
         assert all_readings[-1].time_period_seconds == 302
-        assert all_readings[-1].time_period_start == datetime.fromtimestamp(1341579666, tz=timezone.utc)
+        assert all_readings[-1].time_period_start == datetime.fromtimestamp(1341579666, tz=UTC)
         assert_nowish(all_readings[-1].changed_time)
 
 
@@ -506,7 +506,7 @@ async def test_submit_mirror_meter_reading_single_value(client: AsyncClient, pg_
         assert all_readings[-1].local_id == int("123", base=16)
         assert all_readings[-1].value == max_val
         assert all_readings[-1].time_period_seconds == 301
-        assert all_readings[-1].time_period_start == datetime.fromtimestamp(1341579365, tz=timezone.utc)
+        assert all_readings[-1].time_period_start == datetime.fromtimestamp(1341579365, tz=UTC)
         assert_nowish(all_readings[-1].changed_time)
 
 
@@ -570,7 +570,7 @@ async def test_submit_multiple_mirror_meter_readings(client: AsyncClient, pg_bas
         assert all_readings[-2].local_id == int("123", base=16)
         assert all_readings[-2].value == 456
         assert all_readings[-2].time_period_seconds == 301
-        assert all_readings[-2].time_period_start == datetime.fromtimestamp(1341579365, tz=timezone.utc)
+        assert all_readings[-2].time_period_start == datetime.fromtimestamp(1341579365, tz=UTC)
         assert_nowish(all_readings[-2].changed_time)
 
         # The new site reading type
@@ -578,7 +578,7 @@ async def test_submit_multiple_mirror_meter_readings(client: AsyncClient, pg_bas
         assert all_readings[-1].local_id == int("456", base=16)
         assert all_readings[-1].value == 789
         assert all_readings[-1].time_period_seconds == 302
-        assert all_readings[-1].time_period_start == datetime.fromtimestamp(1341579366, tz=timezone.utc)
+        assert all_readings[-1].time_period_start == datetime.fromtimestamp(1341579366, tz=UTC)
         assert_nowish(all_readings[-1].changed_time)
 
         new_srt = (

@@ -1,4 +1,4 @@
-from typing import Optional, TypeVar, Union
+from typing import TypeVar
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import Row
@@ -24,7 +24,7 @@ def localize_start_time_for_entity(entity: EntityWithStartTime, tz_name: str) ->
     return entity
 
 
-def localize_start_time(entity_and_tz: Optional[Row[tuple[EntityWithStartTime, str]]]) -> EntityWithStartTime:
+def localize_start_time(entity_and_tz: Row[tuple[EntityWithStartTime, str]] | None) -> EntityWithStartTime:
     """Localizes a Entity.start_time to be in the local timezone passed in as the second
     element in the tuple. Returns the Entity (it will be modified in place)"""
     if entity_and_tz is None:

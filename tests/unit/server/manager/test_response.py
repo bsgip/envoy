@@ -67,7 +67,8 @@ def test_fetch_response_set_list_for_scope_pagination(start: int, limit: int, ex
 
     # Check the response is the sets we expected
     # We don't need to check the models too closely - the mapper unit tests will do that
-    for expected, actual_set in zip(expected_rst, result.ResponseSet_):
+    assert result.ResponseSet_ is not None
+    for expected, actual_set in zip(expected_rst, result.ResponseSet_, strict=False):
         assert actual_set.mRID == MridMapper.encode_response_set_mrid(scope, expected)
 
 
@@ -238,7 +239,7 @@ async def test_fetch_response_for_scope_bad_type():
     response_id = 65314141
 
     with pytest.raises(NotFoundError):
-        await ResponseManager.fetch_response_for_scope(mock_session, scope, -1, response_id)
+        await ResponseManager.fetch_response_for_scope(mock_session, scope, -1, response_id)  # ty:ignore[invalid-argument-type]
 
     assert_mock_session(mock_session)
 
@@ -377,7 +378,14 @@ async def test_fetch_response_list_for_scope_bad_type():
     created_after = datetime(2022, 11, 1)
 
     with pytest.raises(NotFoundError):
-        await ResponseManager.fetch_response_list_for_scope(mock_session, scope, -1, start, limit, created_after)
+        await ResponseManager.fetch_response_list_for_scope(
+            mock_session,
+            scope,
+            -1,  # ty:ignore[invalid-argument-type]
+            start,
+            limit,
+            created_after,
+        )
 
 
 @mock.patch("envoy.server.manager.response.select_single_site_with_lfdi")
@@ -531,7 +539,7 @@ async def test_create_response_for_scope_invalid_response_set_type(
 
     # Act
     with pytest.raises(BadRequestError):
-        await ResponseManager.create_response_for_scope(session, scope, -1, response)
+        await ResponseManager.create_response_for_scope(session, scope, -1, response)  # ty:ignore[invalid-argument-type]
 
     # Assert
     assert_mock_session(session, committed=False)
@@ -739,6 +747,7 @@ async def test_create_response_for_scope_doe_created_normally(
 
     # Check the href looks valid and matches the new record in the DB
     assert isinstance(returned_href, str)
+    assert scope.href_prefix is not None
     assert returned_href.startswith(scope.href_prefix)
     response_id = int(returned_href.split("/")[-1])  # Assume LAST component of href is the DB ID
     assert response_set_type_to_href(ResponseSetType.SITE_CONTROLS) in returned_href
@@ -756,9 +765,9 @@ async def test_create_response_for_scope_doe_created_normally(
 
         assert db_count_after == (db_count_before + 1), "There should be a new response in the DB"
         assert db_response.site_id == site_id, "This is double checking the mapper"
-        assert (
-            db_response.dynamic_operating_envelope_id_snapshot == decoded_doe_id
-        ), "This is double checking the mapper"
+        assert db_response.dynamic_operating_envelope_id_snapshot == decoded_doe_id, (
+            "This is double checking the mapper"
+        )
         assert_nowish(db_response.created_time)
         assert db_response.response_type == response.status, "This is double checking the mapper"
 
@@ -1000,6 +1009,7 @@ async def test_create_response_for_scope_price_created_normally(
 
     # Check the href looks valid and matches the new record in the DB
     assert isinstance(returned_href, str)
+    assert scope.href_prefix is not None
     assert returned_href.startswith(scope.href_prefix)
     response_id = int(returned_href.split("/")[-1])  # Assume LAST component of href is the DB ID
     assert response_set_type_to_href(ResponseSetType.TARIFF_GENERATED_RATES) in returned_href

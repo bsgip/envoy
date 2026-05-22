@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import IntEnum, auto
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
 from sqlalchemy import INTEGER, VARCHAR, DateTime, ForeignKey, Index, func
@@ -44,7 +43,7 @@ class Subscription(Base):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the subscription was last altered
 
     resource_type: Mapped[SubscriptionResource] = mapped_column(INTEGER)  # What resource type is being subscribed to
-    resource_id: Mapped[Optional[int]] = mapped_column(
+    resource_id: Mapped[int | None] = mapped_column(
         INTEGER, nullable=True
     )  # Represents the ID of a single resource being subscribed or if NULL, the list of all available resources
     resource_parent_id: Mapped[Optional[int]] = mapped_column(
@@ -58,7 +57,7 @@ class Subscription(Base):
     entity_limit: Mapped[int] = mapped_column(INTEGER)  # The max number of entities to return in a single notification
 
     aggregator: Mapped[Aggregator] = relationship(lazy="raise")
-    scoped_site: Mapped[Optional[Site]] = relationship(lazy="raise")
+    scoped_site: Mapped[Site | None] = relationship(lazy="raise")
     conditions: Mapped[list["SubscriptionCondition"]] = relationship(
         back_populates="subscription",
         lazy="raise",

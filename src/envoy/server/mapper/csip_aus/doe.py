@@ -2,7 +2,6 @@ import math
 from datetime import datetime
 from decimal import Decimal
 from enum import IntEnum, auto
-from typing import Optional, Sequence, Union
 
 from envoy_schema.server.schema import uri
 from envoy_schema.server.schema.sep2.der import (
@@ -92,9 +91,9 @@ class DERControlMapper:
 
     @staticmethod
     def map_to_response(
-        scope: Union[DeviceOrAggregatorRequestScope, AggregatorRequestScope],
+        scope: DeviceOrAggregatorRequestScope | AggregatorRequestScope,
         site_control_group_id: int,
-        doe: Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope],
+        doe: DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope,
         pow10_multiplier: int,
         now: datetime,
     ) -> DERControlResponse:
@@ -246,7 +245,7 @@ class DERControlMapper:
 
     @staticmethod
     def site_control_list_href(
-        request_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope], site_control_group_id: int
+        request_scope: AggregatorRequestScope | DeviceOrAggregatorRequestScope, site_control_group_id: int
     ) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
@@ -258,7 +257,7 @@ class DERControlMapper:
 
     @staticmethod
     def active_control_list_href(
-        request_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope], site_control_group_id: int
+        request_scope: AggregatorRequestScope | DeviceOrAggregatorRequestScope, site_control_group_id: int
     ) -> str:
         """Returns a href for a particular site's set of DER Controls"""
         return generate_href(
@@ -282,7 +281,7 @@ class DERControlMapper:
     def map_to_list_response(
         request_scope: DeviceOrAggregatorRequestScope,
         site_control_group_id: int,
-        site_controls: Sequence[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+        site_controls: Sequence[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope],
         total_controls: int,
         source: DERControlListSource,
         power10_multiplier: int,
@@ -319,9 +318,7 @@ class DERControlMapper:
 
 class DERProgramMapper:
     @staticmethod
-    def derp_href(
-        rq_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope], site_control_group_id: int
-    ) -> str:
+    def derp_href(rq_scope: AggregatorRequestScope | DeviceOrAggregatorRequestScope, site_control_group_id: int) -> str:
         """Returns a href for a particular site's DER Program for the specified site control group"""
         return generate_href(
             uri.DERProgramUri,
@@ -331,7 +328,7 @@ class DERProgramMapper:
         )
 
     @staticmethod
-    def doe_list_href(rq_scope: DeviceOrAggregatorRequestScope, fsa_id: Optional[int]) -> str:
+    def doe_list_href(rq_scope: DeviceOrAggregatorRequestScope, fsa_id: int | None) -> str:
         """Returns a href for a particular site's DER Program list"""
         if fsa_id is None:
             return generate_href(uri.DERProgramListUri, rq_scope, site_id=rq_scope.display_site_id)
@@ -340,10 +337,10 @@ class DERProgramMapper:
 
     @staticmethod
     def doe_program_response(
-        rq_scope: Union[AggregatorRequestScope, DeviceOrAggregatorRequestScope],
-        total_controls: Optional[int],
-        site_control_group: Union[SiteControlGroup, ArchiveSiteControlGroup],
-        site_control_group_default: Optional[SiteControlGroupDefault],
+        rq_scope: AggregatorRequestScope | DeviceOrAggregatorRequestScope,
+        total_controls: int | None,
+        site_control_group: SiteControlGroup | ArchiveSiteControlGroup,
+        site_control_group_default: SiteControlGroupDefault | None,
     ) -> DERProgramResponse:
         """Returns a DERProgram response for a SiteControlGroup"""
 
@@ -355,7 +352,7 @@ class DERProgramMapper:
             }
         )
 
-        active_der_control_count: Optional[int] = None
+        active_der_control_count: int | None = None
         if total_controls is not None:
             active_der_control_count = 1 if total_controls > 0 else 0
 
@@ -398,7 +395,7 @@ class DERProgramMapper:
         site_control_groups_with_control_count: list[tuple[SiteControlGroup, int]],
         total_site_control_groups: int,
         pollrate_seconds: int,
-        fsa_id: Optional[int],
+        fsa_id: int | None,
     ) -> DERProgramListResponse:
         """Returns a list of all DERPrograms.
 

@@ -1,9 +1,6 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11-slim
 
-# Copy app + dependencies
-COPY ./src /app/src
-COPY ./pyproject.toml /app/pyproject.toml
-COPY ./setup.cfg /app/setup.cfg
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Install app / dependencies
 RUN apt-get update && apt-get install git -y

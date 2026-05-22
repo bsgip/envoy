@@ -2,7 +2,6 @@ import json
 import logging
 import logging.config
 import os
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from taskiq import TaskiqEvents, TaskiqState
@@ -25,7 +24,7 @@ if logging_config_file:
         with open(logging_config_file) as fp:
             logging_config = json.load(fp)
         logging.config.dictConfig(logging_config)
-    except Exception:
+    except Exception:  # noqa: S110
         # Normally this would be very naughty - but a failure here is fine - just proceed as per normal
         # and failover whatever default logging is currently in place
         pass  # nosec
@@ -39,7 +38,7 @@ broker = generate_broker(settings.rabbit_mq_broker_url)
 
 
 # Now setup the lifecycle events for the worker
-azure_ad_handler_details: Optional[HandlerDetails] = None
+azure_ad_handler_details: HandlerDetails | None = None
 
 
 @broker.on_event(TaskiqEvents.WORKER_STARTUP)

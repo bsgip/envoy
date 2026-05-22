@@ -1,7 +1,6 @@
 import unittest.mock as mock
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Sequence
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -126,12 +125,12 @@ def test_AggregatorBatchedEntities_single_batch(mock_get_batch_key: mock.MagicMo
     b = AggregatorBatchedEntities(
         ts,
         resource,
-        [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4],
-        [delete_entity_1, delete_entity_2, delete_entity_3],
+        [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4],  # ty:ignore[invalid-argument-type]
+        [delete_entity_1, delete_entity_2, delete_entity_3],  # ty:ignore[invalid-argument-type]
     )
 
     assert b.timestamp == ts
-    assert_batched_entities(b, type(fake_entity_1), type(delete_entity_1), 4, 3)
+    assert_batched_entities(b, type(fake_entity_1), type(delete_entity_1), 4, 3)  # ty:ignore[invalid-argument-type]
     assert len(b.models_by_batch_key) == 1, "Expecting a single unique key"
     assert b.models_by_batch_key[(1, 2)] == [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4]
 
@@ -162,12 +161,12 @@ def test_AggregatorBatchedEntities_multi_batch(mock_get_batch_key: mock.MagicMoc
     b = AggregatorBatchedEntities(
         ts,
         resource,
-        [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4],
-        [delete_entity_1, delete_entity_2, delete_entity_3],
+        [fake_entity_1, fake_entity_2, fake_entity_3, fake_entity_4],  # ty:ignore[invalid-argument-type]
+        [delete_entity_1, delete_entity_2, delete_entity_3],  # ty:ignore[invalid-argument-type]
     )
 
     assert b.timestamp == ts
-    assert_batched_entities(b, type(fake_entity_1), type(delete_entity_1), 4, 3)
+    assert_batched_entities(b, type(fake_entity_1), type(delete_entity_1), 4, 3)  # ty:ignore[invalid-argument-type]
     assert len(b.models_by_batch_key) == 3
     assert b.models_by_batch_key[(1, 2)] == [fake_entity_1, fake_entity_3]
     assert b.models_by_batch_key[(1, 3)] == [fake_entity_2]
@@ -184,7 +183,7 @@ def test_AggregatorBatchedEntities_multi_batch(mock_get_batch_key: mock.MagicMoc
 def test_get_batch_key_invalid():
     """Validates we raise our own custom exception"""
     with pytest.raises(NotificationError):
-        get_batch_key(9999, generate_class_instance(Site))
+        get_batch_key(9999, generate_class_instance(Site))  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -337,7 +336,7 @@ def test_get_batch_key(resource: SubscriptionResource, entity: TResourceModel, e
 def test_get_subscription_filter_id_invalid():
     """Validates we raise our own custom exception"""
     with pytest.raises(NotificationError):
-        get_subscription_filter_id(9999, generate_class_instance(Site))
+        get_subscription_filter_id(9999, generate_class_instance(Site))  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -421,7 +420,7 @@ def test_get_subscription_filter_id(resource: SubscriptionResource, entity: TRes
 def test_get_site_id_invalid():
     """Validates we raise our own custom exception"""
     with pytest.raises(NotificationError):
-        get_site_id(9999, generate_class_instance(Site))
+        get_site_id(9999, generate_class_instance(Site))  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -552,15 +551,15 @@ async def test_select_subscriptions_for_resource_conditions(
     "timestamp,expected_sites",
     [
         (
-            datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc),
+            datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=UTC),
             [
                 Site(
                     site_id=1,
                     nmi="1111111111",
                     aggregator_id=1,
                     timezone_id="Australia/Brisbane",
-                    created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                    changed_time=datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc),
+                    created_time=datetime(2000, 1, 1, tzinfo=UTC),
+                    changed_time=datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=UTC),
                     lfdi="1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
                     sfdi=1111,
                     device_category=0,
@@ -588,7 +587,7 @@ async def test_fetch_sites_by_timestamp_no_archive(pg_base_config, timestamp: da
 async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
     """Tests that entities are filtered/returned correctly and cover all aggregator ids"""
 
-    timestamp = datetime(2024, 5, 6, 7, 8, 9, tzinfo=timezone.utc)
+    timestamp = datetime(2024, 5, 6, 7, 8, 9, tzinfo=UTC)
 
     # start by setting all entities to a particular timestamp
     async with generate_async_session(pg_base_config) as session:
@@ -609,9 +608,9 @@ async def test_fetch_sites_by_timestamp_multiple_aggs(pg_base_config):
 
         assert len(list_entities) == len(all_entities)
         assert set([1, 2, 3, 4, 5, 6]) == set([e.site_id for e in list_entities])
-        assert set([NULL_AGGREGATOR_ID, 1, 2]) == set(
-            [e.aggregator_id for e in list_entities]
-        ), "All aggregator IDs should be represented"
+        assert set([NULL_AGGREGATOR_ID, 1, 2]) == set([e.aggregator_id for e in list_entities]), (
+            "All aggregator IDs should be represented"
+        )
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
@@ -625,7 +624,7 @@ async def test_fetch_sites_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on site 1
-    timestamp = datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc)
+    timestamp = datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=UTC)
     expected_active_site_ids = [1]
     expected_active_nmis = ["1111111111"]
     expected_deleted_site_ids = [70, 72]
@@ -633,7 +632,6 @@ async def test_fetch_sites_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # One of these will be picked up
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(generate_class_instance(ArchiveSite, seed=22, aggregator_id=1, site_id=70, deleted_time=timestamp))
@@ -676,7 +674,7 @@ async def test_fetch_sites_by_timestamp_with_archive(pg_base_config):
     "timestamp,expected_rates",
     [
         (
-            datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=timezone.utc),
+            datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=UTC),
             [
                 TariffGeneratedRate(
                     tariff_generated_rate_id=1,
@@ -731,7 +729,7 @@ async def test_fetch_rates_by_timestamp(pg_base_config, timestamp: datetime, exp
 async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
     """Tests that entities are filtered/returned correctly and cover all aggregator ids"""
 
-    timestamp = datetime(2024, 4, 6, 7, 8, 9, tzinfo=timezone.utc)
+    timestamp = datetime(2024, 4, 6, 7, 8, 9, tzinfo=UTC)
 
     # start by setting all entities to a particular timestamp
     async with generate_async_session(pg_base_config) as session:
@@ -772,13 +770,12 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on tariff_generated_rate 1
-    timestamp = datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=timezone.utc)
+    timestamp = datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=UTC)
     expected_active_rate_ids = [1]
     expected_deleted_rate_ids = [21, 24, 25]
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a parent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -833,7 +830,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
                 site_id=70,
                 tariff_generated_rate_id=21,
                 tariff_id=91,
-                start_time=datetime(2011, 11, 1, 12, 0, 0, tzinfo=timezone.utc),
+                start_time=datetime(2011, 11, 1, 12, 0, 0, tzinfo=UTC),
                 deleted_time=timestamp,
                 duration_seconds=21,  # for identifying this record later
             )
@@ -863,7 +860,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
                 site_id=2,
                 tariff_generated_rate_id=24,
                 tariff_id=92,
-                start_time=datetime(2011, 11, 2, 12, 0, 0, tzinfo=timezone.utc),
+                start_time=datetime(2011, 11, 2, 12, 0, 0, tzinfo=UTC),
                 deleted_time=timestamp,
                 duration_seconds=24,  # for identifying this record later
             )
@@ -875,7 +872,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
                 site_id=3,
                 tariff_generated_rate_id=25,
                 tariff_id=93,
-                start_time=datetime(2011, 11, 3, 12, 0, 0, tzinfo=timezone.utc),
+                start_time=datetime(2011, 11, 3, 12, 0, 0, tzinfo=UTC),
                 deleted_time=timestamp,
                 duration_seconds=25,  # for identifying this record later
             )
@@ -934,15 +931,15 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
     "timestamp,expected_does",
     [
         (
-            datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=UTC),
             [
                 DynamicOperatingEnvelope(
                     dynamic_operating_envelope_id=1,
                     site_control_group_id=1,
                     site_id=1,
                     calculation_log_id=2,
-                    created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                    changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc),
+                    created_time=datetime(2000, 1, 1, tzinfo=UTC),
+                    changed_time=datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=UTC),
                     start_time=datetime(2022, 5, 7, 1, 2, 0, 0, tzinfo=timezone(timedelta(hours=10))),
                     duration_seconds=11,
                     randomize_start_seconds=111,
@@ -981,16 +978,16 @@ async def test_fetch_does_by_timestamp(
 
         assert all([isinstance(e.site, Site) for e in list_entities]), "site relationship populated"
         assert all([e.site.site_id == e.site_id for e in list_entities]), "site relationship populated"
-        assert all(
-            [e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]
-        ), "start_time should be localized to the zone identified by the linked site"
+        assert all([e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]), (
+            "start_time should be localized to the zone identified by the linked site"
+        )
 
 
 @pytest.mark.anyio
 async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
     """Tests that entities are filtered/returned correctly and cover all aggregator ids"""
 
-    timestamp = datetime(2024, 1, 2, 7, 8, 9, tzinfo=timezone.utc)
+    timestamp = datetime(2024, 1, 2, 7, 8, 9, tzinfo=UTC)
 
     # start by setting all entities to a particular timestamp
     async with generate_async_session(pg_base_config) as session:
@@ -1012,9 +1009,9 @@ async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
 
         assert len(list_entities) == len(all_entities)
         assert set([1, 2, 3, 4]) == set([e.dynamic_operating_envelope_id for e in list_entities])
-        assert set([1, 2]) == set(
-            [e.site.aggregator_id for e in list_entities]
-        ), "All aggregator IDs should be represented"
+        assert set([1, 2]) == set([e.site.aggregator_id for e in list_entities]), (
+            "All aggregator IDs should be represented"
+        )
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_does_by_changed_at(session, timestamp - timedelta(milliseconds=50))
@@ -1028,13 +1025,12 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on doe 1
-    timestamp = datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc)
+    timestamp = datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=UTC)
     expected_active_doe_ids = [1]
     expected_deleted_doe_ids = [21, 24, 25]
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a parent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -1190,13 +1186,13 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
     "timestamp,expected_readings",
     [
         (
-            datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=timezone.utc),
+            datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=UTC),
             [
                 SiteReading(
                     site_reading_id=1,
                     site_reading_type_id=1,
-                    created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                    changed_time=datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=timezone.utc),
+                    created_time=datetime(2000, 1, 1, tzinfo=UTC),
+                    changed_time=datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=UTC),
                     local_id=11111,
                     quality_flags=QualityFlagsType.VALID,
                     time_period_start=datetime(2022, 6, 7, 1, 0, 0, 0, tzinfo=timezone(timedelta(hours=10))),
@@ -1226,19 +1222,19 @@ async def test_fetch_readings_by_timestamp(pg_base_config, timestamp: datetime, 
         for i in range(len(expected_readings)):
             assert_class_instance_equality(SiteReading, expected_readings[i], list_entities[i])
 
-        assert all(
-            [isinstance(e.site_reading_type, SiteReadingType) for e in list_entities]
-        ), "site_reading_type relationship populated"
-        assert all(
-            [e.site_reading_type.site_reading_type_id == e.site_reading_type_id for e in list_entities]
-        ), "site_reading_type relationship populated"
+        assert all([isinstance(e.site_reading_type, SiteReadingType) for e in list_entities]), (
+            "site_reading_type relationship populated"
+        )
+        assert all([e.site_reading_type.site_reading_type_id == e.site_reading_type_id for e in list_entities]), (
+            "site_reading_type relationship populated"
+        )
 
 
 @pytest.mark.anyio
 async def test_fetch_readings_by_timestamp_multiple_aggs(pg_base_config):
     """Tests that entities are filtered/returned correctly and cover all aggregator ids"""
 
-    timestamp = datetime(2021, 1, 2, 7, 8, 9, tzinfo=timezone.utc)
+    timestamp = datetime(2021, 1, 2, 7, 8, 9, tzinfo=UTC)
 
     # start by setting all entities to a particular timestamp
     async with generate_async_session(pg_base_config) as session:
@@ -1260,9 +1256,9 @@ async def test_fetch_readings_by_timestamp_multiple_aggs(pg_base_config):
 
         assert len(list_entities) == len(all_entities)
         assert set([1, 2, 3, 4]) == set([e.site_reading_id for e in list_entities])
-        assert set([1, 3]) == set(
-            [e.site_reading_type.aggregator_id for e in list_entities]
-        ), "All aggregator IDs should be represented"
+        assert set([1, 3]) == set([e.site_reading_type.aggregator_id for e in list_entities]), (
+            "All aggregator IDs should be represented"
+        )
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_readings_by_changed_at(session, timestamp - timedelta(milliseconds=50))
@@ -1276,13 +1272,12 @@ async def test_fetch_readings_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on reading 1
-    timestamp = datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=timezone.utc)
+    timestamp = datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=UTC)
     expected_active_reading_ids = [1]
     expected_deleted_reading_ids = [21, 24, 25]
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a parent "archive" site reading type that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSiteReadingType, seed=11, aggregator_id=1, site_reading_type_id=70))
         session.add(
@@ -1428,7 +1423,7 @@ async def test_fetch_readings_by_timestamp_with_archive(pg_base_config):
     "timestamp,expected_ids",
     [
         (
-            datetime(2022, 7, 23, 10, 3, 23, 500000, tzinfo=timezone.utc),
+            datetime(2022, 7, 23, 10, 3, 23, 500000, tzinfo=UTC),
             [1],
         ),
         (
@@ -1459,13 +1454,12 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on der availability 1
-    timestamp = datetime(2022, 7, 23, 10, 3, 23, 500000, tzinfo=timezone.utc)
+    timestamp = datetime(2022, 7, 23, 10, 3, 23, 500000, tzinfo=UTC)
     expected_active_avail_ids = [1]
     expected_deleted_avail_ids = [21, 24, 25]
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -1625,7 +1619,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
             [
                 hasattr(e, "site_der")
                 and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))
+                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -1652,7 +1646,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
     "timestamp,expected_ids",
     [
         (
-            datetime(2022, 4, 13, 10, 1, 42, 500000, tzinfo=timezone.utc),
+            datetime(2022, 4, 13, 10, 1, 42, 500000, tzinfo=UTC),
             [1],
         ),
         (
@@ -1683,13 +1677,12 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on der rating 1
-    timestamp = datetime(2022, 4, 13, 10, 1, 42, 500000, tzinfo=timezone.utc)
+    timestamp = datetime(2022, 4, 13, 10, 1, 42, 500000, tzinfo=UTC)
     expected_active_rating_ids = [1]
     expected_deleted_rating_ids = [21, 24, 25]
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -1845,7 +1838,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
             [
                 hasattr(e, "site_der")
                 and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))
+                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -1868,7 +1861,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
     "timestamp,expected_ids",
     [
         (
-            datetime(2022, 2, 9, 11, 6, 44, 500000, tzinfo=timezone.utc),
+            datetime(2022, 2, 9, 11, 6, 44, 500000, tzinfo=UTC),
             [1],
         ),
         (
@@ -1899,13 +1892,12 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on der setting 1
-    timestamp = datetime(2022, 2, 9, 11, 6, 44, 500000, tzinfo=timezone.utc)
+    timestamp = datetime(2022, 2, 9, 11, 6, 44, 500000, tzinfo=UTC)
     expected_active_setting_ids = [1]
     expected_deleted_setting_ids = [21, 24, 25]
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -2061,7 +2053,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
             [
                 hasattr(e, "site_der")
                 and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))
+                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -2084,7 +2076,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
     "timestamp,expected_ids",
     [
         (
-            datetime(2022, 11, 1, 11, 5, 4, 500000, tzinfo=timezone.utc),
+            datetime(2022, 11, 1, 11, 5, 4, 500000, tzinfo=UTC),
             [1],
         ),
         (
@@ -2116,13 +2108,12 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on der status 1
-    timestamp = datetime(2022, 11, 1, 11, 5, 4, 500000, tzinfo=timezone.utc)
+    timestamp = datetime(2022, 11, 1, 11, 5, 4, 500000, tzinfo=UTC)
     expected_active_status_ids = [1]
     expected_deleted_status_ids = [21, 24, 25]
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
         session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
         session.add(
@@ -2288,7 +2279,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
             [
                 hasattr(e, "site_der")
                 and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))
+                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -2315,15 +2306,15 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
     "timestamp,expected_agg_site_scg_ids",
     [
         (
-            datetime(2023, 5, 1, 1, 2, 2, 500000, tzinfo=timezone.utc),
+            datetime(2023, 5, 1, 1, 2, 2, 500000, tzinfo=UTC),
             [(0, 5, 1), (0, 6, 1), (1, 1, 1), (1, 2, 1), (1, 4, 1), (2, 3, 1)],  # One for every site and default #1
         ),
         (
-            datetime(2023, 5, 1, 2, 2, 2, 500000, tzinfo=timezone.utc),
+            datetime(2023, 5, 1, 2, 2, 2, 500000, tzinfo=UTC),
             [(0, 5, 3), (0, 6, 3), (1, 1, 3), (1, 2, 3), (1, 4, 3), (2, 3, 3)],  # One for every site and default #2
         ),
         (
-            datetime(2022, 2, 3, 4, 5, 8, tzinfo=timezone.utc),  # timestamp mismatch
+            datetime(2022, 2, 3, 4, 5, 8, tzinfo=UTC),  # timestamp mismatch
             [],
         ),
     ],
@@ -2340,8 +2331,8 @@ async def test_fetch_default_site_controls_by_changed_at(
         batch = await fetch_default_site_controls_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedSiteControlGroupDefault,
-            ArchiveSiteScopedSiteControlGroupDefault,
+            SiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
             len(expected_agg_site_scg_ids),
             0,
         )
@@ -2363,7 +2354,7 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on derp 3 default
-    timestamp = datetime(2023, 5, 1, 2, 2, 2, 500000, tzinfo=timezone.utc)
+    timestamp = datetime(2023, 5, 1, 2, 2, 2, 500000, tzinfo=UTC)
 
     # Combination of agg_id, site_id, site_control_group_id
     expected_active_default_ids = [(0, 5, 3), (0, 6, 3), (1, 1, 3), (1, 2, 3), (1, 4, 3), (2, 3, 3)]
@@ -2371,7 +2362,6 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject archive defaults (only most recent is used)
         session.add(
             generate_class_instance(
@@ -2420,8 +2410,8 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
         batch = await fetch_default_site_controls_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedSiteControlGroupDefault,
-            ArchiveSiteScopedSiteControlGroupDefault,
+            SiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
             len(expected_active_default_ids),
             len(expected_deleted_default_ids),
         )
@@ -2456,7 +2446,11 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
         assert_batched_entities(
-            empty_batch, SiteScopedSiteControlGroupDefault, ArchiveSiteScopedSiteControlGroupDefault, 0, 0
+            empty_batch,
+            SiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroupDefault,  # ty:ignore[invalid-argument-type]
+            0,
+            0,
         )
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
@@ -2466,9 +2460,13 @@ async def test_fetch_default_site_controls_by_timestamp_with_archive(pg_base_con
 async def test_fetch_fsa_by_changed_at(pg_base_config):
     """Tests that runtime config can be fetched and that it references all aggregator/site combos"""
     async with generate_async_session(pg_base_config) as session:
-        empty_batch = await fetch_fsa_by_changed_at(session, datetime(2000, 1, 1, 1, 1, 1, tzinfo=timezone.utc))
+        empty_batch = await fetch_fsa_by_changed_at(session, datetime(2000, 1, 1, 1, 1, 1, tzinfo=UTC))
         assert_batched_entities(
-            empty_batch, SiteScopedFunctionSetAssignment, ArchiveSiteScopedFunctionSetAssignment, 0, 0
+            empty_batch,
+            SiteScopedFunctionSetAssignment,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedFunctionSetAssignment,  # ty:ignore[invalid-argument-type]
+            0,
+            0,
         )
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
@@ -2483,11 +2481,11 @@ async def test_fetch_fsa_by_changed_at(pg_base_config):
         (0, 6, 300),
     ]
     async with generate_async_session(pg_base_config) as session:
-        batch = await fetch_fsa_by_changed_at(session, datetime(2023, 5, 1, 1, 1, 1, 500000, tzinfo=timezone.utc))
+        batch = await fetch_fsa_by_changed_at(session, datetime(2023, 5, 1, 1, 1, 1, 500000, tzinfo=UTC))
         assert_batched_entities(
             batch,
-            SiteScopedFunctionSetAssignment,
-            ArchiveSiteScopedFunctionSetAssignment,
+            SiteScopedFunctionSetAssignment,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedFunctionSetAssignment,  # ty:ignore[invalid-argument-type]
             len(expected_agg_site_poll_rate),
             0,
         )
@@ -2502,7 +2500,7 @@ async def test_fetch_fsa_by_changed_at(pg_base_config):
     "timestamp, expected_agg_site_group_ids",
     [
         (
-            datetime(2021, 4, 5, 10, 1, 0, 500000, tzinfo=timezone.utc),
+            datetime(2021, 4, 5, 10, 1, 0, 500000, tzinfo=UTC),
             [(1, 1, 1), (1, 2, 1), (2, 3, 1), (1, 4, 1), (0, 5, 1), (0, 6, 1)],
         ),
         (
@@ -2523,8 +2521,8 @@ async def test_fetch_site_control_groups_by_changed_at(
         batch = await fetch_site_control_groups_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedSiteControlGroup,
-            ArchiveSiteScopedSiteControlGroup,
+            SiteScopedSiteControlGroup,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroup,  # ty:ignore[invalid-argument-type]
             len(expected_agg_site_group_ids),
             0,
         )
@@ -2543,14 +2541,13 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
     """Tests that entities are filtered/returned correctly and include archive data"""
 
     # This matches the changed_time on site_control_group 1
-    timestamp = datetime(2021, 4, 5, 10, 1, 0, 500000, tzinfo=timezone.utc)
+    timestamp = datetime(2021, 4, 5, 10, 1, 0, 500000, tzinfo=UTC)
     expected_active_default_ids = [1]
     expected_deleted_default_ids = [21, 24, 25]
     expected_site_agg_ids = [(1, 1), (1, 2), (2, 3), (1, 4), (0, 5), (0, 6)]
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-
         # Inject archive defaults (only most recent is used)
         session.add(
             generate_class_instance(
@@ -2617,8 +2614,8 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
         batch = await fetch_site_control_groups_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            SiteScopedSiteControlGroup,
-            ArchiveSiteScopedSiteControlGroup,
+            SiteScopedSiteControlGroup,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroup,  # ty:ignore[invalid-argument-type]
             len(expected_active_default_ids) * len(expected_site_agg_ids),
             len(expected_deleted_default_ids) * len(expected_site_agg_ids),
         )
@@ -2634,11 +2631,15 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
             (e.aggregator_id, e.site_id, e.original.site_control_group_id) for e in deleted_list_entities
         ]
 
-        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_active_default_ids):
+        for expected_site_agg_tuple, expected_group_id in zip(
+            expected_site_agg_ids, expected_active_default_ids, strict=False
+        ):
             expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
             assert expected_tuple in active_agg_site_group_ids
 
-        for expected_site_agg_tuple, expected_group_id in zip(expected_site_agg_ids, expected_deleted_default_ids):
+        for expected_site_agg_tuple, expected_group_id in zip(
+            expected_site_agg_ids, expected_deleted_default_ids, strict=False
+        ):
             expected_tuple = (expected_site_agg_tuple[0], expected_site_agg_tuple[1], expected_group_id)
             assert expected_tuple in deleted_agg_site_group_ids
 
@@ -2654,7 +2655,7 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert_batched_entities(empty_batch, SiteScopedSiteControlGroup, ArchiveSiteScopedSiteControlGroup, 0, 0)
+        assert_batched_entities(empty_batch, SiteScopedSiteControlGroup, ArchiveSiteScopedSiteControlGroup, 0, 0)  # ty:ignore[invalid-argument-type]
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
 

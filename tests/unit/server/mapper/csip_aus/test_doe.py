@@ -1,7 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from itertools import product
-from typing import Optional, Union
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -95,13 +94,13 @@ def test_map_to_active_power(watts: Decimal, requested_multiplier: int, expected
     product([DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope], [-123, 123, None], [True, False]),
 )
 def test_map_derc_to_response(
-    doe_type: type[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
-    randomize_seconds: Optional[int],
+    doe_type: type[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope],
+    randomize_seconds: int | None,
     is_active: bool,
 ):
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
 
-    doe_start_time = datetime(2023, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
+    doe_start_time = datetime(2023, 2, 3, 4, 5, 6, tzinfo=UTC)
     doe_duration = 300
     doe_end_time = doe_start_time + timedelta(seconds=doe_duration)
 
@@ -129,9 +128,13 @@ def test_map_derc_to_response(
         end_time=doe_end_time,
         duration_seconds=doe_duration,
     )
+    assert doe.set_point_percentage is not None
+    assert doe.ramp_time_seconds is not None
+
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1001, href_prefix="/foo/bar"
     )
+    assert scope.href_prefix is not None
 
     result_all_set = DERControlMapper.map_to_response(scope, site_control_group_id, doe, -4, now)
     assert result_all_set is not None
@@ -139,6 +142,7 @@ def test_map_derc_to_response(
     assert result_all_set.interval.start == doe.start_time.timestamp()
     assert result_all_set.interval.duration == doe.duration_seconds
     assert isinstance(result_all_set.DERControlBase_, DERControlBase)
+    assert result_all_set.href is not None
     assert result_all_set.href.startswith(scope.href_prefix)
     assert f"/{scope.display_site_id}" in result_all_set.href
     assert f"/{site_control_group_id}" in result_all_set.href
@@ -184,6 +188,7 @@ def test_map_derc_to_response(
     assert result_optional.interval.start == doe_opt.start_time.timestamp()
     assert result_optional.interval.duration == doe_opt.duration_seconds
     assert isinstance(result_optional.DERControlBase_, DERControlBase)
+    assert result_optional.href is not None
     assert result_optional.href.startswith(scope.href_prefix)
     assert f"/{scope.display_site_id}" in result_optional.href
     assert f"/{site_control_group_id}" in result_optional.href
@@ -228,6 +233,7 @@ def test_map_default_to_response(optional_is_none: bool):
     assert isinstance(result.DERControlBase_, DERControlBase)
     assert isinstance(result.mRID, str)
     assert len(result.mRID) == 32, "Expected 128 bits encoded as hex"
+    assert result.href is not None
     assert result.href.startswith("/my/prefix/")
     assert f"/{site_id}/" in result.href
     assert f"/{derp_id}/" in result.href
@@ -267,7 +273,7 @@ def test_map_default_to_response(optional_is_none: bool):
 def test_map_derc_to_list_response():
     """Simple sanity check on the mapper to ensure things don't break with a variety of values."""
     site_control_group_id = 88776654
-    now = datetime(1990, 1, 2, tzinfo=timezone.utc)
+    now = datetime(1990, 1, 2, tzinfo=UTC)
 
     doe1: DynamicOperatingEnvelope = generate_class_instance(
         DynamicOperatingEnvelope, seed=303, optional_is_none=False, generate_relationships=False
@@ -295,12 +301,15 @@ def test_map_derc_to_list_response():
     assert isinstance(result, DERControlListResponse)
     assert result.all_ == doe_count
     assert result.results == len(all_does)
+    assert result.DERControl is not None
     assert_list_type(DERControlResponse, result.DERControl, len(all_does))
-    assert len(set([derc.mRID for derc in result.DERControl])) == len(
-        all_does
-    ), f"Expected {len(all_does)} unique mrid's in the children"
+    assert len(set([derc.mRID for derc in result.DERControl])) == len(all_does), (
+        f"Expected {len(all_does)} unique mrid's in the children"
+    )
+    assert result.href is not None
     assert str(scope.display_site_id) in result.href
     assert f"/{site_control_group_id}" in result.href
+    assert result.DERControl[0].DERControlBase_.opModGenLimW is not None
     assert result.DERControl[0].DERControlBase_.opModGenLimW.multiplier == 1
 
     empty_result = DERControlMapper.map_to_list_response(
@@ -315,7 +324,7 @@ def test_map_derc_to_list_response():
 
 
 @pytest.mark.parametrize("total_does", [None, 0, 456])
-def test_map_derp_doe_program_response_with_default_doe(total_does: Optional[int]):
+def test_map_derp_doe_program_response_with_default_doe(total_does: int | None):
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj (and there is
     a default doe specified)"""
     site_control_group_id = 88776654
@@ -365,7 +374,7 @@ def test_map_derp_doe_program_response_with_default_doe(total_does: Optional[int
 
 
 @pytest.mark.parametrize("scg_type", [SiteControlGroup, ArchiveSiteControlGroup])
-def test_map_derp_doe_program_response_no_default_doe(scg_type: type[Union[SiteControlGroup, ArchiveSiteControlGroup]]):
+def test_map_derp_doe_program_response_no_default_doe(scg_type: type[SiteControlGroup | ArchiveSiteControlGroup]):
     """Simple sanity check on the mapper to ensure nothing is raised when creating this static obj (and there is NO
     default doe specified)"""
 
@@ -387,6 +396,7 @@ def test_map_derp_doe_program_response_no_default_doe(scg_type: type[Union[SiteC
     assert isinstance(result.DefaultDERControlLink, Link)
     assert result.DefaultDERControlLink.href
     assert f"/{site_control_group_id}" in result.DefaultDERControlLink.href
+    assert result.href is not None
     assert f"/{site_control_group_id}" in result.href
 
 
@@ -453,7 +463,7 @@ def test_map_derp_doe_program_response_no_default_doe(scg_type: type[Union[SiteC
 def test_map_derp_doe_program_list_response(
     control_groups_with_counts: list[tuple[SiteControlGroup, int]],
     total_control_groups: int,
-    fsa_id: Optional[int],
+    fsa_id: int | None,
 ):
     """Shows that encoding a list of site_control_groups works with various counts"""
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, href_prefix="/foo")
@@ -464,8 +474,8 @@ def test_map_derp_doe_program_list_response(
     assert result is not None
     assert isinstance(result, DERProgramListResponse)
     assert result.pollRate == poll_rate
-
-    assert result.href.startswith(scope.href_prefix)
+    assert result.href is not None
+    assert result.href.startswith(scope.href_prefix or "")
     if fsa_id is None:
         assert result.href.endswith(DERProgramListUri.format(site_id=scope.display_site_id))
     else:
@@ -479,8 +489,8 @@ def test_map_derp_doe_program_list_response(
         assert result.DERProgram is not None
         assert result.results == len(control_groups_with_counts)
         assert_list_type(DERProgramResponse, result.DERProgram, len(control_groups_with_counts))
-        for derp, (group, group_count) in zip(result.DERProgram, control_groups_with_counts):
-            derp.DERControlListLink.all_ == group_count
+        for derp, (group, group_count) in zip(result.DERProgram, control_groups_with_counts, strict=False):
+            assert derp.DERControlListLink and derp.DERControlListLink.all_ == group_count
             assert derp.DefaultDERControlLink is not None
             assert f"/{group.site_control_group_id}" in derp.DefaultDERControlLink.href
 
@@ -496,7 +506,7 @@ def test_mrid_uniqueness():
     doe: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope)
     doe.site_id = site_id
     doe.dynamic_operating_envelope_id = site_id  # intentionally the same as site_id
-    now = datetime(2022, 11, 3, tzinfo=timezone.utc)
+    now = datetime(2022, 11, 3, tzinfo=UTC)
 
     program = DERProgramMapper.doe_program_response(scope, 999, site_control_group, None)
     control = DERControlMapper.map_to_response(scope, site_control_group.site_control_group_id, doe, 1, now)

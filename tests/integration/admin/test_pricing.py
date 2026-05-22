@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from decimal import Decimal
 from http import HTTPStatus
 from typing import Optional
 from zoneinfo import ZoneInfo

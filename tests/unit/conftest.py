@@ -1,6 +1,6 @@
 from typing import Any
-import pytest
 
+import pytest
 from fastapi import FastAPI, Request
 from starlette.datastructures import State
 

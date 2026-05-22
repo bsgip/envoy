@@ -2,9 +2,9 @@ import pytest
 from assertical.asserts import generator as asserts_generator
 from assertical.fake import generator as fake_generator
 from envoy_schema.admin.schema.certificate import (
-    CertificateResponse,
-    CertificatePageResponse,
     CertificateAssignmentRequest,
+    CertificatePageResponse,
+    CertificateResponse,
 )
 
 from envoy.admin import mapper
@@ -54,7 +54,7 @@ def test_map_from_many_request() -> None:
 
     expecteds = [model.base.Certificate(certificate_id=4), model.base.Certificate(lfdi="SOMEFAKELFDI")]
 
-    for actual, expected in zip(mapper.CertificateMapper.map_from_many_request(req), expecteds):
+    for actual, expected in zip(mapper.CertificateMapper.map_from_many_request(req), expecteds, strict=False):
         assert actual.certificate_id == expected.certificate_id
         assert actual.lfdi == expected.lfdi
         assert actual.created == expected.created

@@ -1,5 +1,6 @@
+from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime
-from typing import Any, Callable, Iterable, Sequence, Union, cast
+from typing import Any, cast
 
 from sqlalchemy import Column, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +20,7 @@ def extract_source_archive_pk_columns(
     if not hasattr(source_type.__table__.primary_key, "columns"):
         raise ValueError(f"Table {source_type} primary key has no configured columns")
 
-    archive_pk_cols = source_type.__table__.primary_key.columns
+    archive_pk_cols: list[Column] = cast(list, source_type.__table__.primary_key.columns)
     if len(archive_pk_cols) != 1:
         raise Exception(f"source_type: {source_type} should only have a single primary key column defined,")
     source_pk_col: Column = archive_pk_cols[0]  # The archive type will have the same column - we can reuse this
@@ -38,7 +39,7 @@ def extract_source_archive_changed_deleted_columns(
     if not hasattr(source_type, "changed_time"):
         raise ValueError(f"Type {source_type} has no changed_time column to filter for modified entities")
 
-    return (source_type.changed_time, cast(Column, archive_type.deleted_time))
+    return (cast(Column, source_type.changed_time), cast(Column, archive_type.deleted_time))
 
 
 async def fetch_entities_with_archive_by_id(
@@ -133,8 +134,8 @@ async def fetch_entities_with_archive_by_datetime(
 
 
 def orm_relationship_map_parent_entities(
-    source_entities: Iterable[Union[TResourceModel, TArchiveResourceModel]],
-    get_parent_pk_id: Callable[[Union[TResourceModel, TArchiveResourceModel]], int],
+    source_entities: Iterable[TResourceModel | TArchiveResourceModel],
+    get_parent_pk_id: Callable[[TResourceModel | TArchiveResourceModel], int],
     parent_entities_by_pk: dict[int, Any],
     source_relationship_prop_name: str,
 ) -> None:

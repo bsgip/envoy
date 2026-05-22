@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import BOOLEAN, INTEGER, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -19,11 +18,11 @@ class RuntimeServerConfig(Base):
     )  # When the aggregator was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    dcap_pollrate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # device capability
-    edevl_pollrate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # end device list
-    fsal_pollrate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # function set assignment list
-    derpl_pollrate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # der program list
-    derl_pollrate_seconds: Mapped[Optional[int]] = mapped_column(
+    dcap_pollrate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)  # device capability
+    edevl_pollrate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)  # end device list
+    fsal_pollrate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)  # function set assignment list
+    derpl_pollrate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)  # der program list
+    derl_pollrate_seconds: Mapped[int | None] = mapped_column(
         INTEGER, nullable=True
     )  # der list + all associated der resources
     mup_postrate_seconds: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)  # mirror usage point
@@ -35,6 +34,6 @@ class RuntimeServerConfig(Base):
         INTEGER, nullable=True
     )  # power of 10 encoding for site controls
 
-    disable_edev_registration: Mapped[Optional[bool]] = mapped_column(
+    disable_edev_registration: Mapped[bool | None] = mapped_column(
         BOOLEAN, nullable=True
     )  # Should EndDevice RegistrationLink's be disabled?

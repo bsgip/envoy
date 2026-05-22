@@ -70,7 +70,7 @@ async def test_select_tariff_count(pg_base_config):
         assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=UTC), 3) == 0
 
 
-def assert_tariff_by_id(expected_tariff_id: Optional[int], actual_tariff: Optional[Tariff]):
+def assert_tariff_by_id(expected_tariff_id: int | None, actual_tariff: Tariff | None):
     """Asserts tariff matches all values expected from a tariff with that id"""
     expected_currency_by_tariff_id = {
         1: 36,
@@ -107,7 +107,7 @@ def assert_tariff_by_id(expected_tariff_id: Optional[int], actual_tariff: Option
 )
 @pytest.mark.anyio
 async def test_select_all_tariffs(
-    pg_base_config, expected_ids: list[int], start: int, after: datetime, limit: int, fsa_id: Optional[int]
+    pg_base_config, expected_ids: list[int], start: int, after: datetime, limit: int, fsa_id: int | None
 ):
     """Tests that the returned tariffs match what's in the DB"""
     async with generate_async_session(pg_base_config) as session:
@@ -116,7 +116,7 @@ async def test_select_all_tariffs(
         assert [t.tariff_id for t in tariffs] == expected_ids
 
         # check contents of each entry
-        for id, tariff in zip(expected_ids, tariffs):
+        for id, tariff in zip(expected_ids, tariffs, strict=False):
             assert_tariff_by_id(id, tariff)
 
 
@@ -132,7 +132,7 @@ async def test_select_all_tariffs(
     ],
 )
 @pytest.mark.anyio
-async def test_select_single_tariff(pg_base_config, expected_id: Optional[int], requested_id: int):
+async def test_select_single_tariff(pg_base_config, expected_id: int | None, requested_id: int):
     """Tests that singular tariffs can be returned by id"""
     async with generate_async_session(pg_base_config) as session:
         tariff = await select_single_tariff(session, requested_id)

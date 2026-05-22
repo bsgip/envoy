@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from datetime import datetime, timedelta
-from typing import Iterable, Optional
 
 from envoy_schema.admin.schema.site_control import (
     SiteControlGroupPageResponse,
@@ -38,7 +38,7 @@ class SiteControlGroupListMapper:
 
     @staticmethod
     def map_to_paged_response(
-        total_count: int, limit: int, start: int, after: Optional[datetime], groups: Iterable[SiteControlGroup]
+        total_count: int, limit: int, start: int, after: datetime | None, groups: Iterable[SiteControlGroup]
     ) -> SiteControlGroupPageResponse:
         return SiteControlGroupPageResponse(
             total_count=total_count,
@@ -107,7 +107,7 @@ class SiteControlListMapper:
 
     @staticmethod
     def map_to_paged_response(
-        total_count: int, limit: int, start: int, after: Optional[datetime], does: Iterable[DynamicOperatingEnvelope]
+        total_count: int, limit: int, start: int, after: datetime | None, does: Iterable[DynamicOperatingEnvelope]
     ) -> SiteControlPageResponse:
         return SiteControlPageResponse(
             total_count=total_count,

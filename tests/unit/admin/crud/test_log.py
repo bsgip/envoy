@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import product
 from zoneinfo import ZoneInfo
 
@@ -37,12 +37,11 @@ async def test_select_calculation_log_by_id_missing(pg_base_config, id: int):
 async def test_select_calculation_log_by_id(pg_base_config, include_variables: bool, include_labels: bool):
     """Tests that the correct log with child relations are returned"""
     async with generate_async_session(pg_base_config) as session:
-
         # Calculation log 1 has no children - sanity check the contents
         calc_log_1 = await select_calculation_log_by_id(session, 1, include_variables, include_labels)
         assert calc_log_1 is not None and isinstance(calc_log_1, CalculationLog)
         assert calc_log_1.external_id == "external-id-1"
-        assert_datetime_equal(calc_log_1.calculation_range_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc))
+        assert_datetime_equal(calc_log_1.calculation_range_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=UTC))
         assert calc_log_1.calculation_range_duration_seconds == 86401
         assert len(calc_log_1.label_metadata) == 0
         assert len(calc_log_1.label_values) == 0
@@ -53,7 +52,7 @@ async def test_select_calculation_log_by_id(pg_base_config, include_variables: b
         calc_log_2 = await select_calculation_log_by_id(session, 2, include_variables, include_labels)
         assert calc_log_2 is not None and isinstance(calc_log_2, CalculationLog)
         assert calc_log_2.external_id == "external-id-2"
-        assert_datetime_equal(calc_log_2.calculation_range_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=timezone.utc))
+        assert_datetime_equal(calc_log_2.calculation_range_start, datetime(2024, 1, 31, 1, 2, 3, tzinfo=UTC))
         assert calc_log_2.calculation_range_duration_seconds == 86402
 
         if include_variables:

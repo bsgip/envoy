@@ -1,8 +1,7 @@
 import os
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Optional
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -131,13 +130,13 @@ async def test_get_end_device_list_invalid_pagination(
         # add in timestamp filtering
         # This will filter down to Site 2,3,4
         (
-            build_paging_params(limit=5, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc)),
+            build_paging_params(limit=5, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=UTC)),
             [int(AGG_1_SFDI_FROM_VALID_CERT), 4444, 2222],
             3,
             AGG_1_VALID_CERT,
         ),
         (
-            build_paging_params(limit=5, start=2, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=timezone.utc)),
+            build_paging_params(limit=5, start=2, changed_after=datetime(2022, 2, 3, 5, 0, 0, tzinfo=UTC)),
             [2222],
             3,
             AGG_1_VALID_CERT,
@@ -149,13 +148,13 @@ async def test_get_end_device_list_invalid_pagination(
         # Request sites changed after any change_time values in the DB
         # Should only return the virtual site associated with the aggregator
         (
-            build_paging_params(changed_after=datetime(2024, 9, 11, 0, 0, 0, tzinfo=timezone.utc)),
+            build_paging_params(changed_after=datetime(2024, 9, 11, 0, 0, 0, tzinfo=UTC)),
             [int(AGG_1_SFDI_FROM_VALID_CERT)],
             1,
             AGG_1_VALID_CERT,
         ),
         (
-            build_paging_params(changed_after=datetime(2024, 9, 11, 0, 0, 0, tzinfo=timezone.utc)),
+            build_paging_params(changed_after=datetime(2024, 9, 11, 0, 0, 0, tzinfo=UTC)),
             [372641169614],
             1,
             AGG_2_VALID_CERT,
@@ -221,8 +220,8 @@ async def test_get_enddevice(
     cert: str,
     site_id: int,
     expected_status: HTTPStatus,
-    expected_lfdi: Optional[str],
-    expected_sfdi: Optional[int],
+    expected_lfdi: str | None,
+    expected_sfdi: int | None,
 ):
     """Tests that fetching named end device's works / fails in simple cases"""
 
@@ -335,7 +334,7 @@ async def test_create_end_device_specified_sfdi(client: AsyncClient, edev_base_u
     """When creating an end_device check to see if it persists and is correctly assigned to the aggregator"""
 
     insert_request: EndDeviceRequest = generate_class_instance(
-        EndDeviceRequest, postRate=123, deviceCategory="{0:x}".format(int(DeviceCategory.HOT_TUB)), lFDI="123ABCdef"
+        EndDeviceRequest, postRate=123, deviceCategory=f"{int(DeviceCategory.HOT_TUB):x}", lFDI="123ABCdef"
     )
     response = await client.post(
         edev_base_uri,
@@ -382,7 +381,7 @@ async def test_create_end_device_no_lfdi_direct(client: AsyncClient, edev_base_u
     insert_request: EndDeviceRequest = generate_class_instance(
         EndDeviceRequest,
         postRate=123,
-        deviceCategory="{0:x}".format(int(DeviceCategory.HOT_TUB)),
+        deviceCategory=f"{int(DeviceCategory.HOT_TUB):x}",
     )
     insert_request.lFDI = None
     insert_request.sFDI = int(UNREGISTERED_CERT_SFDI)
@@ -418,7 +417,7 @@ async def test_create_end_device_no_lfdi_aggregator(client: AsyncClient, edev_ba
     insert_request: EndDeviceRequest = generate_class_instance(
         EndDeviceRequest,
         postRate=123,
-        deviceCategory="{0:x}".format(int(DeviceCategory.HOT_TUB)),
+        deviceCategory=f"{int(DeviceCategory.HOT_TUB):x}",
     )
     insert_request.lFDI = None
     insert_request.sFDI = int(AGG_1_SFDI_FROM_VALID_CERT)
@@ -443,7 +442,7 @@ async def test_create_end_device_href_prefix(client: AsyncClient, edev_base_uri:
 
     insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     insert_request.postRate = 123
-    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
+    insert_request.deviceCategory = f"{int(DeviceCategory.HOT_TUB):x}"
     response = await client.post(
         edev_base_uri,
         headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
@@ -464,7 +463,7 @@ async def test_create_end_device_existing_sfdi_different_client(client: AsyncCli
     # Arrange
     # NOTE: AGG_1_VALID_CERT has an enddevice with sfdi=1111 in base_config.sql
     insert_request: EndDeviceRequest = generate_class_instance(
-        EndDeviceRequest, sFDI=1111, deviceCategory="{0:x}".format(int(DeviceCategory.HOT_TUB))
+        EndDeviceRequest, sFDI=1111, deviceCategory=f"{int(DeviceCategory.HOT_TUB):x}"
     )
 
     # Act
@@ -538,7 +537,7 @@ async def test_insert_existing_enddevice_error_response(
 
     # Fire off an update that will succeed
     request: EndDeviceRequest = generate_class_instance(
-        EndDeviceRequest, lFDI=lfdi, sFDI=sfdi, deviceCategory="{0:x}".format(int(DeviceCategory.HOT_TUB))
+        EndDeviceRequest, lFDI=lfdi, sFDI=sfdi, deviceCategory=f"{int(DeviceCategory.HOT_TUB):x}"
     )
     response = await client.post(
         edev_base_uri,
@@ -613,7 +612,7 @@ async def test_create_end_device_device_registration(
 
     insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     insert_request.postRate = 123
-    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
+    insert_request.deviceCategory = f"{int(DeviceCategory.HOT_TUB):x}"
     insert_request.lFDI = lfdi
     insert_request.sFDI = int(sfdi)
     response = await client.post(
@@ -660,7 +659,7 @@ async def test_create_end_device_device_registration_disabled(
 
     insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     insert_request.postRate = 123
-    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
+    insert_request.deviceCategory = f"{int(DeviceCategory.HOT_TUB):x}"
     insert_request.lFDI = lfdi
     insert_request.sFDI = int(sfdi)
     response = await client.post(
@@ -691,7 +690,7 @@ async def test_create_end_device_device_static_registration_pin(
 
     insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
     insert_request.postRate = 123
-    insert_request.deviceCategory = "{0:x}".format(int(DeviceCategory.HOT_TUB))
+    insert_request.deviceCategory = f"{int(DeviceCategory.HOT_TUB):x}"
     insert_request.lFDI = UNREGISTERED_CERT_LFDI
     insert_request.sFDI = int(UNREGISTERED_CERT_SFDI)
     response = await client.post(
@@ -746,7 +745,7 @@ async def test_get_enddevice_registration(
     cert: str,
     site_id: int,
     expected_status: HTTPStatus,
-    expected_pin: Optional[int],
+    expected_pin: int | None,
 ):
     """Tests that fetching named end device's works / fails in simple cases"""
 

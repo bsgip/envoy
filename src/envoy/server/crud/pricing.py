@@ -21,7 +21,7 @@ async def select_tariff_fsa_ids(session: AsyncSession, changed_after: datetime) 
     return resp.scalars().all()
 
 
-async def select_tariff_count(session: AsyncSession, after: datetime, fsa_id: Optional[int]) -> int:
+async def select_tariff_count(session: AsyncSession, after: datetime, fsa_id: int | None) -> int:
     """Fetches the number of tariffs stored
 
     after: Only tariffs with a changed_time greater than this value will be counted (set to 0 to count everything)
@@ -32,17 +32,17 @@ async def select_tariff_count(session: AsyncSession, after: datetime, fsa_id: Op
     stmt = select(func.count()).select_from(Tariff)
 
     if after != datetime.min:
-        stmt = stmt.where((Tariff.changed_time >= after))
+        stmt = stmt.where(Tariff.changed_time >= after)
 
     if fsa_id is not None:
-        stmt = stmt.where((Tariff.fsa_id == fsa_id))
+        stmt = stmt.where(Tariff.fsa_id == fsa_id)
 
     resp = await session.execute(stmt)
     return resp.scalar_one()
 
 
 async def select_all_tariffs(
-    session: AsyncSession, start: int, changed_after: datetime, limit: int, fsa_id: Optional[int]
+    session: AsyncSession, start: int, changed_after: datetime, limit: int, fsa_id: int | None
 ) -> Sequence[Tariff]:
     """Selects tariffs with some basic pagination / filtering based on change time
 
@@ -65,21 +65,21 @@ async def select_all_tariffs(
     )
 
     if changed_after != datetime.min:
-        stmt = stmt.where((Tariff.changed_time >= changed_after))
+        stmt = stmt.where(Tariff.changed_time >= changed_after)
 
     if fsa_id is not None:
-        stmt = stmt.where((Tariff.fsa_id == fsa_id))
+        stmt = stmt.where(Tariff.fsa_id == fsa_id)
 
     resp = await session.execute(stmt)
     return resp.scalars().all()
 
 
-async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optional[Tariff]:
+async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Tariff | None:
     """Requests a single tariff based on the primary key - returns None if it does not exist"""
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    stmt = select(Tariff).where((Tariff.tariff_id == tariff_id))
+    stmt = select(Tariff).where(Tariff.tariff_id == tariff_id)
 
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
@@ -88,7 +88,7 @@ async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optiona
 async def select_tariff_generated_rate_include_deleted(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     rate_id: int,
 ) -> Optional[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]]:
     """Attempts to fetch a TariffGeneratedRate/ArchiveTariffGeneratedRate using its primary id, also scoping it to a

@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.der import (
     DefaultDERControl,
@@ -42,7 +41,7 @@ class DERProgramManager:
         start: int,
         changed_after: datetime,
         limit: int,
-        fsa_id: Optional[int],
+        fsa_id: int | None,
     ) -> DERProgramListResponse:
         """Returns the list of DERPrograms accessible to a site. This can optionally filter programs to a specific
         function set assignment ID (fsa_id)
@@ -113,7 +112,7 @@ class DERControlManager:
     @staticmethod
     async def fetch_doe_control_for_scope(
         session: AsyncSession, scope: SiteRequestScope, der_program_id: int, doe_id: int
-    ) -> Optional[DERControlResponse]:
+    ) -> DERControlResponse | None:
         """DER Controls are how Dynamic Operating Envelopes are communicated. This will provide a lookup for a
         particular DOE by ID but ensuring it stays scoped to the appropriate request"""
         now = utc_now()

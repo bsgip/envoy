@@ -42,7 +42,7 @@ class TariffProfileManager:
     @staticmethod
     async def fetch_tariff_profile(
         session: AsyncSession, scope: SiteRequestScope, tariff_id: int
-    ) -> Optional[TariffProfileResponse]:
+    ) -> TariffProfileResponse | None:
         """Fetches a single tariff in the form of a sep2 TariffProfile thats specific to a single site."""
 
         tariff = await select_single_tariff(session, tariff_id)
@@ -67,8 +67,8 @@ class TariffProfileManager:
         start: int,
         changed_after: datetime,
         limit: int,
-        fsa_id: Optional[int],
-    ) -> Optional[TariffProfileListResponse]:
+        fsa_id: int | None,
+    ) -> TariffProfileListResponse | None:
         """Fetches all tariffs accessible to a specific site (and optionally scoped to a specific function set
         assignment id)."""
 

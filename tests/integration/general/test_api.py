@@ -3,7 +3,6 @@ import unittest.mock as mock
 from datetime import datetime
 from http import HTTPStatus
 from itertools import chain
-from typing import Optional
 
 import pytest
 from assertical.fake.http import MockedAsyncClient
@@ -99,7 +98,7 @@ async def test_get_resource_unauthorised(valid_methods: list[HTTPMethod], uri: s
     """Runs through the basic unauthorised tests for all parametrized requests on a server that supports
     unrecognised certs being registered as device certs"""
     for method in valid_methods:
-        body: Optional[str] = None
+        body: str | None = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             body = EMPTY_XML_DOC
 
@@ -114,7 +113,7 @@ async def test_get_resource_unauthorised_no_device_certs(
 ):
     """Runs through the basic unauthorised tests for all parametrized requests (but will validate unknown certs fail)"""
     for method in valid_methods:
-        body: Optional[str] = None
+        body: str | None = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             body = EMPTY_XML_DOC
 
@@ -137,7 +136,7 @@ async def test_get_resource_unauthorised_with_azure_ad(
     mock_AsyncClient.return_value = mocked_client
 
     for method in valid_methods:
-        body: Optional[str] = None
+        body: str | None = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             body = EMPTY_XML_DOC
 
@@ -176,7 +175,7 @@ async def test_get_resource_valid_auth_with_valid_azure_ad(
     mock_AsyncClient.return_value = mocked_client
 
     for method in valid_methods:
-        body: Optional[str] = None
+        body: str | None = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             # We don't have a consistent way of testing POST/PUT methods -
             # We will operate under the assumption that if the GET methods are functioning with auth
@@ -201,7 +200,7 @@ async def test_resource_with_invalid_methods(
 ):
     """Runs through invalid HTTP methods for each endpoint"""
     for method in [m for m in HTTPMethod if m not in valid_methods]:
-        body: Optional[str] = None
+        body: str | None = None
         if method != HTTPMethod.GET and method != HTTPMethod.HEAD:
             body = EMPTY_XML_DOC
 
@@ -221,7 +220,7 @@ async def test_fingerprint_auth(
         assert_response_header(response, HTTPStatus.OK, expected_content_type=None)
 
 
-async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_prefix: Optional[str]) -> set[str]:
+async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_prefix: str | None) -> set[str]:
     """Internal utility - crawls all ALL_ENDPOINTS_WITH_SUPPORTED_METHODS. Returns all crawled URIs"""
     uris_to_visit = [
         (uri, ["."]) for (methods, uri) in ALL_ENDPOINTS_WITH_SUPPORTED_METHODS if HTTPMethod.GET in methods
@@ -240,7 +239,7 @@ async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_pref
         # make the request
         response = await client.get(uri, headers=valid_headers)
         if response.status_code == HTTPStatus.NOT_FOUND:
-            assert False, f"URI {uri} is not found. It was sourced from {src_uris}"
+            raise AssertionError(f"URI {uri} is not found. It was sourced from {src_uris}")
         assert_response_header(response, HTTPStatus.OK)
         body = read_response_body_string(response)
         assert len(body) > 0, f"Empty body for {uri}"
@@ -251,9 +250,9 @@ async def _do_crawl(client: AsyncClient, valid_headers: dict, expected_href_pref
             new_uri = match.group(1)
 
             if expected_href_prefix is not None:
-                assert new_uri.startswith(
-                    expected_href_prefix
-                ), f"GET uri {uri} returned a href {new_uri} NOT prefixed with {expected_href_prefix}\n{body}"
+                assert new_uri.startswith(expected_href_prefix), (
+                    f"GET uri {uri} returned a href {new_uri} NOT prefixed with {expected_href_prefix}\n{body}"
+                )
 
                 # The actual URI that our server will respond to is sans the prefix value
                 new_uri = new_uri[len(expected_href_prefix) :]  # noqa E203
@@ -273,6 +272,7 @@ async def test_crawl_hrefs(pg_base_config, client: AsyncClient, valid_headers: d
     # want /edev/1 at the head so we update the DB before crawling
     async with generate_async_session(pg_base_config) as session:
         site = await select_single_site_with_site_id(session, 1, 1)
+        assert site is not None
         site.changed_time = datetime(2028, 11, 10)
         await session.commit()
 
@@ -295,6 +295,7 @@ async def test_crawl_hrefs_with_prefix(pg_base_config, client: AsyncClient, vali
     # want /edev/1 at the head so we update the DB before crawling
     async with generate_async_session(pg_base_config) as session:
         site = await select_single_site_with_site_id(session, 1, 1)
+        assert site is not None
         site.changed_time = datetime(2028, 11, 10)
         await session.commit()
 

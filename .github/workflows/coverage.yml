@@ -15,36 +15,35 @@ jobs:
     outputs:
       source_raw: ${{ steps.extract.outputs.raw }}
     steps:
-      - name: Checkout (source branch)
-        uses: actions/checkout@v3.1.0
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - name: Setup Python
-        uses: actions/setup-python@v4.2.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Install Dependencies
         run: |
           sudo apt install -y postgresql
-          pip install --ignore-installed .[dev,test]
-          pip install pytest-cov pytest-xdist
+          uv sync --extra dev --extra test
 
       - name: Coverage (source branch)
         run: |
           echo "[run]" > .coveragecfg
           echo "data_file=.coverage-source" >> .coveragecfg
-          pytest -n auto --cov=envoy --cov-config=.coveragecfg .
+          uv run pytest -n auto --cov=envoy --cov-config=.coveragecfg .
 
       - name: Extract Coverage
         id: extract
         run: |
           echo 'raw<<EOF' >> $GITHUB_OUTPUT
-          coverage report --data-file=.coverage-source --omit='tests/**' >> $GITHUB_OUTPUT
+          uv run coverage report --data-file=.coverage-source --omit='tests/**' >> $GITHUB_OUTPUT
           echo EOF >> $GITHUB_OUTPUT
-          coverage html --data-file=.coverage-source --omit='tests/**'
+          uv run coverage html --data-file=.coverage-source --omit='tests/**'
 
       - name: Upload Target Coverage HTML Report Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: source-code-coverage-html
           path: htmlcov/
@@ -56,37 +55,36 @@ jobs:
       target_raw: ${{ steps.extract.outputs.raw }}
     steps:
       - name: Checkout (target branch)
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.base_ref }}
 
-      - name: Setup Python
-        uses: actions/setup-python@v4.2.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Install Dependencies
         run: |
           sudo apt install -y postgresql
-          pip install --ignore-installed .[dev,test]
-          pip install pytest-cov pytest-xdist
+          uv sync --extra dev --extra test
 
       - name: Coverage (target branch)
         run: |
           echo "[run]" > .coveragecfg
           echo "data_file=.coverage-target" >> .coveragecfg
-          pytest -n auto --cov=envoy --cov-config=.coveragecfg .
+          uv run pytest -n auto --cov=envoy --cov-config=.coveragecfg .
 
       - name: Extract Coverage
         id: extract
         run: |
           echo 'raw<<EOF' >> $GITHUB_OUTPUT
-          coverage report --data-file=.coverage-target --omit='tests/**' >> $GITHUB_OUTPUT
+          uv run coverage report --data-file=.coverage-target --omit='tests/**' >> $GITHUB_OUTPUT
           echo EOF >> $GITHUB_OUTPUT
-          coverage html --data-file=.coverage-target --omit='tests/**'
+          uv run coverage html --data-file=.coverage-target --omit='tests/**'
 
       - name: Upload Target Coverage HTML Report Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: target-code-coverage-html
           path: htmlcov/

@@ -8,7 +8,7 @@ class ExcludeMessageFilter(logging.Filter):
 
     It will not be loaded by default"""
 
-    def __init__(self, exclude_str: str):
+    def __init__(self, exclude_str: str) -> None:
         super().__init__()
         self.exclude_str = exclude_str
 

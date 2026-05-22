@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.pub_sub import Subscription, SubscriptionListResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +31,7 @@ class SubscriptionManager:
     @staticmethod
     async def fetch_subscription_by_id(
         session: AsyncSession, scope: AggregatorRequestScope, subscription_id: int
-    ) -> Optional[Subscription]:
+    ) -> Subscription | None:
         """Fetches a subscription for a particular request (optionally scoped to a single site_id)
 
         site_id: If specified the returned sub must also have scoped_site set to this value
@@ -195,7 +194,7 @@ class SubscriptionManager:
         aggregator = await select_aggregator(session, scope.aggregator_id)
         if aggregator is None:
             raise NotFoundError(f"No aggregator with ID {scope.aggregator_id} to receive subscription")
-        valid_domains = set((d.domain for d in aggregator.domains))
+        valid_domains = set(d.domain for d in aggregator.domains)
 
         # We map - but we still need to validate the mapped subscription to ensure it's valid
         sub = SubscriptionMapper.map_from_request(

@@ -47,8 +47,8 @@ def test_map_to_paged_site_response():
     limit = 123
     start = 456
     total_count = 789
-    period_start = datetime(2022, 11, 12, 4, 5, 6, tzinfo=timezone.utc)
-    period_end = datetime(2023, 12, 13, 5, 6, 7, tzinfo=timezone.utc)
+    period_start = datetime(2022, 11, 12, 4, 5, 6, tzinfo=UTC)
+    period_end = datetime(2023, 12, 13, 5, 6, 7, tzinfo=UTC)
 
     page_response = ArchiveListMapper.map_to_sites_response(total_count, sites, start, limit, period_start, period_end)
     assert isinstance(page_response, ArchivePageResponse)
@@ -124,8 +124,8 @@ def test_map_to_paged_doe_response():
     limit = 123
     start = 456
     total_count = 789
-    period_start = datetime(2022, 11, 12, 4, 5, 6, tzinfo=timezone.utc)
-    period_end = datetime(2023, 12, 13, 5, 6, 7, tzinfo=timezone.utc)
+    period_start = datetime(2022, 11, 12, 4, 5, 6, tzinfo=UTC)
+    period_end = datetime(2023, 12, 13, 5, 6, 7, tzinfo=UTC)
 
     page_response = ArchiveListMapper.map_to_does_response(total_count, does, start, limit, period_start, period_end)
     assert isinstance(page_response, ArchivePageResponse)
@@ -165,8 +165,8 @@ def test_map_to_paged_rate_response():
     limit = 123
     start = 456
     total_count = 789
-    period_start = datetime(2022, 11, 12, 4, 5, 6, tzinfo=timezone.utc)
-    period_end = datetime(2023, 12, 13, 5, 6, 7, tzinfo=timezone.utc)
+    period_start = datetime(2022, 11, 12, 4, 5, 6, tzinfo=UTC)
+    period_end = datetime(2023, 12, 13, 5, 6, 7, tzinfo=UTC)
 
     page_response = ArchiveListMapper.map_to_rates_response(total_count, rates, start, limit, period_start, period_end)
     assert isinstance(page_response, ArchivePageResponse)

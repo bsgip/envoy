@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.types import (
     AccumulationBehaviourType,
@@ -21,7 +20,7 @@ from envoy.server.model.archive.base import ARCHIVE_TABLE_PREFIX
 
 
 class ArchiveSiteReadingType(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site_reading.SiteReadingType.__tablename__  # type: ignore
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site_reading.SiteReadingType.__tablename__
 
     site_reading_type_id: Mapped[int] = mapped_column(INTEGER, index=True)
     aggregator_id: Mapped[int] = mapped_column(INTEGER)
@@ -39,26 +38,26 @@ class ArchiveSiteReadingType(ArchiveBase):
     default_interval_seconds: Mapped[int] = mapped_column(INTEGER)
     role_flags: Mapped[RoleFlagsType] = mapped_column(INTEGER)
 
-    description: Mapped[Optional[str]] = mapped_column(VARCHAR(length=32), nullable=True)
-    group_description: Mapped[Optional[str]] = mapped_column(VARCHAR(length=32), nullable=True)
-    version: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
-    group_version: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
-    group_status: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
-    commodity: Mapped[Optional[CommodityType]] = mapped_column(INTEGER, nullable=True)
+    description: Mapped[str | None] = mapped_column(VARCHAR(length=32), nullable=True)
+    group_description: Mapped[str | None] = mapped_column(VARCHAR(length=32), nullable=True)
+    version: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
+    group_version: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
+    group_status: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
+    commodity: Mapped[CommodityType | None] = mapped_column(INTEGER, nullable=True)
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading set was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the reading set was last altered
 
 
 class ArchiveSiteReading(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site_reading.SiteReading.__tablename__  # type: ignore
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.site_reading.SiteReading.__tablename__
 
     site_reading_id: Mapped[int] = mapped_column(BigInteger, index=True)
     site_reading_type_id: Mapped[int] = mapped_column(INTEGER)
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    local_id: Mapped[Optional[int]] = mapped_column(INTEGER, nullable=True)
+    local_id: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
     quality_flags: Mapped[QualityFlagsType] = mapped_column(INTEGER)
     time_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     time_period_seconds: Mapped[int] = mapped_column(INTEGER)  # Length of the reading in seconds

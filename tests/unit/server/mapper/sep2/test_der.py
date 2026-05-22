@@ -65,6 +65,7 @@ def test_der_mapping():
     mapped_all_set = DERMapper.map_to_response(scope, all_set, derp_id)
     assert isinstance(mapped_all_set, DER)
 
+    assert mapped_all_set.href is not None
     assert mapped_all_set.href.startswith("/my/prefix")
     assert str(all_set.site_id) in mapped_all_set.href
     assert isinstance(mapped_all_set.AssociatedDERProgramListLink, Link)
@@ -79,12 +80,14 @@ def test_der_mapping():
     # Test with NO active der program id
     mapped_all_set_no_actderp = DERMapper.map_to_response(scope, all_set, None)
     assert isinstance(mapped_all_set_no_actderp, DER)
+    assert mapped_all_set_no_actderp.href is not None
     assert mapped_all_set_no_actderp.href.startswith("/my/prefix")
     assert str(all_set.site_id) in mapped_all_set_no_actderp.href
     assert mapped_all_set_no_actderp.CurrentDERProgramLink is None
 
     mapped_with_none = DERMapper.map_to_response(scope, with_none, derp_id)
     assert isinstance(mapped_with_none, DER)
+    assert mapped_with_none.href is not None
     assert mapped_with_none.href.startswith("/my/prefix")
     assert str(with_none.site_id) in mapped_with_none.href
     assert isinstance(mapped_with_none.AssociatedDERProgramListLink, Link)
@@ -112,8 +115,8 @@ def test_der_list():
     assert mapped.results == 2
     assert mapped.all_ == count
     assert mapped.pollRate == poll_rate
-    assert len(mapped.DER_) == len(ders)
-    assert all([isinstance(x, DER) for x in mapped.DER_])
+    assert len(mapped.DER_ or []) == len(ders)
+    assert all([isinstance(x, DER) for x in mapped.DER_ or []])
 
 
 @pytest.mark.parametrize("optional_is_none", [True, False])
@@ -125,6 +128,7 @@ def test_der_avail_roundtrip(optional_is_none: bool):
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, site_id=9876, href_prefix="/my/prefix"
     )
+    assert scope.site_id is not None
     entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
@@ -136,6 +140,7 @@ def test_der_avail_roundtrip(optional_is_none: bool):
     assert isinstance(actual, DERAvailability)
 
     assert_der_info_type_equal(DERAvailability, expected, actual)
+    assert actual.href is not None
     assert actual.href.startswith("/my/prefix")
     assert f"/{entity_site_id}" in actual.href
     assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
@@ -150,20 +155,26 @@ def test_der_status_roundtrip(optional_is_none: bool):
         DERStatus, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
     if not optional_is_none:
+        assert expected.manufacturerStatus is not None
+        assert expected.genConnectStatus is not None
+        assert expected.storConnectStatus is not None
         expected.alarmStatus = to_hex_binary(
             AlarmStatusType.DER_FAULT_EMERGENCY_LOCAL | AlarmStatusType.DER_FAULT_OVER_FREQUENCY
         )
         expected.manufacturerStatus.value = "lilval"
         if expected.genConnectStatus:
-            expected.genConnectStatus.value = to_hex_binary(ConnectStatusType.CONNECTED | ConnectStatusType.AVAILABLE)
+            expected.genConnectStatus.value = (
+                to_hex_binary(ConnectStatusType.CONNECTED | ConnectStatusType.AVAILABLE) or ""
+            )
         if expected.storConnectStatus:
-            expected.storConnectStatus.value = to_hex_binary(
-                ConnectStatusType.OPERATING | ConnectStatusType.FAULT_ERROR
+            expected.storConnectStatus.value = (
+                to_hex_binary(ConnectStatusType.OPERATING | ConnectStatusType.FAULT_ERROR) or ""
             )
 
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, site_id=9875, href_prefix="/my/prefix"
     )
+    assert scope.site_id is not None
     entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
@@ -175,6 +186,7 @@ def test_der_status_roundtrip(optional_is_none: bool):
     assert isinstance(actual, DERStatus)
 
     assert_der_info_type_equal(DERStatus, expected, actual)
+    assert actual.href is not None
     assert actual.href.startswith("/my/prefix")
     assert f"/{entity_site_id}" in actual.href
     assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
@@ -194,6 +206,7 @@ def test_der_capability_roundtrip(optional_is_none: bool):
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1991, href_prefix="/my/prefix"
     )
+    assert scope.site_id is not None
     entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 3)
 
@@ -205,6 +218,7 @@ def test_der_capability_roundtrip(optional_is_none: bool):
     assert isinstance(actual, DERCapability)
 
     assert_der_info_type_equal(DERCapability, expected, actual)
+    assert actual.href is not None
     assert actual.href.startswith("/my/prefix")
     assert f"/{entity_site_id}" in actual.href
     assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"
@@ -225,6 +239,7 @@ def test_der_settings_roundtrip(optional_is_none: bool):
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=9876, href_prefix="/my/prefix"
     )
+    assert scope.site_id is not None
     entity_site_id = scope.site_id + 17
     changed_time = datetime(2023, 8, 9, 1, 2, 4)
 
@@ -235,6 +250,7 @@ def test_der_settings_roundtrip(optional_is_none: bool):
     assert isinstance(actual, DERSettings)
 
     assert_der_info_type_equal(DERSettings, expected, actual)
+    assert actual.href is not None
     assert actual.href.startswith("/my/prefix")
     assert f"/{entity_site_id}" in actual.href
     assert f"/{scope.display_site_id}" not in actual.href, "Should be using the entity site ID in the href"

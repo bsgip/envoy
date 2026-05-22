@@ -29,16 +29,27 @@ envoy has a full demo server for quickly evaluating its capabilities. See the [d
 
 To install envoy for local development, clone this repository and then run:
 
-`pip install -e .[dev,test]`
+```
+# Using uv
+uv sync --python 3.13 --all-extras
+
+# Using pip
+pip install -e .[dev,test]
+```
 
 To ensure everything is setup correctly, tests can be run with:
 
-`pytest`
+```
+# Under uv
+uv run pytest
+
+# Under pip
+pytest
+```
 
 envoy uses the following linting/formatting tools:
-* [black](https://pypi.org/project/black/)
-* [flake8](https://pypi.org/project/flake8/)
-* [mypy](https://pypi.org/project/mypy/)
+* [ruff](https://github.com/astral-sh/ruff)
+* [ty](https://github.com/astral-sh/ty)
 * [bandit](https://pypi.org/project/bandit/)
 
 Contributions via a pull request are welcome but will be validated using the above tools.
@@ -118,7 +129,7 @@ If updating any of the crud models - you will need to update the alembic migrati
 
 ```
 cd src/envoy/server
-alembic revision --autogenerate -m "MY_SUMMARY_OF_CHANGES"
+uv run alembic revision --autogenerate -m "MY_SUMMARY_OF_CHANGES"
 ```
 
 3. Check the newly created migration file in `src/envoy/server/alembic/versions` (make sure it has what you've changed)
@@ -131,6 +142,8 @@ alembic revision --autogenerate -m "MY_SUMMARY_OF_CHANGES"
 To run Envoy locally as a development environment you'll need to setup a local postgresql database and python. This guide will assume that you have python 3.10+ and postgresql 14+ installed.
 
 1. Install dependencies for main server + tests
+
+`uv sync --extra test --extra dev`
 
 `pip install -e .[test,dev]`
 
@@ -172,7 +185,7 @@ ADMIN_PASSWORD=testpassword
 ```
 cd src/envoy/server
 ln -s ../../../.env .env
-alembic upgrade head
+uv run alembic upgrade head
 cd -
 ```
 
@@ -187,7 +200,7 @@ The Postman collection in postman/envoy.postman_collection.json uses certificate
 The notification server will require workers to handle executing the async tasks. This is handled by taskiq and a worker
 can be initialised with:
 
-`taskiq worker envoy.notification.main:broker envoy.notification.task`
+`uv run taskiq worker envoy.notification.main:broker envoy.notification.task`
 
 7. Start server
 

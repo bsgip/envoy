@@ -69,8 +69,8 @@ async def test_delete_site_generates_notification(
     assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
     assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
 
-    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
-    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+    assert all([HEADER_NOTIFICATION_ID in r.headers_dict for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers_dict[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
         notifications_enabled.logged_requests
     ), "Expected unique notification ids for each request"
 
@@ -81,14 +81,15 @@ async def test_delete_site_generates_notification(
             [
                 r
                 for r in notifications_enabled.logged_requests
-                if r.uri == subscription1_uri
+                if r.content is not None
+                and r.uri == subscription1_uri
                 and "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a" in r.content  # unique to site 1
                 and "<status>4</status>" in r.content  # This is a deletion notification
             ]
         )
         == 1
     ), "The NMI for site 1 should've been in the notification batch"
-    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
+    assert all([r.headers_dict.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
 
 
 @pytest.mark.anyio
@@ -145,8 +146,8 @@ async def test_delete_mup_generates_notification(
     assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
     assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, subscription1_uri)] == 1
 
-    assert all([HEADER_NOTIFICATION_ID in r.headers for r in notifications_enabled.logged_requests])
-    assert len(set([r.headers[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
+    assert all([HEADER_NOTIFICATION_ID in r.headers_dict for r in notifications_enabled.logged_requests])
+    assert len(set([r.headers_dict[HEADER_NOTIFICATION_ID] for r in notifications_enabled.logged_requests])) == len(
         notifications_enabled.logged_requests
     ), "Expected unique notification ids for each request"
 
@@ -157,7 +158,8 @@ async def test_delete_mup_generates_notification(
             [
                 r
                 for r in notifications_enabled.logged_requests
-                if r.uri == subscription1_uri
+                if r.content is not None
+                and r.uri == subscription1_uri
                 and "2B67" in r.content  # LocalID Value 11111 (unique to reading 1)
                 and "56CE" in r.content  # LocalID Value 22222 (unique to reading 2)
                 and "<status>4</status>" in r.content  # This is a deletion notification
@@ -165,4 +167,4 @@ async def test_delete_mup_generates_notification(
         )
         == 1
     ), "The readings (1 and 2) for mup 1 should've been in the notification batch"
-    assert all([r.headers.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])
+    assert all([r.headers_dict.get("Content-Type") == SEP_XML_MIME for r in notifications_enabled.logged_requests])

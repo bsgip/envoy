@@ -1,8 +1,9 @@
 import logging
+from collections.abc import Generator, Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import islice
-from typing import Annotated, Generator, Generic, Iterable, Optional, Sequence, TypeVar, cast
+from typing import Annotated, Generic, TypeVar, cast
 from uuid import UUID, uuid4
 
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
@@ -82,7 +83,7 @@ class NotificationEntities(Generic[TResourceModel]):
 T = TypeVar("T")
 
 
-def scope_for_subscription(sub: Subscription, href_prefix: Optional[str]) -> AggregatorRequestScope:
+def scope_for_subscription(sub: Subscription, href_prefix: str | None) -> AggregatorRequestScope:
     """Generates a request scope for use with a subscription when mapping elements"""
     return AggregatorRequestScope(
         aggregator_id=sub.aggregator_id,
@@ -163,7 +164,7 @@ def entities_serviced_by_subscription(
                 if c.attribute == ConditionAttributeIdentifier.READING_VALUE:
                     # If the reading is within the condition thresholds - don't include it
                     # (we only want values out of range)
-                    reading_value = cast(SiteReading, e).value  # type: ignore # mypy quirk
+                    reading_value = cast(SiteReading, e).value
                     low_range = c.lower_threshold is None or reading_value < c.lower_threshold
                     high_range = c.upper_threshold is None or reading_value > c.upper_threshold
 
@@ -207,7 +208,7 @@ def entities_to_notification(  # noqa: C901
     resource: SubscriptionResource,
     sub: Subscription,
     batch_key: tuple,
-    href_prefix: Optional[str],
+    href_prefix: str | None,
     notification_type: NotificationType,
     entities: Sequence[TResourceModel],
     config: RuntimeServerConfig,
@@ -216,7 +217,12 @@ def entities_to_notification(  # noqa: C901
     scope = scope_for_subscription(sub, href_prefix)
     if resource == SubscriptionResource.SITE:
         return NotificationMapper.map_sites_to_response(
-            cast(Sequence[Site], entities), sub, scope, notification_type, config.disable_edev_registration, config.edevl_pollrate_seconds  # type: ignore # mypy quirk # noqa: E501
+            cast(Sequence[Site], entities),
+            sub,
+            scope,
+            notification_type,
+            config.disable_edev_registration,
+            config.edevl_pollrate_seconds,
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
 
@@ -236,7 +242,7 @@ def entities_to_notification(  # noqa: C901
         _, _, site_control_group_id = batch_key
         return NotificationMapper.map_does_to_response(
             site_control_group_id=site_control_group_id,
-            does=cast(Sequence[DynamicOperatingEnvelope], entities),  # type: ignore
+            does=cast(Sequence[DynamicOperatingEnvelope], entities),
             sub=sub,
             scope=scope,
             notification_type=notification_type,
@@ -245,7 +251,7 @@ def entities_to_notification(  # noqa: C901
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         # SITE_CONTROL_GROUP: (aggregator_id: int, site_control_group_id: int)
         return NotificationMapper.map_site_control_groups_to_response(
-            site_control_groups=[e.original for e in cast(Sequence[SiteScopedSiteControlGroup], entities)],  # type: ignore # noqa: E501
+            site_control_groups=[e.original for e in cast(Sequence[SiteScopedSiteControlGroup], entities)],
             sub=sub,
             scope=scope,
             notification_type=notification_type,
@@ -255,33 +261,37 @@ def entities_to_notification(  # noqa: C901
         # READING: (aggregator_id: int, site_id: int, site_reading_type_id: int)
         _, _, group_id = batch_key
         return NotificationMapper.map_readings_to_response(
-            group_id, cast(Sequence[SiteReading], entities), sub, scope, notification_type  # type: ignore
+            group_id,
+            cast(Sequence[SiteReading], entities),
+            sub,
+            scope,
+            notification_type,
         )
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # SITE_DER_AVAILABILITY: (aggregator_id: int, site_id: int, site_der_id: int)
         _, site_id, site_der_id = batch_key
-        availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None  # type: ignore
+        availability = cast(SiteDERAvailability, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_availability_to_response(
             site_der_id, availability, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_RATING:
         # SITE_DER_RATING: (aggregator_id: int, site_id: int, site_der_id: int)
         _, site_id, site_der_id = batch_key
-        rating = cast(SiteDERRating, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
+        rating = cast(SiteDERRating, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_rating_to_response(
             site_der_id, rating, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_SETTING:
         # SITE_DER_SETTING: (aggregator_id: int, site_id: int, site_der_id: int)
         _, site_id, site_der_id = batch_key
-        settings = cast(SiteDERSetting, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
+        settings = cast(SiteDERSetting, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_settings_to_response(
             site_der_id, settings, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         # SITE_DER_STATUS: (aggregator_id: int, site_id: int, site_der_id: int)
         _, site_id, site_der_id = batch_key
-        status = cast(SiteDERStatus, entities[0]) if len(entities) > 0 else None  # type: ignore # mypy quirk
+        status = cast(SiteDERStatus, entities[0]) if len(entities) > 0 else None
         return NotificationMapper.map_der_status_to_response(
             site_der_id, status, site_id, sub, scope, notification_type
         )  # We will only EVER have single element lists for this resource
@@ -473,7 +483,7 @@ async def handle_batch(
 async def check_db_change_or_delete(
     resource: SubscriptionResource,
     timestamp_epoch: float,
-    href_prefix: Annotated[Optional[str], TaskiqDepends(href_prefix_dependency)] = TaskiqDepends(),
+    href_prefix: Annotated[str | None, TaskiqDepends(href_prefix_dependency)] = TaskiqDepends(),
     session: Annotated[AsyncSession, TaskiqDepends(session_dependency)] = TaskiqDepends(),
     broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)] = TaskiqDepends(),
 ) -> None:
@@ -486,7 +496,7 @@ async def check_db_change_or_delete(
     resource_name: The name of the resource that is being checked for changes
     timestamp: The datetime.timestamp() that will be used for finding resources (must be exact match)"""
 
-    timestamp = datetime.fromtimestamp(timestamp_epoch, tz=timezone.utc)
+    timestamp = datetime.fromtimestamp(timestamp_epoch, tz=UTC)
     logger.debug("check_db_change_or_delete for resource %s at timestamp %s", resource, timestamp)
 
     batched_entities = await fetch_batched_entities(session, resource, timestamp)

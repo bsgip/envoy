@@ -1,7 +1,7 @@
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Sequence, Union
 
 from envoy_schema.server.schema.sep2.metering_mirror import (
     MirrorMeterReading,
@@ -19,11 +19,11 @@ from envoy.server.crud.site_reading import (
     GroupedSiteReadingTypeDetails,
     count_grouped_site_reading_details,
     delete_site_reading_type_group,
-    fetch_grouped_site_reading_details,
     fetch_any_site_reading_type_for_mrids_other_site,
+    fetch_grouped_site_reading_details,
+    fetch_site_reading_type_for_mrid,
     fetch_site_reading_types_for_group,
     fetch_site_reading_types_for_group_mrid,
-    fetch_site_reading_type_for_mrid,
     generate_site_reading_type_group_id,
     upsert_site_readings,
 )
@@ -83,9 +83,7 @@ class MirrorMeteringManager:
         group_srts = await fetch_site_reading_types_for_group_mrid(
             session, aggregator_id=scope.aggregator_id, site_id=site_id, group_mrid=mup.mRID
         )
-        srts_by_mrid: CaseInsensitiveDict[SiteReadingType] = CaseInsensitiveDict(
-            ((srt.mrid, srt) for srt in group_srts)
-        )
+        srts_by_mrid: CaseInsensitiveDict[SiteReadingType] = CaseInsensitiveDict((srt.mrid, srt) for srt in group_srts)
 
         new_mmr_mrids = [mmr.mRID for mmr in mup.mirrorMeterReadings if mmr.mRID not in srts_by_mrid]
         if new_mmr_mrids and await fetch_any_site_reading_type_for_mrids_other_site(
@@ -237,7 +235,7 @@ class MirrorMeteringManager:
         session: AsyncSession,
         scope: MUPRequestScope,
         mup_id: int,
-        request: Union[MirrorMeterReading, MirrorMeterReadingListRequest],
+        request: MirrorMeterReading | MirrorMeterReadingListRequest,
     ) -> None:
         """Adds or updates a set of readings (updates based on start time) for a given mup id.
 
@@ -247,7 +245,7 @@ class MirrorMeteringManager:
         )
         if not srts:
             raise NotFoundError(f"MirrorUsagePoint with id {mup_id} doesn't exist or is inaccessible")
-        srts_by_mrid: CaseInsensitiveDict[SiteReadingType] = CaseInsensitiveDict(((srt.mrid, srt) for srt in srts))
+        srts_by_mrid: CaseInsensitiveDict[SiteReadingType] = CaseInsensitiveDict((srt.mrid, srt) for srt in srts)
 
         role_flags = srts[0].role_flags  # We will always copy these across the group
         site_id = srts[0].site_id  # We will always copy these across the group
@@ -293,7 +291,7 @@ class MirrorMeteringManager:
         # fetch runtime server config
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
-        site_id: Optional[int]
+        site_id: int | None
         if scope.source == CertificateType.AGGREGATOR_CERTIFICATE:
             site_id = None  # No scoping required
         else:
@@ -341,9 +339,9 @@ class MirrorMeteringManager:
         group_id: int,
         role_flags: RoleFlagsType,
         group_mrid: str,
-        group_description: Optional[str],
-        group_version: Optional[int],
-        group_status: Optional[int],
+        group_description: str | None,
+        group_version: int | None,
+        group_status: int | None,
     ) -> None:
         """Adds or updates a set of MirrorMeterReadings for a given group id. Expects every entry in
         srts_by_mrid to be flushed to the database (so they have a primary key set).
@@ -390,7 +388,7 @@ class MirrorMeteringManager:
                     session,
                     SiteReadingType,
                     ArchiveSiteReadingType,
-                    lambda q: q.where(SiteReadingType.site_reading_type_id == target_srt.site_reading_type_id),
+                    lambda q: q.where(SiteReadingType.site_reading_type_id == target_srt.site_reading_type_id),  # noqa: B023 # Looks like a ruff issue
                 )
                 MirrorUsagePointMapper.merge_site_reading_type(target_srt, src_srt, changed_time)
 

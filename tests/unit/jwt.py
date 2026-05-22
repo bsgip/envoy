@@ -1,6 +1,5 @@
 import base64
 from datetime import datetime, timedelta
-from typing import Optional, Union
 
 import jwt
 from cryptography.hazmat.primitives import serialization
@@ -54,17 +53,17 @@ def generate_azure_jwk_definition(pk: RSAPrivateKey) -> dict[str, str]:
 
 
 def generate_rs256_jwt(
-    tenant_id: Optional[str] = DEFAULT_TENANT_ID,
-    aud: Optional[str] = DEFAULT_CLIENT_ID,
-    sub: Optional[str] = DEFAULT_SUBJECT_ID,
-    issuer: Optional[str] = DEFAULT_ISSUER,
+    tenant_id: str | None = DEFAULT_TENANT_ID,
+    aud: str | None = DEFAULT_CLIENT_ID,
+    sub: str | None = DEFAULT_SUBJECT_ID,
+    issuer: str | None = DEFAULT_ISSUER,
     expired: bool = False,
     premature: bool = False,
-    kid_override: Optional[str] = None,
+    kid_override: str | None = None,
     key_file: str = TEST_KEY_1_PATH,
 ) -> str:
     """Generates an RS256 signed JWT with the specified set of claims"""
-    payload_data: dict[str, Union[int, str]] = {}
+    payload_data: dict[str, int | str] = {}
     payload_header: dict[str, str] = {}
 
     if tenant_id is not None:

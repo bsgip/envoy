@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 
 import pytest
@@ -60,7 +60,7 @@ async def test_get_price_health_works_for_any_auth(client: AsyncClient, pg_base_
     """Checks HEALTH_DYNAMIC_PRICE_URI returns HTTP 200 for all requests (ignoring auth)"""
 
     # Update start time so we have a future price
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     async with generate_async_session(pg_base_config) as session:
         stmt = select(TariffGeneratedRate).where(TariffGeneratedRate.tariff_generated_rate_id == 4)
         resp = await session.execute(stmt)
@@ -94,7 +94,7 @@ async def test_get_doe_health_works_for_any_auth(client: AsyncClient, pg_base_co
     """Checks HEALTH_DOE_URI returns HTTP 200 for all requests (ignoring auth)"""
 
     # Update start time so we have a future price
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     async with generate_async_session(pg_base_config) as session:
         stmt = select(DynamicOperatingEnvelope).where(DynamicOperatingEnvelope.dynamic_operating_envelope_id == 2)
         resp = await session.execute(stmt)

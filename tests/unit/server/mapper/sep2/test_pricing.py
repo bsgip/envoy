@@ -41,6 +41,7 @@ def test_tariff_profile_mapping():
     scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001)
     mapped_all_set = TariffProfileMapper.map_to_response(scope, all_set, total_components, total_rates)
     assert mapped_all_set
+    assert mapped_all_set.href is not None
     assert f"/{scope.display_site_id}" in mapped_all_set.href
     assert mapped_all_set.pricePowerOfTenMultiplier == all_set.price_power_of_ten_multiplier
     assert mapped_all_set.primacyType == all_set.primacy
@@ -59,6 +60,7 @@ def test_tariff_profile_mapping():
     some_set = generate_class_instance(Tariff, seed=202, optional_is_none=True)
     mapped_some_set = TariffProfileMapper.map_to_response(scope, some_set, total_components, total_rates)
     assert mapped_some_set
+    assert mapped_some_set.href is not None
     assert f"/{scope.display_site_id}" in mapped_some_set.href
     assert mapped_some_set.pricePowerOfTenMultiplier == some_set.price_power_of_ten_multiplier
     assert mapped_some_set.primacyType == some_set.primacy
@@ -78,7 +80,7 @@ def test_tariff_profile_mapping():
 
 
 @pytest.mark.parametrize("optional_is_none, fsa_id", product([True, False], [1234321, None]))
-def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: Optional[int]):
+def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: int | None):
     """Non exhaustive test of the tariff profile list mapping - mainly to sanity check important fields and ensure
     that exceptions aren't being raised"""
     tariffs: list[Tariff] = [
@@ -98,6 +100,8 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: Optional[in
     )
     assert isinstance(mapped, TariffProfileListResponse)
 
+    assert mapped.href is not None
+    assert scope.href_prefix is not None
     assert mapped.href.startswith(scope.href_prefix)
     if fsa_id is None:
         assert mapped.href.endswith(TariffProfileListUri.format(site_id=scope.display_site_id))
@@ -108,8 +112,14 @@ def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: Optional[in
     assert mapped.results == 2
     assert mapped.pollRate == poll_rate
     assert_list_type(TariffProfileResponse, mapped.TariffProfile, 2)
-    assert all([f"/{scope.display_site_id}" in tp.href for tp in mapped.TariffProfile])
-    assert all([f"/{scope.display_site_id}" in tp.RateComponentListLink.href for tp in mapped.TariffProfile])
+    assert mapped.TariffProfile is not None
+    assert all(tp.href is not None and f"/{scope.display_site_id}" in tp.href for tp in mapped.TariffProfile)
+    assert all(
+        tp.RateComponentListLink is not None
+        and tp.RateComponentListLink.href is not None
+        and f"/{scope.display_site_id}" in tp.RateComponentListLink.href
+        for tp in mapped.TariffProfile
+    )
 
     # Double check our counts get handed down to the child lists correctly
     assert mapped.TariffProfile[0].CombinedTimeTariffIntervalListLink.all_ == tariff_rate_counts[0]
@@ -374,6 +384,7 @@ def test_time_tariff_interval_map_to_list_response(tariff_component_id: Optional
     assert "//" not in mapped.href
 
     assert_list_type(TimeTariffIntervalResponse, mapped.TimeTariffInterval, len(rates))
+    assert mapped.TimeTariffInterval is not None
     list_items_mrids = [x.mRID for x in mapped.TimeTariffInterval]
     assert len(list_items_mrids) == len(set(list_items_mrids)), "Checking all list items are unique"
 

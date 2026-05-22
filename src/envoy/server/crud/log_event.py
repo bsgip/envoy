@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence, Union
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,9 +10,9 @@ from envoy.server.model.site import Site, SiteLogEvent
 async def select_log_event_for_scope(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     site_log_event_id: int,
-) -> Optional[SiteLogEvent]:
+) -> SiteLogEvent | None:
     """Attempts to fetch a SiteLogEvent using its' primary key, also scoping it to a particular aggregator/site
 
     Will NOT populate the "site" relationship
@@ -36,18 +36,18 @@ async def _log_responses(
     is_counting: bool,
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     start: int,
-    limit: Optional[int],
+    limit: int | None,
     created_after: datetime,
-) -> Union[Sequence[SiteLogEvent], int]:
+) -> Sequence[SiteLogEvent] | int:
     """Internal utility for fetching SiteLogEvent responses
 
     site_id: If None - no site_id filter applied, otherwise filter on site_id = Value
 
     Orders by 2030.5 requirements on LogEvent which is created DESC, LogEventID DESC"""
 
-    select_clause: Union[Select[tuple[int]], Select[tuple[SiteLogEvent]]]
+    select_clause: Select[tuple[int]] | Select[tuple[SiteLogEvent]]
     if is_counting:
         select_clause = select(func.count()).select_from(SiteLogEvent)
     else:
@@ -79,20 +79,18 @@ async def _log_responses(
 
 
 async def count_site_log_events(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], created_after: datetime
+    session: AsyncSession, aggregator_id: int, site_id: int | None, created_after: datetime
 ) -> int:
     """Fetches the number of SiteLogEvent's stored.
 
     created_after: Only logs with a created_time greater than this value will be counted (0 will count everything)
     """
 
-    return await _log_responses(
-        True, session, aggregator_id, site_id, 0, None, created_after
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    return await _log_responses(True, session, aggregator_id, site_id, 0, None, created_after)  # ty:ignore[invalid-return-type] # Test coverage will ensure that it's an int and not an entity
 
 
 async def select_site_log_events(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], start: int, limit: int, created_after: datetime
+    session: AsyncSession, aggregator_id: int, site_id: int | None, start: int, limit: int, created_after: datetime
 ) -> Sequence[SiteLogEvent]:
     """Selects SiteLogEvent entities (with pagination).
 
@@ -103,6 +101,4 @@ async def select_site_log_events(
 
     Orders by 2030.5 requirements on LogEvent which is created DESC, logEventID DESC"""
 
-    return await _log_responses(
-        False, session, aggregator_id, site_id, start, limit, created_after
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    return await _log_responses(False, session, aggregator_id, site_id, start, limit, created_after)  # ty:ignore[invalid-return-type]  # Test coverage will ensure that it's an entity list

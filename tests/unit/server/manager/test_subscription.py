@@ -1,6 +1,5 @@
 import unittest.mock as mock
 from datetime import datetime
-from typing import Optional
 
 import pytest
 from assertical.fake.generator import generate_class_instance
@@ -37,8 +36,8 @@ from envoy.server.request_scope import AggregatorRequestScope
 async def test_fetch_subscription_by_id_filtering(
     mock_SubscriptionMapper: mock.MagicMock,
     mock_select_subscription_by_id: mock.MagicMock,
-    scoped_site_id: Optional[int],
-    sub_site_id: Optional[int],
+    scoped_site_id: int | None,
+    sub_site_id: int | None,
     expect_none: bool,
 ):
     """Quick tests on the various ways filter options can affect the returned subscriptions. It attempts
@@ -156,7 +155,7 @@ async def test_fetch_subscriptions_for_site(
 @pytest.mark.anyio
 @pytest.mark.parametrize(
     "retval, scope_site_id",
-    zip([True, False], [111, None]),
+    zip([True, False], [111, None], strict=False),
 )
 @mock.patch("envoy.server.manager.subscription.delete_subscription_for_site")
 @mock.patch("envoy.server.manager.subscription.utc_now")
@@ -164,7 +163,7 @@ async def test_delete_subscription_for_site(
     mock_utc_now: mock.MagicMock,
     mock_delete_subscription_for_site: mock.MagicMock,
     retval: bool,
-    scope_site_id: Optional[int],
+    scope_site_id: int | None,
 ):
     """Ensures session is handled properly on delete"""
     # Arrange
@@ -211,8 +210,8 @@ async def test_delete_subscription_for_site(
 @mock.patch("envoy.server.manager.subscription.select_single_site_with_site_id")
 async def test_validate_subscription_site_scope(
     mock_select_single_site_with_site_id: mock.MagicMock,
-    scope_site_id: Optional[int],
-    sub_site_id: Optional[int],
+    scope_site_id: int | None,
+    sub_site_id: int | None,
     sub_site_exists: bool,
     expected_valid: bool,
 ):
@@ -601,6 +600,7 @@ async def test_add_subscription_for_site_validate_errors(
     now = datetime(2014, 4, 5, 6, 7, 8)
     site_reading_type_id = 5432
     sub = generate_class_instance(Sep2Subscription)
+    assert scope.site_id is not None
     mapped_sub = Subscription(
         resource_type=SubscriptionResource.READING, scoped_site_id=scope.site_id + 2, resource_id=site_reading_type_id
     )

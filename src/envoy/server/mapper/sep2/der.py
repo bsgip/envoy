@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional, Protocol, Union, cast
+from typing import Protocol, cast
 
 import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.sep2.der import (
@@ -38,7 +38,7 @@ class DisplacementMultiplier(Protocol):
     multiplier: int
 
 
-def get_value_multiplier(value: Optional[int], multiplier: Optional[int], value_name: str = "value") -> Optional[dict]:
+def get_value_multiplier(value: int | None, multiplier: int | None, value_name: str = "value") -> dict | None:
     """Utility for setting {"value": X, "multiplier": Y} pydantic models that is a nice
     shorthand for populating a variety of DER data types (eg ActivePower/ReactivePower)"""
     if value is not None and multiplier is not None:
@@ -47,8 +47,8 @@ def get_value_multiplier(value: Optional[int], multiplier: Optional[int], value_
 
 
 def set_value_multiplier(
-    vm: Union[Optional[ValueMultiplier], Optional[DisplacementMultiplier]],
-) -> tuple[Optional[int], Optional[int]]:
+    vm: ValueMultiplier | None | DisplacementMultiplier | None,
+) -> tuple[int | None, int | None]:
     """Utility for undoing get_value_multiplier. Returns the value|displacement / multiplier
     for the specified vm that should allow a quick shorthand for setting the values back
     on a DB model"""
@@ -56,24 +56,24 @@ def set_value_multiplier(
         return (None, None)
 
     if hasattr(vm, "value"):
-        return (vm.value, vm.multiplier)
+        return (cast(int | None, vm.value), vm.multiplier)
     else:
         return (vm.displacement, vm.multiplier)
 
 
-def to_sep2_percent(d: Optional[Decimal]) -> Optional[int]:
+def to_sep2_percent(d: Decimal | None) -> int | None:
     if d is None:
         return None
     return int(d * 100)  # sep2 percent is expressed in hundredths of a percent
 
 
-def from_sep2_percent(v: Optional[int]) -> Optional[Decimal]:
+def from_sep2_percent(v: int | None) -> Decimal | None:
     if v is None:
         return None
     return Decimal(v) / 100  # sep2 percent is expressed in hundredths of a percent
 
 
-def to_hex_binary(v: Optional[int]) -> Optional[str]:
+def to_hex_binary(v: int | None) -> str | None:
     if v is None:
         return None
 
@@ -82,9 +82,9 @@ def to_hex_binary(v: Optional[int]) -> Optional[str]:
 
 class DERMapper:
     @staticmethod
-    def map_to_response(scope: BaseRequestScope, der: SiteDER, active_derp_id: Optional[int]) -> DER:
+    def map_to_response(scope: BaseRequestScope, der: SiteDER, active_derp_id: int | None) -> DER:
         der_href = generate_href(uri.DERUri, scope, site_id=der.site_id, der_id=der.site_der_id)
-        current_derp_link: Optional[Link] = None
+        current_derp_link: Link | None = None
         if active_derp_id:
             current_derp_link = Link.model_validate(
                 {"href": generate_href(uri.DERProgramUri, scope, site_id=der.site_id, der_program_id=active_derp_id)}
@@ -183,56 +183,56 @@ class DERStatusMapper:
         to infer this but due to some SQL Alchemy quirks - we're forced to specify it)"""
         changed_timestamp = int(der_status.changed_time.timestamp())
 
-        gen_conn_status: Optional[dict] = None
+        gen_conn_status: dict | None = None
         if der_status.generator_connect_status is not None and der_status.generator_connect_status_time is not None:
             gen_conn_status = {
                 "value": to_hex_binary(der_status.generator_connect_status),
                 "dateTime": int(der_status.generator_connect_status_time.timestamp()),
             }
 
-        inverter_status: Optional[dict] = None
+        inverter_status: dict | None = None
         if der_status.inverter_status is not None and der_status.inverter_status_time is not None:
             inverter_status = {
                 "value": der_status.inverter_status,
                 "dateTime": int(der_status.inverter_status_time.timestamp()),
             }
 
-        lcm_status: Optional[dict] = None
+        lcm_status: dict | None = None
         if der_status.local_control_mode_status is not None and der_status.local_control_mode_status_time is not None:
             lcm_status = {
                 "value": der_status.local_control_mode_status,
                 "dateTime": int(der_status.local_control_mode_status_time.timestamp()),
             }
 
-        manuf_status: Optional[dict] = None
+        manuf_status: dict | None = None
         if der_status.manufacturer_status is not None and der_status.manufacturer_status_time is not None:
             manuf_status = {
                 "value": der_status.manufacturer_status,
                 "dateTime": int(der_status.manufacturer_status_time.timestamp()),
             }
 
-        op_mode_status: Optional[dict] = None
+        op_mode_status: dict | None = None
         if der_status.operational_mode_status is not None and der_status.operational_mode_status_time is not None:
             op_mode_status = {
                 "value": der_status.operational_mode_status,
                 "dateTime": int(der_status.operational_mode_status_time.timestamp()),
             }
 
-        soc_status: Optional[dict] = None
+        soc_status: dict | None = None
         if der_status.state_of_charge_status is not None and der_status.state_of_charge_status_time is not None:
             soc_status = {
                 "value": der_status.state_of_charge_status,
                 "dateTime": int(der_status.state_of_charge_status_time.timestamp()),
             }
 
-        sm_status: Optional[dict] = None
+        sm_status: dict | None = None
         if der_status.storage_mode_status is not None and der_status.storage_mode_status_time is not None:
             sm_status = {
                 "value": der_status.storage_mode_status,
                 "dateTime": int(der_status.storage_mode_status_time.timestamp()),
             }
 
-        stor_conn_status: Optional[dict] = None
+        stor_conn_status: dict | None = None
         if der_status.storage_connect_status is not None and der_status.storage_connect_status_time is not None:
             stor_conn_status = {
                 "value": to_hex_binary(der_status.storage_connect_status),
@@ -261,21 +261,21 @@ class DERStatusMapper:
 
     @staticmethod
     def map_from_request(changed_time: datetime, der_status: DERStatus) -> SiteDERStatus:
-        alarm_status: Optional[AlarmStatusType] = None
+        alarm_status: AlarmStatusType | None = None
         if der_status.alarmStatus is not None:
             alarm_status = AlarmStatusType(int(der_status.alarmStatus, 16))
 
-        gen_conn_status: Optional[ConnectStatusType] = None
-        gen_conn_status_time: Optional[datetime] = None
+        gen_conn_status: ConnectStatusType | None = None
+        gen_conn_status_time: datetime | None = None
         if der_status.genConnectStatus is not None:
             gen_conn_status = ConnectStatusType(int(der_status.genConnectStatus.value, 16))
-            gen_conn_status_time = datetime.fromtimestamp(der_status.genConnectStatus.dateTime, timezone.utc)
+            gen_conn_status_time = datetime.fromtimestamp(der_status.genConnectStatus.dateTime, UTC)
 
-        stor_conn_status: Optional[ConnectStatusType] = None
-        stor_conn_status_time: Optional[datetime] = None
+        stor_conn_status: ConnectStatusType | None = None
+        stor_conn_status_time: datetime | None = None
         if der_status.storConnectStatus is not None:
             stor_conn_status = ConnectStatusType(int(der_status.storConnectStatus.value, 16))
-            stor_conn_status_time = datetime.fromtimestamp(der_status.storConnectStatus.dateTime, timezone.utc)
+            stor_conn_status_time = datetime.fromtimestamp(der_status.storConnectStatus.dateTime, UTC)
 
         return SiteDERStatus(
             alarm_status=alarm_status,
@@ -283,21 +283,19 @@ class DERStatusMapper:
             generator_connect_status_time=gen_conn_status_time,
             inverter_status=der_status.inverterStatus.value if der_status.inverterStatus else None,
             inverter_status_time=(
-                datetime.fromtimestamp(der_status.inverterStatus.dateTime, timezone.utc)
-                if der_status.inverterStatus
-                else None
+                datetime.fromtimestamp(der_status.inverterStatus.dateTime, UTC) if der_status.inverterStatus else None
             ),
             local_control_mode_status=(
                 der_status.localControlModeStatus.value if der_status.localControlModeStatus else None
             ),
             local_control_mode_status_time=(
-                datetime.fromtimestamp(der_status.localControlModeStatus.dateTime, timezone.utc)
+                datetime.fromtimestamp(der_status.localControlModeStatus.dateTime, UTC)
                 if der_status.localControlModeStatus
                 else None
             ),
             manufacturer_status=der_status.manufacturerStatus.value if der_status.manufacturerStatus else None,
             manufacturer_status_time=(
-                datetime.fromtimestamp(der_status.manufacturerStatus.dateTime, timezone.utc)
+                datetime.fromtimestamp(der_status.manufacturerStatus.dateTime, UTC)
                 if der_status.manufacturerStatus
                 else None
             ),
@@ -305,20 +303,20 @@ class DERStatusMapper:
                 der_status.operationalModeStatus.value if der_status.operationalModeStatus else None
             ),
             operational_mode_status_time=(
-                datetime.fromtimestamp(der_status.operationalModeStatus.dateTime, timezone.utc)
+                datetime.fromtimestamp(der_status.operationalModeStatus.dateTime, UTC)
                 if der_status.operationalModeStatus
                 else None
             ),
             changed_time=changed_time,
             state_of_charge_status=(der_status.stateOfChargeStatus.value if der_status.stateOfChargeStatus else None),
             state_of_charge_status_time=(
-                datetime.fromtimestamp(der_status.stateOfChargeStatus.dateTime, timezone.utc)
+                datetime.fromtimestamp(der_status.stateOfChargeStatus.dateTime, UTC)
                 if der_status.stateOfChargeStatus
                 else None
             ),
             storage_mode_status=(der_status.storageModeStatus.value if der_status.storageModeStatus else None),
             storage_mode_status_time=(
-                datetime.fromtimestamp(der_status.storageModeStatus.dateTime, timezone.utc)
+                datetime.fromtimestamp(der_status.storageModeStatus.dateTime, UTC)
                 if der_status.storageModeStatus
                 else None
             ),

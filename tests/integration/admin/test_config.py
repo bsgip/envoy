@@ -84,6 +84,6 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
         third_update_response,
         {"site_control_pow10_encoding"},
     )
-    assert (
-        third_update_response.site_control_pow10_encoding == third_config_request.site_control_pow10_encoding
-    ), "This was the updated field"
+    assert third_update_response.site_control_pow10_encoding == third_config_request.site_control_pow10_encoding, (
+        "This was the updated field"
+    )

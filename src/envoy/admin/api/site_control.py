@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime
 from http import HTTPStatus
-from typing import Optional
 
 from asyncpg.exceptions import CardinalityViolationError  # type: ignore
 from envoy_schema.admin.schema.base import BatchCreateResponse
@@ -92,7 +91,7 @@ async def update_site_control_group(
 async def get_all_site_control_groups(
     start: list[int] = Query([0]),
     limit: list[int] = Query([100]),
-    after: Optional[datetime] = Query(None),
+    after: datetime | None = Query(None),
 ) -> SiteControlGroupPageResponse:
     """Endpoint for a paginated list of SiteControlGroupResponse Objects, ordered by the site_control_group_id
     attribute.
@@ -127,9 +126,11 @@ async def create_site_controls(group_id: int, control_list: list[SiteControlRequ
     try:
         return await SiteControlListManager.add_many_site_control(db.session, group_id, control_list)
     except CardinalityViolationError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances")
+        raise LoggedHttpException(
+            logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances"
+        ) from exc
     except IntegrityError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_id not found")
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_id not found") from exc
 
 
 @router.get(SiteControlUri, status_code=HTTPStatus.OK, response_model=SiteControlPageResponse)
@@ -137,7 +138,7 @@ async def get_all_site_controls(
     group_id: int,
     start: list[int] = Query([0]),
     limit: list[int] = Query([100]),
-    after: Optional[datetime] = Query(None),
+    after: datetime | None = Query(None),
 ) -> SiteControlPageResponse:
     """Endpoint for a paginated list of SiteControlResponse Objects, ordered by site_control_id
     attribute.

@@ -1,5 +1,4 @@
 from itertools import product
-from typing import Optional
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -30,7 +29,7 @@ def test_log_event_round_trip(optional_is_none: bool):
 
 
 @pytest.mark.parametrize("href_prefix, optional_is_none", product([None, "/my/href/prefix/"], [True, False]))
-def test_map_to_log_event_response(href_prefix: Optional[str], optional_is_none: bool):
+def test_map_to_log_event_response(href_prefix: str | None, optional_is_none: bool):
     """Sanity checks that we generate valid models and avoid runtime errors"""
     # Arrange
     scope = generate_class_instance(BaseRequestScope, optional_is_none=optional_is_none, href_prefix=href_prefix)
@@ -42,6 +41,7 @@ def test_map_to_log_event_response(href_prefix: Optional[str], optional_is_none:
     # Assert
     assert isinstance(result, LogEvent)
     if href_prefix is not None:
+        assert result.href is not None
         assert result.href.startswith(href_prefix)
     assert result.logEventCode == site_log_event.log_event_code
     assert result.logEventID == site_log_event.log_event_id
@@ -67,7 +67,7 @@ def test_map_from_log_event_request(optional_is_none: bool):
 @pytest.mark.parametrize(
     "href_prefix, optional_is_none, response_count", product([None, "/my/href/prefix/"], [True, False], [0, 2])
 )
-def test_map_to_list_response(href_prefix: Optional[str], optional_is_none: bool, response_count: int):
+def test_map_to_list_response(href_prefix: str | None, optional_is_none: bool, response_count: int):
     """Attempts to trip up the list mappers with a runtime error for various input combinations"""
 
     # Arrange
@@ -93,5 +93,7 @@ def test_map_to_list_response(href_prefix: Optional[str], optional_is_none: bool
     assert result.all_ == total_responses
     assert result.results == response_count
     if href_prefix is not None:
+        assert result.href is not None
         assert result.href.startswith(href_prefix)
+    assert result.href is not None
     assert str(display_site_id) in result.href

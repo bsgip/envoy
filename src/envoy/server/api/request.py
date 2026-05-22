@@ -1,6 +1,5 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from http import HTTPStatus
-from typing import Optional
 
 from fastapi import HTTPException, Request
 
@@ -22,11 +21,11 @@ def extract_request_claims(request: Request) -> RawRequestClaims:
             detail="Envoy middleware is not decorating incoming requests correctly.",
         )
 
-    aggregator_id: Optional[int] = request.state.aggregator_id
-    site_id: Optional[int] = request.state.site_id
+    aggregator_id: int | None = request.state.aggregator_id
+    site_id: int | None = request.state.site_id
     iana_pen: int = request.state.iana_pen
 
-    href_prefix: Optional[str] = getattr(request.state, "href_prefix", None)
+    href_prefix: str | None = getattr(request.state, "href_prefix", None)
     if not href_prefix:
         href_prefix = None
 
@@ -50,7 +49,7 @@ def extract_request_claims(request: Request) -> RawRequestClaims:
     )
 
 
-def extract_limit_from_paging_param(limit: Optional[list[int]] = None) -> int:
+def extract_limit_from_paging_param(limit: list[int] | None = None) -> int:
     """Given a sep2 paging parameter called limit (as an int) - return the value, defaulting to DEFAULT_LIMIT if
     not specified.  Can raise HTTPException for invalid values"""
     if limit is None or len(limit) == 0:
@@ -66,7 +65,7 @@ def extract_limit_from_paging_param(limit: Optional[list[int]] = None) -> int:
     return limit_val
 
 
-def extract_start_from_paging_param(start: Optional[list[int]] = None) -> int:
+def extract_start_from_paging_param(start: list[int] | None = None) -> int:
     """Given a sep2 paging parameter called start (as an int) - return the value, defaulting to DEFAULT_START if
     not specified. Can raise HTTPException for invalid values"""
     if start is None or len(start) == 0:
@@ -79,16 +78,16 @@ def extract_start_from_paging_param(start: Optional[list[int]] = None) -> int:
     return start_val
 
 
-def extract_datetime_from_paging_param(after: Optional[list[int]] = None) -> datetime:
+def extract_datetime_from_paging_param(after: list[int] | None = None) -> datetime:
     """Given a sep2 paging parameter called after (as an int) - return the equivalent
     datetime. If none is specified it will default to DEFAULT_DATETIME"""
     if after is None or len(after) == 0:
         return DEFAULT_DATETIME
 
-    return datetime.fromtimestamp(after[0], tz=timezone.utc)
+    return datetime.fromtimestamp(after[0], tz=UTC)
 
 
-def extract_date_from_iso_string(iso_date: Optional[str] = None) -> Optional[date]:
+def extract_date_from_iso_string(iso_date: str | None = None) -> date | None:
     """Attempts to extract a date from a YYYY-MM-DD formatted string. This will be a strict
     extraction - any deviation from the format will result in None being returned"""
     if iso_date is None:

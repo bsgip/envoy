@@ -95,7 +95,7 @@ class TariffGeneratedRate(Base):
     )  # The parent component that describes uom being priced
     site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id"))  # The site that this rate applies to
 
-    calculation_log_id: Mapped[Optional[int]] = mapped_column(
+    calculation_log_id: Mapped[int | None] = mapped_column(
         ForeignKey("calculation_log.calculation_log_id"), nullable=True, index=True
     )  # The calculation log that resulted in this rate or None if there is no such link
 

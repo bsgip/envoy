@@ -1,22 +1,22 @@
-from datetime import datetime, timezone
 import json
-from http import HTTPStatus
-from typing import Optional
+from datetime import UTC, datetime
 from decimal import Decimal
-import pytest
-from httpx import AsyncClient
-from tests.integration.response import read_response_body_string
+from http import HTTPStatus
 
+import pytest
 from envoy_schema.admin.schema.site_reading import (
-    CSIPAusSiteReadingUnit,
-    CSIPAusSiteReadingPageResponse,
     CSIPAusSiteReading,
+    CSIPAusSiteReadingPageResponse,
+    CSIPAusSiteReadingUnit,
     PhaseEnum,
 )
 from envoy_schema.admin.schema.uri import CSIPAusSiteReadingUri
+from httpx import AsyncClient
+
+from tests.integration.response import read_response_body_string
 
 
-def _build_csip_site_readings_query_string(start: Optional[int], limit: Optional[int]) -> str:
+def _build_csip_site_readings_query_string(start: int | None, limit: int | None) -> str:
     params = []
     if start is not None:
         params.append(f"start={start}")
@@ -33,8 +33,8 @@ def _build_csip_site_readings_query_string(start: Optional[int], limit: Optional
         (
             1,
             CSIPAusSiteReadingUnit.ACTIVEPOWER,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC),
             None,
             None,
             2,  # 2 readings for type ID 1
@@ -44,8 +44,8 @@ def _build_csip_site_readings_query_string(start: Optional[int], limit: Optional
         (
             1,
             CSIPAusSiteReadingUnit.ACTIVEPOWER,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC),
             0,
             1,
             1,  # First page: 1 reading
@@ -55,8 +55,8 @@ def _build_csip_site_readings_query_string(start: Optional[int], limit: Optional
         (
             1,
             CSIPAusSiteReadingUnit.ACTIVEPOWER,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC),
             1,
             1,
             1,  # Second page: 1 reading
@@ -66,8 +66,8 @@ def _build_csip_site_readings_query_string(start: Optional[int], limit: Optional
         (
             1,
             CSIPAusSiteReadingUnit.ACTIVEPOWER,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC),
             2,
             1,
             0,  # No more readings
@@ -82,8 +82,8 @@ async def test_get_csip_aus_site_readings(
     unit_enum: CSIPAusSiteReadingUnit,
     period_start: datetime,
     period_end: datetime,
-    start: Optional[int],
-    limit: Optional[int],
+    start: int | None,
+    limit: int | None,
     expected_reading_count: int,
     expected_total_count: int,
 ):
@@ -137,32 +137,32 @@ async def test_get_csip_aus_site_readings(
         (
             1,
             CSIPAusSiteReadingUnit.REACTIVEPOWER,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC),
             True,
         ),
         # Site 1 - FREQUENCY (none exist in pg_data) - should return empty result
         (
             1,
             CSIPAusSiteReadingUnit.FREQUENCY,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC),
             True,
         ),
         # Site 1 - VOLTAGE (none exist in pg_data) - should return empty result
         (
             1,
             CSIPAusSiteReadingUnit.VOLTAGE,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC),
             True,
         ),
         # Non-existent site - should return empty result
         (
             999,
             CSIPAusSiteReadingUnit.ACTIVEPOWER,
-            datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc),
-            datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC),
+            datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC),
             True,
         ),
     ],
@@ -208,8 +208,8 @@ async def test_get_csip_aus_site_readings_detailed_validation(admin_client_auth:
     uri = CSIPAusSiteReadingUri.format(
         site_id=1,
         unit_enum=CSIPAusSiteReadingUnit.ACTIVEPOWER.value,
-        period_start=datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
-        period_end=datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
+        period_start=datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC).isoformat(),
+        period_end=datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC).isoformat(),
     )
 
     response = await admin_client_auth.get(uri)
@@ -232,8 +232,8 @@ async def test_get_csip_aus_site_readings_detailed_validation(admin_client_auth:
 
 @pytest.mark.anyio
 async def test_get_csip_aus_site_readings_invalid_time_range(admin_client_auth: AsyncClient):
-    period_start = datetime(2022, 6, 7, 0, 0, 0, tzinfo=timezone.utc)
-    period_end = datetime(2022, 6, 6, 0, 0, 0, tzinfo=timezone.utc)
+    period_start = datetime(2022, 6, 7, 0, 0, 0, tzinfo=UTC)
+    period_end = datetime(2022, 6, 6, 0, 0, 0, tzinfo=UTC)
 
     uri = CSIPAusSiteReadingUri.format(
         site_id=1,
@@ -257,8 +257,8 @@ async def test_get_csip_aus_site_readings_invalid_unit_enum(admin_client_auth: A
     uri = CSIPAusSiteReadingUri.format(
         site_id=1,
         unit_enum=999,  # Invalid
-        period_start=datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
-        period_end=datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
+        period_start=datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC).isoformat(),
+        period_end=datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC).isoformat(),
     )
 
     response = await admin_client_auth.get(uri)
@@ -272,8 +272,8 @@ async def test_get_csip_aus_site_readings_pagination_consistency(admin_client_au
     base_uri = CSIPAusSiteReadingUri.format(
         site_id=1,
         unit_enum=CSIPAusSiteReadingUnit.ACTIVEPOWER.value,
-        period_start=datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
-        period_end=datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
+        period_start=datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC).isoformat(),
+        period_end=datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC).isoformat(),
     )
 
     # Get all readings at once
@@ -317,8 +317,8 @@ async def test_get_csip_aus_site_readings_response_format(admin_client_auth: Asy
     uri = CSIPAusSiteReadingUri.format(
         site_id=1,
         unit_enum=CSIPAusSiteReadingUnit.ACTIVEPOWER.value,
-        period_start=datetime(2022, 6, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
-        period_end=datetime(2022, 6, 30, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
+        period_start=datetime(2022, 6, 1, 0, 0, 0, tzinfo=UTC).isoformat(),
+        period_end=datetime(2022, 6, 30, 0, 0, 0, tzinfo=UTC).isoformat(),
     )
 
     response = await admin_client_auth.get(uri)

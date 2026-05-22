@@ -46,7 +46,6 @@ def href_to_response_set_type(href_part: str) -> ResponseSetType:
 
 
 class ResponseMapper:
-
     @staticmethod
     def price_response_href(scope: BaseRequestScope, rate_response: TariffGeneratedRateResponse) -> str:
         """Generates the href for the specified TariffGeneratedRateResponse. Requires the primary key to be set"""
@@ -121,8 +120,8 @@ class ResponseMapper:
 
     @staticmethod
     def map_from_doe_request(
-        r: Union[DERControlResponse, Response],
-        dynamic_operating_envelope: Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope],
+        r: DERControlResponse | Response,
+        dynamic_operating_envelope: DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope,
     ) -> DynamicOperatingEnvelopeResponse:
         """Maps a sep2 DERControlResponse to an internal DynamicOperatingEnvelopeResponse model."""
 

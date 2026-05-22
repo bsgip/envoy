@@ -1,6 +1,6 @@
 import unittest.mock as mock
-from datetime import datetime, timezone
-from typing import Optional, cast
+from datetime import UTC, datetime
+from typing import cast
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -88,7 +88,7 @@ from tests.unit.notification.mocks import (
         ),
     ],
 )
-def test_scope_for_subscription(sub: Subscription, href_prefix: Optional[str], expected_display_id: int):
+def test_scope_for_subscription(sub: Subscription, href_prefix: str | None, expected_display_id: int):
     result = scope_for_subscription(sub, href_prefix)
     assert isinstance(result, AggregatorRequestScope)
     assert result.href_prefix == href_prefix
@@ -478,7 +478,7 @@ def test_entities_to_notification_unknown_resource():
     """We catch bad SubscriptionResource with our own error"""
     with pytest.raises(NotificationError):
         entities_to_notification(
-            9999,
+            9999,  # ty:ignore[invalid-argument-type]
             Subscription(resource_type=9999),
             (1, 2, 3),
             None,
@@ -488,7 +488,7 @@ def test_entities_to_notification_unknown_resource():
         )
 
 
-def assert_hex_binary_enum_matches(expected: Optional[str], actual: Optional[int]):
+def assert_hex_binary_enum_matches(expected: str | None, actual: int | None):
     """Asserts that a known enum matches its hex binary representation (considering nullability)"""
     if expected is None or actual is None:
         assert actual == expected
@@ -595,7 +595,7 @@ def test_all_entity_batches(input_changed: dict[tuple, list], input_deleted: dic
     ],
 )
 def test_entities_to_notification_sites(  # noqa: C901
-    resource: SubscriptionResource, entity_class: type, sub_site_id_scope: Optional[int]
+    resource: SubscriptionResource, entity_class: type[TResourceModel], sub_site_id_scope: int | None
 ):
     """For every resource/type mapping - generate a notification and do some cursory examination of the
     resulting notification - the majority of the test are captured in the mapper unit tests - this is here
@@ -639,7 +639,6 @@ def test_entities_to_notification_sites(  # noqa: C901
                     assert notification.resource.all_ is None
                     assert notification.resource.results is None
                 else:
-
                     assert notification.resource is None
 
             else:
@@ -659,7 +658,7 @@ def test_entities_to_notification_sites(  # noqa: C901
                     assert notification.resource.results == len(entities)
 
             # The underlying sub site scope should dictate how the top level object encodes site id in the hrefs
-            expected_sub_resource_href_snippet: Optional[str] = None
+            expected_sub_resource_href_snippet: str | None = None
             if notification.resource is not None:
                 if sub_site_id_scope is None:
                     expected_sub_resource_href_snippet = f"/{VIRTUAL_END_DEVICE_SITE_ID}"
@@ -667,36 +666,64 @@ def test_entities_to_notification_sites(  # noqa: C901
                     expected_sub_resource_href_snippet = f"/{sub_site_id_scope}"
 
             if resource == SubscriptionResource.SITE:
+                assert notification.resource is not None
+                assert notification.resource.EndDevice is not None
                 assert len(notification.resource.EndDevice) == len(entities)
             elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
+                assert notification.resource is not None
+                assert notification.resource.DERControl is not None
                 assert len(notification.resource.DERControl) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.READING:
+                assert notification.resource is not None
+                assert notification.resource.Readings is not None
                 assert len(notification.resource.Readings) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
+                assert notification.resource is not None
+                assert notification.resource.TimeTariffInterval is not None
                 assert len(notification.resource.TimeTariffInterval) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_DER_AVAILABILITY and entity_length:
+                assert notification.resource is not None
+                assert notification.resource.statWAvail is not None
                 assert notification.resource.statWAvail.value == entities[0].estimated_w_avail_value
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_DER_RATING and entity_length:
+                assert notification.resource is not None
                 assert_hex_binary_enum_matches(notification.resource.doeModesSupported, entities[0].doe_modes_supported)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_DER_SETTING and entity_length:
+                assert notification.resource is not None
                 assert_hex_binary_enum_matches(notification.resource.doeModesEnabled, entities[0].doe_modes_enabled)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_DER_STATUS and entity_length:
+                assert notification.resource is not None
+                assert notification.resource.inverterStatus is not None
                 assert notification.resource.inverterStatus.value == entities[0].inverter_status
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS and entity_length:
+                assert notification.resource is not None
                 assert notification.resource.pollRate == entities[0].function_set_assignment_poll_rate
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL and entity_length:
+                assert notification.resource is not None
                 assert notification.resource.setGradW == entities[0].original.ramp_rate_percent_per_second
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.SITE_CONTROL_GROUP and entity_length:
+                assert notification.resource is not None
+                assert notification.resource.DERProgram is not None
                 assert len(notification.resource.DERProgram) == len(entities)
+                assert expected_sub_resource_href_snippet is not None
                 assert expected_sub_resource_href_snippet in notification.subscribedResource
             elif resource == SubscriptionResource.TARIFF_COMPONENT:
                 assert len(notification.resource.RateComponent) == len(entities)
@@ -713,7 +740,7 @@ def test_entities_to_notification_sites(  # noqa: C901
 async def test_fetch_batched_entities_bad_resource():
     mock_session = create_mock_session()
     with pytest.raises(NotificationError):
-        await fetch_batched_entities(mock_session, 9999, datetime.now())
+        await fetch_batched_entities(mock_session, 9999, datetime.now())  # ty:ignore[invalid-argument-type]
     assert_mock_session(mock_session, committed=False)
 
 
@@ -742,7 +769,7 @@ async def test_check_db_change_or_delete(
     mock_broker = create_mock_broker()
     href_prefix = "/href/prefix"
     resource = SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE
-    timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
+    timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=UTC)
 
     # Create some entities that will form 2 batches
     batch1_entity1: DynamicOperatingEnvelope = generate_class_instance(
@@ -807,7 +834,7 @@ async def test_check_db_change_or_delete(
         subscription_href=SubscriptionMapper.calculate_subscription_href(
             agg1_sub2,
             generate_class_instance(
-                DeviceOrAggregatorRequestScope, display_site_id=VIRTUAL_END_DEVICE_SITE_ID, href_prefix=href_prefix
+                AggregatorRequestScope, display_site_id=VIRTUAL_END_DEVICE_SITE_ID, href_prefix=href_prefix
             ),
         ),
         subscription_id=agg1_sub2.subscription_id,
@@ -820,7 +847,7 @@ async def test_check_db_change_or_delete(
         subscription_href=SubscriptionMapper.calculate_subscription_href(
             agg2_sub1,
             generate_class_instance(
-                DeviceOrAggregatorRequestScope, display_site_id=agg2_sub1.scoped_site_id, href_prefix=href_prefix
+                AggregatorRequestScope, display_site_id=agg2_sub1.scoped_site_id, href_prefix=href_prefix
             ),
         ),
         subscription_id=agg2_sub1.subscription_id,
@@ -888,7 +915,7 @@ async def test_check_db_change_or_delete_rates(
     mock_broker = create_mock_broker()
     href_prefix = "/href/prefix"
     resource = SubscriptionResource.TARIFF_GENERATED_RATE
-    timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=timezone.utc)
+    timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=UTC)
 
     # Create some entities that will form 2 batches
     # They will have the same Tariff / Site but different rate component

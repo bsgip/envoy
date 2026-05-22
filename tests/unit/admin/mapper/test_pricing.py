@@ -45,7 +45,7 @@ def test_tariff_mapper_from_request():
 
 def test_tariff_mapper_to_response():
     mdl = generate_class_instance(Tariff)
-    mdl.currency_code = 36
+    mdl.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
 
     resp = TariffMapper.map_to_response(mdl)
 

@@ -1,5 +1,5 @@
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -89,9 +89,9 @@ async def test_get_tariffprofilelist(
     agg_1_headers,
     site_id: int,
     fsa_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_tariffs_with_count: list[tuple[str, int]],
 ):
     """Tests that the list pagination works correctly on the site scoped tariff profile list

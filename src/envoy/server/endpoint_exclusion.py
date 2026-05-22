@@ -1,16 +1,15 @@
-from copy import deepcopy
-from enum import Enum
 import logging
+from copy import deepcopy
+from enum import StrEnum
 
-from starlette.routing import BaseRoute, Route
 from fastapi import APIRouter
+from starlette.routing import BaseRoute, Route
 
 logging.basicConfig(style="{", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# This should be replaced with http.HTTPMethod when this project is ported to Python 3.11
-class HTTPMethod(str, Enum):
+class HTTPMethod(StrEnum):
     DELETE = "DELETE"
     GET = "GET"
     HEAD = "HEAD"
@@ -19,7 +18,7 @@ class HTTPMethod(str, Enum):
     PUT = "PUT"
 
 
-class ExcludeEndpointException(Exception): ...  # noqa: E701
+class ExcludeEndpointError(Exception): ...  # noqa: E701
 
 
 EndpointExclusionSet = set[tuple[HTTPMethod, str]]
@@ -37,7 +36,7 @@ def generate_routers_with_excluded_endpoints(
     managed during APIRouter setup, this approach may need to be revisited.
 
     Raises:
-        ExcludeEndpointException: if any endpoints cannot be found across the given routers
+        ExcludeEndpointError: if any endpoints cannot be found across the given routers
     """
 
     logger.info(f"Disabling the following endpoints from routers: {exclude_endpoints}")
@@ -67,7 +66,5 @@ def generate_routers_with_excluded_endpoints(
         router.routes = remaining_routes
 
     if endpoint_filters:
-        raise ExcludeEndpointException(
-            f"The following endpoints cannot be found in provided routers: {endpoint_filters}"
-        )
+        raise ExcludeEndpointError(f"The following endpoints cannot be found in provided routers: {endpoint_filters}")
     return routers

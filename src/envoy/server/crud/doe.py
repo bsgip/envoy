@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Optional, Sequence, Union, cast
 
@@ -17,7 +18,7 @@ async def select_doe_include_deleted(
     aggregator_id: int,
     site_id: int,
     doe_id: int,
-) -> Optional[Union[DOE, ArchiveDOE]]:
+) -> DOE | ArchiveDOE | None:
     """Attempts to fetch a doe using its' DOE id, also scoping it to a particular aggregator/site. The archive
     table will also be checked for deleted instances (of which the most recent deletion will be matched).
 
@@ -46,11 +47,57 @@ async def select_doe_include_deleted(
     # Check archive otherwise
     archive_table_doe = (
         await session.execute(
-            (
-                select(ArchiveDOE)
-                .where((ArchiveDOE.dynamic_operating_envelope_id == doe_id) & (ArchiveDOE.deleted_time.is_not(None)))
-                .order_by(ArchiveDOE.deleted_time.desc())
+            select(ArchiveDOE)
+            .where((ArchiveDOE.dynamic_operating_envelope_id == doe_id) & (ArchiveDOE.deleted_time.is_not(None)))
+            .order_by(ArchiveDOE.deleted_time.desc())
+        )
+    ).scalar_one_or_none()
+    if archive_table_doe is not None:
+        return localize_start_time_for_entity(archive_table_doe, site_timezone_id)
+
+    return None
+
+
+async def select_doe_by_display_id_include_deleted(
+    session: AsyncSession,
+    aggregator_id: int,
+    site_id: int,
+    display_id: int,
+) -> DOE | ArchiveDOE | None:
+    """Attempts to fetch a doe using its' display id, also scoping it to a particular aggregator/site. The archive
+    table will also be checked for deleted instances (of which the most recent deletion will be matched).
+
+    site_control_group_id: The SiteControlGroup to select doe's from
+    aggregator_id: The aggregator id to constrain the lookup to
+    site_id: the query will apply a filter on site_id using this value"""
+
+    # Start by confirming the referenced site_id exists within the specified aggregator.
+    site_timezone_id = (
+        await session.execute(
+            select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
+        )
+    ).scalar_one_or_none()
+    if not site_timezone_id:
+        return None
+
+    # Check primary table first
+    primary_table_doe = (
+        await session.execute(select(DOE).where((DOE.display_id == display_id) & (DOE.site_id == site_id)))
+    ).scalar_one_or_none()
+    if primary_table_doe is not None:
+        return localize_start_time_for_entity(primary_table_doe, site_timezone_id)
+
+    # Check archive otherwise
+    archive_table_doe = (
+        await session.execute(
+            select(ArchiveDOE)
+            .where(
+                (ArchiveDOE.display_id == display_id)
+                & (ArchiveDOE.site_id == site_id)
+                & (ArchiveDOE.deleted_time.is_not(None))
             )
+            .order_by(ArchiveDOE.deleted_time.desc())
+            .limit(1)
         )
     ).scalar_one_or_none()
     if archive_table_doe is not None:
@@ -114,12 +161,12 @@ async def _does_at_timestamp(
     session: AsyncSession,
     site_control_group_id: int,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     timestamp: datetime,
     start: int,
     changed_after: datetime,
-    limit: Optional[int],
-) -> Union[Sequence[DOE], int]:
+    limit: int | None,
+) -> Sequence[DOE] | int:
     """Internal utility for fetching doe's that are active for the specific timestamp
 
     aggregator_id: The aggregator to scope all DOEs to
@@ -128,7 +175,7 @@ async def _does_at_timestamp(
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
 
-    select_clause: Union[Select[tuple[int]], Select[tuple[DOE, str]]]
+    select_clause: Select[tuple[int]] | Select[tuple[DOE, str]]
     if is_counting:
         select_clause = select(func.count()).select_from(DOE)
     else:
@@ -147,7 +194,7 @@ async def _does_at_timestamp(
     )
 
     if changed_after != datetime.min:
-        stmt = stmt.where((DOE.changed_time >= changed_after))
+        stmt = stmt.where(DOE.changed_time >= changed_after)
 
     if site_id is not None:
         stmt = stmt.where(DOE.site_id == site_id)
@@ -212,8 +259,8 @@ async def select_active_does_include_deleted(
     now: datetime,
     start: int,
     changed_after: datetime,
-    limit: Optional[int],
-) -> list[Union[DOE, ArchiveDOE]]:
+    limit: int | None,
+) -> list[DOE | ArchiveDOE]:
     """Fetches DOEs from dynamic_operating_envelope AND its archive according to the specified filter criteria. Only
     DOE's whose end_time is after "now" will be returned.
 
@@ -370,7 +417,7 @@ async def count_does_at_timestamp(
     session: AsyncSession,
     site_control_group_id: int,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     timestamp: datetime,
     changed_after: datetime,
 ) -> int:
@@ -384,14 +431,14 @@ async def count_does_at_timestamp(
 
     return await _does_at_timestamp(
         True, session, site_control_group_id, aggregator_id, site_id, timestamp, 0, changed_after, None
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    )  # ty:ignore[invalid-return-type] # Test coverage will ensure that it's an entity list
 
 
 async def select_does_at_timestamp(
     session: AsyncSession,
     site_control_group_id: int,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     timestamp: datetime,
     start: int,
     changed_after: datetime,
@@ -412,33 +459,33 @@ async def select_does_at_timestamp(
 
     return await _does_at_timestamp(
         False, session, site_control_group_id, aggregator_id, site_id, timestamp, start, changed_after, limit
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    )  # ty:ignore[invalid-return-type]  # Test coverage will ensure that it's an entity list
 
 
 async def _site_control_groups(
     is_counting: bool,
     session: AsyncSession,
-    start: Optional[int],
+    start: int | None,
     changed_after: datetime,
-    limit: Optional[int],
-    fsa_id: Optional[int],
+    limit: int | None,
+    fsa_id: int | None,
     include_defaults: bool,
-) -> Union[Sequence[SiteControlGroup], int]:
+) -> Sequence[SiteControlGroup] | int:
     """Internal utility for fetching/counting SiteControlGroup's
 
     Orders by 2030.5 requirements on DERProgram which is primacy ASC, primary key DESC"""
 
-    stmt: Union[Select[tuple[int]], Select[tuple[SiteControlGroup]]]
+    stmt: Select[tuple[int]] | Select[tuple[SiteControlGroup]]
     if is_counting:
         stmt = select(func.count()).select_from(SiteControlGroup)
     else:
         stmt = select(SiteControlGroup).offset(start).limit(limit)
 
     if changed_after != datetime.min:
-        stmt = stmt.where((SiteControlGroup.changed_time >= changed_after))
+        stmt = stmt.where(SiteControlGroup.changed_time >= changed_after)
 
     if fsa_id is not None:
-        stmt = stmt.where((SiteControlGroup.fsa_id == fsa_id))
+        stmt = stmt.where(SiteControlGroup.fsa_id == fsa_id)
 
     if not is_counting:
         stmt = stmt.order_by(SiteControlGroup.primacy.asc(), SiteControlGroup.site_control_group_id.desc())
@@ -455,10 +502,10 @@ async def _site_control_groups(
 
 async def select_site_control_groups(
     session: AsyncSession,
-    start: Optional[int],
+    start: int | None,
     changed_after: datetime,
-    limit: Optional[int],
-    fsa_id: Optional[int],
+    limit: int | None,
+    fsa_id: int | None,
     include_defaults: bool = False,
 ) -> Sequence[SiteControlGroup]:
     """Fetches SiteControlGroup with some basic pagination / filtering on change time.
@@ -468,10 +515,10 @@ async def select_site_control_groups(
     Orders by 2030.5 requirements on DERProgram which is primacy ASC, primary key DESC"""
 
     # Test coverage will ensure that it's an entity list
-    return await _site_control_groups(False, session, start, changed_after, limit, fsa_id, include_defaults)  # type: ignore [return-value] # noqa: E501
+    return await _site_control_groups(False, session, start, changed_after, limit, fsa_id, include_defaults)  # ty:ignore[invalid-return-type]
 
 
-async def count_site_control_groups(session: AsyncSession, changed_after: datetime, fsa_id: Optional[int]) -> int:
+async def count_site_control_groups(session: AsyncSession, changed_after: datetime, fsa_id: int | None) -> int:
     """Counts SiteControlGroups that have been modified after the specified change time.
 
     if fsa_id is specified - only SiteControlGroups with this fsa_id value will be counted
@@ -486,7 +533,7 @@ async def count_site_control_groups(session: AsyncSession, changed_after: dateti
         None,
         fsa_id,
         False,
-    )  # type: ignore [return-value]
+    )  # ty:ignore[invalid-return-type]
 
 
 async def count_site_control_groups_by_fsa_id(session: AsyncSession) -> dict[int, int]:
@@ -510,7 +557,7 @@ async def count_site_control_groups_by_fsa_id(session: AsyncSession) -> dict[int
 
 async def select_site_control_group_by_id(
     session: AsyncSession, site_control_group_id: int, include_default: bool = False
-) -> Optional[SiteControlGroup]:
+) -> SiteControlGroup | None:
     """Fetches a single SiteControlGroup with the specified site_control_group_id. Returns None if it can't be found."""
 
     stmt = select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == site_control_group_id).limit(1)

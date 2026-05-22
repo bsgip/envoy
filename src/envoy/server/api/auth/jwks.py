@@ -1,6 +1,5 @@
 import base64
 from dataclasses import dataclass
-from typing import Union
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -17,7 +16,7 @@ class JWK:
     pem_public: str  # RSA PEM public key for this JWK
 
 
-def ensure_bytes(key: Union[str, bytes]) -> bytes:
+def ensure_bytes(key: str | bytes) -> bytes:
     """Ensures a value is bytes - converting a string to UTF-8 bytes if required"""
     if isinstance(key, str):
         key = key.encode("utf-8")

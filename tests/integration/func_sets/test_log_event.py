@@ -1,7 +1,6 @@
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Optional
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -58,7 +57,7 @@ async def test_get_log_event_for_aggregator(
     cert: str,
     site_id: int,
     log_event_id: int,
-    expected_details: Optional[str],
+    expected_details: str | None,
     expected_http_status: HTTPStatus,
 ):
     """Tests that fetching a specific log event works or fails predictably for an aggregator cert."""
@@ -95,7 +94,7 @@ async def test_get_log_event_for_device_cert(
     cert: str,
     site_id: int,
     log_event_id: int,
-    expected_detail: Optional[str],
+    expected_detail: str | None,
     expected_http_status: HTTPStatus,
 ):
     """Tests that fetching a specific LogEvent works or fails predictably for device certificates."""
@@ -106,7 +105,7 @@ async def test_get_log_event_for_device_cert(
             insert(SiteLogEvent).values(
                 site_log_event_id=1001,
                 site_id=5,
-                created_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
+                created_time=datetime(2025, 1, 2, tzinfo=UTC),
                 details="log-1001",
                 extended_data=1002,
                 function_set=1,
@@ -122,7 +121,7 @@ async def test_get_log_event_for_device_cert(
             insert(SiteLogEvent).values(
                 site_log_event_id=1002,
                 site_id=5,
-                created_time=datetime(2025, 1, 3, tzinfo=timezone.utc),
+                created_time=datetime(2025, 1, 3, tzinfo=UTC),
                 details=None,
                 extended_data=1003,
                 function_set=2,
@@ -163,7 +162,7 @@ async def test_get_log_event_for_device_cert(
             0,
             0,
             99,
-            datetime(2023, 5, 1, 3, 3, 3, tzinfo=timezone.utc),
+            datetime(2023, 5, 1, 3, 3, 3, tzinfo=UTC),
             HTTPStatus.OK,
             2,
             [None, "log-3"],
@@ -181,12 +180,12 @@ async def test_get_log_event_list_pagination_for_aggregator_cert(
     log_event_list_uri_format: str,
     cert: str,
     site_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     expected_http_response: HTTPStatus,
-    expected_count: Optional[int],
-    expected_details: Optional[list[Optional[str]]],
+    expected_count: int | None,
+    expected_details: list[str | None] | None,
 ):
     """Tests that fetching a response list paginates correctly (or fails predictably)"""
     response = await client.get(
@@ -197,6 +196,7 @@ async def test_get_log_event_list_pagination_for_aggregator_cert(
 
     assert_response_header(response, expected_http_response)
     if expected_http_response == HTTPStatus.OK:
+        assert expected_details is not None
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response = LogEventList.from_xml(body)
@@ -226,12 +226,12 @@ async def test_get_log_event_list_pagination_for_device_cert(
     log_event_list_uri_format: str,
     cert: str,
     site_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     expected_http_response: HTTPStatus,
-    expected_count: Optional[int],
-    expected_details: Optional[list[Optional[str]]],
+    expected_count: int | None,
+    expected_details: list[str | None] | None,
 ):
     """Tests that fetching a response list paginates correctly (or fails predictably)"""
 
@@ -241,7 +241,7 @@ async def test_get_log_event_list_pagination_for_device_cert(
             insert(SiteLogEvent).values(
                 site_log_event_id=1001,
                 site_id=5,
-                created_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
+                created_time=datetime(2025, 1, 2, tzinfo=UTC),
                 details="log-1001",
                 extended_data=1002,
                 function_set=1,
@@ -257,7 +257,7 @@ async def test_get_log_event_list_pagination_for_device_cert(
             insert(SiteLogEvent).values(
                 site_log_event_id=1002,
                 site_id=5,
-                created_time=datetime(2025, 1, 3, tzinfo=timezone.utc),
+                created_time=datetime(2025, 1, 3, tzinfo=UTC),
                 details="log-1002",
                 extended_data=1003,
                 function_set=2,
@@ -278,6 +278,7 @@ async def test_get_log_event_list_pagination_for_device_cert(
 
     assert_response_header(response, expected_http_response)
     if expected_http_response == HTTPStatus.OK:
+        assert expected_details is not None
         body = read_response_body_string(response)
         assert len(body) > 0
         parsed_response = LogEventList.from_xml(body)
@@ -312,7 +313,7 @@ async def test_create_log_event(
     log_event_list_uri_format: str,
     cert: str,
     site_id: int,
-    detail: Optional[str],
+    detail: str | None,
     expected_http_status: HTTPStatus,
 ):
     """Tests the various ways aggregators can send log events to the list endpoint"""

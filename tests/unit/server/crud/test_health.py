@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from assertical.fixtures.postgres import generate_async_session
@@ -80,7 +80,7 @@ async def test_health_doe_check_with_future_does(pg_base_config):
     """Tests that the doe health check returns failure if there are no future DOEs"""
 
     # Update start time so we have a future DOE
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     async with generate_async_session(pg_base_config) as session:
         stmt = select(DynamicOperatingEnvelope).where(DynamicOperatingEnvelope.dynamic_operating_envelope_id == 3)
         resp = await session.execute(stmt)
@@ -120,7 +120,7 @@ async def test_health_price_check_with_future_prices(pg_base_config):
     """Tests that the price health check returns failure if there are no future prices"""
 
     # Update start time so we have a future price
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     async with generate_async_session(pg_base_config) as session:
         stmt = select(TariffGeneratedRate).where(TariffGeneratedRate.tariff_generated_rate_id == 4)
         resp = await session.execute(stmt)
