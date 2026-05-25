@@ -1,15 +1,12 @@
-name: Create image and push to registry - on new tag
+name: Create image and push to registry
 
 on:
   push:
     tags:
       - "v*"
 
-env: 
-  CR_NAME: ghcr.io/synergy-au
-
 jobs:
-  create-images:
+  create-image:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,22 +15,21 @@ jobs:
         run: echo ::set-output name=tag::${GITHUB_REF#refs/tags/}
 
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v1
 
-      - name: Login to Github Container Registry
-        uses: docker/login-action@v3
-        with: 
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to Azure Docker
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.AZURE_LOGIN_SERVER }}
+          username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
 
-      - name: Build and push envoy Docker image
+      - name: Build and push Docker image
         run: |
-          docker build -t ${{ env.CR_NAME }}/envoy:${{ steps.vars.outputs.tag }} -f Dockerfile.server . --no-cache
-          docker push ${{ env.CR_NAME }}/envoy:${{ steps.vars.outputs.tag }}
-
-      - name: Build and push db-init Docker image
-        run: |
-          cd ./demo/db-init 
-          docker build --build-arg ENVOY_TAG=${{ steps.vars.outputs.tag }} --build-arg CR_NAME="${{ env.CR_NAME }}/" -t ${{ env.CR_NAME }}/envoy-db-init:${{ steps.vars.outputs.tag }} -f Dockerfile.build . --no-cache
-          docker push ${{ env.CR_NAME }}/envoy-db-init:${{ steps.vars.outputs.tag }}
+          echo $'{ "experimental": true, "features": { "buildkit" : true } }' | sudo tee /etc/docker/daemon.json
+          echo '${{ secrets.BSGIP_PAT }}' > ./github.pat
+          echo '${{ secrets.GITLAB_PAT }}' > ./gitlab.pat
+          sudo service docker restart
+          docker version -f '{{.Server.Experimental}}'
+          docker build -t ${{ secrets.AZURE_LOGIN_SERVER }}/envoy:${{ steps.vars.outputs.tag }} -f Dockerfile.server --secret id=github_pat,src=github.pat . --no-cache
+          docker push ${{ secrets.AZURE_LOGIN_SERVER }}/envoy:${{ steps.vars.outputs.tag }}
