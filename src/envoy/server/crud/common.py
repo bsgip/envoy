@@ -10,9 +10,7 @@ from envoy.server.model.tariff import TariffGeneratedRate
 
 EntityWithStartTime = TypeVar(
     "EntityWithStartTime",
-    bound=Union[
-        TariffGeneratedRate, ArchiveTariffGeneratedRate, DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope
-    ],
+    bound=TariffGeneratedRate | ArchiveTariffGeneratedRate | DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope,
 )
 
 

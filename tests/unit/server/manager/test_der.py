@@ -276,8 +276,8 @@ async def test_upsert_der_capability_not_found(
 
     async with generate_async_session(pg_base_config) as session:
         e: DERCapability = generate_class_instance(DERCapability, generate_relationships=True)
-        e.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT)
-        e.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_IMPORT_LIMIT_W)
+        e.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT) or ""
+        e.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_IMPORT_LIMIT_W) or ""
         e.vppModesSupported = to_hex_binary(VPPControlType.OP_MOD_STORAGE_TARGET_W)
 
         with pytest.raises(NotFoundError):
@@ -324,7 +324,7 @@ async def test_upsert_der_capability_roundtrip(
     expected.modesSupported = (
         to_hex_binary(DERControlType.OP_MOD_HVRT_MUST_TRIP | DERControlType.OP_MOD_HVRT_MOMENTARY_CESSATION) or ""
     )
-    expected.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
+    expected.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W) or ""
     expected.vppModesSupported = to_hex_binary(VPPControlType.OP_MOD_STORAGE_TARGET_W)
     async with generate_async_session(pg_base_config) as session:
         await DERCapabilityManager.upsert_der_capability_for_site(

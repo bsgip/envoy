@@ -150,7 +150,7 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
             reading.site_reading_type.group_id,
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        rate = cast(TariffGeneratedRate, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        rate = cast(TariffGeneratedRate, entity)
         return (rate.site.aggregator_id, rate.tariff_id, rate.site_id, rate.tariff_component_id)
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         availability = cast(SiteDERAvailability, entity)
@@ -178,13 +178,13 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
         scgroup = cast(SiteScopedSiteControlGroup, entity)
         return (scgroup.aggregator_id, scgroup.site_id)
     elif resource == SubscriptionResource.TARIFF_COMPONENT:
-        tariff_component = cast(SiteScopedTariffComponent, entity)  # type: ignore
+        tariff_component = cast(SiteScopedTariffComponent, entity)
         return (tariff_component.aggregator_id, tariff_component.site_id, tariff_component.original.tariff_id)
     elif resource == SubscriptionResource.TARIFF:
-        tariff = cast(SiteScopedTariff, entity)  # type: ignore
+        tariff = cast(SiteScopedTariff, entity)
         return (tariff.aggregator_id, tariff.site_id)
     elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
-        rate = cast(TariffGeneratedRate, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        rate = cast(TariffGeneratedRate, entity)
         return (rate.site.aggregator_id, rate.tariff_id, rate.site_id)
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate batch key")
@@ -205,7 +205,7 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
         return cast(SiteReading, entity).site_reading_type.group_id
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         # rate subscriptions can be scoped to a single tariff
-        return cast(TariffGeneratedRate, entity).tariff_component_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(TariffGeneratedRate, entity).tariff_component_id
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # der entities get scoped to the parent der
         return PUBLIC_SITE_DER_ID  # There is only a single site DER per EndDevice - it has a static id
@@ -223,14 +223,14 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         return cast(SiteScopedSiteControlGroupDefault, entity).site_control_group_id
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
-        return cast(SiteScopedSiteControlGroup, entity).original.fsa_id  # type: ignore
+        return cast(SiteScopedSiteControlGroup, entity).original.fsa_id or -1
     elif resource == SubscriptionResource.TARIFF_COMPONENT:
-        return cast(SiteScopedTariffComponent, entity).original.tariff_id  # type: ignore
+        return cast(SiteScopedTariffComponent, entity).original.tariff_id
     elif resource == SubscriptionResource.TARIFF:
-        return cast(SiteScopedTariff, entity).original.fsa_id  # type: ignore
+        return cast(SiteScopedTariff, entity).original.fsa_id
     elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
         # rate subscriptions can be scoped to a single tariff
-        return cast(TariffGeneratedRate, entity).tariff_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(TariffGeneratedRate, entity).tariff_id
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate primary key")
 
@@ -258,13 +258,13 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
         return cast(SiteScopedFunctionSetAssignment, entity).site_id
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
-        return cast(SiteScopedSiteControlGroup, entity).site_id  # type: ignore
+        return cast(SiteScopedSiteControlGroup, entity).site_id
     elif resource == SubscriptionResource.TARIFF_COMPONENT:
-        return cast(SiteScopedTariffComponent, entity).site_id  # type: ignore
+        return cast(SiteScopedTariffComponent, entity).site_id
     elif resource == SubscriptionResource.TARIFF:
-        return cast(SiteScopedTariff, entity).site_id  # type: ignore
+        return cast(SiteScopedTariff, entity).site_id
     elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
-        return cast(TariffGeneratedRate, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(TariffGeneratedRate, entity).site_id
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate site id")
 
@@ -805,8 +805,11 @@ async def fetch_site_control_groups_by_changed_at(
     ]
 
     return AggregatorBatchedEntities(
-        timestamp, SubscriptionResource.SITE_CONTROL_GROUP, site_scoped_active_groups, site_scoped_deleted_groups
-    )  # type: ignore
+        timestamp,
+        SubscriptionResource.SITE_CONTROL_GROUP,
+        site_scoped_active_groups,  # ty:ignore[invalid-argument-type]
+        site_scoped_deleted_groups,  # ty:ignore[invalid-argument-type]
+    )
 
 
 async def fetch_tariffs_by_changed_at(
@@ -821,7 +824,7 @@ async def fetch_tariffs_by_changed_at(
         session, Tariff, ArchiveTariff, timestamp
     )
     if len(active_tariffs) == 0 and len(deleted_tariffs) == 0:
-        return AggregatorBatchedEntities(timestamp, SubscriptionResource.TARIFF, [], [])  # type: ignore
+        return AggregatorBatchedEntities(timestamp, SubscriptionResource.TARIFF, [], [])
 
     # The tariff update will need to vary per Site so we generate an instance per site_id
     aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
@@ -839,8 +842,11 @@ async def fetch_tariffs_by_changed_at(
     ]
 
     return AggregatorBatchedEntities(
-        timestamp, SubscriptionResource.TARIFF, site_scoped_active_tariffs, site_scoped_deleted_tariffs
-    )  # type: ignore
+        timestamp,
+        SubscriptionResource.TARIFF,
+        site_scoped_active_tariffs,  # ty:ignore[invalid-argument-type]
+        site_scoped_deleted_tariffs,  # ty:ignore[invalid-argument-type]
+    )
 
 
 async def fetch_tariff_components_by_changed_at(
@@ -855,7 +861,7 @@ async def fetch_tariff_components_by_changed_at(
         session, TariffComponent, ArchiveTariffComponent, timestamp
     )
     if len(active_comps) == 0 and len(deleted_comps) == 0:
-        return AggregatorBatchedEntities(timestamp, SubscriptionResource.TARIFF_COMPONENT, [], [])  # type: ignore
+        return AggregatorBatchedEntities(timestamp, SubscriptionResource.TARIFF_COMPONENT, [], [])
 
     # The tariff component update will need to vary per Site so we generate an instance per site_id
     aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
@@ -873,5 +879,8 @@ async def fetch_tariff_components_by_changed_at(
     ]
 
     return AggregatorBatchedEntities(
-        timestamp, SubscriptionResource.TARIFF_COMPONENT, site_scoped_active_comps, site_scoped_deleted_comps
-    )  # type: ignore
+        timestamp,
+        SubscriptionResource.TARIFF_COMPONENT,
+        site_scoped_active_comps,  # ty:ignore[invalid-argument-type]
+        site_scoped_deleted_comps,  # ty:ignore[invalid-argument-type]
+    )

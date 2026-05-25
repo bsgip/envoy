@@ -244,7 +244,7 @@ def test_ResponseListMapper_map_to_doe_response(href_prefix: str | None, optiona
     site = generate_class_instance(
         Site, lfdi="ffffffffffffffffffffffffffffffffffffffff", optional_is_none=optional_is_none
     )
-    responses: list[tuple[DynamicOperatingEnvelopeResponse, DynamicOperatingEnvelope]] = [
+    responses: list[tuple[DynamicOperatingEnvelopeResponse, DynamicOperatingEnvelope | None]] = [
         (
             generate_class_instance(
                 DynamicOperatingEnvelopeResponse, seed=101 * (i + 1), optional_is_none=optional_is_none, site=site

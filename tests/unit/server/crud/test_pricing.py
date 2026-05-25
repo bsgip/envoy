@@ -325,14 +325,14 @@ def assert_rate_for_id(
                 assert actual_rate.site_id == 1
                 assert actual_rate.calculation_log_id is None
                 assert actual_rate.start_time == datetime(2022, 3, 5, 1, 1, 6, tzinfo=AEST)
-                assert actual_rate.deleted_time == datetime(2022, 3, 5, 1, 30, 0, tzinfo=UTC)
+                assert actual_rate.deleted_time == datetime(2022, 3, 5, 1, 30, 0, tzinfo=UTC)  # ty:ignore[unresolved-attribute]
             case 9:
                 assert actual_rate.tariff_id == 1
                 assert actual_rate.tariff_component_id == 1
                 assert actual_rate.site_id == 1
                 assert actual_rate.calculation_log_id is None
                 assert actual_rate.start_time == datetime(2022, 3, 5, 1, 2, 34, tzinfo=AEST)
-                assert actual_rate.deleted_time == datetime(2022, 3, 5, 1, 35, 0, tzinfo=UTC)
+                assert actual_rate.deleted_time == datetime(2022, 3, 5, 1, 35, 0, tzinfo=UTC)  # ty:ignore[unresolved-attribute]
             case _:
                 raise Exception(f"Unexpected {expected_rate_id=}")
 

@@ -200,8 +200,8 @@ def test_der_capability_roundtrip(optional_is_none: bool):
     expected: DERCapability = generate_class_instance(
         DERCapability, seed=101, optional_is_none=optional_is_none, generate_relationships=True
     )
-    expected.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT | DERControlType.OP_MOD_FREQ_DROOP)
-    expected.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
+    expected.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT | DERControlType.OP_MOD_FREQ_DROOP) or ""
+    expected.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W) or ""
     expected.vppModesSupported = to_hex_binary(VPPControlType.OP_MOD_STORAGE_TARGET_W)
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(
         DeviceOrAggregatorRequestScope, seed=1991, href_prefix="/my/prefix"

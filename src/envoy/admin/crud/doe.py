@@ -153,7 +153,7 @@ async def supersede_then_insert_does(
 
     # Now we can do the inserts
     table = DynamicOperatingEnvelope.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     insert_ids = await session.execute(
         insert(DynamicOperatingEnvelope)
         .values([{k: getattr(doe, k) for k in update_cols} for doe in doe_list])

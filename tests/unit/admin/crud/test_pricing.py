@@ -104,7 +104,7 @@ async def test_update_single_tariff(pg_base_config):
         await session.flush()
 
         tariff = await select_single_tariff(session, tariff_in.tariff_id)
-        assert tariff.version == 2
+        assert tariff is not None and tariff.version == 2
 
 
 @pytest.mark.anyio
@@ -117,6 +117,7 @@ async def test_update_single_tariff_component(pg_base_config):
         await session.flush()
 
         tc = await select_tariff_component_by_id(session, tc_in.tariff_component_id)
+        assert tc is not None
 
         assert_class_instance_equality(
             TariffComponent, tc, tc_in, ignored_properties={"created_time", "changed_time", "version", "tariff_id"}
@@ -129,6 +130,7 @@ async def test_update_single_tariff_component(pg_base_config):
         # Check the old component was archived before update
         assert (await session.execute(select(func.count()).select_from(ArchiveTariffComponent))).scalar_one() == 1
         archive_data = (await session.execute(select(ArchiveTariffComponent))).scalar_one()
+        assert archive_data.archive_time is not None
 
         assert_class_instance_equality(
             TariffComponent,
@@ -160,7 +162,7 @@ async def test_update_single_tariff_component(pg_base_config):
         await session.flush()
 
         tc = await select_tariff_component_by_id(session, tc_in.tariff_component_id)
-        assert tc.version == 2
+        assert tc is not None and tc.version == 2
 
 
 @pytest.mark.anyio
@@ -245,6 +247,7 @@ async def test_insert_many_tariff_genrate_overlapping(pg_base_config):
             session, cloned_original_rate.tariff_generated_rate_id
         )
         inserted_rate = await _select_tariff_generated_rate_by_id(session, inserted_ids[0])
+        assert inserted_rate is not None
 
         # Old rate - no change
         assert_class_instance_equality(

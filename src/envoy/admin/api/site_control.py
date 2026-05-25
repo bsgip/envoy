@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from http import HTTPStatus
 
-from asyncpg.exceptions import CardinalityViolationError  # type: ignore
+from asyncpg.exceptions import CardinalityViolationError
 from envoy_schema.admin.schema.base import BatchCreateResponse
 from envoy_schema.admin.schema.site_control import (
     SiteControlGroupDefaultRequest,
@@ -82,9 +82,9 @@ async def update_site_control_group(
             request=site_control_group,
         )
     except BadRequestError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, exc.message)
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, exc.message) from exc
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, exc.message)
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, exc.message) from exc
 
 
 @router.get(SiteControlGroupListUri, status_code=HTTPStatus.OK, response_model=SiteControlGroupPageResponse)

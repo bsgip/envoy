@@ -769,6 +769,7 @@ async def test_create_response_for_doe_with_display_id(
         assert parsed_response.status == request_body.status
         assert parsed_response.subject == subject
         assert parsed_response.endDeviceLFDI == site_lfdi
+        assert parsed_response.createdDateTime is not None
         assert_nowish(parsed_response.createdDateTime)
 
         assert (doe_count_before + 1) == (doe_count_after), "One new response"

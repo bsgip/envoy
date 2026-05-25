@@ -39,7 +39,7 @@ class SiteControlGroup(Base):
         lazy="raise", back_populates="site_control_group"
     )
 
-    site_control_group_default: Mapped["SiteControlGroupDefault" | None] = relationship(
+    site_control_group_default: Mapped["SiteControlGroupDefault | None"] = relationship(
         back_populates="site_control_group", lazy="raise", passive_deletes=True, uselist=False
     )  # The default DOE
 

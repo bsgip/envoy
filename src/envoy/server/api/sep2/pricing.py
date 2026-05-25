@@ -46,7 +46,7 @@ async def get_pricingreadingtype(request: Request, site_id: int, tariff_id: int,
         )
         return XmlResponse(rt)
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=exc.message)
+        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail=exc.message) from exc
 
 
 @router.head(uri.TariffProfileFSAListUri)
@@ -210,7 +210,7 @@ async def get_combinedtimetariffintervallist(
             limit=extract_limit_from_paging_param(limit),
         )
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(tti_list)
 
@@ -252,7 +252,7 @@ async def get_timetariffintervallist(
             limit=extract_limit_from_paging_param(limit),
         )
     except NotFoundError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.NOT_FOUND, detail=ex.message) from ex
 
     return XmlResponse(tti_list)
 
@@ -330,8 +330,8 @@ async def get_consumptiontariffintervallist(
             rate_component_id=rate_component_id,
             time_tariff_interval_id=tti_id,
         )
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+    except NotFoundError as exc:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found") from exc
 
     return XmlResponse(cti_list)
 
@@ -371,7 +371,7 @@ async def get_singleconsumptiontariffinterval(
             time_tariff_interval_id=tti_id,
             consumption_tariff_interval_id=cti_id,
         )
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found.")
+    except NotFoundError as exc:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found.") from exc
 
     return XmlResponse(cti)

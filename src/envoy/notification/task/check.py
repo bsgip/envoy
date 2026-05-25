@@ -230,7 +230,7 @@ def entities_to_notification(  # noqa: C901
         return NotificationMapper.map_rates_to_response(
             tariff_id=tariff_id,
             tariff_component_id=tariff_component_id,
-            rates=cast(Sequence[TariffGeneratedRate], entities),  # type: ignore # mypy quirk
+            rates=cast(Sequence[TariffGeneratedRate], entities),
             sub=sub,
             scope=scope,
             notification_type=notification_type,
@@ -342,7 +342,7 @@ def entities_to_notification(  # noqa: C901
         return NotificationMapper.map_rates_to_response(
             tariff_id=tariff_id,
             tariff_component_id=None,
-            rates=cast(Sequence[TariffGeneratedRate], entities),  # type: ignore # mypy quirk
+            rates=cast(Sequence[TariffGeneratedRate], entities),
             sub=sub,
             scope=scope,
             notification_type=notification_type,

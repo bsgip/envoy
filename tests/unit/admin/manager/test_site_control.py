@@ -85,12 +85,12 @@ async def test_update_site_control_default_all_vals_update(
             select(SiteControlGroupDefault).where(SiteControlGroupDefault.site_control_group_id == group_id)
         )
         saved_result = result.scalar_one()
-        assert saved_result.import_limit_active_watts == control_request.import_limit_watts.value  # type: ignore[union-attr]  # noqa: 501
-        assert saved_result.export_limit_active_watts == control_request.export_limit_watts.value  # type: ignore[union-attr]  # noqa: 501
-        assert saved_result.generation_limit_active_watts == control_request.generation_limit_watts.value  # type: ignore[union-attr]  # noqa: 501
-        assert saved_result.load_limit_active_watts == control_request.load_limit_watts.value  # type: ignore[union-attr]  # noqa: 501
-        assert saved_result.ramp_rate_percent_per_second == control_request.ramp_rate_percent_per_second.value  # type: ignore[union-attr]  # noqa: 501
-        assert saved_result.storage_target_active_watts == control_request.storage_target_watts.value  # type: ignore[union-attr]  # noqa: 501
+        assert saved_result.import_limit_active_watts == control_request.import_limit_watts.value  # ty:ignore[unresolved-attribute]
+        assert saved_result.export_limit_active_watts == control_request.export_limit_watts.value  # ty:ignore[unresolved-attribute]
+        assert saved_result.generation_limit_active_watts == control_request.generation_limit_watts.value  # ty:ignore[unresolved-attribute]
+        assert saved_result.load_limit_active_watts == control_request.load_limit_watts.value  # ty:ignore[unresolved-attribute]
+        assert saved_result.ramp_rate_percent_per_second == control_request.ramp_rate_percent_per_second.value  # ty:ignore[unresolved-attribute]
+        assert saved_result.storage_target_active_watts == control_request.storage_target_watts.value  # ty:ignore[unresolved-attribute]
 
         if version_before is None:
             assert saved_result.version == 1

@@ -796,6 +796,7 @@ async def test_create_response_for_scope_doe_created_normally_with_display_id(
     # Arrange
     site_id = 1
     scope = generate_class_instance(SiteRequestScope, seed=101, site_id=site_id, href_prefix="/my_prefix/")
+    assert scope.href_prefix
     response = generate_class_instance(Response, seed=202)
     decoded_display_id = 2
     actual_doe_id = 3133
