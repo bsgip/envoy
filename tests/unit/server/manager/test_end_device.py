@@ -457,6 +457,43 @@ async def test_add_enddevice_for_scope_aggregator_with_sfdi(
 
 
 @pytest.mark.anyio
+async def test_add_enddevice_for_scope_aggregator_lfdi_matches_aggregator() -> None:
+    """Checks that an aggregator cannot register an end device with the same LFDI as the aggregator cert
+    (which would conflict with the virtual end device)"""
+    # Arrange
+    mock_session = create_mock_session()
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
+    )
+    end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    end_device.lFDI = scope.lfdi  # LFDI matches aggregator cert
+
+    # Act / Assert
+    with pytest.raises(ForbiddenError):
+        await EndDeviceManager.add_enddevice_for_scope(mock_session, scope, end_device)
+
+    assert_mock_session(mock_session, committed=False)
+
+
+@pytest.mark.anyio
+async def test_add_enddevice_for_scope_aggregator_lfdi_matches_aggregator_case_insensitive() -> None:
+    """Checks that the LFDI collision check with the aggregator is case-insensitive"""
+    # Arrange
+    mock_session = create_mock_session()
+    scope: UnregisteredRequestScope = generate_class_instance(
+        UnregisteredRequestScope, source=CertificateType.AGGREGATOR_CERTIFICATE
+    )
+    end_device: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    end_device.lFDI = scope.lfdi.upper() if scope.lfdi == scope.lfdi.lower() else scope.lfdi.lower()
+
+    # Act / Assert
+    with pytest.raises(ForbiddenError):
+        await EndDeviceManager.add_enddevice_for_scope(mock_session, scope, end_device)
+
+    assert_mock_session(mock_session, committed=False)
+
+
+@pytest.mark.anyio
 async def test_add_enddevice_for_scope_device_missing_lfdi() -> None:
     """Checks that the enddevice update for a device cert is allowable for missing lfdi"""
     # Arrange
