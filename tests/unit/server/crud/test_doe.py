@@ -686,16 +686,6 @@ async def extra_site_control_groups(pg_base_config):
                 changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=UTC),
             )
         )
-        session.add(
-            generate_class_instance(
-                SiteControlGroup,
-                seed=202,
-                primacy=1,
-                site_control_group_id=5,
-                fsa_id=None,
-                changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=UTC),
-            )
-        )
         await session.commit()
     yield pg_base_config
 
