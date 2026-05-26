@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -57,7 +56,7 @@ from envoy.server.model.site import Site
 async def test_select_and_count_doe_response_filters(
     pg_base_config,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     start: int,
     limit: int,
     after: datetime,
@@ -119,7 +118,7 @@ async def test_select_and_count_doe_response_filters(
 async def test_select_and_count_rate_response_filters(
     pg_base_config,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     start: int,
     limit: int,
     after: datetime,
@@ -163,10 +162,10 @@ async def test_select_and_count_rate_response_filters(
 async def test_select_doe_response_for_scope(
     pg_base_config,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     pk_id: int,
-    expected_response_type: Optional[ResponseType],
-    expected_site_id: Optional[int],
+    expected_response_type: ResponseType | None,
+    expected_site_id: int | None,
 ):
     """Checks that fetching DOE responses by ID works with the various scoping options"""
     async with generate_async_session(pg_base_config) as session:
@@ -202,10 +201,10 @@ async def test_select_doe_response_for_scope(
 async def test_select_rate_response_for_scope(
     pg_base_config,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     pk_id: int,
-    expected_response_type: Optional[ResponseType],
-    expected_site_id: Optional[int],
+    expected_response_type: ResponseType | None,
+    expected_site_id: int | None,
 ):
     """Checks that fetching rate responses by ID works with the various scoping options"""
     async with generate_async_session(pg_base_config) as session:

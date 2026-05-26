@@ -1,6 +1,5 @@
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -27,9 +26,9 @@ from envoy.server.model.tariff import Tariff, TariffGeneratedRate
     "changed_after, expected_fsa_ids",
     [
         (datetime.min, [1, 2]),
-        (datetime(2023, 1, 2, 12, 1, 0, tzinfo=timezone.utc), [1, 2]),
-        (datetime(2023, 1, 2, 12, 2, 0, tzinfo=timezone.utc), [2]),
-        (datetime(2023, 1, 2, 13, 2, 0, tzinfo=timezone.utc), []),
+        (datetime(2023, 1, 2, 12, 1, 0, tzinfo=UTC), [1, 2]),
+        (datetime(2023, 1, 2, 12, 2, 0, tzinfo=UTC), [2]),
+        (datetime(2023, 1, 2, 13, 2, 0, tzinfo=UTC), []),
     ],
 )
 @pytest.mark.anyio
@@ -53,20 +52,20 @@ async def test_select_tariff_count(pg_base_config):
         assert await select_tariff_count(session, datetime.min, 3) == 0
 
         # try with after filter being set
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 11, 1, 2, tzinfo=timezone.utc), None) == 3
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 11, 1, 3, tzinfo=timezone.utc), None) == 2
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), None) == 2
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc), None) == 1
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 13, 1, 2, tzinfo=timezone.utc), None) == 1
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 13, 1, 3, tzinfo=timezone.utc), None) == 0
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 11, 1, 2, tzinfo=UTC), None) == 3
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 11, 1, 3, tzinfo=UTC), None) == 2
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), None) == 2
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=UTC), None) == 1
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 13, 1, 2, tzinfo=UTC), None) == 1
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 13, 1, 3, tzinfo=UTC), None) == 0
 
         # Combo after and fsa_id filter
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc), 1) == 0
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc), 2) == 1
-        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=timezone.utc), 3) == 0
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=UTC), 1) == 0
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=UTC), 2) == 1
+        assert await select_tariff_count(session, datetime(2023, 1, 2, 12, 1, 3, tzinfo=UTC), 3) == 0
 
 
-def assert_tariff_by_id(expected_tariff_id: Optional[int], actual_tariff: Optional[Tariff]):
+def assert_tariff_by_id(expected_tariff_id: int | None, actual_tariff: Tariff | None):
     """Asserts tariff matches all values expected from a tariff with that id"""
     expected_currency_by_tariff_id = {
         1: 36,
@@ -96,14 +95,14 @@ def assert_tariff_by_id(expected_tariff_id: Optional[int], actual_tariff: Option
         ([3, 2], 0, datetime.min, 2, None),
         ([1], 2, datetime.min, 2, None),
         ([], 3, datetime.min, 2, None),
-        ([3, 2], 0, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), 99, None),
-        ([2], 0, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), 99, 1),
-        ([2], 1, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), 99, None),
+        ([3, 2], 0, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), 99, None),
+        ([2], 0, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), 99, 1),
+        ([2], 1, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), 99, None),
     ],
 )
 @pytest.mark.anyio
 async def test_select_all_tariffs(
-    pg_base_config, expected_ids: list[int], start: int, after: datetime, limit: int, fsa_id: Optional[int]
+    pg_base_config, expected_ids: list[int], start: int, after: datetime, limit: int, fsa_id: int | None
 ):
     """Tests that the returned tariffs match what's in the DB"""
     async with generate_async_session(pg_base_config) as session:
@@ -112,7 +111,7 @@ async def test_select_all_tariffs(
         assert [t.tariff_id for t in tariffs] == expected_ids
 
         # check contents of each entry
-        for id, tariff in zip(expected_ids, tariffs):
+        for id, tariff in zip(expected_ids, tariffs, strict=False):
             assert_tariff_by_id(id, tariff)
 
 
@@ -128,7 +127,7 @@ async def test_select_all_tariffs(
     ],
 )
 @pytest.mark.anyio
-async def test_select_single_tariff(pg_base_config, expected_id: Optional[int], requested_id: int):
+async def test_select_single_tariff(pg_base_config, expected_id: int | None, requested_id: int):
     """Tests that singular tariffs can be returned by id"""
     async with generate_async_session(pg_base_config) as session:
         tariff = await select_single_tariff(session, requested_id)
@@ -136,13 +135,13 @@ async def test_select_single_tariff(pg_base_config, expected_id: Optional[int], 
 
 
 def assert_rate_for_id(
-    expected_rate_id: Optional[int],
+    expected_rate_id: int | None,
     expected_tariff_id: int,
-    expected_site_id: int,
-    expected_date: Optional[date],
-    expected_time: Optional[time],
-    expected_tz: Optional[str],
-    actual_rate: Optional[TariffGeneratedRate],
+    expected_site_id: int | None,
+    expected_date: date | None,
+    expected_time: time | None,
+    expected_tz: str | None,
+    actual_rate: TariffGeneratedRate | None,
 ):
     """Asserts the supplied rate matches the expected values for a rate with that id"""
     if expected_rate_id is None:
@@ -158,11 +157,12 @@ def assert_rate_for_id(
         assert actual_rate.import_reactive_price == Decimal(f"{expected_rate_id}.333")
         assert actual_rate.export_reactive_price == Decimal(f"-{expected_rate_id}.4444")
         if expected_date is not None and expected_time is not None:
+            assert expected_tz is not None
             tz = ZoneInfo(expected_tz)
             assert_datetime_equal(actual_rate.start_time, datetime.combine(expected_date, expected_time, tzinfo=tz))
-            assert actual_rate.start_time.tzname() == tz.tzname(
-                actual_rate.start_time
-            ), "Start time should be returned in local time"
+            assert actual_rate.start_time.tzname() == tz.tzname(actual_rate.start_time), (
+                "Start time should be returned in local time"
+            )
 
 
 @pytest.mark.parametrize(
@@ -182,7 +182,7 @@ def assert_rate_for_id(
 )
 @pytest.mark.anyio
 async def test_select_tariff_rate_for_day_time(
-    pg_base_config, expected_rate_id: Optional[int], agg_id: int, tariff_id: int, site_id: int, d: date, t: time
+    pg_base_config, expected_rate_id: int | None, agg_id: int, tariff_id: int, site_id: int, d: date, t: time
 ):
     """Tests that fetching specific rates returns fully formed instances and respects all filter conditions"""
     async with generate_async_session(pg_base_config) as session:
@@ -200,7 +200,7 @@ async def test_select_tariff_rate_for_day_time(
 )
 @pytest.mark.anyio
 async def test_select_tariff_rate_for_day_time_la_time(
-    pg_la_timezone, expected_rate_id: Optional[int], agg_id: int, tariff_id: int, site_id: int, d: date, t: time
+    pg_la_timezone, expected_rate_id: int | None, agg_id: int, tariff_id: int, site_id: int, d: date, t: time
 ):
     """Expands on test_select_tariff_rate_for_day_time by changing the site local time to LA time"""
     async with generate_async_session(pg_la_timezone) as session:
@@ -217,8 +217,8 @@ async def test_select_tariff_rate_for_day_time_la_time(
         ([2], 1, datetime.min, 1),
         ([], 2, datetime.min, 99),
         ([], 0, datetime.min, 0),
-        ([2], 0, datetime(2022, 3, 4, 12, 22, 32, tzinfo=timezone.utc), 99),
-        ([], 0, datetime(2022, 3, 4, 12, 22, 34, tzinfo=timezone.utc), 99),
+        ([2], 0, datetime(2022, 3, 4, 12, 22, 32, tzinfo=UTC), 99),
+        ([], 0, datetime(2022, 3, 4, 12, 22, 34, tzinfo=UTC), 99),
     ],
 )
 @pytest.mark.anyio
@@ -229,7 +229,7 @@ async def test_select_tariff_rates_for_day_pagination(
     async with generate_async_session(pg_base_config) as session:
         rates = await select_tariff_rates_for_day(session, 1, 1, 1, date(2022, 3, 5), start, after, limit)
     assert len(rates) == len(expected_ids)
-    for id, rate in zip(expected_ids, rates):
+    for id, rate in zip(expected_ids, rates, strict=False):
         assert_rate_for_id(id, 1, 1, None, None, None, rate)
 
 
@@ -259,7 +259,7 @@ async def test_select_and_count_tariff_rates_for_day_filters(
     assert isinstance(count, int)
     assert len(rates) == len(expected_id_and_starts)
     assert len(rates) == count
-    for (id, expected_datetime), rate in zip(expected_id_and_starts, rates):
+    for (id, expected_datetime), rate in zip(expected_id_and_starts, rates, strict=False):
         assert_rate_for_id(
             id, tariff_id, site_id, expected_datetime.date(), expected_datetime.time(), "Australia/Brisbane", rate
         )
@@ -295,7 +295,7 @@ async def test_select_and_count_tariff_rates_for_day_filters_la_time(
         assert isinstance(count, int)
         assert len(rates) == len(expected_id_and_starts)
         assert len(rates) == count
-        for (id, expected_datetime), rate in zip(expected_id_and_starts, rates):
+        for (id, expected_datetime), rate in zip(expected_id_and_starts, rates, strict=False):
             assert_rate_for_id(
                 id, tariff_id, site_id, expected_datetime.date(), expected_datetime.time(), "America/Los_Angeles", rate
             )
@@ -309,11 +309,11 @@ async def test_select_and_count_tariff_rates_for_day_filters_la_time(
             1,
             1,
             1,
-            datetime(2022, 3, 4, 12, 22, 32, tzinfo=timezone.utc),
+            datetime(2022, 3, 4, 12, 22, 32, tzinfo=UTC),
             [date(2022, 3, 5), date(2022, 3, 6)],
         ),
-        (1, 1, 1, datetime(2022, 3, 4, 14, 22, 32, tzinfo=timezone.utc), [date(2022, 3, 6)]),
-        (1, 1, 1, datetime(2022, 3, 4, 14, 22, 34, tzinfo=timezone.utc), []),  # filter miss on changed_after
+        (1, 1, 1, datetime(2022, 3, 4, 14, 22, 32, tzinfo=UTC), [date(2022, 3, 6)]),
+        (1, 1, 1, datetime(2022, 3, 4, 14, 22, 34, tzinfo=UTC), []),  # filter miss on changed_after
         (3, 1, 1, datetime.min, []),  # filter miss on agg_id
         (1, 3, 1, datetime.min, []),  # filter miss on tariff_id
         (1, 1, 4, datetime.min, []),  # filter miss on site_id
@@ -329,9 +329,9 @@ async def test_select_unique_rate_days_filtering(
             session, agg_id, tariff_id, site_id, 0, after, 99
         )
         unique_rate_days_count = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
-        assert unique_rate_days_count == len(
-            unique_rate_days
-        ), "Without pagination limits the total count will equal the page count"
+        assert unique_rate_days_count == len(unique_rate_days), (
+            "Without pagination limits the total count will equal the page count"
+        )
         assert select_count == unique_rate_days_count, "These should always align"
         assert unique_rate_days == output_list
         assert_list_type(date, unique_rate_days)
@@ -353,9 +353,9 @@ async def test_select_unique_rate_days_filtering_la_time(
             session, agg_id, tariff_id, site_id, 0, after, 99
         )
         unique_rate_days_count = await count_unique_rate_days(session, agg_id, tariff_id, site_id, after)
-        assert unique_rate_days_count == len(
-            unique_rate_days
-        ), "Without pagination limits the total count will equal the page count"
+        assert unique_rate_days_count == len(unique_rate_days), (
+            "Without pagination limits the total count will equal the page count"
+        )
         assert select_count == unique_rate_days_count, "These should always align"
         assert unique_rate_days == output_list
         assert_list_type(date, unique_rate_days)
@@ -404,10 +404,10 @@ async def test_select_unique_rate_days_pagination(
 async def test_select_tariff_generated_rate_for_scope(
     pg_additional_does,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     rate_id: int,
-    expected_site_id: Optional[int],
-    expected_dt: Optional[datetime],
+    expected_site_id: int | None,
+    expected_dt: datetime | None,
 ):
 
     async with generate_async_session(pg_additional_does) as session:
@@ -439,10 +439,10 @@ async def test_select_tariff_generated_rate_for_scope(
 async def test_select_tariff_generated_rate_for_scope_la_timezone(
     pg_la_timezone,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     rate_id: int,
-    expected_site_id: Optional[int],
-    expected_dt: Optional[datetime],
+    expected_site_id: int | None,
+    expected_dt: datetime | None,
 ):
     async with generate_async_session(pg_la_timezone) as session:
         actual = await select_tariff_generated_rate_for_scope(session, agg_id, site_id, rate_id)

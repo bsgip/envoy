@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.admin.schema.doe import DoePageResponse, DynamicOperatingEnvelopeRequest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +26,7 @@ class DoeListManager:
 
     @staticmethod
     async def get_all_does(
-        session: AsyncSession, start: int, limit: int, changed_after: Optional[datetime]
+        session: AsyncSession, start: int, limit: int, changed_after: datetime | None
     ) -> DoePageResponse:
         """Admin specific (paginated) fetch of does that covers all aggregators.
         changed_after: If specified - filter to does whose changed date is >= this value"""

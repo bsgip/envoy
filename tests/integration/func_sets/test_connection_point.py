@@ -1,6 +1,5 @@
 import urllib.parse
 from http import HTTPStatus
-from typing import Optional
 
 import pytest
 from assertical.fixtures.postgres import generate_async_session
@@ -57,7 +56,7 @@ async def test_get_connectionpoint(
     client: AsyncClient,
     connection_point_uri_format: str,
     site_id: int,
-    expected_nmi: Optional[str],
+    expected_nmi: str | None,
     cert: str,
     expected_status_response: HTTPStatus,
 ):
@@ -116,7 +115,7 @@ async def test_connectionpoint_update(
     cert: str,
     update_nmi_value: str,
     expected_result: HTTPStatus,
-    expected_nmi: Optional[str],
+    expected_nmi: str | None,
 ):
     """Tests that connection points can be updated / fetched (and that they archive appropriately)"""
 

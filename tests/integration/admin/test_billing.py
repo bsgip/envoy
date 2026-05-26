@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from http import HTTPStatus
 from zoneinfo import ZoneInfo
@@ -139,8 +139,8 @@ async def test_fetch_sites_billing_data(pg_billing_data, admin_client_auth: Asyn
     request = SiteBillingRequest(
         site_ids=[1, 2, 4],
         tariff_id=1,
-        period_start=datetime(2023, 9, 9, 14, 0, tzinfo=timezone.utc),
-        period_end=datetime(2023, 9, 10, 14, 0, tzinfo=timezone.utc),
+        period_start=datetime(2023, 9, 9, 14, 0, tzinfo=UTC),
+        period_end=datetime(2023, 9, 10, 14, 0, tzinfo=UTC),
     )
     response = await admin_client_auth.post(uri, content=request.model_dump_json())
     assert_response_header(response, expected_status_code=HTTPStatus.OK, expected_content_type="application/json")

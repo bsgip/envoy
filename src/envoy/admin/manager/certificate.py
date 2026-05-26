@@ -1,17 +1,16 @@
 import itertools
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from envoy_schema.admin.schema.certificate import (
-    CertificatePageResponse,
     CertificateAssignmentRequest,
+    CertificatePageResponse,
     CertificateRequest,
     CertificateResponse,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.admin import crud
-from envoy.admin import mapper
-from envoy.server import crud as server_crud
+from envoy.admin import crud, mapper
 from envoy.server import exception
+from envoy.server.crud.aggregator import select_aggregator
 
 
 class CertificateManager:
@@ -21,7 +20,7 @@ class CertificateManager:
     ) -> CertificatePageResponse | None:
         """Select many certificates from the DB and map to a list of CertificateResponse objects"""
         # Assess aggregator exists
-        if not await server_crud.aggregator.select_aggregator(session, aggregator_id):
+        if not await select_aggregator(session, aggregator_id):
             return None
         cert_list = await crud.certificate.select_all_certificates_for_aggregator(session, aggregator_id, start, limit)
         cert_count = await crud.certificate.count_certificates_for_aggregator(session, aggregator_id)
@@ -48,7 +47,7 @@ class CertificateManager:
             InvalidIdError: if a certificate id supplied doesn't already exist
         """
         # Assess aggregator exists
-        if not await server_crud.aggregator.select_aggregator(session, aggregator_id):
+        if not await select_aggregator(session, aggregator_id):
             raise exception.NotFoundError(f"Aggregator with id {aggregator_id} not found")
 
         # Perform mapping
@@ -104,7 +103,7 @@ class CertificateManager:
         Raises:
             NotFoundError: if aggregator id or certificate id is invalid
         """
-        if not await server_crud.aggregator.select_aggregator(session, aggregator_id):
+        if not await select_aggregator(session, aggregator_id):
             raise exception.NotFoundError(f"Aggregator with id {aggregator_id} not found")
 
         if not await crud.certificate.select_certificate(session, certificate_id):

@@ -36,7 +36,7 @@ TZ = ZoneInfo("Australia/Brisbane")
 )
 @pytest.mark.anyio
 async def test_select_csip_aus_site_type_ids(
-    pg_base_config, aggregator_id: int, site_id: int, uom: int, expected_site_type_ids: list[int]
+    pg_base_config, aggregator_id: int, site_id: int, uom: UomType, expected_site_type_ids: list[int]
 ):
     async with generate_async_session(pg_base_config) as session:
         site_type_ids = await select_csip_aus_site_type_ids(session, aggregator_id, site_id, uom)
@@ -145,9 +145,9 @@ async def test_count_and_select_consistency(pg_base_config):
             readings = await select_site_readings_for_site_and_time(
                 session, site_type_ids, start_time, end_time, 0, 500
             )
-            assert count == len(
-                readings
-            ), f"Count mismatch for site_type_ids {site_type_ids}: expected {count}, got {len(readings)}"
+            assert count == len(readings), (
+                f"Count mismatch for site_type_ids {site_type_ids}: expected {count}, got {len(readings)}"
+            )
 
 
 @pytest.mark.anyio

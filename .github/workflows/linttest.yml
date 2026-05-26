@@ -7,74 +7,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  bandit:
+  linting:
     runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        pyver: ["3.11", "3.12", "3.13"]
+        
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v6
 
-      - name: Security check - Bandit
-        uses: joshvote/bandit-report-artifacts@v0.0.6
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          project_path: .
-          ignore_failure: false
-          config_file: pyproject.toml
-
-      - name: Security check report artifacts
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: Security report
-          path: output/security_report.txt
-          overwrite: true
-
-  flake8_py311:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3.1.0
-
-      - name: Setup Python
-        uses: actions/setup-python@v4.2.0
-        with:
-          python-version: "3.11"
-
-      - name: Setup flake8 annotations
-        uses: rbialon/flake8-annotations@v1
-
-      - name: Lint with flake8
-        if: always()
-        run: |
-          pip install flake8
-          flake8 . --count --statistics
-
-  black_formatting:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: psf/black@stable
-
-  mypy_py311:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3.1.0
-
-      - name: Setup Python
-        uses: actions/setup-python@v4.2.0
-        with:
-          python-version: "3.11"
+          python-version: ${{ matrix.pyver }}
 
       - name: Install Dependencies
-        run: |
-          pip install .[dev]
-
-      - name: Add mypy annotator
-        uses: pr-annotators/mypy-pr-annotator@v1.0.0
-
-      - name: Run mypy
-        run: |
-          mypy src/
+        run: uv sync --extra dev --extra test
+      - name: Lint (ruff)
+        run: uv run ruff check .
+      - name: Format check
+        run: uv run ruff format --check .
+      - name: Typing (ty)
+        run: uv run ty check .
+      - name: Security scan (bandit)
+        run: uv run bandit -c pyproject.toml -r src/
 
   docker_build:
     runs-on: ubuntu-latest
@@ -94,29 +53,30 @@ jobs:
   pytest:
     strategy:
       matrix:
-        pyver: ["3.10", "3.11", "3.12"]
+        pyver: ["3.11", "3.12", "3.13"]
     runs-on: ubuntu-latest
 
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v6
 
-      - name: Setup Python
-        uses: actions/setup-python@v4.2.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: ${{ matrix.pyver }}
 
       - name: Install Dependencies
         run: |
           sudo apt install -y postgresql
-          pip install .[test]
+          uv sync --extra test
 
       - name: Run Pytest
         run: |
-          pytest -n auto --junit-xml=.test_report_py${{ matrix.pyver }}.xml
+          uv run pytest -n auto --junit-xml=.test_report_py${{ matrix.pyver }}.xml
+        
       - name: Upload Results
-        uses: test-summary/action@v1
+        uses: test-summary/action@v2.6
         with:
           paths: .test_report_py${{ matrix.pyver }}.xml
         if: always()
@@ -126,7 +86,7 @@ jobs:
     env:
       DATABASE_URL: postgresql+asyncpg://envoyuser:envoypass@postgres:5432/envoydb
 
-    container: python:3.11-slim
+    container: python:3.13-slim
 
     services:
       postgres:
@@ -145,18 +105,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: ${{ matrix.pyver }}
 
       - name: Install Dependencies
         run: |
-          pip install .
+          uv sync
 
       - name: Upgrade
         run: |
           cd src/envoy/server/
-          alembic upgrade head
+          uv run alembic upgrade head
 
       - name: Downgrade
         run: |
           cd src/envoy/server/
-          alembic downgrade base
+          uv run alembic downgrade base

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -55,7 +55,7 @@ async def test_fetch_entities_with_archive_by_id_site(
                 ArchiveSite,
                 seed=303,
                 archive_id=None,
-                deleted_time=datetime(2024, 1, 2, tzinfo=timezone.utc),
+                deleted_time=datetime(2024, 1, 2, tzinfo=UTC),
                 site_id=11,
                 nmi="archive_11",
             )
@@ -67,7 +67,7 @@ async def test_fetch_entities_with_archive_by_id_site(
                 ArchiveSite,
                 seed=404,
                 archive_id=None,
-                deleted_time=datetime(2024, 11, 12, tzinfo=timezone.utc),
+                deleted_time=datetime(2024, 11, 12, tzinfo=UTC),
                 site_id=12,
             )
         )
@@ -77,7 +77,7 @@ async def test_fetch_entities_with_archive_by_id_site(
                 ArchiveSite,
                 seed=505,
                 archive_id=None,
-                deleted_time=datetime(2024, 12, 1, tzinfo=timezone.utc),
+                deleted_time=datetime(2024, 12, 1, tzinfo=UTC),
                 site_id=12,
                 nmi="archive_12",
             )
@@ -130,7 +130,7 @@ async def test_fetch_entities_with_archive_by_id_site_der(
     correctly source entities from the archive table if the main table is empty"""
 
     # Load our archive with values - mark the "correct" deleted record with a changed_time
-    expected_changed_time = datetime(2027, 11, 1, 4, 5, 6, tzinfo=timezone.utc)
+    expected_changed_time = datetime(2027, 11, 1, 4, 5, 6, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         # Site DER 1 has some audit records (with an old deletion)
         session.add(generate_class_instance(ArchiveSiteDER, seed=1, archive_id=None, deleted_time=None, site_der_id=1))
@@ -151,7 +151,7 @@ async def test_fetch_entities_with_archive_by_id_site_der(
                 ArchiveSiteDER,
                 seed=303,
                 archive_id=None,
-                deleted_time=datetime(2024, 1, 2, tzinfo=timezone.utc),
+                deleted_time=datetime(2024, 1, 2, tzinfo=UTC),
                 site_der_id=11,
                 changed_time=expected_changed_time,
             )
@@ -163,7 +163,7 @@ async def test_fetch_entities_with_archive_by_id_site_der(
                 ArchiveSiteDER,
                 seed=404,
                 archive_id=None,
-                deleted_time=datetime(2024, 11, 12, tzinfo=timezone.utc),
+                deleted_time=datetime(2024, 11, 12, tzinfo=UTC),
                 site_der_id=12,
             )
         )
@@ -173,7 +173,7 @@ async def test_fetch_entities_with_archive_by_id_site_der(
                 ArchiveSiteDER,
                 seed=505,
                 archive_id=None,
-                deleted_time=datetime(2024, 12, 1, tzinfo=timezone.utc),
+                deleted_time=datetime(2024, 12, 1, tzinfo=UTC),
                 site_der_id=12,
                 changed_time=expected_changed_time,
             )
@@ -210,9 +210,9 @@ async def test_fetch_entities_with_archive_by_id_site_der(
 
         # Ensure we get the expected values too
         for e in source_entities:
-            assert e.changed_time == datetime(
-                2024, 3, 14, 3 + e.site_der_id, 55, 44, 500000, tzinfo=timezone.utc
-            ), "This is just the convention for pg_base_config"
+            assert e.changed_time == datetime(2024, 3, 14, 3 + e.site_der_id, 55, 44, 500000, tzinfo=UTC), (
+                "This is just the convention for pg_base_config"
+            )
         for e in archive_entities:
             assert e.changed_time == expected_changed_time, "This is just a convention for this test (setup above)"
 
@@ -229,8 +229,8 @@ async def test_extract_source_archive_pk_columns(source_type: type[Base], archiv
 
     # Any failures here are likely the fault of a bad source/archive model definition
     assert source_pk.name == archive_pk.name
-    assert source_pk.table.name == source_type.__table__.name
-    assert archive_pk.table.name == archive_type.__table__.name
+    assert source_pk.table.name == source_type.__table__.name  # ty:ignore[unresolved-attribute]
+    assert archive_pk.table.name == archive_type.__table__.name  # ty:ignore[unresolved-attribute]
 
 
 # NOTE: We don't need to test SubscriptionCondition as you can't subscribe to them
@@ -247,17 +247,17 @@ async def test_extract_source_archive_changed_deleted_columns(source_type: type[
     # Any failures here are likely the fault of a bad source/archive model definition
     assert source_pk.name == "changed_time"
     assert archive_pk.name == "deleted_time"
-    assert source_pk.table.name == source_type.__table__.name
-    assert archive_pk.table.name == archive_type.__table__.name
+    assert source_pk.table.name == source_type.__table__.name  # ty:ignore[unresolved-attribute]
+    assert archive_pk.table.name == archive_type.__table__.name  # ty:ignore[unresolved-attribute]
 
 
 # 2022-02-03 05:06:07.500
 @pytest.mark.parametrize(
     "cd_time, expected_site_ids",
     [
-        (datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc), []),
-        (datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=timezone.utc), [1]),
-        (datetime(2022, 2, 3, 5, 6, 7, 500000, tzinfo=timezone.utc), [2]),
+        (datetime(2000, 1, 1, 0, 0, 0, tzinfo=UTC), []),
+        (datetime(2022, 2, 3, 4, 5, 6, 500000, tzinfo=UTC), [1]),
+        (datetime(2022, 2, 3, 5, 6, 7, 500000, tzinfo=UTC), [2]),
     ],
 )
 @pytest.mark.anyio

@@ -1,10 +1,10 @@
 from http import HTTPStatus
 
-import pytest
 import httpx
+import pytest
 from assertical.fake.generator import generate_class_instance
-from envoy_schema.admin.schema.certificate import CertificateRequest, CertificateResponse, CertificatePageResponse
 from envoy_schema.admin.schema import uri
+from envoy_schema.admin.schema.certificate import CertificatePageResponse, CertificateRequest, CertificateResponse
 
 
 @pytest.mark.anyio

@@ -1,8 +1,7 @@
 import json
 import unittest.mock as mock
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
-from typing import Optional
 from urllib.parse import quote
 
 import jwt
@@ -53,12 +52,12 @@ def test_parse_from_jwks_json():
     assert all([isinstance(v.value, JWK) for v in result_dict.values()])
     assert all([v.expiry is None for v in result_dict.values()]), "Public keys dont explicitly expire"
     assert all([isinstance(k, str) for k in result_dict.keys()])
-    assert len(set([v.value.rsa_modulus for v in result_dict.values()])) == len(
-        result_dict
-    ), "All modulus values should be distinct"
-    assert len(set([v.value.pem_public for v in result_dict.values()])) == len(
-        result_dict
-    ), "All PEM keys should be distinct"
+    assert len(set([v.value.rsa_modulus for v in result_dict.values()])) == len(result_dict), (
+        "All modulus values should be distinct"
+    )
+    assert len(set([v.value.pem_public for v in result_dict.values()])) == len(result_dict), (
+        "All PEM keys should be distinct"
+    )
 
     expiring_val = result_dict["DqUu8gf-nAgcyjP3-SuplNAXAnc"]
     assert expiring_val.expiry is None, "Public keys dont explicitly expire"
@@ -118,7 +117,7 @@ async def test_update_jwk_cache(mock_parse_from_jwks_json: mock.MagicMock, mock_
     mock_parse_from_jwks_json.assert_called_once_with(
         [generate_azure_jwk_definition(pk2), generate_azure_jwk_definition(pk1)]
     )
-    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
+    assert mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
 
 @pytest.mark.anyio
@@ -138,7 +137,7 @@ async def test_update_jwk_cache_http_error(mock_parse_from_jwks_json: mock.Magic
 
     # Assert
     mock_parse_from_jwks_json.assert_not_called()
-    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
+    assert mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
 
 @pytest.mark.anyio
@@ -158,7 +157,7 @@ async def test_update_jwk_cache_exception(mock_parse_from_jwks_json: mock.MagicM
 
     # Assert
     mock_parse_from_jwks_json.assert_not_called()
-    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
+    assert mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
 
 def jwk_value_for_key(key_file: str) -> JWK:
@@ -237,8 +236,8 @@ class TokenContainer:
 @pytest.mark.anyio
 async def test_validate_azure_ad_token(
     token: TokenContainer,
-    cache_result: Optional[ExpiringValue[JWK]],
-    expected_error: Optional[type],
+    cache_result: ExpiringValue[JWK] | None,
+    expected_error: type[Exception] | None,
     expected_kid: str,
 ):
     """Runs through all the ways we validate tokens to ensure the behaviour is valid for all the ways a token
@@ -279,12 +278,12 @@ async def test_request_azure_ad_token(mock_AsyncClient: mock.MagicMock):
 
     # Assert
     assert isinstance(output_token, AzureADToken)
-    output_token.resource_id == resource_id
-    output_token.token == "eyJ0eXAiOiJKV1Q...", "The value direct from the token-response.json"
-    output_token.expiry == datetime.fromtimestamp(1690938812)
-    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
+    assert output_token.resource_id == resource_id
+    assert output_token.token == "eyJ0eXAiOiJKV1Q...", "The value direct from the token-response.json"
+    assert output_token.expiry == datetime.fromtimestamp(1690938812, tz=UTC)
+    assert mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
-    assert mocked_client.logged_requests[0].headers == {"Metadata": "true"}
+    assert mocked_client.logged_requests[0].headers_dict == {"Metadata": "true"}
     assert quote(resource_id) in mocked_client.logged_requests[0].uri, "Resource ID should be included in request"
     assert quote(cfg.client_id) in mocked_client.logged_requests[0].uri, "Client ID should be included in request"
 
@@ -306,7 +305,7 @@ async def test_request_azure_ad_token_http_error(mock_AsyncClient: mock.MagicMoc
         await request_azure_ad_token(cfg)
 
     # Assert
-    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
+    assert mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
 
 @pytest.mark.anyio
@@ -326,7 +325,7 @@ async def test_request_azure_ad_token_exception(mock_AsyncClient: mock.MagicMock
         await request_azure_ad_token(cfg)
 
     # Assert
-    mocked_client.call_count_by_method[HTTPMethod.GET] == 1
+    assert mocked_client.call_count_by_method[HTTPMethod.GET] == 1
 
 
 @pytest.mark.anyio
@@ -349,6 +348,6 @@ async def test_update_azure_ad_token_cache(mock_request_azure_ad_token: mock.Mag
     expiring_val = token_cache["my-resource-id"]
     assert isinstance(expiring_val, ExpiringValue)
     assert expiring_val.value == expected_token.token
-    assert expiring_val.expiry == (
-        expected_token.expiry + timedelta(seconds=-TOKEN_EXPIRY_BUFFER_SECONDS)
-    ), "Expiry buffer should be applied"
+    assert expiring_val.expiry == (expected_token.expiry + timedelta(seconds=-TOKEN_EXPIRY_BUFFER_SECONDS)), (
+        "Expiry buffer should be applied"
+    )

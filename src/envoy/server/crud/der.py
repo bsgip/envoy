@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +22,7 @@ def generate_default_site_der(site_id: int, changed_time: datetime) -> SiteDER:
     )
 
 
-async def select_site_der_for_site(session: AsyncSession, aggregator_id: int, site_id: int) -> Optional[SiteDER]:
+async def select_site_der_for_site(session: AsyncSession, aggregator_id: int, site_id: int) -> SiteDER | None:
     """Selects the first SiteDER for site with ID under aggregator_id, returns None if it DNE. The selected SiteDER
     will have the SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus relationships included
 

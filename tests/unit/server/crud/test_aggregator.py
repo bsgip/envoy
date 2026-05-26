@@ -8,7 +8,6 @@ from envoy.server.model.aggregator import NULL_AGGREGATOR_ID, Aggregator
 @pytest.mark.anyio
 async def test_select_aggregator(pg_base_config):
     async with generate_async_session(pg_base_config) as session:
-
         agg_1 = await select_aggregator(session, 1)
         assert isinstance(agg_1, Aggregator)
         assert len(agg_1.domains) == 2

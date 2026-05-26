@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
-from typing import Optional, Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
 
 import envoy_schema.server.schema.uri as uris
 from envoy_schema.server.schema.sep2.metering import Reading
@@ -22,11 +22,11 @@ from envoy_schema.server.schema.sep2.types import (
 from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import (
-    CaseInsensitiveDict,
     SEP2_INT8_MAX,
     SEP2_INT8_MIN,
     SEP2_INT48_MAX,
     SEP2_INT48_MIN,
+    CaseInsensitiveDict,
     generate_href,
 )
 from envoy.server.mapper.sep2.der import to_hex_binary
@@ -122,8 +122,8 @@ class MirrorUsagePointMapper:
         else:
             try:
                 return RoleFlagsType(int(mup.roleFlags, 16))
-            except Exception:
-                raise InvalidMappingError(f"Unable to map {mup.roleFlags} to a RoleFlagsType")
+            except Exception as exc:
+                raise InvalidMappingError(f"Unable to map {mup.roleFlags} to a RoleFlagsType") from exc
 
     @staticmethod
     def map_from_request(
@@ -132,9 +132,9 @@ class MirrorUsagePointMapper:
         site_id: int,
         group_id: int,
         group_mrid: str,
-        group_description: Optional[str],
-        group_version: Optional[int],
-        group_status: Optional[int],
+        group_description: str | None,
+        group_version: int | None,
+        group_status: int | None,
         role_flags: RoleFlagsType,
         changed_time: datetime,
     ) -> SiteReadingType:
@@ -306,7 +306,7 @@ class MirrorMeterReadingMapper:
             changed_time=changed_time,
             local_id=local_id,
             quality_flags=quality_flags,
-            time_period_start=datetime.fromtimestamp(reading.timePeriod.start, timezone.utc),
+            time_period_start=datetime.fromtimestamp(reading.timePeriod.start, UTC),
             time_period_seconds=reading.timePeriod.duration,
             value=reading.value,
         )
@@ -336,12 +336,8 @@ class MirrorMeterReadingMapper:
                 for mrs in mmr.mirrorReadingSets:
                     if mrs.readings:
                         readings.extend(
-                            (
-                                MirrorMeterReadingMapper.map_reading_from_request(
-                                    r, srt.site_reading_type_id, changed_time
-                                )
-                                for r in mrs.readings
-                            )
+                            MirrorMeterReadingMapper.map_reading_from_request(r, srt.site_reading_type_id, changed_time)
+                            for r in mrs.readings
                         )
 
         return readings
@@ -349,7 +345,7 @@ class MirrorMeterReadingMapper:
     @staticmethod
     def map_to_response(site_reading: SiteReading) -> Reading:
         """Takes a single site_reading and converts it to the equivalent sep2 Reading"""
-        local_id: Optional[str] = to_hex_binary(site_reading.local_id) if site_reading.local_id is not None else None
+        local_id: str | None = to_hex_binary(site_reading.local_id) if site_reading.local_id is not None else None
         return Reading.model_validate(
             {
                 "localID": local_id,

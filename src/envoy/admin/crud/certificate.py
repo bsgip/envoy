@@ -1,13 +1,11 @@
-from typing import Sequence, Iterable
-
 import itertools
+from collections.abc import Iterable, Sequence
 
 import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.server.model import aggregator
-from envoy.server.model import base
+from envoy.server.model import aggregator, base
 
 
 async def count_certificates_for_aggregator(session: AsyncSession, aggregator_id: int) -> int:
@@ -106,8 +104,8 @@ async def create_many_certificates(session: AsyncSession, certificates: list[bas
         certificates: All certificates to be created
     """
     table = base.Certificate.__table__
-    create_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
-    stmt = sa.insert(base.Certificate).values(([{k: getattr(cert, k) for k in create_cols} for cert in certificates]))
+    create_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
+    stmt = sa.insert(base.Certificate).values([{k: getattr(cert, k) for k in create_cols} for cert in certificates])
     await session.execute(stmt)
 
 
@@ -134,10 +132,10 @@ async def create_many_certificates_on_conflict_do_nothing(
         return []
 
     table = base.Certificate.__table__
-    create_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    create_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     stmt = (
         postgresql.insert(base.Certificate)
-        .values(([{k: getattr(cert, k) for k in create_cols} for cert in producer]))
+        .values([{k: getattr(cert, k) for k in create_cols} for cert in producer])
         .on_conflict_do_nothing(index_elements=["lfdi"])
         .returning(base.Certificate)
     )
@@ -163,7 +161,7 @@ async def insert_single_certificate(session: AsyncSession, certificate: base.Cer
 async def update_single_certificate(session: AsyncSession, certificate: base.Certificate) -> None:
     """Update a single certificate"""
     table = base.Certificate.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     stmt = (
         sa.update(base.Certificate)
         .where(base.Certificate.certificate_id == certificate.certificate_id)

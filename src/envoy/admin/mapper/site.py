@@ -1,10 +1,16 @@
+from collections.abc import Iterable
 from datetime import datetime
 from decimal import Decimal
-from typing import Iterable, Optional
 
-from envoy_schema.admin.schema.site import DERAvailability, DERConfiguration, DERControlType, DERStatus
+from envoy_schema.admin.schema.site import (
+    DERAvailability,
+    DERConfiguration,
+    DERControlType,
+    DERStatus,
+    SitePageResponse,
+    SiteResponse,
+)
 from envoy_schema.admin.schema.site import SiteGroup as AdminSiteGroup
-from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
 from envoy_schema.server.schema.sep2.der import DERType, DOESupportedMode
 
@@ -13,11 +19,11 @@ from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, Si
 
 
 def _extract_failover_pow10_value(
-    rating: Optional[SiteDERRating], setting: Optional[SiteDERSetting], value_name: str, multiplier_name: str
-) -> Optional[Decimal]:
+    rating: SiteDERRating | None, setting: SiteDERSetting | None, value_name: str, multiplier_name: str
+) -> Decimal | None:
     """Internal utility for extracting a value from setting (if set) or failing over to rating otherwise"""
-    setting_value: Optional[int] = None
-    setting_multiplier: Optional[int] = None
+    setting_value: int | None = None
+    setting_multiplier: int | None = None
     if setting:
         setting_value = getattr(setting, value_name)
         setting_multiplier = getattr(setting, multiplier_name)
@@ -37,7 +43,7 @@ def _extract_failover_pow10_value(
 
 class SiteMapper:
     @staticmethod
-    def map_to_der_status_response(status: Optional[SiteDERStatus]) -> Optional[DERStatus]:
+    def map_to_der_status_response(status: SiteDERStatus | None) -> DERStatus | None:
         if status is None:
             return None
 
@@ -58,7 +64,7 @@ class SiteMapper:
         )
 
     @staticmethod
-    def map_to_der_availability_response(availability: Optional[SiteDERAvailability]) -> Optional[DERAvailability]:
+    def map_to_der_availability_response(availability: SiteDERAvailability | None) -> DERAvailability | None:
         if availability is None:
             return None
 
@@ -79,14 +85,14 @@ class SiteMapper:
 
     @staticmethod
     def map_to_der_config_response(
-        rating: Optional[SiteDERRating], setting: Optional[SiteDERSetting]
-    ) -> Optional[DERConfiguration]:
+        rating: SiteDERRating | None, setting: SiteDERSetting | None
+    ) -> DERConfiguration | None:
         """Maps a DER Rating / Setting  associated with a site into a single DERConfiguration. Values from setting
         will be preferenced over values from rating"""
 
-        changed_time: Optional[datetime] = None
-        created_time: Optional[datetime] = None
-        modes_supported: Optional[DERControlType] = None
+        changed_time: datetime | None = None
+        created_time: datetime | None = None
+        modes_supported: DERControlType | None = None
 
         if rating:
             created_time = rating.created_time
@@ -171,10 +177,10 @@ class SiteMapper:
         else:
             site_groups = []
 
-        rating: Optional[SiteDERRating] = None
-        setting: Optional[SiteDERSetting] = None
-        availability: Optional[SiteDERAvailability] = None
-        status: Optional[SiteDERStatus] = None
+        rating: SiteDERRating | None = None
+        setting: SiteDERSetting | None = None
+        availability: SiteDERAvailability | None = None
+        status: SiteDERStatus | None = None
         if site.site_ders:
             site_der = site.site_ders[0]
             if site_der:
@@ -202,7 +208,7 @@ class SiteMapper:
 
     @staticmethod
     def map_to_response(
-        total_count: int, limit: int, start: int, group: Optional[str], after: Optional[datetime], sites: Iterable[Site]
+        total_count: int, limit: int, start: int, group: str | None, after: datetime | None, sites: Iterable[Site]
     ) -> SitePageResponse:
         """Maps a set of sites to a single SitePageResponse. It's expected that sites will have their groups included"""
         return SitePageResponse(

@@ -1,19 +1,18 @@
-import logging
 import http
+import logging
 
+import fastapi
+from envoy_schema.admin.schema import uri
 from envoy_schema.admin.schema.certificate import (
     CertificatePageResponse,
     CertificateRequest,
     CertificateResponse,
 )
-from envoy_schema.admin.schema import uri
-import fastapi
 from fastapi_async_sqlalchemy import db
 
 from envoy.admin import manager
 from envoy.server import exception
-from envoy.server.api import request
-from envoy.server.api import error_handler
+from envoy.server.api import error_handler, request
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +73,7 @@ async def update_certificate(certificate_id: int, certificate: CertificateReques
     try:
         await manager.CertificateManager.update_existing_certificate(db.session, certificate_id, certificate)
     except exception.NotFoundError as err:
-        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}")
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err
 
 
 @router.delete(uri.CertificateUri, status_code=http.HTTPStatus.NO_CONTENT, response_model=None)
@@ -83,4 +82,4 @@ async def delete_certificate(certificate_id: int) -> None:
     try:
         await manager.CertificateManager.delete_certificate(db.session, certificate_id)
     except exception.NotFoundError as err:
-        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}")
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err

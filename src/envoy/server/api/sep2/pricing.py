@@ -47,10 +47,10 @@ async def get_pricingreadingtype(request: Request, reading_type: PricingReadingT
                 extract_request_claims(request).to_unregistered_request_scope(), reading_type
             )
         )
-    except BadRequestError:
+    except BadRequestError as ex:
         raise LoggedHttpException(
             logger, None, status_code=HTTPStatus.BAD_REQUEST, detail=f"Unsupported reading_type {reading_type}"
-        )
+        ) from ex
 
 
 @router.head(uri.TariffProfileListUnscopedUri)
@@ -83,7 +83,7 @@ async def get_tariffprofilelist_nositescope(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
 
     return XmlResponse(tp_list)
 
@@ -120,7 +120,7 @@ async def get_tariffprofilelist(
             fsa_id=None,  # This endpoint does no function set assignment filtering
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
 
     return XmlResponse(tp_list)
 
@@ -159,7 +159,7 @@ async def get_tariffprofilelist_fsa_scoped(
             fsa_id=fsa_id,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
 
     return XmlResponse(tp_list)
 
@@ -184,7 +184,7 @@ async def get_singletariffprofile_nositescope(tariff_id: int, request: Request) 
             db.session, extract_request_claims(request).to_unregistered_request_scope(), tariff_id
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
 
     if tp is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
@@ -242,7 +242,7 @@ async def get_singletariffprofile(tariff_id: int, site_id: int, request: Request
             db.session, extract_request_claims(request).to_site_request_scope(site_id), tariff_id
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
 
     if tp is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
@@ -284,7 +284,7 @@ async def get_ratecomponentlist(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
 
     return XmlResponse(rc_list)
 
@@ -316,7 +316,7 @@ async def get_singleratecomponent(
             pricing_type=pricing_reading,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
 
     if rc is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
@@ -364,7 +364,7 @@ async def get_timetariffintervallist(
             limit=extract_limit_from_paging_param(limit),
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
 
     return XmlResponse(tti_list)
 
@@ -404,7 +404,7 @@ async def get_singletimetariffinterval(
             pricing_type=pricing_reading,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
 
     if tti is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
@@ -458,9 +458,9 @@ async def get_consumptiontariffintervallist(
             sep2_price=sep2_price,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found")
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
+    except NotFoundError as ex:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found") from ex
 
     return XmlResponse(cti_list)
 
@@ -506,9 +506,9 @@ async def get_singleconsumptiontariffinterval(
             sep2_price=sep2_price,
         )
     except BadRequestError as ex:
-        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message)
-    except NotFoundError:
-        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found.")
+        raise LoggedHttpException(logger, ex, status_code=HTTPStatus.BAD_REQUEST, detail=ex.message) from ex
+    except NotFoundError as ex:
+        raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found.") from ex
 
     if cti is None:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")

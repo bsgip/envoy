@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from typing import cast
 
 from envoy_schema.server.schema.sep2.error import ErrorResponse
 from envoy_schema.server.schema.sep2.types import ReasonCodeType
@@ -23,10 +24,10 @@ def test_http_status_code_to_reason_code_nocrash():
         # test that enum values are equivalent to the enums directly (eg 500 == INTERNAL_SERVER_ERROR)
         assert http_status_code_to_reason_code(e.value) == http_status_code_to_reason_code(e)
 
-    reason_code = http_status_code_to_reason_code(None)
+    reason_code = http_status_code_to_reason_code(None)  # ty:ignore[invalid-argument-type]
     assert reason_code is not None and isinstance(reason_code, ReasonCodeType)
 
-    reason_code = http_status_code_to_reason_code("401")
+    reason_code = http_status_code_to_reason_code("401")  # ty:ignore[invalid-argument-type]
     assert reason_code is not None and isinstance(reason_code, ReasonCodeType)
 
 
@@ -38,7 +39,7 @@ def test_generate_error_response_optional_message_encoding():
     assert response.media_type == SEP_XML_MIME
 
     # test the message encodes/decodes OK
-    error_response: ErrorResponse = ErrorResponse.from_xml(response.body)
+    error_response: ErrorResponse = ErrorResponse.from_xml(cast(str, response.body))
     assert error_response.message == message
     assert error_response.maxRetryDuration is None
 
@@ -50,7 +51,7 @@ def test_generate_error_response_optional_message_missing():
     assert response.media_type == SEP_XML_MIME
 
     # test the message encodes/decodes OK
-    error_response: ErrorResponse = ErrorResponse.from_xml(response.body)
+    error_response: ErrorResponse = ErrorResponse.from_xml(cast(str, response.body))
     assert error_response.message is None
     assert error_response.maxRetryDuration is None
 
@@ -62,6 +63,6 @@ def test_generate_error_response_optional_retry_duration():
     assert response.media_type == SEP_XML_MIME
 
     # test the message encodes/decodes OK
-    error_response: ErrorResponse = ErrorResponse.from_xml(response.body)
+    error_response: ErrorResponse = ErrorResponse.from_xml(cast(str, response.body))
     assert error_response.message is None
     assert error_response.maxRetryDuration == 54321

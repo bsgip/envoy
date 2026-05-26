@@ -52,7 +52,7 @@ async def get_log_event(
         )
         return XmlResponse(response)
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.") from exc
 
 
 @router.head(uri.LogEventListUri)
@@ -92,7 +92,7 @@ async def get_log_event_list(
         )
         return XmlResponse(response)
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.")
+        raise LoggedHttpException(logger, exc, status_code=HTTPStatus.NOT_FOUND, detail="Not Found.") from exc
 
 
 @router.post(uri.LogEventListUri, status_code=HTTPStatus.CREATED)
@@ -123,4 +123,4 @@ async def create_log_event(
 
         return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.NOT_FOUND)
+        raise LoggedHttpException(logger, exc, detail=exc.message, status_code=HTTPStatus.NOT_FOUND) from exc

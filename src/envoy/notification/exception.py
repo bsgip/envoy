@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 
 class NotificationError(Exception):
@@ -14,14 +13,14 @@ class NotificationTransmitError(NotificationError):
 
     transmit_start: datetime
     transmit_end: datetime
-    http_status_code: Optional[int]
+    http_status_code: int | None
 
     def __init__(
         self,
         message: str,
         transmit_start: datetime,
         transmit_end: datetime,
-        http_status_code: Optional[int],
+        http_status_code: int | None,
         *args: object,
     ) -> None:
         self.transmit_start = transmit_start

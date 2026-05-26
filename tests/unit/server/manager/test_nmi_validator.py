@@ -1,6 +1,6 @@
 import pytest
 
-from envoy.server.manager.nmi_validator import NmiValidator, MultiPatternRegexValidator, PatternGroup
+from envoy.server.manager.nmi_validator import DNSPParticipantId, MultiPatternRegexValidator, NmiValidator, PatternGroup
 
 
 @pytest.mark.parametrize(
@@ -131,6 +131,6 @@ def test_luhn_10_using_ascii_codes(target: str, expected: int):
     ],
 )
 def test_nmi_validator(participant_id: str, nmi: str, expected: bool):
-    validator = NmiValidator(participant_id)
+    validator = NmiValidator(DNSPParticipantId(participant_id))
     result = validator.validate(nmi)
     assert result == expected

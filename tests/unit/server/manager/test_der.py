@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
@@ -171,7 +171,7 @@ async def test_fetch_der_for_site_bad_der_id(
     assert_mock_session(mock_session)
 
 
-AFTER_EPOCH = datetime(2022, 10, 9, 8, 7, 6, tzinfo=timezone.utc)
+AFTER_EPOCH = datetime(2022, 10, 9, 8, 7, 6, tzinfo=UTC)
 
 
 @mock.patch("envoy.server.manager.der.site_der_for_site")
@@ -213,7 +213,7 @@ async def test_fetch_der_list_for_site_pagination(
     result = await DERManager.fetch_der_list_for_site(mock_session, scope, start, limit, after)
     assert isinstance(result, DERListResponse)
 
-    assert len(result.DER_) == expected_count
+    assert len(result.DER_ or []) == expected_count
     mock_site_der_for_site.assert_called_once_with(
         mock_session, aggregator_id=scope.aggregator_id, site_id=scope.site_id
     )
@@ -275,8 +275,8 @@ async def test_upsert_der_capability_not_found(
 
     async with generate_async_session(pg_base_config) as session:
         e: DERCapability = generate_class_instance(DERCapability, generate_relationships=True)
-        e.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT)
-        e.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_IMPORT_LIMIT_W)
+        e.modesSupported = to_hex_binary(DERControlType.OP_MOD_CONNECT) or ""
+        e.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_IMPORT_LIMIT_W) or ""
 
         with pytest.raises(NotFoundError):
             await DERCapabilityManager.upsert_der_capability_for_site(
@@ -319,10 +319,10 @@ async def test_upsert_der_capability_roundtrip(
 
     # Do the upsert
     expected: DERCapability = generate_class_instance(DERCapability, seed=5001, generate_relationships=True)
-    expected.modesSupported = to_hex_binary(
-        DERControlType.OP_MOD_HVRT_MUST_TRIP | DERControlType.OP_MOD_HVRT_MOMENTARY_CESSATION
+    expected.modesSupported = (
+        to_hex_binary(DERControlType.OP_MOD_HVRT_MUST_TRIP | DERControlType.OP_MOD_HVRT_MOMENTARY_CESSATION) or ""
     )
-    expected.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W)
+    expected.doeModesSupported = to_hex_binary(DOESupportedMode.OP_MOD_EXPORT_LIMIT_W) or ""
     async with generate_async_session(pg_base_config) as session:
         await DERCapabilityManager.upsert_der_capability_for_site(
             session,
@@ -341,6 +341,8 @@ async def test_upsert_der_capability_roundtrip(
             actual,
             ignored_properties=set(["href", "subscribable", "type"]),
         )
+        assert scope.href_prefix
+        assert actual.href is not None
         assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
 
@@ -352,6 +354,7 @@ async def test_upsert_der_capability_roundtrip(
             assert len(archive_records) == 1
             assert archive_records[0].max_a_value == 106, "This is the original value from the DB"
             assert archive_records[0].deleted_time is None
+            assert archive_records[0].archive_time is not None
             assert_nowish(archive_records[0].archive_time)
         else:
             assert len(archive_records) == 0
@@ -451,6 +454,7 @@ async def test_upsert_der_settings_roundtrip(
     scope: SiteRequestScope = generate_class_instance(
         SiteRequestScope, seed=1001, aggregator_id=1, site_id=site_id, href_prefix="/foo/bar"
     )
+    assert scope.href_prefix
     now = datetime(2023, 5, 2, 7, 8, 9)
 
     mock_utc_now.return_value = now
@@ -478,6 +482,7 @@ async def test_upsert_der_settings_roundtrip(
             actual,
             ignored_properties=set(["href", "subscribable", "type", "updatedTime"]),
         )
+        assert actual.href is not None
         assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.updatedTime)  # Should be set to server time
@@ -490,6 +495,7 @@ async def test_upsert_der_settings_roundtrip(
             assert len(archive_records) == 1
             assert archive_records[0].es_delay == 406, "This is the original value from the DB"
             assert archive_records[0].deleted_time is None
+            assert archive_records[0].archive_time is not None
             assert_nowish(archive_records[0].archive_time)
         else:
             assert len(archive_records) == 0
@@ -587,6 +593,7 @@ async def test_upsert_der_availability_roundtrip(
     scope: SiteRequestScope = generate_class_instance(
         SiteRequestScope, seed=1001, aggregator_id=1, site_id=site_id, href_prefix="/foo/bar"
     )
+    assert scope.href_prefix
     now = datetime(2024, 5, 6, 7, 8, 9)
 
     mock_utc_now.return_value = now
@@ -612,6 +619,7 @@ async def test_upsert_der_availability_roundtrip(
             actual,
             ignored_properties=set(["href", "subscribable", "type", "readingTime"]),
         )
+        assert actual.href is not None
         assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.readingTime)  # Should be set to server time
@@ -624,6 +632,7 @@ async def test_upsert_der_availability_roundtrip(
             assert len(archive_records) == 1
             assert archive_records[0].availability_duration_sec == 202, "This is the original value from the DB"
             assert archive_records[0].deleted_time is None
+            assert archive_records[0].archive_time is not None
             assert_nowish(archive_records[0].archive_time)
         else:
             assert len(archive_records) == 0
@@ -686,9 +695,12 @@ async def test_upsert_der_status_not_found(
 
     async with generate_async_session(pg_base_config) as session:
         e: DERStatus = generate_class_instance(DERStatus, generate_relationships=True)
+        assert e.genConnectStatus is not None
+        assert e.storConnectStatus is not None
+        assert e.manufacturerStatus is not None
         e.alarmStatus = to_hex_binary(AlarmStatusType.DER_FAULT_EMERGENCY_REMOTE)
-        e.genConnectStatus.value = to_hex_binary(ConnectStatusType.AVAILABLE | ConnectStatusType.OPERATING)
-        e.storConnectStatus.value = to_hex_binary(ConnectStatusType.TEST | ConnectStatusType.FAULT_ERROR)
+        e.genConnectStatus.value = to_hex_binary(ConnectStatusType.AVAILABLE | ConnectStatusType.OPERATING) or ""
+        e.storConnectStatus.value = to_hex_binary(ConnectStatusType.TEST | ConnectStatusType.FAULT_ERROR) or ""
         e.manufacturerStatus.value = "ab-12$"  # Length limit on field
         with pytest.raises(NotFoundError):
             await DERStatusManager.upsert_der_status_for_site(
@@ -725,6 +737,7 @@ async def test_upsert_der_status_roundtrip(
     scope: SiteRequestScope = generate_class_instance(
         SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id, href_prefix="/foo/bar"
     )
+    assert scope.href_prefix is not None
     now = datetime(2023, 5, 6, 7, 8, 9)
 
     mock_utc_now.return_value = now
@@ -735,8 +748,11 @@ async def test_upsert_der_status_roundtrip(
     expected.alarmStatus = to_hex_binary(
         AlarmStatusType.DER_FAULT_OVER_FREQUENCY | AlarmStatusType.DER_FAULT_VOLTAGE_IMBALANCE
     )
-    expected.genConnectStatus.value = to_hex_binary(ConnectStatusType.AVAILABLE | ConnectStatusType.OPERATING)
-    expected.storConnectStatus.value = to_hex_binary(ConnectStatusType.TEST | ConnectStatusType.FAULT_ERROR)
+    assert expected.genConnectStatus is not None
+    assert expected.storConnectStatus is not None
+    assert expected.manufacturerStatus is not None
+    expected.genConnectStatus.value = to_hex_binary(ConnectStatusType.AVAILABLE | ConnectStatusType.OPERATING) or ""
+    expected.storConnectStatus.value = to_hex_binary(ConnectStatusType.TEST | ConnectStatusType.FAULT_ERROR) or ""
     expected.manufacturerStatus.value = "ab-12$"  # Length limit on field
     async with generate_async_session(pg_base_config) as session:
         await DERStatusManager.upsert_der_status_for_site(
@@ -756,6 +772,7 @@ async def test_upsert_der_status_roundtrip(
             actual,
             ignored_properties=set(["href", "subscribable", "type", "readingTime"]),
         )
+        assert actual.href is not None
         assert actual.href.startswith(scope.href_prefix)
         assert str(site_id) in actual.href
         assert_datetime_equal(now, actual.readingTime)  # Should be set to server time
@@ -768,6 +785,7 @@ async def test_upsert_der_status_roundtrip(
             assert len(archive_records) == 1
             assert archive_records[0].manufacturer_status == "mnstat", "This is the original value from the DB"
             assert archive_records[0].deleted_time is None
+            assert archive_records[0].archive_time is not None
             assert_nowish(archive_records[0].archive_time)
         else:
             assert len(archive_records) == 0

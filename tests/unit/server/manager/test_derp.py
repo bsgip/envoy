@@ -1,6 +1,5 @@
 import unittest.mock as mock
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -20,7 +19,7 @@ from envoy.server.mapper.csip_aus.doe import DERControlListSource
 from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.site import Site
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import SiteRequestScope
 
 
 @pytest.mark.anyio
@@ -45,7 +44,7 @@ async def test_program_fetch_list_for_scope(
     existing_site = generate_class_instance(Site)
     mapped_list = generate_class_instance(DERProgramListResponse)
     scope = generate_class_instance(SiteRequestScope)
-    now = datetime(2020, 1, 2, tzinfo=timezone.utc)
+    now = datetime(2020, 1, 2, tzinfo=UTC)
     start = 111
     limit = 222
     fsa_id = 333
@@ -136,7 +135,7 @@ async def test_program_fetch_for_scope(
     existing_site = generate_class_instance(Site)
     mapped_program = generate_class_instance(DERProgramResponse)
     scope = generate_class_instance(SiteRequestScope)
-    now = datetime(2011, 2, 3, tzinfo=timezone.utc)
+    now = datetime(2011, 2, 3, tzinfo=UTC)
     group = generate_class_instance(SiteControlGroup)
 
     mock_session = create_mock_session()
@@ -237,9 +236,9 @@ async def test_fetch_doe_control_for_scope(
     mock_fetch_current_config: mock.MagicMock,
     mock_DERControlMapper: mock.MagicMock,
     mock_select_doe_include_deleted: mock.MagicMock,
-    selected_doe: Optional[DynamicOperatingEnvelope],
+    selected_doe: DynamicOperatingEnvelope | None,
 ):
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
     doe_id = 15115
     derp_id = 123  # Must match the selected_doe site_control_group_id
     mock_session = create_mock_session()
@@ -270,7 +269,7 @@ async def test_fetch_doe_control_for_scope(
 @mock.patch("envoy.server.manager.derp.select_doe_include_deleted")
 async def test_fetch_doe_control_for_scope_derp_id_mismatch(mock_select_doe_include_deleted: mock.MagicMock):
     """Tests that if the DERProgram ID differs from the returned control - None is returned instead"""
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
     doe_id = 15115
     derp_id = 199666
     mock_session = create_mock_session()
@@ -302,7 +301,7 @@ async def test_fetch_doe_controls_for_scope(
 ):
     """Tests that the underlying dependencies pipe their outputs correctly into the downstream inputs"""
     # Arrange
-    scope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
     existing_site = generate_class_instance(Site)
     doe_count = 789
     start = 11
@@ -313,7 +312,7 @@ async def test_fetch_doe_controls_for_scope(
         generate_class_instance(DynamicOperatingEnvelope, seed=101, optional_is_none=False),
         generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True),
     ]
-    now = datetime(2023, 6, 7, 8, 9, 0, tzinfo=timezone.utc)
+    now = datetime(2023, 6, 7, 8, 9, 0, tzinfo=UTC)
     mapped_list = generate_class_instance(DERControlListResponse)
 
     mock_session = create_mock_session()
@@ -371,12 +370,12 @@ async def test_fetch_doe_controls_for_scope_site_dne(
 ):
     """Tests that if the site isn't accessible that the resulting list is empty"""
     # Arrange
-    scope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
     start = 11
     limit = 34
     derp_id = 51512
     changed_after = datetime(2022, 11, 12, 4, 5, 6)
-    now = datetime(2023, 6, 7, 8, 9, 0, tzinfo=timezone.utc)
+    now = datetime(2023, 6, 7, 8, 9, 0, tzinfo=UTC)
     mapped_list = generate_class_instance(DERControlListResponse)
 
     mock_session = create_mock_session()
@@ -432,7 +431,7 @@ async def test_fetch_active_doe_controls_for_site(
     mock_select_does_at_timestamp.return_value = returned_does
     mock_count_does_at_timestamp.return_value = returned_count
     mock_DERControlMapper.map_to_list_response = mock.Mock(return_value=mapped_list)
-    scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope)
+    scope = generate_class_instance(SiteRequestScope)
 
     config = RuntimeServerConfig()
     mock_fetch_current_config.return_value = config
@@ -450,7 +449,7 @@ async def test_fetch_active_doe_controls_for_site(
     # The timestamp should be (roughly) utc now and should match for both calls
     actual_now: datetime = mock_select_does_at_timestamp.call_args_list[0].args[4]
     assert actual_now == mock_count_does_at_timestamp.call_args_list[0].args[4]
-    assert actual_now.tzinfo == timezone.utc
+    assert actual_now.tzinfo == UTC
     assert_nowish(actual_now)
     mock_select_does_at_timestamp.assert_called_once_with(
         mock_session, derp_id, scope.aggregator_id, scope.site_id, actual_now, start, changed_after, limit
@@ -578,9 +577,9 @@ async def test_fetch_default_doe_controls_for_site_no_default(
     empty_default: SiteControlGroupDefault = mock_map_to_default_response.call_args_list[0].args[1]
     assert isinstance(empty_default, SiteControlGroupDefault)
     assert empty_default.created_time == returned_scg.created_time
-    assert (
-        empty_default.changed_time == returned_scg.created_time
-    ), "Yes - changed_time should be set to parent creation time"
+    assert empty_default.changed_time == returned_scg.created_time, (
+        "Yes - changed_time should be set to parent creation time"
+    )
     assert empty_default.site_control_group_id == returned_scg.site_control_group_id, "We want to track this for mrids"
     assert empty_default.version == 0
     assert empty_default.export_limit_active_watts is None

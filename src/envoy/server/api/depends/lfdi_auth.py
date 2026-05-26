@@ -1,13 +1,12 @@
 import base64
 import binascii
 import logging
-import urllib.parse
 import re
+import urllib.parse
 from http import HTTPStatus
-from typing import Any, Optional
 
-from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives import hashes
+from cryptography.x509 import load_pem_x509_certificate
 from fastapi import Request
 from fastapi_async_sqlalchemy import db
 
@@ -22,7 +21,7 @@ from envoy.server.request_scope import CertificateType
 logger = logging.getLogger(__name__)
 
 
-class LFDIAuthException(Exception): ...  # noqa: E701
+class LFDIAuthError(Exception): ...  # noqa: E701
 
 
 # NOTE: The below `is_valid_x` functions are ONLY checking format validity, nothing else.
@@ -67,7 +66,7 @@ def is_valid_pem(pem_str: str) -> bool:
     return True
 
 
-async def update_client_id_details_cache(_: Any) -> dict[str, ExpiringValue[ClientIdDetails]]:
+async def update_client_id_details_cache(_: object) -> dict[str, ExpiringValue[ClientIdDetails]]:
     """To be called on cache miss. Updates the entire clientIdDetails cache with active (non-expired) client details
     from the Certificate and AggregatorCertificateAssignment tables.
     """
@@ -94,7 +93,7 @@ class LFDIAuthDepends:
     allow_device_registration: bool
     aggregator_cert_cache: AsyncCache[str, ClientIdDetails]
 
-    def __init__(self, cert_header: str, allow_device_registration: bool):
+    def __init__(self, cert_header: str, allow_device_registration: bool) -> None:
         # fastapi will always return headers in lowercase form
         self.cert_header = cert_header.lower()
         self.allow_device_registration = allow_device_registration
@@ -106,7 +105,7 @@ class LFDIAuthDepends:
         if not cert_header_val:
             raise LoggedHttpException(
                 logger,
-                exc=LFDIAuthException(
+                exc=LFDIAuthError(
                     "Missing certificate PEM/fingerprint header from gateway.",
                 ),
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -123,7 +122,6 @@ class LFDIAuthDepends:
             logger.debug(f"{self.cert_header} contains a valid lFDI.")
             lfdi = cert_header_val
         else:
-
             # NOTE: Respond with INTERNAL_SERVER_ERROR due to missing or malformed certificate data.
             # TLS termination is handled by a reverse proxy upstream of envoy. The proxy is expected to forward a
             # custom header containing either the full client certificate PEM or its fingerprint. If the request
@@ -131,7 +129,7 @@ class LFDIAuthDepends:
             # fault, not the client.
             raise LoggedHttpException(
                 logger,
-                exc=LFDIAuthException("Issue with certificate PEM/fingerprint header value from gateway."),
+                exc=LFDIAuthError("Issue with certificate PEM/fingerprint header value from gateway."),
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail="Internal Server Error.",
             )
@@ -141,12 +139,12 @@ class LFDIAuthDepends:
         except Exception as exc:
             raise LoggedHttpException(
                 logger, exc=exc, status_code=HTTPStatus.BAD_REQUEST, detail="Unrecognised client certificate."
-            )
+            ) from exc
 
         # get client id details from cache, will return None if expired or never existed.
         expirable_client_id = await self.aggregator_cert_cache.get_value_ignore_expiry(None, lfdi)
-        site_id: Optional[int] = None
-        aggregator_id: Optional[int] = None
+        site_id: int | None = None
+        aggregator_id: int | None = None
         if expirable_client_id:
             # We have identified that this certificate lives in the certificate table and is therefore
             # an aggregator cert (expired or not)

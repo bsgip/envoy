@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
-from typing import Optional
+from collections.abc import Sequence
+from datetime import UTC, datetime
 
 import envoy_schema.server.schema.uri as uris
 import pytest
@@ -28,11 +28,11 @@ from envoy_schema.server.schema.sep2.types import (
 from envoy.server.crud.site_reading import GroupedSiteReadingTypeDetails
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import (
-    CaseInsensitiveDict,
     SEP2_INT8_MAX,
     SEP2_INT8_MIN,
     SEP2_INT48_MAX,
     SEP2_INT48_MIN,
+    CaseInsensitiveDict,
 )
 from envoy.server.mapper.sep2.der import to_hex_binary
 from envoy.server.mapper.sep2.metering import (
@@ -51,7 +51,7 @@ from envoy.server.request_scope import BaseRequestScope
         generate_class_instance(MirrorMeterReading, readingType=generate_class_instance(ReadingType, uom=None)),
     ],
 )
-def test_MirrorUsagePointMapper_map_from_request_no_uom(mmr: MirrorUsagePoint):
+def test_MirrorUsagePointMapper_map_from_request_no_uom(mmr: MirrorMeterReading):
     """uom is an important field - test the various ways it can go missing"""
     aggregator_id = 123
     site_id = 456
@@ -160,7 +160,7 @@ def test_MirrorUsagePointMapper_map_from_request_long_group_mrid():
         ("not valid", None),
     ],
 )
-def test_MirrorUsagePointMapper_extract_role_flags(role_flags_str: Optional[str], expected: Optional[RoleFlagsType]):
+def test_MirrorUsagePointMapper_extract_role_flags(role_flags_str: str | None, expected: RoleFlagsType | None):
     mup = generate_class_instance(MirrorUsagePoint, roleFlags=role_flags_str)
     if expected is None:
         with pytest.raises(InvalidMappingError):
@@ -175,7 +175,7 @@ def test_MirrorUsagePointMapper_extract_role_flags(role_flags_str: Optional[str]
 def test_MirrorUsagePointMapper_merge_site_reading_type_identical(optional_is_none: bool):
     target = generate_class_instance(SiteReadingType, seed=101, optional_is_none=optional_is_none)
     src = generate_class_instance(SiteReadingType, seed=101, optional_is_none=optional_is_none)
-    changed_time = datetime(2022, 11, 3, tzinfo=timezone.utc)
+    changed_time = datetime(2022, 11, 3, tzinfo=UTC)
     assert MirrorUsagePointMapper.merge_site_reading_type(target, src, changed_time) is False
 
     assert_class_instance_equality(
@@ -204,7 +204,7 @@ def test_MirrorUsagePointMapper_merge_site_reading_type_changes(optional_is_none
     group_description = "def-456"
     group_version = 11
     group_status = 1
-    created_time = datetime(2011, 2, 3, tzinfo=timezone.utc)
+    created_time = datetime(2011, 2, 3, tzinfo=UTC)
     target = generate_class_instance(
         SiteReadingType,
         seed=101,
@@ -221,7 +221,7 @@ def test_MirrorUsagePointMapper_merge_site_reading_type_changes(optional_is_none
         created_time=created_time,
     )
     src = generate_class_instance(SiteReadingType, seed=202, optional_is_none=optional_is_none)
-    changed_time = datetime(2022, 11, 3, tzinfo=timezone.utc)
+    changed_time = datetime(2022, 11, 3, tzinfo=UTC)
     assert MirrorUsagePointMapper.merge_site_reading_type(target, src, changed_time) is True
 
     assert_class_instance_equality(
@@ -360,6 +360,7 @@ def test_MirrorUsagePointMapper_map_to_response(group_has_nones: bool):
 
     assert result is not None
     assert isinstance(result, MirrorUsagePoint)
+    assert result.href is not None
     assert result.href.startswith(href_prefix)
     assert result.href.endswith(uris.MirrorUsagePointUri.format(mup_id=group.group_id))
     assert isinstance(result.mRID, str)
@@ -372,7 +373,7 @@ def test_MirrorUsagePointMapper_map_to_response(group_has_nones: bool):
         assert result.status == group.group_status
     assert result.mirrorMeterReadings
     assert len(result.mirrorMeterReadings) == len(srts)
-    for mmr, srt in zip(result.mirrorMeterReadings, srts):
+    for mmr, srt in zip(result.mirrorMeterReadings, srts, strict=False):
         assert mmr.mRID == srt.mrid
         assert mmr.version == srt.version
         assert mmr.description == srt.description
@@ -389,7 +390,7 @@ def test_MirrorUsagePointMapper_map_to_response(group_has_nones: bool):
 def test_MirrorUsagePointMapper_map_to_list_response():
     group_count = 252
 
-    groups = [
+    groups: list[tuple[GroupedSiteReadingTypeDetails, Sequence[SiteReadingType]]] = [
         (
             generate_class_instance(
                 GroupedSiteReadingTypeDetails,
@@ -428,11 +429,14 @@ def test_MirrorUsagePointMapper_map_to_list_response():
     result_all_set = MirrorUsagePointListMapper.map_to_list_response(scope, group_count, groups, post_rate_seconds)
     assert result_all_set is not None
     assert isinstance(result_all_set, MirrorUsagePointListResponse)
+    assert result_all_set.href is not None
     assert result_all_set.href.startswith(href_prefix)
     assert result_all_set.all_ == group_count
     assert result_all_set.results == len(groups)
     assert len(result_all_set.mirrorUsagePoints) == len(groups)
+    assert result_all_set.mirrorUsagePoints[0].mirrorMeterReadings is not None
     assert len(result_all_set.mirrorUsagePoints[0].mirrorMeterReadings) == 2
+    assert result_all_set.mirrorUsagePoints[1].mirrorMeterReadings is not None
     assert len(result_all_set.mirrorUsagePoints[1].mirrorMeterReadings) == 1
 
     assert result_all_set.mirrorUsagePoints[0].deviceLFDI == groups[0][0].site_lfdi
@@ -450,7 +454,7 @@ def test_MirrorMeterReadingMapper_map_reading_from_request_no_time_period():
 
 def test_MirrorMeterReadingMapper_map_reading_from_request():
     """Sanity check that the parsing of common Reading values don't generate errors"""
-    start_time = datetime(2022, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    start_time = datetime(2022, 1, 2, 3, 4, 5, tzinfo=UTC)
 
     reading_all_set: Reading = generate_class_instance(Reading, seed=101, optional_is_none=False)
     reading_all_set.qualityFlags = f"{QualityFlagsType.FORECAST:0X}"
@@ -489,7 +493,7 @@ def test_MirrorMeterReadingMapper_map_reading_from_request():
 def test_MirrorMeterReadingMapper_map_from_request_empty_variants():
     mrid = "abc123"
     srt_map = CaseInsensitiveDict({mrid: generate_class_instance(SiteReadingType)})
-    changed_time = datetime(2011, 5, 6, 1, tzinfo=timezone.utc)
+    changed_time = datetime(2011, 5, 6, 1, tzinfo=UTC)
 
     assert_list_type(SiteReading, MirrorMeterReadingMapper.map_from_request([], srt_map, changed_time), 0)
     assert_list_type(
@@ -537,7 +541,7 @@ def test_MirrorMeterReadingMapper_map_from_request_empty_variants():
 def test_MirrorMeterReadingMapper_map_from_request_bad_mrid():
     mrid = "abc123"
     srt_map = CaseInsensitiveDict({mrid: generate_class_instance(SiteReadingType)})
-    changed_time = datetime(2011, 5, 6, 1, tzinfo=timezone.utc)
+    changed_time = datetime(2011, 5, 6, 1, tzinfo=UTC)
 
     with pytest.raises(InvalidMappingError):
         MirrorMeterReadingMapper.map_from_request(
@@ -641,10 +645,10 @@ def test_MirrorMeterReadingMapper_reading_round_trip():
     )
 
 
-def _make_reading(value: Optional[int]) -> Reading:
+def _make_reading(value: int | None) -> Reading:
     reading: Reading = generate_class_instance(Reading, optional_is_none=True)
     reading.timePeriod = generate_class_instance(DateTimeIntervalType)
-    reading.timePeriod.start = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
+    reading.timePeriod.start = int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
     reading.timePeriod.duration = 300
     reading.qualityFlags = f"{QualityFlagsType.NONE:0X}"
     reading.value = value
@@ -670,13 +674,13 @@ def test_MirrorMeterReadingMapper_map_reading_from_request_value_overflow(bad_va
     "ok_value",
     [SEP2_INT48_MAX, SEP2_INT48_MIN, 100_000, 0, None],
 )
-def test_MirrorMeterReadingMapper_map_reading_from_request_value_in_range(ok_value: Optional[int]):
+def test_MirrorMeterReadingMapper_map_reading_from_request_value_in_range(ok_value: int | None):
     """Reading.value within int48 range (and None) must be accepted"""
     result = MirrorMeterReadingMapper.map_reading_from_request(_make_reading(ok_value), 1, datetime.now())
     assert result.value == ok_value
 
 
-def _make_mmr_with_multiplier(multiplier: Optional[int]) -> MirrorMeterReading:
+def _make_mmr_with_multiplier(multiplier: int | None) -> MirrorMeterReading:
     mmr = generate_class_instance(MirrorMeterReading, mRID="abc123")
     mmr.readingType = generate_class_instance(ReadingType, uom=UomType.REAL_POWER_WATT, optional_is_none=False)
     mmr.readingType.powerOfTenMultiplier = multiplier
@@ -712,7 +716,7 @@ def test_MirrorUsagePointMapper_map_from_request_bad_multiplier(bad_mult: int):
     "ok_mult",
     [SEP2_INT8_MAX, SEP2_INT8_MIN, 0, 1, None],
 )
-def test_MirrorUsagePointMapper_map_from_request_ok_multiplier(ok_mult: Optional[int]):
+def test_MirrorUsagePointMapper_map_from_request_ok_multiplier(ok_mult: int | None):
     """powerOfTenMultiplier within int8 range (and None) must be accepted"""
     result = _map_mup(_make_mmr_with_multiplier(ok_mult))
     expected = ok_mult if ok_mult is not None else 0

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -24,9 +24,9 @@ async def test_select_all_client_id_details(pg_base_config):
     assert_list_type(ClientIdDetails, result, count=5)
     assert [CERT1_LFDI, CERT2_LFDI, CERT3_LFDI, CERT4_LFDI, CERT5_LFDI] == [r.lfdi for r in result]
     assert [
-        datetime(2037, 1, 1, 1, 2, 3, tzinfo=timezone.utc),
-        datetime(2037, 1, 1, 2, 3, 4, tzinfo=timezone.utc),
-        datetime(2023, 1, 1, 1, 2, 4, tzinfo=timezone.utc),
-        datetime(2037, 1, 1, 1, 2, 3, tzinfo=timezone.utc),
-        datetime(2037, 1, 1, 1, 2, 3, tzinfo=timezone.utc),
+        datetime(2037, 1, 1, 1, 2, 3, tzinfo=UTC),
+        datetime(2037, 1, 1, 2, 3, 4, tzinfo=UTC),
+        datetime(2023, 1, 1, 1, 2, 4, tzinfo=UTC),
+        datetime(2037, 1, 1, 1, 2, 3, tzinfo=UTC),
+        datetime(2037, 1, 1, 1, 2, 3, tzinfo=UTC),
     ] == [r.expiry for r in result]

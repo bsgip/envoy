@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from envoy_schema.admin.schema.site_control import (
     SiteControlGroupDefaultRequest,
@@ -34,7 +33,6 @@ from envoy.server.model.subscription import SubscriptionResource
 
 
 class SiteControlGroupManager:
-
     @staticmethod
     async def create_site_control_group(session: AsyncSession, request: SiteControlGroupRequest) -> int:
         """Creates a new site control group"""
@@ -147,7 +145,7 @@ class SiteControlGroupManager:
 
     @staticmethod
     async def get_all_site_control_groups(
-        session: AsyncSession, start: int, limit: int, changed_after: Optional[datetime]
+        session: AsyncSession, start: int, limit: int, changed_after: datetime | None
     ) -> SiteControlGroupPageResponse:
         """Fetches a page of SiteControlGroup instances"""
 
@@ -161,7 +159,7 @@ class SiteControlGroupManager:
     @staticmethod
     async def get_site_control_group_by_id(
         session: AsyncSession, site_control_group_id: int
-    ) -> Optional[SiteControlGroupResponse]:
+    ) -> SiteControlGroupResponse | None:
         """Selects a SiteControlGroupResponse for the specified ID or returns None if it does not exist"""
         scg = await select_site_control_group_by_id(session, site_control_group_id)
         if scg is None:
@@ -192,6 +190,9 @@ class SiteControlGroupManager:
                 lambda q: q.where(SiteControlGroupDefault.site_control_group_id == group_id),
             )
             scg.site_control_group_default.changed_time = now
+
+        if scg.site_control_group_default is None:
+            raise Exception("SiteControlGroupDefault was not properly initialised.")
 
         if request.import_limit_watts is not None:
             scg.site_control_group_default.import_limit_active_watts = request.import_limit_watts.value
@@ -224,7 +225,7 @@ class SiteControlGroupManager:
     @staticmethod
     async def fetch_site_control_default_response(
         session: AsyncSession, group_id: int
-    ) -> Optional[SiteControlGroupDefaultResponse]:
+    ) -> SiteControlGroupDefaultResponse | None:
         """Fetches the current site control group default values as a SiteControlGroupDefaultResponse for external
         communication"""
         scg = await select_site_control_group_by_id(session, group_id, include_default=True)
@@ -251,7 +252,7 @@ class SiteControlListManager:
     async def delete_site_controls_in_range(
         session: AsyncSession,
         site_control_group_id: int,
-        site_id: Optional[int],
+        site_id: int | None,
         period_start: datetime,
         period_end: datetime,
     ) -> None:
@@ -290,7 +291,7 @@ class SiteControlListManager:
 
     @staticmethod
     async def get_all_site_controls(
-        session: AsyncSession, site_control_group_id: int, start: int, limit: int, changed_after: Optional[datetime]
+        session: AsyncSession, site_control_group_id: int, start: int, limit: int, changed_after: datetime | None
     ) -> SiteControlPageResponse:
         """Admin specific (paginated) fetch of site controls that covers all aggregators.
         changed_after: If specified - filter to does whose changed date is >= this value"""

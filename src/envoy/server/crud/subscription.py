@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence
 
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +12,7 @@ from envoy.server.model.subscription import Subscription, SubscriptionCondition
 
 async def select_subscription_by_id(
     session: AsyncSession, aggregator_id: int, subscription_id: int
-) -> Optional[Subscription]:
+) -> Subscription | None:
     """Selects the subscription with the specified subscription_id. Returns None if the entity doesn't exist for the
     specified aggregator. Will include Conditions"""
 
@@ -31,7 +31,7 @@ async def select_subscriptions_for_aggregator(
     aggregator_id: int,
     start: int,
     changed_after: datetime,
-    limit: Optional[int],
+    limit: int | None,
 ) -> Sequence[Subscription]:
     """Selects subscriptions for an aggregator. Will include Conditions
 
@@ -70,10 +70,10 @@ async def count_subscriptions_for_aggregator(
 async def select_subscriptions_for_site(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     start: int,
-    changed_after: Optional[datetime],
-    limit: Optional[int],
+    changed_after: datetime | None,
+    limit: int | None,
 ) -> Sequence[Subscription]:
     """Selects subscriptions that are scoped to a single site within an aggregator. Will include Conditions
 
@@ -81,7 +81,7 @@ async def select_subscriptions_for_site(
 
     stmt = (
         select(Subscription)
-        .where((Subscription.aggregator_id == aggregator_id))
+        .where(Subscription.aggregator_id == aggregator_id)
         .options(selectinload(Subscription.conditions))
         .order_by(Subscription.subscription_id)
         .offset(start)
@@ -101,12 +101,12 @@ async def select_subscriptions_for_site(
 async def count_subscriptions_for_site(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
-    changed_after: Optional[datetime],
+    site_id: int | None,
+    changed_after: datetime | None,
 ) -> int:
     """Similar to select_subscriptions_for_site but instead returns a count"""
 
-    stmt = select(func.count()).select_from(Subscription).where((Subscription.aggregator_id == aggregator_id))
+    stmt = select(func.count()).select_from(Subscription).where(Subscription.aggregator_id == aggregator_id)
 
     if changed_after is not None:
         stmt = stmt.where(Subscription.changed_time >= changed_after)
@@ -119,7 +119,7 @@ async def count_subscriptions_for_site(
 
 
 async def delete_subscription_for_site(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], subscription_id: int, deleted_time: datetime
+    session: AsyncSession, aggregator_id: int, site_id: int | None, subscription_id: int, deleted_time: datetime
 ) -> bool:
     """Deletes the specified subscription (and any linked conditions) from the database. Returns true on successful
     delete

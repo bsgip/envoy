@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence
 
 from envoy_schema.admin.schema.log import CalculationLogLabelMetadata as PublicLabelMetadata
 from envoy_schema.admin.schema.log import CalculationLogLabelValues as PublicLabelValues
@@ -17,7 +17,6 @@ from envoy.server.model.log import (
 
 
 class CalculationLogMapper:
-
     @staticmethod
     def map_from_request(changed_time: datetime, calculation_log: CalculationLogRequest) -> CalculationLog:
 
@@ -33,7 +32,7 @@ class CalculationLogMapper:
                     value=value,
                 )
                 for variable_id, site_id, interval_period, value in zip(
-                    var_vals.variable_ids, var_vals.site_ids, var_vals.interval_periods, var_vals.values
+                    var_vals.variable_ids, var_vals.site_ids, var_vals.interval_periods, var_vals.values, strict=False
                 )
             ]
 
@@ -47,7 +46,9 @@ class CalculationLogMapper:
                     site_id_snapshot=0 if site_id is None else site_id,
                     label=value,
                 )
-                for label_id, site_id, value in zip(label_vals.label_ids, label_vals.site_ids, label_vals.values)
+                for label_id, site_id, value in zip(
+                    label_vals.label_ids, label_vals.site_ids, label_vals.values, strict=False
+                )
             ]
 
         return CalculationLog(
@@ -92,7 +93,7 @@ class CalculationLogMapper:
         ]
 
         variable_ids: list[int] = []
-        variable_site_ids: list[Optional[int]] = []
+        variable_site_ids: list[int | None] = []
         variable_interval_periods: list[int] = []
         variable_values: list[float] = []
         for variable_val in calculation_log.variable_values:
@@ -118,7 +119,7 @@ class CalculationLogMapper:
         ]
 
         label_ids: list[int] = []
-        label_site_ids: list[Optional[int]] = []
+        label_site_ids: list[int | None] = []
         label_values: list[str] = []
         for label_val in calculation_log.label_values:
             label_ids.append(label_val.label_id)

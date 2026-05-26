@@ -68,11 +68,11 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    config_section = config.get_section(config.config_ini_section)
+    if config_section is None:
+        raise Exception(f"Missing '{config.config_ini_section}' section")
+
+    connectable = async_engine_from_config(config_section, prefix="sqlalchemy.", poolclass=pool.NullPool)
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

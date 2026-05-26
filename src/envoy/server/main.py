@@ -3,7 +3,7 @@ import logging
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
-from lxml.etree import XMLSyntaxError  # type: ignore # nosec: This will need to be addressed with pydantic-xml
+from lxml.etree import XMLSyntaxError
 from pydantic_core import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 

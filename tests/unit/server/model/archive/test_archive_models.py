@@ -1,8 +1,8 @@
 import importlib
 import inspect
 import pkgutil
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator, Optional
 
 import pytest
 from assertical.asserts.type import assert_set_type
@@ -21,11 +21,12 @@ ARCHIVE_BASE_MEMBERS: set[str] = {p.name for p in enumerate_class_properties(Arc
 def find_submodules(module_path: str) -> set[str]:
     """Finds all submodules that are immediately below the specified module_path"""
     models_module = importlib.import_module(module_path)
+    assert models_module.__file__ is not None
     models_dir = Path(models_module.__file__).parent
     return {modname for _, modname, ispkg in pkgutil.iter_modules([str(models_dir)]) if not ispkg}
 
 
-def find_paired_unpaired_archive_modules() -> set[tuple[Optional[str], Optional[str]]]:
+def find_paired_unpaired_archive_modules() -> set[tuple[str | None, str | None]]:
     """Finds modules from the models/archive packages that have the same name.
 
     Returns a list of these pairs in the form of (model_module, archive_module)
@@ -35,7 +36,7 @@ def find_paired_unpaired_archive_modules() -> set[tuple[Optional[str], Optional[
     models_submodules = find_submodules(MODELS_PACKAGE)
     archive_submodules = find_submodules(ARCHIVE_PACKAGE)
 
-    result: set[tuple[Optional[str], Optional[str]]] = set()
+    result: set[tuple[str | None, str | None]] = set()
     for a in archive_submodules:
         if a in models_submodules:
             result.add((MODELS_PACKAGE + "." + a, ARCHIVE_PACKAGE + "." + a))
@@ -58,7 +59,6 @@ def find_paired_archive_modules() -> list[tuple[str, str]]:
 
     pairings: list[tuple[str, str]] = []
     for m, a in find_paired_unpaired_archive_modules():
-
         if m is None or a is None:
             continue
 
@@ -68,20 +68,19 @@ def find_paired_archive_modules() -> list[tuple[str, str]]:
     return pairings
 
 
-def find_paired_unpaired_archive_classes() -> set[Optional[type], Optional[type]]:
+def find_paired_unpaired_archive_classes() -> set[tuple[type[Base] | None, type[ArchiveBase] | None]]:
     """Enumerates submodules from find_paired_archive_modules and identifies classes from
     each pairing that have the same name. Returns the paired types (or None if unpaired)
 
     Noting that a model class like Site will be prefixed on the archive side as ArchiveSite"""
-    pairings: set[Optional[type], Optional[type]] = set()
+    pairings: set[tuple[type[Base] | None, type[ArchiveBase] | None]] = set()
     for m, a in find_paired_archive_modules():
-
-        model_types_by_name: dict[str, type] = dict(
+        model_types_by_name: dict[str, type[Base]] = dict(
             (t.__name__, t)
             for _, t in inspect.getmembers(importlib.import_module(m), inspect.isclass)
             if t.__module__ == m
         )
-        archive_types_by_name: dict[str, type] = dict(
+        archive_types_by_name: dict[str, type[ArchiveBase]] = dict(
             (t.__name__, t)
             for _, t in inspect.getmembers(importlib.import_module(a), inspect.isclass)
             if t.__module__ == a
@@ -102,16 +101,15 @@ def find_paired_unpaired_archive_classes() -> set[Optional[type], Optional[type]
     return pairings
 
 
-def find_paired_archive_classes() -> list[tuple[type, type]]:
+def find_paired_archive_classes() -> list[tuple[type[Base], type[ArchiveBase]]]:
     """Returns a list of types from the archive submodule paired with the "same" type from the original models
     submodule.
 
     returns (model_type, archive_type)
 
     It's expected that all archive classes will map to a corresponding model type"""
-    pairings: list[tuple[type, type]] = []
+    pairings: list[tuple[type[Base], type[ArchiveBase]]] = []
     for m, a in find_paired_unpaired_archive_classes():
-
         if m is None or a is None:
             continue
         pairings.append((m, a))
@@ -131,10 +129,10 @@ def test_find_paired_archive_modules():
     """Sanity checks find_paired_archive_modules"""
     items = find_paired_archive_modules()
     assert len(items) != 0
-    assert all((m[0].startswith(MODELS_PACKAGE) for m in items))
-    assert all((m[1].startswith(ARCHIVE_PACKAGE) for m in items))
-    assert all(("base" not in m[0] for m in items))
-    assert all(("base" not in m[1] for m in items))
+    assert all(m[0].startswith(MODELS_PACKAGE) for m in items)
+    assert all(m[1].startswith(ARCHIVE_PACKAGE) for m in items)
+    assert all("base" not in m[0] for m in items)
+    assert all("base" not in m[1] for m in items)
 
 
 def test_all_archive_modules_pair():
@@ -173,8 +171,7 @@ def test_archive_models_match_original_basic_schema(model_type: type, archive_ty
     # Check tablename is the same (minus the ARCHIVE_TABLE_PREFIX)
     assert archive_type.__tablename__.startswith(ARCHIVE_TABLE_PREFIX)
     assert (
-        model_type.__tablename__
-        and model_type.__tablename__ == archive_type.__tablename__[len(ARCHIVE_TABLE_PREFIX) :]  # noqa: E203
+        model_type.__tablename__ and model_type.__tablename__ == archive_type.__tablename__[len(ARCHIVE_TABLE_PREFIX) :]  # noqa: E203
     )
 
     errors: list[str] = []

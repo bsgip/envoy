@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 import pytest
 from assertical.asserts.type import assert_list_type
@@ -29,7 +28,7 @@ from envoy.server.model.site import SiteLogEvent
 async def test_select_and_count_site_log_event_filters(
     pg_base_config,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     start: int,
     limit: int,
     after: datetime,
@@ -67,11 +66,11 @@ async def test_select_and_count_site_log_event_filters(
 async def test_select_log_event_for_scope(
     pg_base_config,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     pk_id: int,
-    expected_fs: Optional[FunctionSetIdentifier],
-    expected_details: Optional[str],
-    expected_extended_data: Optional[int],
+    expected_fs: FunctionSetIdentifier | None,
+    expected_details: str | None,
+    expected_extended_data: int | None,
 ):
     """Checks that fetching log events by ID works with the various scoping options"""
     async with generate_async_session(pg_base_config) as session:

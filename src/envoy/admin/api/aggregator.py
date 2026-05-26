@@ -1,17 +1,16 @@
-import logging
 import http
-import sqlalchemy.exc
+import logging
 
-from envoy_schema.admin.schema.certificate import CertificatePageResponse, CertificateAssignmentRequest
-from envoy_schema.admin.schema.aggregator import AggregatorResponse, AggregatorPageResponse, AggregatorRequest
-from envoy_schema.admin.schema import uri
 import fastapi
+import sqlalchemy.exc
+from envoy_schema.admin.schema import uri
+from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorRequest, AggregatorResponse
+from envoy_schema.admin.schema.certificate import CertificateAssignmentRequest, CertificatePageResponse
 from fastapi_async_sqlalchemy import db
 
 from envoy.admin import manager
 from envoy.server import exception
-from envoy.server.api import request
-from envoy.server.api import error_handler
+from envoy.server.api import error_handler, request
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +69,7 @@ async def update_aggregator(aggregator_id: int, aggregator: AggregatorRequest) -
     try:
         await manager.AggregatorManager.update_existing_aggregator(db.session, aggregator_id, aggregator)
     except exception.NotFoundError as err:
-        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}")
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err
 
 
 @router.get(
@@ -132,9 +131,9 @@ async def assign_certificates_to_aggregator(
             session=db.session, aggregator_id=aggregator_id, certs=certificates
         )
     except exception.NotFoundError as err:
-        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}")
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err
     except (exception.InvalidIdError, sqlalchemy.exc.IntegrityError) as err:
-        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.BAD_REQUEST, f"{err}")
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.BAD_REQUEST, f"{err}") from err
 
 
 @router.delete(
@@ -154,4 +153,4 @@ async def delete_aggregator_certificate_assignment(aggregator_id: int, certifica
     try:
         await manager.CertificateManager.unassign_certificate_for_aggregator(db.session, aggregator_id, certificate_id)
     except exception.NotFoundError as err:
-        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}")
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err

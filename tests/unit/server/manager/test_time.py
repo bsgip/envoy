@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -33,7 +33,7 @@ def test_get_tz_key_via_zoneinfo():
     # Missing timezone details
     (datetime(2022, 2, 3, 4, 5, 6, tzinfo=ZoneInfo("Australia/Brisbane")), 0, 0, 0),  # No DST
     (datetime(2022, 2, 3, 4, 5, 6), 0, 0, 0),  # No Timezone
-    (datetime(2022, 2, 3, 4, 5, 6, tzinfo=timezone.utc), 0, 0, 0),  # UTC Timezone
+    (datetime(2022, 2, 3, 4, 5, 6, tzinfo=UTC), 0, 0, 0),  # UTC Timezone
 ])
 # fmt: on
 def test_get_dst_info(dt: datetime, dst_end: int, dst_start: int, dst_offset: int):

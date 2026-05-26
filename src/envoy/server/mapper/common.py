@@ -1,7 +1,8 @@
 from collections import abc
+from collections.abc import Iterator
 from decimal import Decimal
 from itertools import chain
-from typing import Any, Generic, Iterator, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from envoy_schema.server.schema.sep2.types import DEVICE_CATEGORY_ALL_SET, DeviceCategory
 
@@ -9,7 +10,7 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.request_scope import BaseRequestScope
 
 
-def generate_href(uri_format: str, request_scope: BaseRequestScope, *args: Any, **kwargs: Any) -> str:
+def generate_href(uri_format: str, request_scope: BaseRequestScope, *args: object, **kwargs: object) -> str:
     """Generates a href from a format string and an optional static prefix. Any args/kwargs will be forwarded to
     str.format (being applied to uri_format).
 
@@ -54,7 +55,7 @@ def remove_href_prefix(href: str, request_scope: BaseRequestScope) -> str:
         return "/" + href
 
 
-def parse_device_category(device_category_str: Optional[str]) -> DeviceCategory:
+def parse_device_category(device_category_str: str | None) -> DeviceCategory:
     """Parse a hex string representation of a device category into a DeviceCategory"""
     if not device_category_str:
         return DeviceCategory(0)
@@ -67,7 +68,7 @@ def parse_device_category(device_category_str: Optional[str]) -> DeviceCategory:
     return DeviceCategory(raw_dc)
 
 
-def pow10_to_decimal_value(value: Optional[int], pow10_multiplier: Optional[int]) -> Optional[Decimal]:
+def pow10_to_decimal_value(value: int | None, pow10_multiplier: int | None) -> Decimal | None:
     """Converts a value and a power of ten multiplier into a raw Decimal value.
 
     If multiplier is not specified - it will be assumed to be 0
@@ -93,7 +94,7 @@ class CaseInsensitiveDict(abc.MutableMapping, Generic[ValueType]):
 
     _raw_dict: dict[str, tuple[str, ValueType]]
 
-    def __init__(self, data: Any = None, **kwargs: Any) -> None:
+    def __init__(self, data: Any = None, **kwargs: object) -> None:  # noqa: ANN401
         self._raw_dict = dict()
         if data is None:
             data = {}
@@ -118,7 +119,7 @@ class CaseInsensitiveDict(abc.MutableMapping, Generic[ValueType]):
         """Similar to iteritems(), but with all casefolded keys."""
         return ((orig_key, keyval[1]) for (orig_key, keyval) in self._raw_dict.items())
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, abc.Mapping):
             other = CaseInsensitiveDict(other)
         else:
@@ -131,7 +132,7 @@ class CaseInsensitiveDict(abc.MutableMapping, Generic[ValueType]):
         return CaseInsensitiveDict(self._raw_dict.values())
 
     def __repr__(self) -> str:
-        return "%s(%r)" % (self.__class__.__name__, dict(self.items()))
+        return f"{self.__class__.__name__}({dict(self.items())!r})"
 
 
 # IEEE 2030.5 integer type bounds used for inbound payload validation

@@ -1,11 +1,10 @@
 import logging
 from http import HTTPStatus
-from typing import Optional, Union
 
 from envoy_schema.server.schema.sep2.error import ErrorResponse
 from envoy_schema.server.schema.sep2.types import ReasonCodeType
 from fastapi import HTTPException, Request, Response
-from lxml.etree import XMLSyntaxError  # type: ignore # nosec: This will need to be addressed with pydantic-xml
+from lxml.etree import XMLSyntaxError  # nosec: This will need to be addressed with pydantic-xml
 from pydantic_core import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -14,7 +13,7 @@ from envoy.server.api.response import XmlResponse
 logger = logging.getLogger(__name__)
 
 
-def http_status_code_to_reason_code(status_code: Union[HTTPStatus, int]) -> ReasonCodeType:
+def http_status_code_to_reason_code(status_code: HTTPStatus | int) -> ReasonCodeType:
     if status_code == HTTPStatus.TOO_MANY_REQUESTS:
         return ReasonCodeType.resource_limit_reached
     elif status_code == HTTPStatus.INTERNAL_SERVER_ERROR:
@@ -24,7 +23,7 @@ def http_status_code_to_reason_code(status_code: Union[HTTPStatus, int]) -> Reas
 
 
 def generate_error_response(
-    status_code: Union[HTTPStatus, int], message: Optional[str] = None, max_retry_duration: Optional[int] = None
+    status_code: HTTPStatus | int, message: str | None = None, max_retry_duration: int | None = None
 ) -> Response:
     """Generates an XML response loaded with a sep2 Error object"""
     reason_code = http_status_code_to_reason_code(status_code)
@@ -35,7 +34,7 @@ def generate_error_response(
     )
 
 
-def http_exception_handler(request: Request, exc: Union[HTTPException, StarletteHTTPException, Exception]) -> Response:
+def http_exception_handler(request: Request, exc: HTTPException | StarletteHTTPException | Exception) -> Response:
     """Handles specific HTTP exceptions"""
     if isinstance(exc, HTTPException) or isinstance(exc, StarletteHTTPException):
         status_code = exc.status_code
@@ -49,7 +48,7 @@ def http_exception_handler(request: Request, exc: Union[HTTPException, Starlette
     return generate_error_response(status_code, message=detail)
 
 
-def validation_exception_handler(request: Request, exc: Union[ValidationError, Exception]) -> Response:
+def validation_exception_handler(request: Request, exc: ValidationError | Exception) -> Response:
     """Handles fastapi validation exceptions that haven't been handled. These usually occur during
     parsing of an incoming model to a Pydantic model and almost always indicate a bad request by the user.
 
@@ -60,10 +59,10 @@ def validation_exception_handler(request: Request, exc: Union[ValidationError, E
         return general_exception_handler(request, exc)
 
     logger.exception(f"{request.path_params} generated validation exception {exc}")
-    return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.json())
+    return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.json())  # ty:ignore[call-non-callable] # We check for this above
 
 
-def xml_exception_handler(request: Request, exc: Union[XMLSyntaxError, Exception]) -> Response:
+def xml_exception_handler(request: Request, exc: XMLSyntaxError | Exception) -> Response:
     """Handles fastapi XML validation exceptions that haven't been handled. These usually occur during
     parsing of an incoming model to a Pydantic XML model and almost always indicate a bad request by the user.
 
@@ -74,7 +73,7 @@ def xml_exception_handler(request: Request, exc: Union[XMLSyntaxError, Exception
         return general_exception_handler(request, exc)
 
     logger.exception(f"{request.path_params} generated validation exception {exc}")
-    return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.msg)
+    return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.msg)  # ty:ignore[invalid-argument-type] # This is checked above
 
 
 def general_exception_handler(request: Request, exc: Exception) -> Response:
@@ -94,7 +93,7 @@ class LoggedHttpException(HTTPException):
     It's a simple way of making the various HTTP Exception handlers more consistent with their logging practices"""
 
     def __init__(
-        self, logger_instance: logging.Logger, exc: Optional[Exception], status_code: HTTPStatus, detail: str
+        self, logger_instance: logging.Logger, exc: Exception | None, status_code: HTTPStatus, detail: str
     ) -> None:
         super().__init__(status_code, detail)
 

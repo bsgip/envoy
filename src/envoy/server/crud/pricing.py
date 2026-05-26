@@ -1,6 +1,6 @@
+from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta
 from itertools import islice
-from typing import Optional, Sequence, Union
 
 from sqlalchemy import TIMESTAMP, Date, Select, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +21,7 @@ async def select_tariff_fsa_ids(session: AsyncSession, changed_after: datetime) 
     return resp.scalars().all()
 
 
-async def select_tariff_count(session: AsyncSession, after: datetime, fsa_id: Optional[int]) -> int:
+async def select_tariff_count(session: AsyncSession, after: datetime, fsa_id: int | None) -> int:
     """Fetches the number of tariffs stored
 
     after: Only tariffs with a changed_time greater than this value will be counted (set to 0 to count everything)
@@ -32,17 +32,17 @@ async def select_tariff_count(session: AsyncSession, after: datetime, fsa_id: Op
     stmt = select(func.count()).select_from(Tariff)
 
     if after != datetime.min:
-        stmt = stmt.where((Tariff.changed_time >= after))
+        stmt = stmt.where(Tariff.changed_time >= after)
 
     if fsa_id is not None:
-        stmt = stmt.where((Tariff.fsa_id == fsa_id))
+        stmt = stmt.where(Tariff.fsa_id == fsa_id)
 
     resp = await session.execute(stmt)
     return resp.scalar_one()
 
 
 async def select_all_tariffs(
-    session: AsyncSession, start: int, changed_after: datetime, limit: int, fsa_id: Optional[int]
+    session: AsyncSession, start: int, changed_after: datetime, limit: int, fsa_id: int | None
 ) -> Sequence[Tariff]:
     """Selects tariffs with some basic pagination / filtering based on change time
 
@@ -65,21 +65,21 @@ async def select_all_tariffs(
     )
 
     if changed_after != datetime.min:
-        stmt = stmt.where((Tariff.changed_time >= changed_after))
+        stmt = stmt.where(Tariff.changed_time >= changed_after)
 
     if fsa_id is not None:
-        stmt = stmt.where((Tariff.fsa_id == fsa_id))
+        stmt = stmt.where(Tariff.fsa_id == fsa_id)
 
     resp = await session.execute(stmt)
     return resp.scalars().all()
 
 
-async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optional[Tariff]:
+async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Tariff | None:
     """Requests a single tariff based on the primary key - returns None if it does not exist"""
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    stmt = select(Tariff).where((Tariff.tariff_id == tariff_id))
+    stmt = select(Tariff).where(Tariff.tariff_id == tariff_id)
 
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
@@ -88,9 +88,9 @@ async def select_single_tariff(session: AsyncSession, tariff_id: int) -> Optiona
 async def select_tariff_generated_rate_for_scope(
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     rate_id: int,
-) -> Optional[TariffGeneratedRate]:
+) -> TariffGeneratedRate | None:
     """Attempts to fetch a TariffGeneratedRate using its primary id, also scoping it to a particular aggregator/site
 
     aggregator_id: The aggregator id to constrain the lookup to
@@ -120,8 +120,8 @@ async def _tariff_rates_for_day(
     day: date,
     start: int,
     changed_after: datetime,
-    limit: Optional[int],
-) -> Union[Sequence[TariffGeneratedRate], int]:
+    limit: int | None,
+) -> Sequence[TariffGeneratedRate] | int:
     """Internal utility for making _tariff_rates_for_day that either counts the entities or returns the entities
 
     Orders by sep2 requirements on TimeTariffInterval which is start ASC, creation DESC, id DESC"""
@@ -140,7 +140,7 @@ async def _tariff_rates_for_day(
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    select_clause: Union[Select[tuple[int]], Select[tuple[TariffGeneratedRate, str]]]
+    select_clause: Select[tuple[int]] | Select[tuple[TariffGeneratedRate]]
     if only_count:
         select_clause = select(func.count()).select_from(TariffGeneratedRate)
     else:
@@ -161,7 +161,7 @@ async def _tariff_rates_for_day(
     )
 
     if changed_after != datetime.min:
-        stmt = stmt.where((TariffGeneratedRate.changed_time >= changed_after))
+        stmt = stmt.where(TariffGeneratedRate.changed_time >= changed_after)
 
     if not only_count:
         stmt = stmt.order_by(
@@ -185,9 +185,7 @@ async def count_tariff_rates_for_day(
 
     changed_after: Only tariffs with a changed_time greater than this value will be counted (0 will count everything)"""
 
-    return await _tariff_rates_for_day(
-        True, session, aggregator_id, tariff_id, site_id, day, 0, changed_after, None
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an int and not an entity
+    return await _tariff_rates_for_day(True, session, aggregator_id, tariff_id, site_id, day, 0, changed_after, None)  # ty:ignore[invalid-return-type]  # Test coverage will ensure that it's an int and not an entity
 
 
 async def select_tariff_rates_for_day(
@@ -214,12 +212,12 @@ async def select_tariff_rates_for_day(
 
     return await _tariff_rates_for_day(
         False, session, aggregator_id, tariff_id, site_id, day, start, changed_after, limit
-    )  # type: ignore [return-value]  # Test coverage will ensure that it's an entity list
+    )  # ty:ignore[invalid-return-type] # Test coverage will ensure that it's an entity list
 
 
 async def select_tariff_rate_for_day_time(
     session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int, day: date, time_of_day: time
-) -> Optional[TariffGeneratedRate]:
+) -> TariffGeneratedRate | None:
     """Selects single TariffGeneratedRate entity for a single tariff date / interval start. Date/time will
     be matched according to the local timezone for site
 
@@ -255,7 +253,7 @@ async def select_tariff_rate_for_day_time(
 
 async def _select_rate_day_range(
     session: AsyncSession, aggregator_id: int, tariff_id: int, site_id: int, changed_after: datetime
-) -> Optional[tuple[date, date]]:
+) -> tuple[date, date] | None:
     """Fetches the inclusive min/max TariffGeneratedRate (based on start_time) and returns the site timezone adjusted
     date from those min/max values. Returns the inclusive date range (min, max) or None if there is NO data"""
     site_timezone_id = (
@@ -274,7 +272,7 @@ async def _select_rate_day_range(
     ).where((TariffGeneratedRate.tariff_id == tariff_id) & (TariffGeneratedRate.site_id == site_id))
 
     if changed_after != datetime.min:
-        stmt = stmt.where((TariffGeneratedRate.changed_time >= changed_after))
+        stmt = stmt.where(TariffGeneratedRate.changed_time >= changed_after)
 
     resp = (await session.execute(stmt)).one_or_none()
     if not resp or not resp[0] or not resp[1]:
@@ -283,7 +281,7 @@ async def _select_rate_day_range(
     return (resp[0], resp[1])
 
 
-def _count_date_range_dates(date_range: Optional[tuple[date, date]]) -> int:
+def _count_date_range_dates(date_range: tuple[date, date] | None) -> int:
     """Counts the number of unique dates in the inclusive date_range (min, max)"""
     if not date_range:
         return 0

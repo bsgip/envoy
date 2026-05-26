@@ -1,7 +1,6 @@
 import unittest.mock as mock
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Union
 
 import pytest
 from assertical.fake.generator import generate_class_instance
@@ -47,13 +46,13 @@ from envoy.server.request_scope import BaseRequestScope, SiteRequestScope
         ("2022-Nov-02", InvalidIdError),
     ],
 )
-def test_parse_rate_component_id(input: str, output: Union[date, type]):
+def test_parse_rate_component_id(input: str, output: date | type[Exception]):
     """Simple test on parser generating valid values / catching errors"""
     if isinstance(output, date):
         assert RateComponentManager.parse_rate_component_id(input) == output
     else:
         with pytest.raises(output):
-            RateComponentManager.parse_rate_component_id(input) == output
+            RateComponentManager.parse_rate_component_id(input)
 
 
 @pytest.mark.parametrize(
@@ -75,13 +74,13 @@ def test_parse_rate_component_id(input: str, output: Union[date, type]):
         (" 12:13 ", InvalidIdError),
     ],
 )
-def test_parse_time_tariff_interval_id(input: str, output: Union[time, type]):
+def test_parse_time_tariff_interval_id(input: str, output: time | type[Exception]):
     """Simple test on parser generating valid values / catching errors"""
     if isinstance(output, time):
         assert TimeTariffIntervalManager.parse_time_tariff_interval_id(input) == output
     else:
         with pytest.raises(output):
-            TimeTariffIntervalManager.parse_time_tariff_interval_id(input) == output
+            TimeTariffIntervalManager.parse_time_tariff_interval_id(input)
 
 
 @pytest.mark.anyio
@@ -319,7 +318,13 @@ async def test_fetch_rate_component_list(
 
     # check mock assumptions
     mock_select_unique_rate_days.assert_called_once_with(
-        mock_session, scope.aggregator_id, tariff_id, scope.site_id, 1, changed_after, 2  # adjusted start
+        mock_session,
+        scope.aggregator_id,
+        tariff_id,
+        scope.site_id,
+        1,
+        changed_after,
+        2,  # adjusted start
     )  # adjusted limit
     mock_RateComponentMapper.map_to_list_response.assert_called_once_with(
         scope, input_dates, total_distinct_dates, 0, 0, tariff_id
@@ -409,15 +414,18 @@ async def test_fetch_rate_component_list_pagination(mock_select_unique_rate_days
     )
     assert list_response.all_ == total_distinct_dates * TOTAL_PRICING_READING_TYPES
     assert list_response.results == expected_count
+    assert list_response.RateComponent is not None
     assert len(list_response.RateComponent) == expected_count
 
     # validate the first / last RateComponents
     if expected_count > 0:
         first = list_response.RateComponent[0]
+        assert first.href is not None
         assert first.href.endswith(f"/{first_price_type}"), f"{first.href} should end with /{first_price_type}"
         assert f"/{first_date.isoformat()}/" in first.href
 
         last = list_response.RateComponent[-1]
+        assert last.href is not None
         assert last.href.endswith(f"/{last_price_type}"), f"{last.href} should end with /{last_price_type}"
         assert f"/{last_date.isoformat()}/" in last.href
 
@@ -465,18 +473,21 @@ async def test_fetch_rate_component_list_full_db(pg_base_config, page_data):
             session, scope, 1, start, datetime.min, limit
         )
 
-        assert (
-            list_response.all_ == 2 * TOTAL_PRICING_READING_TYPES
-        ), "There are 2 distinct dates in base config for these filters"
+        assert list_response.all_ == 2 * TOTAL_PRICING_READING_TYPES, (
+            "There are 2 distinct dates in base config for these filters"
+        )
         assert list_response.results == expected_count
+        assert list_response.RateComponent is not None
         assert len(list_response.RateComponent) == expected_count
 
         if expected_count > 0:
             first = list_response.RateComponent[0]
+            assert first.href is not None
             assert first.href.endswith(f"/{first_price_type}"), f"{first.href} should end with /{first_price_type}"
             assert f"/{first_date.isoformat()}/" in first.href
 
             last = list_response.RateComponent[-1]
+            assert last.href is not None
             assert last.href.endswith(f"/{last_price_type}"), f"{last.href} should end with /{last_price_type}"
             assert f"/{last_date.isoformat()}/" in last.href
 

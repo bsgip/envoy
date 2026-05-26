@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from envoy_schema.admin.schema.config import RuntimeServerConfigRequest, RuntimeServerConfigResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +12,6 @@ from envoy.server.model.subscription import SubscriptionResource
 
 
 class ConfigManager:
-
     @staticmethod
     async def update_current_config(session: AsyncSession, updated_values: RuntimeServerConfigRequest) -> None:
         """Applies updated_values to the current server configuration. Will only set the non None values"""
@@ -78,7 +77,7 @@ class ConfigManager:
             changed_time = existing.changed_time
             created_time = existing.created_time
         else:
-            changed_time = datetime(2000, 1, 1, tzinfo=timezone.utc)
+            changed_time = datetime(2000, 1, 1, tzinfo=UTC)
             created_time = changed_time
 
         config = _map_server_config(existing)

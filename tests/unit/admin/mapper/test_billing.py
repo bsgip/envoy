@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -72,18 +72,17 @@ def test_reading_type_to_billing_primacy_all_unique(optional_is_none: bool):
             primacy = BillingMapper.reading_type_to_billing_primacy(srt)
             assert isinstance(primacy, int)
 
-            alternative_primacy = BillingMapper.reading_type_to_billing_primacy(
-                generate_class_instance(
-                    SiteReadingType,
-                    seed=1001,
-                    optional_is_none=optional_is_none,
-                    data_qualifier=dq,
-                    accumulation_behaviour=ab,
-                )
+            srt = generate_class_instance(
+                SiteReadingType,
+                seed=1001,
+                optional_is_none=optional_is_none,
+                data_qualifier=dq,
+                accumulation_behaviour=ab,
             )
+            alternative_primacy = BillingMapper.reading_type_to_billing_primacy(srt)
             assert alternative_primacy == primacy, "Values should be consistent (based on data_qual and accum behavior)"
 
-            all_srts.append(SiteReadingType)
+            all_srts.append(srt)
             all_primacies.append(primacy)
 
     assert len(all_primacies) == len(all_srts)
@@ -264,7 +263,8 @@ TS_2 = datetime(2023, 2, 2, 2, 2, 2)
     ],
 )
 def test_aggregate_readings_for_site_timestamp(
-    expected_inputs: tuple[int, datetime, int, int, SiteReadingType], expected_outputs: tuple[int, datetime, Decimal]
+    expected_inputs: list[tuple[int, datetime, int, int, SiteReadingType]],
+    expected_outputs: list[tuple[int, datetime, Decimal]],
 ):
     """Tests aggregate_readings_for_site_timestamp using a shorthand definition for input/output readings
 
@@ -289,7 +289,7 @@ def test_aggregate_readings_for_site_timestamp(
     assert_list_type(BillingReading, actual, len(expected_outputs))
 
     # Validate that the returned values aggregate in the expected way
-    for tuple_vals, actual_billing_report in zip(expected_outputs, actual):
+    for tuple_vals, actual_billing_report in zip(expected_outputs, actual, strict=False):
         site_id, time_period_start, value = tuple_vals
         expected_billing_report = BillingReading(
             site_id=site_id, period_start=time_period_start, duration_seconds=duration_seconds, value=value
@@ -345,7 +345,7 @@ def test_map_rate(optional_is_none: bool):
 def test_map_to_aggregator_response(optional_is_none: bool):
     agg: Aggregator = generate_class_instance(Aggregator, seed=101, optional_is_none=optional_is_none)
     period_start = datetime(2023, 4, 5, 6, 7)
-    period_end = datetime(2023, 6, 7, 8, 9, tzinfo=timezone.utc)
+    period_end = datetime(2023, 6, 7, 8, 9, tzinfo=UTC)
     tariff_id = 456
     billing_data: BillingData = BillingData(
         varh_readings=[
@@ -395,7 +395,7 @@ def test_map_to_aggregator_response(optional_is_none: bool):
 def test_map_to_sites_response(optional_is_none: bool):
     site_ids = [44, 1, 69]
     period_start = datetime(2023, 4, 5, 6, 7)
-    period_end = datetime(2023, 6, 7, 8, 9, tzinfo=timezone.utc)
+    period_end = datetime(2023, 6, 7, 8, 9, tzinfo=UTC)
     tariff_id = 456
     billing_data: BillingData = BillingData(
         varh_readings=[

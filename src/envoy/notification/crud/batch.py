@@ -1,6 +1,7 @@
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 from itertools import chain
-from typing import Any, Generic, Iterable, Optional, Sequence, Union, cast
+from typing import Any, Generic, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -127,45 +128,45 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
     SubscriptionResource.SUBSCRIPTION: (aggregator_id: int, subscription_id: int)
     """
     if resource == SubscriptionResource.SITE:
-        site: Site = cast(Site, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        site: Site = cast(Site, entity)
         return (site.aggregator_id, site.site_id)
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        doe = cast(DynamicOperatingEnvelope, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        doe = cast(DynamicOperatingEnvelope, entity)
         return (doe.site.aggregator_id, doe.site_id, doe.site_control_group_id)
     elif resource == SubscriptionResource.READING:
-        reading = cast(SiteReading, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        reading = cast(SiteReading, entity)
         return (
             reading.site_reading_type.aggregator_id,
             reading.site_reading_type.site_id,
             reading.site_reading_type.group_id,
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        rate = cast(TariffGeneratedRate, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        rate = cast(TariffGeneratedRate, entity)
         return (rate.site.aggregator_id, rate.tariff_id, rate.site_id, rate.start_time.date())
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
-        availability = cast(SiteDERAvailability, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        availability = cast(SiteDERAvailability, entity)
         return (availability.site_der.site.aggregator_id, availability.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_RATING:
-        rating = cast(SiteDERRating, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        rating = cast(SiteDERRating, entity)
         return (rating.site_der.site.aggregator_id, rating.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_SETTING:
-        setting = cast(SiteDERSetting, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        setting = cast(SiteDERSetting, entity)
         return (setting.site_der.site.aggregator_id, setting.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_STATUS:
-        status = cast(SiteDERStatus, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        status = cast(SiteDERStatus, entity)
         return (status.site_der.site.aggregator_id, status.site_der.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
-        default_control = cast(SiteScopedSiteControlGroupDefault, entity)  # type: ignore
+        default_control = cast(SiteScopedSiteControlGroupDefault, entity)
         return (
             default_control.aggregator_id,
             default_control.site_id,
             default_control.site_control_group_id,
         )
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
-        server_config = cast(SiteScopedFunctionSetAssignment, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        server_config = cast(SiteScopedFunctionSetAssignment, entity)
         return (server_config.aggregator_id, server_config.site_id)
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
-        scgroup = cast(SiteScopedSiteControlGroup, entity)  # type: ignore # Pretty sure this is a mypy quirk
+        scgroup = cast(SiteScopedSiteControlGroup, entity)
         return (scgroup.aggregator_id, scgroup.site_id)
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate batch key")
@@ -177,16 +178,16 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
     to apply to only a subset of entities"""
     if resource == SubscriptionResource.SITE:
         # Site lists subscriptions can be scoped to a single site
-        return cast(Site, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(Site, entity).site_id
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DOE subscriptions can be scoped to a single DERP
-        return cast(DynamicOperatingEnvelope, entity).site_control_group_id  # type: ignore # mypy quirk
+        return cast(DynamicOperatingEnvelope, entity).site_control_group_id
     elif resource == SubscriptionResource.READING:
         # Reading subscriptions can be scoped to the overarching type
-        return cast(SiteReading, entity).site_reading_type.group_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(SiteReading, entity).site_reading_type.group_id
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         # rate subscriptions can be scoped to a single tariff
-        return cast(TariffGeneratedRate, entity).tariff_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(TariffGeneratedRate, entity).tariff_id
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # der entities get scoped to the parent der
         return PUBLIC_SITE_DER_ID  # There is only a single site DER per EndDevice - it has a static id
@@ -202,9 +203,9 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
         return -1  # There are no subscriptions to a single FSA
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
-        return cast(SiteScopedSiteControlGroupDefault, entity).site_control_group_id  # type: ignore
+        return cast(SiteScopedSiteControlGroupDefault, entity).site_control_group_id
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
-        return cast(SiteScopedSiteControlGroup, entity).original.fsa_id  # type: ignore
+        return cast(SiteScopedSiteControlGroup, entity).original.fsa_id or -1
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate primary key")
 
@@ -212,27 +213,27 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
 def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
     """Means of disambiguating the site id for TResourceModel"""
     if resource == SubscriptionResource.SITE:
-        return cast(Site, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(Site, entity).site_id
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        return cast(DynamicOperatingEnvelope, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(DynamicOperatingEnvelope, entity).site_id
     elif resource == SubscriptionResource.READING:
-        return cast(SiteReading, entity).site_reading_type.site_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(SiteReading, entity).site_reading_type.site_id
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        return cast(TariffGeneratedRate, entity).site_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(TariffGeneratedRate, entity).site_id
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
-        return cast(SiteDERAvailability, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(SiteDERAvailability, entity).site_der.site_id
     elif resource == SubscriptionResource.SITE_DER_RATING:
-        return cast(SiteDERRating, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(SiteDERRating, entity).site_der.site_id
     elif resource == SubscriptionResource.SITE_DER_SETTING:
-        return cast(SiteDERSetting, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(SiteDERSetting, entity).site_der.site_id
     elif resource == SubscriptionResource.SITE_DER_STATUS:
-        return cast(SiteDERStatus, entity).site_der.site_id  # type: ignore # Pretty sure this is a mypy quirk
+        return cast(SiteDERStatus, entity).site_der.site_id
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
-        return cast(SiteScopedSiteControlGroupDefault, entity).site_id  # type: ignore
+        return cast(SiteScopedSiteControlGroupDefault, entity).site_id
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
-        return cast(SiteScopedFunctionSetAssignment, entity).site_id  # type: ignore
+        return cast(SiteScopedFunctionSetAssignment, entity).site_id
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
-        return cast(SiteScopedSiteControlGroup, entity).site_id  # type: ignore
+        return cast(SiteScopedSiteControlGroup, entity).site_id
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate site id")
 
@@ -292,9 +293,7 @@ async def fetch_rates_by_changed_at(
 
     referenced_site_ids = {
         e.site_id
-        for e in cast(
-            Iterable[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]], chain(active_rates, deleted_rates)
-        )
+        for e in cast(Iterable[TariffGeneratedRate | ArchiveTariffGeneratedRate], chain(active_rates, deleted_rates))
     }
 
     active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
@@ -303,9 +302,9 @@ async def fetch_rates_by_changed_at(
 
     # Map the "site" relationship
     orm_relationship_map_parent_entities(
-        cast(Iterable[Union[TariffGeneratedRate, ArchiveTariffGeneratedRate]], chain(active_rates, deleted_rates)),
+        cast(Iterable[TariffGeneratedRate | ArchiveTariffGeneratedRate], chain(active_rates, deleted_rates)),
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -332,7 +331,7 @@ async def fetch_does_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]], chain(active_does, deleted_does)
+            Iterable[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope], chain(active_does, deleted_does)
         )
     }
 
@@ -342,11 +341,9 @@ async def fetch_does_by_changed_at(
 
     # Map the "site" relationship
     orm_relationship_map_parent_entities(
-        cast(
-            Iterable[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]], chain(active_does, deleted_does)
-        ),
+        cast(Iterable[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope], chain(active_does, deleted_does)),
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -373,7 +370,7 @@ async def fetch_readings_by_changed_at(
     referenced_site_reading_type_ids = {
         e.site_reading_type_id
         for e in cast(
-            Iterable[Union[SiteReading, ArchiveSiteReading]],
+            Iterable[SiteReading | ArchiveSiteReading],
             chain(active_readings, deleted_readings),
         )
     }
@@ -385,14 +382,14 @@ async def fetch_readings_by_changed_at(
     # Map the "site_reading_type" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[SiteReading, ArchiveSiteReading]],
+            Iterable[SiteReading | ArchiveSiteReading],
             chain(active_readings, deleted_readings),
         ),
         lambda e: e.site_reading_type_id,
         {
             e.site_reading_type_id: e
             for e in cast(
-                Iterable[Union[SiteReadingType, ArchiveSiteReadingType]],
+                Iterable[SiteReadingType | ArchiveSiteReadingType],
                 chain(active_site_reading_types, deleted_site_reading_types),
             )
         },
@@ -417,7 +414,7 @@ async def fetch_der_availability_by_changed_at(
     referenced_site_der_ids = {
         e.site_der_id
         for e in cast(
-            Iterable[Union[SiteDERAvailability, ArchiveSiteDERAvailability]],
+            Iterable[SiteDERAvailability | ArchiveSiteDERAvailability],
             chain(active_der_avails, deleted_der_avails),
         )
     }
@@ -429,13 +426,13 @@ async def fetch_der_availability_by_changed_at(
     # Map the "site_der" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[SiteDERAvailability, ArchiveSiteDERAvailability]],
+            Iterable[SiteDERAvailability | ArchiveSiteDERAvailability],
             chain(active_der_avails, deleted_der_avails),
         ),
         lambda e: e.site_der_id,
         {
             e.site_der_id: e
-            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
         },
         "site_der",
     )
@@ -444,7 +441,7 @@ async def fetch_der_availability_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            Iterable[SiteDER | ArchiveSiteDER],
             chain(active_site_ders, deleted_site_ders),
         )
     }
@@ -458,7 +455,7 @@ async def fetch_der_availability_by_changed_at(
     orm_relationship_map_parent_entities(
         all_site_ders,
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -482,7 +479,7 @@ async def fetch_der_rating_by_changed_at(
     referenced_site_der_ids = {
         e.site_der_id
         for e in cast(
-            Iterable[Union[SiteDERRating, ArchiveSiteDERRating]],
+            Iterable[SiteDERRating | ArchiveSiteDERRating],
             chain(active_der_ratings, deleted_der_ratings),
         )
     }
@@ -494,13 +491,13 @@ async def fetch_der_rating_by_changed_at(
     # Map the "site_der" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[SiteDERRating, ArchiveSiteDERRating]],
+            Iterable[SiteDERRating | ArchiveSiteDERRating],
             chain(active_der_ratings, deleted_der_ratings),
         ),
         lambda e: e.site_der_id,
         {
             e.site_der_id: e
-            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
         },
         "site_der",
     )
@@ -509,7 +506,7 @@ async def fetch_der_rating_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            Iterable[SiteDER | ArchiveSiteDER],
             chain(active_site_ders, deleted_site_ders),
         )
     }
@@ -523,7 +520,7 @@ async def fetch_der_rating_by_changed_at(
     orm_relationship_map_parent_entities(
         all_site_ders,
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -547,7 +544,7 @@ async def fetch_der_setting_by_changed_at(
     referenced_site_der_ids = {
         e.site_der_id
         for e in cast(
-            Iterable[Union[SiteDERSetting, ArchiveSiteDERSetting]],
+            Iterable[SiteDERSetting | ArchiveSiteDERSetting],
             chain(active_der_settings, deleted_der_settings),
         )
     }
@@ -559,13 +556,13 @@ async def fetch_der_setting_by_changed_at(
     # Map the "site_der" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[SiteDERSetting, ArchiveSiteDERSetting]],
+            Iterable[SiteDERSetting | ArchiveSiteDERSetting],
             chain(active_der_settings, deleted_der_settings),
         ),
         lambda e: e.site_der_id,
         {
             e.site_der_id: e
-            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
         },
         "site_der",
     )
@@ -574,7 +571,7 @@ async def fetch_der_setting_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            Iterable[SiteDER | ArchiveSiteDER],
             chain(active_site_ders, deleted_site_ders),
         )
     }
@@ -588,7 +585,7 @@ async def fetch_der_setting_by_changed_at(
     orm_relationship_map_parent_entities(
         all_site_ders,
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -612,7 +609,7 @@ async def fetch_der_status_by_changed_at(
     referenced_site_der_ids = {
         e.site_der_id
         for e in cast(
-            Iterable[Union[SiteDERStatus, ArchiveSiteDERStatus]],
+            Iterable[SiteDERStatus | ArchiveSiteDERStatus],
             chain(active_der_statuses, deleted_der_statuses),
         )
     }
@@ -624,13 +621,13 @@ async def fetch_der_status_by_changed_at(
     # Map the "site_der" relationship
     orm_relationship_map_parent_entities(
         cast(
-            Iterable[Union[SiteDERStatus, ArchiveSiteDERStatus]],
+            Iterable[SiteDERStatus | ArchiveSiteDERStatus],
             chain(active_der_statuses, deleted_der_statuses),
         ),
         lambda e: e.site_der_id,
         {
             e.site_der_id: e
-            for e in cast(Iterable[Union[SiteDER, ArchiveSiteDER]], chain(active_site_ders, deleted_site_ders))
+            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
         },
         "site_der",
     )
@@ -639,7 +636,7 @@ async def fetch_der_status_by_changed_at(
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[Union[SiteDER, ArchiveSiteDER]],
+            Iterable[SiteDER | ArchiveSiteDER],
             chain(active_site_ders, deleted_site_ders),
         )
     }
@@ -653,7 +650,7 @@ async def fetch_der_status_by_changed_at(
     orm_relationship_map_parent_entities(
         all_site_ders,
         lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Union[Site, ArchiveSite]], chain(active_sites, deleted_sites))},
+        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
     )
 
@@ -664,7 +661,7 @@ async def fetch_der_status_by_changed_at(
 
 async def fetch_default_site_controls_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[SiteScopedSiteControlGroupDefault, ArchiveSiteScopedSiteControlGroupDefault]:  # type: ignore # noqa: E501
+) -> AggregatorBatchedEntities[SiteScopedSiteControlGroupDefault, ArchiveSiteScopedSiteControlGroupDefault]:  # type: ignore # SiteScoped variables will work here - tests enforce it
     """Fetches all DefaultSiteControl instances matching the specified changed_at and returns them keyed by their
     aggregator/site id
 
@@ -689,8 +686,11 @@ async def fetch_default_site_controls_by_changed_at(
     ]
 
     return AggregatorBatchedEntities(
-        timestamp, SubscriptionResource.DEFAULT_SITE_CONTROL, scoped_actives, scoped_deleted
-    )  # type: ignore
+        timestamp,
+        SubscriptionResource.DEFAULT_SITE_CONTROL,
+        scoped_actives,  # type: ignore # SiteScoped variables will work here - tests enforce it
+        scoped_deleted,  # type: ignore # SiteScoped variables will work here - tests enforce it
+    )
 
 
 async def fetch_fsa_by_changed_at(
@@ -701,7 +701,7 @@ async def fetch_fsa_by_changed_at(
 
     # Two things can trigger a FSA Notification - a change in pollrate...
     runtime_cfg = await select_server_config(session)
-    new_poll_rate: Optional[int] = None
+    new_poll_rate: int | None = None
     if runtime_cfg is not None and runtime_cfg.changed_time == timestamp:
         new_poll_rate = runtime_cfg.fsal_pollrate_seconds
 
@@ -713,9 +713,7 @@ async def fetch_fsa_by_changed_at(
 
     # If there isn't anything that's changed - don't encode any entities (there's nothing to Notify)
     if new_poll_rate is None and not new_fsa_ids:
-        return AggregatorBatchedEntities(
-            timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, [], []
-        )  # type: ignore
+        return AggregatorBatchedEntities(timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, [], [])
 
     # The fsa update will need to vary per Site so we generate an instance per site_id
     aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
@@ -725,14 +723,12 @@ async def fetch_fsa_by_changed_at(
         for agg_id, site_id in aggregator_site_ids
     ]
 
-    return AggregatorBatchedEntities(
-        timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, site_scoped_cfgs, []
-    )  # type: ignore
+    return AggregatorBatchedEntities(timestamp, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, site_scoped_cfgs, [])  # type: ignore
 
 
 async def fetch_site_control_groups_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[SiteScopedSiteControlGroup, ArchiveSiteScopedSiteControlGroup]:  # type: ignore # noqa: E501
+) -> AggregatorBatchedEntities[SiteScopedSiteControlGroup, ArchiveSiteScopedSiteControlGroup]:  # type: ignore # SiteScoped variables will work here - tests enforce it
     """Fetches all SiteControlGroup instances matching the specified changed_at and returns them keyed by all existing
     site IDs
 
@@ -752,12 +748,12 @@ async def fetch_site_control_groups_by_changed_at(
         session, SiteControlGroup, ArchiveSiteControlGroup, timestamp
     )
     if len(active_groups) == 0 and len(deleted_groups) == 0:
-        return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE_CONTROL_GROUP, [], [])  # type: ignore
+        return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE_CONTROL_GROUP, [], [])
 
     # The site control group update will need to vary per Site so we generate an instance per site_id
     aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
 
-    site_scoped_active_groups = [
+    site_scoped_active_groups: list[SiteScopedSiteControlGroup] = [
         SiteScopedSiteControlGroup(agg_id, site_id, active_group)
         for agg_id, site_id in aggregator_site_ids
         for active_group in active_groups
@@ -770,5 +766,8 @@ async def fetch_site_control_groups_by_changed_at(
     ]
 
     return AggregatorBatchedEntities(
-        timestamp, SubscriptionResource.SITE_CONTROL_GROUP, site_scoped_active_groups, site_scoped_deleted_groups
-    )  # type: ignore
+        timestamp,
+        SubscriptionResource.SITE_CONTROL_GROUP,
+        site_scoped_active_groups,  # type: ignore # SiteScoped variables will work here - tests enforce it
+        site_scoped_deleted_groups,  # type: ignore # SiteScoped variables will work here - tests enforce it
+    )

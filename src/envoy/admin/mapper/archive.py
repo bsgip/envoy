@@ -1,6 +1,6 @@
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
-from typing import Sequence
 
 from envoy_schema.admin.schema.archive import (
     ArchiveDynamicOperatingEnvelopeResponse,

@@ -1,16 +1,15 @@
 import datetime as dt
 
+import psycopg
 import pytest
 import pytest_mock
-import psycopg
 import sqlalchemy as sa
 from assertical.fixtures import postgres
 from envoy_schema.admin.schema.certificate import CertificateAssignmentRequest, CertificateRequest
 
-from envoy.admin import manager
-from envoy.server.model.aggregator import AggregatorCertificateAssignment
-from envoy.admin import crud
+from envoy.admin import crud, manager
 from envoy.server import exception
+from envoy.server.model.aggregator import AggregatorCertificateAssignment
 
 
 @pytest.fixture
@@ -177,9 +176,7 @@ async def test_fetch_single_certificate_none_returned(
 async def test_add_new_certificate(mocker: pytest_mock.MockerFixture, mock_crud: pytest_mock.AsyncMockType) -> None:
     """Confirm correct calls for add_new_certificate() method"""
     async with mocker.AsyncMock() as session:
-        certificate = CertificateRequest(
-            lfdi="SOMEFAKELFDI", expiry=dt.datetime(9999, 9, 9, 9, 9, 9, tzinfo=dt.timezone.utc)
-        )
+        certificate = CertificateRequest(lfdi="SOMEFAKELFDI", expiry=dt.datetime(9999, 9, 9, 9, 9, 9, tzinfo=dt.UTC))
         await manager.CertificateManager.add_new_certificate(session, certificate)
         mock_crud.insert_single_certificate.assert_called_once()
         session.commit.assert_called_once()
@@ -191,9 +188,7 @@ async def test_update_existing_certificate(
 ) -> None:
     """Confirm correct calls for update_existing_certificate() method"""
     async with mocker.AsyncMock() as session:
-        certificate = CertificateRequest(
-            lfdi="SOMEFAKELFDI", expiry=dt.datetime(9999, 9, 9, 9, 9, 9, tzinfo=dt.timezone.utc)
-        )
+        certificate = CertificateRequest(lfdi="SOMEFAKELFDI", expiry=dt.datetime(9999, 9, 9, 9, 9, 9, tzinfo=dt.UTC))
         await manager.CertificateManager.update_existing_certificate(session, 1111, certificate)
         mock_crud.select_certificate.assert_called_once()
         mock_crud.update_single_certificate.assert_called_once()
@@ -206,9 +201,7 @@ async def test_update_existing_certificate_non_certificate(
 ) -> None:
     """Confirm update_existing_certificate() method raises for non-existing certificate"""
     async with mocker.AsyncMock() as session:
-        certificate = CertificateRequest(
-            lfdi="SOMEFAKELFDI", expiry=dt.datetime(9999, 9, 9, 9, 9, 9, tzinfo=dt.timezone.utc)
-        )
+        certificate = CertificateRequest(lfdi="SOMEFAKELFDI", expiry=dt.datetime(9999, 9, 9, 9, 9, 9, tzinfo=dt.UTC))
         mock_crud.select_certificate.return_value = None
         with pytest.raises(exception.NotFoundError):
             await manager.CertificateManager.update_existing_certificate(session, 1111, certificate)

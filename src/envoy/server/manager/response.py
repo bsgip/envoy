@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from itertools import islice
-from typing import Optional, Union, cast
+from typing import cast
 
 from envoy_schema.server.schema.sep2.response import (
     DERControlResponse,
@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 
 
 class ResponseManager:
-
     @staticmethod
     def fetch_response_set_for_scope(
         scope: DeviceOrAggregatorRequestScope, response_set_type: ResponseSetType
@@ -116,7 +115,7 @@ class ResponseManager:
             responses_and_does: list[
                 tuple[
                     DynamicOperatingEnvelopeResponse,
-                    Optional[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+                    DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope | None,
                 ]
             ] = []
 
@@ -155,7 +154,7 @@ class ResponseManager:
         session: AsyncSession,
         scope: SiteRequestScope,
         response_set_type: ResponseSetType,
-        response: Union[DERControlResponse, PriceResponse, Response],
+        response: DERControlResponse | PriceResponse | Response,
     ) -> str:
         """Creates a new Response entry in the database for the specified subject.
 
@@ -170,7 +169,7 @@ class ResponseManager:
             logger.error(f"{response.subject} doesn't validate/decode for iana pen {scope.iana_pen}", exc_info=exc)
             raise BadRequestError(
                 f"subject '{response.subject}' doesn't reference a valid MRID from this utility server"
-            )
+            ) from exc
 
         lfdi_matched_site = await select_single_site_with_lfdi(session, response.endDeviceLFDI, scope.aggregator_id)
         if lfdi_matched_site is None or lfdi_matched_site.site_id != scope.site_id:
@@ -179,7 +178,6 @@ class ResponseManager:
             )
 
         if response_set_type == ResponseSetType.SITE_CONTROLS:
-
             if mrid_type != MridType.DYNAMIC_OPERATING_ENVELOPE:
                 raise BadRequestError(f"{mrid_type} responses are not accepted to this list.")
 
@@ -209,7 +207,6 @@ class ResponseManager:
             return href
 
         elif response_set_type == ResponseSetType.TARIFF_GENERATED_RATES:
-
             if mrid_type != MridType.TIME_TARIFF_INTERVAL:
                 raise BadRequestError(f"{mrid_type} responses are not accepted to this list.")
 

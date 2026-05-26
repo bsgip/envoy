@@ -44,12 +44,17 @@ def test_roundtrip_csip_aus_der_control():
     )
 
     xml = initial.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
+    assert isinstance(xml, bytes)
     assert "9988" in xml.decode()
     assert "7766" in xml.decode()
     assert "5544" in xml.decode()
     assert "3322" in xml.decode()
     output: DERControlResponse = DERControlResponse.from_xml(xml)
-    assert output.DERControlBase_
+    assert output.DERControlBase_ is not None
+    assert output.DERControlBase_.opModImpLimW is not None
+    assert output.DERControlBase_.opModExpLimW is not None
+    assert output.DERControlBase_.opModGenLimW is not None
+    assert output.DERControlBase_.opModLoadLimW is not None
     assert output.DERControlBase_.opModImpLimW.value == 9988
     assert output.DERControlBase_.opModExpLimW.value == 7766
     assert output.DERControlBase_.opModGenLimW.value == 5544

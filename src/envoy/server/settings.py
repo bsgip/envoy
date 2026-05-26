@@ -1,6 +1,6 @@
 import importlib.metadata
 from functools import cached_property
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
@@ -37,7 +37,6 @@ class NmiValidationSettings(BaseSettings):
 
 
 class AppSettings(CommonSettings):
-
     debug: bool = False
     docs_url: str = "/docs"
     openapi_prefix: str = ""
@@ -53,10 +52,10 @@ class AppSettings(CommonSettings):
     nmi_validation: NmiValidationSettings = Field(default_factory=NmiValidationSettings)
 
     allow_nmi_updates: bool = DEFAULT_ALLOW_NMI_UPDATES
-    exclude_endpoints: Optional[EndpointExclusionSet] = None
+    exclude_endpoints: EndpointExclusionSet | None = None
 
     @property
-    def fastapi_kwargs(self) -> Dict[str, Any]:
+    def fastapi_kwargs(self) -> dict[str, Any]:
         return {
             "debug": self.debug,
             "docs_url": self.docs_url,
@@ -73,7 +72,7 @@ def generate_settings() -> AppSettings:
 
     # Silenced complaints about database_url - keeping mypy happy here is tricky (for certain python versions).
     # The "cost" of not having it set will be caught by our test coverage - this is an error we can ignore
-    return AppSettings()  # type: ignore  [call-arg]
+    return AppSettings()  # ty:ignore[missing-argument]
 
 
 settings = generate_settings()

@@ -1,7 +1,6 @@
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Optional
 
 import pytest
 from envoy_schema.server.schema import uri
@@ -53,16 +52,16 @@ async def test_get_pricingreadingtype(client: AsyncClient, price_reading_type: P
     [
         (None, None, None, ["/tp/3"]),
         (0, 99, None, ["/tp/3", "/tp/2", "/tp/1"]),
-        (0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), ["/tp/3", "/tp/2"]),
+        (0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), ["/tp/3", "/tp/2"]),
         (1, 1, None, ["/tp/2"]),
     ],
 )
 async def test_get_tariffprofilelist_nosite(
     client: AsyncClient,
     agg_1_headers,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_tariffs: list[str],
 ):
     """Tests that the list pagination works correctly on the unscoped tariff profile list"""
@@ -74,8 +73,8 @@ async def test_get_tariffprofilelist_nosite(
 
     parsed_response: TariffProfileListResponse = TariffProfileListResponse.from_xml(body)
     assert parsed_response.results == len(expected_tariffs)
-    assert len(parsed_response.TariffProfile) == len(expected_tariffs)
-    assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile]
+    assert len(parsed_response.TariffProfile or []) == len(expected_tariffs)
+    assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile or []]
 
 
 @pytest.mark.anyio
@@ -85,7 +84,7 @@ async def test_get_tariffprofilelist_nosite(
         # basic pagination
         (1, None, None, None, [("/edev/1/tp/3", 0)]),
         (1, 0, 99, None, [("/edev/1/tp/3", 0), ("/edev/1/tp/2", 0), ("/edev/1/tp/1", 8)]),
-        (1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), [("/edev/1/tp/3", 0), ("/edev/1/tp/2", 0)]),
+        (1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), [("/edev/1/tp/3", 0), ("/edev/1/tp/2", 0)]),
         (1, 1, 1, None, [("/edev/1/tp/2", 0)]),
         # changing site id
         (2, 0, 99, None, [("/edev/2/tp/3", 0), ("/edev/2/tp/2", 0), ("/edev/2/tp/1", 4)]),
@@ -96,9 +95,9 @@ async def test_get_tariffprofilelist(
     client: AsyncClient,
     agg_1_headers,
     site_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_tariffs_with_count: list[tuple[str, int]],
 ):
     """Tests that the list pagination works correctly on the site scoped tariff profile list"""
@@ -112,13 +111,17 @@ async def test_get_tariffprofilelist(
     assert parsed_response
     assert parsed_response.href == uri.TariffProfileListUri.format(site_id=site_id)
     assert parsed_response.results == len(expected_tariffs_with_count)
-    assert len(parsed_response.TariffProfile) == len(expected_tariffs_with_count)
+    assert len(parsed_response.TariffProfile or []) == len(expected_tariffs_with_count)
 
     # Check that the rate counts and referenced rate component counts match our expectations
     expected_tariffs = [href for (href, _) in expected_tariffs_with_count]
     expected_rate_counts = [rate_count for (_, rate_count) in expected_tariffs_with_count]
-    assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile]
-    assert expected_rate_counts == [tp.RateComponentListLink.all_ for tp in parsed_response.TariffProfile]
+    assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile or []]
+    assert expected_rate_counts == [
+        tp.RateComponentListLink.all_
+        for tp in parsed_response.TariffProfile or []
+        if tp.RateComponentListLink is not None
+    ]
 
 
 @pytest.mark.anyio
@@ -128,12 +131,12 @@ async def test_get_tariffprofilelist(
         # basic pagination
         (1, 1, None, None, None, [("/edev/1/tp/2", 0)]),
         (1, 1, 0, 99, None, [("/edev/1/tp/2", 0), ("/edev/1/tp/1", 8)]),
-        (1, 1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), [("/edev/1/tp/2", 0)]),
+        (1, 1, 0, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), [("/edev/1/tp/2", 0)]),
         (1, 1, 1, 1, None, [("/edev/1/tp/1", 8)]),
         # changing FSA ID
         (1, 2, 0, 99, None, [("/edev/1/tp/3", 0)]),
-        (1, 2, None, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=timezone.utc), [("/edev/1/tp/3", 0)]),
-        (1, 2, None, 99, datetime(2023, 1, 3, 12, 1, 2, tzinfo=timezone.utc), []),
+        (1, 2, None, 99, datetime(2023, 1, 2, 12, 1, 2, tzinfo=UTC), [("/edev/1/tp/3", 0)]),
+        (1, 2, None, 99, datetime(2023, 1, 3, 12, 1, 2, tzinfo=UTC), []),
         # changing site id
         (2, 1, 0, 99, None, [("/edev/2/tp/2", 0), ("/edev/2/tp/1", 4)]),
         (3, 1, 0, 99, None, [("/edev/3/tp/2", 0), ("/edev/3/tp/1", 0)]),  # no access to this site
@@ -144,9 +147,9 @@ async def test_get_tariffprofilelist_fsa_scoped(
     agg_1_headers,
     site_id: int,
     fsa_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_tariffs_with_count: list[tuple[str, int]],
 ):
     """Tests that the list pagination works correctly on the site scoped tariff profile list"""
@@ -166,13 +169,17 @@ async def test_get_tariffprofilelist_fsa_scoped(
     if len(expected_tariffs_with_count) == 0:
         assert parsed_response.TariffProfile is None or len(parsed_response.TariffProfile) == 0
     else:
-        assert len(parsed_response.TariffProfile) == len(expected_tariffs_with_count)
+        assert len(parsed_response.TariffProfile or []) == len(expected_tariffs_with_count)
 
         # Check that the rate counts and referenced rate component counts match our expectations
         expected_tariffs = [href for (href, _) in expected_tariffs_with_count]
         expected_rate_counts = [rate_count for (_, rate_count) in expected_tariffs_with_count]
-        assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile]
-        assert expected_rate_counts == [tp.RateComponentListLink.all_ for tp in parsed_response.TariffProfile]
+        assert expected_tariffs == [tp.href for tp in parsed_response.TariffProfile or []]
+        assert expected_rate_counts == [
+            tp.RateComponentListLink.all_
+            for tp in parsed_response.TariffProfile or []
+            if tp.RateComponentListLink is not None
+        ]
 
 
 @pytest.mark.anyio
@@ -185,9 +192,7 @@ async def test_get_tariffprofilelist_fsa_scoped(
         (4, None),
     ],
 )
-async def test_get_tariffprofile_nosite(
-    client: AsyncClient, agg_1_headers, tariff_id: int, expected_href: Optional[str]
-):
+async def test_get_tariffprofile_nosite(client: AsyncClient, agg_1_headers, tariff_id: int, expected_href: str | None):
     """Tests that the single entity fetch works correctly"""
     path = uri.TariffProfileUnscopedUri.format(tariff_id=tariff_id)
     response = await client.get(path, headers=agg_1_headers)
@@ -225,8 +230,8 @@ async def test_get_tariffprofile(
     agg_1_headers,
     tariff_id: int,
     site_id: int,
-    expected_href: Optional[str],
-    expected_ratecount: Optional[int],
+    expected_href: str | None,
+    expected_ratecount: int | None,
 ):
     """Tests that the list pagination works correctly"""
     path = uri.TariffProfileUri.format(tariff_id=tariff_id, site_id=site_id)
@@ -341,9 +346,9 @@ async def test_get_ratecomponentlist(
     agg_1_headers,
     tariff_id: int,
     site_id: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_rates: list[str],
 ):
     """Validates the complicated virtual mapping of RateComponents"""
@@ -361,8 +366,8 @@ async def test_get_ratecomponentlist(
     if len(expected_rates) == 0:
         assert parsed_response.RateComponent is None or len(parsed_response.RateComponent) == len(expected_rates)
     else:
-        assert len(parsed_response.RateComponent) == len(expected_rates)
-        assert expected_rates == [tp.href for tp in parsed_response.RateComponent]
+        assert len(parsed_response.RateComponent or []) == len(expected_rates)
+        assert expected_rates == [tp.href for tp in parsed_response.RateComponent or []]
 
 
 @pytest.mark.anyio
@@ -384,7 +389,7 @@ async def test_get_ratecomponent(
     site_id: int,
     rc_id: str,
     pricing_reading: int,
-    expected_href: Optional[str],
+    expected_href: str | None,
 ):
     """Tests that single rate component lookups ALWAYS return (they are virtual of course). The way we
     check whether it's working or not is by inspecting the count of TimeTariffIntervals (tti) underneath
@@ -436,9 +441,9 @@ async def test_get_timetariffintervallist(
     site_id: int,
     rc_id: str,
     pricing_reading: int,
-    start: Optional[int],
-    limit: Optional[int],
-    changed_after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
     expected_ttis: list[tuple[str, int]],
 ):
     """Tests time tariff interval paging - validates the encoded URIs and prices"""
@@ -459,17 +464,17 @@ async def test_get_timetariffintervallist(
             expected_ttis
         )
     else:
-        assert len(parsed_response.TimeTariffInterval) == len(expected_ttis)
+        assert len(parsed_response.TimeTariffInterval or []) == len(expected_ttis)
 
         # validate each of the TTI hrefs and that the CTI link encodes the correct price
         for idx, (tti_href, price), tti in zip(
-            range(len(expected_ttis)), expected_ttis, parsed_response.TimeTariffInterval
+            range(len(expected_ttis)), expected_ttis, parsed_response.TimeTariffInterval or [], strict=False
         ):
             assert tti.href == tti_href, f"[{idx}]: expected href {tti_href} but got {tti.href}"
             assert tti.ConsumptionTariffIntervalListLink
-            assert tti.ConsumptionTariffIntervalListLink.href.endswith(
-                f"/{price}"
-            ), f"[{idx}] expected CTI href {tti.ConsumptionTariffIntervalListLink.href} to encode price {price}"
+            assert tti.ConsumptionTariffIntervalListLink.href.endswith(f"/{price}"), (
+                f"[{idx}] expected CTI href {tti.ConsumptionTariffIntervalListLink.href} to encode price {price}"
+            )
 
 
 @pytest.mark.anyio
@@ -495,7 +500,7 @@ async def test_get_timetariffinterval(
     rc_id: str,
     pricing_reading: int,
     tti_id: str,
-    expected_price: Optional[int],
+    expected_price: int | None,
 ):
     """Tests time tariff interval paging - validates the encoded URIs and prices"""
     path = uri.TimeTariffIntervalUri.format(
@@ -534,7 +539,7 @@ async def test_get_cti_list(
     rc_id: str,
     pricing_reading: int,
     tti_id: str,
-    expected_price: Optional[int],
+    expected_price: int | None,
 ):
     """Consumption Tariff Intervals aren't really a list - they're just a wrapper around a single already encoded
     price. This test validates that the prices sent match the prices returned and that the response is always a
@@ -560,6 +565,7 @@ async def test_get_cti_list(
         parsed_response: ConsumptionTariffIntervalListResponse = ConsumptionTariffIntervalListResponse.from_xml(body)
         assert parsed_response.all_ == 1
         assert parsed_response.results == 1
+        assert parsed_response.ConsumptionTariffInterval is not None
         assert len(parsed_response.ConsumptionTariffInterval) == 1
         cti_href = parsed_response.ConsumptionTariffInterval[0].href
         assert cti_href
@@ -583,7 +589,7 @@ async def test_get_cti(
     rc_id: str,
     pricing_reading: int,
     tti_id: str,
-    expected_price: Optional[int],
+    expected_price: int | None,
 ):
     """Consumption Tariff Intervals don't map to anything in the db - they're just a wrapper around a single already
     encoded price. This test validates that the prices sent match the prices returned and that requesting an

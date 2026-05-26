@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 from envoy.server.model.archive.doe import (
     ArchiveDynamicOperatingEnvelope,
@@ -33,9 +33,7 @@ class SiteScopedFunctionSetAssignment:
     aggregator_id: int
     site_id: int
     function_set_assignment_ids: list[int]  # The list of "changed" function set assignments
-    function_set_assignment_poll_rate: Optional[
-        int
-    ]  # The changed poll rate for FunctionSetAssignmentsList (if changed)
+    function_set_assignment_poll_rate: int | None  # The changed poll rate for FunctionSetAssignmentsList (if changed)
 
 
 @dataclass

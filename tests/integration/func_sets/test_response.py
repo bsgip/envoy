@@ -1,7 +1,6 @@
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -115,8 +114,8 @@ async def test_get_response_set(client: AsyncClient, response_set_uri_format: st
 async def test_get_response_set_list(
     client: AsyncClient,
     response_set_list_uri_format: str,
-    start: Optional[int],
-    limit: Optional[int],
+    start: int | None,
+    limit: int | None,
     expected_count: int,
 ):
     """Tests that the response set list can be paginated through"""
@@ -138,7 +137,9 @@ async def test_get_response_set_list(
     else:
         assert len(parsed_response.ResponseSet_) == expected_count
         set_link_hrefs = [e.href for e in parsed_response.ResponseSet_]
-        list_link_hrefs = [e.ResponseListLink.href for e in parsed_response.ResponseSet_]
+        list_link_hrefs = [
+            e.ResponseListLink.href for e in parsed_response.ResponseSet_ if e.ResponseListLink is not None
+        ]
         all_hrefs = set_link_hrefs + list_link_hrefs
         assert len(all_hrefs) == len(set(all_hrefs)), "Every href should be unique"
 
@@ -167,8 +168,8 @@ async def test_get_response_for_aggregator(
     site_id: int,
     response_set_id: str,
     response_id: int,
-    expected_status: Optional[ResponseType],
-    expected_response_type: Optional[type[Response]],
+    expected_status: ResponseType | None,
+    expected_response_type: type[Response] | None,
     expected_http_status: HTTPStatus,
 ):
     """Tests that fetching a specific response works or fails predictably for an aggregator cert.
@@ -226,8 +227,8 @@ async def test_get_response_for_device_cert(
     site_id: int,
     response_set_id: str,
     response_id: int,
-    expected_response_type: Optional[type[Response]],
-    expected_status: Optional[ResponseType],
+    expected_response_type: type[Response] | None,
+    expected_status: ResponseType | None,
     expected_http_status: HTTPStatus,
 ):
     """Tests that fetching a specific response works or fails predictably for device certificates.
@@ -242,10 +243,10 @@ async def test_get_response_for_device_cert(
                 site_control_group_id=1,
                 site_id=5,
                 calculation_log_id=None,
-                changed_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
-                start_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
+                changed_time=datetime(2025, 1, 2, tzinfo=UTC),
+                start_time=datetime(2025, 1, 2, tzinfo=UTC),
                 duration_seconds=300,
-                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=timezone.utc),
+                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=UTC),
                 import_limit_active_watts=100,
                 export_limit_watts=200,
                 superseded=False,
@@ -259,8 +260,8 @@ async def test_get_response_for_device_cert(
                 tariff_id=1,
                 site_id=5,
                 calculation_log_id=None,
-                changed_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
-                start_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
+                changed_time=datetime(2025, 1, 2, tzinfo=UTC),
+                start_time=datetime(2025, 1, 2, tzinfo=UTC),
                 duration_seconds=300,
                 import_active_price=101,
                 export_active_price=202,
@@ -355,12 +356,12 @@ async def test_get_response_list_pagination_for_aggregator_cert(
     cert: str,
     site_id: int,
     response_set_id: str,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     expected_http_response: HTTPStatus,
-    expected_count: Optional[int],
-    expected_statuses: Optional[list[ResponseType]],
+    expected_count: int | None,
+    expected_statuses: list[ResponseType] | None,
 ):
     """Tests that fetching a response list paginates correctly (or fails predictably)"""
     response = await client.get(
@@ -402,12 +403,12 @@ async def test_get_response_list_pagination_for_device_cert(
     cert: str,
     site_id: int,
     response_set_id: str,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     expected_http_response: HTTPStatus,
-    expected_count: Optional[int],
-    expected_statuses: Optional[list[ResponseType]],
+    expected_count: int | None,
+    expected_statuses: list[ResponseType] | None,
 ):
     """Tests that fetching a response list paginates correctly (or fails predictably)"""
 
@@ -419,9 +420,9 @@ async def test_get_response_list_pagination_for_device_cert(
                 site_control_group_id=1,
                 site_id=5,
                 calculation_log_id=None,
-                changed_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
-                start_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
-                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=timezone.utc),
+                changed_time=datetime(2025, 1, 2, tzinfo=UTC),
+                start_time=datetime(2025, 1, 2, tzinfo=UTC),
+                end_time=datetime(2025, 1, 2, 0, 5, 0, tzinfo=UTC),
                 duration_seconds=300,
                 import_limit_active_watts=100,
                 export_limit_watts=200,
@@ -436,8 +437,8 @@ async def test_get_response_list_pagination_for_device_cert(
                 tariff_id=1,
                 site_id=5,
                 calculation_log_id=None,
-                changed_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
-                start_time=datetime(2025, 1, 2, tzinfo=timezone.utc),
+                changed_time=datetime(2025, 1, 2, tzinfo=UTC),
+                start_time=datetime(2025, 1, 2, tzinfo=UTC),
                 duration_seconds=300,
                 import_active_price=101,
                 export_active_price=202,
@@ -614,7 +615,7 @@ async def test_create_response_for_aggregator(
     response_set_id: str,
     subject: str,
     request_type: type[Response],
-    expected_response_type: Optional[type[Response]],
+    expected_response_type: type[Response] | None,
     expected_http_status: HTTPStatus,
 ):
     """Tests the various ways aggregators can send responses to the various list endpoints"""
@@ -666,6 +667,7 @@ async def test_create_response_for_aggregator(
         parsed_response = expected_response_type.from_xml(read_response_body_string(response))
         assert parsed_response.status == request_body.status
         assert parsed_response.subject == subject
+        assert parsed_response.createdDateTime is not None
         assert_nowish(parsed_response.createdDateTime)
 
         assert (doe_count_before + rate_count_before + 1) == (doe_count_after + rate_count_after), "One new response"
@@ -771,6 +773,7 @@ async def test_create_response_for_doe_with_display_id(
         assert parsed_response.status == request_body.status
         assert parsed_response.subject == subject
         assert parsed_response.endDeviceLFDI == site_lfdi
+        assert parsed_response.createdDateTime is not None
         assert_nowish(parsed_response.createdDateTime)
 
         assert (doe_count_before + 1) == (doe_count_after), "One new response"

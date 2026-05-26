@@ -1,5 +1,5 @@
-from envoy.server.manager.nmi_validator import DNSPParticipantId, NmiValidator
 from envoy.server.api.depends.nmi_validator import fetch_nmi_validator
+from envoy.server.manager.nmi_validator import DNSPParticipantId, NmiValidator
 
 
 def test_fetch_nmi_validator_present(create_request_with_app_state):

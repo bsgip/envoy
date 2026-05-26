@@ -1,14 +1,13 @@
 from datetime import datetime
 from decimal import Decimal
 from itertools import product
-from typing import Optional, get_type_hints
+from typing import get_type_hints
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.fake.generator import CLASS_MEMBER_FETCHERS, generate_class_instance, get_generatable_class_base
-from envoy_schema.admin.schema.site import DERAvailability, DERConfiguration, DERStatus
+from envoy_schema.admin.schema.site import DERAvailability, DERConfiguration, DERStatus, SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site import SiteGroup as AdminSiteGroup
-from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse
 from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
 
 from envoy.admin.mapper.site import SiteGroupMapper, SiteMapper
@@ -66,9 +65,7 @@ def test_map_to_der_status_response():
         ],
     ),
 )
-def test_map_to_der_config_response_no_bad_combinations(
-    setting: Optional[SiteDERSetting], rating: Optional[SiteDERRating]
-):
+def test_map_to_der_config_response_no_bad_combinations(setting: SiteDERSetting | None, rating: SiteDERRating | None):
     """The failover logic for map_to_der_config_response can be a little finnicky - this is just trying
     to catch any potential slipups in the definitions"""
     cfg = SiteMapper.map_to_der_config_response(rating, setting)
@@ -88,7 +85,9 @@ def test_map_to_der_config_response_no_bad_combinations(
 def get_attrs_for_type(base_type: type) -> list[tuple[str, type]]:
     type_hints = get_type_hints(base_type)
     results: list[tuple[str, type]] = []
-    for name in CLASS_MEMBER_FETCHERS[get_generatable_class_base(base_type)](base_type):
+    gen_base = get_generatable_class_base(base_type)
+    assert gen_base is not None, "This is a test setup issue"
+    for name in CLASS_MEMBER_FETCHERS[gen_base](base_type):
         t = type_hints.get(name, None)
         if t is not None:
             results.append((name, t))
@@ -97,7 +96,7 @@ def get_attrs_for_type(base_type: type) -> list[tuple[str, type]]:
 
 @pytest.mark.parametrize(
     "attr_name, attr_type",
-    [(n, t) for (n, t) in get_attrs_for_type(DERConfiguration) if t == Optional[Decimal]],
+    [(n, t) for (n, t) in get_attrs_for_type(DERConfiguration) if t == (Decimal | None)],
 )
 def test_map_to_der_config_response_optional_decimal_failovers(attr_name, attr_type):
     """Tests that the decimal values in DERConfiguration get correctly mapped depending on whether setting/rating
@@ -131,9 +130,9 @@ def test_map_to_der_config_response_optional_decimal_failovers(attr_name, attr_t
 
         all_values.append(value)
 
-    assert len(all_values) == len(
-        set(all_values)
-    ), "Expected all generated values to be unique (are the failovers working?)"
+    assert len(all_values) == len(set(all_values)), (
+        "Expected all generated values to be unique (are the failovers working?)"
+    )
 
 
 def test_site_single_entity_mapper():
@@ -164,7 +163,7 @@ def test_site_single_entity_mapper():
 
     # Validating each of the groups maps back to the original group
     # we can get away with check_class_instance_equality as the field names are all the same
-    for exp, act in zip(with_groups_and_der.assignments, with_groups_der_mapped.groups):
+    for exp, act in zip(with_groups_and_der.assignments, with_groups_der_mapped.groups, strict=False):
         assert_class_instance_equality(AdminSiteGroup, exp.group, act)
 
     assert isinstance(with_groups_der_mapped.der_availability, DERAvailability)

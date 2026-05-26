@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from envoy_schema.server.schema.sep2.response import ResponseType
 from sqlalchemy import INTEGER, SMALLINT, BigInteger, DateTime, ForeignKey, Index, func
@@ -28,7 +27,7 @@ class DynamicOperatingEnvelopeResponse(Base):
         DateTime(timezone=True), server_default=func.now()
     )  # When the response was created
 
-    response_type: Mapped[Optional[ResponseType]] = mapped_column(INTEGER, nullable=True)
+    response_type: Mapped[ResponseType | None] = mapped_column(INTEGER, nullable=True)
 
     site: Mapped[Site] = relationship(lazy="raise")
 
@@ -53,7 +52,7 @@ class TariffGeneratedRateResponse(Base):
         DateTime(timezone=True), server_default=func.now()
     )  # When the response was created
 
-    response_type: Mapped[Optional[ResponseType]] = mapped_column(INTEGER, nullable=True)
+    response_type: Mapped[ResponseType | None] = mapped_column(INTEGER, nullable=True)
     pricing_reading_type: Mapped[PricingReadingType] = mapped_column(
         SMALLINT
     )  # The specific price component being responded to (eg: is it for the active price in a TariffGeneratedRate)

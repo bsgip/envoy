@@ -1,5 +1,5 @@
 import unittest.mock as mock
-from typing import Any, Optional
+from typing import Any
 
 from taskiq import AsyncBroker
 
@@ -9,7 +9,7 @@ def create_mock_broker() -> mock.Mock:
     return mock.AsyncMock(spec_set=AsyncBroker)
 
 
-def configure_mock_task(m: mock.MagicMock, raise_on_kiq: Optional[Exception] = None):
+def configure_mock_task(m: mock.MagicMock, raise_on_kiq: Exception | None = None):
     """Given a mock - configure it as if it were a TaskIQ task"""
     kicker_instance = mock.Mock()
     m.kicker.return_value = kicker_instance
@@ -40,7 +40,7 @@ def assert_task_kicked_with_broker_and_args(m: mock.MagicMock, broker: AsyncBrok
 
 
 def assert_task_kicked_with_broker_delay_and_args(
-    m: mock.MagicMock, broker: AsyncBroker, delay_seconds: Optional[int], **kwargs: Any
+    m: mock.MagicMock, broker: AsyncBroker, delay_seconds: int | None, **kwargs: Any
 ):
     """Asserts that a particular task mock was kicked with a particular broker (and optionally validating the
     passed params were included)"""
@@ -59,16 +59,16 @@ def assert_task_kicked_with_broker_delay_and_args(
             index = call_index
             break
 
-    assert (
-        index >= 0
-    ), f"Couldn't find a call to kiq with kwargs {kwargs}. Options include {[a.kwargs for a in all_call_args]}"
+    assert index >= 0, (
+        f"Couldn't find a call to kiq with kwargs {kwargs}. Options include {[a.kwargs for a in all_call_args]}"
+    )
 
     # Then once we've identified a call - we check the other expectations
-    assert (
-        m.kicker.return_value.with_broker.call_args_list[index].args[0] is broker
-    ), f"Expected with_broker with {broker}"
+    assert m.kicker.return_value.with_broker.call_args_list[index].args[0] is broker, (
+        f"Expected with_broker with {broker}"
+    )
 
     if delay_seconds is not None:
-        assert (
-            m.kicker.return_value.with_labels.call_args_list[index].kwargs["delay"] == delay_seconds
-        ), f"Expected with_labels where delay was {delay_seconds}"
+        assert m.kicker.return_value.with_labels.call_args_list[index].kwargs["delay"] == delay_seconds, (
+            f"Expected with_labels where delay was {delay_seconds}"
+        )

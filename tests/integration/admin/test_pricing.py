@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from decimal import Decimal
 from http import HTTPStatus
 from zoneinfo import ZoneInfo
 
@@ -9,6 +10,7 @@ from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
 from envoy_schema.admin.schema.uri import TariffCreateUri, TariffGeneratedRateCreateUri, TariffUpdateUri
+from envoy_schema.server.schema.sep2.types import CurrencyCode
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
@@ -35,7 +37,7 @@ async def test_get_single_tariff(admin_client_auth: AsyncClient):
 @pytest.mark.anyio
 async def test_create_tariff(admin_client_auth: AsyncClient):
     tariff = generate_class_instance(TariffRequest)
-    tariff.currency_code = 36
+    tariff.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
     resp = await admin_client_auth.post(TariffCreateUri, json=tariff.model_dump())
 
     assert resp.status_code == HTTPStatus.CREATED
@@ -44,7 +46,7 @@ async def test_create_tariff(admin_client_auth: AsyncClient):
 @pytest.mark.anyio
 async def test_update_tariff(admin_client_auth: AsyncClient):
     tariff = generate_class_instance(TariffRequest)
-    tariff.currency_code = 36
+    tariff.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
     resp = await admin_client_auth.put(TariffUpdateUri.format(tariff_id=1), json=tariff.model_dump())
 
     assert resp.status_code == HTTPStatus.OK
@@ -80,10 +82,10 @@ async def test_update_tariff_genrate_calculation_log(pg_base_config, admin_clien
         start_time=datetime(2022, 3, 5, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
         duration_seconds=1113,
         calculation_log_id=3,
-        import_active_price=1,
-        export_active_price=2,
-        import_reactive_price=3,
-        export_reactive_price=4,
+        import_active_price=Decimal(1),
+        export_active_price=Decimal(2),
+        import_reactive_price=Decimal(3),
+        export_reactive_price=Decimal(4),
     )
 
     resp = await admin_client_auth.post(

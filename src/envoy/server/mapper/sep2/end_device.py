@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence
 
 import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointLink
@@ -99,7 +99,7 @@ class EndDeviceListMapper:
         disable_registration: bool,
         total_fsa_links: int,
         total_subscription_links: int,
-        virtual_site: Optional[Site] = None,
+        virtual_site: Site | None = None,
     ) -> EndDeviceListResponse:
         end_devices = [
             EndDeviceMapper.map_to_response(scope, site, disable_registration, total_fsa_links) for site in site_list

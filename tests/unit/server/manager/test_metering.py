@@ -1,7 +1,6 @@
 import unittest.mock as mock
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import product
-from typing import Optional
 
 import pytest
 from assertical.asserts.time import assert_nowish
@@ -235,12 +234,13 @@ async def test_create_or_update_mirror_usage_point_created_no_readings(pg_base_c
         srt2 = (await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr2.mRID))).scalar_one()
 
         # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
-        for db_srt, mmr in zip([srt1, srt2], [mmr1, mmr2]):
+        for db_srt, mmr in zip([srt1, srt2], [mmr1, mmr2], strict=False):
             assert db_srt.group_mrid == mup.mRID
             assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
             assert db_srt.group_id == result.mup_id
             assert_nowish(db_srt.changed_time)
             assert_nowish(db_srt.created_time)
+            assert mmr.readingType is not None
             assert db_srt.accumulation_behaviour == mmr.readingType.accumulationBehaviour
             assert db_srt.uom == mmr.readingType.uom
             assert db_srt.aggregator_id == 1
@@ -329,12 +329,13 @@ async def test_create_or_update_mirror_usage_point_created_with_readings(pg_base
         srt2 = (await session.execute(select(SiteReadingType).where(SiteReadingType.mrid == mmr2.mRID))).scalar_one()
 
         # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
-        for db_srt, mmr in zip([srt1, srt2], [mmr1, mmr2]):
+        for db_srt, mmr in zip([srt1, srt2], [mmr1, mmr2], strict=False):
             assert db_srt.group_mrid == mup.mRID
             assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
             assert db_srt.group_id == result.mup_id
             assert_nowish(db_srt.changed_time)
             assert_nowish(db_srt.created_time)
+            assert mmr.readingType is not None
             assert db_srt.accumulation_behaviour == mmr.readingType.accumulationBehaviour
             assert db_srt.uom == mmr.readingType.uom
             assert db_srt.aggregator_id == 1
@@ -355,11 +356,11 @@ async def test_create_or_update_mirror_usage_point_created_with_readings(pg_base
             .all()
         )
         assert len(new_readings) == 3
-        for db_reading, src_reading in zip(new_readings, [reading3, reading2, reading1]):
+        for db_reading, src_reading in zip(new_readings, [reading3, reading2, reading1], strict=False):
             assert_nowish(db_reading.changed_time)
             assert_nowish(db_reading.created_time)
             assert db_reading.value == src_reading.value
-            assert db_reading.local_id == int(src_reading.localID, 16)
+            assert db_reading.local_id == int(src_reading.localID or "", 16)
 
 
 def force_case(force_upper_case: bool, val: str) -> str:
@@ -474,8 +475,8 @@ async def test_create_or_update_mirror_usage_point_update(
 
         assert_nowish(srt_new.changed_time)
         assert_nowish(srt_new.created_time)
-        assert srt1.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "Unchanged from base config"
-        assert srt5.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "Unchanged from base config"
+        assert srt1.created_time == datetime(2000, 1, 1, tzinfo=UTC), "Unchanged from base config"
+        assert srt5.created_time == datetime(2000, 1, 1, tzinfo=UTC), "Unchanged from base config"
         assert_nowish(srt5.changed_time)
 
         if update_role_flags:
@@ -487,15 +488,16 @@ async def test_create_or_update_mirror_usage_point_update(
         else:
             # Just the updated SiteReadingType on mmr5
             assert 1 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
-            assert srt1.changed_time == datetime(
-                2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc
-            ), "Unchanged from base config"
+            assert srt1.changed_time == datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=UTC), (
+                "Unchanged from base config"
+            )
 
         # Spot check a few values - make sure we properly group everything. Mapper tests do this in more detail
-        for db_srt, mmr in zip([srt1, srt_new, srt5], [mmr1, mmr_new, mmr5]):
+        for db_srt, mmr in zip([srt1, srt_new, srt5], [mmr1, mmr_new, mmr5], strict=False):
             assert db_srt.group_mrid.casefold() == mup.mRID.casefold()
             assert db_srt.role_flags == MirrorUsagePointMapper.extract_role_flags(mup)
             assert db_srt.group_id == result.mup_id
+            assert mmr.readingType is not None
             assert db_srt.accumulation_behaviour == mmr.readingType.accumulationBehaviour
             assert db_srt.uom == mmr.readingType.uom
             assert db_srt.aggregator_id == 1
@@ -523,11 +525,13 @@ async def test_create_or_update_mirror_usage_point_update(
         assert db_reading1.site_reading_type_id == srt1.site_reading_type_id
         assert db_reading2.site_reading_type_id == srt_new.site_reading_type_id
         assert db_reading3.site_reading_type_id == srt5.site_reading_type_id
-        for db_reading, src_reading in zip([db_reading1, db_reading2, db_reading3], [reading1, reading2, reading3]):
+        for db_reading, src_reading in zip(
+            [db_reading1, db_reading2, db_reading3], [reading1, reading2, reading3], strict=False
+        ):
             assert_nowish(db_reading.changed_time)
             assert_nowish(db_reading.created_time)
             assert db_reading.value == src_reading.value
-            assert db_reading.local_id == int(src_reading.localID, 16)
+            assert db_reading.local_id == int(src_reading.localID or "", 16)
 
 
 @pytest.mark.parametrize(
@@ -620,8 +624,8 @@ async def test_create_or_update_mirror_usage_point_update_non_role_flags(
             await session.execute(select(SiteReadingType).where(SiteReadingType.site_reading_type_id == 5))
         ).scalar_one()
 
-        assert srt1.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "Unchanged from base config"
-        assert srt5.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "Unchanged from base config"
+        assert srt1.created_time == datetime(2000, 1, 1, tzinfo=UTC), "Unchanged from base config"
+        assert srt5.created_time == datetime(2000, 1, 1, tzinfo=UTC), "Unchanged from base config"
 
         if has_any_update:
             assert 0 < (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
@@ -629,12 +633,12 @@ async def test_create_or_update_mirror_usage_point_update_non_role_flags(
             assert_nowish(srt5.changed_time)
         else:
             assert 0 == (await session.execute(select(func.count()).select_from(ArchiveSiteReadingType))).scalar_one()
-            assert srt1.changed_time == datetime(
-                2022, 5, 6, 11, 22, 33, 500000, tzinfo=timezone.utc
-            ), "Unchanged from base config"
-            assert srt5.changed_time == datetime(
-                2022, 5, 6, 15, 22, 33, 500000, tzinfo=timezone.utc
-            ), "Unchanged from base config"
+            assert srt1.changed_time == datetime(2022, 5, 6, 11, 22, 33, 500000, tzinfo=UTC), (
+                "Unchanged from base config"
+            )
+            assert srt5.changed_time == datetime(2022, 5, 6, 15, 22, 33, 500000, tzinfo=UTC), (
+                "Unchanged from base config"
+            )
 
         # Spot check the group values - make sure we properly group everything. Mapper tests do this in more detail
         for db_srt in [srt1, srt5]:
@@ -661,7 +665,7 @@ async def test_fetch_mirror_usage_point(
     mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
     cert_type: CertificateType,
-    scope_site_id: Optional[int],
+    scope_site_id: int | None,
 ):
     """Check that the manager will handle interacting with the DB and its responses"""
 
@@ -728,7 +732,7 @@ async def test_fetch_mirror_usage_point_no_srts(
     mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
     cert_type: CertificateType,
-    scope_site_id: Optional[int],
+    scope_site_id: int | None,
 ):
     """Check that the manager will raise a NotFoundError if there are no SiteReadingTypes with that mup id"""
 
@@ -774,7 +778,7 @@ async def test_fetch_mirror_usage_point_no_site(
     mock_fetch_site_reading_types_for_group: mock.MagicMock,
     mock_select_single_site_with_site_id: mock.MagicMock,
     cert_type: CertificateType,
-    scope_site_id: Optional[int],
+    scope_site_id: int | None,
 ):
     """Check that the manager will raise a NotFoundError if the linked site can't be accessed"""
 
@@ -821,7 +825,7 @@ async def test_delete_mirror_usage_point(
     mock_utc_now: mock.MagicMock,
     mock_delete_site_reading_type_group: mock.MagicMock,
     return_value: bool,
-    site_id: Optional[int],
+    site_id: int | None,
 ):
     """Check that the manager will handle interacting with the crud layer / managing the session transaction"""
 
@@ -1066,6 +1070,7 @@ async def test_add_or_update_readings_no_readings_mup_update(pg_base_config, as_
         updated_srt = (
             await session.execute(select(SiteReadingType).where(SiteReadingType.site_reading_type_id == 5))
         ).scalar_one()
+        assert mmr.readingType is not None
         assert updated_srt.uom == mmr.readingType.uom
         assert updated_srt.power_of_ten_multiplier == mmr.readingType.powerOfTenMultiplier
 
@@ -1109,13 +1114,14 @@ async def test_add_or_update_readings_no_readings_mup_insert(pg_base_config, as_
         ).scalar_one()
         assert_nowish(new_srt.changed_time)
         assert_nowish(new_srt.created_time)
+        assert mmr.readingType is not None
         assert new_srt.uom == mmr.readingType.uom
         assert new_srt.power_of_ten_multiplier == mmr.readingType.powerOfTenMultiplier
         assert new_srt.role_flags == 1, "Inherited from other SiteReadingTypes in group"
         assert new_srt.group_id == 1, "Inherited from other SiteReadingTypes in group"
-        assert (
-            new_srt.group_mrid == "10000000000000000000000000000def"
-        ), "Inherited from other SiteReadingTypes in group"
+        assert new_srt.group_mrid == "10000000000000000000000000000def", (
+            "Inherited from other SiteReadingTypes in group"
+        )
         assert new_srt.site_id == 1, "Inherited from other SiteReadingTypes in group"
         assert new_srt.aggregator_id == 1, "Inherited from other SiteReadingTypes in group"
 
@@ -1195,8 +1201,8 @@ async def test_add_or_update_readings_multiple_readings_no_mup_updates(pg_base_c
             .all()
         )
         assert len(new_readings) == 3
-        for db_reading, src_reading in zip(new_readings, [reading3, reading2, reading1]):
+        for db_reading, src_reading in zip(new_readings, [reading3, reading2, reading1], strict=False):
             assert_nowish(db_reading.changed_time)
             assert_nowish(db_reading.created_time)
             assert db_reading.value == src_reading.value
-            assert db_reading.local_id == int(src_reading.localID, 16)
+            assert db_reading.local_id == int(src_reading.localID or "", 16)

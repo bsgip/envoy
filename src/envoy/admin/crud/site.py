@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from envoy.server.model.site import Site, SiteDER, SiteGroup, SiteGroupAssignment
 
 
-async def count_all_sites(session: AsyncSession, group_filter: Optional[str], changed_after: Optional[datetime]) -> int:
+async def count_all_sites(session: AsyncSession, group_filter: str | None, changed_after: datetime | None) -> int:
     """Admin counting of sites - no filtering on aggregator is made. If changed_after is specified, only
     sites that have their changed_time >= changed_after will be included"""
     stmt = select(func.count()).select_from(Site)
@@ -25,10 +25,10 @@ async def count_all_sites(session: AsyncSession, group_filter: Optional[str], ch
 
 async def select_all_sites(
     session: AsyncSession,
-    group_filter: Optional[str],
+    group_filter: str | None,
     start: int,
     limit: int,
-    changed_after: Optional[datetime],
+    changed_after: datetime | None,
     include_groups: bool = False,
     include_der: bool = False,
 ) -> Sequence[Site]:
@@ -73,7 +73,7 @@ async def count_all_site_groups(session: AsyncSession) -> int:
 
 
 async def select_all_site_groups(
-    session: AsyncSession, group_filter: Optional[str], start: int, limit: int
+    session: AsyncSession, group_filter: str | None, start: int, limit: int
 ) -> list[tuple[SiteGroup, int]]:
     """Admin selecting of groups - returns a tuple with the count of linked sites"""
 
@@ -119,7 +119,7 @@ async def select_single_site_no_scoping(
     site_id: int,
     include_groups: bool = False,
     include_der: bool = False,
-) -> Optional[Site]:
+) -> Site | None:
     """Admin selecting of a single site - no filtering on aggregator is made."""
 
     stmt = select(Site).limit(1).where(Site.site_id == site_id)

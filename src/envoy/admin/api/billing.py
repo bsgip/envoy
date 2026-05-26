@@ -50,7 +50,9 @@ async def get_aggregator_billing_data(
             period_end=period_end,
         )
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "The requested aggregator id doesn't exist")
+        raise LoggedHttpException(
+            logger, exc, HTTPStatus.NOT_FOUND, "The requested aggregator id doesn't exist"
+        ) from exc
 
 
 @router.get(CalculationLogBillingUri, status_code=HTTPStatus.OK, response_model=CalculationLogBillingResponse)
@@ -78,7 +80,9 @@ async def get_calculation_log_billing_data(
             tariff_id=tariff_id,
         )
     except NotFoundError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "The requested calculation log id doesn't exist")
+        raise LoggedHttpException(
+            logger, exc, HTTPStatus.NOT_FOUND, "The requested calculation log id doesn't exist"
+        ) from exc
 
 
 @router.post(SitePeriodBillingUri, status_code=HTTPStatus.OK, response_model=SiteBillingResponse)

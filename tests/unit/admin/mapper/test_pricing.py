@@ -6,6 +6,7 @@ import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
+from envoy_schema.server.schema.sep2.types import CurrencyCode
 
 from envoy.admin.mapper.pricing import TariffGeneratedRateListMapper, TariffMapper
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
@@ -39,7 +40,7 @@ def test_tariff_mapper_from_request():
 
 def test_tariff_mapper_to_response():
     mdl = generate_class_instance(Tariff)
-    mdl.currency_code = 36
+    mdl.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
 
     resp = TariffMapper.map_to_response(mdl)
 

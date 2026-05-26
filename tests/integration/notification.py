@@ -1,5 +1,3 @@
-from typing import Optional
-
 from assertical.fixtures.postgres import SingleAsyncEngineState
 from psycopg import Connection
 from taskiq import BrokerMessage, InMemoryBroker
@@ -13,10 +11,10 @@ class TestableBroker(InMemoryBroker):
     """
 
     db_conn: Connection
-    href_prefix: Optional[str]
-    engine_state: Optional[SingleAsyncEngineState]
+    href_prefix: str | None
+    engine_state: SingleAsyncEngineState | None
 
-    def __init__(self, db_conn: Connection, href_prefix: Optional[str]) -> None:
+    def __init__(self, db_conn: Connection, href_prefix: str | None) -> None:
         super().__init__(sync_tasks_pool_size=1, max_async_tasks=5)
         self.db_conn = db_conn
         self.href_prefix = href_prefix

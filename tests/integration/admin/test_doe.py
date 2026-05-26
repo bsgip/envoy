@@ -1,8 +1,7 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from http import HTTPStatus
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -58,8 +57,8 @@ async def test_supersede_doe(pg_base_config, admin_client_auth: AsyncClient):
         start_time=datetime(2022, 5, 7, 1, 2, 3, tzinfo=ZoneInfo("Australia/Brisbane")),
         duration_seconds=2,
         calculation_log_id=3,  # This is how we'll look this record up in the DB later
-        export_limit_watts=44,
-        import_limit_active_watts=55,
+        export_limit_watts=Decimal(44),
+        import_limit_active_watts=Decimal(55),
     )
 
     resp = await admin_client_auth.post(
@@ -85,7 +84,7 @@ async def test_supersede_doe(pg_base_config, admin_client_auth: AsyncClient):
         assert doe_1.export_limit_watts == Decimal("-1.22"), "unchanged"
         assert doe_1.superseded is True
         assert_nowish(doe_1.changed_time)
-        assert doe_1.created_time == datetime(2000, 1, 1, tzinfo=timezone.utc), "unchanged"
+        assert doe_1.created_time == datetime(2000, 1, 1, tzinfo=UTC), "unchanged"
 
         inserted_doe = (
             await session.execute(
@@ -145,13 +144,13 @@ async def test_supersede_doe(pg_base_config, admin_client_auth: AsyncClient):
         (
             None,
             99,
-            datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 12, 22, 34, tzinfo=UTC),
             [3, 4],
         ),
         (
             1,
             99,
-            datetime(2022, 5, 6, 12, 22, 34, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 12, 22, 34, tzinfo=UTC),
             [4],
         ),
     ],
@@ -160,9 +159,9 @@ async def test_supersede_doe(pg_base_config, admin_client_auth: AsyncClient):
 async def test_get_all_does(
     admin_client_auth: AsyncClient,
     pg_base_config,
-    start: Optional[int],
-    limit: Optional[int],
-    after: Optional[datetime],
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
     expected_doe_ids: list[int],
 ):
     """Sanity check on the Fetch DOE endpoint"""
@@ -213,7 +212,7 @@ async def test_get_and_update_site_control_default(
     pg_base_config,
     admin_client_auth: AsyncClient,
     site_control_group_id: int,
-    expected: Optional[tuple],
+    expected: tuple | None,
 ):
     version_before = 0
     async with generate_async_session(pg_base_config) as session:
@@ -304,6 +303,7 @@ async def test_get_and_update_site_control_default(
             archive_records = (await session.execute(select(ArchiveSiteControlGroupDefault))).scalars().all()
             if default_exists:
                 assert len(archive_records) == 1
+                assert expected is not None
                 assert archive_records[0].import_limit_active_watts == expected[0]
                 assert archive_records[0].export_limit_active_watts == expected[1]
                 assert archive_records[0].generation_limit_active_watts == expected[2]

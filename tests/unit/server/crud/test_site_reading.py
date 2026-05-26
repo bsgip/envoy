@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from itertools import product
-from typing import Optional, Sequence
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -24,7 +24,6 @@ from envoy.server.crud.site_reading import (
     upsert_site_readings,
 )
 from envoy.server.manager.time import utc_now
-from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from tests.unit.server.crud.test_site import SnapshotTableCount, count_table_rows
@@ -48,7 +47,7 @@ async def test_generate_site_reading_type_group_id(pg_base_config):
         values.append(await generate_site_reading_type_group_id(session))
 
     assert len(values) == 6
-    assert all((isinstance(v, int) for v in values))
+    assert all(isinstance(v, int) for v in values)
     assert len(values) == len(set(values)), "All distinct values"
 
 
@@ -67,7 +66,7 @@ async def test_generate_site_reading_type_group_id(pg_base_config):
 )
 @pytest.mark.anyio
 async def test_fetch_site_reading_types_for_group(
-    pg_base_config, agg_id: int, site_id: Optional[int], group_id: int, expected_srt_ids: list[int]
+    pg_base_config, agg_id: int, site_id: int | None, group_id: int, expected_srt_ids: list[int]
 ):
     async with generate_async_session(pg_base_config) as session:
         results = await fetch_site_reading_types_for_group(session, agg_id, site_id, group_id)
@@ -90,7 +89,7 @@ async def test_fetch_site_reading_types_for_group(
 )
 @pytest.mark.anyio
 async def test_fetch_site_reading_types_for_group_mrid(
-    pg_base_config, agg_id: int, site_id: Optional[int], group_mrid: int, expected_srt_ids: list[int]
+    pg_base_config, agg_id: int, site_id: int | None, group_mrid: str, expected_srt_ids: list[int]
 ):
     async with generate_async_session(pg_base_config) as session:
         results = await fetch_site_reading_types_for_group_mrid(session, agg_id, site_id, group_mrid)
@@ -104,9 +103,9 @@ def g(
     site_id: int,
     site_lfdi: str,
     role_flags: int,
-    group_description: Optional[str],
-    group_version: Optional[int],
-    group_status: Optional[int],
+    group_description: str | None,
+    group_version: int | None,
+    group_status: int | None,
 ) -> GroupedSiteReadingTypeDetails:
     """Just to make the test definition a bit more concise"""
     return GroupedSiteReadingTypeDetails(
@@ -281,7 +280,7 @@ def g(
             None,
             0,
             99,
-            datetime(2022, 5, 6, 14, 22, 33, tzinfo=timezone.utc),
+            datetime(2022, 5, 6, 14, 22, 33, tzinfo=UTC),
             [
                 g(
                     1,
@@ -306,14 +305,14 @@ def g(
             ],
             2,
         ),
-        (1, None, 0, 99, datetime(2022, 5, 6, 15, 22, 34, tzinfo=timezone.utc), [], 0),
+        (1, None, 0, 99, datetime(2022, 5, 6, 15, 22, 34, tzinfo=UTC), [], 0),
     ],
 )
 @pytest.mark.anyio
 async def test_fetch_count_grouped_site_reading_details(
     pg_base_config,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     start: int,
     limit: int,
     changed_after: datetime,
@@ -344,7 +343,7 @@ async def test_fetch_count_grouped_site_reading_details(
 )
 @pytest.mark.anyio
 async def test_fetch_site_reading_type_for_mrid(
-    pg_base_config, agg_id: int, site_id: int, mrid: str, expected_srt_id: Optional[int]
+    pg_base_config, agg_id: int, site_id: int, mrid: str, expected_srt_id: int | None
 ):
     async with generate_async_session(pg_base_config) as session:
         actual = await fetch_site_reading_type_for_mrid(session, agg_id, site_id, mrid)
@@ -361,7 +360,7 @@ async def test_fetch_site_reading_type_for_mrid(
 async def fetch_site_reading_types(session, aggregator_id: int) -> Sequence[SiteReadingType]:
     stmt = (
         select(SiteReadingType)
-        .where((SiteReadingType.aggregator_id == aggregator_id))
+        .where(SiteReadingType.aggregator_id == aggregator_id)
         .order_by(SiteReadingType.site_reading_type_id)
     )
 
@@ -369,7 +368,7 @@ async def fetch_site_reading_types(session, aggregator_id: int) -> Sequence[Site
     return resp.scalars().all()
 
 
-async def fetch_site_reading_type(session, aggregator_id: int, site_reading_type_id: int) -> Optional[SiteReadingType]:
+async def fetch_site_reading_type(session, aggregator_id: int, site_reading_type_id: int) -> SiteReadingType | None:
     stmt = (
         select(SiteReadingType)
         .where(
@@ -394,24 +393,24 @@ async def fetch_site_readings(session) -> Sequence[SiteReading]:
 async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
     """Tests an upsert on site_readings with a mix of inserts/updates"""
     aest = ZoneInfo("Australia/Brisbane")
-    deleted_time = datetime(2004, 5, 7, 1, 3, 4, 53151, tzinfo=timezone.utc)
+    deleted_time = datetime(2004, 5, 7, 1, 3, 4, 53151, tzinfo=UTC)
     site_readings: list[SiteReading] = [
         # Insert
         SiteReading(
             site_reading_type_id=1,
-            changed_time=datetime(2022, 1, 2, 3, 4, 5, 500000, tzinfo=timezone.utc),
-            created_time=datetime(2023, 11, 1, 4, 5, tzinfo=timezone.utc),  # This won't get stored
+            changed_time=datetime(2022, 1, 2, 3, 4, 5, 500000, tzinfo=UTC),
+            created_time=datetime(2023, 11, 1, 4, 5, tzinfo=UTC),  # This won't get stored
             local_id=1234,
             quality_flags=QualityFlagsType.VALID,
-            time_period_start=datetime(2022, 8, 9, 4, 5, 6, tzinfo=timezone.utc),
+            time_period_start=datetime(2022, 8, 9, 4, 5, 6, tzinfo=UTC),
             time_period_seconds=456,
             value=789,
         ),
         # Update everything non index
         SiteReading(
             site_reading_type_id=1,  # Index col to match existing
-            changed_time=datetime(2022, 6, 7, 8, 9, 10, 500000, tzinfo=timezone.utc),
-            created_time=datetime(2023, 11, 1, 4, 5, tzinfo=timezone.utc),  # This won't get stored
+            changed_time=datetime(2022, 6, 7, 8, 9, 10, 500000, tzinfo=UTC),
+            created_time=datetime(2023, 11, 1, 4, 5, tzinfo=UTC),  # This won't get stored
             local_id=4567,
             quality_flags=QualityFlagsType.VALID,
             time_period_start=datetime(2022, 6, 7, 2, 0, 0, tzinfo=aest),  # Index col to match existing
@@ -421,8 +420,8 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         # Insert (partial match on unique constraint)
         SiteReading(
             site_reading_type_id=3,  # Won't match existing reading
-            changed_time=datetime(2022, 10, 11, 12, 13, 14, 500000, tzinfo=timezone.utc),
-            created_time=datetime(2023, 11, 1, 4, 5, tzinfo=timezone.utc),  # This won't get stored
+            changed_time=datetime(2022, 10, 11, 12, 13, 14, 500000, tzinfo=UTC),
+            created_time=datetime(2023, 11, 1, 4, 5, tzinfo=UTC),  # This won't get stored
             local_id=111,
             quality_flags=QualityFlagsType.FORECAST,
             time_period_start=datetime(2022, 6, 7, 2, 0, 0, tzinfo=aest),  # Will match existing reading
@@ -463,21 +462,23 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
 
         # Assert other fields are untouched
         sr_1 = all_db_readings[0]
-        assert_class_instance_equality(
-            SiteReading,
-            SiteReading(
-                site_reading_id=1,
-                site_reading_type_id=1,
-                created_time=datetime(2000, 1, 1, tzinfo=timezone.utc),
-                changed_time=datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=timezone.utc),
-                local_id=11111,
-                quality_flags=QualityFlagsType.VALID,
-                time_period_start=datetime(2022, 6, 7, 1, 0, 0, tzinfo=aest),  # Will match existing reading
-                time_period_seconds=300,
-                value=11,
+        (
+            assert_class_instance_equality(
+                SiteReading,
+                SiteReading(
+                    site_reading_id=1,
+                    site_reading_type_id=1,
+                    created_time=datetime(2000, 1, 1, tzinfo=UTC),
+                    changed_time=datetime(2022, 6, 7, 11, 22, 33, 500000, tzinfo=UTC),
+                    local_id=11111,
+                    quality_flags=QualityFlagsType.VALID,
+                    time_period_start=datetime(2022, 6, 7, 1, 0, 0, tzinfo=aest),  # Will match existing reading
+                    time_period_seconds=300,
+                    value=11,
+                ),
+                sr_1,
             ),
-            sr_1,
-        ),
+        )
 
         # Check the archive - should've archived the updated record
         archive_records = (await session.execute(select(ArchiveSiteReading))).scalars().all()
@@ -487,12 +488,13 @@ async def test_upsert_site_readings_mixed_insert_update(pg_base_config):
         assert archive_records[0].local_id == 22222, "This is the original value from the DB"
         assert archive_records[0].time_period_seconds == 300, "This is the original value from the DB"
         assert archive_records[0].deleted_time == deleted_time
-        assert_datetime_equal(datetime(2000, 1, 1, tzinfo=timezone.utc), archive_records[0].created_time)
+        assert_datetime_equal(datetime(2000, 1, 1, tzinfo=UTC), archive_records[0].created_time)
+        assert archive_records[0].archive_time is not None
         assert_nowish(archive_records[0].archive_time)
 
 
 async def snapshot_all_srt_tables(
-    session: AsyncSession, agg_id: int, site_id: Optional[int], srt_ids: list[int]
+    session: AsyncSession, agg_id: int, site_id: int | None, srt_ids: list[int]
 ) -> list[SnapshotTableCount]:
     """Snapshots the site reading type table and all downstream child tables"""
     snapshot: list[SnapshotTableCount] = []
@@ -503,9 +505,11 @@ async def snapshot_all_srt_tables(
             SiteReadingType,
             None,
             ArchiveSiteReadingType,
-            lambda q: q.where(SiteReadingType.aggregator_id == agg_id)
-            .where(or_(site_id is None, SiteReadingType.site_id == site_id))
-            .where(SiteReadingType.site_reading_type_id.in_(srt_ids)),
+            lambda q: (
+                q.where(SiteReadingType.aggregator_id == agg_id)
+                .where(or_(site_id is None, SiteReadingType.site_id == site_id))  # ty:ignore[invalid-argument-type]
+                .where(SiteReadingType.site_reading_type_id.in_(srt_ids))
+            ),
         )
     )
 
@@ -555,7 +559,7 @@ async def snapshot_all_srt_tables(
 async def test_delete_site_reading_type_group(
     pg_base_config,
     agg_id: int,
-    site_id: Optional[int],
+    site_id: int | None,
     group_id: int,
     srt_ids: list[int],
     commit: bool,
@@ -577,7 +581,7 @@ async def test_delete_site_reading_type_group(
 
     # Perform the delete
     now = utc_now()
-    deleted_time = datetime(2014, 11, 15, 2, 4, 5, 755, tzinfo=timezone.utc)
+    deleted_time = datetime(2014, 11, 15, 2, 4, 5, 755, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         actual = await delete_site_reading_type_group(session, agg_id, site_id, group_id, deleted_time)
         assert expected_delete == actual
@@ -593,7 +597,7 @@ async def test_delete_site_reading_type_group(
         snapshot_after = await snapshot_all_srt_tables(session, agg_id=agg_id, site_id=site_id, srt_ids=srt_ids)
 
     # Compare our before/after snapshots based on whether a delete occurred (or didn't)
-    for before, after in zip(snapshot_before, snapshot_after):
+    for before, after in zip(snapshot_before, snapshot_after, strict=False):
         assert before.t == after.t, "This is a sanity check on snapshot_all_srt_tables doing a consistent order"
         assert before.archive_t == after.archive_t, "This is a sanity check on snapshot_all_srt_tables"
         assert before.archive_count == 0, f"{before.t}: Archive should've been empty at the start"
@@ -602,17 +606,18 @@ async def test_delete_site_reading_type_group(
             # Check the counts migrated as expected
             assert after.archive_count == before.filtered_count, f"{before.t} All matched records should archive"
             assert after.filtered_count == 0, f"{before.t} All matched records should archive and be removed"
-            assert (
-                after.total_count == before.total_count - before.filtered_count
-            ), f"{before.t} Other records left alone"
+            assert after.total_count == before.total_count - before.filtered_count, (
+                f"{before.t} Other records left alone"
+            )
 
             # Check the archive records
             async with generate_async_session(pg_base_config) as session:
-                archives: list[ArchiveBase] = (await session.execute(select(after.archive_t))).scalars().all()
-                assert all((a.deleted_time == deleted_time for a in archives)), f"{before.t} deleted time is wrong"
-                assert all(
-                    (abs((a.archive_time - now).seconds) < 20 for a in archives)
-                ), f"{before.t} archive time should be nowish"
+                archives = (await session.execute(select(after.archive_t))).scalars().all()
+                assert all(a.deleted_time == deleted_time for a in archives), f"{before.t} deleted time is wrong"
+                assert all(a.archive_time is not None for a in archives)
+                assert all(abs((a.archive_time - now).seconds) < 20 for a in archives), (  # ty:ignore[unsupported-operator]
+                    f"{before.t} archive time should be nowish"
+                )
         else:
             assert after.archive_count == 0, f"{before.t} Nothing should've persisted/deleted"
             assert after.filtered_count == before.filtered_count, f"{before.t} Nothing should've persisted/deleted"
@@ -627,6 +632,6 @@ async def test_delete_site_reading_type_group(
         elif expected_delete:
             assert len(srts) == len(srt_ids), "If the delete was NOT committed - the SiteReadingType should still exist"
         else:
-            assert (
-                len(srts) == 0
-            ), "If the delete was NOT committed but the SiteReadingType DNE - it should continue to not exist"
+            assert len(srts) == 0, (
+                "If the delete was NOT committed but the SiteReadingType DNE - it should continue to not exist"
+            )

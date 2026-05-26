@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, Union
+from collections.abc import Sequence
 
 import envoy_schema.server.schema.uri as uri
 from envoy_schema.server.schema.sep2.identification import ListLink
@@ -45,7 +45,6 @@ def href_to_response_set_type(href_part: str) -> ResponseSetType:
 
 
 class ResponseMapper:
-
     @staticmethod
     def price_response_href(scope: BaseRequestScope, rate_response: TariffGeneratedRateResponse) -> str:
         """Generates the href for the specified TariffGeneratedRateResponse. Requires the primary key to be set"""
@@ -85,7 +84,7 @@ class ResponseMapper:
 
     @staticmethod
     def map_from_price_request(
-        r: Union[PriceResponse, Response],
+        r: PriceResponse | Response,
         tariff_generated_rate: TariffGeneratedRate,
         pricing_reading_type: PricingReadingType,
     ) -> TariffGeneratedRateResponse:
@@ -104,7 +103,7 @@ class ResponseMapper:
     def map_to_doe_response(
         scope: BaseRequestScope,
         doe_response: DynamicOperatingEnvelopeResponse,
-        doe: Optional[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+        doe: DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope | None,
     ) -> DERControlResponse:
         """Generates a sep2 DERControlResponse for a given DynamicOperatingEnvelopeResponse.
 
@@ -125,8 +124,8 @@ class ResponseMapper:
 
     @staticmethod
     def map_from_doe_request(
-        r: Union[DERControlResponse, Response],
-        dynamic_operating_envelope: Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope],
+        r: DERControlResponse | Response,
+        dynamic_operating_envelope: DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope,
     ) -> DynamicOperatingEnvelopeResponse:
         """Maps a sep2 DERControlResponse to an internal DynamicOperatingEnvelopeResponse model."""
 
@@ -171,7 +170,7 @@ class ResponseListMapper:
         responses: Sequence[
             tuple[
                 DynamicOperatingEnvelopeResponse,
-                Optional[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+                DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope | None,
             ]
         ],
         total_responses: int,

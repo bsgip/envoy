@@ -1,6 +1,7 @@
+from collections.abc import Sequence
 from datetime import date, datetime
 from enum import IntEnum
-from typing import Optional, Sequence, Union
+from typing import Optional
 from urllib.parse import urlparse
 
 from envoy_schema.server.schema.sep2.pub_sub import (
@@ -15,11 +16,13 @@ from envoy_schema.server.schema.sep2.pub_sub import (
     XSI_TYPE_FUNCTION_SET_ASSIGNMENTS_LIST,
     XSI_TYPE_READING_LIST,
     XSI_TYPE_TIME_TARIFF_INTERVAL_LIST,
+    Notification,
+    NotificationStatus,
+    SubscriptionEncoding,
+    SubscriptionListResponse,
 )
 from envoy_schema.server.schema.sep2.pub_sub import Condition as Sep2Condition
-from envoy_schema.server.schema.sep2.pub_sub import Notification, NotificationStatus
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
-from envoy_schema.server.schema.sep2.pub_sub import SubscriptionEncoding, SubscriptionListResponse
 from envoy_schema.server.schema.uri import (
     DefaultDERControlUri,
     DERAvailabilityUri,
@@ -38,7 +41,7 @@ from envoy_schema.server.schema.uri import (
     SubscriptionUri,
     TimeTariffIntervalListUri,
 )
-from parse import parse  # type: ignore
+from parse import parse
 
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.exception import InvalidMappingError
@@ -76,7 +79,7 @@ def _map_to_notification_status(nt: NotificationType) -> NotificationStatus:
         raise ValueError(f"NotificationType {nt} is not supported")
 
 
-def _parse_site_id_from_match(raw_site_id: str) -> Optional[int]:
+def _parse_site_id_from_match(raw_site_id: str) -> int | None:
     site_id = int(raw_site_id)
     return site_id if site_id != VIRTUAL_END_DEVICE_SITE_ID else None
 
@@ -150,7 +153,6 @@ class SubscriptionMapper:
 
             return generate_href(DERAvailabilityUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_RATING:
-
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DERCapability requires resource_id on sub {sub.subscription_id}"
@@ -158,7 +160,6 @@ class SubscriptionMapper:
 
             return generate_href(DERCapabilityUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_SETTING:
-
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DERSettings requires resource_id on sub {sub.subscription_id}"
@@ -166,13 +167,11 @@ class SubscriptionMapper:
 
             return generate_href(DERSettingsUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.SITE_DER_STATUS:
-
             if sub.resource_id is None:
                 raise InvalidMappingError(f"Subscribing to DERStatus requires resource_id on sub {sub.subscription_id}")
 
             return generate_href(DERStatusUri, scope, site_id=href_site_id, der_id=sub.resource_id)
         elif sub.resource_type == SubscriptionResource.DEFAULT_SITE_CONTROL:
-
             if sub.resource_id is None:
                 raise InvalidMappingError(
                     f"Subscribing to DefaultDERControl requires resource_id on sub {sub.subscription_id}"
@@ -204,7 +203,7 @@ class SubscriptionMapper:
     @staticmethod
     def map_to_response(sub: Subscription, scope: AggregatorRequestScope) -> Sep2Subscription:
         """Maps an internal Subscription model to the Sep2 model Equivalent"""
-        condition: Optional[Sep2Condition] = None
+        condition: Sep2Condition | None = None
         if sub.conditions and len(sub.conditions) > 0:
             condition = SubscriptionMapper.map_to_response_condition(sub.conditions[0])
 
@@ -236,8 +235,8 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["site_reading_type_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Reading resource")
+            except ValueError as exc:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Reading resource") from exc
 
         # Try Rate
         result = parse(RateComponentListUri, href)
@@ -248,8 +247,8 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["tariff_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Rate resource")
+            except ValueError as exc:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a Rate resource") from exc
 
         # Try DOE
         result = parse(DERControlListUri, href)
@@ -260,8 +259,8 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_program_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DOE resource")
+            except ValueError as exc:
+                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DOE resource") from exc
 
         # Try DERAvailability
         result = parse(DERAvailabilityUri, href)
@@ -272,8 +271,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERAvailability resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERAvailability resource"
+                ) from exc
 
         # Try DERCapability
         result = parse(DERCapabilityUri, href)
@@ -284,8 +285,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERRating resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERRating resource"
+                ) from exc
 
         # Try DERSetting
         result = parse(DERSettingsUri, href)
@@ -296,8 +299,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERSetting resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERSetting resource"
+                ) from exc
 
         # Try DERStatus
         result = parse(DERStatusUri, href)
@@ -308,8 +313,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERStatus resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERStatus resource"
+                ) from exc
 
         # Try DefaultDERControl
         result = parse(DefaultDERControlUri, href)
@@ -320,8 +327,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["der_program_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DefaultDERControl resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DefaultDERControl resource"
+                ) from exc
 
         # Try DERProgramList (FSA scoped)
         result = parse(DERProgramFSAListUri, href)
@@ -332,8 +341,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     int(result["fsa_id"]),
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource"
+                ) from exc
 
         # Try FunctionSetAssignmentsList
         result = parse(FunctionSetAssignmentsListUri, href)
@@ -344,10 +355,10 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     None,
                 )
-            except ValueError:
+            except ValueError as exc:
                 raise InvalidMappingError(
                     f"Unable to interpret {href} parsed {result} as a FunctionSetAssignmentList resource"
-                )
+                ) from exc
 
         # Try DERProgramList
         result = parse(DERProgramListUri, href)
@@ -358,16 +369,20 @@ class SubscriptionMapper:
                     _parse_site_id_from_match(result["site_id"]),
                     None,
                 )
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a DERProgramListUri resource"
+                ) from exc
 
         # Try EndDevice
         result = parse(EndDeviceUri, href)
         if result:
             try:
                 return (SubscriptionResource.SITE, _parse_site_id_from_match(result["site_id"]), None)
-            except ValueError:
-                raise InvalidMappingError(f"Unable to interpret {href} parsed {result} as a EndDevice resource")
+            except ValueError as exc:
+                raise InvalidMappingError(
+                    f"Unable to interpret {href} parsed {result} as a EndDevice resource"
+                ) from exc
 
         raise InvalidMappingError(f"Unable to interpret {href} as valid subscription resource")
 
@@ -391,7 +406,7 @@ class SubscriptionMapper:
         try:
             uri = urlparse(subscription.notificationURI)
         except Exception as ex:
-            raise InvalidMappingError(f"Error validating notificationURI: {ex}")
+            raise InvalidMappingError(f"Error validating notificationURI: {ex}") from ex
 
         # Dont allow adding webhooks to arbitrary domains
         if uri.hostname not in aggregator_domains:
@@ -439,7 +454,6 @@ class SubscriptionListMapper:
 
 
 class NotificationMapper:
-
     @staticmethod
     def map_sites_to_response(
         sites: Sequence[Site],
@@ -470,7 +484,7 @@ class NotificationMapper:
     @staticmethod
     def map_does_to_response(
         site_control_group_id: int,
-        does: Sequence[Union[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]],
+        does: Sequence[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope],
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
@@ -501,11 +515,11 @@ class NotificationMapper:
 
     @staticmethod
     def map_site_control_groups_to_response(
-        site_control_groups: Sequence[Union[SiteControlGroup, ArchiveSiteControlGroup]],
+        site_control_groups: Sequence[SiteControlGroup | ArchiveSiteControlGroup],
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
-        poll_rate_seconds: Optional[int],
+        poll_rate_seconds: int | None,
     ) -> Notification:
         """Turns a list of site control groups into a notification"""
         group_list_href = generate_href(DERProgramListUri, scope, site_id=scope.display_site_id)
@@ -597,7 +611,7 @@ class NotificationMapper:
     @staticmethod
     def map_der_availability_to_response(
         der_id: int,
-        der_availability: Optional[SiteDERAvailability],
+        der_availability: SiteDERAvailability | None,
         der_availability_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
@@ -611,7 +625,7 @@ class NotificationMapper:
             der_id=der_id,
         )
 
-        resource_model: Optional[dict] = None
+        resource_model: dict | None = None
         if der_availability is not None:
             # Easiest way to map entity to resource is via model_dump
             resource = DERAvailabilityMapper.map_to_response(scope, der_availability, der_availability_site_id)
@@ -629,7 +643,7 @@ class NotificationMapper:
     @staticmethod
     def map_der_rating_to_response(
         der_id: int,
-        der_rating: Optional[SiteDERRating],
+        der_rating: SiteDERRating | None,
         der_rating_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
@@ -643,7 +657,7 @@ class NotificationMapper:
             der_id=der_id,
         )
 
-        resource_model: Optional[dict] = None
+        resource_model: dict | None = None
         if der_rating is not None:
             # Easiest way to map entity to resource is via model_dump
             resource = DERCapabilityMapper.map_to_response(scope, der_rating, der_rating_site_id)
@@ -661,7 +675,7 @@ class NotificationMapper:
     @staticmethod
     def map_der_settings_to_response(
         der_id: int,
-        der_setting: Optional[SiteDERSetting],
+        der_setting: SiteDERSetting | None,
         der_setting_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
@@ -675,7 +689,7 @@ class NotificationMapper:
             der_id=der_id,
         )
 
-        resource_model: Optional[dict] = None
+        resource_model: dict | None = None
         if der_setting is not None:
             # Easiest way to map entity to resource is via model_dump
             resource = DERSettingMapper.map_to_response(scope, der_setting, der_setting_site_id)
@@ -694,7 +708,7 @@ class NotificationMapper:
     @staticmethod
     def map_der_status_to_response(
         der_id: int,
-        der_status: Optional[SiteDERStatus],
+        der_status: SiteDERStatus | None,
         der_status_site_id: int,
         sub: Subscription,
         scope: AggregatorRequestScope,
@@ -708,7 +722,7 @@ class NotificationMapper:
             der_id=der_id,
         )
 
-        resource_model: Optional[dict] = None
+        resource_model: dict | None = None
         if der_status is not None:
             # Easiest way to map entity to resource is via model_dump
             resource = DERStatusMapper.map_to_response(scope, der_status, der_status_site_id)
@@ -758,7 +772,7 @@ class NotificationMapper:
 
     @staticmethod
     def map_default_site_control_response(
-        scg_default: Optional[SiteControlGroupDefault],
+        scg_default: SiteControlGroupDefault | None,
         der_program_id: int,
         pow10_multipier: int,
         sub: Subscription,
@@ -771,7 +785,7 @@ class NotificationMapper:
             DefaultDERControlUri, scope, site_id=scope.display_site_id, der_program_id=der_program_id
         )
 
-        resource_model: Optional[DefaultDERControl] = None
+        resource_model: DefaultDERControl | None = None
         if scg_default is not None:
             resource_model = DERControlMapper.map_to_default_response(
                 scope, scg_default, scope.display_site_id, der_program_id, pow10_multipier

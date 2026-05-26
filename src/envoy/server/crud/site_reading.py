@@ -1,6 +1,7 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Sequence, Union, cast
+from typing import cast
 
 from envoy_schema.server.schema.sep2.types import RoleFlagsType
 from sqlalchemy import Select, and_, distinct, func, insert, or_, select
@@ -19,9 +20,9 @@ class GroupedSiteReadingTypeDetails:
 
     group_id: int
     group_mrid: str
-    group_description: Optional[str]
-    group_status: Optional[int]
-    group_version: Optional[int]
+    group_description: str | None
+    group_status: int | None
+    group_version: int | None
     site_id: int
     site_lfdi: str
     role_flags: int
@@ -33,7 +34,7 @@ async def generate_site_reading_type_group_id(session: AsyncSession) -> int:
 
 
 async def fetch_site_reading_types_for_group_mrid(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], group_mrid: str
+    session: AsyncSession, aggregator_id: int, site_id: int | None, group_mrid: str
 ) -> Sequence[SiteReadingType]:
     """Fetches all SiteReadingTypes for the specified group mrid filter conditions
 
@@ -49,7 +50,7 @@ async def fetch_site_reading_types_for_group_mrid(
 
 
 async def fetch_site_reading_types_for_group(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], group_id: int
+    session: AsyncSession, aggregator_id: int, site_id: int | None, group_id: int
 ) -> Sequence[SiteReadingType]:
     """Fetches all SiteReadingTypes for the specified group filter conditions
 
@@ -66,7 +67,7 @@ async def fetch_site_reading_types_for_group(
 
 async def fetch_site_reading_type_for_mrid(
     session: AsyncSession, aggregator_id: int, site_id: int, mrid: str
-) -> Optional[SiteReadingType]:
+) -> SiteReadingType | None:
     """Fetches the SiteReadingType matched by the specified site scope / mrid. Returns None if not found."""
     stmt = select(SiteReadingType).where(
         (SiteReadingType.aggregator_id == aggregator_id)
@@ -80,7 +81,7 @@ async def fetch_site_reading_type_for_mrid(
 
 async def fetch_any_site_reading_type_for_mrids_other_site(
     session: AsyncSession, aggregator_id: int, site_id: int, mrids: list[str]
-) -> Optional[SiteReadingType]:
+) -> SiteReadingType | None:
     """Returns the first SiteReadingType whose mrid is in mrids but belongs to a different site.
     Returns None if all mrids are unowned or owned by site_id."""
     stmt = select(SiteReadingType).where(
@@ -97,16 +98,15 @@ async def _fetch_site_reading_type_groups(
     only_count: bool,
     session: AsyncSession,
     aggregator_id: int,
-    site_id: Optional[int],
-    start: Optional[int],
+    site_id: int | None,
+    start: int | None,
     changed_after: datetime,
-    limit: Optional[int],
-) -> Union[int, list[GroupedSiteReadingTypeDetails]]:
+    limit: int | None,
+) -> int | list[GroupedSiteReadingTypeDetails]:
 
-    select_clause: Union[
-        Select[tuple[int]],
-        Select[tuple[int, str, Optional[str], Optional[int], Optional[int], int, str, RoleFlagsType]],
-    ]
+    select_clause: (
+        Select[tuple[int]] | Select[tuple[int, str, str | None, int | None, int | None, int, str, RoleFlagsType]]
+    )
     if only_count:
         select_clause = select(func.count(distinct(SiteReadingType.group_id))).select_from(SiteReadingType)
     else:
@@ -141,7 +141,7 @@ async def _fetch_site_reading_type_groups(
 
 
 async def fetch_grouped_site_reading_details(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], start: int, changed_after: datetime, limit: int
+    session: AsyncSession, aggregator_id: int, site_id: int | None, start: int, changed_after: datetime, limit: int
 ) -> list[GroupedSiteReadingTypeDetails]:
     """Fetches a GroupedSiteReadingTypeDetails for each distinct group of SiteReadingType.group_id that match the
     specified filter parameters. Returns the groups ordered by GroupID asc."""
@@ -153,7 +153,7 @@ async def fetch_grouped_site_reading_details(
 
 
 async def count_grouped_site_reading_details(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], changed_after: datetime
+    session: AsyncSession, aggregator_id: int, site_id: int | None, changed_after: datetime
 ) -> int:
     """Returns the maximal count of values returned by fetch_grouped_site_reading_details (given the same filter)"""
     # Test coverage will enforce the return type
@@ -185,14 +185,14 @@ async def upsert_site_readings(session: AsyncSession, now: datetime, site_readin
 
     # Now we can do the inserts
     table = SiteReading.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # type: ignore [attr-defined] # noqa: E501
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
     await session.execute(
-        insert(SiteReading).values(([{k: getattr(sr, k) for k in update_cols} for sr in site_readings]))
+        insert(SiteReading).values([{k: getattr(sr, k) for k in update_cols} for sr in site_readings])
     )
 
 
 async def delete_site_reading_type_group(
-    session: AsyncSession, aggregator_id: int, site_id: Optional[int], group_id: int, deleted_time: datetime
+    session: AsyncSession, aggregator_id: int, site_id: int | None, group_id: int, deleted_time: datetime
 ) -> bool:
     """Deletes all site reading types (belonging to aggregator_id/site_id/group) and all descendent FK references. All
     deleted rows will be archived
