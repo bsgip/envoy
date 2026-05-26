@@ -211,7 +211,7 @@ class EndDeviceManager:
             if end_device.lFDI is None:
                 raise BadRequestError("lfdi required for aggregator managed devices")
             if EndDeviceManager.lfdi_matches(end_device.lFDI, scope.lfdi):
-                raise ForbiddenError("Cannot register an end device with the same LFDI as the aggregator")
+                raise ForbiddenError("Cannot register an end device with the same LFDI as the aggregator client certificate")
 
         logger.info(
             f"add_enddevice_for_aggregator: upserting sfdi {end_device.sFDI} and lfdi {end_device.lFDI} for aggregator {scope.aggregator_id}"  # noqa e501
