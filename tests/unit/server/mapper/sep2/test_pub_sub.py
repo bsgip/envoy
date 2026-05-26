@@ -143,7 +143,7 @@ def test_SubscriptionMapper_calculate_resource_href_all_support_site_unscoped(re
 
     hrefs: list[str] = []
     scope = generate_class_instance(AggregatorRequestScope, optional_is_none=True)
-    assert scope.href_prefix
+    assert scope.href_prefix is None
     for resource_id, resource_parent_id in product([1, None], [2, None]):
         sub: Subscription = generate_class_instance(Subscription)
         sub.resource_type = resource
