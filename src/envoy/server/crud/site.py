@@ -15,7 +15,6 @@ from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (
     ArchiveSite,
-    ArchiveSiteDER,
     ArchiveSiteDERAvailability,
     ArchiveSiteDERRating,
     ArchiveSiteDERSetting,
@@ -27,7 +26,6 @@ from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import (
     Site,
-    SiteDER,
     SiteDERAvailability,
     SiteDERRating,
     SiteDERSetting,
@@ -296,43 +294,34 @@ async def delete_site_for_aggregator(
         lambda q: q.where(DynamicOperatingEnvelope.site_id == site_id),
     )
 
-    # Cleanup DER - again, similar to MUPs/SUBs, we need the DER IDs first
-    der_id_resp = await session.execute(select(SiteDER.site_der_id).where(SiteDER.site_id == site_id))
-    der_ids_to_delete = der_id_resp.scalars().all()
+    # Cleanup DER sub resources - these now hang directly off the site (no parent site_der row)
     await delete_rows_into_archive(
         session,
         SiteDERRating,
         ArchiveSiteDERRating,
         deleted_time,
-        lambda q: q.where(SiteDERRating.site_der_id.in_(der_ids_to_delete)),
+        lambda q: q.where(SiteDERRating.site_id == site_id),
     )
     await delete_rows_into_archive(
         session,
         SiteDERSetting,
         ArchiveSiteDERSetting,
         deleted_time,
-        lambda q: q.where(SiteDERSetting.site_der_id.in_(der_ids_to_delete)),
+        lambda q: q.where(SiteDERSetting.site_id == site_id),
     )
     await delete_rows_into_archive(
         session,
         SiteDERStatus,
         ArchiveSiteDERStatus,
         deleted_time,
-        lambda q: q.where(SiteDERStatus.site_der_id.in_(der_ids_to_delete)),
+        lambda q: q.where(SiteDERStatus.site_id == site_id),
     )
     await delete_rows_into_archive(
         session,
         SiteDERAvailability,
         ArchiveSiteDERAvailability,
         deleted_time,
-        lambda q: q.where(SiteDERAvailability.site_der_id.in_(der_ids_to_delete)),
-    )
-    await delete_rows_into_archive(
-        session,
-        SiteDER,
-        ArchiveSiteDER,
-        deleted_time,
-        lambda q: q.where(SiteDER.site_der_id.in_(der_ids_to_delete)),
+        lambda q: q.where(SiteDERAvailability.site_id == site_id),
     )
 
     # Site Groups assignments aren't archived - we can delete them directly
