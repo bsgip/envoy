@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 from http import HTTPStatus
 
@@ -401,6 +402,60 @@ async def test_roundtrip_upsert_der_setting(
         await assert_sub_entity_count(
             session, site_id, SiteDERSetting, before_count, expected_not_found, expected_update
         )
+
+
+@pytest.mark.anyio
+async def test_concurrent_der_upsert_creates_single_site_der(
+    pg_base_config,
+    client: AsyncClient,
+    valid_headers: dict,
+):
+    """Reproduces the race where concurrently submitting DERCapability/DERSettings/DERStatus to a site with NO
+    existing site_der results in multiple site_der rows being created (there should only ever be one per site)."""
+
+    der_id = PUBLIC_SITE_DER_ID
+    site_id = 4  # Has no site_der - so each concurrent upsert will SELECT-miss and insert its own
+
+    capability: DERCapability = generate_class_instance(DERCapability, seed=3001, generate_relationships=True)
+    capability.modesSupported = "00"
+    capability.doeModesSupported = "03"
+
+    settings: DERSettings = generate_class_instance(DERSettings, seed=4001, generate_relationships=True)
+    settings.modesEnabled = "00"
+    settings.doeModesEnabled = "04"
+
+    status: DERStatus = generate_class_instance(DERStatus, seed=13, generate_relationships=True)
+    status.alarmStatus = "01"
+    status.genConnectStatus.value = "02"  # ty:ignore[invalid-assignment]
+    status.storConnectStatus.value = "04"  # ty:ignore[invalid-assignment]
+    status.manufacturerStatus.value = "sts"  # ty:ignore[invalid-assignment]
+
+    responses = await asyncio.gather(
+        client.put(
+            uri.DERCapabilityUri.format(site_id=site_id, der_id=der_id),
+            headers=valid_headers,
+            content=capability.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+        ),
+        client.put(
+            uri.DERSettingsUri.format(site_id=site_id, der_id=der_id),
+            headers=valid_headers,
+            content=settings.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+        ),
+        client.put(
+            uri.DERStatusUri.format(site_id=site_id, der_id=der_id),
+            headers=valid_headers,
+            content=status.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+        ),
+    )
+    for response in responses:
+        assert_response_header(response, HTTPStatus.NO_CONTENT, expected_content_type=None)
+
+    async with generate_async_session(pg_base_config) as session:
+        site_der_count = (
+            await session.execute(select(func.count()).select_from(SiteDER).where(SiteDER.site_id == site_id))
+        ).scalar()
+
+    assert site_der_count == 1, f"Expected exactly one site_der for site {site_id}, found {site_der_count}"
 
 
 @pytest.mark.anyio
