@@ -262,8 +262,8 @@ class SiteDERSetting(Base):
     v_ref_ofs_multiplier: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
     doe_modes_enabled: Mapped[DOESupportedMode | None] = mapped_column(INTEGER, nullable=True)
 
-    site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_setting", lazy="raise", single_parent=True)
-    __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)
+    site: Mapped["Site"] = relationship(back_populates="site_der_setting", lazy="raise")
+    __table_args__ = (UniqueConstraint("site_id"),)  # Only one SiteDERSetting allowed per Site
 
 
 class SiteDERAvailability(Base):
@@ -273,7 +273,7 @@ class SiteDERAvailability(Base):
     __tablename__ = "site_der_availability"
 
     site_der_availability_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    site_der_id: Mapped[int] = mapped_column(ForeignKey("site_der.site_der_id", ondelete="CASCADE"))
+    site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id", ondelete="CASCADE"))
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )  # When the SiteDERAvailability was created
@@ -291,8 +291,8 @@ class SiteDERAvailability(Base):
     estimated_w_avail_value: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
     estimated_w_avail_multiplier: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
-    site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_availability", lazy="raise", single_parent=True)
-    __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)
+    site: Mapped["Site"] = relationship(back_populates="site_der_availability", lazy="raise")
+    __table_args__ = (UniqueConstraint("site_id"),)  # Only one SiteDERAvailability allowed per Site
 
 
 class SiteDERStatus(Base):
@@ -302,7 +302,7 @@ class SiteDERStatus(Base):
     __tablename__ = "site_der_status"
 
     site_der_status_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    site_der_id: Mapped[int] = mapped_column(ForeignKey("site_der.site_der_id", ondelete="CASCADE"))
+    site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id", ondelete="CASCADE"))
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )  # When the site DERStatus was created
@@ -327,8 +327,8 @@ class SiteDERStatus(Base):
     storage_connect_status: Mapped[ConnectStatusType | None] = mapped_column(INTEGER, nullable=True)
     storage_connect_status_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    site_der: Mapped["SiteDER"] = relationship(back_populates="site_der_status", lazy="raise", single_parent=True)
-    __table_args__ = (UniqueConstraint("site_der_id"),)  # Only one SiteDERSetting allowed per SiteDER)
+    site: Mapped["Site"] = relationship(back_populates="site_der_status", lazy="raise")
+    __table_args__ = (UniqueConstraint("site_id"),)  # Only one SiteDERStatus allowed per Site
 
 
 class SiteLogEvent(Base):
