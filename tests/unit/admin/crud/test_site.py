@@ -18,7 +18,6 @@ from envoy.admin.crud.site import (
 from envoy.server.api.request import MAX_LIMIT
 from envoy.server.model.site import (
     Site,
-    SiteDER,
     SiteDERAvailability,
     SiteDERRating,
     SiteDERSetting,
@@ -72,7 +71,7 @@ async def test_count_all_sites_empty(pg_empty_config):
             None,
             [1, 2, 3, 4, 5, 6],
             [[1, 2], [1], [1], [], [], []],
-            [(2, 1, 1, 1, 1), (1, None, None, None, None), None, None, None, None],
+            [(1, 1, 1, 1), None, None, None, None, None],
         ),
         (
             0,
@@ -90,11 +89,11 @@ async def test_count_all_sites_empty(pg_empty_config):
             None,
             [1, 2, 3, 4, 5, 6],
             [[1, 2], [1], [1], [], [], []],
-            [(2, 1, 1, 1, 1), (1, None, None, None, None), None, None, None, None],
+            [(1, 1, 1, 1), None, None, None, None, None],
         ),
-        (0, 500, "Group-1", None, [1, 2, 3], [[1, 2], [1], [1]], [(2, 1, 1, 1, 1), (1, None, None, None, None), None]),
+        (0, 500, "Group-1", None, [1, 2, 3], [[1, 2], [1], [1]], [(1, 1, 1, 1), None, None]),
         (0, 500, "Group-1", datetime(2022, 2, 3, 8, 5, 6, tzinfo=UTC), [3], [[1]], [None]),
-        (0, 500, "Group-2", None, [1], [[1, 2]], [(2, 1, 1, 1, 1)]),
+        (0, 500, "Group-2", None, [1], [[1, 2]], [(1, 1, 1, 1)]),
         (0, 500, "Group-3", None, [], [], []),
         (0, 500, "Group-DNE", None, [], [], []),
         (
@@ -104,15 +103,15 @@ async def test_count_all_sites_empty(pg_empty_config):
             None,
             [2, 3, 4, 5, 6],
             [[1], [1], [], [], []],
-            [(1, None, None, None, None), None, None, None, None],
+            [None, None, None, None, None],
         ),
         (2, 500, None, None, [3, 4, 5, 6], [[1], [], [], []], [None, None, None, None]),
         (3, 500, None, None, [4, 5, 6], [[], [], []], [None, None, None]),
         (6, 500, None, None, [], [], []),
-        (1, 2, None, None, [2, 3], [[1], [1]], [(1, None, None, None, None), None]),
+        (1, 2, None, None, [2, 3], [[1], [1]], [None, None]),
         (2, 2, None, None, [3, 4], [[1], []], [None, None]),
         (0, 0, None, None, [], [], []),
-        (1, 1, "Group-1", None, [2], [[1]], [(1, None, None, None, None)]),
+        (1, 1, "Group-1", None, [2], [[1]], [None]),
     ],
 )
 @pytest.mark.anyio
@@ -124,10 +123,10 @@ async def test_select_all_sites(
     changed_after: datetime | None,
     expected_site_ids: list[int],
     expected_group_ids: list[list[int]],
-    expected_der_ids: list[tuple[int, int | None, int | None, int | None, int | None] | None],
+    expected_der_ids: list[tuple[int | None, int | None, int | None, int | None] | None],
 ):
     """
-    expected_der_ids: Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
+    expected_der_ids: Tuple(DERAvailId, DERRatingId, DERSettingId, DERStatusId) or None if the site has no DER data"""
 
     assert len(expected_site_ids) == len(expected_group_ids), "Validating the test inputs all align"
     assert len(expected_der_ids) == len(expected_group_ids), "Validating the test inputs all align"
@@ -167,24 +166,19 @@ async def test_select_all_sites(
 
     # Validate the DER were returned as expected
     def der_to_expected_tuple(
-        ders: list[SiteDER],
-    ) -> tuple[int, int | None, int | None, int | None, int | None] | None:
-        """Returns Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
-        if not ders:
-            return None
-
-        assert len(ders) == 1, "There should be ONLY be a single SiteDER per site "
-
-        return (
-            ders[0].site_der_id,
-            ders[0].site_der_availability.site_der_availability_id if ders[0].site_der_availability else None,
-            ders[0].site_der_rating.site_der_rating_id if ders[0].site_der_rating else None,
-            ders[0].site_der_setting.site_der_setting_id if ders[0].site_der_setting else None,
-            ders[0].site_der_status.site_der_status_id if ders[0].site_der_status else None,
+        site: Site,
+    ) -> tuple[int | None, int | None, int | None, int | None] | None:
+        """Returns Tuple(DERAvailId, DERRatingId, DERSettingId, DERStatusId) or None if the site has no DER data"""
+        ids = (
+            site.site_der_availability.site_der_availability_id if site.site_der_availability else None,
+            site.site_der_rating.site_der_rating_id if site.site_der_rating else None,
+            site.site_der_setting.site_der_setting_id if site.site_der_setting else None,
+            site.site_der_status.site_der_status_id if site.site_der_status else None,
         )
+        return None if all(i is None for i in ids) else ids
 
-    assert expected_der_ids == [der_to_expected_tuple(s.site_ders) for s in sites_no_groups_with_der]
-    assert expected_der_ids == [der_to_expected_tuple(s.site_ders) for s in sites_with_groups_der]
+    assert expected_der_ids == [der_to_expected_tuple(s) for s in sites_no_groups_with_der]
+    assert expected_der_ids == [der_to_expected_tuple(s) for s in sites_with_groups_der]
 
     # And that sites without groups don't have any groups
     if len(sites_no_groups_no_der) > 0:
@@ -193,12 +187,12 @@ async def test_select_all_sites(
         with pytest.raises(InvalidRequestError):
             assert all([len(s.assignments) == 0 for s in sites_no_groups_with_der])
 
-    # And that sites without groups don't have any groups
+    # And that the DER relationships raise when they weren't eagerly loaded (include_der=False)
     if len(sites_no_groups_no_der) > 0:
         with pytest.raises(InvalidRequestError):
-            assert all([len(s.site_ders) == 0 for s in sites_no_groups_no_der])
+            assert all([s.site_der_rating is None for s in sites_no_groups_no_der])
         with pytest.raises(InvalidRequestError):
-            assert all([len(s.site_ders) == 0 for s in sites_with_groups_no_der])
+            assert all([s.site_der_rating is None for s in sites_with_groups_no_der])
 
 
 @pytest.mark.anyio
@@ -210,25 +204,18 @@ async def test_max_limit_select_all_sites(pg_base_config):
         for i in range(MAX_LIMIT):
             seed = i
             site: Site = generate_class_instance(Site, seed=seed, site_id=None, aggregator_id=3)
-            rating = generate_class_instance(SiteDERRating, seed=seed, site_der_id=None, site_der_rating_id=None)
-            status = generate_class_instance(
-                SiteDERStatus, seed=seed, site_der_id=None, site_der_status_id=None, manufacturer_status=f"s{i}"
+            site.site_der_rating = generate_class_instance(
+                SiteDERRating, seed=seed, site_id=None, site_der_rating_id=None
             )
-            setting = generate_class_instance(SiteDERSetting, seed=seed, site_der_id=None, site_der_setting_id=None)
-            availability = generate_class_instance(
-                SiteDERAvailability, seed=seed, site_der_id=None, site_der_availability_id=None
+            site.site_der_status = generate_class_instance(
+                SiteDERStatus, seed=seed, site_id=None, site_der_status_id=None, manufacturer_status=f"s{i}"
             )
-            site.site_ders = [
-                generate_class_instance(
-                    SiteDER,
-                    seed=seed,
-                    site_der_id=None,
-                    site_der_rating=rating,
-                    site_der_status=status,
-                    site_der_setting=setting,
-                    site_der_availability=availability,
-                )
-            ]
+            site.site_der_setting = generate_class_instance(
+                SiteDERSetting, seed=seed, site_id=None, site_der_setting_id=None
+            )
+            site.site_der_availability = generate_class_instance(
+                SiteDERAvailability, seed=seed, site_id=None, site_der_availability_id=None
+            )
             session.add(site)
         await session.commit()
 
@@ -238,14 +225,13 @@ async def test_max_limit_select_all_sites(pg_base_config):
         )
         assert_list_type(Site, sites, count=MAX_LIMIT)
 
-        site_der_ids = [s.site_ders[0].site_der_id for s in sites]
-        site_status_ids = [s.site_ders[0].site_der_status.site_der_status_id for s in sites]  # ty:ignore[unresolved-attribute]
-        site_avail_ids = [s.site_ders[0].site_der_availability.site_der_availability_id for s in sites]  # ty:ignore[unresolved-attribute]
-        site_rating_ids = [s.site_ders[0].site_der_rating.site_der_rating_id for s in sites]  # ty:ignore[unresolved-attribute]
-        site_settings_ids = [s.site_ders[0].site_der_setting.site_der_setting_id for s in sites]  # ty:ignore[unresolved-attribute]
+        site_status_ids = [s.site_der_status.site_der_status_id for s in sites]  # ty:ignore[unresolved-attribute]
+        site_avail_ids = [s.site_der_availability.site_der_availability_id for s in sites]  # ty:ignore[unresolved-attribute]
+        site_rating_ids = [s.site_der_rating.site_der_rating_id for s in sites]  # ty:ignore[unresolved-attribute]
+        site_settings_ids = [s.site_der_setting.site_der_setting_id for s in sites]  # ty:ignore[unresolved-attribute]
 
-        assert len(site_der_ids) == MAX_LIMIT
-        assert len(site_der_ids) == len(set(site_der_ids)), "All Unique values"
+        assert len(site_rating_ids) == MAX_LIMIT
+        assert len(site_rating_ids) == len(set(site_rating_ids)), "All Unique values"
 
         assert len(site_status_ids) == MAX_LIMIT
         assert len(site_status_ids) == len(set(site_status_ids)), "All Unique values"
@@ -311,8 +297,8 @@ async def test_select_single_site_no_scoping_missing_site_ids(pg_base_config, mi
 @pytest.mark.parametrize(
     "site_id, expected_group_ids, expected_der_ids, expected_site_import_watts",
     [
-        (1, [1, 2], (2, 1, 1, 1, 1), Decimal("10.10")),
-        (2, [1], (1, None, None, None, None), None),
+        (1, [1, 2], (1, 1, 1, 1), Decimal("10.10")),
+        (2, [1], None, None),
         (3, [1], None, Decimal("20.20")),
         (4, [], None, None),
         (5, [], None, None),
