@@ -1498,7 +1498,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
         assert all([isinstance(e.site, Site) for v_list in batch.models_by_batch_key.values() for e in v_list])
         assert all(
             [
-                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)
+                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -1676,7 +1676,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
         assert all([isinstance(e.site, Site) for v_list in batch.models_by_batch_key.values() for e in v_list])
         assert all(
             [
-                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)
+                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -1850,7 +1850,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
         assert all([isinstance(e.site, Site) for v_list in batch.models_by_batch_key.values() for e in v_list])
         assert all(
             [
-                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)
+                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -2035,7 +2035,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
         assert all([isinstance(e.site, Site) for v_list in batch.models_by_batch_key.values() for e in v_list])
         assert all(
             [
-                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)
+                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]

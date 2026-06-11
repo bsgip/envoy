@@ -27,7 +27,7 @@ from envoy.server.mapper.sep2.der import (
     DERStatusMapper,
     to_hex_binary,
 )
-from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope
 
 
@@ -55,66 +55,47 @@ def assert_der_info_type_equal(t: type, expected: Any, actual: Any):
 
 
 def test_der_mapping():
-    all_set: SiteDER = generate_class_instance(SiteDER, seed=101, optional_is_none=False, generate_relationships=True)
-    with_none: SiteDER = generate_class_instance(SiteDER, seed=202, optional_is_none=True, generate_relationships=True)
-
     scope = BaseRequestScope("lfdi", 111, "/my/prefix", 222)
     derp_id = 124124
+    site_id = 4567
 
-    mapped_all_set = DERMapper.map_to_response(scope, all_set, derp_id)
-    assert isinstance(mapped_all_set, DER)
+    mapped = DERMapper.map_to_response(scope, site_id, derp_id)
+    assert isinstance(mapped, DER)
 
-    assert mapped_all_set.href is not None
-    assert mapped_all_set.href.startswith("/my/prefix")
-    assert str(all_set.site_id) in mapped_all_set.href
-    assert isinstance(mapped_all_set.AssociatedDERProgramListLink, Link)
-    assert isinstance(mapped_all_set.CurrentDERProgramLink, Link)
-    assert isinstance(mapped_all_set.DERAvailabilityLink, Link)
-    assert isinstance(mapped_all_set.DERCapabilityLink, Link)
-    assert isinstance(mapped_all_set.DERSettingsLink, Link)
-    assert isinstance(mapped_all_set.DERStatusLink, Link)
-    assert f"/{derp_id}" in mapped_all_set.CurrentDERProgramLink.href
-    assert str(all_set.site_id) in mapped_all_set.CurrentDERProgramLink.href
+    assert mapped.href is not None
+    assert mapped.href.startswith("/my/prefix")
+    assert str(site_id) in mapped.href
+    assert isinstance(mapped.AssociatedDERProgramListLink, Link)
+    assert isinstance(mapped.CurrentDERProgramLink, Link)
+    assert isinstance(mapped.DERAvailabilityLink, Link)
+    assert isinstance(mapped.DERCapabilityLink, Link)
+    assert isinstance(mapped.DERSettingsLink, Link)
+    assert isinstance(mapped.DERStatusLink, Link)
+    assert f"/{derp_id}" in mapped.CurrentDERProgramLink.href
+    assert str(site_id) in mapped.CurrentDERProgramLink.href
 
     # Test with NO active der program id
-    mapped_all_set_no_actderp = DERMapper.map_to_response(scope, all_set, None)
-    assert isinstance(mapped_all_set_no_actderp, DER)
-    assert mapped_all_set_no_actderp.href is not None
-    assert mapped_all_set_no_actderp.href.startswith("/my/prefix")
-    assert str(all_set.site_id) in mapped_all_set_no_actderp.href
-    assert mapped_all_set_no_actderp.CurrentDERProgramLink is None
-
-    mapped_with_none = DERMapper.map_to_response(scope, with_none, derp_id)
-    assert isinstance(mapped_with_none, DER)
-    assert mapped_with_none.href is not None
-    assert mapped_with_none.href.startswith("/my/prefix")
-    assert str(with_none.site_id) in mapped_with_none.href
-    assert isinstance(mapped_with_none.AssociatedDERProgramListLink, Link)
-    assert isinstance(mapped_with_none.CurrentDERProgramLink, Link)
-    assert isinstance(mapped_with_none.DERAvailabilityLink, Link)
-    assert isinstance(mapped_with_none.DERCapabilityLink, Link)
-    assert isinstance(mapped_with_none.DERSettingsLink, Link)
-    assert isinstance(mapped_with_none.DERStatusLink, Link)
-    assert f"/{derp_id}" in mapped_with_none.CurrentDERProgramLink.href
-    assert str(with_none.site_id) in mapped_with_none.CurrentDERProgramLink.href
+    mapped_no_actderp = DERMapper.map_to_response(scope, site_id, None)
+    assert isinstance(mapped_no_actderp, DER)
+    assert mapped_no_actderp.href is not None
+    assert mapped_no_actderp.href.startswith("/my/prefix")
+    assert str(site_id) in mapped_no_actderp.href
+    assert mapped_no_actderp.CurrentDERProgramLink is None
 
 
 def test_der_list():
-    ders: list[SiteDER] = [
-        generate_class_instance(SiteDER, seed=101, optional_is_none=False, generate_relationships=True),
-        generate_class_instance(SiteDER, seed=202, optional_is_none=True, generate_relationships=True),
-    ]
+    der_site_ids = [11, 11]
 
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, site_id=11)
     poll_rate = 99
     count = 42
 
-    mapped = DERMapper.map_to_list_response(scope, ders, count, poll_rate)
+    mapped = DERMapper.map_to_list_response(scope, der_site_ids, count, poll_rate)
     assert isinstance(mapped, DERListResponse)
     assert mapped.results == 2
     assert mapped.all_ == count
     assert mapped.pollRate == poll_rate
-    assert len(mapped.DER_ or []) == len(ders)
+    assert len(mapped.DER_ or []) == len(der_site_ids)
     assert all([isinstance(x, DER) for x in mapped.DER_ or []])
 
 
