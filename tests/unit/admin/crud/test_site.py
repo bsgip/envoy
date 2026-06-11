@@ -314,24 +314,19 @@ async def test_select_single_site_no_scoping(
     expected_site_import_watts: Decimal | None,
 ):
     """
-    expected_der_ids: Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
+    expected_der_ids: Tuple(DERAvailId, DERRatingId, DERSettingId, DERStatusId) or None if the site has no DER data"""
 
     def der_to_expected_tuple(
-        ders: list[SiteDER],
-    ) -> tuple[int, int | None, int | None, int | None, int | None] | None:
-        """Returns Tuple(DERId, DERAvailId, DERRatingId, DERSettingId, DERStatusId)"""
-        if not ders:
-            return None
-
-        assert len(ders) == 1, "There should be ONLY be a single SiteDER per site "
-
-        return (
-            ders[0].site_der_id,
-            ders[0].site_der_availability.site_der_availability_id if ders[0].site_der_availability else None,
-            ders[0].site_der_rating.site_der_rating_id if ders[0].site_der_rating else None,
-            ders[0].site_der_setting.site_der_setting_id if ders[0].site_der_setting else None,
-            ders[0].site_der_status.site_der_status_id if ders[0].site_der_status else None,
+        site: Site,
+    ) -> tuple[int | None, int | None, int | None, int | None] | None:
+        """Returns Tuple(DERAvailId, DERRatingId, DERSettingId, DERStatusId) or None if the site has no DER data"""
+        ids = (
+            site.site_der_availability.site_der_availability_id if site.site_der_availability else None,
+            site.site_der_rating.site_der_rating_id if site.site_der_rating else None,
+            site.site_der_setting.site_der_setting_id if site.site_der_setting else None,
+            site.site_der_status.site_der_status_id if site.site_der_status else None,
         )
+        return None if all(i is None for i in ids) else ids
 
     for include_groups, include_der in product([True, False], [True, False]):
         async with generate_async_session(pg_base_config) as session:
@@ -350,7 +345,7 @@ async def test_select_single_site_no_scoping(
                     assert len(site.assignments) == 0
 
             if include_der:
-                assert expected_der_ids == der_to_expected_tuple(site.site_ders)
+                assert expected_der_ids == der_to_expected_tuple(site)
             else:
                 with pytest.raises(InvalidRequestError):
-                    assert len(site.site_ders) == 0
+                    assert site.site_der_rating is None
