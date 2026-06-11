@@ -235,9 +235,7 @@ class DERStatusMapper:
             }
         return DERStatus.model_validate(
             {
-                "href": generate_href(
-                    uri.DERStatusUri, scope, site_id=der_status_site_id, der_id=PUBLIC_SITE_DER_ID
-                ),
+                "href": generate_href(uri.DERStatusUri, scope, site_id=der_status_site_id, der_id=PUBLIC_SITE_DER_ID),
                 "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
                 "alarmStatus": (
                     to_hex_binary(int(der_status.alarm_status)) if der_status.alarm_status is not None else None
