@@ -27,7 +27,12 @@ CHILD_TABLES = [
     ("site_der_status", "site_der_status_id"),
 ]
 
-ARCHIVE_CHILD_TABLES = ["archive_site_der_rating", "archive_site_der_setting", "archive_site_der_availability", "archive_site_der_status"]
+ARCHIVE_CHILD_TABLES = [
+    "archive_site_der_rating",
+    "archive_site_der_setting",
+    "archive_site_der_availability",
+    "archive_site_der_status",
+]
 
 
 def upgrade() -> None:
@@ -37,16 +42,14 @@ def upgrade() -> None:
 
         # Backfill site_id from the parent site_der
         op.execute(
-            f"UPDATE {table} AS c SET site_id = sd.site_id "
-            f"FROM site_der sd WHERE sd.site_der_id = c.site_der_id"
+            f"UPDATE {table} AS c SET site_id = sd.site_id FROM site_der sd WHERE sd.site_der_id = c.site_der_id"  # noqa: S608
         )
 
         # De-duplicate: the old schema permitted (via a concurrency bug) multiple site_der rows per site, which could
         # leave more than one row of the same sub resource type per site. Only one is allowed per site now - keep the
         # most recently changed (tie broken by pk) and drop the rest.
         op.execute(
-            f"DELETE FROM {table} a USING {table} b "
-            f"WHERE a.site_id = b.site_id "
+            f"DELETE FROM {table} a USING {table} b WHERE a.site_id = b.site_id "  # noqa: S608
             f"AND (a.changed_time < b.changed_time OR (a.changed_time = b.changed_time AND a.{pk} < b.{pk}))"
         )
 
@@ -63,7 +66,7 @@ def upgrade() -> None:
     for table in ARCHIVE_CHILD_TABLES:
         op.add_column(table, sa.Column("site_id", sa.Integer(), nullable=True))
         op.execute(
-            f"UPDATE {table} AS c SET site_id = COALESCE("
+            f"UPDATE {table} AS c SET site_id = COALESCE("  # noqa: S608
             f"(SELECT sd.site_id FROM site_der sd WHERE sd.site_der_id = c.site_der_id), "
             f"(SELECT asd.site_id FROM archive_site_der asd WHERE asd.site_der_id = c.site_der_id "
             f"ORDER BY asd.archive_id DESC LIMIT 1))"
@@ -118,10 +121,10 @@ def downgrade() -> None:
         ") s"
     )
 
-    for table, pk in CHILD_TABLES:
+    for table, _pk in CHILD_TABLES:
         op.add_column(table, sa.Column("site_der_id", sa.Integer(), nullable=True))
         op.execute(
-            f"UPDATE {table} AS c SET site_der_id = sd.site_der_id FROM site_der sd WHERE sd.site_id = c.site_id"
+            f"UPDATE {table} AS c SET site_der_id = sd.site_der_id FROM site_der sd WHERE sd.site_id = c.site_id"  # noqa: S608
         )
         op.alter_column(table, "site_der_id", existing_type=sa.Integer(), nullable=False)
         op.create_foreign_key(
