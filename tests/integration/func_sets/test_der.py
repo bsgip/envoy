@@ -34,7 +34,7 @@ from tests.integration.response import assert_error_response, assert_response_he
         (1, 0, 99, None, [PUBLIC_SITE_DER_ID]),
         (2, 0, 99, None, [PUBLIC_SITE_DER_ID]),
         (4, 0, 99, None, [PUBLIC_SITE_DER_ID]),  # Has no DER data (will use the virtual element instead)
-        # DER changed_time is the most recent sub resource change - for site 1 that's the status at 2022-11-01 11:05:04.5
+        # DER changed_time = most recent sub resource change; site 1's status is at 2022-11-01 11:05:04.5
         (1, 0, 99, datetime(2022, 11, 1, 11, 5, 4, tzinfo=UTC), [PUBLIC_SITE_DER_ID]),
         (1, 0, 99, datetime(2022, 11, 1, 11, 5, 5, tzinfo=UTC), []),
         (1, 1, 99, None, []),
