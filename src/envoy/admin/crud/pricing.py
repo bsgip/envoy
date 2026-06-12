@@ -167,15 +167,21 @@ async def cancel_tariff_generated_rate(
 
 async def count_tariff_generated_rates_for_period(
     session: AsyncSession,
+    tariff_component_id: int,
     period_start: datetime,
     period_end: datetime,
     site_id: int | None = None,
 ) -> int:
-    """Count tariff generated rates where start_time falls within [period_start, period_end)."""
+    """Count tariff generated rates for a specific TariffComponent where start_time falls within
+    [period_start, period_end)."""
     stmt = (
         select(func.count())
         .select_from(TariffGeneratedRate)
-        .where((TariffGeneratedRate.start_time >= period_start) & (TariffGeneratedRate.start_time < period_end))
+        .where(
+            (TariffGeneratedRate.tariff_component_id == tariff_component_id)
+            & (TariffGeneratedRate.start_time >= period_start)
+            & (TariffGeneratedRate.start_time < period_end)
+        )
     )
     if site_id is not None:
         stmt = stmt.where(TariffGeneratedRate.site_id == site_id)
@@ -185,18 +191,24 @@ async def count_tariff_generated_rates_for_period(
 
 async def select_tariff_generated_rates_for_period(
     session: AsyncSession,
+    tariff_component_id: int,
     start: int,
     limit: int,
     period_start: datetime,
     period_end: datetime,
     site_id: int | None = None,
 ) -> Sequence[TariffGeneratedRate]:
-    """Select tariff generated rates where start_time falls within [period_start, period_end).
+    """Select tariff generated rates for a specific TariffComponent where start_time falls within
+    [period_start, period_end).
 
     Ordered by start_time ASC, site_id ASC for deterministic pagination."""
     stmt = (
         select(TariffGeneratedRate)
-        .where((TariffGeneratedRate.start_time >= period_start) & (TariffGeneratedRate.start_time < period_end))
+        .where(
+            (TariffGeneratedRate.tariff_component_id == tariff_component_id)
+            & (TariffGeneratedRate.start_time >= period_start)
+            & (TariffGeneratedRate.start_time < period_end)
+        )
         .order_by(TariffGeneratedRate.start_time.asc(), TariffGeneratedRate.site_id.asc())
         .offset(start)
         .limit(limit)
@@ -204,4 +216,17 @@ async def select_tariff_generated_rates_for_period(
     if site_id is not None:
         stmt = stmt.where(TariffGeneratedRate.site_id == site_id)
     result = await session.execute(stmt)
+    return result.scalars().all()
+
+
+async def select_tariff_components_for_tariff(
+    session: AsyncSession,
+    tariff_id: int,
+) -> Sequence[TariffComponent]:
+    """Select all TariffComponents belonging to a Tariff, ordered by tariff_component_id for stability."""
+    result = await session.execute(
+        select(TariffComponent)
+        .where(TariffComponent.tariff_id == tariff_id)
+        .order_by(TariffComponent.tariff_component_id.asc())
+    )
     return result.scalars().all()

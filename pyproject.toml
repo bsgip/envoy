@@ -57,7 +57,8 @@ name = "envoy"
 dynamic = ["version", "readme"]
 requires-python = ">=3.11,<4.0"
 dependencies = [
-    "envoy_schema==2.1.0",
+    "envoy-schema @ git+ssh://git@github.com/EdithFutureGrid/envoy-schema.git@admin/pricing-management",
+    # "envoy_schema==2.1.0",
     "fastapi>=0.94.1",
     "sqlalchemy>=2.0.0",
     "alembic",

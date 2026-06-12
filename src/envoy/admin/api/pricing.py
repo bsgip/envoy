@@ -16,10 +16,11 @@ from envoy_schema.admin.schema.pricing import (
 )
 from envoy_schema.admin.schema.uri import (
     TariffComponentCreateUri,
+    TariffComponentListUri,
     TariffComponentUpdateUri,
     TariffCreateUri,
     TariffGeneratedRateCreateUri,
-    TariffGeneratedRateListForPeriodUri,
+    TariffGeneratedRateRangeUri,
     TariffGeneratedRateUpdateUri,
     TariffUpdateUri,
 )
@@ -183,6 +184,26 @@ async def create_tariff_component(tariff_component: TariffComponentRequest, resp
         raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "tariff_id or site_id not found") from exc
 
 
+@router.get(
+    TariffComponentListUri,
+    status_code=HTTPStatus.OK,
+    response_model=list[TariffComponentResponse],
+)
+async def get_tariff_components_for_tariff(tariff_id: int) -> list[TariffComponentResponse]:
+    """List all TariffComponents belonging to a Tariff, ordered by tariff_component_id.
+
+    Path Param:
+        tariff_id: integer ID of the parent tariff.
+
+    Returns:
+        list[TariffComponentResponse]
+    """
+    try:
+        return await TariffComponentManager.fetch_components_for_tariff(db.session, tariff_id)
+    except NoResultFound as exc:
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found") from exc
+
+
 @router.post(TariffGeneratedRateCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
 async def create_tariff_genrate(
     tariff_generates: list[TariffGeneratedRateRequest],
@@ -247,20 +268,23 @@ async def delete_tariff_genrate(tariff_generated_rate_id: int) -> None:
 
 
 @router.get(
-    TariffGeneratedRateListForPeriodUri,
+    TariffGeneratedRateRangeUri,
     status_code=HTTPStatus.OK,
     response_model=TariffGeneratedRatePageResponse,
 )
 async def get_tariff_generated_rates_for_period(
     start: list[int] = Query([0]),
     limit: list[int] = Query([100]),
+    tariff_component_id: int = Path(),
     period_start: datetime = Path(),
     period_end: datetime = Path(),
     site_id: int | None = Query(None),
 ) -> TariffGeneratedRatePageResponse:
-    """Paginated list of tariff generated rates where start_time falls within [period_start, period_end).
+    """Paginated list of tariff generated rates for a specific TariffComponent where start_time falls
+    within [period_start, period_end).
 
     Path Params:
+        tariff_component_id: ID of the TariffComponent to scope the query.
         period_start: Inclusive start of the time period (ISO 8601 datetime).
         period_end: Exclusive end of the time period (ISO 8601 datetime).
 
@@ -272,11 +296,15 @@ async def get_tariff_generated_rates_for_period(
     Returns:
         TariffGeneratedRatePageResponse
     """
-    return await TariffGeneratedRateManager.fetch_rates_for_period(
-        session=db.session,
-        start=extract_start_from_paging_param(start),
-        limit=extract_limit_from_paging_param(limit),
-        period_start=period_start,
-        period_end=period_end,
-        site_id=site_id,
-    )
+    try:
+        return await TariffGeneratedRateManager.fetch_rates_for_period(
+            session=db.session,
+            tariff_component_id=tariff_component_id,
+            start=extract_start_from_paging_param(start),
+            limit=extract_limit_from_paging_param(limit),
+            period_start=period_start,
+            period_end=period_end,
+            site_id=site_id,
+        )
+    except NoResultFound as exc:
+        raise LoggedHttpException(logger, exc, HTTPStatus.NOT_FOUND, "Not found") from exc

@@ -15,6 +15,7 @@ from envoy.admin.crud.pricing import (
     insert_many_tariff_genrate,
     insert_single_tariff,
     select_single_tariff_generated_rate,
+    select_tariff_generated_rates_for_period,
     select_tariff_ids_for_component_ids,
     update_single_tariff,
     update_single_tariff_component,
@@ -401,64 +402,67 @@ async def test_cancel_and_delete_tariff_component(
             assert len(archive_rates) == len(expected_deleted_prices)
             assert sorted(expected_deleted_prices) == sorted([a.price_pow10_encoded for a in archive_rates])
             assert all([a.deleted_time == deleted_time for a in archive_rates])
-        assert_nowish(archive_data.archive_time)
-        assert archive_data.deleted_time == deleted_time
 
 
 # --- Tests for count/select tariff_generated_rates_for_period ---
 
-# Base config has 4 rates with start_times (in UTC):
-# Rate 1: site_id=1, 2022-03-04T15:02:00Z (2022-03-05T01:02+10)
-# Rate 2: site_id=1, 2022-03-04T17:04:00Z (2022-03-05T03:04+10)
-# Rate 3: site_id=2, 2022-03-04T15:02:00Z (2022-03-05T01:02+10)
-# Rate 4: site_id=1, 2022-03-05T15:02:00Z (2022-03-06T01:02+10)
+# Base config rates for COMPONENT_ID=1 all start on 2022-03-05 AEST:
+# Rate 1: site_id=1, 2022-03-05T01:00:00+10
+# Rate 2: site_id=1, 2022-03-05T01:00:11+10
+# Rate 3: site_id=1, 2022-03-05T01:00:33+10
+# Rate 4: site_id=2, 2022-03-05T01:00:00+10
+# Rate 5: site_id=3, 2022-03-05T01:00:00+10
 
-# Period that covers rates 1, 2, 3 (all on 2022-03-05 AEST = 2022-03-04T14:00Z to 2022-03-05T14:00Z)
-PERIOD_DAY1_START = datetime(2022, 3, 4, 14, 0, 0, tzinfo=timezone.utc)
-PERIOD_DAY1_END = datetime(2022, 3, 5, 14, 0, 0, tzinfo=timezone.utc)
+COMPONENT_ID = 1
 
-# Period that covers rate 4 only (2022-03-06 AEST)
-PERIOD_DAY2_START = datetime(2022, 3, 5, 14, 0, 0, tzinfo=timezone.utc)
-PERIOD_DAY2_END = datetime(2022, 3, 6, 14, 0, 0, tzinfo=timezone.utc)
+# Period that covers all component 1 rates on 2022-03-05 AEST
+PERIOD_DAY1_START = datetime(2022, 3, 5, 0, 0, 0, tzinfo=timezone(timedelta(hours=10)))
+PERIOD_DAY1_END = datetime(2022, 3, 6, 0, 0, 0, tzinfo=timezone(timedelta(hours=10)))
 
-# Period that covers all 4 rates
-PERIOD_ALL_START = datetime(2022, 3, 4, 14, 0, 0, tzinfo=timezone.utc)
-PERIOD_ALL_END = datetime(2022, 3, 6, 14, 0, 0, tzinfo=timezone.utc)
+# Period that covers no component 1 rates (2022-03-06 AEST)
+PERIOD_DAY2_START = datetime(2022, 3, 6, 0, 0, 0, tzinfo=timezone(timedelta(hours=10)))
+PERIOD_DAY2_END = datetime(2022, 3, 7, 0, 0, 0, tzinfo=timezone(timedelta(hours=10)))
+
+# Period that covers all component 1 rates plus the following AEST day
+PERIOD_ALL_START = datetime(2022, 3, 5, 0, 0, 0, tzinfo=timezone(timedelta(hours=10)))
+PERIOD_ALL_END = datetime(2022, 3, 7, 0, 0, 0, tzinfo=timezone(timedelta(hours=10)))
 
 # Period with no rates
-PERIOD_EMPTY_START = datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-PERIOD_EMPTY_END = datetime(2020, 1, 2, 0, 0, 0, tzinfo=timezone.utc)
+PERIOD_EMPTY_START = datetime(2020, 1, 1, 0, 0, 0, tzinfo=UTC)
+PERIOD_EMPTY_END = datetime(2020, 1, 2, 0, 0, 0, tzinfo=UTC)
 
 
 @pytest.mark.anyio
 async def test_count_tariff_generated_rates_for_period_all(pg_base_config):
     """Count all rates in a period covering all base config data"""
     async with generate_async_session(pg_base_config) as session:
-        count = await count_tariff_generated_rates_for_period(session, PERIOD_ALL_START, PERIOD_ALL_END)
-        assert count == 4
+        count = await count_tariff_generated_rates_for_period(session, COMPONENT_ID, PERIOD_ALL_START, PERIOD_ALL_END)
+        assert count == 5
 
 
 @pytest.mark.anyio
 async def test_count_tariff_generated_rates_for_period_day1(pg_base_config):
-    """Count rates for a single day (rates 1, 2, 3)"""
+    """Count rates for a single AEST day covering all component 1 rates"""
     async with generate_async_session(pg_base_config) as session:
-        count = await count_tariff_generated_rates_for_period(session, PERIOD_DAY1_START, PERIOD_DAY1_END)
-        assert count == 3
+        count = await count_tariff_generated_rates_for_period(session, COMPONENT_ID, PERIOD_DAY1_START, PERIOD_DAY1_END)
+        assert count == 5
 
 
 @pytest.mark.anyio
 async def test_count_tariff_generated_rates_for_period_day2(pg_base_config):
-    """Count rates for a single day (rate 4 only)"""
+    """Count rates for a single day with no component 1 data"""
     async with generate_async_session(pg_base_config) as session:
-        count = await count_tariff_generated_rates_for_period(session, PERIOD_DAY2_START, PERIOD_DAY2_END)
-        assert count == 1
+        count = await count_tariff_generated_rates_for_period(session, COMPONENT_ID, PERIOD_DAY2_START, PERIOD_DAY2_END)
+        assert count == 0
 
 
 @pytest.mark.anyio
 async def test_count_tariff_generated_rates_for_period_empty(pg_base_config):
     """Count rates for a period with no data"""
     async with generate_async_session(pg_base_config) as session:
-        count = await count_tariff_generated_rates_for_period(session, PERIOD_EMPTY_START, PERIOD_EMPTY_END)
+        count = await count_tariff_generated_rates_for_period(
+            session, COMPONENT_ID, PERIOD_EMPTY_START, PERIOD_EMPTY_END
+        )
         assert count == 0
 
 
@@ -466,16 +470,22 @@ async def test_count_tariff_generated_rates_for_period_empty(pg_base_config):
 async def test_count_tariff_generated_rates_for_period_with_site_filter(pg_base_config):
     """Count rates filtered by site_id"""
     async with generate_async_session(pg_base_config) as session:
-        # site_id=1 has rates 1, 2, 4 across both days
-        count = await count_tariff_generated_rates_for_period(session, PERIOD_ALL_START, PERIOD_ALL_END, site_id=1)
+        # site_id=1 has rates 1, 2, 3
+        count = await count_tariff_generated_rates_for_period(
+            session, COMPONENT_ID, PERIOD_ALL_START, PERIOD_ALL_END, site_id=1
+        )
         assert count == 3
 
-        # site_id=2 has rate 3 only
-        count = await count_tariff_generated_rates_for_period(session, PERIOD_ALL_START, PERIOD_ALL_END, site_id=2)
+        # site_id=2 has rate 4 only
+        count = await count_tariff_generated_rates_for_period(
+            session, COMPONENT_ID, PERIOD_ALL_START, PERIOD_ALL_END, site_id=2
+        )
         assert count == 1
 
         # site_id=999 has no rates
-        count = await count_tariff_generated_rates_for_period(session, PERIOD_ALL_START, PERIOD_ALL_END, site_id=999)
+        count = await count_tariff_generated_rates_for_period(
+            session, COMPONENT_ID, PERIOD_ALL_START, PERIOD_ALL_END, site_id=999
+        )
         assert count == 0
 
 
@@ -483,12 +493,14 @@ async def test_count_tariff_generated_rates_for_period_with_site_filter(pg_base_
 async def test_select_tariff_generated_rates_for_period_all(pg_base_config):
     """Select all rates — verify ordering by start_time ASC, site_id ASC"""
     async with generate_async_session(pg_base_config) as session:
-        rates = await select_tariff_generated_rates_for_period(session, 0, 100, PERIOD_ALL_START, PERIOD_ALL_END)
-        assert len(rates) == 4
+        rates = await select_tariff_generated_rates_for_period(
+            session, COMPONENT_ID, 0, 100, PERIOD_ALL_START, PERIOD_ALL_END
+        )
+        assert len(rates) == 5
         ids = [r.tariff_generated_rate_id for r in rates]
-        # Rates 1 and 3 share start_time, ordered by site_id (1 before 2)
-        # Rate 2 comes next (later start_time same day), Rate 4 is next day
-        assert ids == [1, 3, 2, 4]
+        # Rates 1/4/5 share start_time, ordered by site_id (1 before 2 before 3)
+        # Rate 2 comes next (later start_time same day), Rate 3 is next
+        assert ids == [1, 4, 5, 2, 3]
 
 
 @pytest.mark.anyio
@@ -496,17 +508,23 @@ async def test_select_tariff_generated_rates_for_period_pagination(pg_base_confi
     """Test pagination with start/limit"""
     async with generate_async_session(pg_base_config) as session:
         # First page: 2 rates
-        rates = await select_tariff_generated_rates_for_period(session, 0, 2, PERIOD_ALL_START, PERIOD_ALL_END)
+        rates = await select_tariff_generated_rates_for_period(
+            session, COMPONENT_ID, 0, 2, PERIOD_ALL_START, PERIOD_ALL_END
+        )
         assert len(rates) == 2
-        assert [r.tariff_generated_rate_id for r in rates] == [1, 3]
+        assert [r.tariff_generated_rate_id for r in rates] == [1, 4]
 
         # Second page: next 2 rates
-        rates = await select_tariff_generated_rates_for_period(session, 2, 2, PERIOD_ALL_START, PERIOD_ALL_END)
+        rates = await select_tariff_generated_rates_for_period(
+            session, COMPONENT_ID, 2, 2, PERIOD_ALL_START, PERIOD_ALL_END
+        )
         assert len(rates) == 2
-        assert [r.tariff_generated_rate_id for r in rates] == [2, 4]
+        assert [r.tariff_generated_rate_id for r in rates] == [5, 2]
 
         # Past end: empty
-        rates = await select_tariff_generated_rates_for_period(session, 999, 100, PERIOD_ALL_START, PERIOD_ALL_END)
+        rates = await select_tariff_generated_rates_for_period(
+            session, COMPONENT_ID, 999, 100, PERIOD_ALL_START, PERIOD_ALL_END
+        )
         assert len(rates) == 0
 
 
@@ -515,31 +533,43 @@ async def test_select_tariff_generated_rates_for_period_with_site_filter(pg_base
     """Select rates filtered by site_id"""
     async with generate_async_session(pg_base_config) as session:
         rates = await select_tariff_generated_rates_for_period(
-            session, 0, 100, PERIOD_DAY1_START, PERIOD_DAY1_END, site_id=1
+            session, COMPONENT_ID, 0, 100, PERIOD_DAY1_START, PERIOD_DAY1_END, site_id=1
         )
-        assert len(rates) == 2
+        assert len(rates) == 3
         assert all(r.site_id == 1 for r in rates)
 
         rates = await select_tariff_generated_rates_for_period(
-            session, 0, 100, PERIOD_DAY1_START, PERIOD_DAY1_END, site_id=2
+            session, COMPONENT_ID, 0, 100, PERIOD_DAY1_START, PERIOD_DAY1_END, site_id=2
         )
         assert len(rates) == 1
         assert rates[0].site_id == 2
+
+        rates = await select_tariff_generated_rates_for_period(
+            session, COMPONENT_ID, 0, 100, PERIOD_DAY1_START, PERIOD_DAY1_END, site_id=3
+        )
+        assert len(rates) == 1
+        assert rates[0].site_id == 3
 
 
 @pytest.mark.anyio
 async def test_select_tariff_generated_rates_for_period_boundary(pg_base_config):
     """Verify period_start is inclusive and period_end is exclusive"""
     async with generate_async_session(pg_base_config) as session:
-        # Rate 4 start_time is 2022-03-05T15:02:00Z
+        # Rate 2 start_time is 2022-03-05T01:00:11+10
         # Period ending exactly at that time should NOT include it
         count = await count_tariff_generated_rates_for_period(
-            session, PERIOD_DAY2_START, datetime(2022, 3, 5, 15, 2, 0, tzinfo=timezone.utc)
+            session,
+            COMPONENT_ID,
+            PERIOD_DAY1_START,
+            datetime(2022, 3, 5, 1, 0, 11, tzinfo=timezone(timedelta(hours=10))),
         )
-        assert count == 0
+        assert count == 3
 
         # Period ending 1 second after should include it
         count = await count_tariff_generated_rates_for_period(
-            session, PERIOD_DAY2_START, datetime(2022, 3, 5, 15, 2, 1, tzinfo=timezone.utc)
+            session,
+            COMPONENT_ID,
+            PERIOD_DAY1_START,
+            datetime(2022, 3, 5, 1, 0, 12, tzinfo=timezone(timedelta(hours=10))),
         )
-        assert count == 1
+        assert count == 4

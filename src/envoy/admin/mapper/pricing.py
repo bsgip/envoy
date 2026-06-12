@@ -142,26 +142,10 @@ class TariffGeneratedRateListMapper:
         ]
 
     @staticmethod
-    def map_to_response(rate: TariffGeneratedRate) -> TariffGeneratedRateResponse:
-        return TariffGeneratedRateResponse(
-            tariff_generated_rate_id=rate.tariff_generated_rate_id,
-            tariff_id=rate.tariff_id,
-            site_id=rate.site_id,
-            calculation_log_id=rate.calculation_log_id,
-            start_time=rate.start_time,
-            duration_seconds=rate.duration_seconds,
-            import_active_price=rate.import_active_price,
-            export_active_price=rate.export_active_price,
-            import_reactive_price=rate.import_reactive_price,
-            export_reactive_price=rate.export_reactive_price,
-            created_time=rate.created_time,
-            changed_time=rate.changed_time,
-        )
-
-    @staticmethod
     def map_to_page_response(
         total_count: int,
         rates: Sequence[TariffGeneratedRate],
+        tariff_component_id: int,
         start: int,
         limit: int,
         period_start: datetime,
@@ -172,8 +156,9 @@ class TariffGeneratedRateListMapper:
             total_count=total_count,
             limit=limit,
             start=start,
+            tariff_component_id=tariff_component_id,
             period_start=period_start,
             period_end=period_end,
             site_id=site_id,
-            rates=[TariffGeneratedRateListMapper.map_to_response(r) for r in rates],
+            rates=[TariffGeneratedRateListMapper.map_to_single_rate_response(r) for r in rates],
         )

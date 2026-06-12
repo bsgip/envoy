@@ -23,6 +23,7 @@ from envoy.admin.crud.pricing import (
     insert_many_tariff_genrate,
     insert_single_tariff,
     select_single_tariff_generated_rate,
+    select_tariff_components_for_tariff,
     select_tariff_generated_rates_for_period,
     select_tariff_ids_for_component_ids,
     update_single_tariff,
@@ -142,6 +143,19 @@ class TariffComponentManager:
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_COMPONENT, changed_time)
 
 
+    @staticmethod
+    async def fetch_components_for_tariff(
+        session: AsyncSession, tariff_id: int
+    ) -> list[TariffComponentResponse]:
+        """Return all TariffComponents belonging to the given tariff, ordered by id.
+        Raises NoResultFound if the tariff does not exist."""
+        tariff = await select_single_tariff(session, tariff_id)
+        if tariff is None:
+            raise NoResultFound
+        components = await select_tariff_components_for_tariff(session, tariff_id)
+        return [TariffComponentMapper.map_to_response(tc) for tc in components]
+
+
 class TariffGeneratedRateManager:
     @staticmethod
     async def fetch_tariff_generated_rate(
@@ -193,18 +207,28 @@ class TariffGeneratedRateManager:
     @staticmethod
     async def fetch_rates_for_period(
         session: AsyncSession,
+        tariff_component_id: int,
         start: int,
         limit: int,
         period_start: datetime,
         period_end: datetime,
         site_id: int | None = None,
     ) -> TariffGeneratedRatePageResponse:
-        """Fetch paginated tariff generated rates for a time period."""
-        total_count = await count_tariff_generated_rates_for_period(session, period_start, period_end, site_id)
-        rates = await select_tariff_generated_rates_for_period(session, start, limit, period_start, period_end, site_id)
+        """Fetch paginated tariff generated rates for a time period scoped to a TariffComponent.
+        Raises NoResultFound if the TariffComponent does not exist."""
+        tc = await select_tariff_component_by_id(session, tariff_component_id)
+        if tc is None:
+            raise NoResultFound
+        total_count = await count_tariff_generated_rates_for_period(
+            session, tariff_component_id, period_start, period_end, site_id
+        )
+        rates = await select_tariff_generated_rates_for_period(
+            session, tariff_component_id, start, limit, period_start, period_end, site_id
+        )
         return TariffGeneratedRateListMapper.map_to_page_response(
             total_count=total_count,
             rates=rates,
+            tariff_component_id=tariff_component_id,
             start=start,
             limit=limit,
             period_start=period_start,
