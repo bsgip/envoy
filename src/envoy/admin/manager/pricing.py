@@ -142,11 +142,8 @@ class TariffComponentManager:
         # calling this.
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_COMPONENT, changed_time)
 
-
     @staticmethod
-    async def fetch_components_for_tariff(
-        session: AsyncSession, tariff_id: int
-    ) -> list[TariffComponentResponse]:
+    async def fetch_components_for_tariff(session: AsyncSession, tariff_id: int) -> list[TariffComponentResponse]:
         """Return all TariffComponents belonging to the given tariff, ordered by id.
         Raises NoResultFound if the tariff does not exist."""
         tariff = await select_single_tariff(session, tariff_id)
