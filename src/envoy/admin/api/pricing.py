@@ -23,7 +23,7 @@ from envoy_schema.admin.schema.uri import (
     TariffGeneratedRateUpdateUri,
     TariffUpdateUri,
 )
-from fastapi import APIRouter, Query, Response, Path
+from fastapi import APIRouter, Path, Query, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
