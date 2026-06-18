@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime
 from http import HTTPStatus
-from pathlib import Path
 
 from asyncpg.exceptions import CardinalityViolationError
 from envoy_schema.admin.schema.base import BatchCreateResponse
@@ -24,7 +23,7 @@ from envoy_schema.admin.schema.uri import (
     TariffGeneratedRateUpdateUri,
     TariffUpdateUri,
 )
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, Query, Response, Path
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
