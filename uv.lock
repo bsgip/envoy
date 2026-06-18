@@ -658,7 +658,7 @@ requires-dist = [
     { name = "coverage", marker = "extra == 'dev'" },
     { name = "cryptography" },
     { name = "defusedxml", marker = "extra == 'test'" },
-    { name = "envoy-schema", git = "ssh://git@github.com/EdithFutureGrid/envoy-schema.git?rev=admin%2Fpricing-management" },
+    { name = "envoy-schema", git = "https://github.com/bsgip/envoy-schema.git?rev=admin%2Fpricing-management" },
     { name = "fastapi", specifier = ">=0.94.1" },
     { name = "fastapi-async-sqlalchemy" },
     { name = "freezegun", marker = "extra == 'test'" },
@@ -697,7 +697,7 @@ provides-extras = ["dev", "test"]
 [[package]]
 name = "envoy-schema"
 version = "2.1.0"
-source = { git = "ssh://git@github.com/EdithFutureGrid/envoy-schema.git?rev=admin%2Fpricing-management#e11c024baed7c84b364cfcd2dad0e8c4a26ebe4a" }
+source = { git = "https://github.com/bsgip/envoy-schema.git?rev=admin%2Fpricing-management#e11c024baed7c84b364cfcd2dad0e8c4a26ebe4a" }
 dependencies = [
     { name = "pydantic" },
     { name = "pydantic-xml", extra = ["lxml"] },
