@@ -1,6 +1,8 @@
 import logging
+import ssl
 from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import FastAPI
@@ -15,8 +17,42 @@ logger = logging.getLogger(__name__)
 STATE_DB_SESSION_MAKER = "db_session_maker"
 # TaskIQ state key for an optional string
 STATE_HREF_PREFIX = "href_prefix"
-# TaskIQ state key for disabling TLS verification on outbound notification requests
-STATE_DISABLE_TLS_VERIFY = "disable_tls_verify"
+# TaskIQ state key for the prebuilt httpx "verify" argument used on outbound notification requests. This is either a
+# bool (standard TLS verification toggle) or a reusable SSLContext holding the mTLS client certificate (built once at
+# WORKER_STARTUP so the certificate files are only read from disk on worker startup)
+STATE_TLS_VERIFY = "tls_verify"
+
+
+@dataclass(frozen=True)
+class MtlsConfig:
+    """Client certificate configuration for mTLS on outbound notification requests"""
+
+    cert_path: str  # Path to client certificate PEM file
+    key_path: str  # Path to client private key PEM file
+    serca_path: str | None  # Path to SERCA PEM for verifying device server certs (None = system CAs)
+
+
+def build_tls_verify(disable_tls_verify: bool, mtls_config: MtlsConfig | None) -> ssl.SSLContext | bool:
+    """Builds the httpx "verify" argument for outbound notifications. With mTLS configured this reads the client
+    certificate (and optional SERCA) from disk into a reusable SSLContext; otherwise returns a bool toggling standard
+    TLS verification. Intended to be called once at worker startup so the certificate files are not re-read per request.
+    """
+    if mtls_config is None:
+        return not disable_tls_verify
+
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+    ssl_context.set_ciphers("ECDHE-ECDSA-AES128-CCM8:ALL:!aNULL")
+    if disable_tls_verify:
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+    else:
+        ssl_context.check_hostname = True
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
+        if mtls_config.serca_path is not None:
+            ssl_context.load_verify_locations(cafile=mtls_config.serca_path)
+    ssl_context.load_cert_chain(certfile=mtls_config.cert_path, keyfile=mtls_config.key_path)
+    return ssl_context
 
 
 # Reference to the shared InMemoryBroker. Will be lazily instantiated
@@ -98,8 +134,8 @@ async def href_prefix_dependency(context: Annotated[Context, TaskiqDepends()]) -
     return getattr(context.state, STATE_HREF_PREFIX, None)
 
 
-async def disable_tls_verify_dependency(context: Annotated[Context, TaskiqDepends()]) -> bool:
-    return getattr(context.state, STATE_DISABLE_TLS_VERIFY, False)
+async def tls_verify_dependency(context: Annotated[Context, TaskiqDepends()]) -> ssl.SSLContext | bool:
+    return getattr(context.state, STATE_TLS_VERIFY, True)
 
 
 async def session_dependency(context: Annotated[Context, TaskiqDepends()]) -> AsyncGenerator[AsyncSession, None]:
