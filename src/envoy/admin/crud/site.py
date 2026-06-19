@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -137,3 +137,13 @@ async def select_single_site_no_scoping(
 
     resp = await session.execute(stmt)
     return resp.scalar_one_or_none()
+
+
+async def set_site_group_assignments(
+    session: AsyncSession, site_id: int, group_ids: list[int], changed_time: datetime
+) -> None:
+    """Replaces all group assignments for a site with the provided group_ids.
+    An empty list clears all assignments."""
+    await session.execute(delete(SiteGroupAssignment).where(SiteGroupAssignment.site_id == site_id))
+    for group_id in group_ids:
+        session.add(SiteGroupAssignment(site_id=site_id, site_group_id=group_id, changed_time=changed_time))

@@ -10,6 +10,7 @@ from envoy.admin.crud.site import (
     select_all_site_groups,
     select_all_sites,
     select_single_site_no_scoping,
+    set_site_group_assignments,
 )
 from envoy.admin.mapper.site import SiteGroupMapper, SiteMapper
 from envoy.notification.manager.notification import NotificationManager
@@ -101,6 +102,9 @@ class SiteManager:
         if update_request.post_rate_seconds is not None:
             # Positive values update as is - zero or negative values are treated as None
             site.post_rate_seconds = update_request.post_rate_seconds if update_request.post_rate_seconds > 0 else None
+
+        if update_request.group_ids is not None:
+            await set_site_group_assignments(session, site_id, update_request.group_ids, changed_time)
 
         await session.commit()
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, changed_time)
