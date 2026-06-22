@@ -38,9 +38,7 @@ def upgrade() -> None:
         sa.Column("created_time", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint("notification_transmit_id"),
     )
-    op.create_index(
-        "ix_notification_transmit_execute_after", "notification_transmit", ["execute_after"], unique=False
-    )
+    op.create_index("ix_notification_transmit_execute_after", "notification_transmit", ["execute_after"], unique=False)
 
 
 def downgrade() -> None:
