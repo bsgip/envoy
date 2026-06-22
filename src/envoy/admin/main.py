@@ -26,8 +26,10 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
 
     lifespan_managers = []
 
+    # The admin app enqueues notification checks (transactional outbox) but does not run the worker - the server app's
+    # in-process worker drains the shared queue
     if new_settings.enable_notifications:
-        lifespan_managers.append(enable_notification_client(new_settings.rabbit_mq_broker_url))
+        lifespan_managers.append(enable_notification_client())
 
     if tenant_id and client_id and resource_id and update_frequency_seconds:
         logger.info(
