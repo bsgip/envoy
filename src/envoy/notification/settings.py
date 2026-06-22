@@ -17,6 +17,10 @@ class AppSettings(CommonSettings):
         None  # Path to SERCA PEM for verifying device server certs (None = system CAs)
     )
 
+    notification_poll_seconds: float = 3  # How long the worker sleeps between polls when the queues are empty
+    notification_check_batch_size: int = 10  # Max notification_check rows claimed per worker cycle
+    notification_transmit_batch_size: int = 20  # Max notification_transmit rows claimed (and sent) per worker cycle
+
 
 def generate_settings() -> AppSettings:
     """Generates and configures a new instance of the AppSettings"""
