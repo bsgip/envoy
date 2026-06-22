@@ -42,6 +42,8 @@ def pg_empty_config(
 
     if "notifications_enabled" in request.fixturenames:
         os.environ["ENABLE_NOTIFICATIONS"] = "True"
+        # Poll quickly so the app's in-process notification worker drains the queue promptly during tests
+        os.environ["NOTIFICATION_POLL_SECONDS"] = "0.2"
 
     pem_marker = request.node.get_closest_marker("cert_header")
     if pem_marker is not None:
