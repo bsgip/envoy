@@ -88,7 +88,7 @@ class SubscriptionCondition(Base):
 
 class NotificationCheck(Base):
     """A pending request to inspect a resource for changes/deletions at a particular timestamp and fan those out to
-    matching subscriptions. Acts as the work queue feeding the notification worker. Rows are inserted as part of the 
+    matching subscriptions. Acts as the work queue feeding the notification worker. Rows are inserted as part of the
     request that changed the underlying resource and consumed (then deleted) by the notification worker."""
 
     __tablename__ = "notification_check"

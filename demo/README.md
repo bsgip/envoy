@@ -28,7 +28,7 @@ This will start the following services:
     * Will only accept TLS connections with a client cert that has been signed by the "test CA" (see below)
 * [postgres](https://www.postgresql.org/): As the database provider
     * Database will be exposed to the host machine and accessible using: `postgresql+asyncpg://test_user:test_pwd@localhost:8003/test_db`
-* [RabbitMQ](https://www.rabbitmq.com/): As the messaging broker (underlies 2030.5 pub/sub)
+* The 2030.5 pub/sub notification worker runs in-process within envoy, polling the envoy database queue tables to deliver notifications (no separate process or broker required)
 * envoy: Requests are expected to be proxied through nginx as that will handle all of the certificate validation.
     *  Port `8000` will allow requests to access envoy directly but will require manually specifying `x-forwarded-client-cert`
 * envoy-admin:
