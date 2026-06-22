@@ -169,9 +169,10 @@ class DERCapabilityManager:
             new_der_rating.site_der_rating_id = site_der.site_der_rating.site_der_rating_id
             await session.merge(new_der_rating)
 
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.SITE_DER_RATING, changed_time
+        )
         await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_DER_RATING, changed_time)
 
 
 class DERSettingsManager:
@@ -235,9 +236,10 @@ class DERSettingsManager:
             new_der_setting.site_der_setting_id = site_der.site_der_setting.site_der_setting_id
             await session.merge(new_der_setting)
 
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.SITE_DER_SETTING, changed_time
+        )
         await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_DER_SETTING, changed_time)
 
 
 class DERAvailabilityManager:
@@ -301,11 +303,10 @@ class DERAvailabilityManager:
             new_der_availability.site_der_availability_id = site_der.site_der_availability.site_der_availability_id
             await session.merge(new_der_availability)
 
-        await session.commit()
-
         await NotificationManager.notify_changed_deleted_entities(
-            SubscriptionResource.SITE_DER_AVAILABILITY, changed_time
+            session, SubscriptionResource.SITE_DER_AVAILABILITY, changed_time
         )
+        await session.commit()
 
 
 class DERStatusManager:
@@ -369,6 +370,7 @@ class DERStatusManager:
             new_der_status.site_der_status_id = site_der.site_der_status.site_der_status_id
             await session.merge(new_der_status)
 
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.SITE_DER_STATUS, changed_time
+        )
         await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_DER_STATUS, changed_time)

@@ -224,9 +224,8 @@ class MirrorMeteringManager:
             group_id=mup_id,
             deleted_time=delete_time,
         )
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.READING, delete_time)
         await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.READING, delete_time)
 
         return result
 
@@ -415,5 +414,5 @@ class MirrorMeteringManager:
         site_readings = MirrorMeterReadingMapper.map_from_request(mmrs, srts_by_mrid, changed_time)
         if site_readings:
             await upsert_site_readings(session, changed_time, site_readings)
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.READING, changed_time)
         await session.commit()
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.READING, changed_time)
