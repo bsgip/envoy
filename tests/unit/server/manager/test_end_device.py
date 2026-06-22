@@ -385,7 +385,7 @@ async def test_delete_enddevice_for_scope(
     )
     mock_utc_now.assert_called_once()
     mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
-        SubscriptionResource.SITE, delete_time
+        mock.ANY, SubscriptionResource.SITE, delete_time
     )
 
 
@@ -452,7 +452,9 @@ async def test_add_enddevice_for_scope_aggregator_with_sfdi(
     mock_insert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_not_called()
-    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
+        mock.ANY, SubscriptionResource.SITE, now
+    )
 
 
 @pytest.mark.anyio
@@ -576,7 +578,9 @@ async def test_add_enddevice_for_scope_device(
     mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now, 55312)
     mock_insert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
-    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
+        mock.ANY, SubscriptionResource.SITE, now
+    )
 
 
 @pytest.mark.anyio
@@ -620,7 +624,9 @@ async def test_add_enddevice_for_scope_device_lfdi_case_insensitive(
     mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now, 55312)
     mock_insert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
-    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(SubscriptionResource.SITE, now)
+    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
+        mock.ANY, SubscriptionResource.SITE, now
+    )
 
 
 @pytest.mark.anyio
