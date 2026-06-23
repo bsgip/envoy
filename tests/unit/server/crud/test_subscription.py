@@ -417,7 +417,7 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
         product(
             [
                 Subscription(
-                    subscription_id=1,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
+                    subscription_id=1,  # Test metadata, WONT be sent to the DB, it's an ID that is expected to update
                     created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
                     aggregator_id=1,
                     changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
@@ -428,7 +428,7 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
                     entity_limit=555,
                 ),  # Will rewrite sub 1
                 Subscription(
-                    subscription_id=2,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
+                    subscription_id=2,  # Test metadata, WONT be sent to the DB, it's an ID that is expected to update
                     created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
                     aggregator_id=1,
                     changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
@@ -439,7 +439,7 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
                     entity_limit=555,
                 ),  # Will rewrite sub 2
                 Subscription(
-                    subscription_id=3,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
+                    subscription_id=3,  # Test metadata, WONT be sent to the DB, it's an ID that is expected to update
                     created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
                     aggregator_id=2,
                     changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
@@ -451,7 +451,7 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
                     entity_limit=555,
                 ),  # Will rewrite sub 3
                 Subscription(
-                    subscription_id=4,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
+                    subscription_id=4,  # Test metadata, WONT be sent to the DB, it's an ID that is expected to update
                     created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
                     aggregator_id=1,
                     changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
@@ -462,7 +462,7 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
                     entity_limit=555,
                 ),  # Will rewrite sub 4
                 Subscription(
-                    subscription_id=5,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
+                    subscription_id=5,  # Test metadata, WONT be sent to the DB, it's an ID that is expected to update
                     created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
                     aggregator_id=1,
                     changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
