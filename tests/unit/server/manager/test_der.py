@@ -29,7 +29,7 @@ from envoy.server.manager.der import (
     DERManager,
     DERSettingsManager,
     DERStatusManager,
-    site_der_for_site,
+    _site_for_der_or_raise,
 )
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
 from envoy.server.mapper.sep2.der import to_hex_binary
@@ -40,124 +40,81 @@ from envoy.server.model.archive.site import (
     ArchiveSiteDERStatus,
 )
 from envoy.server.model.config.server import RuntimeServerConfig
-from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.subscription import SubscriptionResource
 from envoy.server.request_scope import SiteRequestScope
 
 
-@mock.patch("envoy.server.manager.der.select_site_der_for_site")
 @mock.patch("envoy.server.manager.der.select_single_site_with_site_id")
-@mock.patch("envoy.server.manager.der.generate_default_site_der")
 @pytest.mark.anyio
-async def test_site_der_for_site_no_der(
-    mock_generate_default_site_der: mock.MagicMock,
+async def test_site_for_der_or_raise_exists(
     mock_select_single_site_with_site_id: mock.MagicMock,
-    mock_select_site_der_for_site: mock.MagicMock,
 ):
-    """Fetch when no existing SiteDER exists"""
+    """Returns the site when it is accessible"""
     site_id = 123
     agg_id = 456
     mock_session = create_mock_session()
 
-    site_der: SiteDER = generate_class_instance(SiteDER)
     site: Site = generate_class_instance(Site)
-    mock_select_site_der_for_site.return_value = None
     mock_select_single_site_with_site_id.return_value = site
-    mock_generate_default_site_der.return_value = site_der
 
-    result = await site_der_for_site(mock_session, agg_id, site_id)
-    assert result is site_der
+    result = await _site_for_der_or_raise(mock_session, agg_id, site_id)
+    assert result is site
 
-    mock_select_site_der_for_site.assert_called_once_with(mock_session, site_id=site_id, aggregator_id=agg_id)
-    mock_select_single_site_with_site_id.assert_called_with(mock_session, site_id=site_id, aggregator_id=agg_id)
-    mock_generate_default_site_der.assert_called_with(site_id=site_id, changed_time=site.changed_time)
+    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, site_id=site_id, aggregator_id=agg_id)
     assert_mock_session(mock_session)
 
 
-@mock.patch("envoy.server.manager.der.select_site_der_for_site")
 @mock.patch("envoy.server.manager.der.select_single_site_with_site_id")
-@mock.patch("envoy.server.manager.der.generate_default_site_der")
 @pytest.mark.anyio
-async def test_site_der_for_site_existing_der(
-    mock_generate_default_site_der: mock.MagicMock,
+async def test_site_for_der_or_raise_inaccessible_site(
     mock_select_single_site_with_site_id: mock.MagicMock,
-    mock_select_site_der_for_site: mock.MagicMock,
 ):
-    """Fetch when SiteDER already exists"""
+    """Raises NotFoundError when the site isn't accessible"""
     site_id = 123
     agg_id = 456
     mock_session = create_mock_session()
 
-    site_der: SiteDER = generate_class_instance(SiteDER)
-    mock_select_site_der_for_site.return_value = site_der
-
-    result = await site_der_for_site(mock_session, agg_id, site_id)
-    assert result is site_der
-
-    mock_select_site_der_for_site.assert_called_once_with(mock_session, site_id=site_id, aggregator_id=agg_id)
-    mock_select_single_site_with_site_id.assert_not_called()
-    mock_generate_default_site_der.assert_not_called()
-    assert_mock_session(mock_session)
-
-
-@mock.patch("envoy.server.manager.der.select_site_der_for_site")
-@mock.patch("envoy.server.manager.der.select_single_site_with_site_id")
-@mock.patch("envoy.server.manager.der.generate_default_site_der")
-@pytest.mark.anyio
-async def test_site_der_for_site_inaccessible_site(
-    mock_generate_default_site_der: mock.MagicMock,
-    mock_select_single_site_with_site_id: mock.MagicMock,
-    mock_select_site_der_for_site: mock.MagicMock,
-):
-    """Fetch when SiteDER doesn't exist and the site isn't accessible"""
-    site_id = 123
-    agg_id = 456
-    mock_session = create_mock_session()
-
-    mock_select_site_der_for_site.return_value = None
     mock_select_single_site_with_site_id.return_value = None
 
     with pytest.raises(NotFoundError):
-        await site_der_for_site(mock_session, agg_id, site_id)
+        await _site_for_der_or_raise(mock_session, agg_id, site_id)
 
-    mock_select_site_der_for_site.assert_called_once_with(mock_session, site_id=site_id, aggregator_id=agg_id)
-    mock_select_single_site_with_site_id.assert_called_with(mock_session, site_id=site_id, aggregator_id=agg_id)
-    mock_generate_default_site_der.assert_not_called()
+    mock_select_single_site_with_site_id.assert_called_once_with(mock_session, site_id=site_id, aggregator_id=agg_id)
     assert_mock_session(mock_session)
 
 
 @mock.patch("envoy.server.manager.der.DERMapper")
-@mock.patch("envoy.server.manager.der.site_der_for_site")
+@mock.patch("envoy.server.manager.der._site_for_der_or_raise")
 @pytest.mark.anyio
 async def test_fetch_der_for_site_der_exists(
-    mock_site_der_for_site: mock.MagicMock,
+    mock_site_for_der_or_raise: mock.MagicMock,
     mock_DERMapper: mock.MagicMock,
 ):
-    """Fetch when site_der_for_site returns an instance"""
+    """Fetch when the site is accessible"""
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mock_session = create_mock_session()
 
-    site_der: SiteDER = generate_class_instance(SiteDER, seed=101)
-    mock_site_der_for_site.return_value = site_der
+    site: Site = generate_class_instance(Site, seed=101)
+    mock_site_for_der_or_raise.return_value = site
     mock_map = mock.Mock()
     mock_DERMapper.map_to_response = mock.Mock(return_value=mock_map)
 
     result = await DERManager.fetch_der_for_site(mock_session, scope, PUBLIC_SITE_DER_ID)
     assert result is mock_map
 
-    assert site_der.site_der_id == PUBLIC_SITE_DER_ID, "This should've been set during the fetch"
-    mock_DERMapper.map_to_response.assert_called_once_with(scope, site_der, None)
-    mock_site_der_for_site.assert_called_once_with(
+    mock_DERMapper.map_to_response.assert_called_once_with(scope, scope.site_id, None)
+    mock_site_for_der_or_raise.assert_called_once_with(
         mock_session, aggregator_id=scope.aggregator_id, site_id=scope.site_id
     )
     assert_mock_session(mock_session)
 
 
 @mock.patch("envoy.server.manager.der.DERMapper")
-@mock.patch("envoy.server.manager.der.site_der_for_site")
+@mock.patch("envoy.server.manager.der._site_for_der_or_raise")
 @pytest.mark.anyio
 async def test_fetch_der_for_site_bad_der_id(
-    mock_site_der_for_site: mock.MagicMock,
+    mock_site_for_der_or_raise: mock.MagicMock,
     mock_DERMapper: mock.MagicMock,
 ):
     """Fetch when DER ID is incorrect"""
@@ -168,45 +125,42 @@ async def test_fetch_der_for_site_bad_der_id(
         await DERManager.fetch_der_for_site(mock_session, scope, PUBLIC_SITE_DER_ID + 1)
 
     mock_DERMapper.assert_not_called()
-    mock_site_der_for_site.assert_not_called()
+    mock_site_for_der_or_raise.assert_not_called()
     assert_mock_session(mock_session)
 
 
 AFTER_EPOCH = datetime(2022, 10, 9, 8, 7, 6, tzinfo=UTC)
 
 
-@mock.patch("envoy.server.manager.der.site_der_for_site")
+@mock.patch("envoy.server.manager.der.select_der_changed_time_for_site")
+@mock.patch("envoy.server.manager.der._site_for_der_or_raise")
 @mock.patch("envoy.server.manager.der.RuntimeServerConfigManager.fetch_current_config")
 @pytest.mark.parametrize(
-    "contains, start, limit, after, expected_count",
+    "start, limit, after, expected_count",
     [
-        (True, 0, 99, AFTER_EPOCH - timedelta(seconds=10), 1),
-        (False, 0, 99, AFTER_EPOCH - timedelta(seconds=10), 1),
-        (True, 0, 0, AFTER_EPOCH - timedelta(seconds=10), 0),
-        (False, 0, 0, AFTER_EPOCH - timedelta(seconds=10), 0),
-        (True, 1, 99, AFTER_EPOCH - timedelta(seconds=10), 0),
-        (True, 0, 99, AFTER_EPOCH + timedelta(seconds=10), 0),
+        (0, 99, AFTER_EPOCH - timedelta(seconds=10), 1),
+        (0, 0, AFTER_EPOCH - timedelta(seconds=10), 0),
+        (1, 99, AFTER_EPOCH - timedelta(seconds=10), 0),
+        (0, 99, AFTER_EPOCH + timedelta(seconds=10), 0),
     ],
 )
 @pytest.mark.anyio
 async def test_fetch_der_list_for_site_pagination(
     mock_fetch_current_config: mock.MagicMock,
-    mock_site_der_for_site: mock.MagicMock,
+    mock_site_for_der_or_raise: mock.MagicMock,
+    mock_select_der_changed_time_for_site: mock.MagicMock,
     start: int,
     limit: int,
     after: datetime,
-    contains: bool,
     expected_count: int,
 ):
-    """Fetch when site_der_for_site returns an instance"""
+    """The single DER appears in the list unless paged out or filtered out by the changed_time"""
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
     mock_session = create_mock_session()
-    mock_session.__contains__ = mock.Mock(return_value=contains)
-    mock_session.expunge = mock.Mock()
 
-    site_der: SiteDER = generate_class_instance(SiteDER, seed=101)
-    site_der.changed_time = AFTER_EPOCH
-    mock_site_der_for_site.return_value = site_der
+    site: Site = generate_class_instance(Site, seed=101)
+    mock_site_for_der_or_raise.return_value = site
+    mock_select_der_changed_time_for_site.return_value = AFTER_EPOCH
 
     config = RuntimeServerConfig()
     mock_fetch_current_config.return_value = config
@@ -215,16 +169,10 @@ async def test_fetch_der_list_for_site_pagination(
     assert isinstance(result, DERListResponse)
 
     assert len(result.DER_ or []) == expected_count
-    mock_site_der_for_site.assert_called_once_with(
+    mock_site_for_der_or_raise.assert_called_once_with(
         mock_session, aggregator_id=scope.aggregator_id, site_id=scope.site_id
     )
     assert_mock_session(mock_session)
-
-    # We only expunge objects that exist in the session (otherwise we get errors)
-    if contains:
-        mock_session.expunge.assert_called_once_with(site_der)
-    else:
-        mock_session.expunge.assert_not_called()
 
 
 @pytest.mark.parametrize(

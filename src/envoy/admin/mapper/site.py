@@ -187,17 +187,10 @@ class SiteMapper:
         else:
             site_groups = []
 
-        rating: SiteDERRating | None = None
-        setting: SiteDERSetting | None = None
-        availability: SiteDERAvailability | None = None
-        status: SiteDERStatus | None = None
-        if site.site_ders:
-            site_der = site.site_ders[0]
-            if site_der:
-                rating = site_der.site_der_rating
-                setting = site_der.site_der_setting
-                availability = site_der.site_der_availability
-                status = site_der.site_der_status
+        rating: SiteDERRating | None = site.site_der_rating
+        setting: SiteDERSetting | None = site.site_der_setting
+        availability: SiteDERAvailability | None = site.site_der_availability
+        status: SiteDERStatus | None = site.site_der_status
 
         return SiteResponse(
             aggregator_id=site.aggregator_id,

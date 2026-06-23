@@ -143,7 +143,7 @@ def test_site_single_entity_mapper():
         Site, seed=303, optional_is_none=False, generate_relationships=True
     )
     assert len(with_groups_and_der.assignments) > 0, "Expecting at least 1 group"
-    assert len(with_groups_and_der.site_ders) > 0, "Expecting at least 1 der"
+    assert with_groups_and_der.site_der_rating is not None, "Expecting der data"
 
     all_set_mapped = SiteMapper.map_to_site_response(all_set)
     with_none_mapped = SiteMapper.map_to_site_response(with_none)
