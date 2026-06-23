@@ -1,3 +1,4 @@
+import ssl
 import unittest.mock as mock
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
@@ -205,25 +206,16 @@ async def test_schedule_retry_transmission(
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("disable_tls_verify, expected_verify", [(False, True), (True, False)])
+@pytest.mark.parametrize("verify", [True, False, mock.MagicMock(spec=ssl.SSLContext)])
 @mock.patch("envoy.notification.task.transmit.AsyncClient")
-async def test_do_transmit_notification_tls_verify(
-    mock_AsyncClient: mock.MagicMock, disable_tls_verify: bool, expected_verify: bool
-):
-    """Tests that the disable_tls_verify flag is correctly passed through to AsyncClient as verify"""
+async def test_do_transmit_notification_passes_verify(mock_AsyncClient: mock.MagicMock, verify: ssl.SSLContext | bool):
+    """The prebuilt verify argument is passed straight through to AsyncClient"""
     mocked_client = MockedAsyncClient(Response(status_code=HTTPStatus.OK, content="Mock response content"))
     mock_AsyncClient.return_value = mocked_client
 
-    await do_transmit_notification(
-        "http://foo.bar/example",
-        "content",
-        "/sub/1",
-        str(uuid4()),
-        0,
-        disable_tls_verify=disable_tls_verify,
-    )
+    await do_transmit_notification("http://foo.bar/example", "content", "/sub/1", str(uuid4()), 0, verify=verify)
 
-    mock_AsyncClient.assert_called_once_with(timeout=mock.ANY, verify=expected_verify)
+    mock_AsyncClient.assert_called_once_with(timeout=mock.ANY, verify=verify)
 
 
 @pytest.mark.anyio
@@ -411,7 +403,7 @@ async def test_transmit_notification_no_retry(
         attempt,
         broker,
         session,
-        disable_tls_verify=False,
+        verify=True,
     )
 
     mock_safely_log_transmit_result.assert_called_once()
@@ -421,7 +413,7 @@ async def test_transmit_notification_no_retry(
         subscription_href,
         notification_id,
         attempt,
-        disable_tls_verify=False,
+        verify=True,
     )
     mock_schedule_retry_transmission.assert_not_called()
     assert_mock_session(session)
@@ -461,7 +453,7 @@ async def test_transmit_notification_with_retry(
         attempt,
         broker,
         session,
-        disable_tls_verify=False,
+        verify=True,
     )
 
     mock_safely_log_transmit_result.assert_called_once()
@@ -471,7 +463,7 @@ async def test_transmit_notification_with_retry(
         subscription_href,
         notification_id,
         attempt,
-        disable_tls_verify=False,
+        verify=True,
     )
     mock_schedule_retry_transmission.assert_called_once_with(
         broker, remote_uri, content, subscription_href, subscription_id, notification_id, attempt

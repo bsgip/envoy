@@ -31,7 +31,6 @@ from envoy.server.model.archive.base import ArchiveBase
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (
     ArchiveSite,
-    ArchiveSiteDER,
     ArchiveSiteDERAvailability,
     ArchiveSiteDERRating,
     ArchiveSiteDERSetting,
@@ -42,7 +41,7 @@ from envoy.server.model.archive.subscription import ArchiveSubscription, Archive
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -551,7 +550,17 @@ async def test_upsert_site_for_aggregator_cant_change_agg_id(pg_base_config):
         original_registration_pin = original_site.registration_pin
 
         update_attempt_site = clone_class_instance(
-            original_site, ignored_properties=set(["assignments", "site_ders", "default_site_control"])
+            original_site,
+            ignored_properties=set(
+                [
+                    "assignments",
+                    "site_der_rating",
+                    "site_der_setting",
+                    "site_der_availability",
+                    "site_der_status",
+                    "default_site_control",
+                ]
+            ),
         )
         update_attempt_site.aggregator_id = 3
         update_attempt_site.nmi = "new-nmi"
@@ -673,20 +682,10 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
     snapshot.append(
         await count_table_rows(
             session,
-            SiteDER,
-            Site,
-            ArchiveSiteDER,
-            lambda q: q.where(SiteDER.site_id == site_id),
-        )
-    )
-
-    snapshot.append(
-        await count_table_rows(
-            session,
             SiteDERAvailability,
-            SiteDER,
+            None,
             ArchiveSiteDERAvailability,
-            lambda q: q.where(SiteDER.site_id == site_id),
+            lambda q: q.where(SiteDERAvailability.site_id == site_id),
         )
     )
 
@@ -694,9 +693,9 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         await count_table_rows(
             session,
             SiteDERRating,
-            SiteDER,
+            None,
             ArchiveSiteDERRating,
-            lambda q: q.where(SiteDER.site_id == site_id),
+            lambda q: q.where(SiteDERRating.site_id == site_id),
         )
     )
 
@@ -704,9 +703,9 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         await count_table_rows(
             session,
             SiteDERSetting,
-            SiteDER,
+            None,
             ArchiveSiteDERSetting,
-            lambda q: q.where(SiteDER.site_id == site_id),
+            lambda q: q.where(SiteDERSetting.site_id == site_id),
         )
     )
 
@@ -714,9 +713,9 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         await count_table_rows(
             session,
             SiteDERStatus,
-            SiteDER,
+            None,
             ArchiveSiteDERStatus,
-            lambda q: q.where(SiteDER.site_id == site_id),
+            lambda q: q.where(SiteDERStatus.site_id == site_id),
         )
     )
 
@@ -932,7 +931,17 @@ async def test_insert_site_for_aggregator_cant_change_agg_id(pg_base_config):
         original_registration_pin = original_site.registration_pin
 
         update_attempt_site = clone_class_instance(
-            original_site, ignored_properties=set(["assignments", "site_ders", "default_site_control"])
+            original_site,
+            ignored_properties=set(
+                [
+                    "assignments",
+                    "site_der_rating",
+                    "site_der_setting",
+                    "site_der_availability",
+                    "site_der_status",
+                    "default_site_control",
+                ]
+            ),
         )
         update_attempt_site.aggregator_id = 3
         update_attempt_site.nmi = "new-nmi"

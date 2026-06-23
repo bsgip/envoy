@@ -41,21 +41,11 @@ class ArchiveSite(ArchiveBase):
     post_rate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
 
-class ArchiveSiteDER(ArchiveBase):
-    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDER.__tablename__
-
-    site_der_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
-    site_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
-
-    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
-
 class ArchiveSiteDERRating(ArchiveBase):
     __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERRating.__tablename__
 
     site_der_rating_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
-    site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
+    site_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -115,7 +105,7 @@ class ArchiveSiteDERSetting(ArchiveBase):
     __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERSetting.__tablename__
 
     site_der_setting_id: Mapped[int] = mapped_column(INTEGER, index=True)  # This is the original PK
-    site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
+    site_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -177,7 +167,7 @@ class ArchiveSiteDERAvailability(ArchiveBase):
     __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERAvailability.__tablename__
 
     site_der_availability_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
-    site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
+    site_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # When the SiteDERAvailability was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -199,7 +189,7 @@ class ArchiveSiteDERStatus(ArchiveBase):
     __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteDERStatus.__tablename__
 
     site_der_status_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
-    site_der_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
+    site_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

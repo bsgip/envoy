@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 from http import HTTPStatus
 
@@ -22,7 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.manager.der import PUBLIC_SITE_DER_ID
-from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from tests.integration.request import build_paging_params
 from tests.integration.response import assert_error_response, assert_response_header, read_response_body_string
 
@@ -32,9 +33,10 @@ from tests.integration.response import assert_error_response, assert_response_he
     [
         (1, 0, 99, None, [PUBLIC_SITE_DER_ID]),
         (2, 0, 99, None, [PUBLIC_SITE_DER_ID]),
-        (4, 0, 99, None, [PUBLIC_SITE_DER_ID]),  # Has no site_der (will use the virtual element instead)
-        (1, 0, 99, datetime(2024, 3, 14, 5, 55, 44, tzinfo=UTC), [PUBLIC_SITE_DER_ID]),
-        (1, 0, 99, datetime(2024, 3, 14, 5, 55, 45, tzinfo=UTC), []),
+        (4, 0, 99, None, [PUBLIC_SITE_DER_ID]),  # Has no DER data (will use the virtual element instead)
+        # DER changed_time = most recent sub resource change; site 1's status is at 2022-11-01 11:05:04.5
+        (1, 0, 99, datetime(2022, 11, 1, 11, 5, 4, tzinfo=UTC), [PUBLIC_SITE_DER_ID]),
+        (1, 0, 99, datetime(2022, 11, 1, 11, 5, 5, tzinfo=UTC), []),
         (1, 1, 99, None, []),
         (1, None, None, None, [PUBLIC_SITE_DER_ID]),
     ],
@@ -196,10 +198,8 @@ async def snapshot_sub_entity_changed_created_changed_time(
     session: AsyncSession, sub_entity_type: type, site_id: int
 ) -> tuple[datetime, datetime]:
     """Fetches the created/changed times for the subentity associated with site_id"""
-    stmt = (
-        select(sub_entity_type.created_time, sub_entity_type.changed_time)  # type: ignore
-        .join(SiteDER)
-        .where(SiteDER.site_id == site_id)
+    stmt = select(sub_entity_type.created_time, sub_entity_type.changed_time).where(  # type: ignore
+        sub_entity_type.site_id == site_id  # type: ignore
     )
     return (await session.execute(stmt)).one()  # type: ignore
 
@@ -403,6 +403,66 @@ async def test_roundtrip_upsert_der_setting(
         await assert_sub_entity_count(
             session, site_id, SiteDERSetting, before_count, expected_not_found, expected_update
         )
+
+
+@pytest.mark.anyio
+async def test_concurrent_der_upsert_creates_single_site_der(
+    pg_base_config,
+    client: AsyncClient,
+    valid_headers: dict,
+):
+    """Regression test for the race where concurrently submitting DERCapability/DERSettings/DERStatus to a site with
+    no existing DER data used to create multiple (duplicate) parent site_der rows. With the DER sub resources hanging
+    directly off the site (unique per site) there is no shared parent to duplicate - each lands exactly once."""
+
+    der_id = PUBLIC_SITE_DER_ID
+    site_id = 4  # Has no DER data yet
+
+    capability: DERCapability = generate_class_instance(DERCapability, seed=3001, generate_relationships=True)
+    capability.modesSupported = "00"
+    capability.doeModesSupported = "03"
+    capability.vppModesSupported = "04"
+
+    settings: DERSettings = generate_class_instance(DERSettings, seed=4001, generate_relationships=True)
+    settings.modesEnabled = "00"
+    settings.doeModesEnabled = "04"
+    settings.vppModesEnabled = "05"
+
+    status: DERStatus = generate_class_instance(DERStatus, seed=13, generate_relationships=True)
+    status.alarmStatus = "01"
+    status.genConnectStatus.value = "02"  # ty:ignore[invalid-assignment]
+    status.storConnectStatus.value = "04"  # ty:ignore[invalid-assignment]
+    status.manufacturerStatus.value = "sts"  # ty:ignore[invalid-assignment]
+
+    responses = await asyncio.gather(
+        client.put(
+            uri.DERCapabilityUri.format(site_id=site_id, der_id=der_id),
+            headers=valid_headers,
+            content=capability.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+        ),
+        client.put(
+            uri.DERSettingsUri.format(site_id=site_id, der_id=der_id),
+            headers=valid_headers,
+            content=settings.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+        ),
+        client.put(
+            uri.DERStatusUri.format(site_id=site_id, der_id=der_id),
+            headers=valid_headers,
+            content=status.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True),
+        ),
+    )
+    for response in responses:
+        assert_response_header(response, HTTPStatus.NO_CONTENT, expected_content_type=None)
+
+    # Each sub resource type must exist exactly once for the site (no duplicates from the concurrent inserts)
+    async with generate_async_session(pg_base_config) as session:
+        for sub_entity_type in (SiteDERRating, SiteDERSetting, SiteDERStatus):
+            count = (
+                await session.execute(
+                    select(func.count()).select_from(sub_entity_type).where(sub_entity_type.site_id == site_id)
+                )
+            ).scalar()
+            assert count == 1, f"Expected exactly one {sub_entity_type.__name__} for site {site_id}, found {count}"
 
 
 @pytest.mark.anyio

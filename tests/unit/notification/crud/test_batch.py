@@ -57,7 +57,6 @@ from envoy.server.model.archive.doe import (
 )
 from envoy.server.model.archive.site import (
     ArchiveSite,
-    ArchiveSiteDER,
     ArchiveSiteDERAvailability,
     ArchiveSiteDERRating,
     ArchiveSiteDERSetting,
@@ -67,7 +66,7 @@ from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveS
 from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffComponent, ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroupDefault
-from envoy.server.model.site import SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
 from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
@@ -223,48 +222,36 @@ def test_get_batch_key_invalid():
         (
             SubscriptionResource.SITE_DER_AVAILABILITY,
             SiteDERAvailability(
-                site_der_id=11,
+                site_id=3,
                 site_der_availability_id=22,
-                site_der=SiteDER(
-                    site_id=3,
-                    site=Site(site_id=3, aggregator_id=1),
-                ),
+                site=Site(site_id=3, aggregator_id=1),
             ),
             (1, 3, PUBLIC_SITE_DER_ID),
         ),
         (
             SubscriptionResource.SITE_DER_RATING,
             SiteDERRating(
-                site_der_id=11,
+                site_id=3,
                 site_der_rating_id=22,
-                site_der=SiteDER(
-                    site_id=3,
-                    site=Site(site_id=3, aggregator_id=1),
-                ),
+                site=Site(site_id=3, aggregator_id=1),
             ),
             (1, 3, PUBLIC_SITE_DER_ID),
         ),
         (
             SubscriptionResource.SITE_DER_SETTING,
             SiteDERSetting(
-                site_der_id=11,
+                site_id=3,
                 site_der_setting_id=22,
-                site_der=SiteDER(
-                    site_id=3,
-                    site=Site(site_id=3, aggregator_id=1),
-                ),
+                site=Site(site_id=3, aggregator_id=1),
             ),
             (1, 3, PUBLIC_SITE_DER_ID),
         ),
         (
             SubscriptionResource.SITE_DER_STATUS,
             SiteDERStatus(
-                site_der_id=11,
+                site_id=3,
                 site_der_status_id=22,
-                site_der=SiteDER(
-                    site_id=3,
-                    site=Site(site_id=3, aggregator_id=1),
-                ),
+                site=Site(site_id=3, aggregator_id=1),
             ),
             (1, 3, PUBLIC_SITE_DER_ID),
         ),
@@ -1445,8 +1432,7 @@ async def test_fetch_der_availability_by_timestamp(pg_base_config, timestamp: da
         for i in range(len(expected_ids)):
             assert list_entities[i].site_der_availability_id == expected_ids[i]
 
-        assert all([isinstance(e.site_der, SiteDER) for e in list_entities]), "SiteDER relationship populated"
-        assert all([isinstance(e.site_der.site, Site) for e in list_entities]), "Site relationship populated"
+        assert all([isinstance(e.site, Site) for e in list_entities]), "Site relationship populated"
 
 
 @pytest.mark.anyio
@@ -1492,47 +1478,15 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
             )
         )
 
-        # Inject a parent "archive" site_der that were deleted - the "newest" deleted value will be used
-        session.add(generate_class_instance(ArchiveSiteDER, seed=11, site_der_id=80, site_id=70))
+        # Inject archive der availability (only most recent is used). These now carry site_id directly.
         session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=55,
-                site_der_id=80,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=10),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=66,
-                site_der_id=80,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=5),  # Doesn't need to match the timestamp
-            )
-        )
-
-        # This deleted site_der will be ignored in favour of the version in the active table
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=77,
-                site_der_id=1,
-                site_id=1,
-                deleted_time=timestamp,
-            )
-        )
-
-        # Inject archive der availability (only most recent is used)
-        session.add(
-            generate_class_instance(ArchiveSiteDERAvailability, seed=88, site_der_id=1, site_der_availability_id=21)
+            generate_class_instance(ArchiveSiteDERAvailability, seed=88, site_id=1, site_der_availability_id=21)
         )
         session.add(
             generate_class_instance(
                 ArchiveSiteDERAvailability,
                 seed=99,
-                site_der_id=1,
+                site_id=1,
                 site_der_availability_id=21,
                 deleted_time=timestamp - timedelta(seconds=5),
             )
@@ -1541,7 +1495,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERAvailability,
                 seed=1010,
-                site_der_id=1,
+                site_id=1,
                 site_der_availability_id=21,
                 max_charge_duration_sec=21,  # for identifying this record later
                 deleted_time=timestamp,
@@ -1550,7 +1504,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
 
         # No deleted time so ignored
         session.add(
-            generate_class_instance(ArchiveSiteDERAvailability, seed=1111, site_der_id=1, site_der_availability_id=22)
+            generate_class_instance(ArchiveSiteDERAvailability, seed=1111, site_id=1, site_der_availability_id=22)
         )
 
         # Wrong deleted time so ignored
@@ -1558,18 +1512,18 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERAvailability,
                 seed=1212,
-                site_der_id=1,
+                site_id=1,
                 site_der_availability_id=23,
                 deleted_time=timestamp - timedelta(seconds=5),
             )
         )
 
-        # These will be picked up
+        # These will be picked up - id 24 resolves its site from the live table, id 25 from the archive site (70)
         session.add(
             generate_class_instance(
                 ArchiveSiteDERAvailability,
                 seed=1313,
-                site_der_id=2,
+                site_id=2,
                 site_der_availability_id=24,
                 max_charge_duration_sec=24,  # for identifying this record later
                 deleted_time=timestamp,
@@ -1579,7 +1533,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERAvailability,
                 seed=1414,
-                site_der_id=80,
+                site_id=70,
                 site_der_availability_id=25,
                 max_charge_duration_sec=25,  # for identifying this record later
                 deleted_time=timestamp,
@@ -1607,19 +1561,11 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
         assert set(expected_active_avail_ids) == set([e.site_der_availability_id for e in active_list_entities])
         assert set(expected_deleted_avail_ids) == set([e.site_der_availability_id for e in deleted_list_entities])
 
-        # Ensure the parent ORM relationship is populated for deleted/active instances
+        # Ensure the site ORM relationship is populated for deleted/active instances
+        assert all([isinstance(e.site, Site) for v_list in batch.models_by_batch_key.values() for e in v_list])
         assert all(
             [
-                isinstance(e.site_der, SiteDER) and isinstance(e.site_der.site, Site)
-                for v_list in batch.models_by_batch_key.values()
-                for e in v_list
-            ]
-        )
-        assert all(
-            [
-                hasattr(e, "site_der")
-                and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
+                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -1668,8 +1614,7 @@ async def test_fetch_der_rating_by_timestamp(pg_base_config, timestamp: datetime
         for i in range(len(expected_ids)):
             assert list_entities[i].site_der_rating_id == expected_ids[i]
 
-        assert all([isinstance(e.site_der, SiteDER) for e in list_entities]), "SiteDER relationship populated"
-        assert all([isinstance(e.site_der.site, Site) for e in list_entities]), "Site relationship populated"
+        assert all([isinstance(e.site, Site) for e in list_entities]), "Site relationship populated"
 
 
 @pytest.mark.anyio
@@ -1715,45 +1660,13 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
             )
         )
 
-        # Inject a parent "archive" site_der that were deleted - the "newest" deleted value will be used
-        session.add(generate_class_instance(ArchiveSiteDER, seed=11, site_der_id=80, site_id=70))
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=55,
-                site_der_id=80,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=10),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=66,
-                site_der_id=80,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=5),  # Doesn't need to match the timestamp
-            )
-        )
-
-        # This deleted site_der will be ignored in favour of the version in the active table
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=77,
-                site_der_id=1,
-                site_id=1,
-                deleted_time=timestamp,
-            )
-        )
-
         # Inject archive der rating (only most recent is used)
-        session.add(generate_class_instance(ArchiveSiteDERRating, seed=88, site_der_id=1, site_der_rating_id=21))
+        session.add(generate_class_instance(ArchiveSiteDERRating, seed=88, site_id=1, site_der_rating_id=21))
         session.add(
             generate_class_instance(
                 ArchiveSiteDERRating,
                 seed=99,
-                site_der_id=1,
+                site_id=1,
                 site_der_rating_id=21,
                 deleted_time=timestamp - timedelta(seconds=5),
             )
@@ -1762,7 +1675,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERRating,
                 seed=1010,
-                site_der_id=1,
+                site_id=1,
                 site_der_rating_id=21,
                 max_w_value=21,  # For identifying this record later
                 deleted_time=timestamp,
@@ -1770,14 +1683,14 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
         )
 
         # No deleted time so ignored
-        session.add(generate_class_instance(ArchiveSiteDERRating, seed=1111, site_der_id=1, site_der_rating_id=22))
+        session.add(generate_class_instance(ArchiveSiteDERRating, seed=1111, site_id=1, site_der_rating_id=22))
 
         # Wrong deleted time so ignored
         session.add(
             generate_class_instance(
                 ArchiveSiteDERRating,
                 seed=1212,
-                site_der_id=1,
+                site_id=1,
                 site_der_rating_id=23,
                 deleted_time=timestamp - timedelta(seconds=5),
             )
@@ -1788,7 +1701,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERRating,
                 seed=1313,
-                site_der_id=2,
+                site_id=2,
                 site_der_rating_id=24,
                 max_w_value=24,  # For identifying this record later
                 deleted_time=timestamp,
@@ -1798,7 +1711,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERRating,
                 seed=1414,
-                site_der_id=80,
+                site_id=70,
                 site_der_rating_id=25,
                 max_w_value=25,  # For identifying this record later
                 deleted_time=timestamp,
@@ -1827,18 +1740,10 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
         assert set(expected_deleted_rating_ids) == set([e.site_der_rating_id for e in deleted_list_entities])
 
         # Ensure the parent ORM relationship is populated for deleted/active instances
+        assert all([isinstance(e.site, Site) for v_list in batch.models_by_batch_key.values() for e in v_list])
         assert all(
             [
-                isinstance(e.site_der, SiteDER) and isinstance(e.site_der.site, Site)
-                for v_list in batch.models_by_batch_key.values()
-                for e in v_list
-            ]
-        )
-        assert all(
-            [
-                hasattr(e, "site_der")
-                and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
+                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -1883,8 +1788,7 @@ async def test_fetch_der_setting_by_timestamp(pg_base_config, timestamp: datetim
         for i in range(len(expected_ids)):
             assert list_entities[i].site_der_setting_id == expected_ids[i]
 
-        assert all([isinstance(e.site_der, SiteDER) for e in list_entities]), "SiteDER relationship populated"
-        assert all([isinstance(e.site_der.site, Site) for e in list_entities]), "Site relationship populated"
+        assert all([isinstance(e.site, Site) for e in list_entities]), "Site relationship populated"
 
 
 @pytest.mark.anyio
@@ -1930,45 +1834,13 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
             )
         )
 
-        # Inject a parent "archive" site_der that were deleted - the "newest" deleted value will be used
-        session.add(generate_class_instance(ArchiveSiteDER, seed=11, site_der_id=80, site_id=70))
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=55,
-                site_der_id=80,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=10),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=66,
-                site_der_id=80,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=5),  # Doesn't need to match the timestamp
-            )
-        )
-
-        # This deleted site_der will be ignored in favour of the version in the active table
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=77,
-                site_der_id=1,
-                site_id=1,
-                deleted_time=timestamp,
-            )
-        )
-
         # Inject archive der rating (only most recent is used)
-        session.add(generate_class_instance(ArchiveSiteDERSetting, seed=88, site_der_id=1, site_der_setting_id=21))
+        session.add(generate_class_instance(ArchiveSiteDERSetting, seed=88, site_id=1, site_der_setting_id=21))
         session.add(
             generate_class_instance(
                 ArchiveSiteDERSetting,
                 seed=99,
-                site_der_id=1,
+                site_id=1,
                 site_der_setting_id=21,
                 deleted_time=timestamp - timedelta(seconds=5),
             )
@@ -1977,7 +1849,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERSetting,
                 seed=1010,
-                site_der_id=1,
+                site_id=1,
                 site_der_setting_id=21,
                 max_w_value=21,  # For identifying this record later
                 deleted_time=timestamp,
@@ -1985,14 +1857,14 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
         )
 
         # No deleted time so ignored
-        session.add(generate_class_instance(ArchiveSiteDERSetting, seed=1111, site_der_id=1, site_der_setting_id=22))
+        session.add(generate_class_instance(ArchiveSiteDERSetting, seed=1111, site_id=1, site_der_setting_id=22))
 
         # Wrong deleted time so ignored
         session.add(
             generate_class_instance(
                 ArchiveSiteDERSetting,
                 seed=1212,
-                site_der_id=1,
+                site_id=1,
                 site_der_setting_id=23,
                 deleted_time=timestamp - timedelta(seconds=5),
             )
@@ -2003,7 +1875,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERSetting,
                 seed=1313,
-                site_der_id=2,
+                site_id=2,
                 site_der_setting_id=24,
                 max_w_value=24,  # For identifying this record later
                 deleted_time=timestamp,
@@ -2013,7 +1885,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERSetting,
                 seed=1414,
-                site_der_id=80,
+                site_id=70,
                 site_der_setting_id=25,
                 max_w_value=25,  # For identifying this record later
                 deleted_time=timestamp,
@@ -2042,18 +1914,10 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
         assert set(expected_deleted_setting_ids) == set([e.site_der_setting_id for e in deleted_list_entities])
 
         # Ensure the parent ORM relationship is populated for deleted/active instances
+        assert all([isinstance(e.site, Site) for v_list in batch.models_by_batch_key.values() for e in v_list])
         assert all(
             [
-                isinstance(e.site_der, SiteDER) and isinstance(e.site_der.site, Site)
-                for v_list in batch.models_by_batch_key.values()
-                for e in v_list
-            ]
-        )
-        assert all(
-            [
-                hasattr(e, "site_der")
-                and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
+                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -2099,8 +1963,7 @@ async def test_fetch_der_status_by_timestamp(pg_base_config, timestamp: datetime
         for i in range(len(expected_ids)):
             assert list_entities[i].site_der_status_id == expected_ids[i]
 
-        assert all([isinstance(e.site_der, SiteDER) for e in list_entities]), "SiteDER relationship populated"
-        assert all([isinstance(e.site_der.site, Site) for e in list_entities]), "Site relationship populated"
+        assert all([isinstance(e.site, Site) for e in list_entities]), "Site relationship populated"
 
 
 @pytest.mark.anyio
@@ -2146,49 +2009,17 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
             )
         )
 
-        # Inject a parent "archive" site_der that were deleted - the "newest" deleted value will be used
-        session.add(generate_class_instance(ArchiveSiteDER, seed=11, site_der_id=80, site_id=70))
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=55,
-                site_der_id=80,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=10),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=66,
-                site_der_id=80,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=5),  # Doesn't need to match the timestamp
-            )
-        )
-
-        # This deleted site_der will be ignored in favour of the version in the active table
-        session.add(
-            generate_class_instance(
-                ArchiveSiteDER,
-                seed=77,
-                site_der_id=1,
-                site_id=1,
-                deleted_time=timestamp,
-            )
-        )
-
         # Inject archive der rating (only most recent is used)
         session.add(
             generate_class_instance(
-                ArchiveSiteDERStatus, seed=88, site_der_id=1, site_der_status_id=21, manufacturer_status="n/a"
+                ArchiveSiteDERStatus, seed=88, site_id=1, site_der_status_id=21, manufacturer_status="n/a"
             )
         )
         session.add(
             generate_class_instance(
                 ArchiveSiteDERStatus,
                 seed=99,
-                site_der_id=1,
+                site_id=1,
                 site_der_status_id=21,
                 deleted_time=timestamp - timedelta(seconds=5),
                 manufacturer_status="n/a",
@@ -2198,7 +2029,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERStatus,
                 seed=1010,
-                site_der_id=1,
+                site_id=1,
                 site_der_status_id=21,
                 deleted_time=timestamp,
                 manufacturer_status="ms21",  # For identifying this record later
@@ -2208,7 +2039,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
         # No deleted time so ignored
         session.add(
             generate_class_instance(
-                ArchiveSiteDERStatus, seed=1111, site_der_id=1, site_der_status_id=22, manufacturer_status="n/a"
+                ArchiveSiteDERStatus, seed=1111, site_id=1, site_der_status_id=22, manufacturer_status="n/a"
             )
         )
 
@@ -2217,7 +2048,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERStatus,
                 seed=1212,
-                site_der_id=1,
+                site_id=1,
                 site_der_status_id=23,
                 deleted_time=timestamp - timedelta(seconds=5),
                 manufacturer_status="n/a",
@@ -2229,7 +2060,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERStatus,
                 seed=1313,
-                site_der_id=2,
+                site_id=2,
                 site_der_status_id=24,
                 deleted_time=timestamp,
                 manufacturer_status="ms24",  # For identifying this record later
@@ -2239,7 +2070,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveSiteDERStatus,
                 seed=1414,
-                site_der_id=80,
+                site_id=70,
                 site_der_status_id=25,
                 deleted_time=timestamp,
                 manufacturer_status="ms25",  # For identifying this record later
@@ -2268,18 +2099,10 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
         assert set(expected_deleted_status_ids) == set([e.site_der_status_id for e in deleted_list_entities])
 
         # Ensure the parent ORM relationship is populated for deleted/active instances
+        assert all([isinstance(e.site, Site) for v_list in batch.models_by_batch_key.values() for e in v_list])
         assert all(
             [
-                isinstance(e.site_der, SiteDER) and isinstance(e.site_der.site, Site)
-                for v_list in batch.models_by_batch_key.values()
-                for e in v_list
-            ]
-        )
-        assert all(
-            [
-                hasattr(e, "site_der")
-                and (isinstance(e.site_der, SiteDER) or isinstance(e.site_der, ArchiveSiteDER))
-                and (isinstance(e.site_der.site, Site) or isinstance(e.site_der.site, ArchiveSite))  # ty:ignore[unresolved-attribute]
+                isinstance(e.site, Site) or isinstance(e.site, ArchiveSite)  # ty:ignore[unresolved-attribute]
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
