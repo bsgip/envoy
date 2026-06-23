@@ -9,8 +9,10 @@ from taskiq import TaskiqEvents, TaskiqState
 from envoy.notification.exception import NotificationError
 from envoy.notification.handler import (
     STATE_DB_SESSION_MAKER,
-    STATE_DISABLE_TLS_VERIFY,
     STATE_HREF_PREFIX,
+    STATE_TLS_VERIFY,
+    MtlsConfig,
+    build_tls_verify,
     generate_broker,
 )
 from envoy.notification.settings import generate_settings
@@ -65,7 +67,20 @@ async def startup(state: TaskiqState) -> None:
     db_engine = create_async_engine(db_cfg["db_url"], **engine_args)
     setattr(state, STATE_DB_SESSION_MAKER, async_sessionmaker(db_engine, expire_on_commit=False))
     setattr(state, STATE_HREF_PREFIX, settings.href_prefix)
-    setattr(state, STATE_DISABLE_TLS_VERIFY, settings.notification_disable_tls_verify)
+
+    mtls_config: MtlsConfig | None = None
+    if settings.notifications_with_mtls:
+        if not settings.notification_mtls_cert or not settings.notification_mtls_key:
+            raise NotificationError(
+                "NOTIFICATIONS_WITH_MTLS is enabled but NOTIFICATION_MTLS_CERT + NOTIFICATION_MTLS_KEY must both be set"
+            )
+        mtls_config = MtlsConfig(
+            cert_path=settings.notification_mtls_cert,
+            key_path=settings.notification_mtls_key,
+            serca_path=settings.notification_mtls_serca,
+        )
+    # Read the certificate files from disk into a reusable verify argument once, rather than per outbound request
+    setattr(state, STATE_TLS_VERIFY, build_tls_verify(settings.notification_disable_tls_verify, mtls_config))
 
 
 @broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)
