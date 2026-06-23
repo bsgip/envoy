@@ -165,10 +165,10 @@ async def claim_due_transmissions(session: AsyncSession, batch_size: int) -> lis
     sent. Returns detached snapshots of the claimed rows. The caller must commit the session to release the row locks
     before sending."""
     now = utc_now()
-    # The FOR UPDATE SKIP LOCKED claim only stays multi-worker friendly while the planner can satisfy this ORDER BY by 
-    # using the index (ix_notification_transmit_execute_after). If any change forces a sort instead - eg ordering by a 
-    # non-indexed column, or in the wrong direction (ASC vs DESC), Postgres must read, lock and SKIP LOCKED-evaluate 
-    # EVERY matching row before it can sort+limit, so every worker locks every row. 
+    # The FOR UPDATE SKIP LOCKED claim only stays multi-worker friendly while the planner can satisfy this ORDER BY by
+    # using the index (ix_notification_transmit_execute_after). If any change forces a sort instead - eg ordering by a
+    # non-indexed column, or in the wrong direction (ASC vs DESC), Postgres must read, lock and SKIP LOCKED-evaluate
+    # EVERY matching row before it can sort+limit, so every worker locks every row.
     # Keep the ORDER BY aligned with an index (column + direction) if you touch this query!
     result = await session.execute(
         select(NotificationTransmit)

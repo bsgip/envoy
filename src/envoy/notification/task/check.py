@@ -499,9 +499,9 @@ async def process_check_batch(
     async with session_maker() as session:
         async with session.begin():
             # The FOR UPDATE SKIP LOCKED claim only stays multi-worker friendly while the planner can satisfy this
-            # ORDER BY by using the index (the notification_check_id primary key, ascending). If any change forces a 
-            # sort instead - eg ordering by a non-indexed column, or in the wrong direction (ASC vs DESC), Postgres 
-            # must read, lock and SKIP LOCKED-evaluate EVERY matching row before it can sort+limit, so every worker 
+            # ORDER BY by using the index (the notification_check_id primary key, ascending). If any change forces a
+            # sort instead - eg ordering by a non-indexed column, or in the wrong direction (ASC vs DESC), Postgres
+            # must read, lock and SKIP LOCKED-evaluate EVERY matching row before it can sort+limit, so every worker
             # locks every row. Keep the ORDER BY aligned with an index (column + direction) if you touch this query!
             result = await session.execute(
                 select(NotificationCheck)
