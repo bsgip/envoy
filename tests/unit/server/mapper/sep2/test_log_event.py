@@ -28,7 +28,7 @@ def test_log_event_round_trip(optional_is_none: bool):
     assert actual.created_time is None, "created_time should be left unset (the DB sets it)"
 
 
-@pytest.mark.parametrize("href_prefix, optional_is_none", product([None, "/my/href/prefix/"], [True, False]))
+@pytest.mark.parametrize("href_prefix, optional_is_none", list(product([None, "/my/href/prefix/"], [True, False])))
 def test_map_to_log_event_response(href_prefix: str | None, optional_is_none: bool):
     """Sanity checks that we generate valid models and avoid runtime errors"""
     # Arrange
@@ -48,7 +48,7 @@ def test_map_to_log_event_response(href_prefix: str | None, optional_is_none: bo
     assert result.functionSet == site_log_event.function_set
 
 
-@pytest.mark.parametrize("optional_is_none", product([True, False]))
+@pytest.mark.parametrize("optional_is_none", list(product([True, False])))
 def test_map_from_log_event_request(optional_is_none: bool):
     site_id = 123541
     log_event = generate_class_instance(LogEvent, seed=101, optional_is_none=optional_is_none)
@@ -65,7 +65,7 @@ def test_map_from_log_event_request(optional_is_none: bool):
 
 
 @pytest.mark.parametrize(
-    "href_prefix, optional_is_none, response_count", product([None, "/my/href/prefix/"], [True, False], [0, 2])
+    "href_prefix, optional_is_none, response_count", list(product([None, "/my/href/prefix/"], [True, False], [0, 2]))
 )
 def test_map_to_list_response(href_prefix: str | None, optional_is_none: bool, response_count: int):
     """Attempts to trip up the list mappers with a runtime error for various input combinations"""

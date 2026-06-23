@@ -52,17 +52,19 @@ def test_map_to_der_status_response():
 
 @pytest.mark.parametrize(
     "setting, rating",
-    product(
-        [
-            None,
-            generate_class_instance(SiteDERSetting, seed=101, optional_is_none=True),
-            generate_class_instance(SiteDERSetting, seed=202, optional_is_none=False),
-        ],
-        [
-            None,
-            generate_class_instance(SiteDERRating, seed=303, optional_is_none=True),
-            generate_class_instance(SiteDERRating, seed=404, optional_is_none=False),
-        ],
+    list(
+        product(
+            [
+                None,
+                generate_class_instance(SiteDERSetting, seed=101, optional_is_none=True),
+                generate_class_instance(SiteDERSetting, seed=202, optional_is_none=False),
+            ],
+            [
+                None,
+                generate_class_instance(SiteDERRating, seed=303, optional_is_none=True),
+                generate_class_instance(SiteDERRating, seed=404, optional_is_none=False),
+            ],
+        )
     ),
 )
 def test_map_to_der_config_response_no_bad_combinations(setting: SiteDERSetting | None, rating: SiteDERRating | None):

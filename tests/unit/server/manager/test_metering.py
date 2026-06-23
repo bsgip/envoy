@@ -370,7 +370,7 @@ def force_case(force_upper_case: bool, val: str) -> str:
         return val.lower()
 
 
-@pytest.mark.parametrize("update_role_flags, force_upper_case", product([True, False], [True, False]))
+@pytest.mark.parametrize("update_role_flags, force_upper_case", list(product([True, False], [True, False])))
 @pytest.mark.anyio
 async def test_create_or_update_mirror_usage_point_update(
     pg_base_config, update_role_flags: bool, force_upper_case: bool
@@ -657,7 +657,7 @@ async def test_create_or_update_mirror_usage_point_update_non_role_flags(
 @mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
 @pytest.mark.parametrize(
     "cert_type, scope_site_id",
-    product([CertificateType.AGGREGATOR_CERTIFICATE, CertificateType.DEVICE_CERTIFICATE], [123, None]),
+    list(product([CertificateType.AGGREGATOR_CERTIFICATE, CertificateType.DEVICE_CERTIFICATE], [123, None])),
 )
 async def test_fetch_mirror_usage_point(
     mock_fetch_current_config: mock.MagicMock,
@@ -724,7 +724,7 @@ async def test_fetch_mirror_usage_point(
 @mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
 @pytest.mark.parametrize(
     "cert_type, scope_site_id",
-    product([CertificateType.AGGREGATOR_CERTIFICATE, CertificateType.DEVICE_CERTIFICATE], [123, None]),
+    list(product([CertificateType.AGGREGATOR_CERTIFICATE, CertificateType.DEVICE_CERTIFICATE], [123, None])),
 )
 async def test_fetch_mirror_usage_point_no_srts(
     mock_fetch_current_config: mock.MagicMock,
@@ -770,7 +770,7 @@ async def test_fetch_mirror_usage_point_no_srts(
 @mock.patch("envoy.server.manager.end_device.RuntimeServerConfigManager.fetch_current_config")
 @pytest.mark.parametrize(
     "cert_type, scope_site_id",
-    product([CertificateType.AGGREGATOR_CERTIFICATE, CertificateType.DEVICE_CERTIFICATE], [123, None]),
+    list(product([CertificateType.AGGREGATOR_CERTIFICATE, CertificateType.DEVICE_CERTIFICATE], [123, None])),
 )
 async def test_fetch_mirror_usage_point_no_site(
     mock_fetch_current_config: mock.MagicMock,
@@ -816,7 +816,7 @@ async def test_fetch_mirror_usage_point_no_site(
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("return_value, site_id", product([True, False], [99987, None]))
+@pytest.mark.parametrize("return_value, site_id", list(product([True, False], [99987, None])))
 @mock.patch("envoy.server.manager.metering.delete_site_reading_type_group")
 @mock.patch("envoy.server.manager.metering.utc_now")
 @mock.patch("envoy.server.manager.metering.NotificationManager")

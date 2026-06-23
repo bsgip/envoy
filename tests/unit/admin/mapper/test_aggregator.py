@@ -12,7 +12,7 @@ from envoy.admin.mapper.aggregator import AggregatorMapper
 from envoy.server.model.aggregator import Aggregator
 
 
-@pytest.mark.parametrize("optional_is_none, has_domains", product([True, False], [True, False]))
+@pytest.mark.parametrize("optional_is_none, has_domains", list(product([True, False], [True, False])))
 def test_aggregator_to_response(optional_is_none: bool, has_domains: bool):
     """Asserts that the type mapping is a straight passthrough of properties"""
     agg: Aggregator = generate_class_instance(

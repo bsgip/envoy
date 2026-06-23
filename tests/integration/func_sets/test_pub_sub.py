@@ -285,7 +285,7 @@ async def test_delete_subscription(
 
 @pytest.mark.parametrize(
     "use_aggregator_edev, derp_id",
-    product([True, False], [1, 2, 3]),
+    list(product([True, False], [1, 2, 3])),
 )
 @pytest.mark.anyio
 async def test_create_derp_default_subscription(
@@ -344,7 +344,7 @@ async def test_create_derp_default_subscription(
 
 @pytest.mark.parametrize(
     "use_aggregator_edev, notification_uri",
-    product([True, False], ["https://example.com/456?foo=bar", "http://example.com:123", "https://example.com"]),
+    list(product([True, False], ["https://example.com/456?foo=bar", "http://example.com:123", "https://example.com"])),
 )
 @pytest.mark.anyio
 async def test_create_doe_subscription(
