@@ -7,6 +7,7 @@ from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.site import (
     count_all_site_groups,
@@ -14,6 +15,7 @@ from envoy.admin.crud.site import (
     select_all_site_groups,
     select_all_sites,
     select_single_site_no_scoping,
+    set_site_group_assignments,
 )
 from envoy.server.api.request import MAX_LIMIT
 from envoy.server.model.site import (
@@ -348,4 +350,80 @@ async def test_select_single_site_no_scoping(
                 assert expected_der_ids == der_to_expected_tuple(site)
             else:
                 with pytest.raises(InvalidRequestError):
-                    assert site.site_der_rating is None
+                    assert site.site_der_rating is not None
+                with pytest.raises(InvalidRequestError):
+                    assert site.site_der_setting is not None
+                with pytest.raises(InvalidRequestError):
+                    assert site.site_der_status is not None
+                with pytest.raises(InvalidRequestError):
+                    assert site.site_der_availability is not None
+
+
+async def _get_group_ids_for_site(session: AsyncSession, site_id: int) -> list[int]:
+    """Helper to fetch sorted group IDs for a site."""
+    site = await select_single_site_no_scoping(session, site_id, include_groups=True)
+    if site:
+        return sorted([a.group.site_group_id for a in site.assignments])
+    else:
+        return []
+
+
+@pytest.mark.anyio
+async def test_set_site_group_assignments_replace(pg_base_config):
+    """Site 1 starts with groups [1, 2]. Replace with [2, 3]."""
+    changed = datetime(2025, 1, 1, tzinfo=UTC)
+
+    async with generate_async_session(pg_base_config) as session:
+        # Verify initial state
+        assert await _get_group_ids_for_site(session, 1) == [1, 2]
+
+        await set_site_group_assignments(session, 1, [2, 3], changed)
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        assert await _get_group_ids_for_site(session, 1) == [2, 3]
+
+
+@pytest.mark.anyio
+async def test_set_site_group_assignments_clear(pg_base_config):
+    """Site 1 starts with groups [1, 2]. Empty list should remove all."""
+    changed = datetime(2025, 1, 1, tzinfo=UTC)
+
+    async with generate_async_session(pg_base_config) as session:
+        assert await _get_group_ids_for_site(session, 1) == [1, 2]
+
+        await set_site_group_assignments(session, 1, [], changed)
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        assert await _get_group_ids_for_site(session, 1) == []
+
+
+@pytest.mark.anyio
+async def test_set_site_group_assignments_add_to_empty(pg_base_config):
+    """Site 4 starts with no groups. Add groups [1, 3]."""
+    changed = datetime(2025, 1, 1, tzinfo=UTC)
+
+    async with generate_async_session(pg_base_config) as session:
+        assert await _get_group_ids_for_site(session, 4) == []
+
+        await set_site_group_assignments(session, 4, [1, 3], changed)
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        assert await _get_group_ids_for_site(session, 4) == [1, 3]
+
+
+@pytest.mark.anyio
+async def test_set_site_group_assignments_does_not_affect_other_sites(pg_base_config):
+    """Replacing groups on site 1 should not change site 2 or site 3."""
+    changed = datetime(2025, 1, 1, tzinfo=UTC)
+
+    async with generate_async_session(pg_base_config) as session:
+        await set_site_group_assignments(session, 1, [3], changed)
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        assert await _get_group_ids_for_site(session, 1) == [3]
+        assert await _get_group_ids_for_site(session, 2) == [1]  # unchanged
+        assert await _get_group_ids_for_site(session, 3) == [1]  # unchanged

@@ -7,6 +7,7 @@ from envoy_schema.admin.schema.base import BatchCreateResponse
 from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
     TariffComponentResponse,
+    TariffGeneratedRatePageResponse,
     TariffGeneratedRateRequest,
     TariffGeneratedRateResponse,
     TariffRequest,
@@ -18,16 +19,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from envoy.admin.crud.pricing import (
     cancel_and_delete_tariff_component,
     cancel_tariff_generated_rate,
+    count_tariff_generated_rates_for_period,
     insert_many_tariff_genrate,
     insert_single_tariff,
     select_single_tariff_generated_rate,
+    select_tariff_components_for_tariff,
+    select_tariff_generated_rates_for_period,
     select_tariff_ids_for_component_ids,
     update_single_tariff,
     update_single_tariff_component,
 )
-from envoy.admin.mapper.pricing import TariffComponentMapper, TariffGeneratedRateListMapper, TariffMapper
+from envoy.admin.mapper.pricing import (
+    TariffComponentMapper,
+    TariffGeneratedRateListMapper,
+    TariffMapper,
+)
 from envoy.notification.manager.notification import NotificationManager
-from envoy.server.crud.pricing import select_all_tariffs, select_single_tariff, select_tariff_component_by_id
+from envoy.server.crud.pricing import (
+    select_all_tariffs,
+    select_single_tariff,
+    select_tariff_component_by_id,
+)
 from envoy.server.manager.time import utc_now
 from envoy.server.model.subscription import SubscriptionResource
 
@@ -103,7 +115,9 @@ class TariffComponentManager:
 
     @staticmethod
     async def update_tariff_component(
-        session: AsyncSession, tariff_component_id: int, tariff_component: TariffComponentRequest
+        session: AsyncSession,
+        tariff_component_id: int,
+        tariff_component: TariffComponentRequest,
     ) -> None:
         """Select a singular tariff component entry from the DB and map to a TariffResponse object."""
 
@@ -127,6 +141,16 @@ class TariffComponentManager:
         # The advice we (currently) have is to delete any active rates manually (which will raise notifications) before
         # calling this.
         await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_COMPONENT, changed_time)
+
+    @staticmethod
+    async def fetch_components_for_tariff(session: AsyncSession, tariff_id: int) -> list[TariffComponentResponse]:
+        """Return all TariffComponents belonging to the given tariff, ordered by id.
+        Raises NoResultFound if the tariff does not exist."""
+        tariff = await select_single_tariff(session, tariff_id)
+        if tariff is None:
+            raise NoResultFound
+        components = await select_tariff_components_for_tariff(session, tariff_id)
+        return [TariffComponentMapper.map_to_response(tc) for tc in components]
 
 
 class TariffGeneratedRateManager:
@@ -176,3 +200,35 @@ class TariffGeneratedRateManager:
         )
 
         return BatchCreateResponse(ids=cast(list[int], insert_ids))
+
+    @staticmethod
+    async def fetch_rates_for_period(
+        session: AsyncSession,
+        tariff_component_id: int,
+        start: int,
+        limit: int,
+        period_start: datetime,
+        period_end: datetime,
+        site_id: int | None = None,
+    ) -> TariffGeneratedRatePageResponse:
+        """Fetch paginated tariff generated rates for a time period scoped to a TariffComponent.
+        Raises NoResultFound if the TariffComponent does not exist."""
+        tc = await select_tariff_component_by_id(session, tariff_component_id)
+        if tc is None:
+            raise NoResultFound
+        total_count = await count_tariff_generated_rates_for_period(
+            session, tariff_component_id, period_start, period_end, site_id
+        )
+        rates = await select_tariff_generated_rates_for_period(
+            session, tariff_component_id, start, limit, period_start, period_end, site_id
+        )
+        return TariffGeneratedRateListMapper.map_to_page_response(
+            total_count=total_count,
+            rates=rates,
+            tariff_component_id=tariff_component_id,
+            start=start,
+            limit=limit,
+            period_start=period_start,
+            period_end=period_end,
+            site_id=site_id,
+        )

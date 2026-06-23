@@ -80,6 +80,9 @@ async def admin_client_auth(pg_base_config: Connection):
     # when trying to run multiple tests sequentially
     app = admin_gen_app(settings)
     async with start_app_with_client(app, client_auth=basic_auth) as c:
+        # httpx >=0.28 no longer auto-sets Content-Type for `content=` strings/bytes,
+        # so admin tests that POST `model_dump_json()` get a 422. Default to JSON here.
+        c.headers["content-type"] = "application/json"
         yield c
 
 
@@ -94,6 +97,7 @@ async def admin_client_readonly_auth(pg_base_config: Connection):
     # when trying to run multiple tests sequentially
     app = admin_gen_app(settings)
     async with start_app_with_client(app, client_auth=basic_auth) as c:
+        c.headers["content-type"] = "application/json"
         yield c
 
 
@@ -106,6 +110,7 @@ async def admin_client_unauth(pg_base_config: Connection):
     # when trying to run multiple tests sequentially
     app = admin_gen_app(admin_gen_settings())
     async with start_app_with_client(app) as c:
+        c.headers["content-type"] = "application/json"
         yield c
 
 

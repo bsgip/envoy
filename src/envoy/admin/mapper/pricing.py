@@ -1,8 +1,10 @@
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 
 from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
     TariffComponentResponse,
+    TariffGeneratedRatePageResponse,
     TariffGeneratedRateRequest,
     TariffGeneratedRateResponse,
     TariffRequest,
@@ -83,7 +85,9 @@ class TariffComponentMapper:
 
 class TariffGeneratedRateListMapper:
     @staticmethod
-    def map_to_single_rate_response(rate: TariffGeneratedRate) -> TariffGeneratedRateResponse:
+    def map_to_single_rate_response(
+        rate: TariffGeneratedRate,
+    ) -> TariffGeneratedRateResponse:
         return TariffGeneratedRateResponse(
             tariff_generated_rate_id=rate.tariff_generated_rate_id,
             tariff_id=rate.tariff_id,
@@ -130,7 +134,31 @@ class TariffGeneratedRateListMapper:
     ) -> list[TariffGeneratedRate]:
         return [
             TariffGeneratedRateListMapper.map_from_single_rate_request(
-                changed_time, tariff_genrate, tariff_ids_by_component_id.get(tariff_genrate.tariff_component_id, None)
+                changed_time,
+                tariff_genrate,
+                tariff_ids_by_component_id.get(tariff_genrate.tariff_component_id, None),
             )
             for tariff_genrate in tariff_genrate_list
         ]
+
+    @staticmethod
+    def map_to_page_response(
+        total_count: int,
+        rates: Sequence[TariffGeneratedRate],
+        tariff_component_id: int,
+        start: int,
+        limit: int,
+        period_start: datetime,
+        period_end: datetime,
+        site_id: int | None,
+    ) -> TariffGeneratedRatePageResponse:
+        return TariffGeneratedRatePageResponse(
+            total_count=total_count,
+            limit=limit,
+            start=start,
+            tariff_component_id=tariff_component_id,
+            period_start=period_start,
+            period_end=period_end,
+            site_id=site_id,
+            rates=[TariffGeneratedRateListMapper.map_to_single_rate_response(r) for r in rates],
+        )
