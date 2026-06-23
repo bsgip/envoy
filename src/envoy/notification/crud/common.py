@@ -8,7 +8,6 @@ from envoy.server.model.archive.doe import (
 )
 from envoy.server.model.archive.site import (
     ArchiveSite,
-    ArchiveSiteDER,
     ArchiveSiteDERAvailability,
     ArchiveSiteDERRating,
     ArchiveSiteDERSetting,
@@ -19,7 +18,7 @@ from envoy.server.model.archive.subscription import ArchiveSubscription
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.server import RuntimeServerConfig
-from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -89,7 +88,6 @@ TResourceModel = TypeVar(
     TariffGeneratedRate,
     SiteReading,
     SiteReadingType,
-    SiteDER,
     SiteDERAvailability,
     SiteDERRating,
     SiteDERSetting,
@@ -107,7 +105,6 @@ TArchiveResourceModel = TypeVar(
     ArchiveTariffGeneratedRate,
     ArchiveSiteReading,
     ArchiveSiteReadingType,
-    ArchiveSiteDER,
     ArchiveSiteDERAvailability,
     ArchiveSiteDERRating,
     ArchiveSiteDERSetting,
