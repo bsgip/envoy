@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
 from envoy_schema.server.schema.sep2.pub_sub import Notification as Sep2Notification
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from envoy.notification.crud.batch import (
@@ -57,6 +57,10 @@ from envoy.server.request_scope import AggregatorRequestScope, CertificateType
 logger = logging.getLogger(__name__)
 
 MAX_NOTIFICATION_PAGE_SIZE = 100
+
+# How many times a single notification_check will be attempted before it's dropped from the queue. A check that keeps
+# raising (eg a malformed resource the fan-out can't map) would otherwise be re-claimed every cycle and wedge the queue.
+MAX_CHECK_ATTEMPTS = 5
 
 NON_LIST_RESOURCES = set(
     [
@@ -488,10 +492,17 @@ async def process_check_batch(
 ) -> int:
     """Claims and processes a batch of pending notification_check rows (with SELECT ... FOR UPDATE SKIP LOCKED so it's
     safe to run multiple workers). For each claimed check the matching subscriptions are fanned out into
-    notification_transmit rows and the check row is deleted - all within a single transaction. Returns the number of
-    checks processed."""
+    notification_transmit rows and the check row is deleted. Each check is processed inside its own savepoint so that a
+    single failing check only rolls back its own (partial) fan-out - the rest of the batch still commits. A check that
+    fails has its attempt counter incremented and is dropped (logged) once it exhausts MAX_CHECK_ATTEMPTS so it can't
+    wedge the queue. Returns the number of checks processed."""
     async with session_maker() as session:
         async with session.begin():
+            # The FOR UPDATE SKIP LOCKED claim only stays multi-worker friendly while the planner can satisfy this
+            # ORDER BY by using the index (the notification_check_id primary key, ascending). If any change forces a 
+            # sort instead - eg ordering by a non-indexed column, or in the wrong direction (ASC vs DESC), Postgres 
+            # must read, lock and SKIP LOCKED-evaluate EVERY matching row before it can sort+limit, so every worker 
+            # locks every row. Keep the ORDER BY aligned with an index (column + direction) if you touch this query!
             result = await session.execute(
                 select(NotificationCheck)
                 .order_by(NotificationCheck.notification_check_id)
@@ -504,7 +515,42 @@ async def process_check_batch(
 
             config = await RuntimeServerConfigManager.fetch_current_config(session)
             for check in checks:
-                await check_db_change_or_delete(session, check.resource_type, check.changed_time, href_prefix, config)
-                await session.delete(check)
+                try:
+                    async with session.begin_nested():
+                        await check_db_change_or_delete(
+                            session, check.resource_type, check.changed_time, href_prefix, config
+                        )
+                        await session.delete(check)
+                except Exception as exc:
+                    # The savepoint has rolled back this check's partial fan-out (and recovered the transaction from any
+                    # db-level error) so we can safely record the failure against the (still committing) outer txn.
+                    if check.attempt + 1 >= MAX_CHECK_ATTEMPTS:
+                        logger.error(
+                            "Dropping notification_check %d (resource %s at %s) after %d attempts - giving up",
+                            check.notification_check_id,
+                            check.resource_type,
+                            check.changed_time,
+                            check.attempt + 1,
+                            exc_info=exc,
+                        )
+                        await session.execute(
+                            delete(NotificationCheck).where(
+                                NotificationCheck.notification_check_id == check.notification_check_id
+                            )
+                        )
+                    else:
+                        logger.error(
+                            "Failed to process notification_check %d (resource %s at %s) on attempt %d - will retry",
+                            check.notification_check_id,
+                            check.resource_type,
+                            check.changed_time,
+                            check.attempt + 1,
+                            exc_info=exc,
+                        )
+                        await session.execute(
+                            update(NotificationCheck)
+                            .where(NotificationCheck.notification_check_id == check.notification_check_id)
+                            .values(attempt=check.attempt + 1)
+                        )
 
     return len(checks)

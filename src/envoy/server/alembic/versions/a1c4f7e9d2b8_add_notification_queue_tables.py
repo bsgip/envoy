@@ -23,6 +23,7 @@ def upgrade() -> None:
         sa.Column("resource_type", sa.INTEGER(), nullable=False),
         sa.Column("changed_time", sa.DateTime(timezone=True), nullable=False),
         sa.Column("created_time", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("attempt", sa.INTEGER(), nullable=False, server_default="0"),
         sa.PrimaryKeyConstraint("notification_check_id"),
     )
     op.create_table(

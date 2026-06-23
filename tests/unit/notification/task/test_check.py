@@ -13,7 +13,7 @@ from envoy_schema.server.schema.sep2.pub_sub import (
     NotificationResourceCombined,
     NotificationStatus,
 )
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from envoy.notification.crud.batch import AggregatorBatchedEntities, get_batch_key
 from envoy.notification.crud.common import (
@@ -24,6 +24,7 @@ from envoy.notification.crud.common import (
 )
 from envoy.notification.exception import NotificationError
 from envoy.notification.task.check import (
+    MAX_CHECK_ATTEMPTS,
     NON_LIST_RESOURCES,
     NotificationEntities,
     all_entity_batches,
@@ -1031,3 +1032,63 @@ async def test_process_check_batch_empty_queue(pg_empty_config):
         assert await process_check_batch(engine_state.session_maker, href_prefix=None, batch_size=10) == 0  # ty:ignore[invalid-argument-type]  # noqa: E501
     finally:
         await engine_state.dispose()
+
+
+@pytest.mark.anyio
+async def test_process_check_batch_isolates_failure_and_retries(pg_empty_config):
+    """A check whose fan-out raises is isolated by its savepoint: the rest of the batch still commits and the failing
+    check has its attempt counter incremented for a later retry. The failure here is a real db error (a bad query) to
+    prove the savepoint recovers the otherwise-poisoned transaction so sibling checks still commit."""
+    async with generate_async_session(pg_empty_config) as session:
+        session.add(NotificationCheck(resource_type=SubscriptionResource.SITE, changed_time=datetime.now(tz=UTC)))
+        session.add(NotificationCheck(resource_type=SubscriptionResource.READING, changed_time=datetime.now(tz=UTC)))
+        await session.commit()
+
+    async def fake_check(session, resource, timestamp, href_prefix, config):
+        if resource == SubscriptionResource.READING:
+            await session.execute(text("SELECT * FROM table_that_does_not_exist"))
+
+    engine_state = SingleAsyncEngineState(pg_empty_config)
+    try:
+        with mock.patch("envoy.notification.task.check.check_db_change_or_delete", new=fake_check):
+            processed = await process_check_batch(engine_state.session_maker, href_prefix=None, batch_size=10)  # ty:ignore[invalid-argument-type]  # noqa: E501
+        assert processed == 2
+    finally:
+        await engine_state.dispose()
+
+    async with generate_async_session(pg_empty_config) as session:
+        remaining = (await session.execute(select(NotificationCheck))).scalars().all()
+        # The good (SITE) check was processed and deleted; the failing (READING) check survives with a bumped attempt
+        assert len(remaining) == 1
+        assert remaining[0].resource_type == SubscriptionResource.READING
+        assert remaining[0].attempt == 1
+
+
+@pytest.mark.anyio
+async def test_process_check_batch_drops_after_max_attempts(pg_empty_config):
+    """A check that keeps failing is dropped from the queue once it exhausts MAX_CHECK_ATTEMPTS, rather than wedging
+    it"""
+    async with generate_async_session(pg_empty_config) as session:
+        session.add(
+            NotificationCheck(
+                resource_type=SubscriptionResource.READING,
+                changed_time=datetime.now(tz=UTC),
+                attempt=MAX_CHECK_ATTEMPTS - 1,
+            )
+        )
+        await session.commit()
+
+    async def fake_check(session, resource, timestamp, href_prefix, config):
+        raise RuntimeError("boom")
+
+    engine_state = SingleAsyncEngineState(pg_empty_config)
+    try:
+        with mock.patch("envoy.notification.task.check.check_db_change_or_delete", new=fake_check):
+            processed = await process_check_batch(engine_state.session_maker, href_prefix=None, batch_size=10)  # ty:ignore[invalid-argument-type]  # noqa: E501
+        assert processed == 1
+    finally:
+        await engine_state.dispose()
+
+    async with generate_async_session(pg_empty_config) as session:
+        # Attempts exhausted - the check is dropped rather than left to wedge the queue
+        assert (await session.execute(select(func.count()).select_from(NotificationCheck))).scalar() == 0

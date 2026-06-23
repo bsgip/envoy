@@ -101,6 +101,7 @@ class NotificationCheck(Base):
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )  # When this check was enqueued
+    attempt: Mapped[int] = mapped_column(INTEGER, default=0)  # The number of failed processing attempts so far
 
 
 class NotificationTransmit(Base):
