@@ -6,33 +6,27 @@ from uuid import uuid4
 
 import pytest
 from assertical.asserts.time import assert_nowish
+from assertical.fake.generator import generate_class_instance
 from assertical.fake.http import HTTPMethod, MockedAsyncClient
-from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
-from assertical.fixtures.postgres import generate_async_session
+from assertical.fixtures.postgres import SingleAsyncEngineState, generate_async_session
 from httpx import Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from envoy.notification.exception import NotificationTransmitError
 from envoy.notification.task.transmit import (
     HEADER_CONTENT_TYPE,
     HEADER_NOTIFICATION_ID,
     HEADER_SUBSCRIPTION_ID,
+    RETRY_DELAYS,
     TransmitResult,
     attempt_to_retry_delay,
     create_transmit_notification_log,
     do_transmit_notification,
-    safely_log_transmit_result,
-    schedule_retry_transmission,
-    transmit_notification,
+    process_transmit_batch,
 )
 from envoy.server.api.response import SEP_XML_MIME
-from envoy.server.model.subscription import TransmitNotificationLog
-from tests.unit.notification.mocks import (
-    assert_task_kicked_n_times,
-    assert_task_kicked_with_broker_delay_and_args,
-    configure_mock_task,
-    create_mock_broker,
-)
+from envoy.server.manager.time import utc_now
+from envoy.server.model.subscription import NotificationDeadLetter, NotificationTransmit, TransmitNotificationLog
 
 
 def test_attempt_to_retry_delay():
@@ -115,94 +109,6 @@ def test_create_transmit_notification_log(result, expected_ms: int, expected_cod
     assert log.attempt == attempt
     assert log.subscription_id_snapshot == subscription_id
     assert log.notification_size_bytes == len(content)
-
-
-@pytest.mark.anyio
-async def test_safely_log_transmit_result(pg_base_config):
-    async with generate_async_session(pg_base_config) as session:
-        await safely_log_transmit_result(
-            session,
-            NotificationTransmitError(
-                "foo",
-                datetime(2023, 11, 14, 2, 0, 1, tzinfo=UTC),
-                datetime(2023, 11, 14, 2, 0, 1, 100000, tzinfo=UTC),
-                None,
-            ),
-            2,
-            99,
-            "my content",
-        )
-
-    async with generate_async_session(pg_base_config) as session:
-        logs = (await session.execute(select(TransmitNotificationLog))).scalars().all()
-        assert len(logs) == 1
-        assert logs[0].http_status_code == -1
-        assert logs[0].subscription_id_snapshot == 99
-
-
-@pytest.mark.anyio
-@mock.patch("envoy.notification.task.transmit.transmit_notification")
-@mock.patch("envoy.notification.task.transmit.attempt_to_retry_delay")
-async def test_schedule_retry_transmission_too_many_attempts(
-    mock_attempt_to_retry_delay: mock.MagicMock, mock_transmit_notification: mock.MagicMock
-):
-    """Tests that if attempt_to_retry_delay returns None - this does nothing (i.e. aborts the retry)"""
-    configure_mock_task(mock_transmit_notification)
-    mock_broker = create_mock_broker()
-    remote_uri = "http://foo.bar/example?a=b"
-    content = "MY POST CONTENT"
-    subscription_href = "/my/sub/123"
-    notification_id = str(uuid4())
-    attempt = 1
-    subscription_id = 2
-
-    mock_attempt_to_retry_delay.return_value = None
-
-    await schedule_retry_transmission(
-        mock_broker, remote_uri, content, subscription_href, subscription_id, notification_id, attempt
-    )
-
-    assert_task_kicked_n_times(mock_transmit_notification, 0)
-    mock_attempt_to_retry_delay.assert_called_once_with(attempt)
-
-
-@pytest.mark.anyio
-@mock.patch("envoy.notification.task.transmit.transmit_notification")
-@mock.patch("envoy.notification.task.transmit.attempt_to_retry_delay")
-async def test_schedule_retry_transmission(
-    mock_attempt_to_retry_delay: mock.MagicMock, mock_transmit_notification: mock.MagicMock
-):
-    """Tests that rescheduling enqueues another transmission"""
-    configure_mock_task(mock_transmit_notification)
-    mock_broker = create_mock_broker()
-    remote_uri = "http://foo.bar/example?a=b"
-    content = "MY POST CONTENT"
-    subscription_href = "/my/sub/123"
-    notification_id = str(uuid4())
-    attempt = 1
-    subscription_id = 2
-    delay_seconds = 123
-
-    mock_attempt_to_retry_delay.return_value = timedelta(seconds=delay_seconds)
-
-    await schedule_retry_transmission(
-        mock_broker, remote_uri, content, subscription_href, subscription_id, notification_id, attempt
-    )
-
-    assert_task_kicked_n_times(mock_transmit_notification, 1)
-    assert_task_kicked_with_broker_delay_and_args(
-        mock_transmit_notification,
-        mock_broker,
-        delay_seconds,
-        remote_uri=remote_uri,
-        content=content,
-        subscription_href=subscription_href,
-        subscription_id=subscription_id,
-        notification_id=notification_id,
-        attempt=attempt + 1,
-    )
-
-    mock_attempt_to_retry_delay.assert_called_once_with(attempt)
 
 
 @pytest.mark.anyio
@@ -375,97 +281,158 @@ async def test_do_transmit_notification_potential_retry(
     ],
 )
 @mock.patch("envoy.notification.task.transmit.do_transmit_notification")
-@mock.patch("envoy.notification.task.transmit.schedule_retry_transmission")
-@mock.patch("envoy.notification.task.transmit.safely_log_transmit_result")
-async def test_transmit_notification_no_retry(
-    mock_safely_log_transmit_result: mock.MagicMock,
-    mock_schedule_retry_transmission: mock.MagicMock,
+async def test_process_transmit_batch_no_retry(
     mock_do_transmit_notification: mock.MagicMock,
     transmit_result: TransmitResult,
+    pg_empty_config,
 ):
-    """Simple sanity check - do the method correctly offload to do_transmit_notification"""
-    remote_uri = "http://example.foo.bar/path?a=b"
-    content = "my content to send"
-    subscription_href = "/my/href"
-    notification_id = str(uuid4())
-    attempt = 3
-    subscription_id = 4
-    broker = create_mock_broker()
-    session = create_mock_session()
+    """A success deletes the transmit row; a terminal 3xx/4xx dead-letters it. Both log the attempt"""
+    engine_state = SingleAsyncEngineState(pg_empty_config)
+    try:
+        async with generate_async_session(pg_empty_config) as session:
+            session.add(
+                generate_class_instance(
+                    NotificationTransmit, notification_transmit_id=None, attempt=3, execute_after=utc_now()
+                )
+            )
+            await session.commit()
 
-    mock_do_transmit_notification.return_value = transmit_result
-    await transmit_notification(
-        remote_uri,
-        content,
-        subscription_href,
-        subscription_id,
-        notification_id,
-        attempt,
-        broker,
-        session,
-        verify=True,
-    )
+        mock_do_transmit_notification.return_value = transmit_result
+        processed = await process_transmit_batch(engine_state.session_maker, True, batch_size=10)  # ty:ignore[invalid-argument-type]  # noqa: E501
+        assert processed == 1
 
-    mock_safely_log_transmit_result.assert_called_once()
-    mock_do_transmit_notification.assert_called_once_with(
-        remote_uri,
-        content,
-        subscription_href,
-        notification_id,
-        attempt,
-        verify=True,
-    )
-    mock_schedule_retry_transmission.assert_not_called()
-    assert_mock_session(session)
+        async with generate_async_session(pg_empty_config) as session:
+            # The row leaves the active queue and the attempt was logged
+            assert (await session.execute(select(func.count()).select_from(NotificationTransmit))).scalar() == 0
+            logs = (await session.execute(select(TransmitNotificationLog))).scalars().all()
+            assert len(logs) == 1
+            assert logs[0].attempt == 3
+
+            # A success is delivered (no dead-letter); a terminal failure is dead-lettered (content preserved)
+            dead = (await session.execute(select(NotificationDeadLetter))).scalars().all()
+            if transmit_result.success:
+                assert len(dead) == 0
+            else:
+                assert len(dead) == 1
+                assert dead[0].attempt == 3
+                assert dead[0].http_status_code == transmit_result.http_status_code
+
+        mock_do_transmit_notification.assert_called_once()
+    finally:
+        await engine_state.dispose()
 
 
 @pytest.mark.anyio
 @mock.patch("envoy.notification.task.transmit.do_transmit_notification")
-@mock.patch("envoy.notification.task.transmit.schedule_retry_transmission")
-@mock.patch("envoy.notification.task.transmit.safely_log_transmit_result")
-async def test_transmit_notification_with_retry(
-    mock_safely_log_transmit_result: mock.MagicMock,
-    mock_schedule_retry_transmission: mock.MagicMock,
+async def test_process_transmit_batch_with_retry(
     mock_do_transmit_notification: mock.MagicMock,
+    pg_empty_config,
 ):
-    """Simple sanity check - do the method correctly utilise schedule_retry_transmission on Error"""
-    remote_uri = "http://example.foo.bar/path?a=b"
-    content = "my content to send"
-    subscription_href = "/my/href"
-    subscription_id = 4
-    notification_id = str(uuid4())
-    attempt = 3
-    broker = create_mock_broker()
-    session = create_mock_session()
+    """A retryable error reschedules the transmit row (attempt+1, execute_after in the future) and logs the attempt"""
+    engine_state = SingleAsyncEngineState(pg_empty_config)
+    try:
+        async with generate_async_session(pg_empty_config) as session:
+            session.add(
+                generate_class_instance(
+                    NotificationTransmit, notification_transmit_id=None, attempt=1, execute_after=utc_now()
+                )
+            )
+            await session.commit()
 
-    mock_do_transmit_notification.side_effect = NotificationTransmitError(
-        "My mock error",
-        datetime(2022, 11, 14, 1, 0, 0, tzinfo=UTC),
-        datetime(2022, 11, 14, 1, 0, 1, tzinfo=UTC),
-        500,
-    )
-    await transmit_notification(
-        remote_uri,
-        content,
-        subscription_href,
-        subscription_id,
-        notification_id,
-        attempt,
-        broker,
-        session,
-        verify=True,
-    )
+        mock_do_transmit_notification.side_effect = NotificationTransmitError(
+            "My mock error",
+            datetime(2022, 11, 14, 1, 0, 0, tzinfo=UTC),
+            datetime(2022, 11, 14, 1, 0, 1, tzinfo=UTC),
+            500,
+        )
+        processed = await process_transmit_batch(engine_state.session_maker, True, batch_size=10)  # ty:ignore[invalid-argument-type]  # noqa: E501
+        assert processed == 1
 
-    mock_safely_log_transmit_result.assert_called_once()
-    mock_do_transmit_notification.assert_called_once_with(
-        remote_uri,
-        content,
-        subscription_href,
-        notification_id,
-        attempt,
-        verify=True,
-    )
-    mock_schedule_retry_transmission.assert_called_once_with(
-        broker, remote_uri, content, subscription_href, subscription_id, notification_id, attempt
-    )
-    assert_mock_session(session)
+        async with generate_async_session(pg_empty_config) as session:
+            rows = (await session.execute(select(NotificationTransmit))).scalars().all()
+            assert len(rows) == 1, "Row should be rescheduled (not deleted)"
+            assert rows[0].attempt == 2
+            assert rows[0].execute_after > utc_now(), "Should be rescheduled into the future"
+
+            logs = (await session.execute(select(TransmitNotificationLog))).scalars().all()
+            assert len(logs) == 1
+            assert logs[0].attempt == 1
+
+            # Rescheduled, not given up on - nothing dead-lettered
+            assert (await session.execute(select(func.count()).select_from(NotificationDeadLetter))).scalar() == 0
+    finally:
+        await engine_state.dispose()
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.notification.task.transmit.do_transmit_notification")
+async def test_process_transmit_batch_retries_exhausted(
+    mock_do_transmit_notification: mock.MagicMock,
+    pg_empty_config,
+):
+    """A retryable error on the final attempt dead-letters the transmit row (no more retries) but still logs it"""
+    engine_state = SingleAsyncEngineState(pg_empty_config)
+    try:
+        async with generate_async_session(pg_empty_config) as session:
+            session.add(
+                generate_class_instance(
+                    NotificationTransmit,
+                    notification_transmit_id=None,
+                    attempt=len(RETRY_DELAYS),  # attempt_to_retry_delay returns None here -> dead-letter
+                    execute_after=utc_now(),
+                    content="dead letter content",
+                )
+            )
+            await session.commit()
+
+        mock_do_transmit_notification.side_effect = NotificationTransmitError(
+            "My mock error",
+            datetime(2022, 11, 14, 1, 0, 0, tzinfo=UTC),
+            datetime(2022, 11, 14, 1, 0, 1, tzinfo=UTC),
+            500,
+        )
+        processed = await process_transmit_batch(engine_state.session_maker, True, batch_size=10)  # ty:ignore[invalid-argument-type]  # noqa: E501
+        assert processed == 1
+
+        async with generate_async_session(pg_empty_config) as session:
+            # Removed from the active queue, the attempt logged, and the notification preserved in the dead-letter table
+            assert (await session.execute(select(func.count()).select_from(NotificationTransmit))).scalar() == 0
+            assert (await session.execute(select(func.count()).select_from(TransmitNotificationLog))).scalar() == 1
+
+            dead = (await session.execute(select(NotificationDeadLetter))).scalars().all()
+            assert len(dead) == 1
+            assert dead[0].attempt == len(RETRY_DELAYS)
+            assert dead[0].http_status_code == 500
+            assert dead[0].content == "dead letter content"
+    finally:
+        await engine_state.dispose()
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.notification.task.transmit.do_transmit_notification")
+async def test_process_transmit_batch_skips_future(
+    mock_do_transmit_notification: mock.MagicMock,
+    pg_empty_config,
+):
+    """A row whose execute_after is in the future is not yet due and must not be claimed/sent"""
+    engine_state = SingleAsyncEngineState(pg_empty_config)
+    try:
+        async with generate_async_session(pg_empty_config) as session:
+            session.add(
+                generate_class_instance(
+                    NotificationTransmit,
+                    notification_transmit_id=None,
+                    attempt=0,
+                    execute_after=utc_now() + timedelta(hours=1),
+                )
+            )
+            await session.commit()
+
+        processed = await process_transmit_batch(engine_state.session_maker, True, batch_size=10)  # ty:ignore[invalid-argument-type]  # noqa: E501
+        assert processed == 0
+        mock_do_transmit_notification.assert_not_called()
+
+        async with generate_async_session(pg_empty_config) as session:
+            assert (await session.execute(select(func.count()).select_from(NotificationTransmit))).scalar() == 1
+    finally:
+        await engine_state.dispose()

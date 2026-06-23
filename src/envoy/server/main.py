@@ -8,6 +8,7 @@ from pydantic_core import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from envoy.notification.handler import enable_notification_client
+from envoy.notification.main import enable_notification_worker
 from envoy.server.api.depends.allow_nmi_updates import ALLOW_NMI_UPDATES_ATTR
 from envoy.server.api.depends.azure_ad_auth import AzureADAuthDepends
 from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
@@ -41,9 +42,11 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
 
     global_dependencies.append(Depends(RequestStateSettingsDepends(new_settings.href_prefix, new_settings.iana_pen)))
 
-    # Setup notification broker connection for sep2 pub/sub support
+    # Enable sep2 pub/sub support: enqueue notification checks (transactional outbox) and run the single in-process
+    # worker that drains the queue (for both server- and admin-enqueued checks) and delivers notifications
     if new_settings.enable_notifications:
-        lifespan_managers.append(enable_notification_client(new_settings.rabbit_mq_broker_url))
+        lifespan_managers.append(enable_notification_client())
+        lifespan_managers.append(enable_notification_worker(new_settings.db_middleware_kwargs))
 
     # Azure AD Auth is an optional extension enabled via configuration settings
     azure_ad_settings = new_settings.azure_ad_kwargs

@@ -52,9 +52,9 @@ class TariffManager:
         changed_time = utc_now()
         tariff_model = TariffMapper.map_from_request(changed_time, tariff)
         await insert_single_tariff(session, tariff_model)
-        await session.commit()
 
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.TARIFF, changed_time)
+        await session.commit()
 
         return tariff_model.tariff_id
 
@@ -70,9 +70,9 @@ class TariffManager:
         tariff_model = TariffMapper.map_from_request(changed_time, tariff)
         tariff_model.tariff_id = tariff_id
         await update_single_tariff(session, tariff_model, changed_time)
-        await session.commit()
 
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.TARIFF, changed_time)
+        await session.commit()
 
     @staticmethod
     async def fetch_tariff(session: AsyncSession, tariff_id: int) -> TariffResponse:
@@ -99,9 +99,11 @@ class TariffComponentManager:
         changed_time = utc_now()
         tc_model = TariffComponentMapper.map_from_request(changed_time, tariff_component)
         session.add(tc_model)
-        await session.commit()
 
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_COMPONENT, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.TARIFF_COMPONENT, changed_time
+        )
+        await session.commit()
 
         return tc_model.tariff_component_id
 
@@ -125,9 +127,11 @@ class TariffComponentManager:
         tc_model = TariffComponentMapper.map_from_request(changed_time, tariff_component)
         tc_model.tariff_component_id = tariff_component_id
         await update_single_tariff_component(session, tc_model, changed_time)
-        await session.commit()
 
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_COMPONENT, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.TARIFF_COMPONENT, changed_time
+        )
+        await session.commit()
 
     @staticmethod
     async def delete_tariff_component(session: AsyncSession, tariff_component_id: int) -> None:
@@ -135,12 +139,15 @@ class TariffComponentManager:
 
         changed_time = utc_now()
         await cancel_and_delete_tariff_component(session, tariff_component_id, changed_time)
-        await session.commit()
 
         # We are deliberately NOT issuing a cancel notification for any child rates - that could potentially be massive
         # The advice we (currently) have is to delete any active rates manually (which will raise notifications) before
         # calling this.
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_COMPONENT, changed_time)
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.TARIFF_COMPONENT, changed_time
+        )
+
+        await session.commit()
 
     @staticmethod
     async def fetch_components_for_tariff(session: AsyncSession, tariff_id: int) -> list[TariffComponentResponse]:
@@ -170,8 +177,10 @@ class TariffGeneratedRateManager:
         do nothing"""
         now = utc_now()
         await cancel_tariff_generated_rate(session, tariff_generated_rate_id, now)
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.TARIFF_GENERATED_RATE, now
+        )
         await session.commit()
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.TARIFF_GENERATED_RATE, now)
 
     @staticmethod
     async def add_many_tariff_genrate(
@@ -193,11 +202,11 @@ class TariffGeneratedRateManager:
             changed_time, tariff_genrates, tariff_ids_by_component
         )
         insert_ids = await insert_many_tariff_genrate(session, tariff_genrate_models)
-        await session.commit()
 
         await NotificationManager.notify_changed_deleted_entities(
-            SubscriptionResource.TARIFF_GENERATED_RATE, changed_time
+            session, SubscriptionResource.TARIFF_GENERATED_RATE, changed_time
         )
+        await session.commit()
 
         return BatchCreateResponse(ids=cast(list[int], insert_ids))
 

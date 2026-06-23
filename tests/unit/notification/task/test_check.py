@@ -6,12 +6,14 @@ from zoneinfo import ZoneInfo
 import pytest
 from assertical.fake.generator import generate_class_instance
 from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
+from assertical.fixtures.postgres import SingleAsyncEngineState, generate_async_session
 from envoy_schema.server.schema.sep2.pub_sub import (
     ConditionAttributeIdentifier,
     Notification,
     NotificationResourceCombined,
     NotificationStatus,
 )
+from sqlalchemy import func, select, text
 
 from envoy.notification.crud.batch import AggregatorBatchedEntities, get_batch_key
 from envoy.notification.crud.common import (
@@ -24,6 +26,7 @@ from envoy.notification.crud.common import (
 )
 from envoy.notification.exception import NotificationError
 from envoy.notification.task.check import (
+    MAX_CHECK_ATTEMPTS,
     NON_LIST_RESOURCES,
     NotificationEntities,
     all_entity_batches,
@@ -33,6 +36,7 @@ from envoy.notification.task.check import (
     entities_to_notification,
     fetch_batched_entities,
     get_entity_pages,
+    process_check_batch,
     scope_for_subscription,
 )
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
@@ -42,16 +46,15 @@ from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
-from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
+from envoy.server.model.subscription import (
+    NotificationCheck,
+    NotificationTransmit,
+    Subscription,
+    SubscriptionCondition,
+    SubscriptionResource,
+)
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope
-from tests.unit.notification.mocks import (
-    assert_task_kicked_n_times,
-    assert_task_kicked_with_broker_and_args,
-    configure_mock_task,
-    create_mock_broker,
-    get_mock_task_kicker_call_args,
-)
 
 
 @pytest.mark.parametrize(
@@ -754,18 +757,25 @@ async def test_fetch_batched_entities_bad_resource():
     assert_mock_session(mock_session, committed=False)
 
 
+def added_transmits(mock_session: mock.Mock) -> list[NotificationTransmit]:
+    """Returns the NotificationTransmit rows that were session.add()'d (in order)"""
+    return [c.args[0] for c in mock_session.add.call_args_list if isinstance(c.args[0], NotificationTransmit)]
+
+
+def find_transmit(transmits: list[NotificationTransmit], remote_uri: str) -> NotificationTransmit:
+    matches = [t for t in transmits if t.remote_uri == remote_uri]
+    assert len(matches) == 1, f"Expected exactly one transmit to {remote_uri}"
+    return matches[0]
+
+
 @pytest.mark.anyio
-@mock.patch("envoy.notification.task.check.transmit_notification")
 @mock.patch("envoy.notification.task.check.entities_serviced_by_subscription")
 @mock.patch("envoy.notification.task.check.select_subscriptions_for_resource")
 @mock.patch("envoy.notification.task.check.fetch_batched_entities")
-@mock.patch("envoy.notification.task.check.RuntimeServerConfigManager.fetch_current_config")
 async def test_check_db_change_or_delete(
-    mock_fetch_current_config: mock.MagicMock,
     mock_fetch_batched_entities: mock.MagicMock,
     mock_select_subscriptions_for_resource: mock.MagicMock,
     mock_entities_serviced_by_subscription: mock.MagicMock,
-    mock_transmit_notification: mock.MagicMock,
 ):
     """Runs through the bulk of check_db_change_or_delete to ensure that the expected notifications are raised"""
 
@@ -773,10 +783,7 @@ async def test_check_db_change_or_delete(
     # ARRANGE
     #
 
-    configure_mock_task(mock_transmit_notification)
-
     mock_session = create_mock_session()
-    mock_broker = create_mock_broker()
     href_prefix = "/href/prefix"
     resource = SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE
     timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=UTC)
@@ -817,50 +824,38 @@ async def test_check_db_change_or_delete(
 
     # Create runtime server config
     config: RuntimeServerConfig = generate_class_instance(RuntimeServerConfig)
-    mock_fetch_current_config.return_value = config
 
     #
     # ACT
     #
     await check_db_change_or_delete(
         session=mock_session,
-        broker=mock_broker,
-        href_prefix=href_prefix,
         resource=resource,
-        timestamp_epoch=timestamp.timestamp(),
+        timestamp=timestamp,
+        href_prefix=href_prefix,
+        config=config,
     )
 
     #
     # ASSERT
     #
 
-    # There should be 2 notifications sent out (as one of the subscriptions match no entities)
-    assert_task_kicked_n_times(mock_transmit_notification, 2)
-    assert_task_kicked_with_broker_and_args(
-        mock_transmit_notification,
-        mock_broker,
-        remote_uri=agg1_sub2.notification_uri,
-        attempt=0,
-        subscription_href=SubscriptionMapper.calculate_subscription_href(
-            agg1_sub2,
-            generate_class_instance(
-                AggregatorRequestScope, display_site_id=VIRTUAL_END_DEVICE_SITE_ID, href_prefix=href_prefix
-            ),
-        ),
-        subscription_id=agg1_sub2.subscription_id,
+    # There should be 2 notifications enqueued (as one of the subscriptions match no entities)
+    transmits = added_transmits(mock_session)
+    assert len(transmits) == 2
+
+    agg1_transmit = find_transmit(transmits, agg1_sub2.notification_uri)
+    assert agg1_transmit.attempt == 0
+    assert agg1_transmit.subscription_id == agg1_sub2.subscription_id
+    assert agg1_transmit.subscription_href == SubscriptionMapper.calculate_subscription_href(
+        agg1_sub2, scope_for_subscription(agg1_sub2, href_prefix)
     )
-    assert_task_kicked_with_broker_and_args(
-        mock_transmit_notification,
-        mock_broker,
-        remote_uri=agg2_sub1.notification_uri,
-        attempt=0,
-        subscription_href=SubscriptionMapper.calculate_subscription_href(
-            agg2_sub1,
-            generate_class_instance(
-                AggregatorRequestScope, display_site_id=agg2_sub1.scoped_site_id, href_prefix=href_prefix
-            ),
-        ),
-        subscription_id=agg2_sub1.subscription_id,
+
+    agg2_transmit = find_transmit(transmits, agg2_sub1.notification_uri)
+    assert agg2_transmit.attempt == 0
+    assert agg2_transmit.subscription_id == agg2_sub1.subscription_id
+    assert agg2_transmit.subscription_href == SubscriptionMapper.calculate_subscription_href(
+        agg2_sub1, scope_for_subscription(agg2_sub1, href_prefix)
     )
 
     mock_fetch_batched_entities.assert_called_once_with(mock_session, resource, timestamp)
@@ -874,13 +869,11 @@ async def test_check_db_change_or_delete(
         ca.args for ca in mock_select_subscriptions_for_resource.call_args_list
     ]
 
-    # No need to commit - persistence is handled via kicking off to transmit_notification
-    # All DB interactions should be readonly
+    # check_db_change_or_delete must NOT commit - the caller (process_check_batch) owns the transaction
     assert_mock_session(mock_session, committed=False)
 
     # Do a slightly deeper dive on the content/notifications being transmitted
-    kiq_args = get_mock_task_kicker_call_args(mock_transmit_notification)
-    all_content: list[str] = [a.kwargs["content"] for a in kiq_args]
+    all_content: list[str] = [t.content for t in transmits]
     assert all([isinstance(c, str) for c in all_content])
     assert len(set([c for c in all_content])) == len(all_content), "All content must be unique"
 
@@ -888,30 +881,26 @@ async def test_check_db_change_or_delete(
     batch1_entity1_fingerprint = f"<start>{str(int(batch1_entity1.start_time.timestamp()))}</start>"
     batch1_entity2_fingerprint = f"<start>{str(int(batch1_entity2.start_time.timestamp()))}</start>"
     batch2_entity1_fingerprint = f"<start>{str(int(batch2_entity1.start_time.timestamp()))}</start>"
-    assert batch1_entity1_fingerprint in all_content[0]
-    assert batch1_entity2_fingerprint in all_content[0]
-    assert batch2_entity1_fingerprint not in all_content[0]
-    assert batch1_entity1_fingerprint not in all_content[1]
-    assert batch1_entity2_fingerprint not in all_content[1]
-    assert batch2_entity1_fingerprint in all_content[1]
+    assert batch1_entity1_fingerprint in agg1_transmit.content
+    assert batch1_entity2_fingerprint in agg1_transmit.content
+    assert batch2_entity1_fingerprint not in agg1_transmit.content
+    assert batch1_entity1_fingerprint not in agg2_transmit.content
+    assert batch1_entity2_fingerprint not in agg2_transmit.content
+    assert batch2_entity1_fingerprint in agg2_transmit.content
 
-    all_ids: list[str] = [a.kwargs["notification_id"] for a in kiq_args]
+    all_ids: list[str] = [t.notification_id for t in transmits]
     assert all([isinstance(id, str) for id in all_ids])
     assert len(set([c for c in all_ids])) == len(all_ids), "All notification_id should be unique"
 
 
 @pytest.mark.anyio
-@mock.patch("envoy.notification.task.check.transmit_notification")
 @mock.patch("envoy.notification.task.check.entities_serviced_by_subscription")
 @mock.patch("envoy.notification.task.check.select_subscriptions_for_resource")
 @mock.patch("envoy.notification.task.check.fetch_batched_entities")
-@mock.patch("envoy.notification.task.check.RuntimeServerConfigManager.fetch_current_config")
 async def test_check_db_change_or_delete_rates(
-    mock_fetch_current_config: mock.MagicMock,
     mock_fetch_batched_entities: mock.MagicMock,
     mock_select_subscriptions_for_resource: mock.MagicMock,
     mock_entities_serviced_by_subscription: mock.MagicMock,
-    mock_transmit_notification: mock.MagicMock,
 ):
     """Runs through the bulk of check_db_change_or_delete to ensure that the expected notifications are raised"""
 
@@ -919,10 +908,7 @@ async def test_check_db_change_or_delete_rates(
     # ARRANGE
     #
 
-    configure_mock_task(mock_transmit_notification)
-
     mock_session = create_mock_session()
-    mock_broker = create_mock_broker()
     href_prefix = "/href/prefix"
     resource = SubscriptionResource.TARIFF_GENERATED_RATE
     timestamp = datetime(2023, 2, 3, 4, 5, 6, tzinfo=UTC)
@@ -951,41 +937,38 @@ async def test_check_db_change_or_delete_rates(
 
     # Create runtime server config
     config: RuntimeServerConfig = generate_class_instance(RuntimeServerConfig)
-    mock_fetch_current_config.return_value = config
 
     #
     # ACT
     #
     await check_db_change_or_delete(
         session=mock_session,
-        broker=mock_broker,
-        href_prefix=href_prefix,
         resource=resource,
-        timestamp_epoch=timestamp.timestamp(),
+        timestamp=timestamp,
+        href_prefix=href_prefix,
+        config=config,
     )
 
     #
     # ASSERT
     #
 
-    # There should be 2 notifications sent out - each containing 2 rates (one for every price type)
-    assert_task_kicked_n_times(mock_transmit_notification, 2)
-    assert_task_kicked_with_broker_and_args(
-        mock_transmit_notification, mock_broker, remote_uri=sub1.notification_uri, attempt=0
-    )
+    # There should be 2 notifications enqueued - each containing 2 rates (one for every price type)
+    transmits = added_transmits(mock_session)
+    assert len(transmits) == 2
+    assert all([t.remote_uri == sub1.notification_uri for t in transmits])
+    assert all([t.attempt == 0 for t in transmits])
 
     mock_fetch_batched_entities.assert_called_once_with(mock_session, resource, timestamp)
 
     # Subscriptions should only be fetched ONCE for each aggregator
     mock_select_subscriptions_for_resource.assert_called_once_with(mock_session, rate1.site.aggregator_id, resource)
 
-    # No need to commit - persistence is handled via kicking off to transmit_notification
-    # All DB interactions should be readonly
+    # check_db_change_or_delete must NOT commit - the caller (process_check_batch) owns the transaction
     assert_mock_session(mock_session, committed=False)
 
     # Do a slightly deeper dive on the content/notifications being transmitted
-    kiq_args = get_mock_task_kicker_call_args(mock_transmit_notification)
-    all_content: list[str] = [a.kwargs["content"] for a in kiq_args]
+    all_content: list[str] = [t.content for t in transmits]
     assert all([isinstance(c, str) for c in all_content])
     assert len(set([c for c in all_content])) == len(all_content), "All content must be unique"
 
@@ -999,6 +982,100 @@ async def test_check_db_change_or_delete_rates(
     assert len([c for c in all_content if rate1_price_fingerprint in c and rc1_fingerprint in c]) == 1
     assert len([c for c in all_content if rate2_price_fingerprint in c and rc2_fingerprint in c]) == 1
 
-    all_ids: list[str] = [a.kwargs["notification_id"] for a in kiq_args]
+    all_ids: list[str] = [t.notification_id for t in transmits]
     assert all([isinstance(id, str) for id in all_ids])
     assert len(set([c for c in all_ids])) == len(all_ids), "All notification_id should be unique"
+
+
+@pytest.mark.anyio
+async def test_process_check_batch_claims_and_deletes(pg_empty_config):
+    """process_check_batch claims pending notification_check rows, fans them out and deletes the claimed checks.
+
+    Uses an empty DB (no sites/subscriptions) so the fan-out yields nothing - this exercises the claim + delete +
+    config fetch path against a real database."""
+    async with generate_async_session(pg_empty_config) as session:
+        session.add(NotificationCheck(resource_type=SubscriptionResource.SITE, changed_time=datetime.now(tz=UTC)))
+        session.add(NotificationCheck(resource_type=SubscriptionResource.READING, changed_time=datetime.now(tz=UTC)))
+        await session.commit()
+
+    engine_state = SingleAsyncEngineState(pg_empty_config)
+    try:
+        processed = await process_check_batch(engine_state.session_maker, href_prefix=None, batch_size=10)  # ty:ignore[invalid-argument-type]
+        assert processed == 2
+    finally:
+        await engine_state.dispose()
+
+    async with generate_async_session(pg_empty_config) as session:
+        # Both checks should have been consumed, and (no subs/entities) no transmissions enqueued
+        assert (await session.execute(select(func.count()).select_from(NotificationCheck))).scalar() == 0
+        assert (await session.execute(select(func.count()).select_from(NotificationTransmit))).scalar() == 0
+
+
+@pytest.mark.anyio
+async def test_process_check_batch_empty_queue(pg_empty_config):
+    """process_check_batch is a no-op (returns 0) when there are no pending checks"""
+    engine_state = SingleAsyncEngineState(pg_empty_config)
+    try:
+        assert await process_check_batch(engine_state.session_maker, href_prefix=None, batch_size=10) == 0  # ty:ignore[invalid-argument-type]  # noqa: E501
+    finally:
+        await engine_state.dispose()
+
+
+@pytest.mark.anyio
+async def test_process_check_batch_isolates_failure_and_retries(pg_empty_config):
+    """A check whose fan-out raises is isolated by its savepoint: the rest of the batch still commits and the failing
+    check has its attempt counter incremented for a later retry. The failure here is a real db error (a bad query) to
+    prove the savepoint recovers the otherwise-poisoned transaction so sibling checks still commit."""
+    async with generate_async_session(pg_empty_config) as session:
+        session.add(NotificationCheck(resource_type=SubscriptionResource.SITE, changed_time=datetime.now(tz=UTC)))
+        session.add(NotificationCheck(resource_type=SubscriptionResource.READING, changed_time=datetime.now(tz=UTC)))
+        await session.commit()
+
+    async def fake_check(session, resource, timestamp, href_prefix, config):
+        if resource == SubscriptionResource.READING:
+            await session.execute(text("SELECT * FROM table_that_does_not_exist"))
+
+    engine_state = SingleAsyncEngineState(pg_empty_config)
+    try:
+        with mock.patch("envoy.notification.task.check.check_db_change_or_delete", new=fake_check):
+            processed = await process_check_batch(engine_state.session_maker, href_prefix=None, batch_size=10)  # ty:ignore[invalid-argument-type]  # noqa: E501
+        assert processed == 2
+    finally:
+        await engine_state.dispose()
+
+    async with generate_async_session(pg_empty_config) as session:
+        remaining = (await session.execute(select(NotificationCheck))).scalars().all()
+        # The good (SITE) check was processed and deleted; the failing (READING) check survives with a bumped attempt
+        assert len(remaining) == 1
+        assert remaining[0].resource_type == SubscriptionResource.READING
+        assert remaining[0].attempt == 1
+
+
+@pytest.mark.anyio
+async def test_process_check_batch_drops_after_max_attempts(pg_empty_config):
+    """A check that keeps failing is dropped from the queue once it exhausts MAX_CHECK_ATTEMPTS, rather than wedging
+    it"""
+    async with generate_async_session(pg_empty_config) as session:
+        session.add(
+            NotificationCheck(
+                resource_type=SubscriptionResource.READING,
+                changed_time=datetime.now(tz=UTC),
+                attempt=MAX_CHECK_ATTEMPTS - 1,
+            )
+        )
+        await session.commit()
+
+    async def fake_check(session, resource, timestamp, href_prefix, config):
+        raise RuntimeError("boom")
+
+    engine_state = SingleAsyncEngineState(pg_empty_config)
+    try:
+        with mock.patch("envoy.notification.task.check.check_db_change_or_delete", new=fake_check):
+            processed = await process_check_batch(engine_state.session_maker, href_prefix=None, batch_size=10)  # ty:ignore[invalid-argument-type]  # noqa: E501
+        assert processed == 1
+    finally:
+        await engine_state.dispose()
+
+    async with generate_async_session(pg_empty_config) as session:
+        # Attempts exhausted - the check is dropped rather than left to wedge the queue
+        assert (await session.execute(select(func.count()).select_from(NotificationCheck))).scalar() == 0

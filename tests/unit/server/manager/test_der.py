@@ -311,7 +311,7 @@ async def test_upsert_der_capability_roundtrip(
             assert len(archive_records) == 0
 
     mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
-        SubscriptionResource.SITE_DER_RATING, now
+        mock.ANY, SubscriptionResource.SITE_DER_RATING, now
     )
 
 
@@ -454,7 +454,7 @@ async def test_upsert_der_settings_roundtrip(
             assert len(archive_records) == 0
 
     mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
-        SubscriptionResource.SITE_DER_SETTING, now
+        mock.ANY, SubscriptionResource.SITE_DER_SETTING, now
     )
 
 
@@ -591,7 +591,7 @@ async def test_upsert_der_availability_roundtrip(
             assert len(archive_records) == 0
 
     mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
-        SubscriptionResource.SITE_DER_AVAILABILITY, now
+        mock.ANY, SubscriptionResource.SITE_DER_AVAILABILITY, now
     )
 
 
@@ -744,5 +744,5 @@ async def test_upsert_der_status_roundtrip(
             assert len(archive_records) == 0
 
     mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
-        SubscriptionResource.SITE_DER_STATUS, now
+        mock.ANY, SubscriptionResource.SITE_DER_STATUS, now
     )

@@ -45,13 +45,13 @@ class SiteControlGroupManager:
         is_new_fsa_id = new_site_control_group.fsa_id not in existing_fsa_ids
 
         session.add(new_site_control_group)
-        await session.commit()
 
         if is_new_fsa_id:
             await NotificationManager.notify_changed_deleted_entities(
-                SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now
+                session, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now
             )
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_CONTROL_GROUP, now)
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE_CONTROL_GROUP, now)
+        await session.commit()
 
         return new_site_control_group.site_control_group_id
 
@@ -99,13 +99,13 @@ class SiteControlGroupManager:
             lambda q: q.where(SiteControlGroup.site_control_group_id == site_control_group_id),
         )
 
-        await session.commit()
-
         if is_changed_fsa_id:
             await NotificationManager.notify_changed_deleted_entities(
-                SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now
+                session, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now
             )
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_CONTROL_GROUP, now)
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE_CONTROL_GROUP, now)
+
+        await session.commit()
 
         return SiteControlGroupListMapper.map_to_response(existing_scg)
 
@@ -124,26 +124,28 @@ class SiteControlGroupManager:
         # Perform the archive/delete operation
         await delete_all_site_control_groups_into_archive(session, deleted_time)
 
-        await session.commit()
-
         # Send notifications for all affected resources
         # DOEs (site controls) were deleted
         await NotificationManager.notify_changed_deleted_entities(
-            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, deleted_time
+            session, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, deleted_time
         )
 
         # Default controls were deleted
         await NotificationManager.notify_changed_deleted_entities(
-            SubscriptionResource.DEFAULT_SITE_CONTROL, deleted_time
+            session, SubscriptionResource.DEFAULT_SITE_CONTROL, deleted_time
         )
 
         # Site control groups (DER programs) were deleted
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_CONTROL_GROUP, deleted_time)
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.SITE_CONTROL_GROUP, deleted_time
+        )
 
         # FSA list has changed (all groups removed means FSA content changed)
         await NotificationManager.notify_changed_deleted_entities(
-            SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, deleted_time
+            session, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, deleted_time
         )
+
+        await session.commit()
 
     @staticmethod
     async def get_all_site_control_groups(
@@ -221,9 +223,10 @@ class SiteControlGroupManager:
 
         scg.site_control_group_default.version = scg.site_control_group_default.version + 1
 
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.DEFAULT_SITE_CONTROL, now
+        )
         await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.DEFAULT_SITE_CONTROL, now)
 
         return True
 
@@ -273,11 +276,10 @@ class SiteControlListManager:
             period_end=period_end,
             deleted_time=deleted_time,
         )
-        await session.commit()
-
         await NotificationManager.notify_changed_deleted_entities(
-            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, deleted_time
+            session, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, deleted_time
         )
+        await session.commit()
         return
 
     @staticmethod
@@ -289,11 +291,11 @@ class SiteControlListManager:
         changed_time = utc_now()
         site_control_models = SiteControlListMapper.map_from_request(site_control_group_id, changed_time, control_list)
         inserted_ids = await supersede_then_insert_does(session, site_control_models, changed_time)
-        await session.commit()
 
         await NotificationManager.notify_changed_deleted_entities(
-            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, changed_time
+            session, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, changed_time
         )
+        await session.commit()
 
         return BatchCreateResponse(ids=cast(list[int], inserted_ids))
 

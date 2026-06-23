@@ -79,8 +79,7 @@ Typically settings are set by setting an environment variable with the same name
 | ----------- | -------- | ----------- |
 | `database_url` | `string` | The core `PostgresDsn` for connecting to the envoy database. eg `postgresql+asyncpg://envoyuser:mypass@localhost:5432/envoydb` |
 | `default_timezone` | `string` | The timezone name that will be used as the default for new sites registered in band (defaults to "Australia/Brisbane") |
-| `enable_notifications` | `bool` | Whether notifications for active subscriptions will be generated. Notifications will either be handled in a local threadpool (if `rabbit_mq_broker_url` is None or via a dedicated task_iq worker connected to the same `rabbit_mq_broker_url` instance) |
-| `rabbit_mq_broker_url` | `string` | URL to a rabbit MQ instance that will handle notifications. Eg `amqp://user:password@localhost:5672`. Will require a worker servicing this instance |
+| `enable_notifications` | `bool` | Whether notifications for active subscriptions will be generated. When enabled, outgoing notifications are enqueued (as `notification_check` rows) in the envoy database and delivered by the notification worker (see below) |
 | `azure_ad_tenant_id` | `string` | The Azure AD tenant id that envoy is deployed under (see Azure Active Directory Support below) |
 | `azure_ad_client_id` | `string` | The Azure AD client id that identifies the VM envoy is deployed under (see Azure Active Directory Support below) |
 | `azure_ad_valid_issuer` | `string` | The Azure AD issuer that will be generating tokens for the current tenant (see Azure Active Directory Support below) |
@@ -199,12 +198,12 @@ cd -
 
 The Postman collection in postman/envoy.postman_collection.json uses certificate 1 (`tests/data/certificates/certificate1.py`) to make its requests and will require the database to be populated with this base config.
 
-6. (Optional) Start notification server worker
+6. Notifications
 
-The notification server will require workers to handle executing the async tasks. This is handled by taskiq and a worker
-can be initialised with:
-
-`uv run taskiq worker envoy.notification.main:broker envoy.notification.task`
+When `ENABLE_NOTIFICATIONS` is set, sep2 pub/sub notifications are enqueued (within the originating request's
+transaction - a transactional outbox) as `notification_check` rows in the envoy database, and delivered by a
+notification worker that runs in-process within the server: a polling loop that drains the `notification_check` and
+`notification_transmit` queue tables. No separate process or broker is required.
 
 7. Start server
 

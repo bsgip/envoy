@@ -69,8 +69,8 @@ class SiteManager:
         deleted_time = utc_now()
         is_deleted = await delete_site_for_aggregator(session, site.aggregator_id, site_id, deleted_time)
 
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, deleted_time)
         await session.commit()
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, deleted_time)
 
         return is_deleted
 
@@ -106,8 +106,8 @@ class SiteManager:
         if update_request.group_ids is not None:
             await set_site_group_assignments(session, site_id, update_request.group_ids, changed_time)
 
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, changed_time)
         await session.commit()
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, changed_time)
 
         return True
 

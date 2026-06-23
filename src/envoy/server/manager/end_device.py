@@ -143,10 +143,9 @@ class EndDeviceManager:
         result = await delete_site_for_aggregator(
             session, aggregator_id=scope.aggregator_id, site_id=scope.site_id, deleted_time=delete_time
         )
-        await session.commit()
-
         # We only notify the top level site deletion - all the child entities will be overwhelming
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, delete_time)
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, delete_time)
+        await session.commit()
 
         return result
 
@@ -230,9 +229,8 @@ class EndDeviceManager:
                 f"already exists for aggregator ({site.aggregator_id})."
             ) from exc
 
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, changed_time)
         await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, changed_time)
 
         return result
 
@@ -284,9 +282,8 @@ class EndDeviceManager:
 
         site.nmi = nmi
         site.changed_time = changed_time
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, changed_time)
         await session.commit()
-
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, changed_time)
 
     @staticmethod
     async def fetch_enddevicelist_for_scope(
