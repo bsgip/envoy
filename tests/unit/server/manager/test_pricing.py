@@ -13,7 +13,7 @@ from envoy.server.model.tariff import Tariff, TariffComponent
 from envoy.server.request_scope import SiteRequestScope
 
 
-@pytest.mark.parametrize("fsa_id, n_tariffs", product([333, None], [0, 1, 2]))
+@pytest.mark.parametrize("fsa_id, n_tariffs", list(product([333, None], [0, 1, 2])))
 @pytest.mark.anyio
 @mock.patch("envoy.server.manager.pricing.TariffProfileMapper.map_to_list_response")
 @mock.patch("envoy.server.manager.pricing.select_all_tariffs")

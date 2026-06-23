@@ -78,7 +78,7 @@ def test_tariff_profile_mapping():
     assert mapped_some_set.RateComponentListLink.href != mapped_some_set.CombinedTimeTariffIntervalListLink.href
 
 
-@pytest.mark.parametrize("optional_is_none, fsa_id", product([True, False], [1234321, None]))
+@pytest.mark.parametrize("optional_is_none, fsa_id", list(product([True, False], [1234321, None])))
 def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: int | None):
     """Non exhaustive test of the tariff profile list mapping - mainly to sanity check important fields and ensure
     that exceptions aren't being raised"""
@@ -192,7 +192,7 @@ def test_rate_component_map_to_list_response():
 
 @pytest.mark.parametrize(
     "optional_is_none, type, cti_id",
-    product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate], [1, 2, 3]),
+    list(product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate], [1, 2, 3])),
 )
 def test_consumption_tariff_interval_map_to_response(
     optional_is_none: bool, type: type[ArchiveTariffGeneratedRate] | type[TariffGeneratedRate], cti_id: int
@@ -225,7 +225,7 @@ def test_consumption_tariff_interval_map_to_response(
 
 
 @pytest.mark.parametrize(
-    "optional_is_none, type", product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate])
+    "optional_is_none, type", list(product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate]))
 )
 def test_consumption_tariff_interval_map_to_list_response(
     optional_is_none: bool, type: type[ArchiveTariffGeneratedRate] | type[TariffGeneratedRate]
@@ -267,7 +267,7 @@ def test_consumption_tariff_interval_map_to_list_response(
 
 
 @pytest.mark.parametrize(
-    "optional_is_none, type", product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate])
+    "optional_is_none, type", list(product([True, False], [TariffGeneratedRate, ArchiveTariffGeneratedRate]))
 )
 def test_consumption_tariff_interval_map_to_summary_list_response(
     optional_is_none: bool, type: type[ArchiveTariffGeneratedRate] | type[TariffGeneratedRate]
@@ -310,10 +310,12 @@ def test_consumption_tariff_interval_map_to_summary_list_response(
 
 @pytest.mark.parametrize(
     "optional_is_none, time_diff, type",
-    product(
-        [True, False],
-        [timedelta(0), timedelta(hours=1), timedelta(hours=-1)],
-        [TariffGeneratedRate, ArchiveTariffGeneratedRate],
+    list(
+        product(
+            [True, False],
+            [timedelta(0), timedelta(hours=1), timedelta(hours=-1)],
+            [TariffGeneratedRate, ArchiveTariffGeneratedRate],
+        )
     ),
 )
 def test_time_tariff_interval_map_to_response(

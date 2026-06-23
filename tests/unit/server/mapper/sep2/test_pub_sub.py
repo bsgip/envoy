@@ -164,7 +164,8 @@ def test_SubscriptionMapper_calculate_resource_href_all_support_site_unscoped(re
 
 
 @pytest.mark.parametrize(
-    "site_id, resource", product([999, None], [r for r in list(SubscriptionResource) if r != SubscriptionResource.SITE])
+    "site_id, resource",
+    list(product([999, None], [r for r in list(SubscriptionResource) if r != SubscriptionResource.SITE])),
 )
 def test_SubscriptionMapper_calculate_resource_href_encodes_site_id(
     site_id: int | None, resource: SubscriptionResource
@@ -193,7 +194,7 @@ def test_SubscriptionMapper_calculate_resource_href_encodes_site_id(
     assert f"/{sub.scoped_site_id}" in href
 
 
-@pytest.mark.parametrize("resource, site_id, resource_id", product(SubscriptionResource, [1, None], [2, None]))
+@pytest.mark.parametrize("resource, site_id, resource_id", list(product(SubscriptionResource, [1, None], [2, None])))
 def test_SubscriptionMapper_calculate_resource_href_uses_prefix(
     resource: SubscriptionResource, site_id: int | None, resource_id: int | None
 ):
@@ -687,7 +688,7 @@ def test_NotificationMapper_map_readings_to_response(notification_type: Notifica
     )
 
 
-@pytest.mark.parametrize("notification_type, tariff_component_id", product(list(NotificationType), [None, 51231]))
+@pytest.mark.parametrize("notification_type, tariff_component_id", list(product(list(NotificationType), [None, 51231])))
 def test_NotificationMapper_map_rates_to_response(notification_type: NotificationType, tariff_component_id: int | None):
     rate1: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=101, optional_is_none=False)
     rate2: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=True)
@@ -958,7 +959,7 @@ def test_NotificationMapper_map_der_status_to_response(notification_type: Notifi
     assert notification_all_set.resource.genConnectStatus.value == to_hex_binary(all_set.generator_connect_status)
 
 
-@pytest.mark.parametrize("notification_type, fsa_ids", product(list(NotificationType), [[11111, 222222], []]))
+@pytest.mark.parametrize("notification_type, fsa_ids", list(product(NotificationType, [[11111, 222222], []])))
 def test_NotificationMapper_map_function_set_assignments_list_to_response(
     notification_type: NotificationType, fsa_ids: list[int]
 ):

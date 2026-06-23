@@ -44,7 +44,7 @@ def test_response_set_type_to_href():
     assert len(hrefs) == len(set(hrefs)), "All values should be unique"
 
 
-@pytest.mark.parametrize("t", ResponseSetType)
+@pytest.mark.parametrize("t", list(ResponseSetType))
 def test_response_set_type_to_href_roundtrip(t: ResponseSetType):
     """Tests that response_set_type_to_href is reversed by href_to_response_set_type"""
     href = response_set_type_to_href(t)
@@ -59,7 +59,7 @@ def test_href_to_response_set_type_bad_values(bad_value: str | None):
         href_to_response_set_type(bad_value)  # ty:ignore[invalid-argument-type]
 
 
-@pytest.mark.parametrize("href_prefix, optional_is_none", product([None, "/my/href/prefix/"], [True, False]))
+@pytest.mark.parametrize("href_prefix, optional_is_none", list(product([None, "/my/href/prefix/"], [True, False])))
 def test_ResponseMapper_map_to_price_response(href_prefix: str | None, optional_is_none: bool):
     """Sanity checks that we generate valid models and avoid runtime errors"""
     # Arrange
@@ -84,7 +84,9 @@ def test_ResponseMapper_map_to_price_response(href_prefix: str | None, optional_
     assert len(result.subject) == 32, "Expected 128 bits of hex chars"
 
 
-@pytest.mark.parametrize("optional_is_none, response_type", product([True, False], [Response, DERControlResponse]))
+@pytest.mark.parametrize(
+    "optional_is_none, response_type", list(product([True, False], [Response, DERControlResponse]))
+)
 def test_ResponseMapper_map_from_price_request(optional_is_none: bool, response_type: type[Response]):
     price_response = generate_class_instance(response_type, seed=101, optional_is_none=optional_is_none)
     tariff_generated_rate = generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=optional_is_none)
@@ -99,14 +101,16 @@ def test_ResponseMapper_map_from_price_request(optional_is_none: bool, response_
 
 @pytest.mark.parametrize(
     "href_prefix, optional_is_none, doe",
-    product(
-        [None, "/my/href/prefix/"],
-        [True, False],
-        [
-            generate_class_instance(DynamicOperatingEnvelope, optional_is_none=True),
-            generate_class_instance(DynamicOperatingEnvelope, optional_is_none=False),
-            None,
-        ],
+    list(
+        product(
+            [None, "/my/href/prefix/"],
+            [True, False],
+            [
+                generate_class_instance(DynamicOperatingEnvelope, optional_is_none=True),
+                generate_class_instance(DynamicOperatingEnvelope, optional_is_none=False),
+                None,
+            ],
+        )
     ),
 )
 def test_ResponseMapper_map_to_doe_response(
@@ -142,7 +146,11 @@ def test_ResponseMapper_map_to_doe_response(
 
 @pytest.mark.parametrize(
     "doe_type, optional_is_none, response_type",
-    product([DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope], [True, False], [Response, DERControlResponse]),
+    list(
+        product(
+            [DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope], [True, False], [Response, DERControlResponse]
+        )
+    ),
 )
 def test_ResponseMapper_map_from_doe_request(
     doe_type: type[DynamicOperatingEnvelope] | type[ArchiveDynamicOperatingEnvelope],
@@ -162,7 +170,7 @@ def test_ResponseMapper_map_from_doe_request(
 
 @pytest.mark.parametrize(
     "href_prefix, optional_is_none, response_set_type",
-    product([None, "/prefix"], [True, False], ResponseSetType),
+    list(product([None, "/prefix"], [True, False], list(ResponseSetType))),
 )
 def test_ResponseListMapper_response_list_href(
     href_prefix: str | None, optional_is_none: bool, response_set_type: ResponseSetType
@@ -183,7 +191,7 @@ def test_ResponseListMapper_response_list_href(
 
 
 @pytest.mark.parametrize(
-    "href_prefix, optional_is_none, response_count", product([None, "/my/href/prefix/"], [True, False], [0, 2])
+    "href_prefix, optional_is_none, response_count", list(product([None, "/my/href/prefix/"], [True, False], [0, 2]))
 )
 def test_ResponseListMapper_map_to_price_response(href_prefix: str | None, optional_is_none: bool, response_count: int):
     """Attempts to trip up the list mappers with a runtime error for various input combinations"""
@@ -229,7 +237,7 @@ def test_ResponseListMapper_map_to_price_response(href_prefix: str | None, optio
 
 
 @pytest.mark.parametrize(
-    "href_prefix, optional_is_none, response_count", product([None, "/my/href/prefix/"], [True, False], [0, 4])
+    "href_prefix, optional_is_none, response_count", list(product([None, "/my/href/prefix/"], [True, False], [0, 4]))
 )
 def test_ResponseListMapper_map_to_doe_response(href_prefix: str | None, optional_is_none: bool, response_count: int):
     """Attempts to trip up the list mappers with a runtime error for various input combinations"""
@@ -283,7 +291,7 @@ def test_ResponseListMapper_map_to_doe_response(href_prefix: str | None, optiona
     assert len(child_mrids) == len(set(child_mrids)), "Each MRID should be unique"
 
 
-@pytest.mark.parametrize("href_prefix, optional_is_none", product([None, "/my/href/prefix/"], [True, False]))
+@pytest.mark.parametrize("href_prefix, optional_is_none", list(product([None, "/my/href/prefix/"], [True, False])))
 def test_ResponseSetMapper_map_to_set_response(href_prefix: str | None, optional_is_none: bool):
     """Checks that sets are created with unique mrids/hrefs"""
     display_site_id = 87618432555
@@ -321,7 +329,7 @@ def test_ResponseSetMapper_map_to_set_response(href_prefix: str | None, optional
 
 
 @pytest.mark.parametrize(
-    "href_prefix, optional_is_none, set_count", product([None, "/my/href/prefix/"], [True, False], [0, 2])
+    "href_prefix, optional_is_none, set_count", list(product([None, "/my/href/prefix/"], [True, False], [0, 2]))
 )
 def test_ResponseSetMapper_map_to_list_response(href_prefix: str | None, optional_is_none: bool, set_count: int):
     """Checks that set lists don't generate runtime errors"""

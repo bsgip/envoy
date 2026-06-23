@@ -61,7 +61,7 @@ async def test_get_calculation_log_by_id_missing(admin_client_auth: AsyncClient)
     assert resp.status_code == HTTPStatus.NOT_FOUND
 
 
-@pytest.mark.parametrize("optional_is_none, include_children", product([True, False], [True, False]))
+@pytest.mark.parametrize("optional_is_none, include_children", list(product([True, False], [True, False])))
 @pytest.mark.anyio
 async def test_calculation_log_roundtrip_with_children(
     admin_client_auth: AsyncClient, optional_is_none: bool, include_children: bool
@@ -110,7 +110,7 @@ async def test_calculation_log_roundtrip_with_children(
         assert returned_log.label_values is None
 
 
-@pytest.mark.parametrize("true_value, false_value", product(["true", "True", "1"], ["false", "False", None, "0"]))
+@pytest.mark.parametrize("true_value, false_value", list(product(["true", "True", "1"], ["false", "False", None, "0"])))
 @pytest.mark.anyio
 async def test_calculation_log_get_with_includes(
     admin_client_auth: AsyncClient, true_value: str, false_value: str | None

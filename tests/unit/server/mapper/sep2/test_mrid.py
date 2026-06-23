@@ -36,13 +36,13 @@ def assert_and_append_mrid(mrid: str, mrids: list[str]):
     mrids.append(mrid)
 
 
-@pytest.mark.parametrize("mrid_type", MridType)
+@pytest.mark.parametrize("mrid_type", list(MridType))
 def test_encode_mrid_all_types(mrid_type: MridType):
     """All values of MridType enum should generate valid mrids"""
     assert_mrid(encode_mrid(mrid_type, 1, 2))
 
 
-@pytest.mark.parametrize("mrid_type", MridType)
+@pytest.mark.parametrize("mrid_type", list(MridType))
 def test_decode_mrid_all_types(mrid_type: MridType):
     """All values of MridType enum should decode via decode_mrid_type"""
     mrid = encode_mrid(mrid_type, 1, 2)
@@ -341,7 +341,7 @@ def test_decode_and_validate_mrid_type():
     do_test(lambda s: MridMapper.encode_response_set_mrid(s, 1))  # ty:ignore[invalid-argument-type]
 
 
-@pytest.mark.parametrize("is_display_id, doe_id", product([True, False], [0, MAX_INT_32, MAX_INT_64, 123, 4]))
+@pytest.mark.parametrize("is_display_id, doe_id", list(product([True, False], [0, MAX_INT_32, MAX_INT_64, 123, 4])))
 def test_decode_doe_mrid(is_display_id: bool, doe_id: int):
     scope = generate_class_instance(BaseRequestScope)
     mrid = MridMapper.encode_doe_mrid(scope, is_display_id, doe_id)

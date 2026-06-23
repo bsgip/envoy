@@ -272,7 +272,7 @@ def test_map_to_csip_aus_reading_page_response_empty():
 
 def test_map_to_csip_aus_reading_page_response_large_dataset():
     """Test mapping with many readings"""
-    readings = []
+    readings: list[SiteReading] = []
     for i in range(10):
         readings.append(
             MockSiteReading(
@@ -280,7 +280,7 @@ def test_map_to_csip_aus_reading_page_response_large_dataset():
                 time_period_seconds=3600,
                 value=1000 + i * 100,
                 site_reading_type=MockSiteReadingType(2, FlowDirectionType.REVERSE, 0),
-            )
+            )  # ty:ignore[invalid-argument-type]
         )
 
     result = AdminSiteReadingMapper.map_to_csip_aus_reading_page_response(
