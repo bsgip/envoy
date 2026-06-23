@@ -277,82 +277,84 @@ async def test_select_subscriptions_for_site_content_only(pg_base_config):
 
 @pytest.mark.parametrize(
     "sub, has_conditions",
-    product(
-        [
-            Subscription(
-                aggregator_id=3,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.SITE,
-                scoped_site_id=1,
-                resource_id=None,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Different aggregator_id
-            Subscription(
-                aggregator_id=1,
-                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.SITE_DER_AVAILABILITY,
-                scoped_site_id=1,
-                resource_id=None,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Different resource_type
-            Subscription(
-                aggregator_id=1,
-                changed_time=datetime(2023, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.SITE,
-                scoped_site_id=1,
-                resource_id=3,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Different resource_id (the db value is NULL)
-            Subscription(
-                aggregator_id=2,
-                changed_time=datetime(2024, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
-                scoped_site_id=None,
-                resource_id=None,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Different resource_id (the db value is 3)
-            Subscription(
-                aggregator_id=2,
-                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
-                scoped_site_id=None,
-                resource_id=4,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Different resource_id (the db value is 3)
-            Subscription(
-                aggregator_id=1,
-                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.SITE,
-                scoped_site_id=3,  # Changed to an int from a NULL value
-                resource_id=None,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Different scoped_site_id (the db value is NULL)
-            Subscription(
-                aggregator_id=2,
-                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
-                scoped_site_id=None,  # Changed to None from an existing int
-                resource_id=3,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Different scoped_site_id (the db value is 3)
-            Subscription(
-                aggregator_id=2,
-                changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
-                scoped_site_id=4,  # Changed to a different int
-                resource_id=3,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Different scoped_site_id (the db value is 3)
-        ],
-        [True, False],
+    list(
+        product(
+            [
+                Subscription(
+                    aggregator_id=3,
+                    changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.SITE,
+                    scoped_site_id=1,
+                    resource_id=None,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Different aggregator_id
+                Subscription(
+                    aggregator_id=1,
+                    changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.SITE_DER_AVAILABILITY,
+                    scoped_site_id=1,
+                    resource_id=None,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Different resource_type
+                Subscription(
+                    aggregator_id=1,
+                    changed_time=datetime(2023, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.SITE,
+                    scoped_site_id=1,
+                    resource_id=3,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Different resource_id (the db value is NULL)
+                Subscription(
+                    aggregator_id=2,
+                    changed_time=datetime(2024, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                    scoped_site_id=None,
+                    resource_id=None,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Different resource_id (the db value is 3)
+                Subscription(
+                    aggregator_id=2,
+                    changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                    scoped_site_id=None,
+                    resource_id=4,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Different resource_id (the db value is 3)
+                Subscription(
+                    aggregator_id=1,
+                    changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.SITE,
+                    scoped_site_id=3,  # Changed to an int from a NULL value
+                    resource_id=None,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Different scoped_site_id (the db value is NULL)
+                Subscription(
+                    aggregator_id=2,
+                    changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                    scoped_site_id=None,  # Changed to None from an existing int
+                    resource_id=3,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Different scoped_site_id (the db value is 3)
+                Subscription(
+                    aggregator_id=2,
+                    changed_time=datetime(2022, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                    scoped_site_id=4,  # Changed to a different int
+                    resource_id=3,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Different scoped_site_id (the db value is 3)
+            ],
+            [True, False],
+        ),
     ),
 )
 @pytest.mark.anyio
@@ -411,65 +413,67 @@ async def test_upsert_subscription_new_subscription(pg_base_config, sub: Subscri
 
 @pytest.mark.parametrize(
     "sub, has_conditions",
-    product(
-        [
-            Subscription(
-                subscription_id=1,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
-                created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
-                aggregator_id=1,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.SITE,
-                scoped_site_id=None,
-                resource_id=None,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Will rewrite sub 1
-            Subscription(
-                subscription_id=2,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
-                created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
-                aggregator_id=1,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
-                scoped_site_id=2,
-                resource_id=1,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Will rewrite sub 2
-            Subscription(
-                subscription_id=3,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
-                created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
-                aggregator_id=2,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
-                scoped_site_id=3,
-                resource_id=3,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Will rewrite sub 3
-            Subscription(
-                subscription_id=4,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
-                created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
-                aggregator_id=1,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.SITE,
-                scoped_site_id=4,
-                resource_id=4,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Will rewrite sub 4
-            Subscription(
-                subscription_id=5,  # Test metadata, WONT be sent to the DB, it's an ID that we're expecting to update
-                created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
-                aggregator_id=1,
-                changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
-                resource_type=SubscriptionResource.READING,
-                scoped_site_id=None,
-                resource_id=1,
-                notification_uri="http://test.insert/",
-                entity_limit=555,
-            ),  # Will rewrite sub 5
-        ],
-        [True, False],
+    list(
+        product(
+            [
+                Subscription(
+                    subscription_id=1,  # Test metadata, WONT be sent to the DB, it's an ID that is expected to update
+                    created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
+                    aggregator_id=1,
+                    changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.SITE,
+                    scoped_site_id=None,
+                    resource_id=None,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Will rewrite sub 1
+                Subscription(
+                    subscription_id=2,  # Test metadata, WONT be sent to the DB, it's an ID that is expected to update
+                    created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
+                    aggregator_id=1,
+                    changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
+                    scoped_site_id=2,
+                    resource_id=1,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Will rewrite sub 2
+                Subscription(
+                    subscription_id=3,  # Test metadata, WONT be sent to the DB, it's an ID that is expected to update
+                    created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
+                    aggregator_id=2,
+                    changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.TARIFF_GENERATED_RATE,
+                    scoped_site_id=3,
+                    resource_id=3,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Will rewrite sub 3
+                Subscription(
+                    subscription_id=4,  # Test metadata, WONT be sent to the DB, it's an ID that is expected to update
+                    created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
+                    aggregator_id=1,
+                    changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.SITE,
+                    scoped_site_id=4,
+                    resource_id=4,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Will rewrite sub 4
+                Subscription(
+                    subscription_id=5,  # Test metadata, WONT be sent to the DB, it's an ID that is expected to update
+                    created_time=datetime(2000, 1, 1, tzinfo=UTC),  # Test metadata, won't be sent to the DB
+                    aggregator_id=1,
+                    changed_time=datetime(2021, 11, 12, 1, 2, 3, 500000, tzinfo=UTC),
+                    resource_type=SubscriptionResource.READING,
+                    scoped_site_id=None,
+                    resource_id=1,
+                    notification_uri="http://test.insert/",
+                    entity_limit=555,
+                ),  # Will rewrite sub 5
+            ],
+            [True, False],
+        ),
     ),
 )
 @pytest.mark.anyio

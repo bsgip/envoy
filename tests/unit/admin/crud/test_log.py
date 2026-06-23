@@ -32,7 +32,7 @@ async def test_select_calculation_log_by_id_missing(pg_base_config, id: int):
         assert await select_calculation_log_by_id(session, id, False, True) is None
 
 
-@pytest.mark.parametrize("include_variables, include_labels", product([True, False], [True, False]))
+@pytest.mark.parametrize("include_variables, include_labels", list(product([True, False], [True, False])))
 @pytest.mark.anyio
 async def test_select_calculation_log_by_id(pg_base_config, include_variables: bool, include_labels: bool):
     """Tests that the correct log with child relations are returned"""

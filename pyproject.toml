@@ -56,8 +56,8 @@ name = "envoy"
 dynamic = ["version", "readme"]
 requires-python = ">=3.11,<4.0"
 dependencies = [
-    "envoy_schema==1.1.0",
-    "fastapi>=0.94.1",
+    "envoy_schema==1.1.1",
+    "fastapi>=0.94.1,<0.137", # Recent FastAPI versions appear to break route exclusion functionality
     "sqlalchemy>=2.0.0",
     "alembic",
     "tzlocal",

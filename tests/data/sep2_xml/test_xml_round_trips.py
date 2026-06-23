@@ -51,7 +51,7 @@ def comparison_func(
     for func in assertions:
         ret_val, *extra = func(ref, model, xml_type, allowed_missing, strict)
         if ret_val is not True:
-            exc.append((func.__name__, extra))  # ty:ignore[unresolved-attribute]
+            exc.append(str((func.__name__, extra)))  # ty:ignore[unresolved-attribute]
 
     val = False if len(exc) > 0 else True
     return AssertionResponse(input_type=ref.tag, value=val, exceptions=exc)

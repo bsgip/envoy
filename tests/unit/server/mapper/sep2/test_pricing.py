@@ -29,7 +29,7 @@ from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorReque
 
 @pytest.mark.parametrize(
     "enum_val",
-    PricingReadingType,
+    list(PricingReadingType),
 )
 def test_create_reading_type(enum_val: PricingReadingType):
     """Just makes sure we don't get any exceptions for the known enum types"""
@@ -42,7 +42,7 @@ def test_create_reading_type(enum_val: PricingReadingType):
 
 @pytest.mark.parametrize(
     "enum_val",
-    PricingReadingType,
+    list(PricingReadingType),
 )
 def test_extract_price(enum_val: PricingReadingType):
     """Just makes sure we don't get any exceptions for the known enum types"""
@@ -155,7 +155,7 @@ def test_tariff_profile_list_nosite_mapping():
     assert_list_type(TariffProfileResponse, mapped_all_set.TariffProfile, 2)
 
 
-@pytest.mark.parametrize("optional_is_none, fsa_id", product([True, False], [1234321, None]))
+@pytest.mark.parametrize("optional_is_none, fsa_id", list(product([True, False], [1234321, None])))
 def test_tariff_profile_list_mapping(optional_is_none: bool, fsa_id: int | None):
     """Non exhaustive test of the tariff profile list mapping - mainly to sanity check important fields and ensure
     that exceptions aren't being raised"""

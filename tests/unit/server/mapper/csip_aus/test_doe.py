@@ -91,7 +91,7 @@ def test_map_to_active_power(watts: Decimal, requested_multiplier: int, expected
 
 @pytest.mark.parametrize(
     "doe_type, randomize_seconds, is_active",
-    product([DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope], [-123, 123, None], [True, False]),
+    list(product([DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope], [-123, 123, None], [True, False])),
 )
 def test_map_derc_to_response(
     doe_type: type[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope],
