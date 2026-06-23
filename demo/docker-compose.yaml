@@ -3,40 +3,11 @@ x-envoy-common:
     DATABASE_URL: "postgresql+asyncpg://test_user:test_pwd@envoy-db/test_db"
     CERT_HEADER: x-forwarded-client-cert
     ENABLE_NOTIFICATIONS: "True"
-    RABBIT_MQ_BROKER_URL: "amqp://guest:guest@rabbit-mq:5672"
     ALLOW_DEVICE_REGISTRATION: "True"
     NMI_VALIDATION_ENABLED: "True"
     NMI_VALIDATION_PARTICIPANT_ID: "ENERGYAP"
 
 services:
-  rabbit-mq:
-    image: rabbitmq:3-management
-    ports:
-      - 127.0.0.1:5672:5672
-      - 127.0.0.1:15672:15672
-    hostname: rabbit-mq
-    restart: unless-stopped
-    networks:
-      - envoy-net
-    healthcheck:
-      test: rabbitmq-diagnostics -q check_running && rabbitmq-diagnostics -q check_local_alarms
-      interval: 30s
-      timeout: 30s
-      retries: 5
-      start_period: 20s
-
-  taskiq-worker:
-    image: envoy:latest
-    environment:
-      <<: *common-env
-    command: taskiq worker envoy.notification.main:broker envoy.notification.task.check envoy.notification.task.transmit
-    restart: unless-stopped
-    networks:
-      - envoy-net
-    depends_on:
-      rabbit-mq:
-        condition: service_healthy
-
   tls-termination:
     build:
       context: ./tls-termination/
@@ -74,8 +45,6 @@ services:
     depends_on:
       envoy-db:
         condition: service_started
-      rabbit-mq:
-        condition: service_healthy
 
   envoy-admin:
     image: envoy:latest
@@ -93,8 +62,6 @@ services:
     depends_on:
       envoy-db:
         condition: service_started
-      rabbit-mq:
-        condition: service_healthy
 
   envoy-db:
     image: postgres:16

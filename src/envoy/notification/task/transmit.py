@@ -1,22 +1,17 @@
+import asyncio
 import logging
 import ssl
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Annotated
 
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
+from sqlalchemy import delete, select, update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from envoy.notification.exception import NotificationTransmitError
-from envoy.notification.handler import (
-    broker_dependency,
-    session_dependency,
-    tls_verify_dependency,
-)
 from envoy.server.api.response import SEP_XML_MIME
 from envoy.server.manager.time import utc_now
-from envoy.server.model.subscription import TransmitNotificationLog
+from envoy.server.model.subscription import NotificationDeadLetter, NotificationTransmit, TransmitNotificationLog
 
 HEADER_SUBSCRIPTION_ID = "x-envoy-subscription-href"
 HEADER_NOTIFICATION_ID = "x-envoy-notification-id"
@@ -27,6 +22,11 @@ logger = logging.getLogger(__name__)
 TRANSMIT_TIMEOUT_SECONDS = 30
 RETRY_DELAYS = [timedelta(seconds=10), timedelta(seconds=100), timedelta(seconds=300), timedelta(minutes=30)]
 
+# How far into the future a claimed notification_transmit row has its execute_after pushed while it's being sent. This
+# "lease" keeps a row out of the due window for the duration of the (locked) send so a concurrent worker - or this
+# worker after a crash mid-send - won't re-grab it until the lease expires. Must exceed TRANSMIT_TIMEOUT_SECONDS.
+LEASE_SECONDS = 120
+
 
 @dataclass(frozen=True, slots=False)
 class TransmitResult:
@@ -36,6 +36,19 @@ class TransmitResult:
     transmit_start: datetime  # tz aware start of transmission
     transmit_end: datetime  # tz aware end of transmission
     http_status_code: int | None  # Can be None if there was a failure connecting / timeout
+
+
+@dataclass(frozen=True)
+class ClaimedTransmit:
+    """An in-memory snapshot of a notification_transmit row claimed for sending (detached from any session)"""
+
+    notification_transmit_id: int
+    subscription_id: int
+    subscription_href: str
+    notification_id: str
+    remote_uri: str
+    content: str
+    attempt: int
 
 
 def create_transmit_notification_log(
@@ -52,31 +65,6 @@ def create_transmit_notification_log(
     )
 
 
-async def safely_log_transmit_result(
-    session: AsyncSession,
-    result: TransmitResult | NotificationTransmitError,
-    attempt: int,
-    subscription_id: int,
-    content: str,
-) -> bool:
-    """Attempts to log result into the TransmitNotificationLog via session. Guarantees that no exceptions will be raised
-
-    Will commit the session"""
-    try:
-        log = create_transmit_notification_log(
-            result=result, attempt=attempt, subscription_id=subscription_id, content=content
-        )
-        session.add(log)
-        await session.commit()
-        return True
-    except Exception as exc:
-        try:
-            logger.error(f"safely_log_transmit_result: Unable to persist result {result}", exc_info=exc)
-        except Exception:
-            return False
-        return False
-
-
 def attempt_to_retry_delay(attempt: int) -> timedelta | None:
     """Given the number of attempt just tried - return a delay that should be applied before attempting again (or none
     if no more attempts should be made)"""
@@ -84,44 +72,6 @@ def attempt_to_retry_delay(attempt: int) -> timedelta | None:
         return None
 
     return RETRY_DELAYS[attempt]
-
-
-async def schedule_retry_transmission(
-    broker: AsyncBroker,
-    remote_uri: str,
-    content: str,
-    subscription_href: str,
-    subscription_id: int,
-    notification_id: str,
-    attempt: int,
-) -> None:
-    delay = attempt_to_retry_delay(attempt)
-    if delay is None:
-        logger.error(f"Dropping {notification_id} to {remote_uri} - too many failed attempts")
-        return
-
-    try:
-        await (
-            transmit_notification.kicker()
-            .with_broker(broker)
-            .with_labels(delay=int(delay.seconds))
-            .kiq(
-                remote_uri=remote_uri,
-                content=content,
-                subscription_href=subscription_href,
-                subscription_id=subscription_id,
-                notification_id=notification_id,
-                attempt=attempt + 1,
-            )
-        )
-    except Exception as ex:
-        logger.error(
-            "Exception retrying notification of size %d to %s (attempt %d)",
-            len(content),
-            remote_uri,
-            attempt,
-            exc_info=ex,
-        )
 
 
 async def do_transmit_notification(
@@ -209,64 +159,129 @@ async def do_transmit_notification(
         )
 
 
-@async_shared_broker.task()
-async def transmit_notification(
-    remote_uri: str,
-    content: str,
-    subscription_href: str,
-    subscription_id: int,
-    notification_id: str,
-    attempt: int,
-    broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)] = TaskiqDepends(),
-    session: Annotated[AsyncSession, TaskiqDepends(session_dependency)] = TaskiqDepends(),
-    verify: Annotated[ssl.SSLContext | bool, TaskiqDepends(tls_verify_dependency)] = TaskiqDepends(),
-) -> None:
-    """Call this to trigger an outgoing notification to be sent. If the notification fails it will be retried
-    a few times (at a staggered cadence) before giving up.
+async def claim_due_transmissions(session: AsyncSession, batch_size: int) -> list[ClaimedTransmit]:
+    """Claims up to batch_size due notification_transmit rows (execute_after <= now). Each claimed row has its
+    execute_after leased forward (see LEASE_SECONDS) within this transaction so other workers skip it while it's being
+    sent. Returns detached snapshots of the claimed rows. The caller must commit the session to release the row locks
+    before sending."""
+    now = utc_now()
+    # The FOR UPDATE SKIP LOCKED claim only stays multi-worker friendly while the planner can satisfy this ORDER BY by
+    # using the index (ix_notification_transmit_execute_after). If any change forces a sort instead - eg ordering by a
+    # non-indexed column, or in the wrong direction (ASC vs DESC), Postgres must read, lock and SKIP LOCKED-evaluate
+    # EVERY matching row before it can sort+limit, so every worker locks every row.
+    # Keep the ORDER BY aligned with an index (column + direction) if you touch this query!
+    result = await session.execute(
+        select(NotificationTransmit)
+        .where(NotificationTransmit.execute_after <= now)
+        .order_by(NotificationTransmit.execute_after)
+        .limit(batch_size)
+        .with_for_update(skip_locked=True)
+    )
+    rows = result.scalars().all()
 
-    remote_uri: The FQDN / path where a HTTP POST will be issued
-    content: The string that will form the body
-    subscription_href: The href ID of the subscription that triggered this notification (eg /edev/3/sub/2)
-    subscription_id: The ID of the subscription that triggered this notification
-    attempt: The attempt number - if this gets too high the notification will be dropped"""
+    lease_until = now + timedelta(seconds=LEASE_SECONDS)
+    claimed: list[ClaimedTransmit] = []
+    for r in rows:
+        claimed.append(
+            ClaimedTransmit(
+                notification_transmit_id=r.notification_transmit_id,
+                subscription_id=r.subscription_id,
+                subscription_href=r.subscription_href,
+                notification_id=r.notification_id,
+                remote_uri=r.remote_uri,
+                content=r.content,
+                attempt=r.attempt,
+            )
+        )
+        r.execute_after = lease_until
+    return claimed
 
-    try:
-        transmit_result = await do_transmit_notification(
-            remote_uri,
-            content,
-            subscription_href,
-            notification_id,
-            attempt,
-            verify=verify,
+
+async def drop_to_dead_letter(session: AsyncSession, c: ClaimedTransmit, http_status_code: int | None) -> None:
+    """Records an undelivered notification (that won't be retried) in the dead-letter table - preserving its content
+    for debugging/replay - and removes it from the active queue."""
+    session.add(
+        NotificationDeadLetter(
+            subscription_id=c.subscription_id,
+            subscription_href=c.subscription_href,
+            notification_id=c.notification_id,
+            remote_uri=c.remote_uri,
+            content=c.content,
+            attempt=c.attempt,
+            http_status_code=http_status_code,
         )
-        await safely_log_transmit_result(
-            session=session, result=transmit_result, attempt=attempt, subscription_id=subscription_id, content=content
-        )
-    except NotificationTransmitError as notification_transmit_error:
-        # This is the expected exception handler
-        logger.error(
-            "Exception sending notification of size %d to %s (attempt %d)",
-            len(content),
-            remote_uri,
-            attempt,
-            exc_info=notification_transmit_error,
-        )
-        await schedule_retry_transmission(
-            broker, remote_uri, content, subscription_href, subscription_id, notification_id, attempt
-        )
-        await safely_log_transmit_result(
-            session=session,
-            result=notification_transmit_error,
-            attempt=attempt,
-            subscription_id=subscription_id,
-            content=content,
-        )
-    except Exception as exc:
-        # In theory this should never occur - it's only here if we get a "weird" exception
-        logger.error(
-            "Unexpected exception sending notification of size %d to %s (attempt %d). This will be dropped.",
-            len(content),
-            remote_uri,
-            attempt,
-            exc_info=exc,
-        )
+    )
+    await session.execute(
+        delete(NotificationTransmit).where(NotificationTransmit.notification_transmit_id == c.notification_transmit_id)
+    )
+
+
+async def process_transmit_batch(
+    session_maker: async_sessionmaker[AsyncSession], verify: ssl.SSLContext | bool, batch_size: int
+) -> int:
+    """Claims and sends a batch of due notification_transmit rows. Row locks are released (and a lease applied) before
+    any sending occurs so HTTP I/O never holds a row lock. On success the row is deleted; a retryable failure
+    reschedules it via execute_after until retries are exhausted. Anything dropped without delivery (exhausted retries,
+    a terminal 3xx/4xx, or an unexpected error) is moved to the dead-letter table. Every attempt is recorded in the
+    TransmitNotificationLog. Returns the number of rows claimed."""
+
+    async with session_maker() as session:
+        async with session.begin():
+            claimed = await claim_due_transmissions(session, batch_size)
+
+    if not claimed:
+        return 0
+
+    # Send everything that was claimed (no row locks are held during this) and collect the outcomes
+    outcomes = await asyncio.gather(
+        *(
+            do_transmit_notification(
+                c.remote_uri, c.content, c.subscription_href, c.notification_id, c.attempt, verify=verify
+            )
+            for c in claimed
+        ),
+        return_exceptions=True,
+    )
+
+    async with session_maker() as session:
+        async with session.begin():
+            for c, outcome in zip(claimed, outcomes, strict=True):
+                if isinstance(outcome, NotificationTransmitError):
+                    session.add(create_transmit_notification_log(outcome, c.attempt, c.subscription_id, c.content))
+                    delay = attempt_to_retry_delay(c.attempt)
+                    if delay is None:
+                        logger.error(
+                            "Dead-lettering notification %s to %s - too many failed attempts",
+                            c.notification_id,
+                            c.remote_uri,
+                        )
+                        await drop_to_dead_letter(session, c, outcome.http_status_code)
+                    else:
+                        await session.execute(
+                            update(NotificationTransmit)
+                            .where(NotificationTransmit.notification_transmit_id == c.notification_transmit_id)
+                            .values(attempt=c.attempt + 1, execute_after=utc_now() + delay)
+                        )
+                elif isinstance(outcome, TransmitResult):
+                    session.add(create_transmit_notification_log(outcome, c.attempt, c.subscription_id, c.content))
+                    if outcome.success:
+                        await session.execute(
+                            delete(NotificationTransmit).where(
+                                NotificationTransmit.notification_transmit_id == c.notification_transmit_id
+                            )
+                        )
+                    else:
+                        # Terminal 3xx/4xx - the endpoint rejected it and we won't retry
+                        await drop_to_dead_letter(session, c, outcome.http_status_code)
+                else:
+                    # An unexpected exception - this should never happen (do_transmit_notification only raises
+                    # NotificationTransmitError for retryable errors). Dead-letter it so it can't wedge the queue
+                    logger.error(
+                        "Unexpected exception sending notification %s to %s. This will be dead-lettered.",
+                        c.notification_id,
+                        c.remote_uri,
+                        exc_info=outcome,
+                    )
+                    await drop_to_dead_letter(session, c, None)
+
+    return len(claimed)

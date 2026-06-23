@@ -855,7 +855,7 @@ async def test_delete_mirror_usage_point(
     )
     mock_utc_now.assert_called_once()
     mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
-        SubscriptionResource.READING, delete_time
+        mock.ANY, SubscriptionResource.READING, delete_time
     )
 
 

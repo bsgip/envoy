@@ -1,15 +1,15 @@
 import logging
 from collections.abc import Generator, Iterable, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from itertools import islice
-from typing import Annotated, Generic, TypeVar, cast
+from typing import Generic, TypeVar, cast
 from uuid import UUID, uuid4
 
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
 from envoy_schema.server.schema.sep2.pub_sub import Notification as Sep2Notification
-from sqlalchemy.ext.asyncio import AsyncSession
-from taskiq import AsyncBroker, TaskiqDepends, async_shared_broker
+from sqlalchemy import delete, select, update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
@@ -36,23 +36,31 @@ from envoy.notification.crud.common import (
     TResourceModel,
 )
 from envoy.notification.exception import NotificationError
-from envoy.notification.handler import broker_dependency, href_prefix_dependency, session_dependency
-from envoy.notification.task.transmit import transmit_notification
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.server import RuntimeServerConfigManager, _map_server_config
+from envoy.server.manager.time import utc_now
 from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pub_sub import NotificationMapper, NotificationType, SubscriptionMapper
 from envoy.server.model.config.server import RuntimeServerConfig
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
-from envoy.server.model.subscription import Subscription, SubscriptionResource
+from envoy.server.model.subscription import (
+    NotificationCheck,
+    NotificationTransmit,
+    Subscription,
+    SubscriptionResource,
+)
 from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope, CertificateType
 
 logger = logging.getLogger(__name__)
 
 MAX_NOTIFICATION_PAGE_SIZE = 100
+
+# How many times a single notification_check will be attempted before it's dropped from the queue. A check that keeps
+# raising (eg a malformed resource the fan-out can't map) would otherwise be re-claimed every cycle and wedge the queue.
+MAX_CHECK_ATTEMPTS = 5
 
 NON_LIST_RESOURCES = set(
     [
@@ -377,24 +385,24 @@ async def fetch_batched_entities(
         raise NotificationError(f"Unsupported resource type: {resource}")
 
 
-@async_shared_broker.task()
 async def check_db_change_or_delete(
+    session: AsyncSession,
     resource: SubscriptionResource,
-    timestamp_epoch: float,
-    href_prefix: Annotated[str | None, TaskiqDepends(href_prefix_dependency)] = TaskiqDepends(),
-    session: Annotated[AsyncSession, TaskiqDepends(session_dependency)] = TaskiqDepends(),
-    broker: Annotated[AsyncBroker, TaskiqDepends(broker_dependency)] = TaskiqDepends(),
+    timestamp: datetime,
+    href_prefix: str | None,
+    config: RuntimeServerConfig,
 ) -> None:
-    """Call this to notify that a particular timestamp within a particular named resource
-    has had a batch of inserts/updates/deletes such that requesting all records with that changed_at timestamp
-    will yield all resources to be inspected for potentially notifying subscribers
+    """Inspects a particular timestamp within a particular named resource that has had a batch of inserts/updates/
+    deletes - such that requesting all records with that changed_at timestamp will yield all resources to be inspected
+    for potentially notifying subscribers - and inserts the resulting outgoing notifications as notification_transmit
+    rows (via session). The caller owns the transaction (this does not commit).
 
     For deletions - the deleted_time in the archive table will be used
 
-    resource_name: The name of the resource that is being checked for changes
-    timestamp: The datetime.timestamp() that will be used for finding resources (must be exact match)"""
+    resource: The resource that is being checked for changes
+    timestamp: The changed_at/deleted_time that will be used for finding resources (must be exact match)
+    config: The current runtime server config (used when mapping entities to notifications)"""
 
-    timestamp = datetime.fromtimestamp(timestamp_epoch, tz=UTC)
     logger.debug("check_db_change_or_delete for resource %s at timestamp %s", resource, timestamp)
 
     batched_entities = await fetch_batched_entities(session, resource, timestamp)
@@ -449,9 +457,7 @@ async def check_db_change_or_delete(
         len(all_notifications),
     )
 
-    # fetch runtime server config
-    config = await RuntimeServerConfigManager.fetch_current_config(session)
-
+    execute_after = utc_now()  # The notifications we enqueue are due immediately
     for n in all_notifications:
         content = entities_to_notification(
             resource,
@@ -466,21 +472,85 @@ async def check_db_change_or_delete(
         if isinstance(content, bytes):
             content = content.decode()
 
-        agg_id = n.batch_key[0]  # Aggregator ID is ALWAYS the first element of the batch_key
         scope = scope_for_subscription(n.subscription, href_prefix)
 
-        try:
-            await (
-                transmit_notification.kicker()
-                .with_broker(broker)
-                .kiq(
-                    remote_uri=n.subscription.notification_uri,
-                    content=content,
-                    notification_id=str(n.notification_id),
-                    subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, scope),
-                    subscription_id=n.subscription.subscription_id,
-                    attempt=0,
-                )
+        session.add(
+            NotificationTransmit(
+                subscription_id=n.subscription.subscription_id,
+                subscription_href=SubscriptionMapper.calculate_subscription_href(n.subscription, scope),
+                notification_id=str(n.notification_id),
+                remote_uri=n.subscription.notification_uri,
+                content=content,
+                attempt=0,
+                execute_after=execute_after,
             )
-        except Exception as ex:
-            logger.error("Error adding transmission task", exc_info=ex)
+        )
+
+
+async def process_check_batch(
+    session_maker: async_sessionmaker[AsyncSession], href_prefix: str | None, batch_size: int
+) -> int:
+    """Claims and processes a batch of pending notification_check rows (with SELECT ... FOR UPDATE SKIP LOCKED so it's
+    safe to run multiple workers). For each claimed check the matching subscriptions are fanned out into
+    notification_transmit rows and the check row is deleted. Each check is processed inside its own savepoint so that a
+    single failing check only rolls back its own (partial) fan-out - the rest of the batch still commits. A check that
+    fails has its attempt counter incremented and is dropped (logged) once it exhausts MAX_CHECK_ATTEMPTS so it can't
+    wedge the queue. Returns the number of checks processed."""
+    async with session_maker() as session:
+        async with session.begin():
+            # The FOR UPDATE SKIP LOCKED claim only stays multi-worker friendly while the planner can satisfy this
+            # ORDER BY by using the index (the notification_check_id primary key, ascending). If any change forces a
+            # sort instead - eg ordering by a non-indexed column, or in the wrong direction (ASC vs DESC), Postgres
+            # must read, lock and SKIP LOCKED-evaluate EVERY matching row before it can sort+limit, so every worker
+            # locks every row. Keep the ORDER BY aligned with an index (column + direction) if you touch this query!
+            result = await session.execute(
+                select(NotificationCheck)
+                .order_by(NotificationCheck.notification_check_id)
+                .limit(batch_size)
+                .with_for_update(skip_locked=True)
+            )
+            checks = result.scalars().all()
+            if not checks:
+                return 0
+
+            config = await RuntimeServerConfigManager.fetch_current_config(session)
+            for check in checks:
+                try:
+                    async with session.begin_nested():
+                        await check_db_change_or_delete(
+                            session, check.resource_type, check.changed_time, href_prefix, config
+                        )
+                        await session.delete(check)
+                except Exception as exc:
+                    # The savepoint has rolled back this check's partial fan-out (and recovered the transaction from any
+                    # db-level error) so we can safely record the failure against the (still committing) outer txn.
+                    if check.attempt + 1 >= MAX_CHECK_ATTEMPTS:
+                        logger.error(
+                            "Dropping notification_check %d (resource %s at %s) after %d attempts - giving up",
+                            check.notification_check_id,
+                            check.resource_type,
+                            check.changed_time,
+                            check.attempt + 1,
+                            exc_info=exc,
+                        )
+                        await session.execute(
+                            delete(NotificationCheck).where(
+                                NotificationCheck.notification_check_id == check.notification_check_id
+                            )
+                        )
+                    else:
+                        logger.error(
+                            "Failed to process notification_check %d (resource %s at %s) on attempt %d - will retry",
+                            check.notification_check_id,
+                            check.resource_type,
+                            check.changed_time,
+                            check.attempt + 1,
+                            exc_info=exc,
+                        )
+                        await session.execute(
+                            update(NotificationCheck)
+                            .where(NotificationCheck.notification_check_id == check.notification_check_id)
+                            .values(attempt=check.attempt + 1)
+                        )
+
+    return len(checks)

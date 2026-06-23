@@ -56,18 +56,20 @@ class ConfigManager:
         if updated_values.disable_edev_registration is not None:
             existing_db_config.disable_edev_registration = updated_values.disable_edev_registration
 
-        await session.commit()
-
         if changed_fsal_pollrate:
             await NotificationManager.notify_changed_deleted_entities(
-                SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now
+                session, SubscriptionResource.FUNCTION_SET_ASSIGNMENTS, now
             )
 
         if changed_edevl_pollrate:
-            await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, now)
+            await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, now)
 
         if changed_derpl_pollrate:
-            await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE_CONTROL_GROUP, now)
+            await NotificationManager.notify_changed_deleted_entities(
+                session, SubscriptionResource.SITE_CONTROL_GROUP, now
+            )
+
+        await session.commit()
 
     @staticmethod
     async def fetch_config_response(session: AsyncSession) -> RuntimeServerConfigResponse:

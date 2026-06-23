@@ -18,11 +18,10 @@ class DoeListManager:
         changed_time = utc_now()
         doe_models = DoeListMapper.map_from_request(changed_time, doe_list)
         await supersede_then_insert_does(session, doe_models, changed_time)
-        await session.commit()
-
         await NotificationManager.notify_changed_deleted_entities(
-            SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, changed_time
+            session, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, changed_time
         )
+        await session.commit()
 
     @staticmethod
     async def get_all_does(

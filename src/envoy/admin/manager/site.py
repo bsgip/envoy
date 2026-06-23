@@ -68,8 +68,8 @@ class SiteManager:
         deleted_time = utc_now()
         is_deleted = await delete_site_for_aggregator(session, site.aggregator_id, site_id, deleted_time)
 
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, deleted_time)
         await session.commit()
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, deleted_time)
 
         return is_deleted
 
@@ -102,8 +102,8 @@ class SiteManager:
             # Positive values update as is - zero or negative values are treated as None
             site.post_rate_seconds = update_request.post_rate_seconds if update_request.post_rate_seconds > 0 else None
 
+        await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, changed_time)
         await session.commit()
-        await NotificationManager.notify_changed_deleted_entities(SubscriptionResource.SITE, changed_time)
 
         return True
 
