@@ -3,8 +3,8 @@
 Flattens the DER sub resources (rating/setting/availability/status) so they reference the owning site directly
 instead of a (data-less) parent site_der row, then drops the site_der and archive_site_der tables.
 
-Revision ID: b2f4a6c8d1e3
-Revises: c230a2aa2615
+Revision ID: 3222295d108f
+Revises: f91bfeaeca8f
 Create Date: 2026-06-10 00:00:00.000000
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "b2f4a6c8d1e3"
-down_revision = "c230a2aa2615"
+revision = "3222295d108f"
+down_revision = "f91bfeaeca8f"
 branch_labels = None
 depends_on = None
 

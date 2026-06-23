@@ -69,16 +69,16 @@ class Site(Base):
 
     # CSIP-Aus models a single DER per site. Rather than a dedicated parent "site_der" row (which held no data of its
     # own) the DER sub resources hang directly off the Site. Each is one-to-one.
-    site_der_rating: Mapped[Optional["SiteDERRating"]] = relationship(
+    site_der_rating: Mapped["SiteDERRating | None"] = relationship(
         back_populates="site", uselist=False, lazy="raise", cascade="all, delete", passive_deletes=True
     )
-    site_der_setting: Mapped[Optional["SiteDERSetting"]] = relationship(
+    site_der_setting: Mapped["SiteDERSetting | None"] = relationship(
         back_populates="site", uselist=False, lazy="raise", cascade="all, delete", passive_deletes=True
     )
-    site_der_availability: Mapped[Optional["SiteDERAvailability"]] = relationship(
+    site_der_availability: Mapped["SiteDERAvailability | None"] = relationship(
         back_populates="site", uselist=False, lazy="raise", cascade="all, delete", passive_deletes=True
     )
-    site_der_status: Mapped[Optional["SiteDERStatus"]] = relationship(
+    site_der_status: Mapped["SiteDERStatus | None"] = relationship(
         back_populates="site", uselist=False, lazy="raise", cascade="all, delete", passive_deletes=True
     )
 
@@ -203,7 +203,7 @@ class SiteDERRating(Base):
     vpp_modes_supported: Mapped[VPPControlType | None] = mapped_column(INTEGER, nullable=True)
 
     site: Mapped["Site"] = relationship(back_populates="site_der_rating", lazy="raise")
-    table_args__ = (UniqueConstraint("site_id"),)  # Only one SiteDERRating allowed per Site
+    __table_args__ = (UniqueConstraint("site_id"),)  # Only one SiteDERRating allowed per Site
 
 
 class SiteDERSetting(Base):

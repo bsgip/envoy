@@ -421,10 +421,12 @@ async def test_concurrent_der_upsert_creates_single_site_der(
     capability: DERCapability = generate_class_instance(DERCapability, seed=3001, generate_relationships=True)
     capability.modesSupported = "00"
     capability.doeModesSupported = "03"
+    capability.vppModesSupported = "04"
 
     settings: DERSettings = generate_class_instance(DERSettings, seed=4001, generate_relationships=True)
     settings.modesEnabled = "00"
     settings.doeModesEnabled = "04"
+    settings.vppModesEnabled = "05"
 
     status: DERStatus = generate_class_instance(DERStatus, seed=13, generate_relationships=True)
     status.alarmStatus = "01"

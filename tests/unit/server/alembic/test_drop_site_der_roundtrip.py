@@ -1,6 +1,6 @@
 from envoy.server.alembic import downgrade, upgrade
 
-PREV_REVISION = "c230a2aa2615"
+PREV_REVISION = "f91bfeaeca8f"
 
 
 def test_drop_site_der_migration_roundtrip(pg_base_config):
