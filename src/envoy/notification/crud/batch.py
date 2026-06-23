@@ -35,7 +35,6 @@ from envoy.server.model.archive.doe import (
 )
 from envoy.server.model.archive.site import (
     ArchiveSite,
-    ArchiveSiteDER,
     ArchiveSiteDERAvailability,
     ArchiveSiteDERRating,
     ArchiveSiteDERSetting,
@@ -44,7 +43,7 @@ from envoy.server.model.archive.site import (
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
-from envoy.server.model.site import Site, SiteDER, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -145,16 +144,16 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
         return (rate.site.aggregator_id, rate.tariff_id, rate.site_id, rate.start_time.date())
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         availability = cast(SiteDERAvailability, entity)
-        return (availability.site_der.site.aggregator_id, availability.site_der.site_id, PUBLIC_SITE_DER_ID)
+        return (availability.site.aggregator_id, availability.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_RATING:
         rating = cast(SiteDERRating, entity)
-        return (rating.site_der.site.aggregator_id, rating.site_der.site_id, PUBLIC_SITE_DER_ID)
+        return (rating.site.aggregator_id, rating.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_SETTING:
         setting = cast(SiteDERSetting, entity)
-        return (setting.site_der.site.aggregator_id, setting.site_der.site_id, PUBLIC_SITE_DER_ID)
+        return (setting.site.aggregator_id, setting.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.SITE_DER_STATUS:
         status = cast(SiteDERStatus, entity)
-        return (status.site_der.site.aggregator_id, status.site_der.site_id, PUBLIC_SITE_DER_ID)
+        return (status.site.aggregator_id, status.site_id, PUBLIC_SITE_DER_ID)
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         default_control = cast(SiteScopedSiteControlGroupDefault, entity)
         return (
@@ -221,13 +220,13 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         return cast(TariffGeneratedRate, entity).site_id
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
-        return cast(SiteDERAvailability, entity).site_der.site_id
+        return cast(SiteDERAvailability, entity).site_id
     elif resource == SubscriptionResource.SITE_DER_RATING:
-        return cast(SiteDERRating, entity).site_der.site_id
+        return cast(SiteDERRating, entity).site_id
     elif resource == SubscriptionResource.SITE_DER_SETTING:
-        return cast(SiteDERSetting, entity).site_der.site_id
+        return cast(SiteDERSetting, entity).site_id
     elif resource == SubscriptionResource.SITE_DER_STATUS:
-        return cast(SiteDERStatus, entity).site_der.site_id
+        return cast(SiteDERStatus, entity).site_id
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         return cast(SiteScopedSiteControlGroupDefault, entity).site_id
     elif resource == SubscriptionResource.FUNCTION_SET_ASSIGNMENTS:
@@ -405,44 +404,17 @@ async def fetch_der_availability_by_changed_at(
     """Fetches all der availabilities matching the specified changed_at and returns them keyed by their
     aggregator/site id
 
-    Will include the SiteDERAvailability.site_der relationship and SiteDER.site relationship"""
+    Will include the SiteDERAvailability.site relationship"""
 
     active_der_avails, deleted_der_avails = await fetch_entities_with_archive_by_datetime(
         session, SiteDERAvailability, ArchiveSiteDERAvailability, timestamp
     )
 
-    referenced_site_der_ids = {
-        e.site_der_id
-        for e in cast(
-            Iterable[SiteDERAvailability | ArchiveSiteDERAvailability],
-            chain(active_der_avails, deleted_der_avails),
-        )
-    }
-
-    active_site_ders, deleted_site_ders = await fetch_entities_with_archive_by_id(
-        session, SiteDER, ArchiveSiteDER, referenced_site_der_ids
-    )
-
-    # Map the "site_der" relationship
-    orm_relationship_map_parent_entities(
-        cast(
-            Iterable[SiteDERAvailability | ArchiveSiteDERAvailability],
-            chain(active_der_avails, deleted_der_avails),
-        ),
-        lambda e: e.site_der_id,
-        {
-            e.site_der_id: e
-            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
-        },
-        "site_der",
-    )
-
-    # Now repeat again but for the site relationships on the site_der
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[SiteDER | ArchiveSiteDER],
-            chain(active_site_ders, deleted_site_ders),
+            Iterable[SiteDERAvailability | ArchiveSiteDERAvailability],
+            chain(active_der_avails, deleted_der_avails),
         )
     }
 
@@ -450,10 +422,12 @@ async def fetch_der_availability_by_changed_at(
         session, Site, ArchiveSite, referenced_site_ids
     )
 
-    # Map the "site" relationship for every site_der
-    all_site_ders = (cast(SiteDERAvailability, e).site_der for e in chain(active_der_avails, deleted_der_avails))
+    # Map the "site" relationship for every der availability
     orm_relationship_map_parent_entities(
-        all_site_ders,
+        cast(
+            Iterable[SiteDERAvailability | ArchiveSiteDERAvailability],
+            chain(active_der_avails, deleted_der_avails),
+        ),
         lambda e: e.site_id,
         {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
@@ -470,44 +444,17 @@ async def fetch_der_rating_by_changed_at(
     """Fetches all der ratings matching the specified changed_at and returns them keyed by their
     aggregator/site id
 
-    Will include the SiteDERRating.site_der relationship and SiteDER.site relationship"""
+    Will include the SiteDERRating.site relationship"""
 
     active_der_ratings, deleted_der_ratings = await fetch_entities_with_archive_by_datetime(
         session, SiteDERRating, ArchiveSiteDERRating, timestamp
     )
 
-    referenced_site_der_ids = {
-        e.site_der_id
-        for e in cast(
-            Iterable[SiteDERRating | ArchiveSiteDERRating],
-            chain(active_der_ratings, deleted_der_ratings),
-        )
-    }
-
-    active_site_ders, deleted_site_ders = await fetch_entities_with_archive_by_id(
-        session, SiteDER, ArchiveSiteDER, referenced_site_der_ids
-    )
-
-    # Map the "site_der" relationship
-    orm_relationship_map_parent_entities(
-        cast(
-            Iterable[SiteDERRating | ArchiveSiteDERRating],
-            chain(active_der_ratings, deleted_der_ratings),
-        ),
-        lambda e: e.site_der_id,
-        {
-            e.site_der_id: e
-            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
-        },
-        "site_der",
-    )
-
-    # Now repeat again but for the site relationships on the site_der
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[SiteDER | ArchiveSiteDER],
-            chain(active_site_ders, deleted_site_ders),
+            Iterable[SiteDERRating | ArchiveSiteDERRating],
+            chain(active_der_ratings, deleted_der_ratings),
         )
     }
 
@@ -515,10 +462,12 @@ async def fetch_der_rating_by_changed_at(
         session, Site, ArchiveSite, referenced_site_ids
     )
 
-    # Map the "site" relationship for every site_der
-    all_site_ders = (cast(SiteDERRating, e).site_der for e in chain(active_der_ratings, deleted_der_ratings))
+    # Map the "site" relationship for every der rating
     orm_relationship_map_parent_entities(
-        all_site_ders,
+        cast(
+            Iterable[SiteDERRating | ArchiveSiteDERRating],
+            chain(active_der_ratings, deleted_der_ratings),
+        ),
         lambda e: e.site_id,
         {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
@@ -535,44 +484,17 @@ async def fetch_der_setting_by_changed_at(
     """Fetches all der settings matching the specified changed_at and returns them keyed by their
     aggregator/site id
 
-    Will include the SiteDERSetting.site_der relationship and SiteDER.site relationship"""
+    Will include the SiteDERSetting.site relationship"""
 
     active_der_settings, deleted_der_settings = await fetch_entities_with_archive_by_datetime(
         session, SiteDERSetting, ArchiveSiteDERSetting, timestamp
     )
 
-    referenced_site_der_ids = {
-        e.site_der_id
-        for e in cast(
-            Iterable[SiteDERSetting | ArchiveSiteDERSetting],
-            chain(active_der_settings, deleted_der_settings),
-        )
-    }
-
-    active_site_ders, deleted_site_ders = await fetch_entities_with_archive_by_id(
-        session, SiteDER, ArchiveSiteDER, referenced_site_der_ids
-    )
-
-    # Map the "site_der" relationship
-    orm_relationship_map_parent_entities(
-        cast(
-            Iterable[SiteDERSetting | ArchiveSiteDERSetting],
-            chain(active_der_settings, deleted_der_settings),
-        ),
-        lambda e: e.site_der_id,
-        {
-            e.site_der_id: e
-            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
-        },
-        "site_der",
-    )
-
-    # Now repeat again but for the site relationships on the site_der
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[SiteDER | ArchiveSiteDER],
-            chain(active_site_ders, deleted_site_ders),
+            Iterable[SiteDERSetting | ArchiveSiteDERSetting],
+            chain(active_der_settings, deleted_der_settings),
         )
     }
 
@@ -580,10 +502,12 @@ async def fetch_der_setting_by_changed_at(
         session, Site, ArchiveSite, referenced_site_ids
     )
 
-    # Map the "site" relationship for every site_der
-    all_site_ders = (cast(SiteDERSetting, e).site_der for e in chain(active_der_settings, deleted_der_settings))
+    # Map the "site" relationship for every der setting
     orm_relationship_map_parent_entities(
-        all_site_ders,
+        cast(
+            Iterable[SiteDERSetting | ArchiveSiteDERSetting],
+            chain(active_der_settings, deleted_der_settings),
+        ),
         lambda e: e.site_id,
         {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
@@ -600,44 +524,17 @@ async def fetch_der_status_by_changed_at(
     """Fetches all der status matching the specified changed_at and returns them keyed by their
     aggregator/site id
 
-    Will include the SiteDERStatus.site_der relationship and SiteDER.site relationship"""
+    Will include the SiteDERStatus.site relationship"""
 
     active_der_statuses, deleted_der_statuses = await fetch_entities_with_archive_by_datetime(
         session, SiteDERStatus, ArchiveSiteDERStatus, timestamp
     )
 
-    referenced_site_der_ids = {
-        e.site_der_id
-        for e in cast(
-            Iterable[SiteDERStatus | ArchiveSiteDERStatus],
-            chain(active_der_statuses, deleted_der_statuses),
-        )
-    }
-
-    active_site_ders, deleted_site_ders = await fetch_entities_with_archive_by_id(
-        session, SiteDER, ArchiveSiteDER, referenced_site_der_ids
-    )
-
-    # Map the "site_der" relationship
-    orm_relationship_map_parent_entities(
-        cast(
-            Iterable[SiteDERStatus | ArchiveSiteDERStatus],
-            chain(active_der_statuses, deleted_der_statuses),
-        ),
-        lambda e: e.site_der_id,
-        {
-            e.site_der_id: e
-            for e in cast(Iterable[SiteDER | ArchiveSiteDER], chain(active_site_ders, deleted_site_ders))
-        },
-        "site_der",
-    )
-
-    # Now repeat again but for the site relationships on the site_der
     referenced_site_ids = {
         e.site_id
         for e in cast(
-            Iterable[SiteDER | ArchiveSiteDER],
-            chain(active_site_ders, deleted_site_ders),
+            Iterable[SiteDERStatus | ArchiveSiteDERStatus],
+            chain(active_der_statuses, deleted_der_statuses),
         )
     }
 
@@ -645,10 +542,12 @@ async def fetch_der_status_by_changed_at(
         session, Site, ArchiveSite, referenced_site_ids
     )
 
-    # Map the "site" relationship for every site_der
-    all_site_ders = (cast(SiteDERStatus, e).site_der for e in chain(active_der_statuses, deleted_der_statuses))
+    # Map the "site" relationship for every der status
     orm_relationship_map_parent_entities(
-        all_site_ders,
+        cast(
+            Iterable[SiteDERStatus | ArchiveSiteDERStatus],
+            chain(active_der_statuses, deleted_der_statuses),
+        ),
         lambda e: e.site_id,
         {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
         "site",
