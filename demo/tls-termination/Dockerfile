@@ -3,8 +3,10 @@ FROM nginx:bookworm
 ARG HOST_UID
 ARG HOST_GID
 
-RUN usermod -u $HOST_UID www-data && \
-    groupmod -g $HOST_GID www-data
+RUN if [ -n "$HOST_UID" ] && [ -n "$HOST_GID" ]; then \
+        groupmod -o -g "$HOST_GID" www-data && \
+        usermod -u "$HOST_UID" www-data; \
+    fi
 
 COPY --chown=www-data:www-data ./nginx.conf /etc/nginx/nginx.conf
 COPY --chown=www-data:www-data --chmod=770 ./entrypoint/* /
