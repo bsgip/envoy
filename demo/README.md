@@ -48,12 +48,12 @@ The underlying IEEE 2030.5 standard requires specially signed certificates to id
 | `testaggregator.crt` | Certificate for the client certificate registered to a testing "aggregator" |
 | `testaggregator.key` | Private Key for the client certificate registered to a testing "aggregator". No passphrase |
 | `testaggregator.p12` | PKCS#12/PFX, a convenient combination of the `testaggregator.crt` and `testaggregator.key`. Empty string passphrase |
- `testdevice1.crt` | Certificate for the client certificate registered to a testing non-aggregator "device" |
+| `testdevice1.crt` | Certificate for the client certificate registered to a testing non-aggregator "device" |
 | `testdevice1.key` | Private Key for the client certificate registered to a testing non-aggregator "device". No passphrase |
-| `testdevice1.p12` | PKCS#12/PFX, a convenient combination of the `testdevice.crt` and `testdevice.key`. Empty string passphrase |
-`testdevice2.crt` | Certificate for the client certificate registered to a testing non-aggregator "device" |
+| `testdevice1.p12` | PKCS#12/PFX, a convenient combination of the `testdevice1.crt` and `testdevice1.key`. Empty string passphrase |
+| `testdevice2.crt` | Certificate for the client certificate registered to a testing non-aggregator "device" |
 | `testdevice2.key` | Private Key for the client certificate registered to a testing non-aggregator "device". No passphrase |
-| `testdevice2.p12` | PKCS#12/PFX, a convenient combination of the `testdevice.crt` and `testdevice.key`. Empty string passphrase |
+| `testdevice2.p12` | PKCS#12/PFX, a convenient combination of the `testdevice2.crt` and `testdevice2.key`. Empty string passphrase |
 
 The client certificates described in the table above are signed by the test CA and can be used against the nginx instance exposed on port 8443.
 
@@ -64,7 +64,7 @@ You are welcome to sign additional certificates using the "test ca", but please 
 The easiest way to validate that the example services have started is by issuing a HTTPS request to localhost:8443/dcap
 
 ```
-curl --cacert ./tls-termination/test_certs/testca.crt --cert ./tls-termination/test_certs/testdevice.p12:testclientpassphrase --cert-type p12 https://localhost:8443/dcap
+curl --cacert ./tls-termination/test_certs/testca.crt --cert ./tls-termination/test_certs/testdevice1.p12: --cert-type p12 https://localhost:8443/dcap
 ```
 
 That should generate a response like this:
@@ -79,7 +79,7 @@ In the root repository directory under `postman/` you'll find Postman collection
 You'll need to import them and then do the following:
 1. File -> Settings -> Certificates -> Client Certificates -> Add Certificate
     * Set the certificate host to `https://localhost:8443`
-    * Set the PFX file to `testdevice.p12` (see table above for other info)
+    * Set the PFX file to `testdevice1.p12` (see table above for other info)
 2. envoy collection -> Variables
     * Set HOST to `localhost:8443`
 

@@ -66,9 +66,17 @@ if ! [ -d "$RPROXY_CERTS_DIR" ]; then
 fi
 
 # Check if rproxy certs exist, generate if not
-if ! [ -f "$RPROXY_CERTS_DIR/testrproxy.crt" ]; then
-    openssl req -new -nodes -keyout "$RPROXY_CERTS_DIR/testrproxy.key" -out "$RPROXY_CERTS_DIR/testrproxy.csr" -config /san.conf
-    openssl x509 -req -days 365 -in "$RPROXY_CERTS_DIR/testrproxy.csr" -CA "$CERTS_DIR/testca.crt" \
-        -CAkey "$CERTS_DIR/testca.key" -set_serial 01 -out "$RPROXY_CERTS_DIR/testrproxy.crt" \
+if ! [ -f "$RPROXY_CERTS_DIR/testrproxy-rsa.crt" ] || ! [ -f "$RPROXY_CERTS_DIR/testrproxy-rsa.key" ]; then
+    openssl req -new -nodes -keyout "$RPROXY_CERTS_DIR/testrproxy-rsa.key" -out "$RPROXY_CERTS_DIR/testrproxy-rsa.csr" -config /san.conf
+    openssl x509 -req -days 365 -in "$RPROXY_CERTS_DIR/testrproxy-rsa.csr" -CA "$CERTS_DIR/testca.crt" \
+        -CAkey "$CERTS_DIR/testca.key" -set_serial 01 -out "$RPROXY_CERTS_DIR/testrproxy-rsa.crt" \
+        -extfile /san.conf -extensions v3_req
+fi
+
+if ! [ -f "$RPROXY_CERTS_DIR/testrproxy-ecdsa.crt" ] || ! [ -f "$RPROXY_CERTS_DIR/testrproxy-ecdsa.key" ]; then
+    openssl ecparam -name prime256v1 -genkey -noout -out "$RPROXY_CERTS_DIR/testrproxy-ecdsa.key"
+    openssl req -new -key "$RPROXY_CERTS_DIR/testrproxy-ecdsa.key" -out "$RPROXY_CERTS_DIR/testrproxy-ecdsa.csr" -config /san.conf
+    openssl x509 -req -days 365 -in "$RPROXY_CERTS_DIR/testrproxy-ecdsa.csr" -CA "$CERTS_DIR/testca.crt" \
+        -CAkey "$CERTS_DIR/testca.key" -set_serial 02 -out "$RPROXY_CERTS_DIR/testrproxy-ecdsa.crt" \
         -extfile /san.conf -extensions v3_req
 fi
