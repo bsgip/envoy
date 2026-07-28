@@ -28,7 +28,6 @@ from envoy.server.mapper.csip_aus.doe import DERControlMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup
 from envoy.server.model.server import RuntimeServerConfig as DbRuntimeServerConfig
-from envoy.server.model.site import Site
 from tests.conftest import (
     DEFAULT_DOE_EXPORT_ACTIVE_WATTS,
     DEFAULT_DOE_IMPORT_ACTIVE_WATTS,
@@ -450,7 +449,6 @@ async def test_get_dercontrol_list_intersecting_some(
     duration_seconds = 300
     end_time = start_time + timedelta(seconds=duration_seconds)
     async with generate_async_session(pg_base_config) as session:
-        site = (await session.execute(select(Site).where(Site.site_id == 1))).scalar_one()
         site_control_group = (
             await session.execute(select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 1))
         ).scalar_one()
@@ -464,7 +462,7 @@ async def test_get_dercontrol_list_intersecting_some(
                 duration_seconds=duration_seconds,
                 calculation_log_id=None,
                 end_time=end_time,
-                site=site,
+                site_group_id=2,  # Group-2, site1's singleton group per base_config.sql
                 site_control_group=site_control_group,
             )
         )
@@ -476,7 +474,7 @@ async def test_get_dercontrol_list_intersecting_some(
                 start_time=start_time,
                 duration_seconds=duration_seconds,
                 end_time=end_time,
-                site_id=1,
+                site_group_id=2,
                 site_control_group_id=1,
             )
         )
@@ -749,7 +747,6 @@ async def test_large_power_value_fits_int16(
     duration_seconds = 300
 
     async with generate_async_session(pg_base_config) as session:
-        site = (await session.execute(select(Site).where(Site.site_id == 1))).scalar_one()
         site_control_group = (
             await session.execute(select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 1))
         ).scalar_one()
@@ -758,10 +755,10 @@ async def test_large_power_value_fits_int16(
         db_config.site_control_pow10_encoding = 0
         await session.commit()
 
-        # Create a DOE with large power value
+        # Create a DOE with large power value - site_group_id=2 is site1's singleton group per base_config.sql
         session.add(
             DynamicOperatingEnvelope(
-                site=site,
+                site_group_id=2,
                 site_control_group=site_control_group,
                 start_time=start_time,
                 duration_seconds=duration_seconds,

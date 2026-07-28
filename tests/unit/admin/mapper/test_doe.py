@@ -26,7 +26,7 @@ def test_doe_mapper_from_request(optional_is_none: bool):
 
     assert isinstance(mdl, DynamicOperatingEnvelope)
 
-    assert mdl.site_id == req.site_id
+    assert mdl.site_group_id == req.site_group_id
     assert mdl.calculation_log_id == req.calculation_log_id
     assert mdl.duration_seconds == req.duration_seconds
     assert mdl.import_limit_active_watts == req.import_limit_active_watts
@@ -39,7 +39,6 @@ def test_doe_mapper_from_request(optional_is_none: bool):
     assert mdl.superseded is False, "No incoming record should map to being superseded"
     assert mdl.display_id is None, "No mapping for display_id in this legacy model"
 
-    assert not mdl.site
     assert not mdl.dynamic_operating_envelope_id
 
 

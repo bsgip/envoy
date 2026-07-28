@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 from envoy.server.model.aggregator import Aggregator
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.log import CalculationLog
-from envoy.server.model.site import Site
+from envoy.server.model.site import Site, SiteGroupAssignment
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.tariff import TariffGeneratedRate
 
@@ -22,7 +22,8 @@ class BillingData:
     wh_readings: Sequence[SiteReading]  # Watt Hour readings
     watt_readings: Sequence[SiteReading]  # Watt readings to use a failover if wh_readings are missing
     active_tariffs: Sequence[TariffGeneratedRate]
-    active_does: Sequence[DynamicOperatingEnvelope]
+    # A DOE targets a SiteGroup rather than a single site - each entry is a (site_id, doe) pair
+    active_does: Sequence[tuple[int, DynamicOperatingEnvelope]]
 
 
 async def fetch_aggregator_billing_data(
@@ -45,14 +46,16 @@ async def fetch_aggregator_billing_data(
     )
 
     does_result = await session.execute(
-        select(DynamicOperatingEnvelope)
-        .join(Site)
+        select(Site.site_id, DynamicOperatingEnvelope)
+        .select_from(DynamicOperatingEnvelope)
+        .join(SiteGroupAssignment, SiteGroupAssignment.site_group_id == DynamicOperatingEnvelope.site_group_id)
+        .join(Site, Site.site_id == SiteGroupAssignment.site_id)
         .where(
             (Site.aggregator_id == aggregator_id)
             & (DynamicOperatingEnvelope.start_time >= period_start)
             & (DynamicOperatingEnvelope.start_time < period_end)
         )
-        .order_by(DynamicOperatingEnvelope.site_id, DynamicOperatingEnvelope.start_time)
+        .order_by(Site.site_id, DynamicOperatingEnvelope.start_time)
     )
 
     wh_result = await session.execute(
@@ -96,7 +99,7 @@ async def fetch_aggregator_billing_data(
 
     return BillingData(
         active_tariffs=tariffs_result.scalars().all(),
-        active_does=does_result.scalars().all(),
+        active_does=does_result.tuples().all(),
         wh_readings=wh_result.scalars().all(),
         varh_readings=varh_result.scalars().all(),
         watt_readings=watt_result.scalars().all(),
@@ -133,12 +136,17 @@ async def fetch_calculation_log_billing_data(
     does_result = (
         (
             await session.execute(
-                select(DynamicOperatingEnvelope)
+                select(SiteGroupAssignment.site_id, DynamicOperatingEnvelope)
+                .select_from(DynamicOperatingEnvelope)
+                .join(
+                    SiteGroupAssignment,
+                    SiteGroupAssignment.site_group_id == DynamicOperatingEnvelope.site_group_id,
+                )
                 .where((DynamicOperatingEnvelope.calculation_log_id == calculation_log.calculation_log_id))
-                .order_by(DynamicOperatingEnvelope.site_id, DynamicOperatingEnvelope.start_time)
+                .order_by(SiteGroupAssignment.site_id, DynamicOperatingEnvelope.start_time)
             )
         )
-        .scalars()
+        .tuples()
         .all()
     )
 
@@ -146,7 +154,7 @@ async def fetch_calculation_log_billing_data(
     referenced_site_ids: set[int] = set(
         chain(
             (e.site_id for e in tariffs_result),
-            (e.site_id for e in does_result),
+            (site_id for site_id, _ in does_result),
         )
     )
 
@@ -235,13 +243,15 @@ async def fetch_sites_billing_data(
     )
 
     does_result = await session.execute(
-        select(DynamicOperatingEnvelope)
+        select(SiteGroupAssignment.site_id, DynamicOperatingEnvelope)
+        .select_from(DynamicOperatingEnvelope)
+        .join(SiteGroupAssignment, SiteGroupAssignment.site_group_id == DynamicOperatingEnvelope.site_group_id)
         .where(
-            (DynamicOperatingEnvelope.site_id.in_(site_ids))
+            (SiteGroupAssignment.site_id.in_(site_ids))
             & (DynamicOperatingEnvelope.start_time >= period_start)
             & (DynamicOperatingEnvelope.start_time < period_end)
         )
-        .order_by(DynamicOperatingEnvelope.site_id, DynamicOperatingEnvelope.start_time)
+        .order_by(SiteGroupAssignment.site_id, DynamicOperatingEnvelope.start_time)
     )
 
     wh_result = await session.execute(
@@ -285,7 +295,7 @@ async def fetch_sites_billing_data(
 
     return BillingData(
         active_tariffs=tariffs_result.scalars().all(),
-        active_does=does_result.scalars().all(),
+        active_does=does_result.tuples().all(),
         wh_readings=wh_result.scalars().all(),
         varh_readings=varh_result.scalars().all(),
         watt_readings=watt_result.scalars().all(),

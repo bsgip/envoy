@@ -504,7 +504,6 @@ def test_mrid_uniqueness():
         DeviceOrAggregatorRequestScope, site_id=site_id, display_site_id=site_id
     )
     doe: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope)
-    doe.site_id = site_id
     doe.dynamic_operating_envelope_id = site_id  # intentionally the same as site_id
     now = datetime(2022, 11, 3, tzinfo=UTC)
 

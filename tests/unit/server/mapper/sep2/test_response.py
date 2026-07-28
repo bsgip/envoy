@@ -160,12 +160,13 @@ def test_ResponseMapper_map_from_doe_request(
 ):
     response = generate_class_instance(response_type, seed=101, optional_is_none=optional_is_none)
     doe = generate_class_instance(doe_type, seed=202, optional_is_none=optional_is_none)
+    site_id = 12345
 
-    result = ResponseMapper.map_from_doe_request(response, doe)
+    result = ResponseMapper.map_from_doe_request(response, doe, site_id)
     assert isinstance(result, DynamicOperatingEnvelopeResponse)
     assert result.dynamic_operating_envelope_response_id is None, "Assigned by the database"
     assert result.created_time is None, "Assigned by the database"
-    assert result.site_id == doe.site_id
+    assert result.site_id == site_id
     assert result.dynamic_operating_envelope_id_snapshot == doe.dynamic_operating_envelope_id
 
 

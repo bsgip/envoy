@@ -57,10 +57,10 @@ async def test_create_does_no_active_subscription(
         await session.commit()
 
     doe = generate_class_instance(body_type)
-    doe.site_id = 1
+    doe.site_group_id = 2
 
     doe_1 = generate_class_instance(body_type, seed=123, optional_is_none=True)
-    doe_1.site_id = 2
+    doe_1.site_group_id = 4
 
     resp = await admin_client_auth.post(uri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
 
@@ -120,10 +120,10 @@ async def test_create_does_with_active_subscription(
 
         await session.commit()
 
-    doe_1 = generate_class_instance(body_type, seed=10001, site_id=1, calculation_log_id=None)
-    doe_2 = generate_class_instance(body_type, seed=20002, site_id=1, calculation_log_id=1)
-    doe_3 = generate_class_instance(body_type, seed=30003, site_id=2, calculation_log_id=1)
-    doe_4 = generate_class_instance(body_type, seed=40004, site_id=3, calculation_log_id=None)
+    doe_1 = generate_class_instance(body_type, seed=10001, site_group_id=2, calculation_log_id=None)
+    doe_2 = generate_class_instance(body_type, seed=20002, site_group_id=2, calculation_log_id=1)
+    doe_3 = generate_class_instance(body_type, seed=30003, site_group_id=4, calculation_log_id=1)
+    doe_4 = generate_class_instance(body_type, seed=40004, site_group_id=5, calculation_log_id=None)
 
     content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
     resp = await admin_client_auth.post(
@@ -242,7 +242,7 @@ async def test_supersede_doe_with_active_subscription(
     doe_1 = generate_class_instance(
         body_type,
         seed=10001,
-        site_id=1,
+        site_group_id=2,
         calculation_log_id=None,
         start_time=datetime(2022, 5, 7, 1, 2, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
         export_limit_watts=100,
@@ -321,10 +321,10 @@ async def test_create_does_with_paginated_notifications(
 
         await session.commit()
 
-    doe_1 = generate_class_instance(body_type, seed=101, site_id=1, calculation_log_id=None)
-    doe_2 = generate_class_instance(body_type, seed=202, site_id=1, calculation_log_id=None)
-    doe_3 = generate_class_instance(body_type, seed=303, site_id=1, calculation_log_id=None)
-    doe_4 = generate_class_instance(body_type, seed=404, site_id=3, calculation_log_id=None)
+    doe_1 = generate_class_instance(body_type, seed=101, site_group_id=2, calculation_log_id=None)
+    doe_2 = generate_class_instance(body_type, seed=202, site_group_id=2, calculation_log_id=None)
+    doe_3 = generate_class_instance(body_type, seed=303, site_group_id=2, calculation_log_id=None)
+    doe_4 = generate_class_instance(body_type, seed=404, site_group_id=5, calculation_log_id=None)
 
     content = ",".join([d.model_dump_json() for d in [doe_1, doe_2, doe_3, doe_4]])
     resp = await admin_client_auth.post(
@@ -399,7 +399,7 @@ async def test_create_rates_with_active_subscription(
     rate_1: TariffGeneratedRateRequest = generate_class_instance(
         TariffGeneratedRateRequest,
         seed=101,
-        site_id=1,
+        site_group_id=1,
         tariff_id=1,
         start_time=datetime(2022, 3, 4, 14, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
         calculation_log_id=1,
@@ -408,7 +408,7 @@ async def test_create_rates_with_active_subscription(
     rate_2: TariffGeneratedRateRequest = generate_class_instance(
         TariffGeneratedRateRequest,
         seed=202,
-        site_id=1,
+        site_group_id=1,
         tariff_id=1,
         start_time=datetime(2022, 3, 4, 14, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
         calculation_log_id=None,
@@ -417,7 +417,7 @@ async def test_create_rates_with_active_subscription(
     rate_3: TariffGeneratedRateRequest = generate_class_instance(
         TariffGeneratedRateRequest,
         seed=303,
-        site_id=1,
+        site_group_id=1,
         tariff_id=1,
         start_time=datetime(2022, 3, 4, 14, 10, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
         calculation_log_id=None,
@@ -426,7 +426,7 @@ async def test_create_rates_with_active_subscription(
     rate_4: TariffGeneratedRateRequest = generate_class_instance(
         TariffGeneratedRateRequest,
         seed=404,
-        site_id=3,
+        site_group_id=3,
         tariff_id=1,
         start_time=datetime(2022, 3, 4, 14, 15, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
         calculation_log_id=None,
@@ -519,7 +519,7 @@ async def test_replace_rate_with_active_subscription(
     rate_1 = generate_class_instance(
         TariffGeneratedRateRequest,
         seed=10001,
-        site_id=1,
+        site_group_id=1,
         tariff_id=1,
         calculation_log_id=None,
         start_time=datetime(2022, 3, 5, 1, 2, 0, tzinfo=ZoneInfo("Australia/Brisbane")),

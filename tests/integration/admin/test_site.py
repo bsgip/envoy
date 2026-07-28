@@ -183,13 +183,13 @@ async def test_get_all_sites(
 @pytest.mark.parametrize(
     "start, limit, expected_group_count",
     [
-        (None, None, [(1, 3), (2, 1), (3, 0)]),
-        (None, 10, [(1, 3), (2, 1), (3, 0)]),
+        (None, None, [(1, 3), (2, 1), (3, 0), (4, 1), (5, 1)]),
+        (None, 10, [(1, 3), (2, 1), (3, 0), (4, 1), (5, 1)]),
         (None, 2, [(1, 3), (2, 1)]),
         (1, 2, [(2, 1), (3, 0)]),
-        (2, 2, [(3, 0)]),
-        (3, 2, []),
-        (3, None, []),
+        (2, 2, [(3, 0), (4, 1)]),
+        (3, 2, [(4, 1), (5, 1)]),
+        (3, None, [(4, 1), (5, 1)]),
     ],
 )
 @pytest.mark.anyio
@@ -299,8 +299,10 @@ async def test_get_site(
 @pytest.mark.parametrize(
     "site_id, expected_status, archive_site_count, archive_doe_count, archive_price_count",
     [
-        (1, HTTPStatus.NO_CONTENT, 1, 3, 3),
-        (2, HTTPStatus.NO_CONTENT, 1, 1, 1),
+        # DOEs are no longer archived/deleted as a side effect of deleting a site - a DOE now targets a
+        # SiteGroup (which may have other member sites still relying on it), not this Site directly.
+        (1, HTTPStatus.NO_CONTENT, 1, 0, 3),
+        (2, HTTPStatus.NO_CONTENT, 1, 0, 1),
         (3, HTTPStatus.NO_CONTENT, 1, 0, 0),
         (4, HTTPStatus.NO_CONTENT, 1, 0, 0),
         (5, HTTPStatus.NO_CONTENT, 1, 0, 0),

@@ -54,9 +54,9 @@ async def test_update_tariff(admin_client_auth: AsyncClient):
 
 @pytest.mark.anyio
 async def test_create_tariff_genrates(admin_client_auth: AsyncClient):
-    tariff_genrate = generate_class_instance(TariffGeneratedRateRequest, tariff_id=1, site_id=1)
+    tariff_genrate = generate_class_instance(TariffGeneratedRateRequest, tariff_id=1, site_group_id=1)
 
-    tariff_genrate_1 = generate_class_instance(TariffGeneratedRateRequest, tariff_id=2, site_id=2)
+    tariff_genrate_1 = generate_class_instance(TariffGeneratedRateRequest, tariff_id=2, site_group_id=2)
 
     resp = await admin_client_auth.post(
         TariffGeneratedRateCreateUri,
@@ -78,7 +78,7 @@ async def test_update_tariff_genrate_calculation_log(pg_base_config, admin_clien
     # This should be updating tariff_generated_rate_id 1
     updated_rate = TariffGeneratedRateRequest(
         tariff_id=1,
-        site_id=1,
+        site_group_id=1,
         start_time=datetime(2022, 3, 5, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
         duration_seconds=1113,
         calculation_log_id=3,

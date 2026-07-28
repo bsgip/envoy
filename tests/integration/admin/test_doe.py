@@ -34,8 +34,10 @@ from tests.integration.response import read_response_body_string
 
 @pytest.mark.anyio
 async def test_create_does(admin_client_auth: AsyncClient):
-    doe: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, site_id=1)
-    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, site_id=2)
+    doe: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, site_group_id=2)
+    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(
+        DynamicOperatingEnvelopeRequest, site_group_id=4
+    )
 
     resp = await admin_client_auth.post(DoeUri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
 
@@ -53,7 +55,7 @@ async def test_supersede_doe(pg_base_config, admin_client_auth: AsyncClient):
 
     # This should be updating doe 1
     new_doe = DynamicOperatingEnvelopeRequest(
-        site_id=1,
+        site_group_id=2,
         start_time=datetime(2022, 5, 7, 1, 2, 3, tzinfo=ZoneInfo("Australia/Brisbane")),
         duration_seconds=2,
         calculation_log_id=3,  # This is how we'll look this record up in the DB later

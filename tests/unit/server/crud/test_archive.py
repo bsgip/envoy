@@ -337,7 +337,7 @@ async def test_delete_rows_into_archive_cascade_deletes(pg_base_config):
             DynamicOperatingEnvelope,
             ArchiveDynamicOperatingEnvelope,
             deleted_time,
-            lambda q: q.where(DynamicOperatingEnvelope.site_id == 1),
+            lambda q: q.where(DynamicOperatingEnvelope.site_group_id == 2),
         )
 
         await delete_rows_into_archive(

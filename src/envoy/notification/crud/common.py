@@ -62,6 +62,26 @@ class ArchiveSiteScopedSiteControlGroup:
 
 
 @dataclass
+class SiteScopedDynamicOperatingEnvelope:
+    """DynamicOperatingEnvelope targets a SiteGroup rather than a single Site - for csip-aus notifications it
+    needs to be scoped down to a specific member site"""
+
+    aggregator_id: int
+    site_id: int
+    original: DynamicOperatingEnvelope
+
+
+@dataclass
+class ArchiveSiteScopedDynamicOperatingEnvelope:
+    """ArchiveDynamicOperatingEnvelope targets a SiteGroup rather than a single Site - see
+    SiteScopedDynamicOperatingEnvelope"""
+
+    aggregator_id: int
+    site_id: int
+    original: ArchiveDynamicOperatingEnvelope
+
+
+@dataclass
 class SiteScopedSiteControlGroupDefault:
     """SiteControlGroupDefault isn't scoped to a specific site - for csip-aus it will need to be"""
 

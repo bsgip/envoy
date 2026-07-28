@@ -56,7 +56,7 @@ class SiteControlListMapper:
     ) -> list[DynamicOperatingEnvelope]:
         return [
             DynamicOperatingEnvelope(
-                site_id=c.site_id,
+                site_group_id=c.site_group_id,
                 site_control_group_id=site_control_group_id,
                 calculation_log_id=c.calculation_log_id,
                 changed_time=changed_time,
@@ -84,7 +84,7 @@ class SiteControlListMapper:
             site_control_id=control.dynamic_operating_envelope_id,
             created_time=control.created_time,
             changed_time=control.changed_time,
-            site_id=control.site_id,
+            site_group_id=control.site_group_id,
             calculation_log_id=control.calculation_log_id,
             duration_seconds=control.duration_seconds,
             import_limit_watts=control.import_limit_active_watts,

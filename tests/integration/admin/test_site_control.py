@@ -203,8 +203,8 @@ async def test_get_all_site_control_groups(
 
 @pytest.mark.anyio
 async def test_create_site_controls(admin_client_auth: AsyncClient):
-    control_1 = generate_class_instance(SiteControlRequest, site_id=1)
-    control_2 = generate_class_instance(SiteControlRequest, site_id=2)
+    control_1 = generate_class_instance(SiteControlRequest, site_group_id=2)
+    control_2 = generate_class_instance(SiteControlRequest, site_group_id=4)
 
     resp = await admin_client_auth.post(
         SiteControlUri.format(group_id=1), content=f"[{control_1.model_dump_json()}, {control_2.model_dump_json()}]"
@@ -215,7 +215,7 @@ async def test_create_site_controls(admin_client_auth: AsyncClient):
 
 @pytest.mark.anyio
 async def test_create_site_controls_bad_group_id(admin_client_auth: AsyncClient):
-    control = generate_class_instance(SiteControlRequest, site_id=1)
+    control = generate_class_instance(SiteControlRequest, site_group_id=2)
     resp = await admin_client_auth.post(SiteControlUri.format(group_id=99), content=f"[{control.model_dump_json()}]")
     assert resp.status_code == HTTPStatus.BAD_REQUEST
 
@@ -232,7 +232,7 @@ async def test_supersede_site_control(pg_base_config, admin_client_auth: AsyncCl
 
     # This should be superseding doe 1 (doe1 fully encapsulates it)
     updated_rate = SiteControlRequest(
-        site_id=1,
+        site_group_id=2,
         start_time=datetime(2022, 5, 7, 1, 2, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
         duration_seconds=5,
         calculation_log_id=3,  # This is how we'll look this record up in the DB later
@@ -463,7 +463,7 @@ async def test_supersede_site_control_different_fields_coexist(pg_base_config, a
 
     # Create first DOE with load_limit
     doe_with_load_limit = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, load_limit_watts=Decimal(0)
+        site_group_id=2, start_time=start_time, duration_seconds=300, calculation_log_id=2, load_limit_watts=Decimal(0)
     )
 
     resp = await admin_client_auth.post(
@@ -474,7 +474,11 @@ async def test_supersede_site_control_different_fields_coexist(pg_base_config, a
 
     # Create second DOE with import_limit at the same time
     doe_with_import_limit = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=Decimal(5000)
+        site_group_id=2,
+        start_time=start_time,
+        duration_seconds=300,
+        calculation_log_id=3,
+        import_limit_watts=Decimal(5000),
     )
 
     resp = await admin_client_auth.post(
@@ -547,14 +551,22 @@ async def test_supersede_site_control_same_field_does_supersede(pg_base_config, 
 
     # DOE1
     doe1 = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=2, import_limit_watts=Decimal(1000)
+        site_group_id=2,
+        start_time=start_time,
+        duration_seconds=300,
+        calculation_log_id=2,
+        import_limit_watts=Decimal(1000),
     )
     resp = await admin_client_auth.post(SiteControlUri.format(group_id=1), content=f"[{doe1.model_dump_json()}]")
     assert resp.status_code == HTTPStatus.CREATED
 
     # DOE2 with import_limit at the same time - should supersede DOE1
     doe2 = SiteControlRequest(
-        site_id=1, start_time=start_time, duration_seconds=300, calculation_log_id=3, import_limit_watts=Decimal(2000)
+        site_group_id=2,
+        start_time=start_time,
+        duration_seconds=300,
+        calculation_log_id=3,
+        import_limit_watts=Decimal(2000),
     )
     resp = await admin_client_auth.post(SiteControlUri.format(group_id=1), content=f"[{doe2.model_dump_json()}]")
     assert resp.status_code == HTTPStatus.CREATED

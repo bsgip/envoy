@@ -195,7 +195,7 @@ class ResponseManager:
                     f"subject '{response.subject}' references a DOE not available on this utility server"
                 )
 
-            doe_response = ResponseMapper.map_from_doe_request(cast(DERControlResponse, response), doe)
+            doe_response = ResponseMapper.map_from_doe_request(cast(DERControlResponse, response), doe, scope.site_id)
 
             # Once we commit, the object becomes mostly detached and can't be referenced. So we need to do any
             # remaining operations on it between flush and commit

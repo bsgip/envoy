@@ -115,13 +115,18 @@ def test_map_to_rate_response():
 
     all_mapped = ArchiveMapper.map_to_rate_response(all)
     assert isinstance(all_mapped, ArchiveTariffGeneratedRateResponse)
-    assert_class_instance_equality(ArchiveTariffGeneratedRateResponse, all, all_mapped)  # These should just map 1-1
+    # site_group_id is a naming shim over the unchanged site_id column - see admin/mapper/archive.py
+    assert_class_instance_equality(
+        ArchiveTariffGeneratedRateResponse, all, all_mapped, {"site_group_id"}
+    )  # These should just map 1-1
+    assert all_mapped.site_group_id == all.site_id
 
     optional_mapped = ArchiveMapper.map_to_rate_response(optional)
     assert isinstance(optional_mapped, ArchiveTariffGeneratedRateResponse)
     assert_class_instance_equality(
-        ArchiveTariffGeneratedRateResponse, optional, optional_mapped, {"archive_time"}
+        ArchiveTariffGeneratedRateResponse, optional, optional_mapped, {"archive_time", "site_group_id"}
     )  # These should just map 1-1
+    assert optional_mapped.site_group_id == optional.site_id
     assert_nowish(optional_mapped.archive_time)  # This is a workaround in case we get some bad data
 
 

@@ -22,7 +22,7 @@ class DoeListMapper:
     ) -> list[DynamicOperatingEnvelope]:
         return [
             DynamicOperatingEnvelope(
-                site_id=doe.site_id,
+                site_group_id=doe.site_group_id,
                 site_control_group_id=DEFAULT_DOE_SITE_CONTROL_GROUP_ID,
                 calculation_log_id=doe.calculation_log_id,
                 changed_time=changed_time,
@@ -42,7 +42,7 @@ class DoeListMapper:
             dynamic_operating_envelope_id=doe.dynamic_operating_envelope_id,
             created_time=doe.created_time,
             changed_time=doe.changed_time,
-            site_id=doe.site_id,
+            site_group_id=doe.site_group_id,
             calculation_log_id=doe.calculation_log_id,
             duration_seconds=doe.duration_seconds,
             import_limit_active_watts=(

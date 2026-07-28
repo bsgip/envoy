@@ -1,3 +1,4 @@
+import copy
 from collections.abc import Iterable, Sequence
 from datetime import datetime
 from itertools import chain
@@ -14,9 +15,11 @@ from envoy.notification.crud.archive import (
     orm_relationship_map_parent_entities,
 )
 from envoy.notification.crud.common import (
+    ArchiveSiteScopedDynamicOperatingEnvelope,
     ArchiveSiteScopedFunctionSetAssignment,
     ArchiveSiteScopedSiteControlGroup,
     ArchiveSiteScopedSiteControlGroupDefault,
+    SiteScopedDynamicOperatingEnvelope,
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     SiteScopedSiteControlGroupDefault,
@@ -43,7 +46,14 @@ from envoy.server.model.archive.site import (
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
-from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import (
+    Site,
+    SiteDERAvailability,
+    SiteDERRating,
+    SiteDERSetting,
+    SiteDERStatus,
+    SiteGroupAssignment,
+)
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -130,8 +140,8 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
         site: Site = cast(Site, entity)
         return (site.aggregator_id, site.site_id)
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        doe = cast(DynamicOperatingEnvelope, entity)
-        return (doe.site.aggregator_id, doe.site_id, doe.site_control_group_id)
+        scoped_doe = cast(SiteScopedDynamicOperatingEnvelope, entity)
+        return (scoped_doe.aggregator_id, scoped_doe.site_id, scoped_doe.original.site_control_group_id)
     elif resource == SubscriptionResource.READING:
         reading = cast(SiteReading, entity)
         return (
@@ -180,7 +190,7 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
         return cast(Site, entity).site_id
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DOE subscriptions can be scoped to a single DERP
-        return cast(DynamicOperatingEnvelope, entity).site_control_group_id
+        return cast(SiteScopedDynamicOperatingEnvelope, entity).original.site_control_group_id
     elif resource == SubscriptionResource.READING:
         # Reading subscriptions can be scoped to the overarching type
         return cast(SiteReading, entity).site_reading_type.group_id
@@ -214,7 +224,7 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
     if resource == SubscriptionResource.SITE:
         return cast(Site, entity).site_id
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
-        return cast(DynamicOperatingEnvelope, entity).site_id
+        return cast(SiteScopedDynamicOperatingEnvelope, entity).site_id
     elif resource == SubscriptionResource.READING:
         return cast(SiteReading, entity).site_reading_type.site_id
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
@@ -316,42 +326,62 @@ async def fetch_rates_by_changed_at(
 
 async def fetch_does_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope]:
+) -> AggregatorBatchedEntities[SiteScopedDynamicOperatingEnvelope, ArchiveSiteScopedDynamicOperatingEnvelope]:  # type: ignore # SiteScoped variables will work here - tests enforce it
     """Fetches all DOEs matching the specified changed_at and returns them keyed by their aggregator/site id
 
-    Will include the DynamicOperatingEnvelope.site relationship
-
-    Also fetches any site from the archive that was deleted at the specified timestamp"""
+    A DOE targets a SiteGroup (rather than a single site) - each changed/deleted DOE is expanded into one
+    SiteScopedDynamicOperatingEnvelope per member site of its SiteGroup (NOT every site in the system - only the
+    group's actual members, unlike the SiteControlGroup/FSA fan-out patterns elsewhere in this file). A DOE whose
+    SiteGroup currently has no members contributes no entries."""
 
     active_does, deleted_does = await fetch_entities_with_archive_by_datetime(
         session, DynamicOperatingEnvelope, ArchiveDynamicOperatingEnvelope, timestamp
     )
 
-    referenced_site_ids = {
-        e.site_id
+    referenced_site_group_ids = {
+        e.site_group_id
         for e in cast(
             Iterable[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope], chain(active_does, deleted_does)
         )
     }
 
-    active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
-        session, Site, ArchiveSite, referenced_site_ids
-    )
+    member_sites_by_group_id: dict[int, list[tuple[int, int, str]]] = {}
+    if referenced_site_group_ids:
+        member_sites = (
+            await session.execute(
+                select(SiteGroupAssignment.site_group_id, Site.aggregator_id, Site.site_id, Site.timezone_id)
+                .join(Site, Site.site_id == SiteGroupAssignment.site_id)
+                .where(SiteGroupAssignment.site_group_id.in_(referenced_site_group_ids))
+            )
+        ).all()
+        for site_group_id, aggregator_id, site_id, timezone_id in member_sites:
+            member_sites_by_group_id.setdefault(site_group_id, []).append((aggregator_id, site_id, timezone_id))
 
-    # Map the "site" relationship
-    orm_relationship_map_parent_entities(
-        cast(Iterable[DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope], chain(active_does, deleted_does)),
-        lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
-        "site",
-    )
+    def expand_doe(doe: DynamicOperatingEnvelope | ArchiveDynamicOperatingEnvelope) -> list[tuple[int, int, Any]]:
+        """Expands a single doe into one (aggregator_id, site_id, localized_doe) tuple per member site of its
+        SiteGroup. Each site gets its own copy of doe since start_time localization mutates in place and different
+        member sites can be in different timezones."""
+        return [
+            (aggregator_id, site_id, localize_start_time_for_entity(copy.copy(doe), timezone_id))
+            for aggregator_id, site_id, timezone_id in member_sites_by_group_id.get(doe.site_group_id, [])
+        ]
 
-    # localize start times using the new "site" relationship
-    for e in cast(Iterable[DynamicOperatingEnvelope], chain(active_does, deleted_does)):
-        localize_start_time_for_entity(e, e.site.timezone_id)
+    site_scoped_active_does = [
+        SiteScopedDynamicOperatingEnvelope(aggregator_id, site_id, localized_doe)
+        for doe in cast(Iterable[DynamicOperatingEnvelope], active_does)
+        for aggregator_id, site_id, localized_doe in expand_doe(doe)
+    ]
+    site_scoped_deleted_does = [
+        ArchiveSiteScopedDynamicOperatingEnvelope(aggregator_id, site_id, localized_doe)
+        for doe in cast(Iterable[ArchiveDynamicOperatingEnvelope], deleted_does)
+        for aggregator_id, site_id, localized_doe in expand_doe(doe)
+    ]
 
     return AggregatorBatchedEntities(
-        timestamp, SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE, active_does, deleted_does
+        timestamp,
+        SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
+        site_scoped_active_does,  # type: ignore # SiteScoped variables will work here - tests enforce it
+        site_scoped_deleted_does,  # type: ignore # SiteScoped variables will work here - tests enforce it
     )
 
 

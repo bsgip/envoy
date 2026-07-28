@@ -34,6 +34,10 @@ from envoy.server.model.site import Site
 
 AEST = ZoneInfo("Australia/Brisbane")
 
+# DOEs now target a SiteGroup rather than a single Site. base_config.sql/additional_does.sql set up a singleton
+# SiteGroup per legacy site_id so every existing test fixture DOE still targets exactly one site, matching this map.
+SITE_ID_TO_SINGLETON_GROUP_ID = {1: 2, 2: 4, 3: 5}
+
 
 def assert_doe_for_id(
     expected_doe_id: int | None,
@@ -57,7 +61,10 @@ def assert_doe_for_id(
             assert isinstance(actual_doe, DOE)
 
         assert actual_doe.dynamic_operating_envelope_id == expected_doe_id
-        assert expected_site_id is None or actual_doe.site_id == expected_site_id
+        assert (
+            expected_site_id is None
+            or actual_doe.site_group_id == SITE_ID_TO_SINGLETON_GROUP_ID[expected_site_id]
+        )
         assert actual_doe.site_control_group_id == 1
         if check_duration_seconds:
             assert actual_doe.duration_seconds == 10 * expected_doe_id + expected_doe_id
@@ -399,19 +406,16 @@ async def test_select_active_does_include_deleted_via_roundtrip(pg_base_config):
         duration_seconds=duration_seconds,
         calculation_log_id=None,
         end_time=end_time_to_delete,
-        site_id=1,
+        site_group_id=2,
         site_control_group_id=1,
-        site=None,
         site_control_group=None,
     )
     async with generate_async_session(pg_base_config) as session:
-        site = (await session.execute(select(Site).where(Site.site_id == 1))).scalar_one()
         site_control_group = (
             await session.execute(select(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 1))
         ).scalar_one()
 
         cloned_doe = clone_class_instance(doe_to_delete)
-        cloned_doe.site = site
         cloned_doe.site_control_group = site_control_group
 
         session.add(cloned_doe)
@@ -424,7 +428,7 @@ async def test_select_active_does_include_deleted_via_roundtrip(pg_base_config):
         start_time=start_time_to_delete,
         duration_seconds=duration_seconds,
         end_time=end_time_to_delete,
-        site_id=1,
+        site_group_id=2,
         site_control_group_id=1,
         calculation_log_id=None,
     )
@@ -434,7 +438,7 @@ async def test_select_active_does_include_deleted_via_roundtrip(pg_base_config):
         start_time=start_time_to_delete - timedelta(seconds=1),
         duration_seconds=duration_seconds,
         end_time=end_time_to_delete - timedelta(seconds=1),
-        site_id=1,
+        site_group_id=2,
         site_control_group_id=1,
         calculation_log_id=None,
     )

@@ -25,6 +25,7 @@ from envoy.server.mapper.sep2.response import response_set_type_to_href
 from envoy.server.model import Site
 from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.response import DynamicOperatingEnvelopeResponse, TariffGeneratedRateResponse
+from envoy.server.model.site import SiteGroup, SiteGroupAssignment
 from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope
 from tests.conftest import TEST_IANA_PEN
@@ -47,6 +48,10 @@ RATE_HREF = response_set_type_to_href(ResponseSetType.TARIFF_GENERATED_RATES)  #
 TEST_SCOPE = generate_class_instance(
     BaseRequestScope, lfdi="ffffffffffffffffffffffffffffffffffffffff", href_prefix=None, iana_pen=TEST_IANA_PEN
 )
+
+# Site 5 (device cert) isn't part of any SiteGroup in base_config.sql - this ad-hoc singleton group lets tests
+# attach a DOE to it without colliding with base_config's own SiteGroup ids (1-5)
+DEVICE_5_SITE_GROUP_ID = 6
 
 
 @pytest.fixture
@@ -236,12 +241,28 @@ async def test_get_response_for_device_cert(
     If expected_response_type is None - a failure is expected"""
 
     async with generate_async_session(pg_base_config) as session:
+        # Site 5 (device cert) needs a SiteGroup to target now that DOE no longer FKs directly to Site
+        await session.execute(
+            insert(SiteGroup).values(
+                site_group_id=DEVICE_5_SITE_GROUP_ID,
+                name="Device5Group",
+                changed_time=datetime(2025, 1, 2, tzinfo=UTC),
+            )
+        )
+        await session.execute(
+            insert(SiteGroupAssignment).values(
+                site_id=5,
+                site_group_id=DEVICE_5_SITE_GROUP_ID,
+                changed_time=datetime(2025, 1, 2, tzinfo=UTC),
+            )
+        )
+
         # Add a DOE for site 5 (device cert) that can be cross referenced
         await session.execute(
             insert(DynamicOperatingEnvelope).values(
                 dynamic_operating_envelope_id=101,
                 site_control_group_id=1,
-                site_id=5,
+                site_group_id=DEVICE_5_SITE_GROUP_ID,
                 calculation_log_id=None,
                 changed_time=datetime(2025, 1, 2, tzinfo=UTC),
                 start_time=datetime(2025, 1, 2, tzinfo=UTC),
@@ -413,12 +434,28 @@ async def test_get_response_list_pagination_for_device_cert(
     """Tests that fetching a response list paginates correctly (or fails predictably)"""
 
     async with generate_async_session(pg_base_config) as session:
+        # Site 5 (device cert) needs a SiteGroup to target now that DOE no longer FKs directly to Site
+        await session.execute(
+            insert(SiteGroup).values(
+                site_group_id=DEVICE_5_SITE_GROUP_ID,
+                name="Device5Group",
+                changed_time=datetime(2025, 1, 2, tzinfo=UTC),
+            )
+        )
+        await session.execute(
+            insert(SiteGroupAssignment).values(
+                site_id=5,
+                site_group_id=DEVICE_5_SITE_GROUP_ID,
+                changed_time=datetime(2025, 1, 2, tzinfo=UTC),
+            )
+        )
+
         # Add a DOE for site 5 (device cert) that can be cross referenced
         await session.execute(
             insert(DynamicOperatingEnvelope).values(
                 dynamic_operating_envelope_id=101,
                 site_control_group_id=1,
-                site_id=5,
+                site_group_id=DEVICE_5_SITE_GROUP_ID,
                 calculation_log_id=None,
                 changed_time=datetime(2025, 1, 2, tzinfo=UTC),
                 start_time=datetime(2025, 1, 2, tzinfo=UTC),

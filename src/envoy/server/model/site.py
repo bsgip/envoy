@@ -129,8 +129,12 @@ class SiteGroupAssignment(Base):
     site: Mapped["Site"] = relationship(back_populates="assignments", lazy="raise")
     group: Mapped["SiteGroup"] = relationship(back_populates="assignments", lazy="raise")
 
-    # We don't want a single site to be linked to a group multiple times
-    __table_args__ = (UniqueConstraint("site_id", "site_group_id", name="site_id_site_group_id_uc"),)
+    __table_args__ = (
+        # We don't want a single site to be linked to a group multiple times
+        UniqueConstraint("site_id", "site_group_id", name="site_id_site_group_id_uc"),
+        # Supports "given a site_group_id, enumerate member site_ids" (notification fan-out, admin group listings)
+        Index("ix_site_group_assignment_site_group_id_site_id", "site_group_id", "site_id"),
+    )
 
 
 class SiteDERRating(Base):

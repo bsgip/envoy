@@ -255,7 +255,7 @@ class SiteControlListManager:
     async def delete_site_controls_in_range(
         session: AsyncSession,
         site_control_group_id: int,
-        site_id: int | None,
+        site_group_id: int | None,
         period_start: datetime,
         period_end: datetime,
     ) -> None:
@@ -265,7 +265,7 @@ class SiteControlListManager:
         await delete_does_with_start_time_in_range(
             session,
             site_control_group_id=site_control_group_id,
-            site_id=site_id,
+            site_group_id=site_group_id,
             period_start=period_start,
             period_end=period_end,
             deleted_time=deleted_time,

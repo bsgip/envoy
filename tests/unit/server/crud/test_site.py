@@ -41,7 +41,14 @@ from envoy.server.model.archive.subscription import ArchiveSubscription, Archive
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope
-from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
+from envoy.server.model.site import (
+    Site,
+    SiteDERAvailability,
+    SiteDERRating,
+    SiteDERSetting,
+    SiteDERStatus,
+    SiteGroupAssignment,
+)
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition
 from envoy.server.model.tariff import TariffGeneratedRate
@@ -719,15 +726,9 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         )
     )
 
-    snapshot.append(
-        await count_table_rows(
-            session,
-            DynamicOperatingEnvelope,
-            None,
-            ArchiveDynamicOperatingEnvelope,
-            lambda q: q.where(DynamicOperatingEnvelope.site_id == site_id),
-        )
-    )
+    # NOTE: DynamicOperatingEnvelope is deliberately NOT snapshotted here - it now targets a SiteGroup rather than
+    # a single site, so it's no longer deleted/archived alongside its site (see test_delete_site_for_aggregator's
+    # dedicated DOE/SiteGroupAssignment assertions instead).
 
     snapshot.append(
         await count_table_rows(
@@ -781,6 +782,14 @@ async def test_delete_site_for_aggregator(
     # Count everything before the delete
     async with generate_async_session(pg_base_config) as session:
         snapshot_before = await snapshot_all_site_tables(session, agg_id=agg_id, site_id=site_id)
+        doe_count_before = (
+            await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))
+        ).scalar_one()
+        assignments_before = (
+            await session.execute(
+                select(func.count()).select_from(SiteGroupAssignment).where(SiteGroupAssignment.site_id == site_id)
+            )
+        ).scalar_one()
 
     # Perform the delete
     now = utc_now()
@@ -834,6 +843,30 @@ async def test_delete_site_for_aggregator(
             assert site is not None, "If the delete was NOT committed - the site should still exist"
         else:
             assert site is None, "If the delete was NOT committed but the site DNE - it should continue to not exist"
+
+    # DOEs now target a SiteGroup rather than this Site directly - deleting a Site should NEVER touch/archive any
+    # DOE, it should only remove this site's own SiteGroupAssignment rows (severing its membership from any groups)
+    async with generate_async_session(pg_base_config) as session:
+        doe_count_after = (
+            await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))
+        ).scalar_one()
+        archive_doe_count_after = (
+            await session.execute(select(func.count()).select_from(ArchiveDynamicOperatingEnvelope))
+        ).scalar_one()
+        remaining_assignments = (
+            await session.execute(
+                select(func.count()).select_from(SiteGroupAssignment).where(SiteGroupAssignment.site_id == site_id)
+            )
+        ).scalar_one()
+
+        assert doe_count_after == doe_count_before, (
+            "DOEs should never be deleted/archived as a side effect of Site deletion"
+        )
+        assert archive_doe_count_after == 0, "No DOE archive rows should be created by deleting a Site"
+        if delete_occurred:
+            assert remaining_assignments == 0, "The deleted site's SiteGroupAssignment rows should be gone"
+        else:
+            assert remaining_assignments == assignments_before, "Nothing should change if the delete didn't commit"
 
 
 @pytest.mark.anyio

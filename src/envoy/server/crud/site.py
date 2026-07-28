@@ -12,7 +12,6 @@ from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
 from envoy.server.manager.time import utc_now
 from envoy.server.model.aggregator import Aggregator
-from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import (
     ArchiveSite,
     ArchiveSiteDERAvailability,
@@ -23,7 +22,6 @@ from envoy.server.model.archive.site import (
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
-from envoy.server.model.doe import DynamicOperatingEnvelope
 from envoy.server.model.site import (
     Site,
     SiteDERAvailability,
@@ -285,14 +283,9 @@ async def delete_site_for_aggregator(
         ),
     )
 
-    # Cleanup does
-    await delete_rows_into_archive(
-        session,
-        DynamicOperatingEnvelope,
-        ArchiveDynamicOperatingEnvelope,
-        deleted_time,
-        lambda q: q.where(DynamicOperatingEnvelope.site_id == site_id),
-    )
+    # NOTE: DOEs are no longer deleted here - a DynamicOperatingEnvelope now targets a SiteGroup (which may have
+    # other member sites still relying on it), not this Site directly. Removing this site's SiteGroupAssignment
+    # rows (below) is sufficient to detach it from any DOEs targeting those groups.
 
     # Cleanup DER sub resources - these now hang directly off the site (no parent site_der row)
     await delete_rows_into_archive(

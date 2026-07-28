@@ -57,7 +57,7 @@ class DOEFieldSet:
 async def delete_does_with_start_time_in_range(
     session: AsyncSession,
     site_control_group_id: int,
-    site_id: int | None,
+    site_group_id: int | None,
     period_start: datetime,
     period_end: datetime,
     deleted_time: datetime,
@@ -66,12 +66,12 @@ async def delete_does_with_start_time_in_range(
     any checks for aggregator_id scoping
 
     site_control_group_id: Only this site control group's controls will be considered
-    site_id: if specified - scope the deletion to just controls for this site
+    site_group_id: if specified - scope the deletion to just controls targeting this SiteGroup
     period_start: inclusive start of range to search
     period_end: exclusive end of range to search"""
 
     query: Callable[[Delete], Delete]
-    if site_id is None:
+    if site_group_id is None:
         query = lambda q: q.where(  # noqa: E731
             (DynamicOperatingEnvelope.site_control_group_id == site_control_group_id)
             & (DynamicOperatingEnvelope.start_time >= period_start)
@@ -80,7 +80,7 @@ async def delete_does_with_start_time_in_range(
     else:
         query = lambda q: q.where(  # noqa: E731
             (DynamicOperatingEnvelope.site_control_group_id == site_control_group_id)
-            & (DynamicOperatingEnvelope.site_id == site_id)
+            & (DynamicOperatingEnvelope.site_group_id == site_group_id)
             & (DynamicOperatingEnvelope.start_time >= period_start)
             & (DynamicOperatingEnvelope.start_time < period_end)
         )
@@ -102,7 +102,7 @@ async def cancel_then_insert_does(
     # Start by deleting all conflicts (archiving them as we go)
     where_clause_and_elements = (
         and_(
-            DynamicOperatingEnvelope.site_id == doe.site_id,
+            DynamicOperatingEnvelope.site_group_id == doe.site_group_id,
             DynamicOperatingEnvelope.start_time == doe.start_time,
         )
         for doe in doe_list
@@ -134,19 +134,19 @@ async def supersede_then_insert_does(
     # start by fetching all SiteControlGroup IDs - we need them to use our indexes in the later DERControl lookups
     all_site_control_group_ids = (await session.execute(select(SiteControlGroup.site_control_group_id))).scalars().all()
 
-    # Organise the incoming DOE's by site_id to better chunk the lookups (and utilise existing indexes)
-    does_by_site_id: dict[int, list[DynamicOperatingEnvelope]] = {}
+    # Organise the incoming DOE's by site_group_id to better chunk the lookups (and utilise existing indexes)
+    does_by_site_group_id: dict[int, list[DynamicOperatingEnvelope]] = {}
     for doe in doe_list:
-        existing = does_by_site_id.get(doe.site_id, None)
+        existing = does_by_site_group_id.get(doe.site_group_id, None)
         if existing is None:
-            does_by_site_id[doe.site_id] = [doe]
+            does_by_site_group_id[doe.site_group_id] = [doe]
         else:
             existing.append(doe)
 
     # Start making the requests to the database to update the existing DOEs as superseded
-    for site_id, site_doe_list in does_by_site_id.items():
-        await supersede_matching_does_for_site(
-            session, site_doe_list, site_id, all_site_control_group_ids, changed_time
+    for site_group_id, group_doe_list in does_by_site_group_id.items():
+        await supersede_matching_does_for_group(
+            session, group_doe_list, site_group_id, all_site_control_group_ids, changed_time
         )
 
     # Now we can do the inserts
@@ -157,10 +157,10 @@ async def supersede_then_insert_does(
     )
 
 
-async def supersede_matching_does_for_site(
+async def supersede_matching_does_for_group(
     session: AsyncSession,
     doe_list: list[DynamicOperatingEnvelope],
-    site_id: int,
+    site_group_id: int,
     all_site_control_group_ids: Iterable[int],
     changed_time: datetime,
 ) -> None:
@@ -170,8 +170,8 @@ async def supersede_matching_does_for_site(
     Partial overlaps in time will still be treated as superseding as per 2030.5 event rules.
     Field-level conflicts are checked: only DOEs controlling the same fields will supersede each other.
 
-    doe_list: Should ONLY contain sites with the specified site_id
-    site_id: The site_id that this request will be scoped to
+    doe_list: Should ONLY contain controls targeting the specified site_group_id
+    site_group_id: The SiteGroup that this request will be scoped to
     all_site_control_group_ids: Every SiteControlGroup ID that will be checked for DERControls
     changed_time: Will be applied to all existing DOE's that are updated
 
@@ -211,7 +211,7 @@ async def supersede_matching_does_for_site(
                 ).where(
                     # We include site_control_group to ensure we can utilise our indexes
                     (DynamicOperatingEnvelope.site_control_group_id.in_(all_site_control_group_ids))
-                    & (DynamicOperatingEnvelope.site_id == site_id)
+                    & (DynamicOperatingEnvelope.site_group_id == site_group_id)
                     & (DynamicOperatingEnvelope.end_time > min_date)
                     & (DynamicOperatingEnvelope.start_time < max_date)
                     & (DynamicOperatingEnvelope.superseded.is_(False))  # Can't supersede something twice

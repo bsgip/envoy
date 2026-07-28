@@ -715,7 +715,7 @@ async def test_create_response_for_scope_doe_created_normally(
         DynamicOperatingEnvelope,
         seed=303,
         dynamic_operating_envelope_id=decoded_doe_id,
-        site_id=site_id,
+        site_group_id=1,
         display_id=None,
     )
     mock_decode_and_validate_mrid_type.return_value = MridType.DYNAMIC_OPERATING_ENVELOPE
@@ -804,7 +804,7 @@ async def test_create_response_for_scope_doe_created_normally_with_display_id(
         seed=303,
         dynamic_operating_envelope_id=actual_doe_id,
         display_id=decoded_display_id,
-        site_id=site_id,
+        site_group_id=1,
     )
     mock_decode_and_validate_mrid_type.return_value = MridType.DYNAMIC_OPERATING_ENVELOPE
     mock_decode_doe_mrid.return_value = (True, decoded_display_id)

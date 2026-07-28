@@ -52,7 +52,7 @@ class ArchiveMapper:
             archive_time=archive_time,
             deleted_time=doe.deleted_time,
             dynamic_operating_envelope_id=doe.dynamic_operating_envelope_id,
-            site_id=doe.site_id,
+            site_group_id=doe.site_group_id,
             calculation_log_id=doe.calculation_log_id,
             duration_seconds=doe.duration_seconds,
             import_limit_active_watts=(
@@ -75,7 +75,9 @@ class ArchiveMapper:
             archive_time=archive_time,
             deleted_time=rate.deleted_time,
             tariff_id=rate.tariff_id,
-            site_id=rate.site_id,
+            # NOTE: see the equivalent comment in admin/mapper/pricing.py - this is the same site_id/site_group_id
+            # naming shim, applied on the response side.
+            site_group_id=rate.site_id,
             calculation_log_id=rate.calculation_log_id,
             tariff_generated_rate_id=rate.tariff_generated_rate_id,
             start_time=rate.start_time,

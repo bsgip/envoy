@@ -114,7 +114,7 @@ async def get_all_site_control_groups(
 @router.post(SiteControlUri, status_code=HTTPStatus.CREATED, response_model=None)
 async def create_site_controls(group_id: int, control_list: list[SiteControlRequest]) -> None:
     """Bulk creation of 'Site Controls' under a site control group. Each SiteControlRequest is associated
-    with a Site object via the site_id attribute.
+    with a SiteGroup object via the site_group_id attribute (applying to every member site).
 
     Body:
         List of SiteControlRequest objects.
@@ -129,7 +129,7 @@ async def create_site_controls(group_id: int, control_list: list[SiteControlRequ
             logger, exc, HTTPStatus.BAD_REQUEST, "The request contains duplicate instances"
         ) from exc
     except IntegrityError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_id not found") from exc
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_group_id not found") from exc
 
 
 @router.get(SiteControlUri, status_code=HTTPStatus.OK, response_model=SiteControlPageResponse)
@@ -169,7 +169,11 @@ async def delete_site_controls_in_range(group_id: int, period_start: datetime, p
     """
 
     await SiteControlListManager.delete_site_controls_in_range(
-        db.session, site_control_group_id=group_id, site_id=None, period_start=period_start, period_end=period_end
+        db.session,
+        site_control_group_id=group_id,
+        site_group_id=None,
+        period_start=period_start,
+        period_end=period_end,
     )
 
 

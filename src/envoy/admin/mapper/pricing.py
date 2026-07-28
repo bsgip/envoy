@@ -37,7 +37,10 @@ class TariffGeneratedRateListMapper:
         return [
             TariffGeneratedRate(
                 tariff_id=tariff_genrate.tariff_id,
-                site_id=tariff_genrate.site_id,
+                # NOTE: envoy-schema 1.2.1 renamed this field to site_group_id ahead of a future SiteGroup-based
+                # pricing model - TariffGeneratedRate itself is untouched by this change, so we keep writing it
+                # straight into the existing site_id column for now.
+                site_id=tariff_genrate.site_group_id,
                 calculation_log_id=tariff_genrate.calculation_log_id,
                 changed_time=changed_time,
                 start_time=tariff_genrate.start_time,

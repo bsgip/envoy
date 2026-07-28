@@ -90,7 +90,7 @@ def test_site_control_mapper_from_request(optional_is_none: bool):
 
     assert isinstance(mdl, DynamicOperatingEnvelope)
 
-    assert mdl.site_id == req.site_id
+    assert mdl.site_group_id == req.site_group_id
     assert mdl.calculation_log_id == req.calculation_log_id
     assert mdl.duration_seconds == req.duration_seconds
     assert mdl.import_limit_active_watts == req.import_limit_watts
@@ -101,7 +101,6 @@ def test_site_control_mapper_from_request(optional_is_none: bool):
     assert mdl.end_time == req.start_time + timedelta(seconds=req.duration_seconds)
     assert mdl.end_time.tzinfo == mdl.start_time.tzinfo
 
-    assert not mdl.site
     assert not mdl.dynamic_operating_envelope_id
 
 

@@ -59,7 +59,7 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
     __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.doe.DynamicOperatingEnvelope.__tablename__
     dynamic_operating_envelope_id: Mapped[int] = mapped_column(BigInteger, index=True)
     site_control_group_id: Mapped[int] = mapped_column(INTEGER)
-    site_id: Mapped[int] = mapped_column(INTEGER)
+    site_group_id: Mapped[int] = mapped_column(INTEGER)
     calculation_log_id: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -97,15 +97,15 @@ class ArchiveDynamicOperatingEnvelope(ArchiveBase):
 
     __table_args__ = (
         Index(
-            "archive_doe_site_control_group_id_end_time_deleted_time_site_id",
+            "archive_doe_scg_id_end_time_deleted_time_site_group_id",
             "site_control_group_id",
             "end_time",
             "deleted_time",
-            "site_id",
+            "site_group_id",
         ),  # This is to support finding DOE's that have been deleted (or cancelled)
         Index(
-            "archive_doe_display_id_site_id",
+            "archive_doe_display_id_site_group_id",
             "display_id",
-            "site_id",
+            "site_group_id",
         ),  # This is to support finding DOE's via display_id that may have been deleted (or cancelled)
     )

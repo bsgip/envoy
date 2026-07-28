@@ -21,7 +21,7 @@ router = APIRouter()
 @router.post(DoeUri, status_code=HTTPStatus.CREATED, response_model=None)
 async def create_doe(doe_list: list[DynamicOperatingEnvelopeRequest]) -> None:
     """Bulk creation of 'Dynamic Operating Envelopes'. Each DynamicOperatingEnvelope is associated
-    with a Site object via the site_id attribute.
+    with a SiteGroup object via the site_group_id attribute (applying to every member site).
 
     Body:
         List of DynamicOperatingEnvelopeRequest objects.
@@ -38,7 +38,7 @@ async def create_doe(doe_list: list[DynamicOperatingEnvelopeRequest]) -> None:
         ) from exc
 
     except IntegrityError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_id not found") from exc
+        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "site_group_id not found") from exc
 
 
 @router.get(DoeUri, status_code=HTTPStatus.OK, response_model=DoePageResponse)

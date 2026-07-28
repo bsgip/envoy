@@ -7,7 +7,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model.base import Base
 from envoy.server.model.constants import DOE_DECIMAL_PLACES
-from envoy.server.model.site import Site
 
 
 class SiteControlGroup(Base):
@@ -97,7 +96,9 @@ class DynamicOperatingEnvelope(Base):
     site_control_group_id: Mapped[int] = mapped_column(
         ForeignKey("site_control_group.site_control_group_id")
     )  # The group that this doe belongs to
-    site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id"))  # The site that this doe applies to
+    site_group_id: Mapped[int] = mapped_column(
+        ForeignKey("site_group.site_group_id")
+    )  # The SiteGroup whose member sites this doe applies to
     calculation_log_id: Mapped[int | None] = mapped_column(
         ForeignKey("calculation_log.calculation_log_id"), nullable=True, index=True
     )  # The calculation log that resulted in this DOE or None if there is no such link
@@ -154,23 +155,24 @@ class DynamicOperatingEnvelope(Base):
         BigInteger, nullable=True
     )  # If set - use this for MRID calculation instead of site_control_id
 
-    site: Mapped["Site"] = relationship(lazy="raise")
-
     site_control_group: Mapped["SiteControlGroup"] = relationship(
         back_populates="dynamic_operating_envelopes", lazy="raise"
     )
 
     __table_args__ = (
         Index(
-            "ix_site_control_site_control_group_id_start_time_site_id", "site_control_group_id", "start_time", "site_id"
+            "ix_site_control_site_control_group_id_start_time_site_group_id",
+            "site_control_group_id",
+            "start_time",
+            "site_group_id",
         ),  # Used by admin server endpoints for fetching controls within a date range
         Index(
-            "ix_site_control_group_dynamic_operating_envelope_end_time_site",
+            "ix_site_control_group_doe_end_time_site_group_id",
             "site_control_group_id",
             "end_time",
-            "site_id",
+            "site_group_id",
         ),  # Used by the primary csip-aus DERControl list endpoint
         Index(
-            "ix_site_control_display_id_site_id", "display_id", "site_id"
+            "ix_site_control_display_id_site_group_id", "display_id", "site_group_id"
         ),  # Used for lookups via display_id - primarily via CSIP-Aus Responses
     )
