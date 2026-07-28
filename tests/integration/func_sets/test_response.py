@@ -279,7 +279,7 @@ async def test_get_response_for_device_cert(
             insert(TariffGeneratedRate).values(
                 tariff_generated_rate_id=102,
                 tariff_id=1,
-                site_id=5,
+                site_group_id=DEVICE_5_SITE_GROUP_ID,
                 calculation_log_id=None,
                 changed_time=datetime(2025, 1, 2, tzinfo=UTC),
                 start_time=datetime(2025, 1, 2, tzinfo=UTC),
@@ -472,7 +472,7 @@ async def test_get_response_list_pagination_for_device_cert(
             insert(TariffGeneratedRate).values(
                 tariff_generated_rate_id=102,
                 tariff_id=1,
-                site_id=5,
+                site_group_id=DEVICE_5_SITE_GROUP_ID,
                 calculation_log_id=None,
                 changed_time=datetime(2025, 1, 2, tzinfo=UTC),
                 start_time=datetime(2025, 1, 2, tzinfo=UTC),

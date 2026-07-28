@@ -21,7 +21,6 @@ from envoy.server.model.archive.site import (
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
-from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.site import (
     Site,
     SiteDERAvailability,
@@ -32,7 +31,6 @@ from envoy.server.model.site import (
 )
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition
-from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 from envoy.server.settings import settings
 
 # Valid site_ids for end_devices start 1 and increase
@@ -268,24 +266,9 @@ async def delete_site_for_aggregator(
         lambda q: q.where(Subscription.subscription_id.in_(sub_ids_to_delete)),
     )
 
-    # Cleanup prices
-    # NOTE - The underlying index on TariffGeneratedRate includes tariff_id - if we want this to run efficiently,
-    #        we need to include tariff_id in the WHERE clause otherwise we'll be forced into a full table scan.
-    #        see: https://github.com/bsgip/envoy/issues/191
-    all_tariff_ids = (await session.execute(select(Tariff.tariff_id))).scalars().all()
-    await delete_rows_into_archive(
-        session,
-        TariffGeneratedRate,
-        ArchiveTariffGeneratedRate,
-        deleted_time,
-        lambda q: q.where(
-            (TariffGeneratedRate.tariff_id.in_(all_tariff_ids)) & (TariffGeneratedRate.site_id == site_id)
-        ),
-    )
-
-    # NOTE: DOEs are no longer deleted here - a DynamicOperatingEnvelope now targets a SiteGroup (which may have
+    # NOTE: TariffGeneratedRates and DOEs are no longer deleted here - both now target a SiteGroup (which may have
     # other member sites still relying on it), not this Site directly. Removing this site's SiteGroupAssignment
-    # rows (below) is sufficient to detach it from any DOEs targeting those groups.
+    # rows (below) is sufficient to detach it from any rates/DOEs targeting those groups.
 
     # Cleanup DER sub resources - these now hang directly off the site (no parent site_der row)
     await delete_rows_into_archive(

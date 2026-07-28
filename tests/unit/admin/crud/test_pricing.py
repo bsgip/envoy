@@ -82,7 +82,7 @@ async def test_upsert_many_tariff_genrate_insert(pg_base_config):
     deleted_time = datetime(2022, 1, 2, 3, 4, 5, 6, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         doe_in: TariffGeneratedRate = generate_class_instance(
-            TariffGeneratedRate, generate_relationships=False, site_id=1, tariff_id=1
+            TariffGeneratedRate, generate_relationships=False, site_group_id=1, tariff_id=1
         )
         # clean up generated instance to ensure it doesn't clash with base_config
         del doe_in.tariff_generated_rate_id
@@ -108,7 +108,7 @@ async def test_upsert_many_tariff_genrate_insert(pg_base_config):
         assert (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one() == 0
 
         doe_in_1 = generate_class_instance(
-            TariffGeneratedRate, site_id=1, tariff_id=1, start_time=doe_in.start_time + timedelta(seconds=1)
+            TariffGeneratedRate, site_group_id=1, tariff_id=1, start_time=doe_in.start_time + timedelta(seconds=1)
         )
 
         # Rerun as a sanity check to catch any weird conflict errors
@@ -125,11 +125,11 @@ async def test_upsert_many_tariff_genrate_update(pg_base_config):
     deleted_time = datetime(2022, 1, 2, 3, 4, 5, 6, tzinfo=UTC)
     async with generate_async_session(pg_base_config) as session:
         original_rate = await _select_latest_tariff_generated_rate(session)
-        cloned_original_rate = clone_class_instance(original_rate, ignored_properties={"tariff", "site"})
+        cloned_original_rate = clone_class_instance(original_rate, ignored_properties={"tariff"})
 
         # clean up generated instance to ensure it doesn't clash with base_config
         rate_to_update: TariffGeneratedRate = clone_class_instance(
-            original_rate, ignored_properties={"tariff_generated_rate_id", "created_time", "site", "tariff"}
+            original_rate, ignored_properties={"tariff_generated_rate_id", "created_time", "tariff"}
         )
         rate_to_update.import_active_price += Decimal("99.1")
         rate_to_update.export_active_price += Decimal("99.2")
@@ -149,7 +149,7 @@ async def test_upsert_many_tariff_genrate_update(pg_base_config):
             TariffGeneratedRate,
             rate_to_update,
             rate_after_update,
-            ignored_properties={"tariff_generated_rate_id", "created_time", "site", "tariff"},
+            ignored_properties={"tariff_generated_rate_id", "created_time", "tariff"},
         )
         assert_nowish(rate_after_update.created_time)
 
@@ -158,7 +158,7 @@ async def test_upsert_many_tariff_genrate_update(pg_base_config):
         archive_data = (await session.execute(select(ArchiveTariffGeneratedRate))).scalar_one()
 
         assert_class_instance_equality(
-            TariffGeneratedRate, cloned_original_rate, archive_data, ignored_properties={"tariff", "site"}
+            TariffGeneratedRate, cloned_original_rate, archive_data, ignored_properties={"tariff"}
         )
         assert archive_data.archive_time
         assert_nowish(archive_data.archive_time)

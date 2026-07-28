@@ -42,7 +42,7 @@ async def upsert_many_tariff_genrate(
     where_clause_and_elements = (
         and_(
             TariffGeneratedRate.tariff_id == r.tariff_id,
-            TariffGeneratedRate.site_id == r.site_id,
+            TariffGeneratedRate.site_group_id == r.site_group_id,
             TariffGeneratedRate.start_time == r.start_time,
         )
         for r in tariff_genrates

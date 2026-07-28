@@ -631,7 +631,9 @@ async def test_fetch_time_tariff_interval_existing(
     mock_select_tariff_rate_for_day_time.assert_called_once_with(
         mock_session, scope.aggregator_id, tariff_id, scope.site_id, parsed_date, parsed_time
     )
-    mock_TimeTariffIntervalMapper.map_to_response.assert_called_once_with(scope, existing_rate, pricing_type)
+    mock_TimeTariffIntervalMapper.map_to_response.assert_called_once_with(
+        scope, scope.site_id, existing_rate, pricing_type
+    )
     assert_mock_session(mock_session)
 
 

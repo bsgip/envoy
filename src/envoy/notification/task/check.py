@@ -33,6 +33,7 @@ from envoy.notification.crud.common import (
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     SiteScopedSiteControlGroupDefault,
+    SiteScopedTariffGeneratedRate,
     TArchiveResourceModel,
     TResourceModel,
 )
@@ -51,7 +52,6 @@ from envoy.server.model.subscription import (
     Subscription,
     SubscriptionResource,
 )
-from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope, CertificateType
 
 logger = logging.getLogger(__name__)
@@ -256,12 +256,13 @@ def entities_to_notification(
             raise NotificationError("SubscriptionResource.TARIFF_GENERATED_RATE requires pricing_reading_type")
 
         # TARIFF_GENERATED_RATE: (aggregator_id: int, tariff_id: int, site_id: int, day: date)
-        _, tariff_id, _, day = batch_key
+        _, tariff_id, site_id, day = batch_key
         return NotificationMapper.map_rates_to_response(
             tariff_id=tariff_id,
+            site_id=site_id,
             day=day,
             pricing_reading_type=pricing_reading_type,
-            rates=cast(Sequence[TariffGeneratedRate], entities),
+            rates=[e.original for e in cast(Sequence[SiteScopedTariffGeneratedRate], entities)],
             sub=sub,
             scope=scope,
             notification_type=notification_type,

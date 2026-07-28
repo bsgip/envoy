@@ -6,7 +6,6 @@ from sqlalchemy import DECIMAL, BigInteger, DateTime, ForeignKey, Integer, Strin
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base
-from envoy.server.model.site import Site
 
 PRICE_DECIMAL_PLACES = 4  # How many decimal places do we store / distribute prices with?
 PRICE_DECIMAL_POWER = pow(10, PRICE_DECIMAL_PLACES)
@@ -39,7 +38,9 @@ class TariffGeneratedRate(Base):
     __tablename__ = "tariff_generated_rate"
     tariff_generated_rate_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     tariff_id: Mapped[int] = mapped_column(ForeignKey("tariff.tariff_id"))  # The tariff
-    site_id: Mapped[int] = mapped_column(ForeignKey("site.site_id"))  # The site that this rate applies to
+    site_group_id: Mapped[int] = mapped_column(
+        ForeignKey("site_group.site_group_id")
+    )  # The SiteGroup whose member sites this rate applies to
 
     calculation_log_id: Mapped[int | None] = mapped_column(
         ForeignKey("calculation_log.calculation_log_id"), nullable=True, index=True
@@ -67,6 +68,7 @@ class TariffGeneratedRate(Base):
     )  # calculated rate for exporting reactive power - price is dollars per kvar/h
 
     tariff: Mapped["Tariff"] = relationship(back_populates="generated_rates", lazy="raise")
-    site: Mapped["Site"] = relationship(lazy="raise")
 
-    __table_args__ = (UniqueConstraint("tariff_id", "site_id", "start_time", name="tariff_id_site_id_start_time_uc"),)
+    __table_args__ = (
+        UniqueConstraint("tariff_id", "site_group_id", "start_time", name="tariff_id_site_group_id_start_time_uc"),
+    )

@@ -86,15 +86,18 @@ class ResponseMapper:
     def map_from_price_request(
         r: PriceResponse | Response,
         tariff_generated_rate: TariffGeneratedRate,
+        site_id: int,
         pricing_reading_type: PricingReadingType,
     ) -> TariffGeneratedRateResponse:
         """Maps a sep2 PriceResponse to an internal TariffGeneratedRateResponse model that references a specific
-        PricingReadingType within a TariffGeneratedRate"""
+        PricingReadingType within a TariffGeneratedRate
+
+        site_id: The specific member site (of tariff_generated_rate.site_group_id) this response applies to"""
 
         # createdTime will be managed by the DB itself
         return TariffGeneratedRateResponse(
             tariff_generated_rate_id_snapshot=tariff_generated_rate.tariff_generated_rate_id,
-            site_id=tariff_generated_rate.site_id,
+            site_id=site_id,
             response_type=r.status,
             pricing_reading_type=pricing_reading_type,
         )

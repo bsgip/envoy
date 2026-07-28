@@ -2,11 +2,13 @@ from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta
 from itertools import islice
 
-from sqlalchemy import TIMESTAMP, Date, Select, cast, func, select
+from sqlalchemy import TIMESTAMP, Date, Select, and_, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import ColumnElement
 
 from envoy.server.crud.common import localize_start_time, localize_start_time_for_entity
-from envoy.server.model.site import Site
+from envoy.server.crud.site_group import site_group_membership_exists, site_is_member_of_group
+from envoy.server.model.site import Site, SiteGroupAssignment
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 
@@ -96,13 +98,29 @@ async def select_tariff_generated_rate_for_scope(
     aggregator_id: The aggregator id to constrain the lookup to
     site_id: If None - no effect otherwise the query will apply a filter on site_id using this value"""
 
-    stmt = (
-        select(TariffGeneratedRate, Site.timezone_id)
-        .join(TariffGeneratedRate.site)
-        .where((TariffGeneratedRate.tariff_generated_rate_id == rate_id) & (Site.aggregator_id == aggregator_id))
-    )
+    # A rate's timezone is resolved via a scalar subquery (not a join) so a rate row can never fan out to more than
+    # one result row, regardless of how many sites are in its SiteGroup. When site_id is None, we arbitrarily (but
+    # deterministically) pick one member site belonging to aggregator_id to localize the start time.
+    site_timezone_conditions: list[ColumnElement[bool]] = [
+        SiteGroupAssignment.site_group_id == TariffGeneratedRate.site_group_id,
+        Site.aggregator_id == aggregator_id,
+    ]
     if site_id is not None:
-        stmt = stmt.where(TariffGeneratedRate.site_id == site_id)
+        site_timezone_conditions.append(SiteGroupAssignment.site_id == site_id)
+    site_timezone_subquery = (
+        select(Site.timezone_id)
+        .join(SiteGroupAssignment, SiteGroupAssignment.site_id == Site.site_id)
+        .where(and_(*site_timezone_conditions))
+        .order_by(SiteGroupAssignment.site_id.asc())
+        .limit(1)
+        .correlate(TariffGeneratedRate)
+        .scalar_subquery()
+    )
+
+    stmt = select(TariffGeneratedRate, site_timezone_subquery).where(
+        (TariffGeneratedRate.tariff_generated_rate_id == rate_id)
+        & site_group_membership_exists(TariffGeneratedRate.site_group_id, aggregator_id=aggregator_id, site_id=site_id)
+    )
 
     resp = await session.execute(stmt)
     raw = resp.one_or_none()
@@ -154,7 +172,7 @@ async def _tariff_rates_for_day(
             (TariffGeneratedRate.tariff_id == tariff_id)
             & (TariffGeneratedRate.start_time >= tz_adjusted_from_expr)
             & (TariffGeneratedRate.start_time < tz_adjusted_to_expr)
-            & (TariffGeneratedRate.site_id == site_id)
+            & site_is_member_of_group(TariffGeneratedRate.site_group_id, site_id)
         )
         .offset(start)
         .limit(limit)
@@ -228,27 +246,31 @@ async def select_tariff_rate_for_day_time(
     day: The specific day of the year to restrict the lookup of values to
     time_of_day: The specific time of day to find a match"""
 
+    # Discovering the timezone BEFORE making the query will allow the better use of indexes
+    site_timezone_id = (
+        await session.execute(
+            select(Site.timezone_id).where((Site.site_id == site_id) & (Site.aggregator_id == aggregator_id))
+        )
+    ).scalar_one_or_none()
+    if not site_timezone_id:
+        return None
+
     datetime_match = datetime.combine(day, time_of_day)
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    expr_start_at_site_tz = func.timezone(Site.timezone_id, TariffGeneratedRate.start_time)
-    stmt = (
-        select(TariffGeneratedRate, Site.timezone_id)
-        .join(TariffGeneratedRate.site)
-        .where(
-            (TariffGeneratedRate.tariff_id == tariff_id)
-            & (expr_start_at_site_tz == datetime_match)
-            & (TariffGeneratedRate.site_id == site_id)
-            & (Site.aggregator_id == aggregator_id)
-        )
+    expr_start_at_site_tz = func.timezone(site_timezone_id, TariffGeneratedRate.start_time)
+    stmt = select(TariffGeneratedRate).where(
+        (TariffGeneratedRate.tariff_id == tariff_id)
+        & (expr_start_at_site_tz == datetime_match)
+        & site_is_member_of_group(TariffGeneratedRate.site_group_id, site_id)
     )
 
     resp = await session.execute(stmt)
-    row = resp.one_or_none()
-    if row is None:
+    rate = resp.scalar_one_or_none()
+    if rate is None:
         return None
-    return localize_start_time(row)
+    return localize_start_time_for_entity(rate, site_timezone_id)
 
 
 async def _select_rate_day_range(
@@ -269,7 +291,10 @@ async def _select_rate_day_range(
     stmt = select(
         cast(func.timezone(site_timezone_id, func.min(TariffGeneratedRate.start_time)), Date),
         cast(func.timezone(site_timezone_id, func.max(TariffGeneratedRate.start_time)), Date),
-    ).where((TariffGeneratedRate.tariff_id == tariff_id) & (TariffGeneratedRate.site_id == site_id))
+    ).where(
+        (TariffGeneratedRate.tariff_id == tariff_id)
+        & site_is_member_of_group(TariffGeneratedRate.site_group_id, site_id)
+    )
 
     if changed_after != datetime.min:
         stmt = stmt.where(TariffGeneratedRate.changed_time >= changed_after)

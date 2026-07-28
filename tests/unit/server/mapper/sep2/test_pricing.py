@@ -357,12 +357,13 @@ def test_time_tariff_interval_mapping(
     cti_list_href = "abc/123"
     extracted_price = Decimal("543.211")
     scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
+    site_id = 54321
 
     mock_PricingReadingTypeMapper.extract_price = mock.Mock(return_value=extracted_price)
     mock_ConsumptionTariffIntervalMapper.list_href = mock.Mock(return_value=cti_list_href)
 
     # Cursory check on values
-    mapped_all_set = TimeTariffIntervalMapper.map_to_response(scope, rate_all_set, rt)
+    mapped_all_set = TimeTariffIntervalMapper.map_to_response(scope, site_id, rate_all_set, rt)
     assert mapped_all_set
     assert mapped_all_set.href
     assert mapped_all_set.ConsumptionTariffIntervalListLink.href == cti_list_href
@@ -374,7 +375,7 @@ def test_time_tariff_interval_mapping(
     mock_ConsumptionTariffIntervalMapper.list_href.assert_called_once_with(
         scope,
         rate_all_set.tariff_id,
-        rate_all_set.site_id,
+        site_id,
         rt,
         rate_all_set.start_time.date(),
         rate_all_set.start_time.time(),
@@ -426,9 +427,8 @@ def test_mrid_uniqueness():
 
     rate.tariff_generated_rate_id = id
     rate.tariff_id = id
-    rate.site_id = id
 
-    tti = TimeTariffIntervalMapper.map_to_response(scope, rate, reading_type)
+    tti = TimeTariffIntervalMapper.map_to_response(scope, id, rate, reading_type)
     rc = RateComponentMapper.map_to_response(scope, id, reading_type, day)
     tp = TariffProfileMapper.map_to_response(scope, tariff, 999)
 

@@ -299,10 +299,10 @@ async def test_get_site(
 @pytest.mark.parametrize(
     "site_id, expected_status, archive_site_count, archive_doe_count, archive_price_count",
     [
-        # DOEs are no longer archived/deleted as a side effect of deleting a site - a DOE now targets a
-        # SiteGroup (which may have other member sites still relying on it), not this Site directly.
-        (1, HTTPStatus.NO_CONTENT, 1, 0, 3),
-        (2, HTTPStatus.NO_CONTENT, 1, 0, 1),
+        # DOEs/TariffGeneratedRates are no longer archived/deleted as a side effect of deleting a site - both now
+        # target a SiteGroup (which may have other member sites still relying on it), not this Site directly.
+        (1, HTTPStatus.NO_CONTENT, 1, 0, 0),
+        (2, HTTPStatus.NO_CONTENT, 1, 0, 0),
         (3, HTTPStatus.NO_CONTENT, 1, 0, 0),
         (4, HTTPStatus.NO_CONTENT, 1, 0, 0),
         (5, HTTPStatus.NO_CONTENT, 1, 0, 0),

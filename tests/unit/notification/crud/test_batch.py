@@ -36,10 +36,12 @@ from envoy.notification.crud.common import (
     ArchiveSiteScopedFunctionSetAssignment,
     ArchiveSiteScopedSiteControlGroup,
     ArchiveSiteScopedSiteControlGroupDefault,
+    ArchiveSiteScopedTariffGeneratedRate,
     SiteScopedDynamicOperatingEnvelope,
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     SiteScopedSiteControlGroupDefault,
+    SiteScopedTariffGeneratedRate,
     TResourceModel,
 )
 from envoy.notification.exception import NotificationError
@@ -213,23 +215,27 @@ def test_get_batch_key_invalid():
         ),
         (
             SubscriptionResource.TARIFF_GENERATED_RATE,
-            TariffGeneratedRate(
-                tariff_generated_rate_id=99,
-                site_id=3,
-                tariff_id=2,
-                start_time=datetime(2023, 2, 3, 4, 5, 6),
-                site=Site(site_id=3, aggregator_id=1),
+            SiteScopedTariffGeneratedRate(
+                1,
+                3,
+                TariffGeneratedRate(
+                    tariff_generated_rate_id=99,
+                    tariff_id=2,
+                    start_time=datetime(2023, 2, 3, 4, 5, 6),
+                ),
             ),
             (1, 2, 3, date(2023, 2, 3)),
         ),
         (
             SubscriptionResource.TARIFF_GENERATED_RATE,
-            TariffGeneratedRate(
-                tariff_generated_rate_id=99,
-                site_id=3,
-                tariff_id=2,
-                start_time=datetime(2023, 2, 3, 4, 5, 6, tzinfo=UTC),
-                site=Site(site_id=3, aggregator_id=1),
+            SiteScopedTariffGeneratedRate(
+                1,
+                3,
+                TariffGeneratedRate(
+                    tariff_generated_rate_id=99,
+                    tariff_id=2,
+                    start_time=datetime(2023, 2, 3, 4, 5, 6, tzinfo=UTC),
+                ),
             ),
             (1, 2, 3, date(2023, 2, 3)),
         ),
@@ -335,11 +341,14 @@ def test_get_subscription_filter_id_invalid():
         ),
         (
             SubscriptionResource.TARIFF_GENERATED_RATE,
-            TariffGeneratedRate(
-                tariff_generated_rate_id=999,
-                site_id=3,
-                tariff_id=2,
-                start_time=datetime(2023, 2, 3, 4, 5, 6),
+            SiteScopedTariffGeneratedRate(
+                1,
+                3,
+                TariffGeneratedRate(
+                    tariff_generated_rate_id=999,
+                    tariff_id=2,
+                    start_time=datetime(2023, 2, 3, 4, 5, 6),
+                ),
             ),
             2,
         ),
@@ -389,11 +398,14 @@ def test_get_site_id_invalid():
         ),
         (
             SubscriptionResource.TARIFF_GENERATED_RATE,
-            TariffGeneratedRate(
-                tariff_generated_rate_id=99,
-                site_id=3,
-                tariff_id=2,
-                start_time=datetime(2023, 2, 3, 4, 5, 6),
+            SiteScopedTariffGeneratedRate(
+                1,
+                3,
+                TariffGeneratedRate(
+                    tariff_generated_rate_id=99,
+                    tariff_id=2,
+                    start_time=datetime(2023, 2, 3, 4, 5, 6),
+                ),
             ),
             3,
         ),
@@ -620,7 +632,7 @@ async def test_fetch_sites_by_timestamp_with_archive(pg_base_config):
                 TariffGeneratedRate(
                     tariff_generated_rate_id=1,
                     tariff_id=1,
-                    site_id=1,
+                    site_group_id=2,  # Group-2, site1's singleton group per base_config.sql
                     calculation_log_id=2,
                     created_time=datetime(2000, 1, 1, tzinfo=UTC),
                     changed_time=datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=UTC),
@@ -645,16 +657,23 @@ async def test_fetch_rates_by_timestamp(pg_base_config, timestamp: datetime, exp
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_rates_by_changed_at(session, timestamp)
-        assert_batched_entities(batch, TariffGeneratedRate, ArchiveTariffGeneratedRate, len(expected_rates), 0)
+        assert_batched_entities(
+            batch,
+            SiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            len(expected_rates),
+            0,
+        )
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
-        list_entities.sort(key=lambda rate: rate.tariff_generated_rate_id)
+        list_entities.sort(key=lambda e: e.original.tariff_generated_rate_id)
 
         for i in range(len(expected_rates)):
-            assert_class_instance_equality(TariffGeneratedRate, expected_rates[i], list_entities[i])
+            assert_class_instance_equality(TariffGeneratedRate, expected_rates[i], list_entities[i].original)
 
-        assert all([isinstance(e.site, Site) for e in list_entities]), "site relationship populated"
-        assert all([e.site.site_id == e.site_id for e in list_entities]), "site relationship populated"
-        assert all([e.start_time.tzinfo == ZoneInfo(e.site.timezone_id) for e in list_entities]), (
+        assert all([isinstance(e, SiteScopedTariffGeneratedRate) for e in list_entities])
+        assert all([e.aggregator_id == 1 for e in list_entities]), "rate1's site (site 1) belongs to aggregator 1"
+        assert all([e.site_id == 1 for e in list_entities]), "rate1's site_group_id (2) is a singleton for site 1"
+        assert all([e.original.start_time.tzinfo == ZoneInfo("Australia/Brisbane") for e in list_entities]), (
             "start_time should be localized to the zone identified by the linked site"
         )
 
@@ -672,26 +691,37 @@ async def test_fetch_rates_by_timestamp_multiple_aggs(pg_base_config):
         for e in all_entities:
             e.changed_time = timestamp
 
-        all_entities[-1].site_id = 3  # Move this price to aggregator 2
+        # Move this price to site_group_id 5 (Group-5-Site3's singleton, site 3 - aggregator 2)
+        all_entities[-1].site_group_id = 5
         await session.commit()
 
     # Now see if the fetch grabs everything
     async with generate_async_session(pg_base_config) as session:
         # Need to unroll the batching into a single list (batching is tested elsewhere)
         batch = await fetch_rates_by_changed_at(session, timestamp)
-        assert_batched_entities(batch, TariffGeneratedRate, ArchiveTariffGeneratedRate, len(all_entities), 0)
+        assert_batched_entities(
+            batch,
+            SiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            len(all_entities),
+            0,
+        )
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
-        list_entities.sort(key=lambda rate: rate.tariff_generated_rate_id)
+        list_entities.sort(key=lambda e: e.original.tariff_generated_rate_id)
 
         assert len(list_entities) == len(all_entities)
-        assert set([1, 2, 3, 4]) == set([e.tariff_generated_rate_id for e in list_entities])
-        assert set([1, 2]) == set([e.site.aggregator_id for e in list_entities]), (
-            "All aggregator IDs should be represented"
-        )
+        assert set([1, 2, 3, 4]) == set([e.original.tariff_generated_rate_id for e in list_entities])
+        assert set([1, 2]) == set([e.aggregator_id for e in list_entities]), "All aggregator IDs should be represented"
 
         # Sanity check that a different timestamp yields nothing
         empty_batch = await fetch_rates_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert_batched_entities(empty_batch, TariffGeneratedRate, ArchiveTariffGeneratedRate, 0, 0)
+        assert_batched_entities(
+            empty_batch,
+            SiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            0,
+            0,
+        )
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
 
@@ -707,49 +737,27 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
 
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
-        # Inject a parent "archive" site that was deleted - the "newest" deleted value will be used
-        session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
-        session.add(
-            generate_class_instance(
-                ArchiveSite,
-                seed=22,
-                aggregator_id=1,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=10),
-            )
-        )
-        session.add(
-            generate_class_instance(
-                ArchiveSite,
-                seed=33,
-                aggregator_id=1,
-                site_id=70,
-                deleted_time=timestamp - timedelta(seconds=5),  # Doesn't need to match the timestamp
-                nmi="deleted70",
-                timezone_id="Australia/Brisbane",
-            )
-        )
+        # A brand new (live) site (70) + a dedicated singleton SiteGroup for it, since it isn't part of
+        # base_config.sql. Unlike the old site_id column, rate resolution now goes through a live
+        # SiteGroupAssignment/Site join - a fully deleted site (no live row) can no longer be resolved to any
+        # aggregator/site scope for notification purposes, so site 70 needs to stay live here.
+        site70 = generate_class_instance(Site, seed=999, site_id=70, aggregator_id=1, timezone_id="Australia/Brisbane")
+        session.add(site70)
+        site70_group = SiteGroup(name="ArchiveRateTestGroup70", changed_time=timestamp)
+        session.add(site70_group)
+        await session.flush()
+        site70_group_id = site70_group.site_group_id
+        session.add(SiteGroupAssignment(site_id=70, site_group_id=site70_group_id, changed_time=timestamp))
 
-        # This deleted site will be ignored in favour of the version in the active table
+        # Inject archive rates (only most recent is used) - site_group_id 2 is site1's singleton group
         session.add(
-            generate_class_instance(
-                ArchiveSite,
-                seed=44,
-                aggregator_id=1,
-                site_id=1,
-                deleted_time=timestamp,
-            )
-        )
-
-        # Inject archive rates (only most recent is used)
-        session.add(
-            generate_class_instance(ArchiveTariffGeneratedRate, seed=55, site_id=1, tariff_generated_rate_id=21)
+            generate_class_instance(ArchiveTariffGeneratedRate, seed=55, site_group_id=2, tariff_generated_rate_id=21)
         )
         session.add(
             generate_class_instance(
                 ArchiveTariffGeneratedRate,
                 seed=66,
-                site_id=1,
+                site_group_id=2,
                 tariff_generated_rate_id=21,
                 deleted_time=timestamp - timedelta(seconds=5),
             )
@@ -758,7 +766,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveTariffGeneratedRate,
                 seed=77,
-                site_id=70,
+                site_group_id=site70_group_id,
                 tariff_generated_rate_id=21,
                 tariff_id=91,
                 start_time=datetime(2011, 11, 1, 12, 0, 0, tzinfo=UTC),
@@ -769,7 +777,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
 
         # No deleted time so ignored
         session.add(
-            generate_class_instance(ArchiveTariffGeneratedRate, seed=88, site_id=1, tariff_generated_rate_id=22)
+            generate_class_instance(ArchiveTariffGeneratedRate, seed=88, site_group_id=2, tariff_generated_rate_id=22)
         )
 
         # Wrong deleted time so ignored
@@ -777,18 +785,18 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveTariffGeneratedRate,
                 seed=99,
-                site_id=1,
+                site_group_id=2,
                 tariff_generated_rate_id=23,
                 deleted_time=timestamp - timedelta(seconds=5),
             )
         )
 
-        # These will be picked up
+        # These will be picked up - site_group_id 4/5 are site2/site3's singleton groups
         session.add(
             generate_class_instance(
                 ArchiveTariffGeneratedRate,
                 seed=1010,
-                site_id=2,
+                site_group_id=4,
                 tariff_generated_rate_id=24,
                 tariff_id=92,
                 start_time=datetime(2011, 11, 2, 12, 0, 0, tzinfo=UTC),
@@ -800,7 +808,7 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
             generate_class_instance(
                 ArchiveTariffGeneratedRate,
                 seed=1111,
-                site_id=3,
+                site_group_id=5,
                 tariff_generated_rate_id=25,
                 tariff_id=93,
                 start_time=datetime(2011, 11, 3, 12, 0, 0, tzinfo=UTC),
@@ -816,25 +824,33 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
         batch = await fetch_rates_by_changed_at(session, timestamp)
         assert_batched_entities(
             batch,
-            TariffGeneratedRate,
-            ArchiveTariffGeneratedRate,
+            SiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
             len(expected_active_rate_ids),
             len(expected_deleted_rate_ids),
         )
         active_list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
-        active_list_entities.sort(key=lambda e: e.tariff_generated_rate_id)
+        active_list_entities.sort(key=lambda e: e.original.tariff_generated_rate_id)
 
         deleted_list_entities = [e for _, entities in batch.deleted_by_batch_key.items() for e in entities]
-        deleted_list_entities.sort(key=lambda e: e.tariff_generated_rate_id)
+        deleted_list_entities.sort(key=lambda e: e.original.tariff_generated_rate_id)
 
-        assert set(expected_active_rate_ids) == set([e.tariff_generated_rate_id for e in active_list_entities])
-        assert set(expected_deleted_rate_ids) == set([e.tariff_generated_rate_id for e in deleted_list_entities])
+        assert set(expected_active_rate_ids) == set([e.original.tariff_generated_rate_id for e in active_list_entities])
+        assert set(expected_deleted_rate_ids) == set(
+            [e.original.tariff_generated_rate_id for e in deleted_list_entities]
+        )
 
-        # Ensure the parent ORM relationship is populated for deleted/active instances
-        assert all([isinstance(e.site, Site) for v_list in batch.models_by_batch_key.values() for e in v_list])
+        # Ensure every entry is properly site-scoped (aggregator_id/site_id resolved via SiteGroupAssignment)
         assert all(
             [
-                hasattr(e, "site") and (isinstance(e.site, Site) or isinstance(e.site, ArchiveSite))
+                isinstance(e, SiteScopedTariffGeneratedRate)
+                for v_list in batch.models_by_batch_key.values()
+                for e in v_list
+            ]
+        )
+        assert all(
+            [
+                isinstance(e, ArchiveSiteScopedTariffGeneratedRate)
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
@@ -844,15 +860,21 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
         # archive type in a particular way for the expected matches)
         assert all(
             [
-                e.duration_seconds == e.tariff_generated_rate_id
+                e.original.duration_seconds == e.original.tariff_generated_rate_id
                 for v_list in batch.deleted_by_batch_key.values()
                 for e in v_list
             ]
         )
 
         # Sanity check that a different timestamp yields nothing
-        empty_batch = await fetch_sites_by_changed_at(session, timestamp - timedelta(milliseconds=50))
-        assert_batched_entities(empty_batch, TariffGeneratedRate, ArchiveTariffGeneratedRate, 0, 0)
+        empty_batch = await fetch_rates_by_changed_at(session, timestamp - timedelta(milliseconds=50))
+        assert_batched_entities(
+            empty_batch,
+            SiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            0,
+            0,
+        )
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
 
@@ -945,7 +967,7 @@ async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
             SiteScopedDynamicOperatingEnvelope,  # ty:ignore[invalid-argument-type]
             ArchiveSiteScopedDynamicOperatingEnvelope,  # ty:ignore[invalid-argument-type]
             len(all_entities),
-            0
+            0,
         )
         list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
         list_entities.sort(key=lambda e: e.original.dynamic_operating_envelope_id)
@@ -961,7 +983,7 @@ async def test_fetch_does_by_timestamp_multiple_aggs(pg_base_config):
             SiteScopedDynamicOperatingEnvelope,  # ty:ignore[invalid-argument-type]
             ArchiveSiteScopedDynamicOperatingEnvelope,  # ty:ignore[invalid-argument-type]
             0,
-            0
+            0,
         )
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
@@ -982,9 +1004,7 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
         # base_config.sql. Unlike the old site_id column, DOE resolution now goes through a live
         # SiteGroupAssignment/Site join - a fully deleted site (no live row) can no longer be resolved to any
         # aggregator/site scope for notification purposes, so site 70 needs to stay live here.
-        site70 = generate_class_instance(
-            Site, seed=999, site_id=70, aggregator_id=1, timezone_id="Australia/Brisbane"
-        )
+        site70 = generate_class_instance(Site, seed=999, site_id=70, aggregator_id=1, timezone_id="Australia/Brisbane")
         session.add(site70)
         site70_group = SiteGroup(name="ArchiveTestGroup70", changed_time=timestamp)
         session.add(site70_group)

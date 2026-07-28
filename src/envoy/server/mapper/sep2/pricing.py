@@ -391,17 +391,18 @@ class TimeTariffIntervalMapper:
 
     @staticmethod
     def map_to_response(
-        scope: BaseRequestScope, rate: TariffGeneratedRate, pricing_reading: PricingReadingType
+        scope: BaseRequestScope, site_id: int, rate: TariffGeneratedRate, pricing_reading: PricingReadingType
     ) -> TimeTariffIntervalResponse:
-        """Creates a new TimeTariffIntervalResponse for the given rate and specific price reading"""
+        """Creates a new TimeTariffIntervalResponse for the given rate and specific price reading
+
+        site_id: The specific member site (of rate.site_group_id) this response is being generated for - a rate
+            now targets a SiteGroup rather than a single site, so this must be supplied by the caller."""
         start_d = rate.start_time.date()
         start_t = rate.start_time.time()
         price = PricingReadingTypeMapper.extract_price(pricing_reading, rate)
-        href = TimeTariffIntervalMapper.instance_href(
-            scope, rate.tariff_id, rate.site_id, start_d, pricing_reading, start_t
-        )
+        href = TimeTariffIntervalMapper.instance_href(scope, rate.tariff_id, site_id, start_d, pricing_reading, start_t)
         list_href = ConsumptionTariffIntervalMapper.list_href(
-            scope, rate.tariff_id, rate.site_id, pricing_reading, start_d, start_t, price
+            scope, rate.tariff_id, site_id, pricing_reading, start_d, start_t, price
         )
 
         return TimeTariffIntervalResponse.model_validate(
@@ -417,7 +418,7 @@ class TimeTariffIntervalMapper:
                 "touTier": TOUType.NOT_APPLICABLE,
                 "creationTime": int(rate.changed_time.timestamp()),
                 "replyTo": ResponseListMapper.response_list_href(
-                    scope, rate.site_id, ResponseSetType.TARIFF_GENERATED_RATES
+                    scope, site_id, ResponseSetType.TARIFF_GENERATED_RATES
                 ),  # Response function set
                 "responseRequired": SPECIFIC_RESPONSE_REQUIRED,  # Response function set
                 "interval": {
@@ -448,7 +449,8 @@ class TimeTariffIntervalMapper:
                 "all_": total,
                 "results": len(rates),
                 "TimeTariffInterval": [
-                    TimeTariffIntervalMapper.map_to_response(scope, rate, pricing_reading) for rate in rates
+                    TimeTariffIntervalMapper.map_to_response(scope, scope.display_site_id, rate, pricing_reading)
+                    for rate in rates
                 ],
             }
         )

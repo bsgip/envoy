@@ -21,6 +21,10 @@ from envoy.server.crud.pricing import (
 )
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
+# TariffGeneratedRate now targets a SiteGroup rather than a single Site. base_config.sql sets up a singleton
+# SiteGroup per legacy site_id so every existing test fixture rate still targets exactly one site, matching this map.
+SITE_ID_TO_SINGLETON_GROUP_ID = {1: 2, 2: 4, 3: 5}
+
 
 @pytest.mark.parametrize(
     "changed_after, expected_fsa_ids",
@@ -150,7 +154,7 @@ def assert_rate_for_id(
         assert actual_rate
         assert actual_rate.tariff_generated_rate_id == expected_rate_id
         assert actual_rate.tariff_id == expected_tariff_id
-        assert actual_rate.site_id == expected_site_id
+        assert expected_site_id is None or actual_rate.site_group_id == SITE_ID_TO_SINGLETON_GROUP_ID[expected_site_id]
         assert actual_rate.duration_seconds == 10 + expected_rate_id
         assert actual_rate.import_active_price == Decimal(f"{expected_rate_id}.1")
         assert actual_rate.export_active_price == Decimal(f"-{expected_rate_id}.22")

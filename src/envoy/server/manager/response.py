@@ -223,7 +223,7 @@ class ResponseManager:
                 )
 
             rate_response = ResponseMapper.map_from_price_request(
-                cast(PriceResponse, response), tariff_generated_rate, pricing_reading_type
+                cast(PriceResponse, response), tariff_generated_rate, scope.site_id, pricing_reading_type
             )
 
             # Once we commit, the object becomes mostly detached and can't be referenced. So we need to do any

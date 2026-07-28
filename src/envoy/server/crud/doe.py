@@ -4,49 +4,16 @@ from typing import cast
 
 from sqlalchemy import Select, and_, func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import InstrumentedAttribute, selectinload
+from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import ColumnElement
-from sqlalchemy.sql.selectable import Exists
 
 from envoy.server.crud.common import localize_start_time, localize_start_time_for_entity
+from envoy.server.crud.site_group import site_group_membership_exists as _site_group_membership_exists
+from envoy.server.crud.site_group import site_is_member_of_group as _site_is_member_of_group
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope as ArchiveDOE
 from envoy.server.model.doe import DynamicOperatingEnvelope as DOE
 from envoy.server.model.doe import SiteControlGroup
 from envoy.server.model.site import Site, SiteGroupAssignment
-
-
-def _site_is_member_of_group(site_group_id_col: InstrumentedAttribute[int], site_id: int) -> Exists:
-    """Builds a correlated EXISTS clause checking that site_id is a member (via SiteGroupAssignment) of the
-    SiteGroup referenced by site_group_id_col (typically DOE.site_group_id/ArchiveDOE.site_group_id from the
-    enclosing statement). Does not join/fan-out - safe to use regardless of how many sites are in the group."""
-
-    return _site_group_membership_exists(site_group_id_col, aggregator_id=None, site_id=site_id)
-
-
-def _site_group_membership_exists(
-    site_group_id_col: InstrumentedAttribute[int], aggregator_id: int | None, site_id: int | None
-) -> Exists:
-    """Builds a correlated EXISTS clause checking SiteGroupAssignment (+ Site, if aggregator_id is specified)
-    membership for the SiteGroup referenced by site_group_id_col.
-
-    aggregator_id: if given, requires a matching member site to belong to this aggregator (scoped to site_id's
-        aggregator specifically, if site_id is also given)
-    site_id: if given, requires this specific site to be a member of the group
-
-    Never joins against the enclosing statement, so a DOE row can never fan out into multiple result rows
-    regardless of how many sites are in its SiteGroup."""
-
-    conditions: list[ColumnElement[bool]] = [SiteGroupAssignment.site_group_id == site_group_id_col]
-
-    stmt = select(SiteGroupAssignment.site_group_assignment_id)
-    if aggregator_id is not None:
-        stmt = stmt.join(Site, Site.site_id == SiteGroupAssignment.site_id)
-        conditions.append(Site.aggregator_id == aggregator_id)
-
-    if site_id is not None:
-        conditions.append(SiteGroupAssignment.site_id == site_id)
-
-    return stmt.where(and_(*conditions)).exists()
 
 
 async def select_doe_include_deleted(
@@ -125,9 +92,7 @@ async def select_doe_by_display_id_include_deleted(
     # Check primary table first
     primary_table_doe = (
         await session.execute(
-            select(DOE).where(
-                (DOE.display_id == display_id) & _site_is_member_of_group(DOE.site_group_id, site_id)
-            )
+            select(DOE).where((DOE.display_id == display_id) & _site_is_member_of_group(DOE.site_group_id, site_id))
         )
     ).scalar_one_or_none()
     if primary_table_doe is not None:

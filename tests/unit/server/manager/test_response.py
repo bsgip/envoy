@@ -977,9 +977,7 @@ async def test_create_response_for_scope_price_created_normally(
     scope = generate_class_instance(SiteRequestScope, seed=101, site_id=site_id, href_prefix="/my_prefix/")
     response = generate_class_instance(Response, seed=202)
     decoded_rate_id = 2
-    existing_rate = generate_class_instance(
-        TariffGeneratedRate, seed=303, tariff_generated_rate_id=decoded_rate_id, site_id=site_id
-    )
+    existing_rate = generate_class_instance(TariffGeneratedRate, seed=303, tariff_generated_rate_id=decoded_rate_id)
     pricing_reading_type = PricingReadingType.EXPORT_REACTIVE_POWER_KVARH
     mock_decode_and_validate_mrid_type.return_value = MridType.TIME_TARIFF_INTERVAL
     mock_decode_time_tariff_interval_mrid.return_value = (pricing_reading_type, decoded_rate_id)

@@ -257,7 +257,7 @@ class TimeTariffIntervalManager:
         if generated_rate is None:
             return None
 
-        return TimeTariffIntervalMapper.map_to_response(scope, generated_rate, pricing_type)
+        return TimeTariffIntervalMapper.map_to_response(scope, scope.site_id, generated_rate, pricing_type)
 
 
 class ConsumptionTariffIntervalManager:

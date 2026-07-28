@@ -726,19 +726,9 @@ async def snapshot_all_site_tables(session: AsyncSession, agg_id: int, site_id: 
         )
     )
 
-    # NOTE: DynamicOperatingEnvelope is deliberately NOT snapshotted here - it now targets a SiteGroup rather than
-    # a single site, so it's no longer deleted/archived alongside its site (see test_delete_site_for_aggregator's
-    # dedicated DOE/SiteGroupAssignment assertions instead).
-
-    snapshot.append(
-        await count_table_rows(
-            session,
-            TariffGeneratedRate,
-            None,
-            ArchiveTariffGeneratedRate,
-            lambda q: q.where(TariffGeneratedRate.site_id == site_id),
-        )
-    )
+    # NOTE: DynamicOperatingEnvelope and TariffGeneratedRate are deliberately NOT snapshotted here - they now target
+    # a SiteGroup rather than a single site, so neither is deleted/archived alongside its site (see
+    # test_delete_site_for_aggregator's dedicated DOE/rate/SiteGroupAssignment assertions instead).
 
     return snapshot
 
@@ -785,6 +775,7 @@ async def test_delete_site_for_aggregator(
         doe_count_before = (
             await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))
         ).scalar_one()
+        rate_count_before = (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
         assignments_before = (
             await session.execute(
                 select(func.count()).select_from(SiteGroupAssignment).where(SiteGroupAssignment.site_id == site_id)
@@ -844,14 +835,19 @@ async def test_delete_site_for_aggregator(
         else:
             assert site is None, "If the delete was NOT committed but the site DNE - it should continue to not exist"
 
-    # DOEs now target a SiteGroup rather than this Site directly - deleting a Site should NEVER touch/archive any
-    # DOE, it should only remove this site's own SiteGroupAssignment rows (severing its membership from any groups)
+    # DOEs/TariffGeneratedRates now target a SiteGroup rather than this Site directly - deleting a Site should
+    # NEVER touch/archive either, it should only remove this site's own SiteGroupAssignment rows (severing its
+    # membership from any groups)
     async with generate_async_session(pg_base_config) as session:
         doe_count_after = (
             await session.execute(select(func.count()).select_from(DynamicOperatingEnvelope))
         ).scalar_one()
         archive_doe_count_after = (
             await session.execute(select(func.count()).select_from(ArchiveDynamicOperatingEnvelope))
+        ).scalar_one()
+        rate_count_after = (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
+        archive_rate_count_after = (
+            await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))
         ).scalar_one()
         remaining_assignments = (
             await session.execute(
@@ -863,6 +859,10 @@ async def test_delete_site_for_aggregator(
             "DOEs should never be deleted/archived as a side effect of Site deletion"
         )
         assert archive_doe_count_after == 0, "No DOE archive rows should be created by deleting a Site"
+        assert rate_count_after == rate_count_before, (
+            "TariffGeneratedRates should never be deleted/archived as a side effect of Site deletion"
+        )
+        assert archive_rate_count_after == 0, "No rate archive rows should be created by deleting a Site"
         if delete_occurred:
             assert remaining_assignments == 0, "The deleted site's SiteGroupAssignment rows should be gone"
         else:

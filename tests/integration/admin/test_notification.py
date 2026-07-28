@@ -399,7 +399,7 @@ async def test_create_rates_with_active_subscription(
     rate_1: TariffGeneratedRateRequest = generate_class_instance(
         TariffGeneratedRateRequest,
         seed=101,
-        site_group_id=1,
+        site_group_id=2,  # Group-2, site1's singleton group per base_config.sql
         tariff_id=1,
         start_time=datetime(2022, 3, 4, 14, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
         calculation_log_id=1,
@@ -408,7 +408,7 @@ async def test_create_rates_with_active_subscription(
     rate_2: TariffGeneratedRateRequest = generate_class_instance(
         TariffGeneratedRateRequest,
         seed=202,
-        site_group_id=1,
+        site_group_id=2,  # Group-2, site1's singleton group per base_config.sql
         tariff_id=1,
         start_time=datetime(2022, 3, 4, 14, 5, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
         calculation_log_id=None,
@@ -417,7 +417,7 @@ async def test_create_rates_with_active_subscription(
     rate_3: TariffGeneratedRateRequest = generate_class_instance(
         TariffGeneratedRateRequest,
         seed=303,
-        site_group_id=1,
+        site_group_id=2,  # Group-2, site1's singleton group per base_config.sql
         tariff_id=1,
         start_time=datetime(2022, 3, 4, 14, 10, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
         calculation_log_id=None,
@@ -426,7 +426,7 @@ async def test_create_rates_with_active_subscription(
     rate_4: TariffGeneratedRateRequest = generate_class_instance(
         TariffGeneratedRateRequest,
         seed=404,
-        site_group_id=3,
+        site_group_id=5,  # Group-5, site3's singleton group (different aggregator) per base_config.sql
         tariff_id=1,
         start_time=datetime(2022, 3, 4, 14, 15, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
         calculation_log_id=None,
@@ -519,7 +519,7 @@ async def test_replace_rate_with_active_subscription(
     rate_1 = generate_class_instance(
         TariffGeneratedRateRequest,
         seed=10001,
-        site_group_id=1,
+        site_group_id=2,  # Group-2, site1's singleton group per base_config.sql - matches rate 1's group
         tariff_id=1,
         calculation_log_id=None,
         start_time=datetime(2022, 3, 5, 1, 2, 0, tzinfo=ZoneInfo("Australia/Brisbane")),

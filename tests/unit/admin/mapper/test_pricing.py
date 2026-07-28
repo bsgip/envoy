@@ -58,14 +58,12 @@ def test_tariff_genrate_mapper_from_request(optional_is_none: bool):
 
     assert isinstance(mdl, TariffGeneratedRate)
 
-    # site_id is a naming shim over the request's renamed site_group_id field - see admin/mapper/pricing.py
     assert_class_instance_equality(
         TariffGeneratedRate,
         mdl,
         req,
-        ignored_properties=set(["tariff_generated_rate_id", "created_time", "changed_time", "site_id"]),
+        ignored_properties=set(["tariff_generated_rate_id", "created_time", "changed_time"]),
     )
-    assert mdl.site_id == req.site_group_id
 
     assert mdl.changed_time == changed_time
     assert mdl.tariff_generated_rate_id == None  # noqa

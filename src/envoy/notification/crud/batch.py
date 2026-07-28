@@ -19,10 +19,12 @@ from envoy.notification.crud.common import (
     ArchiveSiteScopedFunctionSetAssignment,
     ArchiveSiteScopedSiteControlGroup,
     ArchiveSiteScopedSiteControlGroupDefault,
+    ArchiveSiteScopedTariffGeneratedRate,
     SiteScopedDynamicOperatingEnvelope,
     SiteScopedFunctionSetAssignment,
     SiteScopedSiteControlGroup,
     SiteScopedSiteControlGroupDefault,
+    SiteScopedTariffGeneratedRate,
     TArchiveResourceModel,
     TResourceModel,
 )
@@ -150,8 +152,13 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
             reading.site_reading_type.group_id,
         )
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        rate = cast(TariffGeneratedRate, entity)
-        return (rate.site.aggregator_id, rate.tariff_id, rate.site_id, rate.start_time.date())
+        scoped_rate = cast(SiteScopedTariffGeneratedRate, entity)
+        return (
+            scoped_rate.aggregator_id,
+            scoped_rate.original.tariff_id,
+            scoped_rate.site_id,
+            scoped_rate.original.start_time.date(),
+        )
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         availability = cast(SiteDERAvailability, entity)
         return (availability.site.aggregator_id, availability.site_id, PUBLIC_SITE_DER_ID)
@@ -196,7 +203,7 @@ def get_subscription_filter_id(resource: SubscriptionResource, entity: TResource
         return cast(SiteReading, entity).site_reading_type.group_id
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
         # rate subscriptions can be scoped to a single tariff
-        return cast(TariffGeneratedRate, entity).tariff_id
+        return cast(SiteScopedTariffGeneratedRate, entity).original.tariff_id
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         # der entities get scoped to the parent der
         return PUBLIC_SITE_DER_ID  # There is only a single site DER per EndDevice - it has a static id
@@ -228,7 +235,7 @@ def get_site_id(resource: SubscriptionResource, entity: TResourceModel) -> int:
     elif resource == SubscriptionResource.READING:
         return cast(SiteReading, entity).site_reading_type.site_id
     elif resource == SubscriptionResource.TARIFF_GENERATED_RATE:
-        return cast(TariffGeneratedRate, entity).site_id
+        return cast(SiteScopedTariffGeneratedRate, entity).site_id
     elif resource == SubscriptionResource.SITE_DER_AVAILABILITY:
         return cast(SiteDERAvailability, entity).site_id
     elif resource == SubscriptionResource.SITE_DER_RATING:
@@ -289,39 +296,63 @@ async def fetch_sites_by_changed_at(
 
 async def fetch_rates_by_changed_at(
     session: AsyncSession, timestamp: datetime
-) -> AggregatorBatchedEntities[TariffGeneratedRate, ArchiveTariffGeneratedRate]:
+) -> AggregatorBatchedEntities[SiteScopedTariffGeneratedRate, ArchiveSiteScopedTariffGeneratedRate]:  # type: ignore # SiteScoped variables will work here - tests enforce it
     """Fetches all rates matching the specified changed_at and returns them keyed by their aggregator/site id
 
-    Will include the TariffGeneratedRate.site relationship
+    A rate targets a SiteGroup (rather than a single site) - each changed/deleted rate is expanded into one
+    SiteScopedTariffGeneratedRate per member site of its SiteGroup (NOT every site in the system - only the
+    group's actual members, unlike the SiteControlGroup/FSA fan-out patterns elsewhere in this file). A rate whose
+    SiteGroup currently has no members contributes no entries.
 
-    Also fetches any site from the archive that was deleted at the specified timestamp"""
+    Also fetches any rate from the archive that was deleted at the specified timestamp"""
 
     active_rates, deleted_rates = await fetch_entities_with_archive_by_datetime(
         session, TariffGeneratedRate, ArchiveTariffGeneratedRate, timestamp
     )
 
-    referenced_site_ids = {
-        e.site_id
+    referenced_site_group_ids = {
+        e.site_group_id
         for e in cast(Iterable[TariffGeneratedRate | ArchiveTariffGeneratedRate], chain(active_rates, deleted_rates))
     }
 
-    active_sites, deleted_sites = await fetch_entities_with_archive_by_id(
-        session, Site, ArchiveSite, referenced_site_ids
+    member_sites_by_group_id: dict[int, list[tuple[int, int, str]]] = {}
+    if referenced_site_group_ids:
+        member_sites = (
+            await session.execute(
+                select(SiteGroupAssignment.site_group_id, Site.aggregator_id, Site.site_id, Site.timezone_id)
+                .join(Site, Site.site_id == SiteGroupAssignment.site_id)
+                .where(SiteGroupAssignment.site_group_id.in_(referenced_site_group_ids))
+            )
+        ).all()
+        for site_group_id, aggregator_id, site_id, timezone_id in member_sites:
+            member_sites_by_group_id.setdefault(site_group_id, []).append((aggregator_id, site_id, timezone_id))
+
+    def expand_rate(rate: TariffGeneratedRate | ArchiveTariffGeneratedRate) -> list[tuple[int, int, Any]]:
+        """Expands a single rate into one (aggregator_id, site_id, localized_rate) tuple per member site of its
+        SiteGroup. Each site gets its own copy of rate since start_time localization mutates in place and
+        different member sites can be in different timezones."""
+        return [
+            (aggregator_id, site_id, localize_start_time_for_entity(copy.copy(rate), timezone_id))
+            for aggregator_id, site_id, timezone_id in member_sites_by_group_id.get(rate.site_group_id, [])
+        ]
+
+    site_scoped_active_rates = [
+        SiteScopedTariffGeneratedRate(aggregator_id, site_id, localized_rate)
+        for rate in cast(Iterable[TariffGeneratedRate], active_rates)
+        for aggregator_id, site_id, localized_rate in expand_rate(rate)
+    ]
+    site_scoped_deleted_rates = [
+        ArchiveSiteScopedTariffGeneratedRate(aggregator_id, site_id, localized_rate)
+        for rate in cast(Iterable[ArchiveTariffGeneratedRate], deleted_rates)
+        for aggregator_id, site_id, localized_rate in expand_rate(rate)
+    ]
+
+    return AggregatorBatchedEntities(
+        timestamp,
+        SubscriptionResource.TARIFF_GENERATED_RATE,
+        site_scoped_active_rates,  # type: ignore # SiteScoped variables will work here - tests enforce it
+        site_scoped_deleted_rates,  # type: ignore # SiteScoped variables will work here - tests enforce it
     )
-
-    # Map the "site" relationship
-    orm_relationship_map_parent_entities(
-        cast(Iterable[TariffGeneratedRate | ArchiveTariffGeneratedRate], chain(active_rates, deleted_rates)),
-        lambda e: e.site_id,
-        {e.site_id: e for e in cast(Iterable[Site | ArchiveSite], chain(active_sites, deleted_sites))},
-        "site",
-    )
-
-    # localize start times using the new "site" relationship
-    for e in cast(Iterable[TariffGeneratedRate], chain(active_rates, deleted_rates)):
-        localize_start_time_for_entity(e, e.site.timezone_id)
-
-    return AggregatorBatchedEntities(timestamp, SubscriptionResource.TARIFF_GENERATED_RATE, active_rates, deleted_rates)
 
 
 async def fetch_does_by_changed_at(

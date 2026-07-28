@@ -101,30 +101,13 @@ INSERT INTO public.tariff("tariff_id", "name", "dnsp_code", "currency_code", "fs
 
 SELECT pg_catalog.setval('public.tariff_tariff_id_seq', 4, true);
 
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (1, 1, 1, 2, '2000-01-01 00:00:00Z', '2022-03-04 11:22:33.500', '2022-03-05 01:02+10', 11, 1.1, -1.22, 1.333, -1.4444);
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (2, 1, 1, 2, '2000-01-01 00:00:00Z', '2022-03-04 12:22:33.500', '2022-03-05 03:04+10', 12, 2.1, -2.22, 2.333, -2.4444);
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (3, 1, 2, 2, '2000-01-01 00:00:00Z', '2022-03-04 13:22:33.500', '2022-03-05 01:02+10', 13, 3.1, -3.22, 3.333, -3.4444);
-INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
-VALUES (4, 1, 1, NULL, '2000-01-01 00:00:00Z', '2022-03-04 14:22:33.500', '2022-03-06 01:02+10', 14, 4.1, -4.22, 4.333, -4.4444);
-
-SELECT pg_catalog.setval('public.tariff_generated_rate_tariff_generated_rate_id_seq', 5, true);
-
-
-INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id_snapshot", "site_id", "created_time", "response_type", "pricing_reading_type") VALUES (1, 1, 1, '2022-01-01 00:00:00+10', 1, 1);
-INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id_snapshot", "site_id", "created_time", "response_type", "pricing_reading_type") VALUES (2, 1, 1, '2022-01-02 00:00:00+10', NULL, 2);
-INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id_snapshot", "site_id", "created_time", "response_type", "pricing_reading_type") VALUES (3, 3, 2, '2022-01-03 00:00:00+10', 2, 3);
-
-SELECT pg_catalog.setval('public.tariff_generated_rate_respons_tariff_generated_rate_respons_seq', 4, true);
-
 
 INSERT INTO public.site_group("site_group_id", "created_time", "changed_time", "name") VALUES (1, '2000-01-01 00:00:00Z', '2024-02-10 01:55:44.500', 'Group-1');
 INSERT INTO public.site_group("site_group_id", "created_time", "changed_time", "name") VALUES (2, '2000-01-01 00:00:00Z', '2024-02-10 02:55:44.500', 'Group-2');
 INSERT INTO public.site_group("site_group_id", "created_time", "changed_time", "name") VALUES (3, '2000-01-01 00:00:00Z', '2024-02-10 03:55:44.500', 'Group-3');
--- Group-4/Group-5 exist purely so DOEs that used to target a single site (site_id 2 / site_id 3 respectively)
--- have an equivalent singleton SiteGroup to target, preserving their original per-site scope exactly.
+-- Group-4/Group-5 exist purely so DOEs/TariffGeneratedRates that used to target a single site (site_id 2 /
+-- site_id 3 respectively) have an equivalent singleton SiteGroup to target, preserving their original
+-- per-site scope exactly.
 INSERT INTO public.site_group("site_group_id", "created_time", "changed_time", "name") VALUES (4, '2000-01-01 00:00:00Z', '2024-02-10 04:55:44.500', 'Group-4-Site2');
 INSERT INTO public.site_group("site_group_id", "created_time", "changed_time", "name") VALUES (5, '2000-01-01 00:00:00Z', '2024-02-10 05:55:44.500', 'Group-5-Site3');
 
@@ -144,6 +127,25 @@ INSERT INTO public.site_group_assignment("site_group_assignment_id", "created_ti
 VALUES (6, '2000-01-01 00:00:00Z', '2024-02-11 06:55:44.500', 3, 5);
 
 SELECT pg_catalog.setval('public.site_group_assignment_site_group_assignment_id_seq', 7, true);
+
+
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_group_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (1, 1, 2, 2, '2000-01-01 00:00:00Z', '2022-03-04 11:22:33.500', '2022-03-05 01:02+10', 11, 1.1, -1.22, 1.333, -1.4444);
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_group_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (2, 1, 2, 2, '2000-01-01 00:00:00Z', '2022-03-04 12:22:33.500', '2022-03-05 03:04+10', 12, 2.1, -2.22, 2.333, -2.4444);
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_group_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (3, 1, 4, 2, '2000-01-01 00:00:00Z', '2022-03-04 13:22:33.500', '2022-03-05 01:02+10', 13, 3.1, -3.22, 3.333, -3.4444);
+INSERT INTO public.tariff_generated_rate("tariff_generated_rate_id", "tariff_id", "site_group_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "import_active_price", "export_active_price", "import_reactive_price", "export_reactive_price")
+VALUES (4, 1, 2, NULL, '2000-01-01 00:00:00Z', '2022-03-04 14:22:33.500', '2022-03-06 01:02+10', 14, 4.1, -4.22, 4.333, -4.4444);
+
+SELECT pg_catalog.setval('public.tariff_generated_rate_tariff_generated_rate_id_seq', 5, true);
+
+
+INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id_snapshot", "site_id", "created_time", "response_type", "pricing_reading_type") VALUES (1, 1, 1, '2022-01-01 00:00:00+10', 1, 1);
+INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id_snapshot", "site_id", "created_time", "response_type", "pricing_reading_type") VALUES (2, 1, 1, '2022-01-02 00:00:00+10', NULL, 2);
+INSERT INTO public.tariff_generated_rate_response("tariff_generated_rate_response_id", "tariff_generated_rate_id_snapshot", "site_id", "created_time", "response_type", "pricing_reading_type") VALUES (3, 3, 2, '2022-01-03 00:00:00+10', 2, 3);
+
+SELECT pg_catalog.setval('public.tariff_generated_rate_respons_tariff_generated_rate_respons_seq', 4, true);
 
 
 INSERT INTO public.dynamic_operating_envelope("dynamic_operating_envelope_id", "site_control_group_id", "site_group_id", "calculation_log_id", "created_time", "changed_time", "start_time", "duration_seconds", "randomize_start_seconds", "end_time", "superseded", "import_limit_active_watts", "export_limit_watts", "generation_limit_active_watts", "load_limit_active_watts", "set_point_percentage", "ramp_time_seconds")

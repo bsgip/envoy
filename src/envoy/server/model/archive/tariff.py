@@ -24,7 +24,7 @@ class ArchiveTariffGeneratedRate(ArchiveBase):
     __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.TariffGeneratedRate.__tablename__
     tariff_generated_rate_id: Mapped[int] = mapped_column(BigInteger, index=True)
     tariff_id: Mapped[int] = mapped_column(INTEGER)
-    site_id: Mapped[int] = mapped_column(INTEGER)
+    site_group_id: Mapped[int] = mapped_column(INTEGER)
     calculation_log_id: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
     created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
