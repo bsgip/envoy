@@ -171,7 +171,7 @@ def downgrade() -> None:
             FROM site_group_assignment sga
             WHERE sga.site_group_id = t.site_group_id
               AND (SELECT count(*) FROM site_group_assignment WHERE site_group_id = t.site_group_id) = 1
-            """  # noqa: S608
+            """  # noqa: S608 # nosec: B608
         )
 
     op.create_foreign_key(_OLD_DOE_FK, _DOE_TABLE, "site", ["site_id"], ["site_id"])

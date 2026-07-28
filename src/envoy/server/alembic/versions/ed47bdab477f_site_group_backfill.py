@@ -100,7 +100,7 @@ def upgrade() -> None:
                 SET site_group_id = sg.site_group_id
                 FROM site_group sg
                 WHERE sg.name = :prefix || t.site_id::text
-                """  # noqa: S608
+                """  # noqa: S608 # nosec: B608
             ).bindparams(prefix=MIGRATED_SITE_GROUP_NAME_PREFIX)
         )
 
