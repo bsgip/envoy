@@ -1,17 +1,16 @@
 """nullable_der_archive
 
 Revision ID: 2593d6e055bb
-Revises: ab6361a582b3
+Revises: a1c4f7e9d2b8
 Create Date: 2026-07-28 11:53:52.609607
 
 """
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '2593d6e055bb'
-down_revision = 'ab6361a582b3'
+down_revision = 'a1c4f7e9d2b8'
 branch_labels = None
 depends_on = None
 
