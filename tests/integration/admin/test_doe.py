@@ -35,9 +35,7 @@ from tests.integration.response import read_response_body_string
 @pytest.mark.anyio
 async def test_create_does(admin_client_auth: AsyncClient):
     doe: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, site_group_id=2)
-    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(
-        DynamicOperatingEnvelopeRequest, site_group_id=4
-    )
+    doe_1: DynamicOperatingEnvelopeRequest = generate_class_instance(DynamicOperatingEnvelopeRequest, site_group_id=4)
 
     resp = await admin_client_auth.post(DoeUri, content=f"[{doe.model_dump_json()}, {doe_1.model_dump_json()}]")
 

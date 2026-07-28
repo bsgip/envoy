@@ -61,10 +61,7 @@ def assert_doe_for_id(
             assert isinstance(actual_doe, DOE)
 
         assert actual_doe.dynamic_operating_envelope_id == expected_doe_id
-        assert (
-            expected_site_id is None
-            or actual_doe.site_group_id == SITE_ID_TO_SINGLETON_GROUP_ID[expected_site_id]
-        )
+        assert expected_site_id is None or actual_doe.site_group_id == SITE_ID_TO_SINGLETON_GROUP_ID[expected_site_id]
         assert actual_doe.site_control_group_id == 1
         if check_duration_seconds:
             assert actual_doe.duration_seconds == 10 * expected_doe_id + expected_doe_id

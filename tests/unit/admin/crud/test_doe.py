@@ -133,9 +133,7 @@ async def test_cancel_then_insert_does_update(pg_base_config):
         assert archive_data.deleted_time == deleted_time
 
 
-def doe(
-    start_time: datetime, end_time: datetime, scg_id: int = 1, site_group_id: int = 2
-) -> DynamicOperatingEnvelope:
+def doe(start_time: datetime, end_time: datetime, scg_id: int = 1, site_group_id: int = 2) -> DynamicOperatingEnvelope:
     return generate_class_instance(
         DynamicOperatingEnvelope,
         dynamic_operating_envelope_id=None,
