@@ -3,13 +3,30 @@ from datetime import datetime
 from http import HTTPStatus
 
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse, SiteUpdateRequest
-from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
-from envoy_schema.admin.schema.uri import SiteGroupListUri, SiteGroupUri, SiteListUri, SiteUri
-from fastapi import APIRouter, HTTPException, Query
+from envoy_schema.admin.schema.site_group import (
+    SiteGroupAssignmentPageResponse,
+    SiteGroupAssignmentRequest,
+    SiteGroupAssignmentResponse,
+    SiteGroupPageResponse,
+    SiteGroupRequest,
+    SiteGroupResponse,
+)
+from envoy_schema.admin.schema.uri import (
+    SiteGroupAssignmentsListUri,
+    SiteGroupAssignmentsUri,
+    SiteGroupListUri,
+    SiteGroupUri,
+    SiteListUri,
+    SiteUri,
+)
+from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi_async_sqlalchemy import db
+from sqlalchemy.exc import IntegrityError
 
 from envoy.admin.manager.site import SiteManager
+from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import extract_limit_from_paging_param, extract_start_from_paging_param
+from envoy.server.api.response import LOCATION_HEADER_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +114,27 @@ async def get_all_sites(
     )
 
 
+@router.post(SiteGroupListUri, status_code=HTTPStatus.CREATED, response_model=None)
+async def create_group(site_group: SiteGroupRequest) -> Response:
+    """Creates a new SiteGroup. Returns the new resource location as a Location response header
+
+    Body:
+        single SiteGroupRequest object.
+
+    Returns:
+        None
+    """
+    try:
+        await SiteManager.create_site_group(session=db.session, site_group_request=site_group)
+    except IntegrityError as exc:
+        raise LoggedHttpException(
+            logger, exc, HTTPStatus.BAD_REQUEST, f"SiteGroup with name '{site_group.name}' already exists"
+        ) from exc
+
+    location_href = SiteGroupUri.format(group_name=site_group.name)
+    return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
+
+
 @router.get(SiteGroupListUri, status_code=HTTPStatus.OK, response_model=SiteGroupPageResponse)
 async def get_all_groups(
     start: list[int] = Query([0]),
@@ -137,3 +175,98 @@ async def get_group(
     if grp is None:
         raise HTTPException(HTTPStatus.NOT_FOUND, f"Group with name '{group_name}' not found")
     return grp
+
+
+@router.post(SiteGroupAssignmentsListUri, status_code=HTTPStatus.CREATED, response_model=None)
+async def create_group_assignment(group_name: str, site_group_assignment: SiteGroupAssignmentRequest) -> Response:
+    """Creates a new SiteGroupAssignment, linking a Site to the specified SiteGroup. Returns the new resource
+    location as a Location response header
+
+    Body:
+        single SiteGroupAssignmentRequest object.
+
+    Returns:
+        None
+    """
+    try:
+        site_group_assignment_id = await SiteManager.create_site_group_assignment(
+            session=db.session, group_name=group_name, assignment_request=site_group_assignment
+        )
+    except IntegrityError as exc:
+        raise LoggedHttpException(
+            logger,
+            exc,
+            HTTPStatus.BAD_REQUEST,
+            f"site_id {site_group_assignment.site_id} doesn't exist or is already a member of group"
+            + f" '{group_name}'",
+        ) from exc
+
+    if site_group_assignment_id is None:
+        raise HTTPException(HTTPStatus.NOT_FOUND, f"Group with name '{group_name}' not found")
+
+    location_href = SiteGroupAssignmentsUri.format(
+        group_name=group_name, site_group_assignment_id=site_group_assignment_id
+    )
+    return Response(status_code=HTTPStatus.CREATED, headers={LOCATION_HEADER_NAME: location_href})
+
+
+@router.get(SiteGroupAssignmentsListUri, status_code=HTTPStatus.OK, response_model=SiteGroupAssignmentPageResponse)
+async def get_all_group_assignments(
+    group_name: str,
+    start: list[int] = Query([0]),
+    limit: list[int] = Query([100]),
+) -> SiteGroupAssignmentPageResponse:
+    """Endpoint for a paginated list of SiteGroupAssignment Objects belonging to a SiteGroup, ordered by the
+    site_group_assignment_id attribute.
+
+    Query Param:
+        start: list query parameter for the start index value. Default 0.
+        limit: list query parameter for the maximum number of objects to return. Default 100.
+
+    Returns:
+        SiteGroupAssignmentPageResponse
+    """
+    result = await SiteManager.get_all_site_group_assignments(
+        session=db.session,
+        group_name=group_name,
+        start=extract_start_from_paging_param(start),
+        limit=extract_limit_from_paging_param(limit),
+    )
+    if result is None:
+        raise HTTPException(HTTPStatus.NOT_FOUND, f"Group with name '{group_name}' not found")
+    return result
+
+
+@router.get(SiteGroupAssignmentsUri, status_code=HTTPStatus.OK, response_model=SiteGroupAssignmentResponse)
+async def get_group_assignment(group_name: str, site_group_assignment_id: int) -> SiteGroupAssignmentResponse:
+    """Endpoint for requesting a single SiteGroupAssignment belonging to a SiteGroup by its ID
+
+    Returns:
+        SiteGroupAssignmentResponse
+    """
+    assignment = await SiteManager.get_single_site_group_assignment(
+        session=db.session, group_name=group_name, site_group_assignment_id=site_group_assignment_id
+    )
+    if assignment is None:
+        raise HTTPException(
+            HTTPStatus.NOT_FOUND,
+            f"SiteGroupAssignment with id '{site_group_assignment_id}' not found for group '{group_name}'",
+        )
+    return assignment
+
+
+@router.delete(SiteGroupAssignmentsUri, status_code=HTTPStatus.NO_CONTENT, response_model=None)
+async def delete_group_assignment(group_name: str, site_group_assignment_id: int) -> None:
+    """Deletes a single SiteGroupAssignment belonging to a SiteGroup by its ID
+
+    Returns:
+        No response body - NO_CONTENT if successful or NOT_FOUND if the assignment doesn't exist
+    """
+    is_deleted = await SiteManager.delete_site_group_assignment(
+        session=db.session, group_name=group_name, site_group_assignment_id=site_group_assignment_id
+    )
+    if not is_deleted:
+        raise HTTPException(
+            HTTPStatus.NOT_FOUND,
+            f"SiteGroupAssignment with id '{site_group_assignment_id}' not found for group '{group_name}'",
+        )

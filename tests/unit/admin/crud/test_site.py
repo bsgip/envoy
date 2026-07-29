@@ -9,11 +9,16 @@ from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy.exc import InvalidRequestError
 
 from envoy.admin.crud.site import (
+    count_all_site_group_assignments,
     count_all_site_groups,
     count_all_sites,
+    delete_site_group_assignment,
+    select_all_site_group_assignments,
     select_all_site_groups,
     select_all_sites,
+    select_single_site_group_assignment,
     select_single_site_no_scoping,
+    select_site_group_by_name,
 )
 from envoy.server.api.request import MAX_LIMIT
 from envoy.server.model.site import (
@@ -23,6 +28,7 @@ from envoy.server.model.site import (
     SiteDERSetting,
     SiteDERStatus,
     SiteGroup,
+    SiteGroupAssignment,
 )
 
 
@@ -284,6 +290,97 @@ async def test_select_all_site_groups(
         assert all([isinstance(g[0], SiteGroup) for g in groups])
         assert all([isinstance(g[1], int) for g in groups])
         assert expected_id_count == [(sg.site_group_id, count) for sg, count in groups]
+
+
+@pytest.mark.parametrize(
+    "group_name, expected_site_group_id",
+    [("Group-1", 1), ("Group-2", 2), ("Group-3", 3), ("Group-DNE", None), ("", None)],
+)
+@pytest.mark.anyio
+async def test_select_site_group_by_name(pg_base_config, group_name: str, expected_site_group_id: int | None):
+    async with generate_async_session(pg_base_config) as session:
+        group = await select_site_group_by_name(session, group_name)
+        if expected_site_group_id is None:
+            assert group is None
+        else:
+            assert isinstance(group, SiteGroup)
+            assert group.site_group_id == expected_site_group_id
+            assert group.name == group_name
+
+
+@pytest.mark.parametrize(
+    "site_group_id, expected_count",
+    [(1, 3), (2, 1), (3, 0), (99, 0)],
+)
+@pytest.mark.anyio
+async def test_count_all_site_group_assignments(pg_base_config, site_group_id: int, expected_count: int):
+    async with generate_async_session(pg_base_config) as session:
+        assert (await count_all_site_group_assignments(session, site_group_id)) == expected_count
+
+
+@pytest.mark.parametrize(
+    "site_group_id, start, limit, expected_assignment_ids, expected_site_ids",
+    [
+        (1, 0, 500, [1, 2, 3], [1, 2, 3]),
+        (1, 1, 500, [2, 3], [2, 3]),
+        (1, 0, 2, [1, 2], [1, 2]),
+        (1, 1, 1, [2], [2]),
+        (2, 0, 500, [4], [1]),
+        (3, 0, 500, [], []),
+        (99, 0, 500, [], []),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_all_site_group_assignments(
+    pg_base_config,
+    site_group_id: int,
+    start: int,
+    limit: int,
+    expected_assignment_ids: list[int],
+    expected_site_ids: list[int],
+):
+    async with generate_async_session(pg_base_config) as session:
+        assignments = await select_all_site_group_assignments(session, site_group_id, start, limit)
+        assert_list_type(SiteGroupAssignment, assignments, count=len(expected_assignment_ids))
+        assert [a.site_group_assignment_id for a in assignments] == expected_assignment_ids
+        assert [a.site_id for a in assignments] == expected_site_ids
+
+
+@pytest.mark.parametrize(
+    "site_group_id, site_group_assignment_id, expected_site_id",
+    [(1, 1, 1), (1, 2, 2), (2, 4, 1), (1, 4, None), (1, 9999, None), (99, 1, None)],
+)
+@pytest.mark.anyio
+async def test_select_single_site_group_assignment(
+    pg_base_config, site_group_id: int, site_group_assignment_id: int, expected_site_id: int | None
+):
+    async with generate_async_session(pg_base_config) as session:
+        assignment = await select_single_site_group_assignment(session, site_group_id, site_group_assignment_id)
+        if expected_site_id is None:
+            assert assignment is None
+        else:
+            assert isinstance(assignment, SiteGroupAssignment)
+            assert assignment.site_id == expected_site_id
+
+
+@pytest.mark.parametrize(
+    "site_group_id, site_group_assignment_id, expected_result",
+    [(1, 1, True), (1, 4, False), (99, 1, False), (1, 9999, False)],
+)
+@pytest.mark.anyio
+async def test_delete_site_group_assignment(
+    pg_base_config, site_group_id: int, site_group_assignment_id: int, expected_result: bool
+):
+    async with generate_async_session(pg_base_config) as session:
+        initial_count = await count_all_site_group_assignments(session, site_group_id)
+
+        result = await delete_site_group_assignment(session, site_group_id, site_group_assignment_id)
+        assert result == expected_result
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        expected_count = initial_count - 1 if expected_result else initial_count
+        assert (await count_all_site_group_assignments(session, site_group_id)) == expected_count
 
 
 @pytest.mark.parametrize("missing_site_id", [0, -1, 9999])

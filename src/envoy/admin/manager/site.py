@@ -1,17 +1,29 @@
 from datetime import datetime
 
 from envoy_schema.admin.schema.site import SitePageResponse, SiteResponse, SiteUpdateRequest
-from envoy_schema.admin.schema.site_group import SiteGroupPageResponse, SiteGroupResponse
+from envoy_schema.admin.schema.site_group import (
+    SiteGroupAssignmentPageResponse,
+    SiteGroupAssignmentRequest,
+    SiteGroupAssignmentResponse,
+    SiteGroupPageResponse,
+    SiteGroupRequest,
+    SiteGroupResponse,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.site import (
+    count_all_site_group_assignments,
     count_all_site_groups,
     count_all_sites,
+    delete_site_group_assignment,
+    select_all_site_group_assignments,
     select_all_site_groups,
     select_all_sites,
+    select_single_site_group_assignment,
     select_single_site_no_scoping,
+    select_site_group_by_name,
 )
-from envoy.admin.mapper.site import SiteGroupMapper, SiteMapper
+from envoy.admin.mapper.site import SiteGroupAssignmentMapper, SiteGroupMapper, SiteMapper
 from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.archive import copy_rows_into_archive
 from envoy.server.crud.site import delete_site_for_aggregator
@@ -123,3 +135,78 @@ class SiteManager:
         if len(groups) > 0:
             return SiteGroupMapper.map_to_site_group_response(groups[0][0], groups[0][1])
         return None
+
+    @staticmethod
+    async def create_site_group(session: AsyncSession, site_group_request: SiteGroupRequest) -> int:
+        """Admin creation of a new SiteGroup. Returns the newly created site_group_id"""
+        new_group = SiteGroupMapper.map_from_request(site_group_request, utc_now())
+        session.add(new_group)
+        await session.commit()
+
+        return new_group.site_group_id
+
+    @staticmethod
+    async def get_all_site_group_assignments(
+        session: AsyncSession, group_name: str, start: int, limit: int
+    ) -> SiteGroupAssignmentPageResponse | None:
+        """Admin specific (paginated) fetch of the SiteGroupAssignments belonging to the named SiteGroup. Returns
+        None if the SiteGroup can't be found"""
+        group = await select_site_group_by_name(session, group_name)
+        if group is None:
+            return None
+
+        assignment_count = await count_all_site_group_assignments(session, group.site_group_id)
+        assignments = await select_all_site_group_assignments(session, group.site_group_id, start, limit)
+        return SiteGroupAssignmentMapper.map_to_response(
+            total_count=assignment_count, limit=limit, start=start, assignments=assignments
+        )
+
+    @staticmethod
+    async def get_single_site_group_assignment(
+        session: AsyncSession, group_name: str, site_group_assignment_id: int
+    ) -> SiteGroupAssignmentResponse | None:
+        """Admin specific fetch of a single SiteGroupAssignment, scoped to the named SiteGroup. Returns None if
+        either the SiteGroup or the SiteGroupAssignment can't be found"""
+        group = await select_site_group_by_name(session, group_name)
+        if group is None:
+            return None
+
+        assignment = await select_single_site_group_assignment(session, group.site_group_id, site_group_assignment_id)
+        if assignment is None:
+            return None
+
+        return SiteGroupAssignmentMapper.map_to_assignment_response(assignment)
+
+    @staticmethod
+    async def create_site_group_assignment(
+        session: AsyncSession, group_name: str, assignment_request: SiteGroupAssignmentRequest
+    ) -> int | None:
+        """Admin creation of a new SiteGroupAssignment linking a Site to the named SiteGroup. Returns the newly
+        created site_group_assignment_id or None if the named SiteGroup can't be found.
+
+        Raises sqlalchemy.exc.IntegrityError if site_id doesn't exist or is already a member of the SiteGroup"""
+        group = await select_site_group_by_name(session, group_name)
+        if group is None:
+            return None
+
+        new_assignment = SiteGroupAssignmentMapper.map_from_request(assignment_request, group.site_group_id, utc_now())
+        session.add(new_assignment)
+        await session.commit()
+
+        return new_assignment.site_group_assignment_id
+
+    @staticmethod
+    async def delete_site_group_assignment(
+        session: AsyncSession, group_name: str, site_group_assignment_id: int
+    ) -> bool:
+        """Admin deletion of a single SiteGroupAssignment, scoped to the named SiteGroup. Returns True if the
+        assignment was deleted"""
+        group = await select_site_group_by_name(session, group_name)
+        if group is None:
+            return False
+
+        is_deleted = await delete_site_group_assignment(session, group.site_group_id, site_group_assignment_id)
+        if is_deleted:
+            await session.commit()
+
+        return is_deleted

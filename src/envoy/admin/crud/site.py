@@ -114,6 +114,72 @@ async def select_all_site_groups(
     return results
 
 
+async def select_site_group_by_name(session: AsyncSession, group_name: str) -> SiteGroup | None:
+    """Admin selecting of a single SiteGroup by its unique name"""
+
+    stmt = select(SiteGroup).where(SiteGroup.name == group_name)
+
+    resp = await session.execute(stmt)
+    return resp.scalar_one_or_none()
+
+
+async def count_all_site_group_assignments(session: AsyncSession, site_group_id: int) -> int:
+    """Admin counting of SiteGroupAssignments belonging to a single SiteGroup"""
+    stmt = (
+        select(func.count()).select_from(SiteGroupAssignment).where(SiteGroupAssignment.site_group_id == site_group_id)
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalar_one()
+
+
+async def select_all_site_group_assignments(
+    session: AsyncSession, site_group_id: int, start: int, limit: int
+) -> Sequence[SiteGroupAssignment]:
+    """Admin selecting of SiteGroupAssignments belonging to a single SiteGroup"""
+
+    stmt = (
+        select(SiteGroupAssignment)
+        .where(SiteGroupAssignment.site_group_id == site_group_id)
+        .offset(start)
+        .limit(limit)
+        .order_by(
+            SiteGroupAssignment.site_group_assignment_id.asc(),
+        )
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
+
+
+async def select_single_site_group_assignment(
+    session: AsyncSession, site_group_id: int, site_group_assignment_id: int
+) -> SiteGroupAssignment | None:
+    """Admin selecting of a single SiteGroupAssignment, scoped to a specific SiteGroup"""
+
+    stmt = select(SiteGroupAssignment).where(
+        SiteGroupAssignment.site_group_id == site_group_id,
+        SiteGroupAssignment.site_group_assignment_id == site_group_assignment_id,
+    )
+
+    resp = await session.execute(stmt)
+    return resp.scalar_one_or_none()
+
+
+async def delete_site_group_assignment(
+    session: AsyncSession, site_group_id: int, site_group_assignment_id: int
+) -> bool:
+    """Admin deleting of a single SiteGroupAssignment, scoped to a specific SiteGroup. Returns True if a row was
+    deleted"""
+
+    assignment = await select_single_site_group_assignment(session, site_group_id, site_group_assignment_id)
+    if assignment is None:
+        return False
+
+    await session.delete(assignment)
+    return True
+
+
 async def select_single_site_no_scoping(
     session: AsyncSession,
     site_id: int,
