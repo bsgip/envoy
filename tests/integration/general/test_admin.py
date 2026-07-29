@@ -49,11 +49,8 @@ def infill_path_format_variables(path_format: str) -> str:
     kvps = {}
     for format_var_name in re.findall(pattern, path_format):
         infill_value = 1
-        if "group" in format_var_name:
-            if "site_control_group" in path_format:
-                infill_value = 1
-            else:
-                infill_value = "Group-1"
+        if format_var_name == "group_name":
+            infill_value = "Group-1"
         elif "start" in format_var_name or "end" in format_var_name:
             infill_value = "2024-01-02T03:04:05Z"
 

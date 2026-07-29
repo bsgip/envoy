@@ -166,20 +166,6 @@ async def select_single_site_group_assignment(
     return resp.scalar_one_or_none()
 
 
-async def delete_site_group_assignment(
-    session: AsyncSession, site_group_id: int, site_group_assignment_id: int
-) -> bool:
-    """Admin deleting of a single SiteGroupAssignment, scoped to a specific SiteGroup. Returns True if a row was
-    deleted"""
-
-    assignment = await select_single_site_group_assignment(session, site_group_id, site_group_assignment_id)
-    if assignment is None:
-        return False
-
-    await session.delete(assignment)
-    return True
-
-
 async def select_single_site_no_scoping(
     session: AsyncSession,
     site_id: int,

@@ -12,7 +12,6 @@ from envoy.admin.crud.site import (
     count_all_site_group_assignments,
     count_all_site_groups,
     count_all_sites,
-    delete_site_group_assignment,
     select_all_site_group_assignments,
     select_all_site_groups,
     select_all_sites,
@@ -361,26 +360,6 @@ async def test_select_single_site_group_assignment(
         else:
             assert isinstance(assignment, SiteGroupAssignment)
             assert assignment.site_id == expected_site_id
-
-
-@pytest.mark.parametrize(
-    "site_group_id, site_group_assignment_id, expected_result",
-    [(1, 1, True), (1, 4, False), (99, 1, False), (1, 9999, False)],
-)
-@pytest.mark.anyio
-async def test_delete_site_group_assignment(
-    pg_base_config, site_group_id: int, site_group_assignment_id: int, expected_result: bool
-):
-    async with generate_async_session(pg_base_config) as session:
-        initial_count = await count_all_site_group_assignments(session, site_group_id)
-
-        result = await delete_site_group_assignment(session, site_group_id, site_group_assignment_id)
-        assert result == expected_result
-        await session.commit()
-
-    async with generate_async_session(pg_base_config) as session:
-        expected_count = initial_count - 1 if expected_result else initial_count
-        assert (await count_all_site_group_assignments(session, site_group_id)) == expected_count
 
 
 @pytest.mark.parametrize("missing_site_id", [0, -1, 9999])

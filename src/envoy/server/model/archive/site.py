@@ -15,7 +15,7 @@ from envoy_schema.server.schema.sep2.der import (
     StorageModeStatusType,
 )
 from envoy_schema.server.schema.sep2.types import DeviceCategory
-from sqlalchemy import DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime
+from sqlalchemy import BOOLEAN, DECIMAL, INTEGER, VARCHAR, BigInteger, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 import envoy.server.model as original_models
@@ -38,6 +38,30 @@ class ArchiveSite(ArchiveBase):
     device_category: Mapped[DeviceCategory] = mapped_column(INTEGER, nullable=False)
     registration_pin: Mapped[int] = mapped_column(INTEGER, nullable=False)
     post_rate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
+
+
+class ArchiveSiteGroup(ArchiveBase):
+    """Represents a named group that a site might belong to"""
+
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteGroup.__tablename__
+
+    site_group_id: Mapped[int] = mapped_column(INTEGER, index=True)  # This is the original PK
+    name: Mapped[str] = mapped_column(VARCHAR(length=128))
+    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    default_group: Mapped[bool] = mapped_column(BOOLEAN)
+
+
+class ArchiveSiteGroupAssignment(ArchiveBase):
+    """Provides a many-many mapping between Site and SiteGroup"""
+
+    __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.SiteGroupAssignment.__tablename__
+
+    site_group_assignment_id: Mapped[int] = mapped_column(INTEGER, index=True)  # This is the original PK
+    created_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    site_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
+    site_group_id: Mapped[int] = mapped_column(INTEGER)  # This was originally a FK
 
 
 class ArchiveSiteDERRating(ArchiveBase):

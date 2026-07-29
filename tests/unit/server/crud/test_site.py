@@ -35,6 +35,7 @@ from envoy.server.model.archive.site import (
     ArchiveSiteDERRating,
     ArchiveSiteDERSetting,
     ArchiveSiteDERStatus,
+    ArchiveSiteGroupAssignment,
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
@@ -854,6 +855,16 @@ async def test_delete_site_for_aggregator(
                 select(func.count()).select_from(SiteGroupAssignment).where(SiteGroupAssignment.site_id == site_id)
             )
         ).scalar_one()
+        archived_assignments = (
+            await session.execute(
+                select(func.count())
+                .select_from(ArchiveSiteGroupAssignment)
+                .where(
+                    ArchiveSiteGroupAssignment.site_id == site_id,
+                    ArchiveSiteGroupAssignment.deleted_time.is_not(None),
+                )
+            )
+        ).scalar_one()
 
         assert doe_count_after == doe_count_before, (
             "DOEs should never be deleted/archived as a side effect of Site deletion"
@@ -865,8 +876,12 @@ async def test_delete_site_for_aggregator(
         assert archive_rate_count_after == 0, "No rate archive rows should be created by deleting a Site"
         if delete_occurred:
             assert remaining_assignments == 0, "The deleted site's SiteGroupAssignment rows should be gone"
+            assert archived_assignments == assignments_before, (
+                "The deleted site's SiteGroupAssignment rows should be archived"
+            )
         else:
             assert remaining_assignments == assignments_before, "Nothing should change if the delete didn't commit"
+            assert archived_assignments == 0, "Nothing should change if the delete didn't commit"
 
 
 @pytest.mark.anyio

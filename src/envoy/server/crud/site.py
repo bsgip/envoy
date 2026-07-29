@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from datetime import datetime
 
 from envoy_schema.server.schema.sep2.types import DeviceCategory
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from envoy.server.model.archive.site import (
     ArchiveSiteDERRating,
     ArchiveSiteDERSetting,
     ArchiveSiteDERStatus,
+    ArchiveSiteGroupAssignment,
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
@@ -300,8 +301,13 @@ async def delete_site_for_aggregator(
         lambda q: q.where(SiteDERAvailability.site_id == site_id),
     )
 
-    # Site Groups assignments aren't archived - we can delete them directly
-    await session.execute(delete(SiteGroupAssignment).where(SiteGroupAssignment.site_id == site_id))
+    await delete_rows_into_archive(
+        session,
+        SiteGroupAssignment,
+        ArchiveSiteGroupAssignment,
+        deleted_time,
+        lambda q: q.where(SiteGroupAssignment.site_id == site_id),
+    )
 
     # Finally delete the site
     await delete_rows_into_archive(

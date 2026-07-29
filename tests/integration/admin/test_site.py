@@ -30,7 +30,7 @@ from sqlalchemy import func, select
 
 from envoy.admin.crud.site import count_all_site_group_assignments, count_all_site_groups, count_all_sites
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
-from envoy.server.model.archive.site import ArchiveSite
+from envoy.server.model.archive.site import ArchiveSite, ArchiveSiteGroupAssignment
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.site import Site, SiteGroup, SiteGroupAssignment
 from tests.integration.response import read_response_body_string
@@ -648,11 +648,22 @@ async def test_delete_group_assignment(admin_client_auth: AsyncClient, pg_base_c
 
     async with generate_async_session(pg_base_config) as session:
         remaining = (
-            await session.execute(
-                select(SiteGroupAssignment).where(SiteGroupAssignment.site_group_assignment_id == 1)
-            )
+            await session.execute(select(SiteGroupAssignment).where(SiteGroupAssignment.site_group_assignment_id == 1))
         ).scalar_one_or_none()
         assert remaining is None
+
+        archived = (
+            await session.execute(
+                select(ArchiveSiteGroupAssignment).where(
+                    ArchiveSiteGroupAssignment.site_group_assignment_id == 1,
+                    ArchiveSiteGroupAssignment.deleted_time.is_not(None),
+                )
+            )
+        ).scalar_one()
+        assert archived.site_id == 1
+        assert archived.site_group_id == 1
+        assert archived.deleted_time is not None
+        assert_nowish(archived.deleted_time)
 
     # Subsequent delete/get now both 404
     resp = await admin_client_auth.delete(

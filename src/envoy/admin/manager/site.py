@@ -15,7 +15,6 @@ from envoy.admin.crud.site import (
     count_all_site_group_assignments,
     count_all_site_groups,
     count_all_sites,
-    delete_site_group_assignment,
     select_all_site_group_assignments,
     select_all_site_groups,
     select_all_sites,
@@ -25,11 +24,11 @@ from envoy.admin.crud.site import (
 )
 from envoy.admin.mapper.site import SiteGroupAssignmentMapper, SiteGroupMapper, SiteMapper
 from envoy.notification.manager.notification import NotificationManager
-from envoy.server.crud.archive import copy_rows_into_archive
+from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
 from envoy.server.crud.site import delete_site_for_aggregator
 from envoy.server.manager.time import utc_now
-from envoy.server.model.archive.site import ArchiveSite
-from envoy.server.model.site import Site
+from envoy.server.model.archive.site import ArchiveSite, ArchiveSiteGroupAssignment
+from envoy.server.model.site import Site, SiteGroupAssignment
 from envoy.server.model.subscription import SubscriptionResource
 
 
@@ -199,14 +198,24 @@ class SiteManager:
     async def delete_site_group_assignment(
         session: AsyncSession, group_name: str, site_group_assignment_id: int
     ) -> bool:
-        """Admin deletion of a single SiteGroupAssignment, scoped to the named SiteGroup. Returns True if the
-        assignment was deleted"""
+        """Admin deletion of a single SiteGroupAssignment, scoped to the named SiteGroup. The deleted assignment
+        will be archived. Returns True if the assignment was deleted"""
         group = await select_site_group_by_name(session, group_name)
         if group is None:
             return False
 
-        is_deleted = await delete_site_group_assignment(session, group.site_group_id, site_group_assignment_id)
-        if is_deleted:
-            await session.commit()
+        assignment = await select_single_site_group_assignment(session, group.site_group_id, site_group_assignment_id)
+        if assignment is None:
+            return False
 
-        return is_deleted
+        deleted_time = utc_now()
+        await delete_rows_into_archive(
+            session,
+            SiteGroupAssignment,
+            ArchiveSiteGroupAssignment,
+            deleted_time,
+            lambda q: q.where(SiteGroupAssignment.site_group_assignment_id == site_group_assignment_id),
+        )
+        await session.commit()
+
+        return True
