@@ -76,7 +76,13 @@ async def test_program_fetch_list_for_scope(
 
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_select_site_control_groups.assert_called_once_with(
-        mock_session, start=start, limit=limit, changed_after=changed_after, fsa_id=fsa_id, include_defaults=True
+        mock_session,
+        start=start,
+        limit=limit,
+        changed_after=changed_after,
+        fsa_id=fsa_id,
+        include_defaults=True,
+        site_id=existing_site.site_id,
     )
 
     # One call to control count for each site control group
@@ -151,7 +157,9 @@ async def test_program_fetch_for_scope(
     # Assert
     assert result is mapped_program
 
-    mock_select_site_control_group_by_id.assert_called_once_with(mock_session, derp_id, include_default=True)
+    mock_select_site_control_group_by_id.assert_called_once_with(
+        mock_session, derp_id, include_default=True, site_id=existing_site.site_id
+    )
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_count_active_does_include_deleted.assert_called_once_with(
         mock_session, derp_id, existing_site, now, datetime.min
@@ -207,7 +215,8 @@ async def test_program_fetch_site_control_group_dne(
     derp_id = 76662
 
     mock_session = create_mock_session()
-    mock_select_single_site_with_site_id.return_value = generate_class_instance(Site)
+    existing_site = generate_class_instance(Site)
+    mock_select_single_site_with_site_id.return_value = existing_site
     mock_select_site_control_group_by_id.return_value = None
     scope = generate_class_instance(SiteRequestScope)
 
@@ -216,7 +225,9 @@ async def test_program_fetch_site_control_group_dne(
         await DERProgramManager.fetch_doe_program_for_scope(mock_session, scope, derp_id)
 
     # Assert
-    mock_select_site_control_group_by_id.assert_called_once_with(mock_session, derp_id, include_default=True)
+    mock_select_site_control_group_by_id.assert_called_once_with(
+        mock_session, derp_id, include_default=True, site_id=existing_site.site_id
+    )
     mock_select_single_site_with_site_id.assert_called_once_with(mock_session, scope.site_id, scope.aggregator_id)
     mock_count_active_does_include_deleted.assert_not_called()
     mock_DERProgramMapper.doe_program_response.assert_not_called()

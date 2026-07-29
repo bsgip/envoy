@@ -22,6 +22,7 @@ class SiteControlGroupListMapper:
             changed_time=changed_time,
             fsa_id=request.fsa_id,
             display_id=request.display_id,
+            required_site_group_id=request.required_site_group_id,
         )
 
     @staticmethod
@@ -34,6 +35,7 @@ class SiteControlGroupListMapper:
             changed_time=site_control_group.changed_time,
             fsa_id=site_control_group.fsa_id,
             display_id=site_control_group.display_id,
+            required_site_group_id=site_control_group.required_site_group_id,
         )
 
     @staticmethod

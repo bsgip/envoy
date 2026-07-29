@@ -38,7 +38,7 @@ from tests.integration.response import read_location_header, read_response_body_
 @pytest.mark.anyio
 async def test_create_site_control_group(admin_client_auth: AsyncClient):
     """Tests that site control groups can be created and then fetched"""
-    group_request = generate_class_instance(SiteControlGroupRequest)
+    group_request = generate_class_instance(SiteControlGroupRequest, required_site_group_id=None)
     resp = await admin_client_auth.post(SiteControlGroupListUri, content=group_request.model_dump_json())
 
     assert resp.status_code == HTTPStatus.CREATED
@@ -69,7 +69,9 @@ async def test_update_site_control_group_change(pg_base_config, admin_client_aut
 
     site_control_group_id = 1
     uri = SiteControlGroupUri.format(group_id=site_control_group_id)
-    group_request = generate_class_instance(SiteControlGroupRequest, fsa_id=fsa_id, display_id=None)
+    group_request = generate_class_instance(
+        SiteControlGroupRequest, fsa_id=fsa_id, display_id=None, required_site_group_id=None
+    )
     resp = await admin_client_auth.put(uri, content=group_request.model_dump_json())
 
     assert resp.status_code == HTTPStatus.OK

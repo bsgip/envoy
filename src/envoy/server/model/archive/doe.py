@@ -25,6 +25,7 @@ class ArchiveSiteControlGroup(ArchiveBase):
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     display_id: Mapped[int | None] = mapped_column(nullable=True)
+    required_site_group_id: Mapped[int | None] = mapped_column(INTEGER, nullable=True)
 
 
 class ArchiveSiteControlGroupDefault(ArchiveBase):

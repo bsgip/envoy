@@ -162,8 +162,8 @@ async def test_fetch_tariff_profile_list(
 
     # Assert
     assert response is mapped_tariffs
-    mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit, fsa_id)
-    mock_select_tariff_count.assert_called_once_with(mock_session, changed, fsa_id)
+    mock_select_all_tariffs.assert_called_once_with(mock_session, start, changed, limit, fsa_id, site_id=scope.site_id)
+    mock_select_tariff_count.assert_called_once_with(mock_session, changed, fsa_id, site_id=scope.site_id)
     assert_mock_session(mock_session)
 
     # We called count_unique_rate_days for each tariff returned
@@ -250,7 +250,7 @@ async def test_fetch_tariff_profile(
     response = await TariffProfileManager.fetch_tariff_profile(mock_session, scope, tariff_id)
     assert response is mapped_tp
 
-    mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
+    mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id, site_id=scope.site_id)
     expected_count = rates * TOTAL_PRICING_READING_TYPES
     mock_TariffProfileMapper.map_to_response.assert_called_once_with(scope, tariff, expected_count)
     assert_mock_session(mock_session)
@@ -269,7 +269,7 @@ async def test_fetch_tariff_profile_missing(mock_select_single_tariff: mock.Magi
     response = await TariffProfileManager.fetch_tariff_profile(mock_session, scope, tariff_id)
     assert response is None
 
-    mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id)
+    mock_select_single_tariff.assert_called_once_with(mock_session, tariff_id, site_id=scope.site_id)
     assert_mock_session(mock_session)
 
 

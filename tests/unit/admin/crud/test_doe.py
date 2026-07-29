@@ -429,6 +429,7 @@ async def extra_site_control_groups(pg_base_config):
                 seed=303,
                 primacy=1,
                 site_control_group_id=4,
+                required_site_group_id=None,
                 changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=UTC),
             )
         )

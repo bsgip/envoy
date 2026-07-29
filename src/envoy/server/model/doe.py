@@ -35,6 +35,10 @@ class SiteControlGroup(Base):
         index=True, nullable=True
     )  # If set - use this for MRID calculation instead of site_control_group_id
 
+    required_site_group_id: Mapped[int | None] = mapped_column(
+        ForeignKey("site_group.site_group_id"), nullable=True, index=True
+    )  # If set - only sites that are members of this SiteGroup will "see" this SiteControlGroup. Otherwise global
+
     dynamic_operating_envelopes: Mapped[list["DynamicOperatingEnvelope"]] = relationship(
         lazy="raise", back_populates="site_control_group"
     )

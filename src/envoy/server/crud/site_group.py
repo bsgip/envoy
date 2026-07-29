@@ -1,4 +1,4 @@
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql.selectable import Exists
@@ -38,3 +38,23 @@ def site_group_membership_exists(
         conditions.append(SiteGroupAssignment.site_id == site_id)
 
     return stmt.where(and_(*conditions)).exists()
+
+
+def required_site_group_visible_to_site(
+    required_site_group_id_col: InstrumentedAttribute[int | None], site_id: int
+) -> ColumnElement[bool]:
+    """Builds a filter clause for an optional "required_site_group_id" column (SiteControlGroup/Tariff): True if
+    the column is NULL (no restriction - globally visible) or if site_id is a member (via SiteGroupAssignment) of
+    the SiteGroup it references.
+
+    Never joins against the enclosing statement, so an entity row can never fan out into multiple result rows
+    regardless of how many sites are in the required SiteGroup."""
+
+    member_exists = (
+        select(SiteGroupAssignment.site_group_assignment_id)
+        .where(
+            (SiteGroupAssignment.site_group_id == required_site_group_id_col) & (SiteGroupAssignment.site_id == site_id)
+        )
+        .exists()
+    )
+    return or_(required_site_group_id_col.is_(None), member_exists)

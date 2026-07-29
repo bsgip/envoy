@@ -36,7 +36,7 @@ async def test_get_single_tariff(admin_client_auth: AsyncClient):
 
 @pytest.mark.anyio
 async def test_create_tariff(admin_client_auth: AsyncClient):
-    tariff = generate_class_instance(TariffRequest)
+    tariff = generate_class_instance(TariffRequest, required_site_group_id=None)
     tariff.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
     resp = await admin_client_auth.post(TariffCreateUri, json=tariff.model_dump())
 
@@ -45,7 +45,7 @@ async def test_create_tariff(admin_client_auth: AsyncClient):
 
 @pytest.mark.anyio
 async def test_update_tariff(admin_client_auth: AsyncClient):
-    tariff = generate_class_instance(TariffRequest)
+    tariff = generate_class_instance(TariffRequest, required_site_group_id=None)
     tariff.currency_code = CurrencyCode.AUSTRALIAN_DOLLAR
     resp = await admin_client_auth.put(TariffUpdateUri.format(tariff_id=1), json=tariff.model_dump())
 

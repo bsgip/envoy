@@ -20,7 +20,7 @@ from envoy_schema.server.schema.sep2.der import (
 )
 from freezegun import freeze_time
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.manager.time import utc_now
@@ -144,6 +144,67 @@ async def test_get_derprogram_list(
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
+    "start, limit, after, site_id, expected_derp_ids_with_count, expected_status",
+    [
+        (None, 99, None, 1, [(1, 3), (2, 0), (3, 0)], HTTPStatus.OK),  # Site 1 is a member of group 1/2
+        (None, 99, None, 2, [(2, 0)], HTTPStatus.OK),  # Site 2 is a member of group 1
+        (None, 99, None, 4, [], HTTPStatus.OK),  # Site 4 is NOT a member of any group
+        (0, 2, None, 1, [(1, 3), (2, 0)], HTTPStatus.OK),  # Site 1 is a member of group 1/2
+        (1, 2, None, 1, [(2, 0), (3, 0)], HTTPStatus.OK),  # Site 1 is a member of group 1/2
+    ],
+)
+@freeze_time("2010-01-01")  # This endpoint is sensitive to "now" and won't report on "old" DOEs
+async def test_get_derprogram_list_required_site_group_id(
+    client: AsyncClient,
+    pg_base_config,
+    uri_derp_list_format,
+    start: int | None,
+    limit: int | None,
+    after: datetime | None,
+    site_id: int,
+    expected_derp_ids_with_count: list[tuple[int, int]] | None,
+    expected_status: HTTPStatus,
+    agg_1_headers,
+):
+    """Tests getting DERPrograms filters on required_site_group_id"""
+
+    # Arrange - setup every SiteControl group to be restricted to Group #1 / #2 membership
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(
+            update(SiteControlGroup)
+            .values(required_site_group_id=2)
+            .where(SiteControlGroup.site_control_group_id.in_([1, 3]))
+        )
+        await session.execute(
+            update(SiteControlGroup)
+            .values(required_site_group_id=1)
+            .where(SiteControlGroup.site_control_group_id.in_([2]))
+        )
+        await session.commit()
+
+    path = uri_derp_list_format.format(site_id=site_id) + build_paging_params(start, limit, after)
+    response = await client.get(path, headers=agg_1_headers)
+
+    assert_response_header(response, expected_status)
+    if expected_derp_ids_with_count is None:
+        assert_error_response(response)
+    else:
+        body = read_response_body_string(response)
+        assert len(body) > 0
+        parsed_response: DERProgramListResponse = DERProgramListResponse.from_xml(body)
+        assert parsed_response.href == uri_derp_list_format.format(site_id=site_id)
+        assert parsed_response.results == len(expected_derp_ids_with_count)
+        assert len(parsed_response.DERProgram or []) == len(expected_derp_ids_with_count)
+
+        actual_derp_ids_with_count = [
+            (int(derp.href.split("/")[-1]), derp.DERControlListLink.all_)  # ty:ignore[unresolved-attribute]
+            for derp in parsed_response.DERProgram or []
+        ]
+        assert expected_derp_ids_with_count == actual_derp_ids_with_count
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
     "start, limit, after, site_id, fsa_id, expected_derp_ids_with_count, expected_status",
     [
         (None, 99, None, 1, 1, [(1, 3), (2, 0), (3, 0)], HTTPStatus.OK),
@@ -183,6 +244,7 @@ async def test_get_derprogram_list_fsa_scoped(
                 seed=303,
                 site_control_group_id=4,
                 fsa_id=3,
+                required_site_group_id=None,
                 changed_time=datetime(2021, 4, 5, 10, 4, 0, tzinfo=UTC),
             )
         )

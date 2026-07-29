@@ -14,6 +14,7 @@ class TariffMapper:
             currency_code=tariff.currency_code,
             dnsp_code=tariff.dnsp_code,
             fsa_id=tariff.fsa_id,
+            required_site_group_id=tariff.required_site_group_id,
         )
 
     @staticmethod

@@ -11,7 +11,7 @@ from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.server.schema.sep2.pub_sub import ConditionAttributeIdentifier
 from envoy_schema.server.schema.sep2.types import QualityFlagsType
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
@@ -64,7 +64,7 @@ from envoy.server.model.archive.site import (
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
-from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroupDefault
+from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.site import (
     SiteDERAvailability,
     SiteDERRating,
@@ -75,7 +75,7 @@ from envoy.server.model.site import (
 )
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionCondition, SubscriptionResource
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 
 def assert_batched_entities(
@@ -877,6 +877,54 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
         )
         assert len(empty_batch.models_by_batch_key) == 0
         assert len(empty_batch.deleted_by_batch_key) == 0
+
+
+@pytest.mark.anyio
+async def test_fetch_rates_by_timestamp_required_site_group_id(pg_base_config):
+    """A rate's parent Tariff can restrict visibility via required_site_group_id - this should be intersected
+    with the rate's own site_group_id membership when fanning out.
+
+    tariff_generated_rate 1 (tariff_id 1) targets site_group_id 2 (site1's singleton group). If tariff 1's
+    required_site_group_id is set to group 4 (site2's singleton) then site1 is no longer a permitted recipient
+    (it isn't a member of group 4) so the rate should be fanned out to nobody."""
+
+    timestamp = datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=UTC)
+
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(update(Tariff).where(Tariff.tariff_id == 1).values(required_site_group_id=4))
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        batch = await fetch_rates_by_changed_at(session, timestamp)
+        assert_batched_entities(
+            batch,
+            SiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedTariffGeneratedRate,  # ty:ignore[invalid-argument-type]
+            0,
+            0,
+        )
+        assert len(batch.models_by_batch_key) == 0
+
+
+@pytest.mark.anyio
+async def test_fetch_rates_by_timestamp_required_site_group_id_allows_member(pg_base_config):
+    """As test_fetch_rates_by_timestamp_required_site_group_id but the required_site_group_id is set to a group
+    that DOES include the rate's member site, so the rate should still be fanned out as normal."""
+
+    timestamp = datetime(2022, 3, 4, 11, 22, 33, 500000, tzinfo=UTC)
+
+    async with generate_async_session(pg_base_config) as session:
+        # site_group 2 is site1's own singleton - rate 1 (site_group_id 2) is already restricted to site1, so this
+        # is a no-op restriction
+        await session.execute(update(Tariff).where(Tariff.tariff_id == 1).values(required_site_group_id=2))
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        batch = await fetch_rates_by_changed_at(session, timestamp)
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        assert len(list_entities) == 1
+        assert list_entities[0].site_id == 1
+        assert list_entities[0].aggregator_id == 1
 
 
 @pytest.mark.parametrize(
@@ -2336,6 +2384,42 @@ async def test_fetch_site_control_groups_by_changed_at(
 
 
 @pytest.mark.anyio
+async def test_fetch_site_control_groups_by_changed_at_required_site_group_id(pg_base_config):
+    """A SiteControlGroup with required_site_group_id set should only fan out to member sites of that group -
+    site2's singleton group (id 4) only has site2 as a member"""
+
+    timestamp = datetime(2024, 6, 7, 8, 9, 10, 500000, tzinfo=UTC)
+
+    async with generate_async_session(pg_base_config) as session:
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=606,
+                site_control_group_id=6,
+                fsa_id=None,
+                display_id=None,
+                required_site_group_id=4,  # Group-4-Site2's singleton - only site2 is a member
+                changed_time=timestamp,
+            )
+        )
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        batch = await fetch_site_control_groups_by_changed_at(session, timestamp)
+        assert_batched_entities(
+            batch,
+            SiteScopedSiteControlGroup,  # ty:ignore[invalid-argument-type]
+            ArchiveSiteScopedSiteControlGroup,  # ty:ignore[invalid-argument-type]
+            1,
+            0,
+        )
+        list_entities = [e for _, entities in batch.models_by_batch_key.items() for e in entities]
+        assert len(list_entities) == 1
+        assert list_entities[0].site_id == 2, "Only site2 is a member of the required SiteGroup"
+        assert list_entities[0].aggregator_id == 1
+
+
+@pytest.mark.anyio
 async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_config):
     """Tests that entities are filtered/returned correctly and include archive data"""
 
@@ -2353,6 +2437,7 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
                 ArchiveSiteControlGroup,
                 seed=55,
                 site_control_group_id=21,
+                required_site_group_id=None,
             )
         )
         session.add(
@@ -2361,6 +2446,7 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
                 seed=66,
                 site_control_group_id=21,
                 deleted_time=timestamp - timedelta(seconds=5),
+                required_site_group_id=None,
             )
         )
         session.add(
@@ -2370,11 +2456,16 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
                 site_control_group_id=21,
                 deleted_time=timestamp,
                 primacy=21,  # for identifying this record later
+                required_site_group_id=None,
             )
         )
 
         # No deleted time so ignored
-        session.add(generate_class_instance(ArchiveSiteControlGroup, seed=88, site_control_group_id=22))
+        session.add(
+            generate_class_instance(
+                ArchiveSiteControlGroup, seed=88, site_control_group_id=22, required_site_group_id=None
+            )
+        )
 
         # Wrong deleted time so ignored
         session.add(
@@ -2383,6 +2474,7 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
                 seed=99,
                 site_control_group_id=23,
                 deleted_time=timestamp - timedelta(seconds=5),
+                required_site_group_id=None,
             )
         )
 
@@ -2394,6 +2486,7 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
                 site_control_group_id=24,
                 deleted_time=timestamp,
                 primacy=24,  # for identifying this record later
+                required_site_group_id=None,
             )
         )
         session.add(
@@ -2403,6 +2496,7 @@ async def test_fetch_site_control_groups_by_timestamp_with_archive(pg_base_confi
                 site_control_group_id=25,
                 deleted_time=timestamp,
                 primacy=25,  # for identifying this record later
+                required_site_group_id=None,
             )
         )
         await session.commit()

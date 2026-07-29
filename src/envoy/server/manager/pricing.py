@@ -45,7 +45,7 @@ class TariffProfileManager:
     ) -> TariffProfileResponse | None:
         """Fetches a single tariff in the form of a sep2 TariffProfile thats specific to a single site."""
 
-        tariff = await select_single_tariff(session, tariff_id)
+        tariff = await select_single_tariff(session, tariff_id, site_id=scope.site_id)
         if tariff is None:
             return None
 
@@ -66,8 +66,8 @@ class TariffProfileManager:
         """Fetches all tariffs accessible to a specific site (and optionally scoped to a specific function set
         assignment id)."""
 
-        tariffs = await select_all_tariffs(session, start, changed_after, limit, fsa_id)
-        tariff_count = await select_tariff_count(session, changed_after, fsa_id)
+        tariffs = await select_all_tariffs(session, start, changed_after, limit, fsa_id, site_id=scope.site_id)
+        tariff_count = await select_tariff_count(session, changed_after, fsa_id, site_id=scope.site_id)
 
         # we need the rate counts associated with each Tariff+Site. Those are derived from dates with a Rate
         tariff_rate_counts: list[int] = []

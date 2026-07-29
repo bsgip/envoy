@@ -22,7 +22,9 @@ def test_tariff_mapper_roundtrip(optional_is_none: bool):
     mdl.created_time = created_time
     actual = TariffMapper.map_to_response(mdl)
 
-    assert_class_instance_equality(TariffRequest, expected, actual)
+    # required_site_group_id has no equivalent field on TariffResponse (envoy-schema doesn't carry it through to
+    # the response side) so it can't round-trip - it's still exercised separately in test_tariff_mapper_from_request
+    assert_class_instance_equality(TariffRequest, expected, actual, ignored_properties={"required_site_group_id"})
     assert actual.changed_time == changed_time
     assert actual.created_time == created_time
     assert actual.tariff_id == 123321
@@ -36,6 +38,7 @@ def test_tariff_mapper_from_request():
     assert isinstance(mdl, Tariff)
     assert mdl.changed_time == changed_time
     assert mdl.tariff_id == None  # noqa
+    assert mdl.required_site_group_id == req.required_site_group_id
 
 
 def test_tariff_mapper_to_response():

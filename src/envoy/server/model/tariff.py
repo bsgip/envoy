@@ -23,6 +23,9 @@ class Tariff(Base):
     fsa_id: Mapped[int] = mapped_column(
         Integer, index=True, server_default="1"
     )  # Function set assignment ID that will group this Tariff with other Tariffs
+    required_site_group_id: Mapped[int | None] = mapped_column(
+        ForeignKey("site_group.site_group_id"), nullable=True, index=True
+    )  # If set - only sites that are members of this SiteGroup will "see" this Tariff. Otherwise globally visible
     created_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )  # When the tariff was created

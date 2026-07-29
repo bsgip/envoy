@@ -58,7 +58,7 @@ from envoy.server.model.site import (
 )
 from envoy.server.model.site_reading import SiteReading, SiteReadingType
 from envoy.server.model.subscription import Subscription, SubscriptionResource
-from envoy.server.model.tariff import TariffGeneratedRate
+from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
 
 class AggregatorBatchedEntities(Generic[TResourceModel, TArchiveResourceModel]):
@@ -327,13 +327,52 @@ async def fetch_rates_by_changed_at(
         for site_group_id, aggregator_id, site_id, timezone_id in member_sites:
             member_sites_by_group_id.setdefault(site_group_id, []).append((aggregator_id, site_id, timezone_id))
 
+    # A rate's parent Tariff can also restrict visibility via required_site_group_id - resolve each referenced
+    # Tariff's requirement (if any) and the membership of whatever SiteGroup it requires
+    referenced_tariff_ids = {
+        e.tariff_id
+        for e in cast(Iterable[TariffGeneratedRate | ArchiveTariffGeneratedRate], chain(active_rates, deleted_rates))
+    }
+    required_group_by_tariff_id: dict[int, int | None] = {}
+    if referenced_tariff_ids:
+        tariff_rows = (
+            await session.execute(
+                select(Tariff.tariff_id, Tariff.required_site_group_id).where(
+                    Tariff.tariff_id.in_(referenced_tariff_ids)
+                )
+            )
+        ).tuples()
+        required_group_by_tariff_id = dict(tariff_rows.all())
+
+    referenced_required_group_ids = {gid for gid in required_group_by_tariff_id.values() if gid is not None}
+    member_site_ids_by_required_group: dict[int, set[int]] = {}
+    if referenced_required_group_ids:
+        required_members = (
+            await session.execute(
+                select(SiteGroupAssignment.site_group_id, SiteGroupAssignment.site_id).where(
+                    SiteGroupAssignment.site_group_id.in_(referenced_required_group_ids)
+                )
+            )
+        ).all()
+        for site_group_id, site_id in required_members:
+            member_site_ids_by_required_group.setdefault(site_group_id, set()).add(site_id)
+
     def expand_rate(rate: TariffGeneratedRate | ArchiveTariffGeneratedRate) -> list[tuple[int, int, Any]]:
         """Expands a single rate into one (aggregator_id, site_id, localized_rate) tuple per member site of its
         SiteGroup. Each site gets its own copy of rate since start_time localization mutates in place and
-        different member sites can be in different timezones."""
+        different member sites can be in different timezones.
+
+        A member site is excluded if the rate's parent Tariff has a required_site_group_id set and the site isn't
+        a member of that SiteGroup (Tariff.required_site_group_id not found - eg the Tariff itself has been
+        deleted - is treated as unrestricted, since there's no requirement left to enforce)."""
+        required_group_id = required_group_by_tariff_id.get(rate.tariff_id)
+        allowed_site_ids = (
+            None if required_group_id is None else member_site_ids_by_required_group.get(required_group_id, set())
+        )
         return [
             (aggregator_id, site_id, localize_start_time_for_entity(copy.copy(rate), timezone_id))
             for aggregator_id, site_id, timezone_id in member_sites_by_group_id.get(rate.site_group_id, [])
+            if allowed_site_ids is None or site_id in allowed_site_ids
         ]
 
     site_scoped_active_rates = [
@@ -711,18 +750,49 @@ async def fetch_site_control_groups_by_changed_at(
         return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE_CONTROL_GROUP, [], [])
 
     # The site control group update will need to vary per Site so we generate an instance per site_id
-    aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
+    aggregator_site_ids = (
+        (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).tuples().all()
+    )
+
+    # Groups with a required_site_group_id set are only visible to member sites of that group - resolve
+    # membership for any such groups referenced in this batch
+    referenced_required_group_ids = {
+        g.required_site_group_id
+        for g in cast(Iterable[SiteControlGroup | ArchiveSiteControlGroup], chain(active_groups, deleted_groups))
+        if g.required_site_group_id is not None
+    }
+    member_site_ids_by_required_group: dict[int, set[int]] = {}
+    if referenced_required_group_ids:
+        members = (
+            await session.execute(
+                select(SiteGroupAssignment.site_group_id, SiteGroupAssignment.site_id).where(
+                    SiteGroupAssignment.site_group_id.in_(referenced_required_group_ids)
+                )
+            )
+        ).all()
+        for site_group_id, site_id in members:
+            member_site_ids_by_required_group.setdefault(site_group_id, set()).add(site_id)
+
+    def visible_aggregator_site_ids(
+        group: SiteControlGroup | ArchiveSiteControlGroup,
+    ) -> Sequence[tuple[int, int]]:
+        """Returns the (aggregator_id, site_id) pairs that should be notified about group - all sites, unless
+        group.required_site_group_id restricts visibility to a specific SiteGroup's members."""
+        if group.required_site_group_id is None:
+            return aggregator_site_ids
+        member_site_ids = member_site_ids_by_required_group.get(group.required_site_group_id, set())
+        return [(agg_id, site_id) for agg_id, site_id in aggregator_site_ids if site_id in member_site_ids]
 
     site_scoped_active_groups: list[SiteScopedSiteControlGroup] = [
         SiteScopedSiteControlGroup(agg_id, site_id, active_group)
-        for agg_id, site_id in aggregator_site_ids
         for active_group in active_groups
+        for agg_id, site_id in visible_aggregator_site_ids(active_group)
     ]
 
     site_scoped_deleted_groups = [
         ArchiveSiteScopedSiteControlGroup(agg_id, site_id, deleted_group)
-        for agg_id, site_id in aggregator_site_ids
         for deleted_group in deleted_groups
+        for agg_id, site_id in visible_aggregator_site_ids(deleted_group)
     ]
 
     return AggregatorBatchedEntities(

@@ -674,6 +674,7 @@ async def extra_site_control_groups(pg_base_config):
                 primacy=1,
                 site_control_group_id=4,
                 fsa_id=3,
+                required_site_group_id=None,
                 changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=UTC),
             )
         )
@@ -684,6 +685,7 @@ async def extra_site_control_groups(pg_base_config):
                 primacy=1,
                 site_control_group_id=5,
                 fsa_id=None,
+                required_site_group_id=None,
                 changed_time=datetime(2021, 4, 5, 10, 4, 0, 500000, tzinfo=UTC),
             )
         )
@@ -862,3 +864,73 @@ async def test_select_site_control_group_fsa_ids(
         actual_ids = await select_site_control_group_fsa_ids(session, changed_after)
         assert_list_type(int, actual_ids, len(expected_fsa_ids))
         assert set(expected_fsa_ids) == set(actual_ids)
+
+
+@pytest.fixture
+async def site_control_group_with_required_site_group(pg_base_config):
+    """Adds a SiteControlGroup (id 6) whose required_site_group_id is set to site2's singleton group (id 4) -
+    only site2 should be able to "see" this group"""
+    async with generate_async_session(pg_base_config) as session:
+        session.add(
+            generate_class_instance(
+                SiteControlGroup,
+                seed=606,
+                site_control_group_id=6,
+                primacy=99,
+                fsa_id=None,
+                display_id=None,
+                required_site_group_id=SITE_ID_TO_SINGLETON_GROUP_ID[2],
+                changed_time=datetime(2021, 4, 5, 10, 6, 0, 500000, tzinfo=UTC),
+            )
+        )
+        await session.commit()
+    yield pg_base_config
+
+
+@pytest.mark.parametrize(
+    "site_id, expected_visible",
+    [
+        (None, True),  # No site scope (eg admin) - always visible
+        (2, True),  # site2 is a member of the required SiteGroup
+        (1, False),  # site1 is not a member of the required SiteGroup
+        (3, False),  # site3 is not a member of the required SiteGroup
+        (99, False),  # site doesn't even exist
+    ],
+)
+@pytest.mark.anyio
+async def test_select_site_control_group_by_id_required_site_group_id_filtering(
+    site_control_group_with_required_site_group, site_id: int | None, expected_visible: bool
+):
+    async with generate_async_session(site_control_group_with_required_site_group) as session:
+        result = await select_site_control_group_by_id(session, 6, site_id=site_id)
+        if expected_visible:
+            assert result is not None
+            assert result.site_control_group_id == 6
+        else:
+            assert result is None
+
+
+@pytest.mark.parametrize(
+    "site_id, expect_included",
+    [
+        (None, True),
+        (2, True),
+        (1, False),
+        (3, False),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_and_count_site_control_groups_required_site_group_id_filtering(
+    site_control_group_with_required_site_group, site_id: int | None, expect_included: bool
+):
+    async with generate_async_session(site_control_group_with_required_site_group) as session:
+        groups = await select_site_control_groups(session, 0, datetime.min, 99, None, site_id=site_id)
+        group_ids = [g.site_control_group_id for g in groups]
+        count = await count_site_control_groups(session, datetime.min, None, site_id=site_id)
+
+        if expect_included:
+            assert 6 in group_ids
+        else:
+            assert 6 not in group_ids
+
+        assert count == len(groups), "Count and list results should agree on visibility filtering"

@@ -57,9 +57,17 @@ class DERProgramManager:
         config = await RuntimeServerConfigManager.fetch_current_config(session)
 
         site_control_groups = await select_site_control_groups(
-            session, start=start, limit=limit, changed_after=changed_after, fsa_id=fsa_id, include_defaults=True
+            session,
+            start=start,
+            limit=limit,
+            changed_after=changed_after,
+            fsa_id=fsa_id,
+            include_defaults=True,
+            site_id=site.site_id,
         )
-        site_control_group_count = await count_site_control_groups(session, changed_after, fsa_id=fsa_id)
+        site_control_group_count = await count_site_control_groups(
+            session, changed_after, fsa_id=fsa_id, site_id=site.site_id
+        )
         control_counts_by_group: list[tuple[SiteControlGroup, int]] = []
         for group in site_control_groups:
             control_counts_by_group.append(
@@ -97,7 +105,9 @@ class DERProgramManager:
         if not site:
             raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
 
-        site_control_group = await select_site_control_group_by_id(session, der_program_id, include_default=True)
+        site_control_group = await select_site_control_group_by_id(
+            session, der_program_id, include_default=True, site_id=site.site_id
+        )
         if not site_control_group:
             raise NotFoundError(f"der_program_id {der_program_id} is not accessible / does not exist")
 

@@ -87,6 +87,7 @@ class SiteControlGroupManager:
 
         existing_scg.description = updated_scg.description
         existing_scg.primacy = updated_scg.primacy
+        existing_scg.required_site_group_id = updated_scg.required_site_group_id
         existing_scg.changed_time = now
 
         # Archive the current record BEFORE we apply the new changes
