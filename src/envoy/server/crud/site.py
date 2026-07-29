@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from datetime import datetime
 
 from envoy_schema.server.schema.sep2.types import DeviceCategory
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.dialects.postgresql import insert as psql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -229,7 +229,10 @@ async def delete_site_for_aggregator(
     # Assumption - We shouldn't normally have more than 10-20 MUPs per site - if this gets us into trouble,
     #              we can always paginate this step
     mup_id_resp = await session.execute(
-        select(SiteReadingType.site_reading_type_id).where(SiteReadingType.site_id == site_id)
+        select(SiteReadingType.site_reading_type_id).where(
+            # We filter on agg ID to ensure we hit the index
+            and_(SiteReadingType.aggregator_id == aggregator_id, SiteReadingType.site_id == site_id)
+        )
     )
     mup_ids_to_delete = mup_id_resp.scalars().all()
     await delete_rows_into_archive(
