@@ -15,10 +15,11 @@ from envoy_schema.server.schema.sep2.end_device import (
 )
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from httpx import AsyncClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from envoy.admin.crud.site import count_all_sites
 from envoy.server.model.archive.site import ArchiveSite
+from envoy.server.model.site import Site, SiteGroup, SiteGroupAssignment
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_LFDI as AGG_1_LFDI_FROM_VALID_CERT
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_SFDI as AGG_1_SFDI_FROM_VALID_CERT
@@ -372,6 +373,47 @@ async def test_create_end_device_specified_sfdi(client: AsyncClient, edev_base_u
     assert len(body) > 0
     parsed_response: EndDeviceListResponse = EndDeviceListResponse.from_xml(body)
     assert parsed_response.all_ == 5, f"received body:\n{body}"
+
+
+@pytest.mark.anyio
+async def test_create_end_device_assigns_default_site_groups(
+    pg_base_config, client: AsyncClient, edev_base_uri: str
+) -> None:
+    """A newly registered EndDevice should automatically become a member of every SiteGroup marked default_group -
+    and should NOT be added to groups that aren't marked default"""
+
+    # Group-3 currently has no members - mark it (and only it) as a "default" group
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(update(SiteGroup).where(SiteGroup.name == "Group-3").values(default_group=True))
+        await session.commit()
+
+    insert_request: EndDeviceRequest = generate_class_instance(
+        EndDeviceRequest, postRate=123, deviceCategory=f"{int(DeviceCategory.HOT_TUB):x}", lFDI="fedcba9876543210"
+    )
+    response = await client.post(
+        edev_base_uri,
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=EndDeviceRequest.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+
+    async with generate_async_session(pg_base_config) as session:
+        inserted_site_id = (
+            await session.execute(select(Site.site_id).where(Site.lfdi == insert_request.lFDI))
+        ).scalar_one()
+
+        member_group_names = (
+            (
+                await session.execute(
+                    select(SiteGroup.name)
+                    .join(SiteGroupAssignment, SiteGroupAssignment.site_group_id == SiteGroup.site_group_id)
+                    .where(SiteGroupAssignment.site_id == inserted_site_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert set(member_group_names) == {"Group-3"}, "Only the default group should've picked up the new site"
 
 
 @pytest.mark.anyio

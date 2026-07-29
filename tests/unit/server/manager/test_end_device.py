@@ -410,6 +410,7 @@ def test_lfdi_matches(lhs: str | None, rhs: str | None, expected: bool):
 
 
 @pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.assign_default_site_groups_to_site")
 @mock.patch("envoy.server.manager.end_device.NotificationManager")
 @mock.patch("envoy.server.manager.end_device.insert_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
@@ -423,6 +424,7 @@ async def test_add_enddevice_for_scope_aggregator_with_sfdi(
     mock_EndDeviceMapper: mock.MagicMock,
     mock_insert_site_for_aggregator: mock.MagicMock,
     mock_NotificationManager: mock.MagicMock,
+    mock_assign_default_site_groups_to_site: mock.MagicMock,
 ):
     """Checks that the enddevice update for an aggregator just passes through to the relevant CRUD (assuming the
     sfdi is specified)"""
@@ -440,6 +442,7 @@ async def test_add_enddevice_for_scope_aggregator_with_sfdi(
     mock_insert_site_for_aggregator.return_value = 4321
     mock_utc_now.return_value = now
     mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_assign_default_site_groups_to_site.return_value = None
 
     # Act
     returned_site_id = await EndDeviceManager.add_enddevice_for_scope(mock_session, scope, end_device)
@@ -452,6 +455,9 @@ async def test_add_enddevice_for_scope_aggregator_with_sfdi(
     mock_insert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
     mock_select_single_site_with_sfdi.assert_not_called()
+    mock_assign_default_site_groups_to_site.assert_called_once_with(
+        mock_session, mock_insert_site_for_aggregator.return_value, now
+    )
     mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
         mock.ANY, SubscriptionResource.SITE, now
     )
@@ -495,7 +501,10 @@ async def test_add_enddevice_for_scope_aggregator_lfdi_matches_aggregator_case_i
 
 
 @pytest.mark.anyio
-async def test_add_enddevice_for_scope_device_missing_lfdi() -> None:
+@mock.patch("envoy.server.manager.end_device.assign_default_site_groups_to_site")
+async def test_add_enddevice_for_scope_device_missing_lfdi(
+    mock_assign_default_site_groups_to_site: mock.MagicMock,
+) -> None:
     """Checks that the enddevice update for a device cert is allowable for missing lfdi"""
     # Arrange
     mock_session = create_mock_session()
@@ -507,11 +516,14 @@ async def test_add_enddevice_for_scope_device_missing_lfdi() -> None:
     end_device.sFDI = scope.sfdi  # SFDI matches
     end_device.lFDI = None  # LFDI not provided
 
+    mock_assign_default_site_groups_to_site.return_value = None
+
     # Act
     await EndDeviceManager.add_enddevice_for_scope(mock_session, scope, end_device)
 
     # Assert
     assert_mock_session(mock_session, committed=True)
+    mock_assign_default_site_groups_to_site.assert_called_once()
 
 
 @pytest.mark.anyio
@@ -538,6 +550,7 @@ async def test_add_enddevice_for_scope_device_missing_sfdi(
 
 
 @pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.assign_default_site_groups_to_site")
 @mock.patch("envoy.server.manager.end_device.NotificationManager")
 @mock.patch("envoy.server.manager.end_device.insert_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
@@ -549,6 +562,7 @@ async def test_add_enddevice_for_scope_device(
     mock_EndDeviceMapper: mock.MagicMock,
     mock_insert_site_for_aggregator: mock.MagicMock,
     mock_NotificationManager: mock.MagicMock,
+    mock_assign_default_site_groups_to_site: mock.MagicMock,
 ):
     """Checks that the enddevice update just passes through to the relevant CRUD (assuming the lfdi/sfdi match scope)"""
     # Arrange
@@ -567,6 +581,7 @@ async def test_add_enddevice_for_scope_device(
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_insert_site_for_aggregator.return_value = 4321
     mock_utc_now.return_value = now
+    mock_assign_default_site_groups_to_site.return_value = None
 
     # Act
     returned_site_id = await EndDeviceManager.add_enddevice_for_scope(mock_session, scope, end_device)
@@ -578,12 +593,16 @@ async def test_add_enddevice_for_scope_device(
     mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now, 55312)
     mock_insert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
+    mock_assign_default_site_groups_to_site.assert_called_once_with(
+        mock_session, mock_insert_site_for_aggregator.return_value, now
+    )
     mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
         mock.ANY, SubscriptionResource.SITE, now
     )
 
 
 @pytest.mark.anyio
+@mock.patch("envoy.server.manager.end_device.assign_default_site_groups_to_site")
 @mock.patch("envoy.server.manager.end_device.NotificationManager")
 @mock.patch("envoy.server.manager.end_device.insert_site_for_aggregator")
 @mock.patch("envoy.server.manager.end_device.EndDeviceMapper")
@@ -595,6 +614,7 @@ async def test_add_enddevice_for_scope_device_lfdi_case_insensitive(
     mock_EndDeviceMapper: mock.MagicMock,
     mock_insert_site_for_aggregator: mock.MagicMock,
     mock_NotificationManager: mock.MagicMock,
+    mock_assign_default_site_groups_to_site: mock.MagicMock,
 ):
     """Checks that lfdi/sfdi from the scope are compared against a lower case version of the requested lfdi"""
     # Arrange
@@ -613,6 +633,7 @@ async def test_add_enddevice_for_scope_device_lfdi_case_insensitive(
     mock_EndDeviceMapper.map_from_request = mock.Mock(return_value=mapped_site)
     mock_insert_site_for_aggregator.return_value = 4321
     mock_utc_now.return_value = now
+    mock_assign_default_site_groups_to_site.return_value = None
 
     # Act
     returned_site_id = await EndDeviceManager.add_enddevice_for_scope(mock_session, scope, end_device)
@@ -624,6 +645,9 @@ async def test_add_enddevice_for_scope_device_lfdi_case_insensitive(
     mock_EndDeviceMapper.map_from_request.assert_called_once_with(end_device, scope.aggregator_id, now, 55312)
     mock_insert_site_for_aggregator.assert_called_once_with(mock_session, scope.aggregator_id, mapped_site)
     mock_utc_now.assert_called_once()
+    mock_assign_default_site_groups_to_site.assert_called_once_with(
+        mock_session, mock_insert_site_for_aggregator.return_value, now
+    )
     mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
         mock.ANY, SubscriptionResource.SITE, now
     )

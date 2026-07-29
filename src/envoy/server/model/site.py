@@ -18,6 +18,7 @@ from envoy_schema.server.schema.sep2.der import (
 from envoy_schema.server.schema.sep2.log_events import FunctionSetIdentifier, ProfileIdentifier
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from sqlalchemy import (
+    BOOLEAN,
     DECIMAL,
     INTEGER,
     SMALLINT,
@@ -103,6 +104,9 @@ class SiteGroup(Base):
         DateTime(timezone=True), server_default=func.now()
     )  # When the site group was created
     changed_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    default_group: Mapped[bool] = mapped_column(
+        BOOLEAN, nullable=False, default=False, server_default="false", index=True
+    )  # If set - all new site registrations (in/out of band) will be automatically assigned to this group
 
     assignments: Mapped[list["SiteGroupAssignment"]] = relationship(
         back_populates="group",

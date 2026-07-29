@@ -17,6 +17,7 @@ depends_on = None
 
 def upgrade() -> None:
     op.add_column("site_control_group", sa.Column("required_site_group_id", sa.Integer(), nullable=True))
+
     op.create_index(
         op.f("ix_site_control_group_required_site_group_id"),
         "site_control_group",
@@ -43,8 +44,17 @@ def upgrade() -> None:
     )
     op.add_column("archive_tariff", sa.Column("required_site_group_id", sa.Integer(), nullable=True))
 
+    op.add_column(
+        "site_group",
+        sa.Column("default_group", sa.BOOLEAN(), nullable=False, server_default="false"),
+    )
+    op.create_index(op.f("ix_site_group_default_group"), "site_group", ["default_group"], unique=False)
+
 
 def downgrade() -> None:
+    op.drop_index(op.f("ix_site_group_default_group"), table_name="site_group")
+    op.drop_column("site_group", "default_group")
+
     op.drop_column("archive_tariff", "required_site_group_id")
     op.drop_constraint("tariff_required_site_group_id_fkey", "tariff", type_="foreignkey")
     op.drop_index(op.f("ix_tariff_required_site_group_id"), table_name="tariff")

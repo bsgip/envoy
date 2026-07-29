@@ -26,6 +26,7 @@ from envoy.server.crud.site import (
     select_single_site_with_sfdi,
     select_single_site_with_site_id,
 )
+from envoy.server.crud.site_group import assign_default_site_groups_to_site
 from envoy.server.crud.subscription import count_subscriptions_for_site
 from envoy.server.exception import (
     BadRequestError,
@@ -228,6 +229,8 @@ class EndDeviceManager:
                 f"EndDevice with provided sFDI ({site.sfdi}) or lFDI ({site.lfdi})"
                 f"already exists for aggregator ({site.aggregator_id})."
             ) from exc
+
+        await assign_default_site_groups_to_site(session, result, changed_time)
 
         await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, changed_time)
         await session.commit()

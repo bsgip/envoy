@@ -226,6 +226,7 @@ async def test_get_all_site_groups(
         assert group_page.start == start
 
     assert [(g.site_group_id, g.total_sites) for g in group_page.groups] == expected_group_count
+    assert all(g.default_group is False for g in group_page.groups), "No groups are marked default in base_config"
 
 
 @pytest.mark.parametrize(
@@ -259,6 +260,7 @@ async def test_get_site_groups(
         assert group.site_group_id == expected_group_count[0]
         assert group.total_sites == expected_group_count[1]
         assert group.name == group_name
+        assert group.default_group is False, "No groups are marked default in base_config"
 
 
 @pytest.mark.parametrize(

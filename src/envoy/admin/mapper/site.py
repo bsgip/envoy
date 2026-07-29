@@ -223,6 +223,7 @@ class SiteGroupMapper:
             name=group.name,
             created_time=group.created_time,
             changed_time=group.changed_time,
+            default_group=group.default_group,
             total_sites=site_count,
         )
 
