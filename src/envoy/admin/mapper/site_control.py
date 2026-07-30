@@ -40,13 +40,19 @@ class SiteControlGroupListMapper:
 
     @staticmethod
     def map_to_paged_response(
-        total_count: int, limit: int, start: int, after: datetime | None, groups: Iterable[SiteControlGroup]
+        total_count: int,
+        limit: int,
+        start: int,
+        after: datetime | None,
+        group: str | None,
+        groups: Iterable[SiteControlGroup],
     ) -> SiteControlGroupPageResponse:
         return SiteControlGroupPageResponse(
             total_count=total_count,
             limit=limit,
             start=start,
             after=after,
+            group=group,
             site_control_groups=[SiteControlGroupListMapper.map_to_response(g) for g in groups],
         )
 
@@ -105,12 +111,24 @@ class SiteControlListMapper:
 
     @staticmethod
     def map_to_paged_response(
-        total_count: int, limit: int, start: int, after: datetime | None, does: Iterable[DynamicOperatingEnvelope]
+        total_count: int,
+        limit: int,
+        start: int,
+        after: datetime | None,
+        site_id: int | None,
+        group: str | None,
+        start_time_since: datetime | None,
+        start_time_until: datetime | None,
+        does: Iterable[DynamicOperatingEnvelope],
     ) -> SiteControlPageResponse:
         return SiteControlPageResponse(
             total_count=total_count,
             limit=limit,
             start=start,
             after=after,
+            site_id=site_id,
+            group=group,
+            start_time_since=start_time_since,
+            start_time_until=start_time_until,
             controls=[SiteControlListMapper.map_to_response(d) for d in does],
         )

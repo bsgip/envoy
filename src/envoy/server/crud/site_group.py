@@ -63,6 +63,22 @@ def required_site_group_visible_to_site(
     return or_(required_site_group_id_col.is_(None), member_exists)
 
 
+def required_site_group_visible_to_group_name(
+    required_site_group_id_col: InstrumentedAttribute[int | None], group_name: str
+) -> ColumnElement[bool]:
+    """Builds a filter clause for an optional "required_site_group_id" column (SiteControlGroup/Tariff): True if
+    the column is NULL (no restriction - globally visible) or if it references a SiteGroup whose name == group_name.
+
+    Never joins against the enclosing statement, so an entity row can never fan out into multiple result rows."""
+
+    name_matches = (
+        select(SiteGroup.site_group_id)
+        .where((SiteGroup.site_group_id == required_site_group_id_col) & (SiteGroup.name == group_name))
+        .exists()
+    )
+    return or_(required_site_group_id_col.is_(None), name_matches)
+
+
 async def assign_default_site_groups_to_site(session: AsyncSession, site_id: int, changed_time: datetime) -> None:
     """Adds a SiteGroupAssignment linking site_id to every SiteGroup marked as default_group=True. Intended to be
     called immediately after a new Site is created so it automatically becomes a member of the "default" groups.

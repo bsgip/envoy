@@ -88,6 +88,8 @@ async def get_all_sites(
     limit: list[int] = Query([100]),
     group: list[str] = Query([]),
     after: datetime | None = Query(None),
+    nmi: list[str] = Query([]),
+    aggregator_id: int | None = Query(None),
 ) -> SitePageResponse:
     """Endpoint for a paginated list of Site Objects, ordered by site_id attribute.
 
@@ -96,6 +98,8 @@ async def get_all_sites(
         limit: maximum number of objects to return. Default 100. Max 500.
         group: SiteGroup name by which to filter returned sites. Default no filter
         after: Filters objects that have been created/modified after this timestamp (inclusive). Default no filter.
+        nmi: NMI by which to filter returned sites (exact match). Default no filter.
+        aggregator_id: aggregator_id by which to filter returned sites. Default no filter.
 
     Returns:
         SitePageResponse
@@ -105,12 +109,18 @@ async def get_all_sites(
     if group is not None and len(group) > 0:
         group_filter = group[0]
 
+    nmi_filter: str | None = None
+    if nmi is not None and len(nmi) > 0:
+        nmi_filter = nmi[0]
+
     return await SiteManager.get_all_sites(
         session=db.session,
         start=extract_start_from_paging_param(start),
         limit=extract_limit_from_paging_param(limit),
         changed_after=after,
         group_filter=group_filter,
+        nmi_filter=nmi_filter,
+        aggregator_id_filter=aggregator_id,
     )
 
 

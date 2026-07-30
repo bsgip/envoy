@@ -419,6 +419,126 @@ async def test_select_all_does(
 
 
 @pytest.fixture
+async def site_control_group_1_scoped_to_group_1(pg_base_config):
+    """Scopes site_control_group_id 1 (which owns DOEs 1-4 in base_config) to Group-1 (site_group_id 1)"""
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(
+            update(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 1).values(required_site_group_id=1)
+        )
+        await session.commit()
+    yield pg_base_config
+
+
+@pytest.mark.parametrize(
+    "group_filter, expected_doe_ids",
+    [
+        (None, [1, 2, 3, 4]),
+        ("", [1, 2, 3, 4]),
+        ("Group-1", [1, 2, 3, 4]),
+        ("Group-2", []),
+        ("Group-DNE", []),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_all_does_group_filter(
+    site_control_group_1_scoped_to_group_1, group_filter: str | None, expected_doe_ids: list[int]
+):
+    async with generate_async_session(site_control_group_1_scoped_to_group_1) as session:
+        does = await select_all_does(session, 1, 0, 500, None, group_filter=group_filter)
+        assert expected_doe_ids == [d.dynamic_operating_envelope_id for d in does]
+        assert (await count_all_does(session, 1, None, group_filter=group_filter)) == len(expected_doe_ids)
+
+
+@pytest.mark.parametrize(
+    "start_time_since, start_time_until, expected_doe_ids",
+    [
+        (None, None, [1, 2, 3, 4]),
+        (datetime(2022, 5, 7, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")), None, [1, 2, 3, 4]),
+        (datetime(2022, 5, 7, 3, 4, tzinfo=ZoneInfo("Australia/Brisbane")), None, [2, 4]),
+        (datetime(2022, 5, 8, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")), None, [4]),
+        (datetime(2022, 5, 8, 1, 2, 1, tzinfo=ZoneInfo("Australia/Brisbane")), None, []),
+        (None, datetime(2022, 5, 7, 3, 4, tzinfo=ZoneInfo("Australia/Brisbane")), [1, 3]),
+        (None, datetime(2022, 5, 8, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")), [1, 2, 3]),
+        (
+            datetime(2022, 5, 7, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
+            datetime(2022, 5, 8, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
+            [1, 2, 3],
+        ),
+        (
+            datetime(2022, 5, 7, 3, 4, tzinfo=ZoneInfo("Australia/Brisbane")),
+            datetime(2022, 5, 8, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
+            [2],
+        ),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_all_does_start_time_filters(
+    pg_base_config,
+    start_time_since: datetime | None,
+    start_time_until: datetime | None,
+    expected_doe_ids: list[int],
+):
+    async with generate_async_session(pg_base_config) as session:
+        does = await select_all_does(
+            session, 1, 0, 500, None, start_time_since=start_time_since, start_time_until=start_time_until
+        )
+        assert expected_doe_ids == [d.dynamic_operating_envelope_id for d in does]
+        assert (
+            await count_all_does(session, 1, None, start_time_since=start_time_since, start_time_until=start_time_until)
+        ) == len(expected_doe_ids)
+
+
+@pytest.mark.parametrize(
+    "site_id, expected_doe_ids",
+    [
+        (None, [1, 2, 3, 4]),
+        (1, [1, 2, 4]),  # site 1 is a member of Group-2 (site_group_id 2) - target of DOEs 1,2,4
+        (2, [3]),  # site 2 is a member of Group-4-Site2 (site_group_id 4) - target of DOE 3
+        (3, []),  # site 3 is not a member of any group targeted by these does
+    ],
+)
+@pytest.mark.anyio
+async def test_select_all_does_site_id_filter(pg_base_config, site_id: int | None, expected_doe_ids: list[int]):
+    async with generate_async_session(pg_base_config) as session:
+        does = await select_all_does(session, 1, 0, 500, None, site_id=site_id)
+        assert expected_doe_ids == [d.dynamic_operating_envelope_id for d in does]
+        assert (await count_all_does(session, 1, None, site_id=site_id)) == len(expected_doe_ids)
+
+
+@pytest.mark.anyio
+async def test_select_all_does_combined_filters_are_additive(site_control_group_1_scoped_to_group_1):
+    """Sanity check that group/start_time/site_id filters combine via AND, not OR"""
+    async with generate_async_session(site_control_group_1_scoped_to_group_1) as session:
+        # DOE 1 matches group Group-1, start_time window and site_id 1 - should be the only match
+        does = await select_all_does(
+            session,
+            1,
+            0,
+            500,
+            None,
+            group_filter="Group-1",
+            start_time_since=datetime(2022, 5, 7, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
+            start_time_until=datetime(2022, 5, 7, 3, 4, tzinfo=ZoneInfo("Australia/Brisbane")),
+            site_id=1,
+        )
+        assert [1] == [d.dynamic_operating_envelope_id for d in does]
+
+        # Same filters but with a group that doesn't match - should exclude everything
+        does_no_match = await select_all_does(
+            session,
+            1,
+            0,
+            500,
+            None,
+            group_filter="Group-2",
+            start_time_since=datetime(2022, 5, 7, 1, 2, tzinfo=ZoneInfo("Australia/Brisbane")),
+            start_time_until=datetime(2022, 5, 7, 3, 4, tzinfo=ZoneInfo("Australia/Brisbane")),
+            site_id=1,
+        )
+        assert [] == [d.dynamic_operating_envelope_id for d in does_no_match]
+
+
+@pytest.fixture
 async def extra_site_control_groups(pg_base_config):
 
     # Current database entry has changed time '2021-04-05 10:01:00.500'
@@ -479,6 +599,44 @@ async def test_select_all_site_control_groups(
         groups = await select_all_site_control_groups(session, start, limit, after)
         assert_list_type(SiteControlGroup, groups, len(expected_site_control_ids))
         assert expected_site_control_ids == [g.site_control_group_id for g in groups]
+
+
+@pytest.fixture
+async def extra_site_control_groups_scoped(extra_site_control_groups):
+    """Builds on extra_site_control_groups (ids 1,2,3,4 - all required_site_group_id NULL) by scoping group 1 to
+    Group-1 (site_group_id 1) and group 2 to Group-2 (site_group_id 2)"""
+    async with generate_async_session(extra_site_control_groups) as session:
+        await session.execute(
+            update(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 1).values(required_site_group_id=1)
+        )
+        await session.execute(
+            update(SiteControlGroup).where(SiteControlGroup.site_control_group_id == 2).values(required_site_group_id=2)
+        )
+        await session.commit()
+    yield extra_site_control_groups
+
+
+@pytest.mark.parametrize(
+    "group_filter, expected_site_control_ids",
+    [
+        (None, [1, 2, 3, 4]),
+        ("", [1, 2, 3, 4]),
+        ("Group-1", [1, 3, 4]),  # group 1 (scoped) + groups 3,4 (global)
+        ("Group-2", [2, 3, 4]),  # group 2 (scoped) + groups 3,4 (global)
+        ("Group-3", [3, 4]),  # groups 3,4 (global) only
+        ("Group-DNE", [3, 4]),  # groups 3,4 (global) only
+    ],
+)
+@pytest.mark.anyio
+async def test_select_and_count_all_site_control_groups_group_filter(
+    extra_site_control_groups_scoped, group_filter: str | None, expected_site_control_ids: list[int]
+):
+    async with generate_async_session(extra_site_control_groups_scoped) as session:
+        groups = await select_all_site_control_groups(session, 0, 500, None, group_filter=group_filter)
+        assert expected_site_control_ids == [g.site_control_group_id for g in groups]
+        assert (await count_all_site_control_groups(session, None, group_filter=group_filter)) == len(
+            expected_site_control_ids
+        )
 
 
 @pytest.mark.parametrize(

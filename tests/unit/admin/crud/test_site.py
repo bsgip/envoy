@@ -67,6 +67,70 @@ async def test_count_all_sites_empty(pg_empty_config):
 
 
 @pytest.mark.parametrize(
+    "nmi_filter, aggregator_id_filter, expected_site_ids",
+    [
+        (None, None, [1, 2, 3, 4, 5, 6]),
+        ("", None, [1, 2, 3, 4, 5, 6]),
+        ("1111111111", None, [1]),
+        ("9999999999", None, []),
+        (None, 1, [1, 2, 4]),
+        (None, 0, [5, 6]),
+        (None, 99, []),
+        ("2222222222", 1, [2]),  # Additive (AND) - both match
+        ("2222222222", 2, []),  # Additive (AND) - nmi matches but aggregator doesn't
+    ],
+)
+@pytest.mark.anyio
+async def test_count_and_select_all_sites_nmi_aggregator_filters(
+    pg_base_config, nmi_filter: str | None, aggregator_id_filter: int | None, expected_site_ids: list[int]
+):
+    async with generate_async_session(pg_base_config) as session:
+        assert (
+            await count_all_sites(session, None, None, nmi_filter=nmi_filter, aggregator_id_filter=aggregator_id_filter)
+        ) == len(expected_site_ids)
+
+        sites = await select_all_sites(
+            session,
+            None,
+            0,
+            500,
+            None,
+            nmi_filter=nmi_filter,
+            aggregator_id_filter=aggregator_id_filter,
+        )
+        assert expected_site_ids == [s.site_id for s in sites]
+
+
+@pytest.mark.anyio
+async def test_select_all_sites_nmi_aggregator_additive_with_group(pg_base_config):
+    """Sanity check that group/nmi/aggregator_id filters all combine via AND, not OR"""
+    async with generate_async_session(pg_base_config) as session:
+        # Site 1 is in Group-1, has nmi 1111111111 and aggregator_id 1 - should be the only match
+        sites = await select_all_sites(
+            session,
+            "Group-1",
+            0,
+            500,
+            None,
+            nmi_filter="1111111111",
+            aggregator_id_filter=1,
+        )
+        assert [1] == [s.site_id for s in sites]
+
+        # Same filters but with an aggregator_id that doesn't match site 1 - should exclude everything
+        sites_no_match = await select_all_sites(
+            session,
+            "Group-1",
+            0,
+            500,
+            None,
+            nmi_filter="1111111111",
+            aggregator_id_filter=2,
+        )
+        assert [] == [s.site_id for s in sites_no_match]
+
+
+@pytest.mark.parametrize(
     "start, limit, group, changed_after, expected_site_ids, expected_group_ids, expected_der_ids",
     [
         (

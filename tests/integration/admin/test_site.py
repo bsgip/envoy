@@ -36,7 +36,14 @@ from envoy.server.model.site import Site, SiteGroup, SiteGroupAssignment
 from tests.integration.response import read_response_body_string
 
 
-def _build_query_string(start: int | None, limit: int | None, group_filter: str | None, after: datetime | None) -> str:
+def _build_query_string(
+    start: int | None,
+    limit: int | None,
+    group_filter: str | None,
+    after: datetime | None,
+    nmi_filter: str | None = None,
+    aggregator_id_filter: int | None = None,
+) -> str:
     query = "?"
     if start is not None:
         query = query + f"&start={start}"
@@ -46,6 +53,10 @@ def _build_query_string(start: int | None, limit: int | None, group_filter: str 
         query = query + f"&group={group_filter}"
     if after is not None:
         query = query + f"&after={quote_plus(after.isoformat())}"
+    if nmi_filter is not None:
+        query = query + f"&nmi={nmi_filter}"
+    if aggregator_id_filter is not None:
+        query = query + f"&aggregator_id={aggregator_id_filter}"
     return query
 
 
@@ -193,6 +204,49 @@ async def test_get_all_sites(
         for s in site_page.sites
     ] == expected_der_changed_times
     assert all(s.created_time == datetime(2000, 1, 1, tzinfo=UTC) for s in site_page.sites)
+
+
+@pytest.mark.parametrize(
+    "group, nmi, aggregator_id, expected_site_ids",
+    [
+        (None, None, None, [1, 2, 3, 4, 5, 6]),
+        (None, "1111111111", None, [1]),
+        (None, "9999999999", None, []),
+        (None, None, 1, [1, 2, 4]),
+        (None, None, 0, [5, 6]),
+        (None, None, 99, []),
+        ("Group-1", None, 1, [1, 2]),  # additive AND: Group-1 members that are aggregator 1
+        ("Group-1", "1111111111", 1, [1]),  # additive AND: all three filters combine
+        ("Group-1", "1111111111", 2, []),  # additive AND: aggregator doesn't match -> no results
+    ],
+)
+@pytest.mark.anyio
+async def test_get_all_sites_nmi_aggregator_filters(
+    admin_client_auth: AsyncClient,
+    pg_base_config,
+    group: str | None,
+    nmi: str | None,
+    aggregator_id: int | None,
+    expected_site_ids: list[int],
+):
+    """Checks the nmi/aggregator_id query params filter as expected, and combine additively (AND) with group"""
+    async with generate_async_session(pg_base_config) as session:
+        expected_total_sites = await count_all_sites(
+            session, group, None, nmi_filter=nmi, aggregator_id_filter=aggregator_id
+        )
+
+    response = await admin_client_auth.get(
+        SiteListUri + _build_query_string(None, None, group, None, nmi_filter=nmi, aggregator_id_filter=aggregator_id)
+    )
+    assert response.status_code == HTTPStatus.OK
+
+    body = read_response_body_string(response)
+    site_page: SitePageResponse = SitePageResponse(**json.loads(body))
+
+    assert site_page.total_count == expected_total_sites
+    assert site_page.nmi == nmi
+    assert site_page.aggregator_id == aggregator_id
+    assert [s.site_id for s in site_page.sites] == expected_site_ids
 
 
 @pytest.mark.parametrize(

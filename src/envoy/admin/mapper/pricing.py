@@ -1,6 +1,12 @@
+from collections.abc import Iterable
 from datetime import datetime
 
-from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
+from envoy_schema.admin.schema.pricing import (
+    TariffGeneratedRateRequest,
+    TariffPageResponse,
+    TariffRequest,
+    TariffResponse,
+)
 
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
 
@@ -27,6 +33,18 @@ class TariffMapper:
             currency_code=tariff.currency_code,
             name=tariff.name,
             fsa_id=tariff.fsa_id,
+        )
+
+    @staticmethod
+    def map_to_page_response(
+        total_count: int, limit: int, start: int, group: str | None, tariffs: Iterable[Tariff]
+    ) -> TariffPageResponse:
+        return TariffPageResponse(
+            total_count=total_count,
+            limit=limit,
+            start=start,
+            group=group,
+            tariffs=[TariffMapper.map_to_response(t) for t in tariffs],
         )
 
 

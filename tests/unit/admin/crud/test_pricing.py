@@ -4,11 +4,18 @@ from decimal import Decimal
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
 from assertical.asserts.time import assert_datetime_equal, assert_nowish
+from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
-from envoy.admin.crud.pricing import insert_single_tariff, update_single_tariff, upsert_many_tariff_genrate
+from envoy.admin.crud.pricing import (
+    count_all_tariffs,
+    insert_single_tariff,
+    select_all_tariffs_for_group,
+    update_single_tariff,
+    upsert_many_tariff_genrate,
+)
 from envoy.server.crud.pricing import select_single_tariff
 from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
@@ -163,3 +170,67 @@ async def test_upsert_many_tariff_genrate_update(pg_base_config):
         assert archive_data.archive_time
         assert_nowish(archive_data.archive_time)
         assert archive_data.deleted_time == deleted_time
+
+
+@pytest.fixture
+async def tariffs_with_required_site_group(pg_base_config):
+    """base_config has tariffs 1/2/3 all with a NULL required_site_group_id. This scopes tariff 1 to Group-1
+    (site_group_id 1) and tariff 2 to Group-2 (site_group_id 2), leaving tariff 3 globally visible (NULL)"""
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(update(Tariff).where(Tariff.tariff_id == 1).values(required_site_group_id=1))
+        await session.execute(update(Tariff).where(Tariff.tariff_id == 2).values(required_site_group_id=2))
+        await session.commit()
+    yield pg_base_config
+
+
+@pytest.mark.parametrize(
+    "group_filter, expected_count",
+    [
+        (None, 3),
+        ("", 3),
+        ("Group-1", 2),  # tariff 1 (scoped) + tariff 3 (global)
+        ("Group-2", 2),  # tariff 2 (scoped) + tariff 3 (global)
+        ("Group-3", 1),  # tariff 3 (global) only
+        ("Group-DNE", 1),  # tariff 3 (global) only
+    ],
+)
+@pytest.mark.anyio
+async def test_count_all_tariffs(tariffs_with_required_site_group, group_filter: str | None, expected_count: int):
+    async with generate_async_session(tariffs_with_required_site_group) as session:
+        assert (await count_all_tariffs(session, group_filter)) == expected_count
+
+
+@pytest.mark.anyio
+async def test_count_all_tariffs_empty(pg_empty_config):
+    async with generate_async_session(pg_empty_config) as session:
+        assert (await count_all_tariffs(session, None)) == 0
+        assert (await count_all_tariffs(session, "Group-1")) == 0
+
+
+@pytest.mark.parametrize(
+    "group_filter, start, limit, expected_tariff_ids",
+    [
+        (None, 0, 500, [3, 2, 1]),
+        ("", 0, 500, [3, 2, 1]),
+        ("Group-1", 0, 500, [3, 1]),
+        ("Group-2", 0, 500, [3, 2]),
+        ("Group-3", 0, 500, [3]),
+        ("Group-DNE", 0, 500, [3]),
+        (None, 1, 500, [2, 1]),
+        (None, 0, 2, [3, 2]),
+        (None, 1, 1, [2]),
+        (None, 0, 0, []),
+    ],
+)
+@pytest.mark.anyio
+async def test_select_all_tariffs_for_group(
+    tariffs_with_required_site_group,
+    group_filter: str | None,
+    start: int,
+    limit: int,
+    expected_tariff_ids: list[int],
+):
+    async with generate_async_session(tariffs_with_required_site_group) as session:
+        tariffs = await select_all_tariffs_for_group(session, group_filter, start, limit)
+        assert_list_type(Tariff, tariffs, count=len(expected_tariff_ids))
+        assert expected_tariff_ids == [t.tariff_id for t in tariffs]

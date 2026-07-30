@@ -48,14 +48,16 @@ def test_site_control_group_mapper_to_paged_response():
     start = 456
     total_count = 789
     after = datetime(2022, 11, 12, 4, 5, 6)
+    group = "abc-123"
 
-    page_response = SiteControlGroupListMapper.map_to_paged_response(total_count, limit, start, after, groups)
+    page_response = SiteControlGroupListMapper.map_to_paged_response(total_count, limit, start, after, group, groups)
     assert isinstance(page_response, SiteControlGroupPageResponse)
     assert_list_type(SiteControlGroupResponse, page_response.site_control_groups, len(groups))
     assert page_response.after == after
     assert page_response.limit == limit
     assert page_response.start == start
     assert page_response.total_count == total_count
+    assert page_response.group == group
 
 
 @pytest.mark.parametrize("optional_is_none", [True, False])
@@ -115,11 +117,21 @@ def test_site_control_mapper_to_paged_response():
     start = 456
     total_count = 789
     after = datetime(2022, 11, 12, 4, 5, 6)
+    site_id = 111
+    group = "abc-123"
+    start_time_since = datetime(2022, 11, 12, 4, 5, 7)
+    start_time_until = datetime(2022, 11, 12, 4, 5, 8)
 
-    page_response = SiteControlListMapper.map_to_paged_response(total_count, limit, start, after, does)
+    page_response = SiteControlListMapper.map_to_paged_response(
+        total_count, limit, start, after, site_id, group, start_time_since, start_time_until, does
+    )
     assert isinstance(page_response, SiteControlPageResponse)
     assert_list_type(SiteControlResponse, page_response.controls, len(does))
     assert page_response.after == after
     assert page_response.limit == limit
     assert page_response.start == start
     assert page_response.total_count == total_count
+    assert page_response.site_id == site_id
+    assert page_response.group == group
+    assert page_response.start_time_since == start_time_since
+    assert page_response.start_time_until == start_time_until

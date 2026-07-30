@@ -189,8 +189,12 @@ def test_site_page_mapper():
     start = 789
     after = datetime(2022, 5, 6, 7, 8, 9)
     group_filter = "abc-123"
+    nmi_filter = "nmi-456"
+    aggregator_id_filter = 999
 
-    mapped = SiteMapper.map_to_response(count, limit, start, group_filter, after, sites)
+    mapped = SiteMapper.map_to_response(
+        count, limit, start, group_filter, after, nmi_filter, aggregator_id_filter, sites
+    )
     assert isinstance(mapped, SitePageResponse)
 
     assert mapped.total_count == count
@@ -198,6 +202,8 @@ def test_site_page_mapper():
     assert mapped.start == start
     assert mapped.after == after
     assert mapped.group == group_filter
+    assert mapped.nmi == nmi_filter
+    assert mapped.aggregator_id == aggregator_id_filter
     assert len(sites) == len(mapped.sites)
     assert all([isinstance(s, SiteResponse) for s in mapped.sites])
 

@@ -35,12 +35,22 @@ from envoy.server.model.subscription import SubscriptionResource
 class SiteManager:
     @staticmethod
     async def get_all_sites(
-        session: AsyncSession, start: int, limit: int, group_filter: str | None, changed_after: datetime | None
+        session: AsyncSession,
+        start: int,
+        limit: int,
+        group_filter: str | None,
+        changed_after: datetime | None,
+        nmi_filter: str | None = None,
+        aggregator_id_filter: int | None = None,
     ) -> SitePageResponse:
         """Admin specific (paginated) fetch of sites that covers all aggregators.
         group_filter: If specified - filter to sites that belong to a group with this name
-        changed_after: If specified - filter to sites whose changed date is >= this value"""
-        site_count = await count_all_sites(session, group_filter, changed_after)
+        changed_after: If specified - filter to sites whose changed date is >= this value
+        nmi_filter: If specified - filter to sites with this exact nmi
+        aggregator_id_filter: If specified - filter to sites belonging to this aggregator"""
+        site_count = await count_all_sites(
+            session, group_filter, changed_after, nmi_filter=nmi_filter, aggregator_id_filter=aggregator_id_filter
+        )
         sites = await select_all_sites(
             session,
             group_filter=group_filter,
@@ -49,6 +59,8 @@ class SiteManager:
             limit=limit,
             include_groups=True,
             include_der=True,
+            nmi_filter=nmi_filter,
+            aggregator_id_filter=aggregator_id_filter,
         )
         return SiteMapper.map_to_response(
             total_count=site_count,
@@ -56,6 +68,8 @@ class SiteManager:
             start=start,
             group=group_filter,
             after=changed_after,
+            nmi=nmi_filter,
+            aggregator_id=aggregator_id_filter,
             sites=sites,
         )
 

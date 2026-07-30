@@ -4,8 +4,14 @@ from datetime import datetime
 
 import pytest
 from assertical.asserts.generator import assert_class_instance_equality
+from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
-from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
+from envoy_schema.admin.schema.pricing import (
+    TariffGeneratedRateRequest,
+    TariffPageResponse,
+    TariffRequest,
+    TariffResponse,
+)
 from envoy_schema.server.schema.sep2.types import CurrencyCode
 
 from envoy.admin.mapper.pricing import TariffGeneratedRateListMapper, TariffMapper
@@ -71,3 +77,17 @@ def test_tariff_genrate_mapper_from_request(optional_is_none: bool):
     assert mdl.changed_time == changed_time
     assert mdl.tariff_generated_rate_id == None  # noqa
     assert mdl.created_time == None, "This should be set in the DB"  # noqa
+
+
+@pytest.mark.parametrize("group", [None, "", "Group-1"])
+def test_tariff_mapper_map_to_page_response(group: str | None):
+    tariffs = [generate_class_instance(Tariff, seed=1), generate_class_instance(Tariff, seed=2)]
+    result = TariffMapper.map_to_page_response(total_count=123, limit=45, start=6, group=group, tariffs=tariffs)
+
+    assert isinstance(result, TariffPageResponse)
+    assert result.total_count == 123
+    assert result.limit == 45
+    assert result.start == 6
+    assert result.group == group
+    assert_list_type(TariffResponse, result.tariffs, count=len(tariffs))
+    assert [t.tariff_id for t in result.tariffs] == [t.tariff_id for t in tariffs]

@@ -1,13 +1,14 @@
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import cast
+from typing import Any, cast
 
 from intervaltree import Interval, IntervalTree
-from sqlalchemy import Delete, and_, func, insert, or_, select, update
+from sqlalchemy import Delete, Select, and_, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
+from envoy.server.crud.site_group import required_site_group_visible_to_group_name, site_is_member_of_group
 from envoy.server.model.archive.doe import (
     ArchiveDynamicOperatingEnvelope,
     ArchiveSiteControlGroup,
@@ -281,17 +282,65 @@ async def supersede_matching_does_for_group(
     )
 
 
-async def count_all_does(session: AsyncSession, site_control_group_id: int, changed_after: datetime | None) -> int:
-    """Admin counting of does - no filtering on aggregator is made. If changed_after is specified, only
-    does that have their changed_time >= changed_after will be included"""
-    stmt = (
-        select(func.count())
-        .select_from(DynamicOperatingEnvelope)
-        .where(DynamicOperatingEnvelope.site_control_group_id == site_control_group_id)
-    )
+def _apply_doe_filters(
+    stmt: "Select[Any]",
+    site_control_group_id: int,
+    changed_after: datetime | None,
+    group_filter: str | None,
+    start_time_since: datetime | None,
+    start_time_until: datetime | None,
+    site_id: int | None,
+) -> "Select[Any]":
+    """Shared filtering logic for admin DOE count/select queries"""
+    stmt = stmt.where(DynamicOperatingEnvelope.site_control_group_id == site_control_group_id)
 
     if changed_after and changed_after != datetime.min:
         stmt = stmt.where(DynamicOperatingEnvelope.changed_time >= changed_after)
+
+    if group_filter:
+        stmt = stmt.join(
+            SiteControlGroup,
+            SiteControlGroup.site_control_group_id == DynamicOperatingEnvelope.site_control_group_id,
+        ).where(required_site_group_visible_to_group_name(SiteControlGroup.required_site_group_id, group_filter))
+
+    if start_time_since is not None:
+        stmt = stmt.where(DynamicOperatingEnvelope.start_time >= start_time_since)
+
+    if start_time_until is not None:
+        stmt = stmt.where(DynamicOperatingEnvelope.start_time < start_time_until)
+
+    if site_id is not None:
+        stmt = stmt.where(site_is_member_of_group(DynamicOperatingEnvelope.site_group_id, site_id))
+
+    return stmt
+
+
+async def count_all_does(
+    session: AsyncSession,
+    site_control_group_id: int,
+    changed_after: datetime | None,
+    group_filter: str | None = None,
+    start_time_since: datetime | None = None,
+    start_time_until: datetime | None = None,
+    site_id: int | None = None,
+) -> int:
+    """Admin counting of does - no filtering on aggregator is made. If changed_after is specified, only
+    does that have their changed_time >= changed_after will be included
+
+    group_filter: If specified - only includes does whose parent SiteControlGroup is globally visible or whose
+        required_site_group references a SiteGroup with this name
+    start_time_since: If specified - only includes does with start_time >= this value
+    start_time_until: If specified - only includes does with start_time < this value
+    site_id: If specified - only includes does whose target SiteGroup counts site_id as a member"""
+    stmt = _apply_doe_filters(
+        select(func.count()).select_from(DynamicOperatingEnvelope),
+        site_control_group_id,
+        changed_after,
+        group_filter,
+        start_time_since,
+        start_time_until,
+        site_id,
+    )
 
     resp = await session.execute(stmt)
     return resp.scalar_one()
@@ -303,35 +352,52 @@ async def select_all_does(
     start: int,
     limit: int,
     changed_after: datetime | None,
+    group_filter: str | None = None,
+    start_time_since: datetime | None = None,
+    start_time_until: datetime | None = None,
+    site_id: int | None = None,
 ) -> Sequence[DynamicOperatingEnvelope]:
     """Admin selecting of does - no filtering on aggregator is made. Returns ordered by dynamic_operating_envelope_id
 
-    changed_after is INCLUSIVE"""
+    changed_after is INCLUSIVE
+    group_filter: If specified - only includes does whose parent SiteControlGroup is globally visible or whose
+        required_site_group references a SiteGroup with this name
+    start_time_since: If specified - only includes does with start_time >= this value
+    start_time_until: If specified - only includes does with start_time < this value
+    site_id: If specified - only includes does whose target SiteGroup counts site_id as a member"""
 
-    stmt = (
-        select(DynamicOperatingEnvelope)
-        .offset(start)
-        .limit(limit)
-        .where(DynamicOperatingEnvelope.site_control_group_id == site_control_group_id)
-        .order_by(
-            DynamicOperatingEnvelope.dynamic_operating_envelope_id.asc(),
-        )
+    stmt = _apply_doe_filters(
+        select(DynamicOperatingEnvelope),
+        site_control_group_id,
+        changed_after,
+        group_filter,
+        start_time_since,
+        start_time_until,
+        site_id,
     )
-
-    if changed_after and changed_after != datetime.min:
-        stmt = stmt.where(DynamicOperatingEnvelope.changed_time >= changed_after)
+    stmt = stmt.offset(start).limit(limit).order_by(DynamicOperatingEnvelope.dynamic_operating_envelope_id.asc())
 
     resp = await session.execute(stmt)
     return resp.scalars().all()
 
 
-async def count_all_site_control_groups(session: AsyncSession, changed_after: datetime | None) -> int:
+async def count_all_site_control_groups(
+    session: AsyncSession, changed_after: datetime | None, group_filter: str | None = None
+) -> int:
     """Admin counting of site control groups. If changed_after is specified, only groups that have their
-    changed_time >= changed_after will be included"""
+    changed_time >= changed_after will be included
+
+    group_filter: If specified - only includes groups that are globally visible (no required_site_group_id) or
+        whose required_site_group_id references a SiteGroup with this name"""
     stmt = select(func.count()).select_from(SiteControlGroup)
 
     if changed_after and changed_after != datetime.min:
         stmt = stmt.where(SiteControlGroup.changed_time >= changed_after)
+
+    if group_filter:
+        stmt = stmt.where(
+            required_site_group_visible_to_group_name(SiteControlGroup.required_site_group_id, group_filter)
+        )
 
     resp = await session.execute(stmt)
     return resp.scalar_one()
@@ -342,11 +408,14 @@ async def select_all_site_control_groups(
     start: int,
     limit: int,
     changed_after: datetime | None,
+    group_filter: str | None = None,
 ) -> Sequence[SiteControlGroup]:
     """Admin selecting of site control groups - no filtering on aggregator is made. Returns ordered by
     site_control_group_id ASC
 
-    changed_after is INCLUSIVE"""
+    changed_after is INCLUSIVE
+    group_filter: If specified - only includes groups that are globally visible (no required_site_group_id) or
+        whose required_site_group_id references a SiteGroup with this name"""
 
     stmt = (
         select(SiteControlGroup)
@@ -356,6 +425,11 @@ async def select_all_site_control_groups(
             SiteControlGroup.site_control_group_id.asc(),
         )
     )
+
+    if group_filter:
+        stmt = stmt.where(
+            required_site_group_visible_to_group_name(SiteControlGroup.required_site_group_id, group_filter)
+        )
 
     if changed_after and changed_after != datetime.min:
         stmt = stmt.where(SiteControlGroup.changed_time >= changed_after)

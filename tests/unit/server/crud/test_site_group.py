@@ -4,8 +4,9 @@ import pytest
 from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import select, update
 
-from envoy.server.crud.site_group import assign_default_site_groups_to_site
+from envoy.server.crud.site_group import assign_default_site_groups_to_site, required_site_group_visible_to_group_name
 from envoy.server.model.site import SiteGroup, SiteGroupAssignment
+from envoy.server.model.tariff import Tariff
 
 CHANGED_TIME = datetime(2024, 11, 1, 2, 3, 4, tzinfo=UTC)
 
@@ -64,3 +65,33 @@ async def test_assign_default_site_groups_to_site_with_defaults(pg_base_config):
             .all()
         )
         assert group_1_site_ids == {1, 2, 3}
+
+
+@pytest.mark.parametrize(
+    "required_site_group_id, group_name, expected_visible",
+    [
+        (None, "Group-1", True),  # No restriction - always visible
+        (None, "Group-DNE", True),  # No restriction - always visible
+        (1, "Group-1", True),  # Matching name
+        (1, "Group-2", False),  # Mismatched name
+        (1, "Group-DNE", False),  # Name doesn't exist
+    ],
+)
+@pytest.mark.anyio
+async def test_required_site_group_visible_to_group_name(
+    pg_base_config, required_site_group_id: int | None, group_name: str, expected_visible: bool
+):
+    """Sanity check the SQL filter clause behaves as documented using the Tariff table (tariff 1)"""
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(
+            update(Tariff).where(Tariff.tariff_id == 1).values(required_site_group_id=required_site_group_id)
+        )
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        stmt = select(Tariff.tariff_id).where(
+            (Tariff.tariff_id == 1)
+            & required_site_group_visible_to_group_name(Tariff.required_site_group_id, group_name)
+        )
+        result = (await session.execute(stmt)).scalar_one_or_none()
+        assert (result == 1) == expected_visible

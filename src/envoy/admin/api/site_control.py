@@ -91,6 +91,7 @@ async def get_all_site_control_groups(
     start: list[int] = Query([0]),
     limit: list[int] = Query([100]),
     after: datetime | None = Query(None),
+    group: list[str] = Query([]),
 ) -> SiteControlGroupPageResponse:
     """Endpoint for a paginated list of SiteControlGroupResponse Objects, ordered by the site_control_group_id
     attribute.
@@ -99,15 +100,22 @@ async def get_all_site_control_groups(
         start: start index value (for pagination). Default 0.
         limit: maximum number of objects to return. Default 100. Max 500.
         after: Filters objects that have been created/modified from this timestamp (inclusive). Default no filter.
+        group: SiteGroup name by which to filter returned groups (matches required_site_group against the named
+            SiteGroup OR any group with a null required_site_group). Default no filter.
 
     Returns:
         SiteControlGroupPageResponse
     """
+    group_filter: str | None = None
+    if group is not None and len(group) > 0:
+        group_filter = group[0]
+
     return await SiteControlGroupManager.get_all_site_control_groups(
         session=db.session,
         start=extract_start_from_paging_param(start),
         limit=extract_limit_from_paging_param(limit),
         changed_after=after,
+        group_filter=group_filter,
     )
 
 
@@ -138,6 +146,10 @@ async def get_all_site_controls(
     start: list[int] = Query([0]),
     limit: list[int] = Query([100]),
     after: datetime | None = Query(None),
+    group: list[str] = Query([]),
+    start_time_since: datetime | None = Query(None),
+    start_time_until: datetime | None = Query(None),
+    site_id: int | None = Query(None),
 ) -> SiteControlPageResponse:
     """Endpoint for a paginated list of SiteControlResponse Objects, ordered by site_control_id
     attribute.
@@ -146,16 +158,30 @@ async def get_all_site_controls(
         start: start index value (for pagination). Default 0.
         limit: maximum number of objects to return. Default 100. Max 500.
         after: Filters objects that have been created/modified from this timestamp (inclusive). Default no filter.
+        group: SiteGroup name by which to filter returned controls (matches the parent SiteControlGroup's
+            required_site_group against the named SiteGroup OR any SiteControlGroup with a null
+            required_site_group). Default no filter.
+        start_time_since: Filters controls whose start_time is >= this timestamp (inclusive). Default no filter.
+        start_time_until: Filters controls whose start_time is < this timestamp (exclusive). Default no filter.
+        site_id: Filters controls to those targeting a SiteGroup that this site is a member of. Default no filter.
 
     Returns:
         SiteControlPageResponse
     """
+    group_filter: str | None = None
+    if group is not None and len(group) > 0:
+        group_filter = group[0]
+
     return await SiteControlListManager.get_all_site_controls(
         session=db.session,
         site_control_group_id=group_id,
         start=extract_start_from_paging_param(start),
         limit=extract_limit_from_paging_param(limit),
         changed_after=after,
+        group_filter=group_filter,
+        start_time_since=start_time_since,
+        start_time_until=start_time_until,
+        site_id=site_id,
     )
 
 

@@ -1,11 +1,48 @@
+from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import and_, insert, or_, select
+from sqlalchemy import and_, func, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
+from envoy.server.crud.site_group import required_site_group_visible_to_group_name
 from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import Tariff, TariffGeneratedRate
+
+
+async def count_all_tariffs(session: AsyncSession, group_filter: str | None) -> int:
+    """Admin counting of tariffs. If group_filter is specified, only tariffs that are globally visible (no
+    required_site_group_id) or whose required_site_group_id references a SiteGroup with that name will be
+    included."""
+    stmt = select(func.count()).select_from(Tariff)
+
+    if group_filter:
+        stmt = stmt.where(required_site_group_visible_to_group_name(Tariff.required_site_group_id, group_filter))
+
+    resp = await session.execute(stmt)
+    return resp.scalar_one()
+
+
+async def select_all_tariffs_for_group(
+    session: AsyncSession, group_filter: str | None, start: int, limit: int
+) -> Sequence[Tariff]:
+    """Admin selecting of tariffs - ordered by tariff_id DESC. If group_filter is specified, only tariffs that are
+    globally visible (no required_site_group_id) or whose required_site_group_id references a SiteGroup with that
+    name will be included."""
+    stmt = (
+        select(Tariff)
+        .offset(start)
+        .limit(limit)
+        .order_by(
+            Tariff.tariff_id.desc(),
+        )
+    )
+
+    if group_filter:
+        stmt = stmt.where(required_site_group_visible_to_group_name(Tariff.required_site_group_id, group_filter))
+
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
 
 
 async def insert_single_tariff(session: AsyncSession, tariff: Tariff) -> None:

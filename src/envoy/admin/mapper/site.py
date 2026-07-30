@@ -216,7 +216,14 @@ class SiteMapper:
 
     @staticmethod
     def map_to_response(
-        total_count: int, limit: int, start: int, group: str | None, after: datetime | None, sites: Iterable[Site]
+        total_count: int,
+        limit: int,
+        start: int,
+        group: str | None,
+        after: datetime | None,
+        nmi: str | None,
+        aggregator_id: int | None,
+        sites: Iterable[Site],
     ) -> SitePageResponse:
         """Maps a set of sites to a single SitePageResponse. It's expected that sites will have their groups included"""
         return SitePageResponse(
@@ -225,6 +232,8 @@ class SiteMapper:
             start=start,
             after=after,
             group=group,
+            nmi=nmi,
+            aggregator_id=aggregator_id,
             sites=[SiteMapper.map_to_site_response(s) for s in sites],
         )
 

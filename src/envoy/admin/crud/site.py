@@ -8,7 +8,13 @@ from sqlalchemy.orm import selectinload
 from envoy.server.model.site import Site, SiteGroup, SiteGroupAssignment
 
 
-async def count_all_sites(session: AsyncSession, group_filter: str | None, changed_after: datetime | None) -> int:
+async def count_all_sites(
+    session: AsyncSession,
+    group_filter: str | None,
+    changed_after: datetime | None,
+    nmi_filter: str | None = None,
+    aggregator_id_filter: int | None = None,
+) -> int:
     """Admin counting of sites - no filtering on aggregator is made. If changed_after is specified, only
     sites that have their changed_time >= changed_after will be included"""
     stmt = select(func.count()).select_from(Site)
@@ -18,6 +24,12 @@ async def count_all_sites(session: AsyncSession, group_filter: str | None, chang
 
     if changed_after and changed_after != datetime.min:
         stmt = stmt.where(Site.changed_time >= changed_after)
+
+    if nmi_filter:
+        stmt = stmt.where(Site.nmi == nmi_filter)
+
+    if aggregator_id_filter is not None:
+        stmt = stmt.where(Site.aggregator_id == aggregator_id_filter)
 
     resp = await session.execute(stmt)
     return resp.scalar_one()
@@ -31,6 +43,8 @@ async def select_all_sites(
     changed_after: datetime | None,
     include_groups: bool = False,
     include_der: bool = False,
+    nmi_filter: str | None = None,
+    aggregator_id_filter: int | None = None,
 ) -> Sequence[Site]:
     """Admin selecting of sites - no filtering on aggregator is made."""
 
@@ -59,6 +73,12 @@ async def select_all_sites(
 
     if changed_after and changed_after != datetime.min:
         stmt = stmt.where(Site.changed_time >= changed_after)
+
+    if nmi_filter:
+        stmt = stmt.where(Site.nmi == nmi_filter)
+
+    if aggregator_id_filter is not None:
+        stmt = stmt.where(Site.aggregator_id == aggregator_id_filter)
 
     resp = await session.execute(stmt)
     return resp.scalars().all()

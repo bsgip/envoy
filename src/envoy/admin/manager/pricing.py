@@ -1,15 +1,24 @@
 """Managers for pricing/tariff endpoints"""
 
-from datetime import datetime
-
-from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest, TariffRequest, TariffResponse
+from envoy_schema.admin.schema.pricing import (
+    TariffGeneratedRateRequest,
+    TariffPageResponse,
+    TariffRequest,
+    TariffResponse,
+)
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from envoy.admin.crud.pricing import insert_single_tariff, update_single_tariff, upsert_many_tariff_genrate
+from envoy.admin.crud.pricing import (
+    count_all_tariffs,
+    insert_single_tariff,
+    select_all_tariffs_for_group,
+    update_single_tariff,
+    upsert_many_tariff_genrate,
+)
 from envoy.admin.mapper.pricing import TariffGeneratedRateListMapper, TariffMapper
 from envoy.notification.manager.notification import NotificationManager
-from envoy.server.crud.pricing import select_all_tariffs, select_single_tariff
+from envoy.server.crud.pricing import select_single_tariff
 from envoy.server.manager.time import utc_now
 from envoy.server.model.subscription import SubscriptionResource
 
@@ -50,10 +59,18 @@ class TariffManager:
 
 class TariffListManager:
     @staticmethod
-    async def fetch_many_tariffs(session: AsyncSession, start: int, limit: int) -> list[TariffResponse]:
-        """Select many tariff entries from the DB and map to a list of TariffResponse objects"""
-        tariff_list = await select_all_tariffs(session, start, datetime.min, limit, None)
-        return [TariffMapper.map_to_response(t) for t in tariff_list]
+    async def fetch_many_tariffs(
+        session: AsyncSession, start: int, limit: int, group_filter: str | None
+    ) -> TariffPageResponse:
+        """Select many tariff entries from the DB and map to a TariffPageResponse.
+
+        group_filter: If specified - only include tariffs that are globally visible or whose required_site_group
+            references a SiteGroup with this name"""
+        tariff_count = await count_all_tariffs(session, group_filter)
+        tariff_list = await select_all_tariffs_for_group(session, group_filter, start, limit)
+        return TariffMapper.map_to_page_response(
+            total_count=tariff_count, limit=limit, start=start, group=group_filter, tariffs=tariff_list
+        )
 
 
 class TariffGeneratedRateListManager:
