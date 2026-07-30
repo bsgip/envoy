@@ -57,6 +57,12 @@ from envoy.server.model.subscription import (
 from envoy.server.model.tariff import PRICE_DECIMAL_POWER, TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope
 
+# These resources are event types and can't be deleted - instead their "deletion" is represented as a status change
+NON_DELETABLE_RESOURCES: set[SubscriptionResource] = {
+    SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
+    SubscriptionResource.TARIFF_GENERATED_RATE,
+}
+
 
 @pytest.mark.parametrize(
     "sub, href_prefix, expected_display_id",
@@ -641,7 +647,7 @@ def test_entities_to_notification_sites(  # noqa: C901
             assert isinstance(notification, Notification)
             assert notification.subscribedResource.startswith(href_prefix)
             assert notification.subscriptionURI.startswith(href_prefix)
-            if notification_type == NotificationType.ENTITY_DELETED:
+            if notification_type == NotificationType.ENTITY_DELETED and resource not in NON_DELETABLE_RESOURCES:
                 assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
             else:
                 assert notification.status == NotificationStatus.DEFAULT

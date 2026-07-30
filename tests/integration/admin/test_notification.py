@@ -587,7 +587,7 @@ async def test_replace_rate_with_active_subscription(
                     if r.content is not None
                     and r.uri == subscription1_uri
                     and original_price in r.content
-                    and "<status>4</status>" in r.content
+                    and "<status>0</status>" in r.content
                 ]
             )
             == 1

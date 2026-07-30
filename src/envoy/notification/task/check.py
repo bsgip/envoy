@@ -265,7 +265,7 @@ def entities_to_notification(
             rates=[e.original for e in cast(Sequence[SiteScopedTariffGeneratedRate], entities)],
             sub=sub,
             scope=scope,
-            notification_type=notification_type,
+            notification_type=NotificationType.ENTITY_CHANGED,  # deletes for rates are just a status change
         )
     elif resource == SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE:
         # DYNAMIC_OPERATING_ENVELOPE: (aggregator_id: int, site_id: int, site_control_group_id: int)
@@ -275,7 +275,7 @@ def entities_to_notification(
             does=[e.original for e in cast(Sequence[SiteScopedDynamicOperatingEnvelope], entities)],
             sub=sub,
             scope=scope,
-            notification_type=notification_type,
+            notification_type=NotificationType.ENTITY_CHANGED,  # deletes for does are just a status change
             power10_multiplier=config.site_control_pow10_encoding,
         )
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
