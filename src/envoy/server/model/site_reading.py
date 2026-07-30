@@ -32,7 +32,7 @@ class SiteReadingType(Base):
         ForeignKey("aggregator.aggregator_id")
     )  # Tracks aggregator at time of write
     site_id: Mapped[int] = mapped_column(
-        ForeignKey("site.site_id")
+        ForeignKey("site.site_id"), index=True
     )  # Tracks the site that the underlying readings belong to
     mrid: Mapped[str] = mapped_column(
         VARCHAR(length=32, collation="case_insensitive")
