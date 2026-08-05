@@ -5,7 +5,7 @@ from envoy.server.model.doe import SiteControlGroupDefault
 from envoy.server.request_scope import BaseRequestScope
 
 # constant maximum values for the various mrid components (max values for an unsigned int representation)
-MAX_IANA_PEN = pow(2, 32) - 1  # 32 bits
+MAX_IANA_PEN = pow(10, 8) - 1  # PEN is encoded as decimal (CSIP-AUS TS 5573 Section 4.2) in a fixed 8 char slot
 MAX_MRID_ID = pow(2, 92) - 1  # 92 bits
 MAX_MRID_TYPE = pow(2, 4) - 1  # 4 bits
 MAX_INT_26 = pow(2, 26) - 1
@@ -22,22 +22,24 @@ def encode_mrid(mrid_type: MridType, id: int, iana_pen: int) -> str:
     """An mrid is 16 bytes (128 bit) encoded as a hexadecimal string.
 
     sep2 describes an mrid as a combination of an IANA PEN (lowest 32 bits) and the remaining 96 bits are an
-    implementation specific unique ID
+    implementation specific unique ID. CSIP-AUS TS 5573 Section 4.2 overrides this - the PEN is instead formatted
+    as decimal (not hex) to keep it human readable, occupying the last 8 characters of the mrid.
 
     This function will encode the following MRID format from LSB to MSB
 
-    Bits 0-31 (32 bits): IANA Pen
+    Bits 0-31 (32 bits): IANA Pen, formatted as decimal
     Bytes 32-123 (92 bits): Unique ID identifying the source record primary key
     Byte 124-127 (4 bits) mrid_type byte
 
-    Will return a hex encoded mrid string like: 'abbbbbbbbbbbbbbbbbbbbbbbcccccccc' with:
-        "a" representing the mrid type
-        "b" representing the id
-        "c" representing the iana_pen
+    Will return a mrid string like: 'abbbbbbbbbbbbbbbbbbbbbbbcccccccc' with:
+        "a" representing the mrid type (hex)
+        "b" representing the id (hex)
+        "c" representing the iana_pen (decimal)
 
     mrid_type:  (4 bits) Unsigned int - What is this mrid representing?
     id:  (92 bits) Unsigned int - an mrid_type specific value
-    iana_pen: (32 bits) Unsigned int - The IANA Private Enterprise Number of the org hosting this server"""
+    iana_pen: Unsigned int - The IANA Private Enterprise Number of the org hosting this server, must fit in 8
+        decimal digits"""
 
     if iana_pen < 0 or iana_pen > MAX_IANA_PEN:
         raise ValueError(f"iana_pen {iana_pen} is not in the range 0 -> {MAX_IANA_PEN}")
@@ -49,7 +51,7 @@ def encode_mrid(mrid_type: MridType, id: int, iana_pen: int) -> str:
     if mrid_type_int < 0 or mrid_type_int > MAX_MRID_TYPE:
         raise ValueError(f"mrid_type {mrid_type_int} is not in the range 0 -> {MAX_MRID_TYPE}")
 
-    return f"{mrid_type_int:x}{id:023x}{iana_pen:08x}"
+    return f"{mrid_type_int:x}{id:023x}{iana_pen:08d}"
 
 
 def decode_mrid_type(mrid: str) -> MridType:
