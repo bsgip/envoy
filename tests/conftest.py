@@ -1,16 +1,24 @@
 import json
 import os
+import subprocess
 from collections.abc import Generator
 from decimal import Decimal
 
+import psycopg
 import pytest
 from assertical.fixtures.environment import environment_snapshot
 from assertical.fixtures.postgres import generate_async_conn_str_from_connection
 from psycopg import Connection
+from pytest_postgresql.executor import PostgreSQLExecutor
+from pytest_postgresql.janitor import DatabaseJanitor
 
 from envoy.server.alembic import upgrade
 from tests.integration.conftest import READONLY_USER_KEY_1, READONLY_USER_KEY_2, READONLY_USER_NAME
 from tests.unit.jwt import DEFAULT_CLIENT_ID, DEFAULT_DATABASE_RESOURCE_ID, DEFAULT_ISSUER, DEFAULT_TENANT_ID
+
+# Name of the throwaway database used (once per test session) to run the full alembic migration
+# chain against so its resulting schema/data can be dumped for pg_migrated_schema_dump
+MIGRATED_SCHEMA_DB_NAME = "envoy_test_migrated_schema"
 
 DEFAULT_DOE_IMPORT_ACTIVE_WATTS = Decimal("8200")
 DEFAULT_DOE_EXPORT_ACTIVE_WATTS = Decimal("5400")
@@ -28,9 +36,86 @@ def preserved_environment():
         yield
 
 
+@pytest.fixture(scope="session")
+def pg_migrated_schema_dump(postgresql_proc: PostgreSQLExecutor) -> Generator[str, None, None]:
+    """Runs ONCE for the entire test session.
+
+    Creates a dedicated (throwaway) database on the shared postgres instance, runs the full chain
+    of alembic migrations against it (via upgrade()) and exports the resulting schema - plus any
+    data seeded by the migrations themselves (e.g. default SiteControlGroup/SiteDER rows) - as a
+    plain SQL dump via pg_dump.
+
+    pg_empty_config applies this dump directly to each test's (already empty) database rather
+    than re-running the full alembic migration chain for every single test - this is a LOT
+    quicker as alembic has to plan/execute dozens of migrations individually whereas applying a
+    flat SQL dump is comparatively instant.
+    """
+
+    janitor = DatabaseJanitor(
+        user=postgresql_proc.user,
+        host=postgresql_proc.host,
+        port=postgresql_proc.port,
+        version=postgresql_proc.version,
+        dbname=MIGRATED_SCHEMA_DB_NAME,
+        password=postgresql_proc.password,
+    )
+    janitor.init()
+    try:
+        with environment_snapshot():
+            migration_conn = psycopg.connect(
+                dbname=MIGRATED_SCHEMA_DB_NAME,
+                user=postgresql_proc.user,
+                password=postgresql_proc.password,
+                host=postgresql_proc.host,
+                port=postgresql_proc.port,
+            )
+            try:
+                os.environ["DATABASE_URL"] = generate_async_conn_str_from_connection(migration_conn)
+                os.environ["IANA_PEN"] = str(TEST_IANA_PEN)
+
+                # This will install all of the alembic migrations - DB is accessed via DATABASE_URL
+                upgrade()
+            finally:
+                migration_conn.close()
+
+        pg_dump_result = subprocess.run(
+            [
+                "pg_dump",
+                "--inserts",  # Emit data as INSERT statements (instead of COPY) so it can be replayed via psycopg
+                "--no-owner",
+                "--no-privileges",
+                "-h",
+                str(postgresql_proc.host),
+                "-p",
+                str(postgresql_proc.port),
+                "-U",
+                postgresql_proc.user,
+                "-d",
+                MIGRATED_SCHEMA_DB_NAME,
+            ],
+            env={**os.environ, "PGPASSWORD": postgresql_proc.password or ""},
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    finally:
+        janitor.drop()
+
+    # pg_dump (PG 18+) wraps its output in psql-only "\restrict"/"\unrestrict" meta-commands that
+    # aren't valid SQL and break execution via psycopg - strip them out, they only guard against
+    # psql executing arbitrary functions mid-restore which isn't a concern for this test dump.
+    dump_sql = "\n".join(
+        line
+        for line in pg_dump_result.stdout.splitlines()
+        if not line.startswith("\\restrict") and not line.startswith("\\unrestrict")
+    )
+
+    yield dump_sql
+
+
 @pytest.fixture
 def pg_empty_config(
-    preserved_environment, postgresql, request: pytest.FixtureRequest
+    preserved_environment, postgresql, pg_migrated_schema_dump: str, request: pytest.FixtureRequest
 ) -> Generator[Connection, None, None]:
     """Sets up the testing DB, applies alembic migrations but does NOT add any entities"""
 
@@ -91,18 +176,29 @@ def pg_empty_config(
     if exclude_endpoints_marker is not None:
         os.environ["exclude_endpoints"] = json.dumps(exclude_endpoints_marker.args[0])
 
-    # This will install all of the alembic migrations - DB is accessed from the DATABASE_URL env variable
-    upgrade()
+    # Rather than re-running the full (slow) alembic migration chain against this test's database,
+    # apply the schema/data dump exported once per session by pg_migrated_schema_dump - this is
+    # functionally equivalent to calling upgrade() but a lot quicker.
+    execute_sql_for_connection(postgresql, pg_migrated_schema_dump)
+
+    # pg_dump's preamble resets this connection's search_path to '' (it fully schema-qualifies
+    # everything it emits so it doesn't need one) - restore the normal default so any unqualified
+    # SQL run against this connection for the rest of the test resolves as expected.
+    execute_sql_for_connection(postgresql, "SET search_path TO public")
 
     yield postgresql
+
+
+def execute_sql_for_connection(cfg: Connection, sql: str) -> None:
+    with cfg.cursor() as cursor:
+        cursor.execute(sql)  # type: ignore
+        cfg.commit()
 
 
 def execute_sql_file_for_connection(cfg: Connection, path_to_sql_file: str) -> None:
     with open(path_to_sql_file) as f:
         sql = f.read()
-    with cfg.cursor() as cursor:
-        cursor.execute(sql)  # type: ignore
-        cfg.commit()
+    execute_sql_for_connection(cfg, sql)
 
 
 @pytest.fixture
