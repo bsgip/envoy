@@ -84,6 +84,19 @@ def test_decode_iana_pen_values(expected_iana_pen: int):
         assert decode_iana_pen(mrid.lower()) == expected_iana_pen, "hex case shouldn't affect decoding"
 
 
+def test_encode_mrid_pen_is_decimal_not_hex():
+    iana_pen = 12345678  # hex is "bc614e"
+    assert iana_pen <= MAX_IANA_PEN
+    assert any(c in "abcdef" for c in f"{iana_pen:x}")
+
+    mrid = encode_mrid(MridType.DYNAMIC_OPERATING_ENVELOPE, 1, iana_pen)
+    pen_portion = mrid[-8:]
+
+    assert pen_portion == f"{iana_pen:08d}"
+    assert pen_portion.isdigit()
+    assert decode_iana_pen(mrid) == iana_pen
+
+
 @pytest.mark.parametrize(
     "mrid_type, id, iana_pen",
     [
