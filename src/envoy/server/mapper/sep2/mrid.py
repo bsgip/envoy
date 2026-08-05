@@ -78,13 +78,13 @@ def decode_mrid_id(mrid: str) -> int:
 
 def decode_iana_pen(mrid: str) -> int:
     """Given the output of encode_mrid - Returns the iana_pen that was passed to the original call
-    by decoding the middle 92 bits of the hex string.
+    by decoding the last 8 (decimal) characters of the string.
 
     Raises a ValueError if mrid is not formatted correctly"""
     if len(mrid) != 32:
         raise ValueError(f"Expected a mrid in the form of a string. Got '{mrid}' instead")
 
-    return int(mrid[24:], 16)
+    return int(mrid[24:])
 
 
 class MridMapper:
