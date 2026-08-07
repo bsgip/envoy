@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import cast
 
-from envoy_schema.admin.schema.base import BatchCreateResponse
+from envoy_schema.admin.schema.base import BatchCreateCollidableResponse, OnCollide
 from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
     TariffComponentResponse,
@@ -19,9 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.admin.crud.pricing import (
     cancel_and_delete_tariff_component,
+    cancel_colliding_tariff_generated_rates,
     cancel_tariff_generated_rate,
     count_filtered_tariff_generated_rates,
     insert_many_tariff_genrate,
+    insert_many_tariff_genrate_ignore_collisions,
     insert_single_tariff,
     select_filtered_tariff_generated_rates,
     select_single_tariff_generated_rate,
@@ -207,11 +209,19 @@ class TariffGeneratedRateManager:
 
     @staticmethod
     async def add_many_tariff_genrate(
-        session: AsyncSession, tariff_genrates: list[TariffGeneratedRateRequest]
-    ) -> BatchCreateResponse:
+        session: AsyncSession,
+        tariff_genrates: list[TariffGeneratedRateRequest],
+        on_collide: OnCollide = OnCollide.error,
+    ) -> BatchCreateCollidableResponse:
         """Map a TariffGeneratedRateRequest object to a TariffGeneratedRate model and insert into DB.
 
-        Return the IDs of the inserted rates."""
+        Entities that collide with an existing record on the (tariff_component_id, start_time, site_group_id)
+        unique constraint will be handled according to on_collide:
+            error: The entire operation will be aborted (nothing written) - a collision will raise an IntegrityError
+            ignore: Colliding entities will be skipped. The corresponding ID in the response will be -1
+            cancel: Any existing colliding entities will be cancelled (archived/deleted) before inserting
+
+        Return the IDs of the inserted rates (1-1 correlated with tariff_genrates - see OnCollide)."""
 
         changed_time = utc_now()
 
@@ -224,14 +234,21 @@ class TariffGeneratedRateManager:
         tariff_genrate_models = TariffGeneratedRateListMapper.map_from_request(
             changed_time, tariff_genrates, tariff_ids_by_component
         )
-        insert_ids = await insert_many_tariff_genrate(session, tariff_genrate_models)
+
+        insert_ids: list[int | None]
+        if on_collide == OnCollide.ignore:
+            insert_ids = await insert_many_tariff_genrate_ignore_collisions(session, tariff_genrate_models)
+        else:
+            if on_collide == OnCollide.cancel:
+                await cancel_colliding_tariff_generated_rates(session, tariff_genrate_models, changed_time)
+            insert_ids = cast(list[int | None], await insert_many_tariff_genrate(session, tariff_genrate_models))
 
         await NotificationManager.notify_changed_deleted_entities(
             session, SubscriptionResource.TARIFF_GENERATED_RATE, changed_time
         )
         await session.commit()
 
-        return BatchCreateResponse(ids=cast(list[int], insert_ids))
+        return BatchCreateCollidableResponse(on_collide=on_collide, ids=insert_ids)
 
     @staticmethod
     async def fetch_tariff_genrates(

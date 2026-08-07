@@ -10,7 +10,7 @@ from assertical.asserts.time import assert_nowish
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
-from envoy_schema.admin.schema.base import BatchCreateResponse
+from envoy_schema.admin.schema.base import BatchCreateCollidableResponse, BatchCreateResponse, OnCollide
 from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
     TariffComponentResponse,
@@ -293,6 +293,172 @@ async def test_create_tariff_genrates_with_fetch(admin_client_auth: AsyncClient)
         assert actual_genrate.tariff_generated_rate_id == new_id
         assert_nowish(actual_genrate.created_time)
         assert_nowish(actual_genrate.changed_time)
+
+
+@pytest.mark.anyio
+async def test_create_tariff_genrates_on_collide_error_default(pg_base_config, admin_client_auth: AsyncClient):
+    """The default (and explicit "error") on_collide behaviour should reject the entire batch (writing nothing) if
+    any entity collides with an existing record on (tariff_component_id, start_time, site_group_id)"""
+
+    async with generate_async_session(pg_base_config) as session:
+        before_count = (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
+
+    # Collides with tariff_generated_rate_id 1 (tariff_component_id=1, site_group_id=2, start_time=2022-03-05 01:00+10)
+    colliding_rate = TariffGeneratedRateRequest(
+        tariff_component_id=1,
+        site_group_id=2,
+        start_time=datetime(2022, 3, 5, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        duration_seconds=11,
+        calculation_log_id=None,
+        price_pow10_encoded=999999,
+    )
+    new_rate = generate_class_instance(
+        TariffGeneratedRateRequest, seed=303, tariff_component_id=2, site_group_id=2, calculation_log_id=None
+    )
+
+    for query_params in [{}, {"on_collide": str(OnCollide.error)}]:
+        resp = await admin_client_auth.post(
+            TariffGeneratedRateCreateUri,
+            content=f"[{colliding_rate.model_dump_json()}, {new_rate.model_dump_json()}]",
+            headers={"Content-Type": "application/json"},
+            params=query_params,
+        )
+        assert resp.status_code == HTTPStatus.BAD_REQUEST
+
+    # Nothing should have been written
+    async with generate_async_session(pg_base_config) as session:
+        after_count = (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
+        archive_count = (
+            await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))
+        ).scalar_one()
+        assert after_count == before_count
+        assert archive_count == 0
+
+
+@pytest.mark.anyio
+async def test_create_tariff_genrates_on_collide_ignore(pg_base_config, admin_client_auth: AsyncClient):
+    """on_collide=ignore should skip (not insert) colliding entities but preserve 1-1 correspondence with -1"""
+
+    async with generate_async_session(pg_base_config) as session:
+        before_count = (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
+
+    # Collides with tariff_generated_rate_id 1
+    colliding_rate = TariffGeneratedRateRequest(
+        tariff_component_id=1,
+        site_group_id=2,
+        start_time=datetime(2022, 3, 5, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        duration_seconds=11,
+        calculation_log_id=None,
+        price_pow10_encoded=999999,
+    )
+    new_rate = generate_class_instance(
+        TariffGeneratedRateRequest, seed=303, tariff_component_id=2, site_group_id=2, calculation_log_id=None
+    )
+
+    resp = await admin_client_auth.post(
+        TariffGeneratedRateCreateUri,
+        content=f"[{colliding_rate.model_dump_json()}, {new_rate.model_dump_json()}]",
+        headers={"Content-Type": "application/json"},
+        params={"on_collide": OnCollide.ignore},
+    )
+    assert resp.status_code == HTTPStatus.CREATED
+    rate_resp = BatchCreateCollidableResponse(**json.loads(resp.content))
+
+    assert rate_resp.on_collide == OnCollide.ignore
+    assert len(rate_resp.ids) == 2
+    assert rate_resp.ids[0] is None, "This entity collided and should've been skipped"
+    assert isinstance(rate_resp.ids[1], int)
+
+    async with generate_async_session(pg_base_config) as session:
+        after_count = (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
+        archive_count = (
+            await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))
+        ).scalar_one()
+        assert after_count == before_count + 1, "Only the non-colliding entity should've been inserted"
+        assert archive_count == 0, "Nothing should be cancelled/archived in ignore mode"
+
+        # The original colliding record should remain completely untouched
+        original_rate = (
+            await session.execute(select(TariffGeneratedRate).where(TariffGeneratedRate.tariff_generated_rate_id == 1))
+        ).scalar_one()
+        assert original_rate.price_pow10_encoded == 1111
+
+        new_rate_db = (
+            await session.execute(
+                select(TariffGeneratedRate).where(TariffGeneratedRate.tariff_generated_rate_id == rate_resp.ids[1])
+            )
+        ).scalar_one()
+        assert new_rate_db.tariff_component_id == new_rate.tariff_component_id
+        assert new_rate_db.site_group_id == new_rate.site_group_id
+
+
+@pytest.mark.anyio
+async def test_create_tariff_genrates_on_collide_cancel(pg_base_config, admin_client_auth: AsyncClient):
+    """on_collide=cancel should cancel (archive/delete) any existing colliding entities before inserting"""
+
+    async with generate_async_session(pg_base_config) as session:
+        before_count = (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
+
+    # Collides with tariff_generated_rate_id 1
+    colliding_rate = TariffGeneratedRateRequest(
+        tariff_component_id=1,
+        site_group_id=2,
+        start_time=datetime(2022, 3, 5, 1, 0, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
+        duration_seconds=11,
+        calculation_log_id=None,
+        price_pow10_encoded=999999,
+    )
+    new_rate = generate_class_instance(
+        TariffGeneratedRateRequest, seed=303, tariff_component_id=2, site_group_id=2, calculation_log_id=None
+    )
+
+    resp = await admin_client_auth.post(
+        TariffGeneratedRateCreateUri,
+        content=f"[{colliding_rate.model_dump_json()}, {new_rate.model_dump_json()}]",
+        headers={"Content-Type": "application/json"},
+        params={"on_collide": OnCollide.cancel},
+    )
+    assert resp.status_code == HTTPStatus.CREATED
+    rate_resp = BatchCreateCollidableResponse(**json.loads(resp.content))
+
+    assert rate_resp.on_collide == OnCollide.cancel
+    assert len(rate_resp.ids) == 2
+    assert all(i != -1 for i in rate_resp.ids), "Both entities should've been inserted with fresh ids"
+    assert 1 not in rate_resp.ids, "The old (cancelled) id should not be reused"
+
+    async with generate_async_session(pg_base_config) as session:
+        after_count = (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one()
+        assert after_count == before_count + 1, "1 cancelled + 2 inserted = net +1"
+
+        # Old record 1 should be gone from the live table and archived (as a delete/cancellation)
+        old_record = (
+            await session.execute(
+                select(func.count())
+                .select_from(TariffGeneratedRate)
+                .where(TariffGeneratedRate.tariff_generated_rate_id == 1)
+            )
+        ).scalar_one()
+        assert old_record == 0
+
+        archived = (
+            await session.execute(
+                select(ArchiveTariffGeneratedRate).where(ArchiveTariffGeneratedRate.tariff_generated_rate_id == 1)
+            )
+        ).scalar_one()
+        assert archived.deleted_time is not None
+        assert archived.price_pow10_encoded == 1111, "The archived record should reflect the OLD price"
+
+        # The replacement record should have the new price at the same natural key
+        replacement = (
+            await session.execute(
+                select(TariffGeneratedRate)
+                .where(TariffGeneratedRate.tariff_component_id == 1)
+                .where(TariffGeneratedRate.site_group_id == 2)
+                .where(TariffGeneratedRate.start_time == colliding_rate.start_time)
+            )
+        ).scalar_one()
+        assert replacement.price_pow10_encoded == 999999
+        assert replacement.tariff_generated_rate_id in rate_resp.ids
 
 
 @pytest.mark.parametrize(

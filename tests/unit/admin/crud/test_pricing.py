@@ -7,12 +7,15 @@ from assertical.asserts.type import assert_dict_type, assert_list_type
 from assertical.fake.generator import clone_class_instance, generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from envoy.admin.crud.pricing import (
     cancel_and_delete_tariff_component,
+    cancel_colliding_tariff_generated_rates,
     cancel_tariff_generated_rate,
     count_filtered_tariff_generated_rates,
     insert_many_tariff_genrate,
+    insert_many_tariff_genrate_ignore_collisions,
     insert_single_tariff,
     select_filtered_tariff_generated_rates,
     select_single_tariff_generated_rate,
@@ -208,9 +211,16 @@ async def test_insert_many_tariff_genrate_insert(pg_base_config):
             tariff_component_id=1,
             start_time=rate_in.start_time + timedelta(seconds=1),
         )
+        rate_in_2 = generate_class_instance(
+            TariffGeneratedRate,
+            site_group_id=1,
+            tariff_id=1,
+            tariff_component_id=1,
+            start_time=rate_in.start_time + timedelta(seconds=2),
+        )
 
         # Rerun as a sanity check to catch any weird conflict errors
-        inserted_ids_1 = await insert_many_tariff_genrate(session, [rate_in, rate_in_1])
+        inserted_ids_1 = await insert_many_tariff_genrate(session, [rate_in_1, rate_in_2])
         assert_list_type(int, inserted_ids_1, count=2)
 
         assert inserted_ids[0] not in inserted_ids_1, "These should be new "
@@ -220,8 +230,9 @@ async def test_insert_many_tariff_genrate_insert(pg_base_config):
 
 
 @pytest.mark.anyio
-async def test_insert_many_tariff_genrate_overlapping(pg_base_config):
-    """Assert that we are able to successfully insert an overlapping TariffGeneratedRate in the db"""
+async def test_insert_many_tariff_genrate_overlapping_time_ranges(pg_base_config):
+    """Assert that we are able to successfully insert a TariffGeneratedRate whose time range overlaps an existing
+    record, provided it doesn't share the exact same (tariff_component_id, start_time, site_group_id)"""
 
     async with generate_async_session(pg_base_config) as session:
         original_rate = await _select_latest_tariff_generated_rate(session)
@@ -237,6 +248,7 @@ async def test_insert_many_tariff_genrate_overlapping(pg_base_config):
         rate_to_insert.price_pow10_encoded += 123
         rate_to_insert.changed_time = datetime(2026, 1, 3, tzinfo=UTC)
         rate_to_insert.created_time = datetime(2027, 1, 3, tzinfo=UTC)  # This shouldn't do anything
+        rate_to_insert.start_time = original_rate.start_time + timedelta(seconds=1)  # avoid the unique constraint
 
         inserted_ids = await insert_many_tariff_genrate(session, [rate_to_insert])
         await session.commit()
@@ -269,6 +281,126 @@ async def test_insert_many_tariff_genrate_overlapping(pg_base_config):
 
         # Nothing in the archive
         assert (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one() == 0
+
+
+@pytest.mark.anyio
+async def test_insert_many_tariff_genrate_collision_raises(pg_base_config):
+    """Assert that inserting a TariffGeneratedRate that collides on (tariff_component_id, start_time,
+    site_group_id) with an existing record raises an IntegrityError and leaves the DB untouched."""
+
+    async with generate_async_session(pg_base_config) as session:
+        original_rate = await _select_latest_tariff_generated_rate(session)
+        cloned_original_rate = clone_class_instance(
+            original_rate, ignored_properties={"tariff", "site_group", "tariff_component"}
+        )
+
+        # Shares the same (tariff_component_id, start_time, site_group_id) as original_rate
+        colliding_rate: TariffGeneratedRate = clone_class_instance(
+            original_rate,
+            ignored_properties={"tariff_generated_rate_id", "created_time", "site_group", "tariff", "tariff_component"},
+        )
+        colliding_rate.price_pow10_encoded += 123
+
+        with pytest.raises(IntegrityError):
+            await insert_many_tariff_genrate(session, [colliding_rate])
+
+        await session.rollback()
+
+    # Nothing should have been written to the DB (including the archive)
+    async with generate_async_session(pg_base_config) as session:
+        rate_after_insert = await _select_tariff_generated_rate_by_id(
+            session, cloned_original_rate.tariff_generated_rate_id
+        )
+        assert_class_instance_equality(TariffGeneratedRate, cloned_original_rate, rate_after_insert)
+
+        assert (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one() == 7, (
+            "base_config.sql seeds 7 rates - none should have been added"
+        )
+        assert (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one() == 0
+
+
+@pytest.mark.anyio
+async def test_insert_many_tariff_genrate_ignore_collisions_empty(pg_base_config):
+    async with generate_async_session(pg_base_config) as session:
+        assert await insert_many_tariff_genrate_ignore_collisions(session, []) == []
+
+
+@pytest.mark.anyio
+async def test_insert_many_tariff_genrate_ignore_collisions(pg_base_config):
+    """Mix of colliding/new/duplicated-within-batch rates - checks the returned IDs preserve 1-1 correspondence"""
+
+    async with generate_async_session(pg_base_config) as session:
+        original_rate = await _select_latest_tariff_generated_rate(session)
+
+        colliding_rate: TariffGeneratedRate = clone_class_instance(
+            original_rate,
+            ignored_properties={"tariff_generated_rate_id", "created_time", "site_group", "tariff", "tariff_component"},
+        )
+        colliding_rate.price_pow10_encoded += 123  # Collides with original_rate - shouldn't be inserted
+
+        new_rate_1: TariffGeneratedRate = clone_class_instance(
+            colliding_rate, ignored_properties={"site_group", "tariff", "tariff_component"}
+        )
+        new_rate_1.start_time = original_rate.start_time + timedelta(seconds=1)  # Doesn't collide
+
+        new_rate_2: TariffGeneratedRate = clone_class_instance(
+            colliding_rate, ignored_properties={"site_group", "tariff", "tariff_component"}
+        )
+        new_rate_2.start_time = original_rate.start_time + timedelta(seconds=2)  # Doesn't collide
+
+        result = await insert_many_tariff_genrate_ignore_collisions(session, [colliding_rate, new_rate_1, new_rate_2])
+        await session.commit()
+
+        assert len(result) == 3
+        assert result[0] is None
+        assert isinstance(result[1], int)
+        assert isinstance(result[2], int)
+        assert result[1] != result[2]
+
+    async with generate_async_session(pg_base_config) as session:
+        assert (await session.execute(select(func.count()).select_from(TariffGeneratedRate))).scalar_one() == 9, (
+            "The 7 seeded rates plus the 2 newly inserted (non-colliding) rates"
+        )
+        assert (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one() == 0
+
+
+@pytest.mark.anyio
+async def test_cancel_colliding_tariff_generated_rates_empty(pg_base_config):
+    async with generate_async_session(pg_base_config) as session:
+        await cancel_colliding_tariff_generated_rates(session, [], datetime(2028, 4, 1, tzinfo=UTC))
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        assert (await session.execute(select(func.count()).select_from(ArchiveTariffGeneratedRate))).scalar_one() == 0
+
+
+@pytest.mark.anyio
+async def test_cancel_colliding_tariff_generated_rates(pg_base_config):
+    """Only rates that collide on (tariff_component_id, start_time, site_group_id) should be cancelled"""
+
+    deleted_time = datetime(2028, 4, 1, tzinfo=UTC)
+    async with generate_async_session(pg_base_config) as session:
+        rate_1 = await _select_tariff_generated_rate_by_id(session, 1)  # Will collide
+        rate_2 = await _select_tariff_generated_rate_by_id(session, 2)  # Will collide
+        rate_4 = await _select_tariff_generated_rate_by_id(session, 4)  # Will NOT collide (diff site_group_id)
+        assert rate_1 is not None and rate_2 is not None and rate_4 is not None
+
+        colliding_1 = clone_class_instance(rate_1, ignored_properties={"tariff", "site_group", "tariff_component"})
+        colliding_2 = clone_class_instance(rate_2, ignored_properties={"tariff", "site_group", "tariff_component"})
+        non_colliding = clone_class_instance(rate_4, ignored_properties={"tariff", "site_group", "tariff_component"})
+        non_colliding.site_group_id = 99  # No existing rate matches this combination
+
+        await cancel_colliding_tariff_generated_rates(session, [colliding_1, colliding_2, non_colliding], deleted_time)
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        remaining_ids = (await session.execute(select(TariffGeneratedRate.tariff_generated_rate_id))).scalars().all()
+        assert sorted(remaining_ids) == [3, 4, 5, 6, 7], "Only rates 1 and 2 should have been cancelled"
+
+        archive_records = (await session.execute(select(ArchiveTariffGeneratedRate))).scalars().all()
+        assert len(archive_records) == 2
+        assert sorted([a.tariff_generated_rate_id for a in archive_records]) == [1, 2]
+        assert all(a.deleted_time == deleted_time for a in archive_records)
 
 
 @pytest.mark.parametrize(

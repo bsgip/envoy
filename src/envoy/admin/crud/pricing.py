@@ -1,8 +1,10 @@
+from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from datetime import datetime
 from typing import Any, TypeVar
 
-from sqlalchemy import Select, func, insert, select
+from sqlalchemy import Select, func, insert, select, tuple_
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
@@ -102,6 +104,81 @@ async def insert_many_tariff_genrate(
     )
 
     return insert_ids.scalars().all()
+
+
+async def insert_many_tariff_genrate_ignore_collisions(
+    session: AsyncSession, tariff_genrates: list[TariffGeneratedRate]
+) -> list[int | None]:
+    """Inserts multiple tariff generated rate entries into the DB. Any entry that collides with an existing record
+    on the (tariff_component_id, start_time, site_group_id) unique constraint will be silently skipped (NOT
+    inserted/updated).
+
+    Returns a list of IDs that is the same length/order as tariff_genrates - each element being EITHER the newly
+    inserted tariff_generated_rate_id OR COLLISION_ID_PLACEHOLDER if that entry collided with an existing record
+    and was therefore skipped."""
+
+    if not tariff_genrates:
+        return []
+
+    table = TariffGeneratedRate.__table__
+    insert_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
+
+    stmt = (
+        pg_insert(TariffGeneratedRate)
+        .values([{k: getattr(r, k) for k in insert_cols} for r in tariff_genrates])
+        .on_conflict_do_nothing(index_elements=["tariff_component_id", "start_time", "site_group_id"])
+        .returning(
+            TariffGeneratedRate.tariff_generated_rate_id,
+            TariffGeneratedRate.tariff_component_id,
+            TariffGeneratedRate.start_time,
+            TariffGeneratedRate.site_group_id,
+        )
+    )
+    inserted_rows = (await session.execute(stmt)).all()
+
+    # Rows that collided simply won't appear in inserted_rows - we match returned rows back to their originating
+    # request (by natural key) to preserve the 1-1 correspondence expected by the caller.
+    ids_by_key: dict[tuple[int, datetime, int], list[int]] = defaultdict(list)
+    for rate_id, tariff_component_id, start_time, site_group_id in inserted_rows:
+        ids_by_key[(tariff_component_id, start_time, site_group_id)].append(rate_id)
+
+    result: list[int | None] = []
+    for r in tariff_genrates:
+        candidate_ids = ids_by_key.get((r.tariff_component_id, r.start_time, r.site_group_id))
+        if candidate_ids:
+            result.append(candidate_ids.pop(0))
+        else:
+            result.append(None)
+
+    return result
+
+
+async def cancel_colliding_tariff_generated_rates(
+    session: AsyncSession, tariff_genrates: Iterable[TariffGeneratedRate], deleted_time: datetime
+) -> None:
+    """Finds any existing TariffGeneratedRate that collides (on the (tariff_component_id, start_time, site_group_id)
+    unique constraint) with any of the specified tariff_genrates and cancels (deletes/archives) it with the
+    specified deleted_time.
+
+    If no rows collide - this will have no effect."""
+
+    keys = [(r.tariff_component_id, r.start_time, r.site_group_id) for r in tariff_genrates]
+    if not keys:
+        return
+
+    await delete_rows_into_archive(
+        session,
+        TariffGeneratedRate,
+        ArchiveTariffGeneratedRate,
+        deleted_time,
+        lambda q: q.where(
+            tuple_(
+                TariffGeneratedRate.tariff_component_id,
+                TariffGeneratedRate.start_time,
+                TariffGeneratedRate.site_group_id,
+            ).in_(keys)
+        ),
+    )
 
 
 async def select_tariff_ids_for_component_ids(

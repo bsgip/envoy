@@ -3,7 +3,7 @@ from datetime import datetime
 from http import HTTPStatus
 
 from asyncpg.exceptions import CardinalityViolationError
-from envoy_schema.admin.schema.base import BatchCreateResponse
+from envoy_schema.admin.schema.base import BatchCreateCollidableResponse, BatchCreateResponse, OnCollide
 from envoy_schema.admin.schema.pricing import (
     TariffComponentRequest,
     TariffComponentResponse,
@@ -222,17 +222,27 @@ async def get_tariff_components_for_tariff(tariff_id: int) -> list[TariffCompone
 @router.post(TariffGeneratedRateCreateUri, status_code=HTTPStatus.CREATED, response_model=None)
 async def create_tariff_genrate(
     tariff_generates: list[TariffGeneratedRateRequest],
-) -> BatchCreateResponse:
+    on_collide: OnCollide = Query(OnCollide.error),
+) -> BatchCreateCollidableResponse:
     """Bulk creation of 'Tariff Generated Rates' associated with respective Tariffs (tariff_id) and Sites (site_id).
+
+    A TariffGeneratedRate collides with another if they share the same (tariff_component_id, start_time,
+    site_group_id).
 
     Body:
         List of TariffGeneratedRateRequest objects.
 
+    Query Param:
+        on_collide: How to handle a submitted entity that collides with an existing record. Default "error".
+            error: Abort the entire operation - nothing will be written to the DB.
+            ignore: Skip (don't insert) any colliding entities - the corresponding ID in the response will be -1.
+            cancel: Cancel (archive/delete) any existing colliding entities before inserting the new entities.
+
     Returns:
-        None
+        BatchCreateCollidableResponse - the ids list will correlate 1-1 with the submitted tariff_generates.
     """
     try:
-        return await TariffGeneratedRateManager.add_many_tariff_genrate(db.session, tariff_generates)
+        return await TariffGeneratedRateManager.add_many_tariff_genrate(db.session, tariff_generates, on_collide)
 
     except CardinalityViolationError as exc:
         raise LoggedHttpException(
@@ -243,7 +253,12 @@ async def create_tariff_genrate(
         ) from exc
 
     except IntegrityError as exc:
-        raise LoggedHttpException(logger, exc, HTTPStatus.BAD_REQUEST, "tariff_id or site_id not found") from exc
+        raise LoggedHttpException(
+            logger,
+            exc,
+            HTTPStatus.BAD_REQUEST,
+            "tariff_id or site_id not found, or a colliding TariffGeneratedRate already exists (see on_collide)",
+        ) from exc
 
 
 @router.get(

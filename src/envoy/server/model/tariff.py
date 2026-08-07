@@ -11,7 +11,18 @@ from envoy_schema.server.schema.sep2.types import (
     RoleFlagsType,
     UomType,
 )
-from sqlalchemy import INTEGER, VARCHAR, BigInteger, DateTime, ForeignKey, Index, Integer, String, func
+from sqlalchemy import (
+    INTEGER,
+    VARCHAR,
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from envoy.server.model import Base, SiteGroup
@@ -150,4 +161,10 @@ class TariffGeneratedRate(Base):
             "end_time",
             "site_group_id",
         ),  # Used by the primary csip-aus DERControl list endpoint (for fetching via Tariff)
+        UniqueConstraint(
+            "tariff_component_id",
+            "start_time",
+            "site_group_id",
+            name="uc_tariff_generated_rate_component_id_start_time_site_group_id",
+        ),  # Only one rate can be active for a given TariffComponent/SiteGroup at a given start_time
     )
