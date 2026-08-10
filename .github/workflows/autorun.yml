@@ -21,10 +21,8 @@ concurrency:
 env:
   # Bump deliberately - see https://github.com/bsgip/cactus-client/commits/main
   CACTUS_CLIENT_PIN: 931250ca93bfbd485a057a9ff6cb300cd124be2f
-  # Pinned to a commit on support_latest_envoy_version for now, since that branch is working
-  # towards compatibility with envoy versions beyond cactus-client-envoy's released dependency
-  # pin. Switch this to a main-branch SHA once that work has landed and merged.
-  CACTUS_CLIENT_ENVOY_PIN: 6a3310f24b6c338c097552ed20905ce7d1161a1a
+  # Bump deliberately - see https://github.com/bsgip/cactus-client-envoy/releases
+  CACTUS_CLIENT_ENVOY_PIN: v1.1.0
 
 jobs:
   autorun:
@@ -93,7 +91,7 @@ jobs:
             sleep 3
           done
           echo "envoy did not become reachable in time" >&2
-          docker compose -f envoy/demo/docker-compose.yaml logs
+          docker compose -f envoy/demo/docker-compose.yaml logs --tail=50
           exit 1
 
       - name: Install cactus-client-envoy, cactus-client and envoy
@@ -114,6 +112,7 @@ jobs:
           cactus server dcap https://localhost:8443/dcap
           cactus server verify true
           cactus server serca ./envoy/demo/tls-termination/test_certs/testca.crt
+          cactus server notification https://cactus.cecs.anu.edu.au/client-notifications/
 
       - name: Register demo clients
         run: |
@@ -126,14 +125,22 @@ jobs:
       - name: Run short test suite
         run: |
           source .venv/bin/activate
-          cactus autorun --include-file ./cactus-client/include_short.txt --headless --timeout 60
+          set +e
+          cactus autorun --include-file ./cactus-client/include_short.txt --headless --timeout 60 2>cactus-debug.log >cactus-stdout.log
+          exit_code=$?
+          set -e
+          sed -n '/Compliance Report/,$p' cactus-stdout.log
+          exit $exit_code
 
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cactus-test-reports
-          path: cactus-test/
+          path: |
+            cactus-test/
+            cactus-debug.log
+            cactus-stdout.log
           if-no-files-found: warn
 
       - name: Tear down envoy demo stack
