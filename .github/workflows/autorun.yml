@@ -59,40 +59,16 @@ jobs:
 
       - name: Start envoy demo stack
         working-directory: envoy/demo
-        run: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up -d
+        # --wait blocks until every service with a healthcheck reports healthy and every
+        # one-off (envoy-db_init) exits 0 - envoy/envoy-admin's healthchecks hit their own
+        # /status/health endpoint, which only turns healthy once envoy-db_init's migrations
+        # have run, so this also covers waiting for migrations to complete.
+        run: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up -d --wait --wait-timeout 180
 
-      - name: Wait for envoy database migrations to complete
+      - name: Dump envoy stack logs on startup failure
+        if: failure()
         working-directory: envoy/demo
-        run: |
-          container_id=$(docker compose ps -q envoy-db_init)
-          if [ -z "$container_id" ]; then
-            echo "envoy-db_init container not found" >&2
-            docker compose ps
-            exit 1
-          fi
-          exit_code=$(docker wait "$container_id")
-          if [ "$exit_code" != "0" ]; then
-            echo "envoy-db_init exited with code $exit_code" >&2
-            docker logs "$container_id"
-            exit 1
-          fi
-          echo "envoy-db_init completed successfully"
-
-      - name: Wait for envoy to be reachable
-        run: |
-          certs=envoy/demo/tls-termination/test_certs
-          for i in $(seq 1 10); do
-            code=$(curl -sk --cert "$certs/testdevice1.crt" --key "$certs/testdevice1.key" -o /dev/null -w '%{http_code}' https://localhost:8443/dcap || true)
-            if [ "$code" = "200" ]; then
-              echo "envoy is up (dcap returned 200)"
-              exit 0
-            fi
-            echo "Waiting for envoy... (attempt $i, last status: $code)"
-            sleep 3
-          done
-          echo "envoy did not become reachable in time" >&2
-          docker compose -f envoy/demo/docker-compose.yaml logs --tail=50
-          exit 1
+        run: docker compose logs --tail=100
 
       - name: Install cactus-client-envoy, cactus-client and envoy
         run: |
