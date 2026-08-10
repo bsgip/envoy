@@ -45,6 +45,14 @@ services:
     depends_on:
       envoy-db:
         condition: service_started
+    healthcheck:
+      # unauthenticated - reports unhealthy (500) until the DB is reachable AND migrated
+      # (queries the aggregator table, so it fails naturally pre-migration)
+      test: python -c "import sys,urllib.request as u; sys.exit(0 if u.urlopen('http://localhost:8000/status/health?check_data=false').status==200 else 1)"
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
 
   envoy-admin:
     image: envoy:latest
@@ -62,6 +70,12 @@ services:
     depends_on:
       envoy-db:
         condition: service_started
+    healthcheck:
+      test: python -c "import sys,urllib.request as u; sys.exit(0 if u.urlopen('http://localhost:8001/status/health?check_data=false').status==200 else 1)"
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
 
   envoy-db:
     image: postgres:16

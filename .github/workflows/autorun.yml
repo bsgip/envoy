@@ -1,0 +1,125 @@
+name: Autorun (short tests via cactus-client)
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      cactus_client_ref:
+        description: "cactus-client ref to test against (defaults to the pinned SHA below)"
+        required: false
+        default: ""
+      cactus_client_envoy_ref:
+        description: "cactus-client-envoy ref to test against (defaults to the pinned SHA below)"
+        required: false
+        default: ""
+
+concurrency:
+  group: autorun-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Bump deliberately - see https://github.com/bsgip/cactus-client/commits/main
+  CACTUS_CLIENT_PIN: 931250ca93bfbd485a057a9ff6cb300cd124be2f
+  # Bump deliberately - see https://github.com/bsgip/cactus-client-envoy/releases
+  CACTUS_CLIENT_ENVOY_PIN: v1.1.0
+
+jobs:
+  autorun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - name: Checkout envoy
+        uses: actions/checkout@v6
+        with:
+          path: envoy
+
+      - name: Checkout cactus-client
+        uses: actions/checkout@v6
+        with:
+          repository: bsgip/cactus-client
+          ref: ${{ inputs.cactus_client_ref || env.CACTUS_CLIENT_PIN }}
+          path: cactus-client
+
+      - name: Checkout cactus-client-envoy
+        uses: actions/checkout@v6
+        with:
+          repository: bsgip/cactus-client-envoy
+          ref: ${{ inputs.cactus_client_envoy_ref || env.CACTUS_CLIENT_ENVOY_PIN }}
+          path: cactus-client-envoy
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Build envoy docker image
+        run: docker build -t envoy:latest -f envoy/Dockerfile.server envoy/
+
+      - name: Start envoy demo stack
+        working-directory: envoy/demo
+        # --wait blocks until every service with a healthcheck reports healthy and every
+        # one-off (envoy-db_init) exits 0 - envoy/envoy-admin's healthchecks hit their own
+        # /status/health endpoint, which only turns healthy once envoy-db_init's migrations
+        # have run, so this also covers waiting for migrations to complete.
+        run: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up -d --wait --wait-timeout 180
+
+      - name: Dump envoy stack logs on startup failure
+        if: failure()
+        working-directory: envoy/demo
+        run: docker compose logs --tail=100
+
+      - name: Install cactus-client-envoy, cactus-client and envoy
+        run: |
+          uv venv .venv
+          source .venv/bin/activate
+          # cactus-client-envoy pins its own cactus_client and envoy commits as dependencies -
+          # install it first, then install our checked-out cactus-client and this PR's envoy
+          # source over the top so they win over the pinned versions.
+          uv pip install -e ./cactus-client-envoy
+          uv pip install -e ./cactus-client
+          uv pip install -e ./envoy
+
+      - name: Configure cactus-client
+        run: |
+          source .venv/bin/activate
+          cactus setup --local-cfg ./cactus-test
+          cactus server dcap https://localhost:8443/dcap
+          cactus server verify true
+          cactus server serca ./envoy/demo/tls-termination/test_certs/testca.crt
+          cactus server notification https://cactus.cecs.anu.edu.au/client-notifications/
+
+      - name: Register demo clients
+        run: |
+          source .venv/bin/activate
+          python ./cactus-client-envoy/setup_clients.py ./envoy/demo/tls-termination/test_certs
+
+      - name: Configure envoy DB credentials for the plugin
+        run: cp cactus-client-envoy/sample.env cactus-client-envoy/.env
+
+      - name: Run short test suite
+        run: |
+          source .venv/bin/activate
+          set +e
+          cactus autorun --include-file ./cactus-client/include_short.txt --headless --timeout 60 2>cactus-debug.log >cactus-stdout.log
+          exit_code=$?
+          set -e
+          sed -n '/Compliance Report/,$p' cactus-stdout.log
+          exit $exit_code
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cactus-test-reports
+          path: |
+            cactus-test/
+            cactus-debug.log
+            cactus-stdout.log
+          if-no-files-found: warn
+
+      - name: Tear down envoy demo stack
+        if: always()
+        working-directory: envoy/demo
+        run: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose down -v
