@@ -63,16 +63,38 @@ jobs:
         working-directory: envoy/demo
         run: HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose up -d
 
+      - name: Wait for envoy database migrations to complete
+        working-directory: envoy/demo
+        run: |
+          # envoy-db_init (alembic upgrade head + seed data) only starts once tls-termination is
+          # healthy, but `docker compose up -d` returns as soon as containers are *started* - not
+          # once one-shot containers like this have finished. envoy/envoy-admin come up and start
+          # serving/polling before migrations run, so wait for the migration container's actual
+          # exit code rather than racing it via an HTTP poll.
+          container_id=$(docker compose ps -q envoy-db_init)
+          if [ -z "$container_id" ]; then
+            echo "envoy-db_init container not found" >&2
+            docker compose ps
+            exit 1
+          fi
+          exit_code=$(docker wait "$container_id")
+          if [ "$exit_code" != "0" ]; then
+            echo "envoy-db_init exited with code $exit_code" >&2
+            docker logs "$container_id"
+            exit 1
+          fi
+          echo "envoy-db_init completed successfully"
+
       - name: Wait for envoy to be reachable
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 10); do
             code=$(curl -sk -o /dev/null -w '%{http_code}' https://localhost:8443/dcap || true)
             if [ "$code" = "200" ]; then
               echo "envoy is up (dcap returned 200)"
               exit 0
             fi
             echo "Waiting for envoy... (attempt $i, last status: $code)"
-            sleep 5
+            sleep 3
           done
           echo "envoy did not become reachable in time" >&2
           docker compose -f envoy/demo/docker-compose.yaml logs
