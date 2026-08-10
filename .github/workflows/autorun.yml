@@ -66,11 +66,6 @@ jobs:
       - name: Wait for envoy database migrations to complete
         working-directory: envoy/demo
         run: |
-          # envoy-db_init (alembic upgrade head + seed data) only starts once tls-termination is
-          # healthy, but `docker compose up -d` returns as soon as containers are *started* - not
-          # once one-shot containers like this have finished. envoy/envoy-admin come up and start
-          # serving/polling before migrations run, so wait for the migration container's actual
-          # exit code rather than racing it via an HTTP poll.
           container_id=$(docker compose ps -q envoy-db_init)
           if [ -z "$container_id" ]; then
             echo "envoy-db_init container not found" >&2
@@ -87,8 +82,9 @@ jobs:
 
       - name: Wait for envoy to be reachable
         run: |
+          certs=envoy/demo/tls-termination/test_certs
           for i in $(seq 1 10); do
-            code=$(curl -sk -o /dev/null -w '%{http_code}' https://localhost:8443/dcap || true)
+            code=$(curl -sk --cert "$certs/testdevice1.crt" --key "$certs/testdevice1.key" -o /dev/null -w '%{http_code}' https://localhost:8443/dcap || true)
             if [ "$code" = "200" ]; then
               echo "envoy is up (dcap returned 200)"
               exit 0
