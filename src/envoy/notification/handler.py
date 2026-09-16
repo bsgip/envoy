@@ -26,7 +26,9 @@ def build_tls_verify(disable_tls_verify: bool, mtls_config: MtlsConfig | None) -
     if mtls_config is None:
         return not disable_tls_verify
 
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    # SSLContext(PROTOCOL_TLS_CLIENT) 的信任库初始为空。回调目标可能使用公共 CA，
+    # 因此先加载系统 CA 信任库；仅在配置 SERCA 时再追加其证书。
+    ssl_context = ssl.create_default_context()
     ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
     ssl_context.set_ciphers("ECDHE-ECDSA-AES128-CCM8:ALL:!aNULL")
     if disable_tls_verify:
