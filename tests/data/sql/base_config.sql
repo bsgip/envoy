@@ -456,5 +456,5 @@ INSERT INTO public.site_log_event (site_log_event_id, site_id, created_time, det
 VALUES (5, 1, '2023-05-01 05:05:05.500', NULL, NULL, 5, 52, 53, 54, 4);
 SELECT pg_catalog.setval('public.site_log_event_site_log_event_id_seq', 6, true);
 
-INSERT INTO public.runtime_server_config(runtime_server_config_id,  changed_time, created_time, dcap_pollrate_seconds, edevl_pollrate_seconds, fsal_pollrate_seconds, derpl_pollrate_seconds, derl_pollrate_seconds, mup_postrate_seconds, site_control_pow10_encoding)
-VALUES (1, '2023-05-01 01:01:01.500', '2023-05-01 01:01:01.500', 300, 300, 300, 60, 60, 60, -2);
+INSERT INTO public.runtime_server_config(runtime_server_config_id,  changed_time, created_time, dcap_pollrate_seconds, edevl_pollrate_seconds, fsal_pollrate_seconds, derpl_pollrate_seconds, derl_pollrate_seconds, mup_postrate_seconds, mupl_pollrate_seconds, site_control_pow10_encoding)
+VALUES (1, '2023-05-01 01:01:01.500', '2023-05-01 01:01:01.500', 300, 300, 300, 60, 60, 60, 90, -2);

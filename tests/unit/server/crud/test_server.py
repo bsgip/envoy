@@ -26,6 +26,7 @@ def entity_to_dict(instance):
                 derpl_pollrate_seconds=4,
                 derl_pollrate_seconds=5,
                 mup_postrate_seconds=6,
+                mupl_pollrate_seconds=61,
                 site_control_pow10_encoding=7,
             )
         ),
@@ -40,6 +41,7 @@ def entity_to_dict(instance):
                 derpl_pollrate_seconds=40,
                 derl_pollrate_seconds=50,
                 mup_postrate_seconds=60,
+                mupl_pollrate_seconds=610,
                 site_control_pow10_encoding=70,
             )
         ),
@@ -59,6 +61,7 @@ async def test_select_server_config(pg_base_config, expected: RuntimeServerConfi
                 derpl_pollrate_seconds={expected.derpl_pollrate_seconds},
                 derl_pollrate_seconds={expected.derl_pollrate_seconds},
                 mup_postrate_seconds={expected.mup_postrate_seconds},
+                mupl_pollrate_seconds={expected.mupl_pollrate_seconds},
                 site_control_pow10_encoding={expected.site_control_pow10_encoding}
             WHERE runtime_server_config_id=1;
             """)

@@ -32,6 +32,8 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
     config_response: RuntimeServerConfigResponse = RuntimeServerConfigResponse(**json.loads(body))
     assert config_response.dcap_pollrate_seconds > 0
     assert config_response.derpl_pollrate_seconds > 0
+    assert config_response.mup_postrate_seconds > 0
+    assert config_response.mupl_pollrate_seconds > 0
     assert config_response.disable_edev_registration is False
 
     # Update some config
@@ -78,6 +80,7 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
         archived = (await session.execute(select(ArchiveRuntimeServerConfig))).scalars().all()
         assert len(archived) == 1
         assert archived[0].mup_postrate_seconds == config_request.mup_postrate_seconds
+        assert archived[0].mupl_pollrate_seconds == config_request.mupl_pollrate_seconds
         assert archived[0].disable_edev_registration == config_request.disable_edev_registration
         assert archived[0].deleted_time is None
 
@@ -109,4 +112,5 @@ async def test_get_update_server_config(admin_client_auth: AsyncClient, pg_base_
         archived = (await session.execute(select(ArchiveRuntimeServerConfig))).scalars().all()
         assert len(archived) == 2
         assert archived[1].mup_postrate_seconds == second_config_request.mup_postrate_seconds
+        assert archived[1].mupl_pollrate_seconds == second_config_request.mupl_pollrate_seconds
         assert archived[1].site_control_pow10_encoding == second_config_request.site_control_pow10_encoding

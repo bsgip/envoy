@@ -26,6 +26,7 @@ class RuntimeServerConfig(Base):
         INTEGER, nullable=True
     )  # der list + all associated der resources
     mup_postrate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)  # mirror usage point
+    mupl_pollrate_seconds: Mapped[int | None] = mapped_column(INTEGER, nullable=True)  # mirror usage point list
     site_control_pow10_encoding: Mapped[int | None] = mapped_column(
         INTEGER, nullable=True
     )  # power of 10 encoding for site controls

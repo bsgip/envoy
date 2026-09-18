@@ -425,14 +425,20 @@ def test_MirrorUsagePointMapper_map_to_list_response():
         BaseRequestScope, lfdi="ffffffffffffffffffffffffffffffffffffffff", href_prefix=href_prefix
     )
     post_rate_seconds = 132
+    poll_rate_seconds = 987
 
-    result_all_set = MirrorUsagePointListMapper.map_to_list_response(scope, group_count, groups, post_rate_seconds)
+    result_all_set = MirrorUsagePointListMapper.map_to_list_response(
+        scope, group_count, groups, post_rate_seconds, poll_rate_seconds
+    )
     assert result_all_set is not None
     assert isinstance(result_all_set, MirrorUsagePointListResponse)
     assert result_all_set.href is not None
     assert result_all_set.href.startswith(href_prefix)
     assert result_all_set.all_ == group_count
     assert result_all_set.results == len(groups)
+
+    # The list pollRate is independent of the postRate propagated to each contained MirrorUsagePoint
+    assert result_all_set.pollRate == poll_rate_seconds
     assert len(result_all_set.mirrorUsagePoints) == len(groups)
     assert result_all_set.mirrorUsagePoints[0].mirrorMeterReadings is not None
     assert len(result_all_set.mirrorUsagePoints[0].mirrorMeterReadings) == 2
@@ -441,6 +447,9 @@ def test_MirrorUsagePointMapper_map_to_list_response():
 
     assert result_all_set.mirrorUsagePoints[0].deviceLFDI == groups[0][0].site_lfdi
     assert result_all_set.mirrorUsagePoints[1].deviceLFDI == groups[1][0].site_lfdi
+    assert all(mup.postRate == post_rate_seconds for mup in result_all_set.mirrorUsagePoints), (
+        "postRate on each MirrorUsagePoint should use postrate_seconds, not the list's pollrate_seconds"
+    )
 
 
 def test_MirrorMeterReadingMapper_map_reading_from_request_no_time_period():

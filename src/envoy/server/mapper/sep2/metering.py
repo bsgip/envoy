@@ -262,6 +262,7 @@ class MirrorUsagePointListMapper:
         group_count: int,
         grouped_srts: list[tuple[GroupedSiteReadingTypeDetails, Sequence[SiteReadingType]]],
         postrate_seconds: int,
+        pollrate_seconds: int,
     ) -> MirrorUsagePointListResponse:
         """Maps a set of SiteReadingTypes, grouped under their parent group_id to a MirrorUsagePointList)"""
         return MirrorUsagePointListResponse.model_validate(
@@ -269,7 +270,7 @@ class MirrorUsagePointListMapper:
                 "href": generate_href(uris.MirrorUsagePointListUri, scope),
                 "all_": group_count,
                 "results": len(grouped_srts),
-                "pollRate": postrate_seconds,
+                "pollRate": pollrate_seconds,
                 "mirrorUsagePoints": [
                     MirrorUsagePointMapper.map_to_response(scope, group, srts, postrate_seconds)
                     for group, srts in grouped_srts

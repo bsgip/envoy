@@ -105,9 +105,14 @@ async def test_get_mirror_usage_point_list_pagination(
     assert parsed_response.all_ == expected_count, f"received body:\n{body}"
     assert parsed_response.results == len(expected_mup_hrefs), f"received body:\n{body}"
 
+    # base_config.sql sets these to distinct values (mupl_pollrate_seconds=90, mup_postrate_seconds=60) so the
+    # list pollRate and each MirrorUsagePoint's postRate can be confirmed to come from separate config values
+    assert parsed_response.pollRate == 90, f"received body:\n{body}"
+
     if len(expected_mup_hrefs) > 0:
         assert parsed_response.mirrorUsagePoints, f"received body:\n{body}"
         assert [mup.href for mup in parsed_response.mirrorUsagePoints] == expected_mup_hrefs
+        assert all(mup.postRate == 60 for mup in parsed_response.mirrorUsagePoints), f"received body:\n{body}"
     else:
         assert parsed_response.mirrorUsagePoints is None or len(parsed_response.mirrorUsagePoints) == 0, (
             f"received body:\n{body}"

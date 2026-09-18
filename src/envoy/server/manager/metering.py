@@ -297,7 +297,9 @@ class MirrorMeteringManager:
             # This is now a device certificate
             if scope.device_site_id is None:
                 # This is a special case - return an empty list if there isn't anything registered for this site
-                return MirrorUsagePointListMapper.map_to_list_response(scope, 0, [], config.mup_postrate_seconds)
+                return MirrorUsagePointListMapper.map_to_list_response(
+                    scope, 0, [], config.mup_postrate_seconds, config.mupl_pollrate_seconds
+                )
             else:
                 site_id = scope.device_site_id
 
@@ -324,7 +326,7 @@ class MirrorMeteringManager:
             grouped_site_reading_types.append((group, srts))
 
         return MirrorUsagePointListMapper.map_to_list_response(
-            scope, groups_count, grouped_site_reading_types, config.mup_postrate_seconds
+            scope, groups_count, grouped_site_reading_types, config.mup_postrate_seconds, config.mupl_pollrate_seconds
         )
 
     @staticmethod

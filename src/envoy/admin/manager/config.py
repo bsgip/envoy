@@ -59,6 +59,9 @@ class ConfigManager:
         if updated_values.mup_postrate_seconds is not None:
             existing_db_config.mup_postrate_seconds = updated_values.mup_postrate_seconds
 
+        if updated_values.mupl_pollrate_seconds is not None:
+            existing_db_config.mupl_pollrate_seconds = updated_values.mupl_pollrate_seconds
+
         if updated_values.site_control_pow10_encoding is not None:
             existing_db_config.site_control_pow10_encoding = updated_values.site_control_pow10_encoding
 
@@ -100,6 +103,7 @@ class ConfigManager:
             derl_pollrate_seconds=config.derl_pollrate_seconds,
             derpl_pollrate_seconds=config.derpl_pollrate_seconds,
             mup_postrate_seconds=config.mup_postrate_seconds,
+            mupl_pollrate_seconds=config.mupl_pollrate_seconds,
             site_control_pow10_encoding=config.site_control_pow10_encoding,
             disable_edev_registration=config.disable_edev_registration,
             tariff_pow10_encoding=-4,  # Currently held constant

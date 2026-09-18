@@ -944,7 +944,11 @@ async def test_list_mirror_usage_points(
     )
 
     mock_MirrorUsagePointListMapper.map_to_list_response.assert_called_once_with(
-        scope, count, [(groups[0], srts_group_1), (groups[1], srts_group_2)], config.mup_postrate_seconds
+        scope,
+        count,
+        [(groups[0], srts_group_1), (groups[1], srts_group_2)],
+        config.mup_postrate_seconds,
+        config.mupl_pollrate_seconds,
     )
 
 
@@ -988,7 +992,7 @@ async def test_list_mirror_usage_points_unregistered_device(
     mock_fetch_site_reading_types_for_group.assert_not_called()
 
     mock_MirrorUsagePointListMapper.map_to_list_response.assert_called_once_with(
-        scope, 0, [], config.mup_postrate_seconds
+        scope, 0, [], config.mup_postrate_seconds, config.mupl_pollrate_seconds
     )
 
 

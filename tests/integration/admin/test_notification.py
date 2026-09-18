@@ -784,6 +784,7 @@ async def test_update_server_config_fsa_notification_no_change(
                 derpl_pollrate_seconds=None,
                 derl_pollrate_seconds=None,
                 mup_postrate_seconds=None,
+                mupl_pollrate_seconds=None,
                 site_control_pow10_encoding=None,
                 disable_edev_registration=False,
             )
@@ -914,6 +915,7 @@ async def test_update_server_config_derpl_notification_no_change(
                 derpl_pollrate_seconds=derpl_poll_rate,
                 derl_pollrate_seconds=None,
                 mup_postrate_seconds=None,
+                mupl_pollrate_seconds=None,
                 site_control_pow10_encoding=None,
                 disable_edev_registration=False,
             )
