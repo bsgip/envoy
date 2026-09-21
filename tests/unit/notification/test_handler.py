@@ -21,9 +21,9 @@ def test_build_tls_verify_no_mtls(disable_tls_verify: bool, expected_verify: boo
         (True, "/ca.pem", False, False),
     ],
 )
-@mock.patch("envoy.notification.handler.ssl.SSLContext")
+@mock.patch("envoy.notification.handler.ssl.create_default_context")
 def test_build_tls_verify_mtls_ssl_context(
-    mock_SSLContext: mock.MagicMock,
+    mock_create_default_context: mock.MagicMock,
     disable_tls_verify: bool,
     serca_path: str | None,
     expect_cert_required: bool,
@@ -31,11 +31,12 @@ def test_build_tls_verify_mtls_ssl_context(
 ):
     """With mTLS a properly configured SSLContext is built with the client certificate loaded from disk"""
     mock_ctx = mock.MagicMock()
-    mock_SSLContext.return_value = mock_ctx
+    mock_create_default_context.return_value = mock_ctx
 
     result = build_tls_verify(disable_tls_verify, MtlsConfig("/cert.pem", "/key.pem", serca_path))
 
     assert result is mock_ctx
+    mock_create_default_context.assert_called_once_with()
     mock_ctx.load_cert_chain.assert_called_once_with(certfile="/cert.pem", keyfile="/key.pem")
     assert mock_ctx.check_hostname is (not disable_tls_verify)
     assert mock_ctx.verify_mode == (ssl.CERT_REQUIRED if expect_cert_required else ssl.CERT_NONE)
