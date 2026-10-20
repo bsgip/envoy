@@ -215,9 +215,15 @@ class DERControlManager:
         scope: SiteRequestScope,
         der_program_id: int,
     ) -> DefaultDERControl:
-        """Returns a default DOE control for DERProgram - raises an error if the referenced DERProgram DNE"""
+        """Returns a default DOE control for DERProgram - raises an error if the referenced DERProgram DNE
 
-        scg = await select_site_control_group_by_id(session, der_program_id, include_default=True)
+        if site_id DNE is inaccessible to aggregator_id a NotFoundError will be raised"""
+
+        site = await select_single_site_with_site_id(session, scope.site_id, scope.aggregator_id)
+        if not site:
+            raise NotFoundError(f"site_id {scope.site_id} is not accessible / does not exist")
+
+        scg = await select_site_control_group_by_id(session, der_program_id, include_default=True, site_id=site.site_id)
         if not scg:
             raise NotFoundError(f"DERProgram {der_program_id} for site {scope.site_id} is not accessible / missing.")
 

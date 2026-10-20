@@ -613,6 +613,50 @@ async def test_get_default_invalid_derp_id(client: AsyncClient, uri_derc_default
 
 
 @pytest.mark.anyio
+async def test_get_default_doe_respects_required_site_group(
+    client: AsyncClient, pg_base_config, uri_derc_default_control_format, uri_derp_doe_format, agg_1_headers
+):
+    """Site 4 belongs to agg_1 but (per test_get_derprogram_list_required_site_group_id) is not a member
+    of any site group, and site 1 belongs to agg_1 and is a member of site group #1. Restrict
+    SiteControlGroup #1 to site group #1 membership - the per-program DERProgram GET correctly allows
+    site 1 and hides it from site 4, and the default DER control endpoint for the same site/program must
+    apply the same visibility filter in both directions. Site 3 belongs to a different aggregator
+    entirely, so it must still 404 regardless of site group membership."""
+
+    async with generate_async_session(pg_base_config) as session:
+        await session.execute(
+            update(SiteControlGroup).values(required_site_group_id=1).where(SiteControlGroup.site_control_group_id == 1)
+        )
+        await session.commit()
+
+    # Site 1 is a member of site group #1, so it keeps access to both endpoints
+    derp_path = uri_derp_doe_format.format(site_id=1, der_program_id=1)
+    derp_response = await client.get(derp_path, headers=agg_1_headers)
+    assert_response_header(derp_response, HTTPStatus.OK)
+
+    path = uri_derc_default_control_format.format(site_id=1, der_program_id=1)
+    response = await client.get(path, headers=agg_1_headers)
+    assert_response_header(response, HTTPStatus.OK)
+
+    # Sanity check: the per-program DERProgram GET correctly 404s - site 4 isn't in the required group
+    derp_path = uri_derp_doe_format.format(site_id=4, der_program_id=1)
+    derp_response = await client.get(derp_path, headers=agg_1_headers)
+    assert_response_header(derp_response, HTTPStatus.NOT_FOUND)
+
+    # The default DER control endpoint for the same site_id/der_program_id combination must apply the
+    # same required_site_group_id restriction.
+    path = uri_derc_default_control_format.format(site_id=4, der_program_id=1)
+    response = await client.get(path, headers=agg_1_headers)
+    assert_response_header(response, HTTPStatus.NOT_FOUND)
+
+    # Site 3 belongs to a different aggregator and is never accessible to agg_1_headers, independent of
+    # site group membership.
+    path = uri_derc_default_control_format.format(site_id=3, der_program_id=1)
+    response = await client.get(path, headers=agg_1_headers)
+    assert_response_header(response, HTTPStatus.NOT_FOUND)
+
+
+@pytest.mark.anyio
 async def test_get_site_specific_default_doe(client: AsyncClient, uri_derc_default_control_format, agg_1_headers):
     """Tests getting the default DOE"""
 
