@@ -20,9 +20,9 @@ concurrency:
 
 env:
   # Bump deliberately - see https://github.com/bsgip/cactus-client/commits/main
-  CACTUS_CLIENT_PIN: 931250ca93bfbd485a057a9ff6cb300cd124be2f
+  CACTUS_CLIENT_PIN: v1.3.0
   # Bump deliberately - see https://github.com/bsgip/cactus-client-envoy/releases
-  CACTUS_CLIENT_ENVOY_PIN: v1.1.0
+  CACTUS_CLIENT_ENVOY_PIN: v1.2.0
 
 jobs:
   autorun:
