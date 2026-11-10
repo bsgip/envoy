@@ -62,6 +62,7 @@ from envoy.server.request_scope import AggregatorRequestScope
 NON_DELETABLE_RESOURCES: set[SubscriptionResource] = {
     SubscriptionResource.DYNAMIC_OPERATING_ENVELOPE,
     SubscriptionResource.TARIFF_GENERATED_RATE,
+    SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE,
 }
 
 
