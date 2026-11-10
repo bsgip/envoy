@@ -1,12 +1,17 @@
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import cast
-from zoneinfo import ZoneInfo
-
-from dateutil import tz
+from datetime import UTC, datetime, timedelta, tzinfo
 
 logger = logging.getLogger(__name__)
+
+# How far to search (forwards/backwards) from a point in time for a timezone transition. DST observing timezones
+# transition at least twice per year so anything beyond this is treated as "no DST".
+TRANSITION_SEARCH_HORIZON_SECONDS = 400 * 24 * 60 * 60
+
+# Coarse step used when scanning for a transition. Must be smaller than the shortest gap between two consecutive
+# transitions (otherwise a pair of transitions could cancel out and be missed). There exist timezones with transitions
+# as short as 9 days.
+TRANSITION_SEARCH_STEP_SECONDS = 24 * 60 * 60 * 5  # ~5 days
 
 
 @dataclass
@@ -16,27 +21,54 @@ class DaylightSavingsTimeInfo:
     dst_offset: int  # Daylight savings time offset (in seconds) from local time (if DST in effect), 0 otherwise.
 
 
-def get_tz_key(dt: datetime) -> str | None:
-    """Extracts the tzinfo key for the specified datetime (if available) or None otherwise. Capable of handling
-    pytz shim timezones or ZoneInfo timezones"""
-    tzinfo = dt.tzinfo
-    if tzinfo is None:
-        logger.warning("No tzinfo specified on supplied datetime, returning zero dst info.")
+def _tz_state(tz: tzinfo, timestamp: int) -> tuple[timedelta | None, timedelta | None]:
+    """Returns the (utcoffset, dst) pair in effect for tz at the specified UTC unix timestamp"""
+    dt = datetime.fromtimestamp(timestamp, tz=tz)
+    return (dt.utcoffset(), dt.dst())
+
+
+def _find_transition(tz: tzinfo, timestamp: int, forward: bool) -> int | None:
+    """Finds the nearest timezone transition (a change in utcoffset/dst) relative to timestamp.
+
+    If forward is True - returns the first transition strictly after timestamp. Otherwise returns the most recent
+    transition at or before timestamp. The returned value is the first whole second (UTC unix timestamp) for which the
+    new offset applies. Returns None if no transition is found within TRANSITION_SEARCH_HORIZON_SECONDS"""
+
+    step = TRANSITION_SEARCH_STEP_SECONDS if forward else -TRANSITION_SEARCH_STEP_SECONDS
+    origin_state = _tz_state(tz, timestamp)
+
+    # Coarse scan until the state changes
+    probe = timestamp
+    while abs(probe - timestamp) < TRANSITION_SEARCH_HORIZON_SECONDS:
+        next_probe = probe + step
+        if _tz_state(tz, next_probe) != origin_state:
+            break
+        probe = next_probe
+    else:
         return None
 
-    # tzlocal.get_localzone can return a _PytzShimTimezone which defines _key instead of key. Need to check
-    # for this and respond accordingly
-    if hasattr(tzinfo, "key"):
-        return cast(str | None, tzinfo.key)
-    elif hasattr(tzinfo, "_key"):
-        return cast(str | None, tzinfo._key)
-    else:
-        logger.warning(f"No timezone key accessible for supplied datetime's tzinfo: {tzinfo}")
-        return None
+    # Bisect down to the exact second. "same" always shares origin_state, "changed" never does
+    same, changed = probe, next_probe
+    while abs(changed - same) > 1:
+        mid = (same + changed) // 2
+        if _tz_state(tz, mid) == origin_state:
+            same = mid
+        else:
+            changed = mid
+
+    # The transition instant is the first second of the later of the two states
+    return max(same, changed)
 
 
 def get_dst_info(now_time: datetime) -> DaylightSavingsTimeInfo:
-    """Returns the start and end daylight savings time for the year of a specified time.
+    """Returns the start and end daylight savings time relative to a specified time.
+
+    If DST is currently in effect, dst_start will be the (past) time it began and dst_end the (future) time it ends.
+    If DST isn't currently in effect, dst_start will be the next (future) time it begins and dst_end the subsequent
+    time that it ends.
+
+    The transitions are discovered by searching the public utcoffset()/dst() behaviour of the tzinfo (so this works
+    for any tzinfo implementation - eg zoneinfo or the tzlocal pytz shim).
 
     Args:
         now_time (datetime.datetime): datetime with timezone for which daylight savings time details will be returned.
@@ -45,43 +77,35 @@ def get_dst_info(now_time: datetime) -> DaylightSavingsTimeInfo:
         DaylightSavingsTimeInfo:
 
     """
-
-    # Big Caveat - this function depends on the internals of tzinfo in order to extract DST transition times. This isn't
-    #              exactly best practice but there is no official way to extract this information. The alternative is
-    #              pulling in pytz JUST for this. Unit tests will hopefully keep us covered in case the internals change
-
     dst_zero = DaylightSavingsTimeInfo(0, 0, 0)
 
-    tzinfo_key = get_tz_key(now_time)
-    if tzinfo_key is None:
+    tz = now_time.tzinfo
+    if tz is None:
+        logger.warning("No tzinfo specified on supplied datetime, returning zero dst info.")
         return dst_zero
 
-    tzif_obj = tz.gettz(tzinfo_key)
-    if tzif_obj is None:
-        logger.warning(f"Unknown timezone name {tzinfo_key}, returning zero dst info.")
+    now_ts = int(now_time.timestamp())
+
+    # Fail fast on timezones that won't have any upcoming transitions (eg UTC / non DST zones)
+    next_transition = _find_transition(tz, now_ts, forward=True)
+    if next_transition is None:
         return dst_zero
 
-    if now_time.tzinfo == ZoneInfo("UTC"):
-        return dst_zero
-
-    last_transition_idx = tzif_obj._find_last_transition(now_time) or 1  # type: ignore  # see caveat at top of func
-    if last_transition_idx >= (len(tzif_obj._trans_list_utc) - 1):  # type: ignore  # see caveat at top of func
-        # No info about next transition - likely not a DST tz
-        return dst_zero
-
-    # If we are in a DST period (i.e. dst offset total seconds > 0), then the last transition index is the start of the
-    # dst period and the next index is end.
     now_dst = now_time.dst()
-    dst_offset_total_seconds: int = 0
-    if now_dst is not None:
-        dst_offset_total_seconds = int(now_dst.total_seconds())
+    dst_offset_total_seconds = int(now_dst.total_seconds()) if now_dst is not None else 0
 
     if dst_offset_total_seconds > 0:
-        dst_start_time = tzif_obj._trans_list_utc[last_transition_idx]  # type: ignore  # see caveat at top of func
-        dst_end_time = tzif_obj._trans_list_utc[last_transition_idx + 1]  # type: ignore  # see caveat at top of func
+        # In DST - it started at the most recent transition and ends at the next
+        dst_start_time = _find_transition(tz, now_ts, forward=False)
+        dst_end_time: int | None = next_transition
     else:
-        dst_start_time = tzif_obj._trans_list_utc[last_transition_idx + 1]  # type: ignore  # see caveat at top of func
-        dst_end_time = tzif_obj._trans_list_utc[last_transition_idx + 2]  # type: ignore  # see caveat at top of func
+        # Not in DST - it starts at the next transition and ends at the one after that
+        dst_start_time = next_transition
+        dst_end_time = _find_transition(tz, next_transition, forward=True)
+
+    if dst_start_time is None or dst_end_time is None:
+        logger.warning(f"Unable to resolve DST transitions for {tz} at {now_time}, returning zero dst info.")
+        return dst_zero
 
     return DaylightSavingsTimeInfo(dst_end=dst_end_time, dst_start=dst_start_time, dst_offset=dst_offset_total_seconds)
 
