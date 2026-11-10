@@ -606,7 +606,7 @@ async def count_table_rows(
     t: type[Base],
     join_t: type[Base] | list[type[Base]] | None,
     archive_t: type[ArchiveBase],
-    where_clause: Callable[[Select[tuple[int]]], Select[tuple[int]]],
+    where_clause: Callable[[Select[int]], Select[int]],
 ) -> SnapshotTableCount:
     """Counts the number of rows in the specified source table for t. Also counts again, but with the where_clause
     applied to the query.

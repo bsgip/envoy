@@ -359,13 +359,9 @@ async def fetch_rates_by_changed_at(
     referenced_tariff_ids = {e.tariff_id for e in chain(active_rates, deleted_rates)}
     required_group_by_tariff_id: dict[int, int | None] = {}
     if referenced_tariff_ids:
-        tariff_rows = (
-            await session.execute(
-                select(Tariff.tariff_id, Tariff.required_site_group_id).where(
-                    Tariff.tariff_id.in_(referenced_tariff_ids)
-                )
-            )
-        ).tuples()
+        tariff_rows = await session.execute(
+            select(Tariff.tariff_id, Tariff.required_site_group_id).where(Tariff.tariff_id.in_(referenced_tariff_ids))
+        )
         required_group_by_tariff_id = dict(tariff_rows.all())
 
     referenced_required_group_ids = {gid for gid in required_group_by_tariff_id.values() if gid is not None}
@@ -463,13 +459,11 @@ async def fetch_does_by_changed_at(
     referenced_scg_ids = {e.site_control_group_id for e in chain(active_does, deleted_does)}
     required_group_by_scg_id: dict[int, int | None] = {}
     if referenced_scg_ids:
-        scg_rows = (
-            await session.execute(
-                select(SiteControlGroup.site_control_group_id, SiteControlGroup.required_site_group_id).where(
-                    SiteControlGroup.site_control_group_id.in_(referenced_scg_ids)
-                )
+        scg_rows = await session.execute(
+            select(SiteControlGroup.site_control_group_id, SiteControlGroup.required_site_group_id).where(
+                SiteControlGroup.site_control_group_id.in_(referenced_scg_ids)
             )
-        ).tuples()
+        )
         required_group_by_scg_id = dict(scg_rows.all())
 
     referenced_required_group_ids = {gid for gid in required_group_by_scg_id.values() if gid is not None}
@@ -817,9 +811,7 @@ async def fetch_site_control_groups_by_changed_at(
         return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE_CONTROL_GROUP, [], [])
 
     # The site control group update will need to vary per Site so we generate an instance per site_id
-    aggregator_site_ids = (
-        (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).tuples().all()
-    )
+    aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
 
     # Groups with a required_site_group_id set are only visible to member sites of that group - resolve
     # membership for any such groups referenced in this batch

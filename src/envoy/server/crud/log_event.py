@@ -47,7 +47,7 @@ async def _log_responses(
 
     Orders by 2030.5 requirements on LogEvent which is created DESC, LogEventID DESC"""
 
-    select_clause: Select[tuple[int]] | Select[tuple[SiteLogEvent]]
+    select_clause: Select[int] | Select[SiteLogEvent]
     if is_counting:
         select_clause = select(func.count()).select_from(SiteLogEvent)
     else:

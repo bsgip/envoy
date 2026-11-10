@@ -333,9 +333,9 @@ def test_time_tariff_interval_map_to_response(
     mapped = TimeTariffIntervalMapper.map_to_response(scope, now, rate, site_id)
     assert isinstance(mapped, TimeTariffIntervalResponse)
 
-    if type == ArchiveTariffGeneratedRate and rate.deleted_time is not None:  # ty:ignore[unresolved-attribute]
+    if type == ArchiveTariffGeneratedRate and rate.deleted_time is not None:  # ty:ignore[missing-union-attribute]
         assert mapped.EventStatus_.currentStatus == EventStatusType.Cancelled
-        assert mapped.EventStatus_.dateTime == int(rate.deleted_time.timestamp())  # ty:ignore[unresolved-attribute]
+        assert mapped.EventStatus_.dateTime == int(rate.deleted_time.timestamp())  # ty:ignore[missing-union-attribute]
     elif now < rate.start_time:
         assert mapped.EventStatus_.currentStatus == EventStatusType.Scheduled
         assert mapped.EventStatus_.dateTime == int(rate.changed_time.timestamp())

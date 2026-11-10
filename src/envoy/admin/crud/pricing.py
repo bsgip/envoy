@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from datetime import datetime
-from typing import Any, TypeVar
+from typing import TypeVarTuple
 
 from sqlalchemy import Select, func, insert, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -96,7 +96,7 @@ async def insert_many_tariff_genrate(
 
     # Now we can do the inserts
     table = TariffGeneratedRate.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[missing-attribute]
     insert_ids = await session.execute(
         insert(TariffGeneratedRate)
         .values([{k: getattr(r, k) for k in update_cols} for r in tariff_genrates])
@@ -121,7 +121,7 @@ async def insert_many_tariff_genrate_ignore_collisions(
         return []
 
     table = TariffGeneratedRate.__table__
-    insert_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
+    insert_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[missing-attribute]
 
     stmt = (
         pg_insert(TariffGeneratedRate)
@@ -192,7 +192,7 @@ async def select_tariff_ids_for_component_ids(
             TariffComponent.tariff_component_id.in_(tariff_component_ids)
         )
     )
-    return dict(resp.tuples().all())
+    return dict(resp.all())
 
 
 async def select_single_tariff_generated_rate(
@@ -205,16 +205,16 @@ async def select_single_tariff_generated_rate(
     return resp.scalar_one_or_none()
 
 
-T = TypeVar("T", bound=tuple[Any, ...])
+Ts = TypeVarTuple("Ts")
 
 
 def _filtered_tariff_generated_rates(
-    stmt: Select[T],
+    stmt: Select[*Ts],
     tariff_component_id: int,
     start_time_since: datetime | None,
     start_time_until: datetime | None,
     site_group_ids: set[int] | None,
-) -> Select[T]:
+) -> Select[*Ts]:
 
     stmt = stmt.where(TariffGeneratedRate.tariff_component_id == tariff_component_id)
     if start_time_since is not None:

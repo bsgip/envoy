@@ -354,7 +354,7 @@ def entities_to_notification(  # noqa: C901
             rates=[e.original for e in cast(Sequence[SiteScopedTariffGeneratedRate], entities)],
             sub=sub,
             scope=scope,
-            notification_type=notification_type,
+            notification_type=NotificationType.ENTITY_CHANGED,  # deletes for rates are just a status change
             now=utc_now(),
         )
 

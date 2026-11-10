@@ -56,15 +56,18 @@ class AppSettings(CommonSettings):
 
     @property
     def fastapi_kwargs(self) -> dict[str, Any]:
-        return {
+        kwargs: dict[str, Any] = {
             "debug": self.debug,
             "docs_url": self.docs_url,
-            "openapi_prefix": self.openapi_prefix,
             "openapi_url": self.openapi_url,
             "redoc_url": self.redoc_url,
             "title": self.title,
             "version": self.version,
         }
+        if self.openapi_prefix:
+            # openapi_prefix was removed from FastAPI - it was always a deprecated alias for root_path
+            kwargs["root_path"] = self.openapi_prefix
+        return kwargs
 
 
 def generate_settings() -> AppSettings:
@@ -72,7 +75,7 @@ def generate_settings() -> AppSettings:
 
     # Silenced complaints about database_url - keeping mypy happy here is tricky (for certain python versions).
     # The "cost" of not having it set will be caught by our test coverage - this is an error we can ignore
-    return AppSettings()  # ty:ignore[missing-argument]
+    return AppSettings()
 
 
 settings = generate_settings()

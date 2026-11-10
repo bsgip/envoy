@@ -1,5 +1,5 @@
 import logging
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
@@ -88,7 +88,7 @@ def enable_dynamic_azure_ad_database_credentials(
     cfg = AzureADResourceTokenConfig(tenant_id=tenant_id, client_id=client_id, resource_id=resource_id)
 
     @asynccontextmanager
-    async def context_manager(app: FastAPI) -> AsyncIterator:
+    async def context_manager(app: FastAPI) -> AsyncGenerator[None, None]:
         """This context manager will perform all setup before yield and teardown after yield"""
 
         handler = await install_handler(cfg, manual_update_frequency_seconds)

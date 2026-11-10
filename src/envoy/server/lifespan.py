@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import AsyncExitStack, _AsyncGeneratorContextManager, asynccontextmanager
 from typing import Any
 
@@ -16,7 +16,7 @@ def generate_combined_lifespan_manager(
         return None
 
     @asynccontextmanager
-    async def combined_context_manager(app: FastAPI) -> AsyncIterator:
+    async def combined_context_manager(app: FastAPI) -> AsyncGenerator[dict[str, Any] | None, None]:
         """This context manager will run all the supplied managers"""
 
         async with AsyncExitStack() as exit_stack:

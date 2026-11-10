@@ -136,7 +136,7 @@ async def test_get_derprogram_list(
         assert len(parsed_response.DERProgram or []) == len(expected_derp_ids_with_count)
 
         actual_derp_ids_with_count = [
-            (int(derp.href.split("/")[-1]), derp.DERControlListLink.all_)  # ty:ignore[unresolved-attribute]
+            (int(derp.href.split("/")[-1]), derp.DERControlListLink.all_)  # ty:ignore[missing-union-attribute]
             for derp in parsed_response.DERProgram or []
         ]
         assert expected_derp_ids_with_count == actual_derp_ids_with_count
@@ -197,7 +197,7 @@ async def test_get_derprogram_list_required_site_group_id(
         assert len(parsed_response.DERProgram or []) == len(expected_derp_ids_with_count)
 
         actual_derp_ids_with_count = [
-            (int(derp.href.split("/")[-1]), derp.DERControlListLink.all_)  # ty:ignore[unresolved-attribute]
+            (int(derp.href.split("/")[-1]), derp.DERControlListLink.all_)  # ty:ignore[missing-union-attribute]
             for derp in parsed_response.DERProgram or []
         ]
         assert expected_derp_ids_with_count == actual_derp_ids_with_count
@@ -266,7 +266,7 @@ async def test_get_derprogram_list_fsa_scoped(
         derps = [] if parsed_response.DERProgram is None else parsed_response.DERProgram
         assert len(derps) == len(expected_derp_ids_with_count)
 
-        actual_derp_ids_with_count = [(int(derp.href.split("/")[-1]), derp.DERControlListLink.all_) for derp in derps]  # ty:ignore[unresolved-attribute]
+        actual_derp_ids_with_count = [(int(derp.href.split("/")[-1]), derp.DERControlListLink.all_) for derp in derps]  # ty:ignore[missing-union-attribute]
         assert expected_derp_ids_with_count == actual_derp_ids_with_count
 
 

@@ -1378,7 +1378,7 @@ async def test_delete_rates_with_active_subscription(
                 and "<subscribedResource>/edev/1/tp/1/ctti</subscribedResource>" in r.content
                 and "<subscribedResource>/edev/1/tp/1/rc/1/tti</subscribedResource>" not in r.content
                 and "<price>1111</price>" in r.content
-                and "<status>0</status>"  # Notification status is Default
+                and "<status>0</status>" in r.content
                 and "<currentStatus>2</currentStatus>" in r.content  # EventStatus is Cancelled
             ]
         )
@@ -1395,7 +1395,7 @@ async def test_delete_rates_with_active_subscription(
                 and "<subscribedResource>/edev/1/tp/1/ctti</subscribedResource>" not in r.content
                 and "<subscribedResource>/edev/1/tp/1/rc/1/tti</subscribedResource>" in r.content
                 and "<price>1111</price>" in r.content
-                and "<status>0</status>"  # Notification status is Default
+                and "<status>0</status>" in r.content  # Notification status is Default
                 and "<currentStatus>2</currentStatus>" in r.content  # EventStatus is Cancelled
             ]
         )
