@@ -15,7 +15,7 @@ TBaseXmlModel = TypeVar("TBaseXmlModel", bound=BaseXmlModel)
 class XmlResponse(Response):
     media_type = SEP_XML_MIME
 
-    def render(self, content: BaseXmlModel) -> str | bytes:  # ty:ignore[invalid-method-override] # Base is too restrictive
+    def render(self, content: BaseXmlModel) -> str | bytes:  # ty:ignore[incompatible-method-override] # Base is too restrictive
         return content.to_xml(skip_empty=False, exclude_none=True, exclude_unset=True)
 
 

@@ -86,7 +86,7 @@ async def _doe_responses(
 
     Will populate the "site" relationship for all returned entities"""
 
-    select_clause: Select[tuple[int]] | Select[tuple[DOEResponse]]
+    select_clause: Select[int] | Select[DOEResponse]
     if is_counting:
         select_clause = select(func.count()).select_from(DOEResponse)
     else:
@@ -134,7 +134,7 @@ async def _rate_responses(
 
     Will populate the "site" relationship for all returned entities"""
 
-    select_clause: Select[tuple[int]] | Select[tuple[RateResponse]]
+    select_clause: Select[int] | Select[RateResponse]
     if is_counting:
         select_clause = select(func.count()).select_from(RateResponse)
     else:

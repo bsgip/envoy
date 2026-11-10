@@ -236,9 +236,7 @@ async def test_supersede_matching_does_for_group(
                 await session.execute(
                     select(DynamicOperatingEnvelope.dynamic_operating_envelope_id, DynamicOperatingEnvelope.superseded)
                 )
-            )
-            .tuples()
-            .all()
+            ).all()
         )
         await session.commit()
 

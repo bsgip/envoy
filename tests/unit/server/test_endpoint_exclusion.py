@@ -1,6 +1,6 @@
 import pytest
 from fastapi import APIRouter, FastAPI
-from fastapi.routing import APIRoute
+from fastapi.routing import APIRoute, iter_route_contexts
 
 from envoy.server.endpoint_exclusion import (
     ExcludeEndpointError,
@@ -94,6 +94,6 @@ def test_generate_routers_with_excluded_endpoints_includes_successfully():
     app.include_router(filtered_routers[0])
 
     # Assert
-    api_routes = [r for r in app.routes if isinstance(r, APIRoute)]
+    api_routes = [r for r in iter_route_contexts(app.routes) if isinstance(r.original_route, APIRoute)]
     route = next(r for r in api_routes if r.path == "/somepath")
     assert route.methods == {"GET"}

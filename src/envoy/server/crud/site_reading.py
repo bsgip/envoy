@@ -104,9 +104,7 @@ async def _fetch_site_reading_type_groups(
     limit: int | None,
 ) -> int | list[GroupedSiteReadingTypeDetails]:
 
-    select_clause: (
-        Select[tuple[int]] | Select[tuple[int, str, str | None, int | None, int | None, int, str, RoleFlagsType]]
-    )
+    select_clause: Select[int] | Select[int, str, str | None, int | None, int | None, int, str, RoleFlagsType]
     if only_count:
         select_clause = select(func.count(distinct(SiteReadingType.group_id))).select_from(SiteReadingType)
     else:
@@ -136,7 +134,7 @@ async def _fetch_site_reading_type_groups(
         resp = await session.execute(select_clause.limit(limit).offset(start).group_by(SiteReadingType.group_id))
         return [
             GroupedSiteReadingTypeDetails(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7])
-            for row in resp.tuples().all()
+            for row in resp.all()
         ]
 
 
@@ -185,7 +183,7 @@ async def upsert_site_readings(session: AsyncSession, now: datetime, site_readin
 
     # Now we can do the inserts
     table = SiteReading.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[missing-attribute]
     await session.execute(
         insert(SiteReading).values([{k: getattr(sr, k) for k in update_cols} for sr in site_readings])
     )

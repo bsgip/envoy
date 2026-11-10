@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from asyncio import ensure_future
 from collections.abc import Callable, Coroutine
@@ -54,7 +55,7 @@ def repeat_every(
         """
         Converts the decorated function into a repeated, periodically-called version of itself.
         """
-        is_coroutine = asyncio.iscoroutinefunction(func)
+        is_coroutine = inspect.iscoroutinefunction(func)
 
         @wraps(func)
         async def wrapped() -> None:

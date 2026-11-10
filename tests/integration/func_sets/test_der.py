@@ -201,7 +201,7 @@ async def snapshot_sub_entity_changed_created_changed_time(
     stmt = select(sub_entity_type.created_time, sub_entity_type.changed_time).where(  # type: ignore
         sub_entity_type.site_id == site_id  # type: ignore
     )
-    return (await session.execute(stmt)).one()  # type: ignore
+    return (await session.execute(stmt)).one()
 
 
 async def assert_sub_entity_count(

@@ -92,7 +92,7 @@ async def upsert_many_tariff_genrate(
 
     # Now we can do the inserts
     table = TariffGeneratedRate.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[missing-attribute]
     await session.execute(
         insert(TariffGeneratedRate).values([{k: getattr(r, k) for k in update_cols} for r in tariff_genrates])
     )
