@@ -9,7 +9,7 @@ import pytest
 from assertical.fixtures.environment import environment_snapshot
 from assertical.fixtures.postgres import generate_async_conn_str_from_connection
 from psycopg import Connection
-from pytest_postgresql.executor import PostgreSQLExecutor
+from pytest_postgresql.executors import PostgreSQLExecutor
 from pytest_postgresql.janitor import DatabaseJanitor
 
 from envoy.server.alembic import upgrade
@@ -55,7 +55,6 @@ def pg_migrated_schema_dump(postgresql_proc: PostgreSQLExecutor) -> Generator[st
         user=postgresql_proc.user,
         host=postgresql_proc.host,
         port=postgresql_proc.port,
-        version=postgresql_proc.version,
         dbname=MIGRATED_SCHEMA_DB_NAME,
         password=postgresql_proc.password,
     )

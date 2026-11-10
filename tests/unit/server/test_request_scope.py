@@ -122,7 +122,7 @@ def test_RawRequestClaims_to_device_or_aggregator_request_scope(
     expected: DeviceOrAggregatorRequestScope | type[BaseException],
 ):
 
-    if isinstance(expected, type):
+    if isinstance(expected, type) and issubclass(expected, BaseException):
         with pytest.raises(expected):
             raw_scope.to_device_or_aggregator_request_scope(requested_site_id)
 
@@ -236,7 +236,7 @@ def test_RawRequestClaims_to_aggregator_request_scope(
     expected: AggregatorRequestScope | type[BaseException],
 ):
 
-    if isinstance(expected, type):
+    if isinstance(expected, type) and issubclass(expected, BaseException):
         with pytest.raises(expected):
             raw_scope.to_aggregator_request_scope(requested_site_id)
 
@@ -322,7 +322,7 @@ def test_RawRequestClaims_to_site_request_scope(
     expected: SiteRequestScope | type[BaseException],
 ):
 
-    if isinstance(expected, type):
+    if isinstance(expected, type) and issubclass(expected, BaseException):
         with pytest.raises(expected):
             raw_scope.to_site_request_scope(cast(int, requested_site_id))
 
@@ -374,7 +374,7 @@ def test_RawRequestClaims_to_unregistered_scope(
     raw_scope: RawRequestClaims, expected: UnregisteredRequestScope | type[BaseException]
 ):
 
-    if isinstance(expected, type):
+    if isinstance(expected, type) and issubclass(expected, BaseException):
         with pytest.raises(expected):
             raw_scope.to_unregistered_request_scope()
 
@@ -425,7 +425,7 @@ def test_RawRequestClaims_to_mup_list_scope(
     raw_scope: RawRequestClaims, expected: MUPListRequestScope | type[BaseException]
 ):
 
-    if isinstance(expected, type):
+    if isinstance(expected, type) and issubclass(expected, BaseException):
         with pytest.raises(expected):
             raw_scope.to_unregistered_request_scope()
 
@@ -465,7 +465,7 @@ def test_RawRequestClaims_to_mup_list_scope(
 )
 def test_RawRequestClaims_to_mup_scope(raw_scope: RawRequestClaims, expected: MUPRequestScope | type[BaseException]):
 
-    if isinstance(expected, type):
+    if isinstance(expected, type) and issubclass(expected, BaseException):
         with pytest.raises(expected):
             raw_scope.to_mup_request_scope()
 

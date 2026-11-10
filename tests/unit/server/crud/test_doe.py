@@ -600,7 +600,7 @@ async def test_select_site_control_group_by_id(
             assert result is None
         else:
             with pytest.raises(InvalidRequestError):
-                result.site_control_group_default.created_time  # ty:ignore[unresolved-attribute]  # noqa: B018
+                result.site_control_group_default.created_time  # ty:ignore[missing-union-attribute]  # noqa: B018
 
 
 @pytest.mark.parametrize(

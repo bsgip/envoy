@@ -123,8 +123,8 @@ async def test_extract_source_archive_pk_columns(source_type: type[Base], archiv
 
     # Any failures here are likely the fault of a bad source/archive model definition
     assert source_pk.name == archive_pk.name
-    assert source_pk.table.name == source_type.__table__.name  # ty:ignore[unresolved-attribute]
-    assert archive_pk.table.name == archive_type.__table__.name  # ty:ignore[unresolved-attribute]
+    assert source_pk.table.name == source_type.__table__.name  # ty:ignore[missing-attribute]
+    assert archive_pk.table.name == archive_type.__table__.name  # ty:ignore[missing-attribute]
 
 
 # NOTE: We don't need to test SubscriptionCondition as you can't subscribe to them
@@ -141,8 +141,8 @@ async def test_extract_source_archive_changed_deleted_columns(source_type: type[
     # Any failures here are likely the fault of a bad source/archive model definition
     assert source_pk.name == "changed_time"
     assert archive_pk.name == "deleted_time"
-    assert source_pk.table.name == source_type.__table__.name  # ty:ignore[unresolved-attribute]
-    assert archive_pk.table.name == archive_type.__table__.name  # ty:ignore[unresolved-attribute]
+    assert source_pk.table.name == source_type.__table__.name  # ty:ignore[missing-attribute]
+    assert archive_pk.table.name == archive_type.__table__.name  # ty:ignore[missing-attribute]
 
 
 # 2022-02-03 05:06:07.500

@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any, cast
 
 from sqlalchemy import Column, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.notification.crud.common import TArchiveResourceModel, TResourceModel
@@ -77,7 +78,7 @@ async def fetch_entities_with_archive_by_id(
         (
             await session.execute(
                 select(archive_type)
-                .distinct(archive_pk_col)
+                .ext(distinct_on(archive_pk_col))
                 .order_by(archive_pk_col, archive_type.deleted_time.desc(), archive_type.archive_time.desc())
                 .where(archive_type.deleted_time != None)  # noqa: E711 # The is not None doesn't parse with SQLAlchemy
                 .where(archive_pk_col.in_(ids_not_in_source_table))
@@ -121,7 +122,7 @@ async def fetch_entities_with_archive_by_datetime(
         (
             await session.execute(
                 select(archive_type)
-                .distinct(archive_pk_col)
+                .ext(distinct_on(archive_pk_col))
                 .order_by(archive_pk_col, archive_deleted_time.desc(), archive_type.archive_time.desc())
                 .where(archive_deleted_time == cd_time)
             )

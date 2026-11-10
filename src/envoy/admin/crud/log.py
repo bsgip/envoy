@@ -2,11 +2,24 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import cast
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import noload, selectinload
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 
 from envoy.server.model.log import CalculationLog
+
+VARIABLE_RELATIONSHIPS = ("variable_metadata", "variable_values")
+LABEL_RELATIONSHIPS = ("label_metadata", "label_values")
+
+
+def _set_unloaded_relationships_empty(calculation_log: CalculationLog, relationships: Sequence[str]) -> None:
+    """Populates the specified relationships with an empty list (without emitting any SQL) if they haven't already
+    been loaded. This is a replacement for the (deprecated) noload() loader option."""
+    loaded_state = inspect(calculation_log).dict
+    for relationship in relationships:
+        if relationship not in loaded_state:
+            set_committed_value(calculation_log, relationship, [])
 
 
 async def select_calculation_log_by_id(
@@ -19,37 +32,25 @@ async def select_calculation_log_by_id(
     """
     stmt = select(CalculationLog).where(CalculationLog.calculation_log_id == calculation_log_id)
 
-    if include_variables and include_labels:
+    if include_variables:
         stmt = stmt.options(
             selectinload(CalculationLog.variable_metadata),
             selectinload(CalculationLog.variable_values),
+        )
+    if include_labels:
+        stmt = stmt.options(
             selectinload(CalculationLog.label_metadata),
             selectinload(CalculationLog.label_values),
-        )
-    elif include_variables:
-        stmt = stmt.options(
-            selectinload(CalculationLog.variable_metadata),
-            selectinload(CalculationLog.variable_values),
-            noload(CalculationLog.label_metadata),
-            noload(CalculationLog.label_values),
-        )
-    elif include_labels:
-        stmt = stmt.options(
-            noload(CalculationLog.variable_metadata),
-            noload(CalculationLog.variable_values),
-            selectinload(CalculationLog.label_metadata),
-            selectinload(CalculationLog.label_values),
-        )
-    else:
-        stmt = stmt.options(
-            noload(CalculationLog.variable_metadata),
-            noload(CalculationLog.variable_values),
-            noload(CalculationLog.label_metadata),
-            noload(CalculationLog.label_values),
         )
 
     resp = await session.execute(stmt)
-    return resp.scalars().one_or_none()
+    calculation_log = resp.scalars().one_or_none()
+    if calculation_log is not None:
+        if not include_variables:
+            _set_unloaded_relationships_empty(calculation_log, VARIABLE_RELATIONSHIPS)
+        if not include_labels:
+            _set_unloaded_relationships_empty(calculation_log, LABEL_RELATIONSHIPS)
+    return calculation_log
 
 
 async def _calculation_logs_for_period(
@@ -61,7 +62,7 @@ async def _calculation_logs_for_period(
     limit: int | None,
 ) -> Sequence[CalculationLog] | int:
 
-    select_clause: Select[tuple[int]] | Select[tuple[CalculationLog]]
+    select_clause: Select[int] | Select[CalculationLog]
     if is_counting:
         select_clause = select(func.count()).select_from(CalculationLog)
     else:
@@ -85,18 +86,16 @@ async def _calculation_logs_for_period(
     )
 
     if not is_counting:
-        stmt = stmt.order_by(CalculationLog.calculation_log_id).options(
-            noload(CalculationLog.variable_metadata),
-            noload(CalculationLog.variable_values),
-            noload(CalculationLog.label_metadata),
-            noload(CalculationLog.label_values),
-        )
+        stmt = stmt.order_by(CalculationLog.calculation_log_id)
 
     resp = await session.execute(stmt)
     if is_counting:
         return resp.scalar_one()
     else:
-        return resp.scalars().all()
+        calculation_logs = resp.scalars().all()
+        for calculation_log in calculation_logs:
+            _set_unloaded_relationships_empty(calculation_log, VARIABLE_RELATIONSHIPS + LABEL_RELATIONSHIPS)
+        return calculation_logs
 
 
 async def count_calculation_logs_for_period(session: AsyncSession, period_start: datetime, period_end: datetime) -> int:

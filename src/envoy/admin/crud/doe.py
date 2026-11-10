@@ -114,7 +114,7 @@ async def cancel_then_insert_does(
 
     # Now we can do the inserts
     table = DynamicOperatingEnvelope.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[missing-attribute]
     await session.execute(
         insert(DynamicOperatingEnvelope).values([{k: getattr(doe, k) for k in update_cols} for doe in doe_list])
     )
@@ -153,7 +153,7 @@ async def supersede_then_insert_does(
 
     # Now we can do the inserts
     table = DynamicOperatingEnvelope.__table__
-    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[unresolved-attribute]
+    update_cols = [c.name for c in table.c if c not in list(table.primary_key.columns) and not c.server_default]  # ty:ignore[missing-attribute]
     insert_ids = await session.execute(
         insert(DynamicOperatingEnvelope)
         .values([{k: getattr(doe, k) for k in update_cols} for doe in doe_list])
@@ -200,33 +200,29 @@ async def supersede_matching_does_for_group(
     # Now go to the database to find existing controls that *might* overlap with the controls in doe_list
     # We deliberately avoid fetching the full models to avoid polluting the session with a ton of entities
     potential_matches = (
-        (
-            await session.execute(
-                select(
-                    DynamicOperatingEnvelope.dynamic_operating_envelope_id,
-                    DynamicOperatingEnvelope.site_control_group_id,
-                    DynamicOperatingEnvelope.start_time,
-                    DynamicOperatingEnvelope.end_time,
-                    DynamicOperatingEnvelope.import_limit_active_watts,
-                    DynamicOperatingEnvelope.export_limit_watts,
-                    DynamicOperatingEnvelope.generation_limit_active_watts,
-                    DynamicOperatingEnvelope.load_limit_active_watts,
-                    DynamicOperatingEnvelope.set_energized,
-                    DynamicOperatingEnvelope.set_connected,
-                    DynamicOperatingEnvelope.set_point_percentage,
-                ).where(
-                    # We include site_control_group to ensure we can utilise our indexes
-                    (DynamicOperatingEnvelope.site_control_group_id.in_(all_site_control_group_ids))
-                    & (DynamicOperatingEnvelope.site_group_id == site_group_id)
-                    & (DynamicOperatingEnvelope.end_time > min_date)
-                    & (DynamicOperatingEnvelope.start_time < max_date)
-                    & (DynamicOperatingEnvelope.superseded.is_(False))  # Can't supersede something twice
-                )
+        await session.execute(
+            select(
+                DynamicOperatingEnvelope.dynamic_operating_envelope_id,
+                DynamicOperatingEnvelope.site_control_group_id,
+                DynamicOperatingEnvelope.start_time,
+                DynamicOperatingEnvelope.end_time,
+                DynamicOperatingEnvelope.import_limit_active_watts,
+                DynamicOperatingEnvelope.export_limit_watts,
+                DynamicOperatingEnvelope.generation_limit_active_watts,
+                DynamicOperatingEnvelope.load_limit_active_watts,
+                DynamicOperatingEnvelope.set_energized,
+                DynamicOperatingEnvelope.set_connected,
+                DynamicOperatingEnvelope.set_point_percentage,
+            ).where(
+                # We include site_control_group to ensure we can utilise our indexes
+                (DynamicOperatingEnvelope.site_control_group_id.in_(all_site_control_group_ids))
+                & (DynamicOperatingEnvelope.site_group_id == site_group_id)
+                & (DynamicOperatingEnvelope.end_time > min_date)
+                & (DynamicOperatingEnvelope.start_time < max_date)
+                & (DynamicOperatingEnvelope.superseded.is_(False))  # Can't supersede something twice
             )
         )
-        .tuples()
-        .all()
-    )
+    ).all()
 
     # Build an efficient tree for quick lookups based on start/end time
     doe_list_tree = IntervalTree(Interval(doe.start_time, doe.end_time, doe) for doe in doe_list)

@@ -3,6 +3,7 @@ import inspect
 import pkgutil
 from collections.abc import Generator
 from pathlib import Path
+from typing import cast
 
 import pytest
 from assertical.asserts.type import assert_set_type
@@ -75,15 +76,21 @@ def find_paired_unpaired_archive_classes() -> set[tuple[type[Base] | None, type[
     Noting that a model class like Site will be prefixed on the archive side as ArchiveSite"""
     pairings: set[tuple[type[Base] | None, type[ArchiveBase] | None]] = set()
     for m, a in find_paired_archive_modules():
-        model_types_by_name: dict[str, type[Base]] = dict(
-            (t.__name__, t)
-            for _, t in inspect.getmembers(importlib.import_module(m), inspect.isclass)
-            if t.__module__ == m
+        model_types_by_name = cast(
+            dict[str, type[Base]],
+            dict(
+                (t.__name__, t)
+                for _, t in inspect.getmembers(importlib.import_module(m), inspect.isclass)
+                if t.__module__ == m
+            ),
         )
-        archive_types_by_name: dict[str, type[ArchiveBase]] = dict(
-            (t.__name__, t)
-            for _, t in inspect.getmembers(importlib.import_module(a), inspect.isclass)
-            if t.__module__ == a
+        archive_types_by_name = cast(
+            dict[str, type[ArchiveBase]],
+            dict(
+                (t.__name__, t)
+                for _, t in inspect.getmembers(importlib.import_module(a), inspect.isclass)
+                if t.__module__ == a
+            ),
         )
 
         for model_name, mt in model_types_by_name.items():

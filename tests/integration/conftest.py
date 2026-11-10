@@ -7,6 +7,7 @@ from http import HTTPStatus
 import pytest
 from assertical.fake.http import MockedAsyncClient
 from assertical.fixtures.fastapi import start_app_with_client
+from fastapi.routing import iter_route_contexts
 from httpx import Response
 from psycopg import Connection
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -121,7 +122,7 @@ async def admin_client_unauth(pg_base_config: Connection):
 def admin_path_methods() -> defaultdict[str, list[str]]:
     app = admin_gen_app(admin_gen_settings())
     path_methods = defaultdict(list)
-    for route in app.routes:
+    for route in iter_route_contexts(app.routes):  # Flattens any included routers
         path_methods[route.path] = path_methods[route.path] + list(route.methods)  # type: ignore
     return path_methods
 
