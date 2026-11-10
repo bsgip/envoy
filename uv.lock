@@ -536,7 +536,7 @@ dependencies = [
     { name = "pydantic-xml", extra = ["lxml"] },
     { name = "pyjwt" },
     { name = "python-dotenv" },
-    { name = "sqlalchemy" },
+    { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "tzlocal" },
     { name = "uvicorn" },
 ]
@@ -601,7 +601,7 @@ requires-dist = [
     { name = "pytest-xdist", marker = "extra == 'test'" },
     { name = "python-dotenv" },
     { name = "ruff", marker = "extra == 'dev'" },
-    { name = "sqlalchemy", specifier = ">=2.1.0" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1.0" },
     { name = "ty", marker = "extra == 'dev'" },
     { name = "types-lxml", marker = "extra == 'dev'" },
     { name = "types-tzlocal", marker = "extra == 'dev'" },
@@ -1781,7 +1781,7 @@ wheels = [
 
 [package.optional-dependencies]
 asyncio = [
-    { name = "greenlet", marker = "python_full_version >= '3.12'" },
+    { name = "greenlet" },
 ]
 
 [[package]]
