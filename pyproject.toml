@@ -1,6 +1,7 @@
 [tool.pytest.ini_options]
 pythonpath = ["src/"]
 testpaths = "tests"
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = ["error::DeprecationWarning"]
 addopts = "--strict-markers"
 markers = [
@@ -57,8 +58,8 @@ dynamic = ["version", "readme"]
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "envoy_schema==1.5.1",
-    "fastapi>=0.94.1,<0.137", # Recent FastAPI versions appear to break route exclusion functionality
-    "sqlalchemy>=2.0.0",
+    "fastapi",
+    "sqlalchemy>=2.1.0",
     "alembic",
     "tzlocal",
     "pydantic_xml[lxml]>=2.12.0",

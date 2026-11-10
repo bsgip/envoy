@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import ssl
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
 from typing import Any
 
@@ -78,7 +78,7 @@ def enable_notification_worker(db_kwargs: dict[str, Any]) -> Callable[[FastAPI],
     tls_verify = resolve_tls_verify(settings)
 
     @asynccontextmanager
-    async def context_manager(app: FastAPI) -> AsyncIterator:
+    async def context_manager(app: FastAPI) -> AsyncGenerator[None, None]:
         stop_event = asyncio.Event()
         task = asyncio.create_task(run_poll_loop(session_maker, tls_verify, settings, stop_event))
         try:

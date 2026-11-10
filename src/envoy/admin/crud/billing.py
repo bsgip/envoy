@@ -101,8 +101,8 @@ async def fetch_aggregator_billing_data(
     )
 
     return BillingData(
-        active_tariffs=tariffs_result.tuples().all(),
-        active_does=does_result.tuples().all(),
+        active_tariffs=tariffs_result.all(),
+        active_does=does_result.all(),
         wh_readings=wh_result.scalars().all(),
         varh_readings=varh_result.scalars().all(),
         watt_readings=watt_result.scalars().all(),
@@ -122,41 +122,33 @@ async def fetch_calculation_log_billing_data(
     period_end = period_start + timedelta(seconds=calculation_log.calculation_range_duration_seconds)
 
     tariffs_result = (
-        (
-            await session.execute(
-                select(SiteGroupAssignment.site_id, TariffGeneratedRate)
-                .select_from(TariffGeneratedRate)
-                .join(
-                    SiteGroupAssignment,
-                    SiteGroupAssignment.site_group_id == TariffGeneratedRate.site_group_id,
-                )
-                .where(
-                    (TariffGeneratedRate.tariff_id == tariff_id)
-                    & (TariffGeneratedRate.calculation_log_id == calculation_log.calculation_log_id)
-                )
-                .order_by(SiteGroupAssignment.site_id, TariffGeneratedRate.start_time)
+        await session.execute(
+            select(SiteGroupAssignment.site_id, TariffGeneratedRate)
+            .select_from(TariffGeneratedRate)
+            .join(
+                SiteGroupAssignment,
+                SiteGroupAssignment.site_group_id == TariffGeneratedRate.site_group_id,
             )
+            .where(
+                (TariffGeneratedRate.tariff_id == tariff_id)
+                & (TariffGeneratedRate.calculation_log_id == calculation_log.calculation_log_id)
+            )
+            .order_by(SiteGroupAssignment.site_id, TariffGeneratedRate.start_time)
         )
-        .tuples()
-        .all()
-    )
+    ).all()
 
     does_result = (
-        (
-            await session.execute(
-                select(SiteGroupAssignment.site_id, DynamicOperatingEnvelope)
-                .select_from(DynamicOperatingEnvelope)
-                .join(
-                    SiteGroupAssignment,
-                    SiteGroupAssignment.site_group_id == DynamicOperatingEnvelope.site_group_id,
-                )
-                .where((DynamicOperatingEnvelope.calculation_log_id == calculation_log.calculation_log_id))
-                .order_by(SiteGroupAssignment.site_id, DynamicOperatingEnvelope.start_time)
+        await session.execute(
+            select(SiteGroupAssignment.site_id, DynamicOperatingEnvelope)
+            .select_from(DynamicOperatingEnvelope)
+            .join(
+                SiteGroupAssignment,
+                SiteGroupAssignment.site_group_id == DynamicOperatingEnvelope.site_group_id,
             )
+            .where(DynamicOperatingEnvelope.calculation_log_id == calculation_log.calculation_log_id)
+            .order_by(SiteGroupAssignment.site_id, DynamicOperatingEnvelope.start_time)
         )
-        .tuples()
-        .all()
-    )
+    ).all()
 
     # Find any and all site_id's referenced in any child objects
     referenced_site_ids: set[int] = set(
@@ -304,8 +296,8 @@ async def fetch_sites_billing_data(
     )
 
     return BillingData(
-        active_tariffs=tariffs_result.tuples().all(),
-        active_does=does_result.tuples().all(),
+        active_tariffs=tariffs_result.all(),
+        active_does=does_result.all(),
         wh_readings=wh_result.scalars().all(),
         varh_readings=varh_result.scalars().all(),
         watt_readings=watt_result.scalars().all(),

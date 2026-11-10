@@ -52,7 +52,7 @@ def test_validate_model_definitions(model_type: type):
         member_type = type_hints[member_name]
 
         # Check the type is "simple" and that we haven't accidentally typed it with some complex type
-        if isinstance(mapped_column_details.property, ColumnProperty):  # ty:ignore[unresolved-attribute]
+        if isinstance(mapped_column_details.property, ColumnProperty):  # ty:ignore[missing-attribute]
             # We have a "simple type" that sqlalchemy has mapped into a column
             if not is_generatable_type(member_type):
                 # And then the typehint doesn't appear to be simple. Is the type hint appropriate?

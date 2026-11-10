@@ -1,6 +1,6 @@
 import logging
 import ssl
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
 from dataclasses import dataclass
 
@@ -62,7 +62,7 @@ def enable_notification_client() -> Callable[[FastAPI], _AsyncGeneratorContextMa
     """
 
     @asynccontextmanager
-    async def context_manager(app: FastAPI) -> AsyncIterator:
+    async def context_manager(app: FastAPI) -> AsyncGenerator[None, None]:
         global _notifications_enabled
         _notifications_enabled = True
         try:

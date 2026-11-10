@@ -335,13 +335,9 @@ async def fetch_rates_by_changed_at(
     }
     required_group_by_tariff_id: dict[int, int | None] = {}
     if referenced_tariff_ids:
-        tariff_rows = (
-            await session.execute(
-                select(Tariff.tariff_id, Tariff.required_site_group_id).where(
-                    Tariff.tariff_id.in_(referenced_tariff_ids)
-                )
-            )
-        ).tuples()
+        tariff_rows = await session.execute(
+            select(Tariff.tariff_id, Tariff.required_site_group_id).where(Tariff.tariff_id.in_(referenced_tariff_ids))
+        )
         required_group_by_tariff_id = dict(tariff_rows.all())
 
     referenced_required_group_ids = {gid for gid in required_group_by_tariff_id.values() if gid is not None}
@@ -750,9 +746,7 @@ async def fetch_site_control_groups_by_changed_at(
         return AggregatorBatchedEntities(timestamp, SubscriptionResource.SITE_CONTROL_GROUP, [], [])
 
     # The site control group update will need to vary per Site so we generate an instance per site_id
-    aggregator_site_ids = (
-        (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).tuples().all()
-    )
+    aggregator_site_ids = (await session.execute(select(Site.aggregator_id, Site.site_id).order_by(Site.site_id))).all()
 
     # Groups with a required_site_group_id set are only visible to member sites of that group - resolve
     # membership for any such groups referenced in this batch

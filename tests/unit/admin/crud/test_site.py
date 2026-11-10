@@ -294,10 +294,10 @@ async def test_max_limit_select_all_sites(pg_base_config):
         )
         assert_list_type(Site, sites, count=MAX_LIMIT)
 
-        site_status_ids = [s.site_der_status.site_der_status_id for s in sites]  # ty:ignore[unresolved-attribute]
-        site_avail_ids = [s.site_der_availability.site_der_availability_id for s in sites]  # ty:ignore[unresolved-attribute]
-        site_rating_ids = [s.site_der_rating.site_der_rating_id for s in sites]  # ty:ignore[unresolved-attribute]
-        site_settings_ids = [s.site_der_setting.site_der_setting_id for s in sites]  # ty:ignore[unresolved-attribute]
+        site_status_ids = [s.site_der_status.site_der_status_id for s in sites]  # ty:ignore[missing-union-attribute]
+        site_avail_ids = [s.site_der_availability.site_der_availability_id for s in sites]  # ty:ignore[missing-union-attribute]
+        site_rating_ids = [s.site_der_rating.site_der_rating_id for s in sites]  # ty:ignore[missing-union-attribute]
+        site_settings_ids = [s.site_der_setting.site_der_setting_id for s in sites]  # ty:ignore[missing-union-attribute]
 
         assert len(site_rating_ids) == MAX_LIMIT
         assert len(site_rating_ids) == len(set(site_rating_ids)), "All Unique values"

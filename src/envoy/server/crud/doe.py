@@ -137,7 +137,7 @@ async def _does_at_timestamp(
 
     Orders by 2030.5 requirements on DERControl which is start ASC, creation DESC, id DESC"""
 
-    select_clause: Select[tuple[int]] | Select[tuple[DOE, str]]
+    select_clause: Select[int] | Select[DOE, str]
     if is_counting:
         select_clause = select(func.count()).select_from(DOE)
     else:
@@ -460,7 +460,7 @@ async def _site_control_groups(
 
     Orders by 2030.5 requirements on DERProgram which is primacy ASC, primary key DESC"""
 
-    stmt: Select[tuple[int]] | Select[tuple[SiteControlGroup]]
+    stmt: Select[int] | Select[SiteControlGroup]
     if is_counting:
         stmt = select(func.count()).select_from(SiteControlGroup)
     else:
@@ -538,16 +538,12 @@ async def count_site_control_groups_by_fsa_id(session: AsyncSession) -> dict[int
     """Returns a dictionary keyed by the SiteControlGroup.fsa_id with a value indicating the count
     of SiteControlGroup's with that fsa_id"""
     kvps = (
-        (
-            await session.execute(
-                select(SiteControlGroup.fsa_id, func.count())
-                .group_by(SiteControlGroup.fsa_id)
-                .where(SiteControlGroup.fsa_id.is_not(None))
-            )
+        await session.execute(
+            select(SiteControlGroup.fsa_id, func.count())
+            .group_by(SiteControlGroup.fsa_id)
+            .where(SiteControlGroup.fsa_id.is_not(None))
         )
-        .tuples()
-        .all()
-    )
+    ).all()
 
     # We safely cast here because we've filtered out the None values during the SQL query
     return dict(cast(list[tuple[int, int]], kvps))

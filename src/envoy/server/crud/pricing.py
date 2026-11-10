@@ -185,7 +185,7 @@ async def _tariff_rates_for_day(
 
     # At the moment tariff's are exposed to all aggregators - the plan is for them to be scoped for individual
     # groups of sites but this could be subject to change as the DNSP's requirements become more clear
-    select_clause: Select[tuple[int]] | Select[tuple[TariffGeneratedRate]]
+    select_clause: Select[int] | Select[TariffGeneratedRate]
     if only_count:
         select_clause = select(func.count()).select_from(TariffGeneratedRate)
     else:
@@ -316,8 +316,8 @@ async def _select_rate_day_range(
     # Ensure that the min/max happens first otherwise the query planner will do a full index scan (rather than
     # a single index lookup)
     stmt = select(
-        cast(func.timezone(site_timezone_id, func.min(TariffGeneratedRate.start_time)), Date),
-        cast(func.timezone(site_timezone_id, func.max(TariffGeneratedRate.start_time)), Date),
+        cast(func.timezone(site_timezone_id, func.min(TariffGeneratedRate.start_time)), Date()),
+        cast(func.timezone(site_timezone_id, func.max(TariffGeneratedRate.start_time)), Date()),
     ).where(
         (TariffGeneratedRate.tariff_id == tariff_id)
         & site_is_member_of_group(TariffGeneratedRate.site_group_id, site_id)
