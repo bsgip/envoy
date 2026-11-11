@@ -234,7 +234,7 @@ def test_consumption_tariff_interval_map_to_list_response(
     scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=101, href_prefix="/pfx")
     rate = generate_class_instance(type, seed=202, optional_is_none=optional_is_none)
 
-    mapped = ConsumptionTariffIntervalMapper.map_to_list_response(scope, rate)
+    mapped = ConsumptionTariffIntervalMapper.map_to_list_response(scope, rate, 0, datetime.min.replace(tzinfo=UTC), 99)
     assert isinstance(mapped, ConsumptionTariffIntervalListResponse)
 
     if rate.block_1_start_pow10_encoded is None or rate.price_pow10_encoded_block_1 is None:
@@ -264,6 +264,48 @@ def test_consumption_tariff_interval_map_to_list_response(
     )
     assert mapped.ConsumptionTariffInterval[0].href.startswith("/pfx")
     assert mapped.ConsumptionTariffInterval[0].href != mapped.href
+
+
+@pytest.mark.parametrize(
+    "has_block_1, start, limit, after_delta_seconds, expected_all, expected_cti_ids",
+    [
+        (True, 0, 1, None, 2, [1]),
+        (True, 1, 1, None, 2, [2]),
+        (True, 0, 5, None, 2, [1, 2]),
+        (True, 2, 5, None, 2, []),
+        (True, 0, 0, None, 2, []),
+        (True, 0, 5, 0, 2, [1, 2]),  # changed_after == changed_time is inclusive
+        (True, 0, 5, 1, 0, []),  # changed_after > changed_time excludes everything
+        (False, 0, 5, None, 1, [1]),
+        (False, 1, 5, None, 1, []),
+        (False, 0, 5, 1, 0, []),
+    ],
+)
+def test_consumption_tariff_interval_map_to_list_response_pagination(
+    has_block_1: bool,
+    start: int,
+    limit: int,
+    after_delta_seconds: int | None,
+    expected_all: int,
+    expected_cti_ids: list[int],
+):
+    scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=101, href_prefix="/pfx")
+    rate = generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=not has_block_1)
+    if has_block_1:
+        assert rate.block_1_start_pow10_encoded is not None and rate.price_pow10_encoded_block_1 is not None
+
+    if after_delta_seconds is None:
+        changed_after = datetime.min.replace(tzinfo=UTC)
+    else:
+        changed_after = rate.changed_time + timedelta(seconds=after_delta_seconds)
+
+    mapped = ConsumptionTariffIntervalMapper.map_to_list_response(scope, rate, start, changed_after, limit)
+    assert isinstance(mapped, ConsumptionTariffIntervalListResponse)
+    assert mapped.all_ == expected_all
+    assert mapped.results == len(expected_cti_ids)
+    assert [c.consumptionBlock for c in (mapped.ConsumptionTariffInterval or [])] == [
+        ConsumptionBlockType(i) for i in expected_cti_ids
+    ]
 
 
 @pytest.mark.parametrize(

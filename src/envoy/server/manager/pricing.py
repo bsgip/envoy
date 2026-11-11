@@ -284,8 +284,12 @@ class ConsumptionTariffIntervalManager:
         tariff_id: int,
         rate_component_id: int,
         time_tariff_interval_id: int,
+        start: int,
+        changed_after: datetime,
+        limit: int,
     ) -> ConsumptionTariffIntervalListResponse:
-        """This list is semi-virtual. It's backed by a DB record but there can only ever be a single entry"""
+        """This list is semi-virtual. It's backed by a single DB record (with one entry per price block). The
+        pagination parameters will be applied to the price blocks of that record."""
 
         rate = await select_tariff_generated_rate_include_deleted(
             session, scope.aggregator_id, scope.site_id, time_tariff_interval_id
@@ -293,7 +297,7 @@ class ConsumptionTariffIntervalManager:
         if rate is None or rate.tariff_id != tariff_id or rate.tariff_component_id != rate_component_id:
             raise NotFoundError(f"No price record for /edev/{scope.site_id} under {tariff_id=} {rate_component_id=}")
 
-        return ConsumptionTariffIntervalMapper.map_to_list_response(scope, rate)
+        return ConsumptionTariffIntervalMapper.map_to_list_response(scope, rate, start, changed_after, limit)
 
     @staticmethod
     async def fetch_consumption_tariff_interval(

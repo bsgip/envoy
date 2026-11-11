@@ -255,9 +255,19 @@ class ConsumptionTariffIntervalMapper:
 
     @staticmethod
     def map_to_list_response(
-        scope: DeviceOrAggregatorRequestScope, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate
+        scope: DeviceOrAggregatorRequestScope,
+        rate: TariffGeneratedRate | ArchiveTariffGeneratedRate,
+        start: int,
+        changed_after: datetime,
+        limit: int,
     ) -> ConsumptionTariffIntervalListResponse:
-        """Returns a singleton list containing the one ConsumptionTariffIntervalResponse representing rate"""
+        """Returns a list containing the ConsumptionTariffIntervalResponse(s) representing rate (one per price block).
+
+        This list is "virtual" (all blocks come from the single rate) but it will still honour the sep2 pagination
+        parameters:
+            start: Number of blocks to skip from the beginning of the list
+            changed_after: If the rate's changed_time is BEFORE this value, no blocks will be returned (all_ = 0)
+            limit: Maximum number of blocks to return"""
         href = generate_href(
             uri.ConsumptionTariffIntervalListUri,
             scope,
@@ -268,17 +278,18 @@ class ConsumptionTariffIntervalMapper:
         )
 
         # We will either have 1 or 2 price blocks depending on whether the rate has the fields set
-        if rate.block_1_start_pow10_encoded is not None and rate.price_pow10_encoded_block_1 is not None:
-            cti_block_0 = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, 1)
-            cti_block_1 = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, 2)
-            return ConsumptionTariffIntervalListResponse(
-                href=href, all_=2, results=2, ConsumptionTariffInterval=[cti_block_0, cti_block_1]
-            )
+        if rate.changed_time < changed_after:
+            cti_ids: list[int] = []
+        elif rate.block_1_start_pow10_encoded is not None and rate.price_pow10_encoded_block_1 is not None:
+            cti_ids = [1, 2]
         else:
-            cti_block_0 = ConsumptionTariffIntervalMapper.map_to_response(scope, rate, 1)
-            return ConsumptionTariffIntervalListResponse(
-                href=href, all_=1, results=1, ConsumptionTariffInterval=[cti_block_0]
-            )
+            cti_ids = [1]
+
+        page_cti_ids = cti_ids[max(start, 0) : max(start, 0) + max(limit, 0)]
+        ctis = [ConsumptionTariffIntervalMapper.map_to_response(scope, rate, cti_id) for cti_id in page_cti_ids]
+        return ConsumptionTariffIntervalListResponse(
+            href=href, all_=len(cti_ids), results=len(ctis), ConsumptionTariffInterval=ctis
+        )
 
     @staticmethod
     def map_to_summary_list_response(
