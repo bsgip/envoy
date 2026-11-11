@@ -805,3 +805,60 @@ async def test_get_cti_list_and_ctis(
             assert cti_response.price == cti.price, cti.href
             assert cti_response.startValue == cti.startValue, cti.href
             assert cti_response.consumptionBlock == cti.consumptionBlock, cti.href
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "tti_id, start, limit, changed_after, expected_all, expected_prices",
+    [
+        # tti/1 has 2 price blocks (1111 and 1001)
+        (1, None, None, None, 2, [1111]),  # Default limit is 1
+        (1, None, 10, None, 2, [1111, 1001]),
+        (1, 0, 2, None, 2, [1111, 1001]),
+        (1, 0, 1, None, 2, [1111]),
+        (1, 1, 1, None, 2, [1001]),
+        (1, 1, 10, None, 2, [1001]),
+        (1, 2, 10, None, 2, []),
+        (1, 99, 10, None, 2, []),
+        (1, 0, 0, None, 2, []),
+        (1, 0, 10, datetime(2022, 3, 4, 11, 22, 33, tzinfo=UTC), 2, [1111, 1001]),  # Changed just after this
+        (1, 1, 10, datetime(2022, 3, 4, 11, 22, 33, tzinfo=UTC), 2, [1001]),
+        (1, 0, 10, datetime(2022, 3, 4, 11, 22, 34, tzinfo=UTC), 0, []),  # Changed just before this
+        # tti/2 has only a single price block (2222)
+        (2, None, 10, None, 1, [2222]),
+        (2, 0, 1, None, 1, [2222]),
+        (2, 1, 10, None, 1, []),
+        (2, 0, 10, datetime(2022, 3, 4, 13, 0, 0, tzinfo=UTC), 0, []),
+    ],
+)
+async def test_get_cti_list_pagination(
+    client: AsyncClient,
+    agg_1_headers,
+    tti_id: int,
+    start: int | None,
+    limit: int | None,
+    changed_after: datetime | None,
+    expected_all: int,
+    expected_prices: list[int],
+):
+    """Consumption Tariff Intervals aren't a "true" list (they're the price blocks of a single TariffGeneratedRate)
+    but they should still honour the sep2 pagination parameters"""
+    base_path = uri.ConsumptionTariffIntervalListUri.format(tariff_id=1, site_id=1, rate_component_id=1, tti_id=tti_id)
+    response = await client.get(
+        base_path + build_paging_params(start=start, limit=limit, changed_after=changed_after), headers=agg_1_headers
+    )
+    assert_response_header(response, HTTPStatus.OK)
+    parsed_response = ConsumptionTariffIntervalListResponse.from_xml(read_response_body_string(response))
+
+    assert parsed_response.href == base_path
+    assert parsed_response.all_ == expected_all
+    assert parsed_response.results == len(expected_prices)
+    assert [cti.price for cti in (parsed_response.ConsumptionTariffInterval or [])] == expected_prices
+
+    # Each CTI href should still resolve to the same entity (ie - pagination doesn't affect the block id)
+    for cti in parsed_response.ConsumptionTariffInterval or []:
+        cti_response = await client.get(cti.href or "", headers=agg_1_headers)
+        assert_response_header(cti_response, HTTPStatus.OK)
+        resolved = ConsumptionTariffIntervalResponse.from_xml(read_response_body_string(cti_response))
+        assert resolved.price == cti.price
+        assert resolved.consumptionBlock == cti.consumptionBlock

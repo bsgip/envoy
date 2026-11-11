@@ -333,6 +333,9 @@ async def get_consumptiontariffintervallist(
             tariff_id=tariff_id,
             rate_component_id=rate_component_id,
             time_tariff_interval_id=tti_id,
+            start=extract_start_from_paging_param(start),
+            changed_after=extract_datetime_from_paging_param(after),
+            limit=extract_limit_from_paging_param(limit),
         )
     except NotFoundError as exc:
         raise LoggedHttpException(logger, None, status_code=HTTPStatus.NOT_FOUND, detail="Not found") from exc
