@@ -1,3 +1,3 @@
 """Top level package definitions. Individual web apps can be found under dedicated directories"""
 
-__version__ = "2.5.2"
+__version__ = "2.5.3"
