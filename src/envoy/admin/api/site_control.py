@@ -24,6 +24,7 @@ from fastapi import APIRouter, Query, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError
 
+from envoy.admin.api.validation import validate_list_submission_size
 from envoy.admin.manager.site_control import SiteControlGroupManager, SiteControlListManager
 from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import extract_limit_from_paging_param, extract_start_from_paging_param
@@ -131,6 +132,7 @@ async def create_site_controls(group_id: int, control_list: list[SiteControlRequ
     Returns:
         None
     """
+    validate_list_submission_size(control_list)
     try:
         return await SiteControlListManager.add_many_site_control(db.session, group_id, control_list)
     except CardinalityViolationError as exc:

@@ -28,6 +28,7 @@ from fastapi import APIRouter, Query, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
+from envoy.admin.api.validation import validate_list_submission_size
 from envoy.admin.manager.pricing import (
     TariffComponentManager,
     TariffGeneratedRateManager,
@@ -241,6 +242,7 @@ async def create_tariff_genrate(
     Returns:
         BatchCreateCollidableResponse - the ids list will correlate 1-1 with the submitted tariff_generates.
     """
+    validate_list_submission_size(tariff_generates)
     try:
         return await TariffGeneratedRateManager.add_many_tariff_genrate(db.session, tariff_generates, on_collide)
 

@@ -9,6 +9,7 @@ from envoy_schema.admin.schema.certificate import CertificateAssignmentRequest, 
 from fastapi_async_sqlalchemy import db
 
 from envoy.admin import manager
+from envoy.admin.api.validation import validate_list_submission_size
 from envoy.server import exception
 from envoy.server.api import error_handler, request
 
@@ -126,6 +127,7 @@ async def assign_certificates_to_aggregator(
         certificates: For each certificate to be assigned, it either needs an ID or LFDI supplied. Expiry will be
             ignored for existing certificates. New certificates require an expiry.
     """
+    validate_list_submission_size(certificates)
     try:
         await manager.CertificateManager.add_many_certificates_for_aggregator(
             session=db.session, aggregator_id=aggregator_id, certs=certificates
