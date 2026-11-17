@@ -4,7 +4,7 @@ from http import HTTPStatus
 from envoy_schema.server.schema.sep2.error import ErrorResponse
 from envoy_schema.server.schema.sep2.types import ReasonCodeType
 from fastapi import HTTPException, Request, Response
-from lxml.etree import XMLSyntaxError  # nosec: This will need to be addressed with pydantic-xml
+from lxml.etree import XMLSyntaxError
 from pydantic_core import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
