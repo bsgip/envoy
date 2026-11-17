@@ -4,13 +4,21 @@ from http import HTTPStatus
 from envoy_schema.server.schema.sep2.error import ErrorResponse
 from envoy_schema.server.schema.sep2.types import ReasonCodeType
 from fastapi import HTTPException, Request, Response
-from lxml.etree import XMLSyntaxError  # nosec: This will need to be addressed with pydantic-xml
+from lxml.etree import XMLSyntaxError
 from pydantic_core import ValidationError
+from sqlalchemy.exc import DBAPIError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from envoy.server.api.response import XmlResponse
 
 logger = logging.getLogger(__name__)
+
+# SQLSTATE codes (https://www.postgresql.org/docs/current/errcodes-appendix.html) that indicate the client sent data
+# that violates a DB constraint (rather than a server fault) and should be reported as a HTTP BadRequest
+SQLSTATE_STRING_DATA_RIGHT_TRUNCATION = "22001"  # eg: "value too long for type character varying(11)"
+BAD_REQUEST_SQLSTATES: dict[str, str] = {
+    SQLSTATE_STRING_DATA_RIGHT_TRUNCATION: "One or more string values exceed the maximum supported length.",
+}
 
 
 def http_status_code_to_reason_code(status_code: HTTPStatus | int) -> ReasonCodeType:
@@ -74,6 +82,41 @@ def xml_exception_handler(request: Request, exc: XMLSyntaxError | Exception) -> 
 
     logger.exception(f"{request.path_params} generated validation exception {exc}")
     return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.msg)  # ty:ignore[invalid-argument-type] # This is checked above
+
+
+def get_dbapi_error_sqlstate(exc: DBAPIError) -> str | None:
+    """Extracts the (postgres) SQLSTATE code from the underlying DBAPI error (if available). Different drivers expose
+    this differently - asyncpg (via SQLAlchemy's adapter) exposes sqlstate, psycopg exposes pgcode/sqlstate"""
+    orig = exc.orig
+    for attr in ("sqlstate", "pgcode"):
+        code = getattr(orig, attr, None)
+        if isinstance(code, str) and code:
+            return code
+
+    # Fallback to the original driver exception (if it was chained)
+    cause = getattr(orig, "__cause__", None)
+    code = getattr(cause, "sqlstate", None)
+    if isinstance(code, str) and code:
+        return code
+    return None
+
+
+def dbapi_exception_handler(request: Request, exc: DBAPIError | Exception) -> Response:
+    """Handles database errors that haven't been handled. Most DB errors are server faults (500) but certain
+    errors (eg string length constraints) are caused by a client sending data that violates a DB constraint and are
+    instead returned as a BadRequest with a generic sep2 ErrorResponse.
+
+    The message is deliberately generic to avoid leaking any internal DB schema details."""
+    if not isinstance(exc, DBAPIError):
+        return general_exception_handler(request, exc)
+
+    sqlstate = get_dbapi_error_sqlstate(exc)
+    message = BAD_REQUEST_SQLSTATES.get(sqlstate) if sqlstate else None
+    if message is None:
+        return general_exception_handler(request, exc)
+
+    logger.exception(f"{request.path_params} generated DB constraint exception (sqlstate {sqlstate}) {exc}")
+    return generate_error_response(HTTPStatus.BAD_REQUEST, message=message)
 
 
 def general_exception_handler(request: Request, exc: Exception) -> Response:
