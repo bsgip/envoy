@@ -13,6 +13,7 @@ from fastapi import APIRouter, Query, Response
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
+from envoy.admin.api.validation import validate_list_submission_size
 from envoy.admin.manager.pricing import TariffGeneratedRateListManager, TariffListManager, TariffManager
 from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import extract_limit_from_paging_param, extract_start_from_paging_param
@@ -108,6 +109,7 @@ async def create_tariff_genrate(tariff_generates: list[TariffGeneratedRateReques
     Returns:
         None
     """
+    validate_list_submission_size(tariff_generates)
     try:
         await TariffGeneratedRateListManager.add_many_tariff_genrate(db.session, tariff_generates)
 

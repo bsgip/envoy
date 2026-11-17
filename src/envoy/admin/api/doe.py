@@ -9,6 +9,7 @@ from fastapi import APIRouter, Query
 from fastapi_async_sqlalchemy import db
 from sqlalchemy.exc import IntegrityError
 
+from envoy.admin.api.validation import validate_list_submission_size
 from envoy.admin.manager.doe import DoeListManager
 from envoy.server.api.error_handler import LoggedHttpException
 from envoy.server.api.request import extract_limit_from_paging_param, extract_start_from_paging_param
@@ -29,6 +30,7 @@ async def create_doe(doe_list: list[DynamicOperatingEnvelopeRequest]) -> None:
     Returns:
         None
     """
+    validate_list_submission_size(doe_list)
     try:
         await DoeListManager.add_many_doe(db.session, doe_list)
 
