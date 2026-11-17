@@ -99,6 +99,7 @@ async def test_get_connectionpoint_none_nmi(
     "site_id, cert, update_nmi_value, expected_result, expected_nmi",
     [
         (1, AGG_1_VALID_CERT, "1212121212", HTTPStatus.CREATED, "1212121212"),
+        (1, AGG_1_VALID_CERT, "1212121212121212121212", HTTPStatus.BAD_REQUEST, "1111111111"),  # NMI too long
         (6, REGISTERED_DEVICE_CERT, "1212121212", HTTPStatus.CREATED, "1212121212"),
         (5, REGISTERED_DEVICE_CERT, "1212121212", HTTPStatus.FORBIDDEN, "5555555555"),  # Wrong device for device cert
         (1, REGISTERED_DEVICE_CERT, "1212121212", HTTPStatus.FORBIDDEN, "1111111111"),  # Wrong device for device cert

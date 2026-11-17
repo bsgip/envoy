@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 from lxml.etree import XMLSyntaxError
 from pydantic_core import ValidationError
+from sqlalchemy.exc import DBAPIError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from envoy.notification.handler import enable_notification_client
@@ -15,6 +16,7 @@ from envoy.server.api.depends.lfdi_auth import LFDIAuthDepends
 from envoy.server.api.depends.nmi_validator import NMI_VALIDATOR_ATTR
 from envoy.server.api.depends.request_state_settings import RequestStateSettingsDepends
 from envoy.server.api.error_handler import (
+    dbapi_exception_handler,
     general_exception_handler,
     http_exception_handler,
     validation_exception_handler,
@@ -101,6 +103,7 @@ def generate_app(new_settings: AppSettings) -> FastAPI:
     new_app.add_exception_handler(HTTPException, http_exception_handler)
     new_app.add_exception_handler(ValidationError, validation_exception_handler)
     new_app.add_exception_handler(XMLSyntaxError, xml_exception_handler)
+    new_app.add_exception_handler(DBAPIError, dbapi_exception_handler)
     new_app.add_exception_handler(Exception, general_exception_handler)
     new_app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 
