@@ -59,6 +59,12 @@ from envoy.server.model.subscription import Subscription, SubscriptionCondition,
 from envoy.server.model.tariff import TariffGeneratedRate
 from envoy.server.request_scope import AggregatorRequestScope
 
+# The NotificationTypes that are relevant to notifications about changed/deleted entities
+ENTITY_NOTIFICATION_TYPES = [NotificationType.ENTITY_CHANGED, NotificationType.ENTITY_DELETED]
+
+# SubscriptionResource.SUBSCRIPTION is internal only (it's never a subscribable resource)
+SUBSCRIBABLE_RESOURCES = [r for r in SubscriptionResource if r != SubscriptionResource.SUBSCRIPTION]
+
 
 def assert_entity_hrefs_contain_entity_id_and_prefix(
     hrefs: list[str], expected_site_ids: list[int], expected_prefix: str
@@ -85,6 +91,7 @@ def assert_entity_hrefs_contain_entity_id_and_prefix(
     [
         (NotificationType.ENTITY_CHANGED, NotificationStatus.DEFAULT),
         (NotificationType.ENTITY_DELETED, NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED),
+        (NotificationType.SUBSCRIPTION_CANCELLED, NotificationStatus.SUBSCRIPTION_CANCELLED_NO_INFO),
         (99, ValueError),
     ],
 )
@@ -99,7 +106,7 @@ def test_map_to_notification_status(input, expected):
         assert actual == expected
 
 
-@pytest.mark.parametrize("resource", list(SubscriptionResource))
+@pytest.mark.parametrize("resource", SUBSCRIBABLE_RESOURCES)
 def test_SubscriptionMapper_calculate_resource_href_at_least_one_supported_combo(resource: SubscriptionResource):
     """Validates the various SubscriptionResource values should have at least 1 supported combo of site/resource id"""
     display_site_id = 2518761283
@@ -129,7 +136,7 @@ def test_SubscriptionMapper_calculate_resource_href_at_least_one_supported_combo
     assert len(hrefs) > 0, f"Expected at least one combo of site/resource ID to generate a validate href for {resource}"
 
 
-@pytest.mark.parametrize("resource", list(SubscriptionResource))
+@pytest.mark.parametrize("resource", SUBSCRIBABLE_RESOURCES)
 def test_SubscriptionMapper_calculate_resource_href_all_support_site_unscoped(resource: SubscriptionResource):
     """Validates the various SubscriptionResource values should have at least 1 supported combo of unscoped site and
     either a specified resource id or none"""
@@ -156,7 +163,7 @@ def test_SubscriptionMapper_calculate_resource_href_all_support_site_unscoped(re
 
 @pytest.mark.parametrize(
     "site_id, resource",
-    list(product([999, None], [r for r in list(SubscriptionResource) if r != SubscriptionResource.SITE])),
+    list(product([999, None], [r for r in SUBSCRIBABLE_RESOURCES if r != SubscriptionResource.SITE])),
 )
 def test_SubscriptionMapper_calculate_resource_href_encodes_site_id(
     site_id: int | None, resource: SubscriptionResource
@@ -503,7 +510,7 @@ def test_SubscriptionMapper_parse_resource_href(href: str, expected: tuple | typ
             SubscriptionMapper.parse_resource_href(href)
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_sites_to_response(notification_type: NotificationType):
     site1: Site = generate_class_instance(Site, seed=101, optional_is_none=False)
     site2: Site = generate_class_instance(Site, seed=202, optional_is_none=True)
@@ -534,7 +541,7 @@ def test_NotificationMapper_map_sites_to_response(notification_type: Notificatio
     )
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_does_to_response(notification_type: NotificationType):
     doe1: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=101, optional_is_none=False)
     doe2: DynamicOperatingEnvelope = generate_class_instance(DynamicOperatingEnvelope, seed=202, optional_is_none=True)
@@ -569,7 +576,7 @@ def test_NotificationMapper_map_does_to_response(notification_type: Notification
     )
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_site_control_groups_to_response(notification_type: NotificationType):
     scg1 = generate_class_instance(SiteControlGroup, seed=101, optional_is_none=False)
     scg2 = generate_class_instance(SiteControlGroup, seed=202, optional_is_none=True)
@@ -602,7 +609,7 @@ def test_NotificationMapper_map_site_control_groups_to_response(notification_typ
     )
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_readings_to_response(notification_type: NotificationType):
     sr1: SiteReading = generate_class_instance(SiteReading, seed=101, optional_is_none=False)
     sr2: SiteReading = generate_class_instance(SiteReading, seed=202, optional_is_none=True)
@@ -634,7 +641,7 @@ def test_NotificationMapper_map_readings_to_response(notification_type: Notifica
     )
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_rates_to_response(notification_type: NotificationType):
     rate1: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=101, optional_is_none=False)
     rate2: TariffGeneratedRate = generate_class_instance(TariffGeneratedRate, seed=202, optional_is_none=True)
@@ -693,7 +700,7 @@ def test_NotificationMapper_map_der_availability_to_response_missing():
     assert notification_all_set.resource is None
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_der_availability_to_response(notification_type: NotificationType):
     all_set: SiteDERAvailability = generate_class_instance(SiteDERAvailability, seed=1, optional_is_none=False)
     assert all_set.reserved_deliver_percent is not None
@@ -732,7 +739,7 @@ def test_NotificationMapper_map_der_availability_to_response(notification_type: 
     assert notification_all_set.resource.reservePercent == int(all_set.reserved_deliver_percent * 100)
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_der_rating_to_response_missing(notification_type: NotificationType):
     sub = generate_class_instance(Subscription, seed=303)
     scope = generate_class_instance(AggregatorRequestScope, href_prefix="/custom/prefix")
@@ -756,7 +763,7 @@ def test_NotificationMapper_map_der_rating_to_response_missing(notification_type
     assert notification_all_set.resource is None
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_der_rating_to_response(notification_type: NotificationType):
     all_set: SiteDERRating = generate_class_instance(SiteDERRating, seed=1, optional_is_none=False)
 
@@ -812,7 +819,7 @@ def test_NotificationMapper_map_der_settings_to_response_missing():
     assert notification_all_set.resource is None
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_der_settings_to_response(notification_type: NotificationType):
     all_set: SiteDERSetting = generate_class_instance(SiteDERSetting, seed=1, optional_is_none=False)
 
@@ -865,7 +872,7 @@ def test_NotificationMapper_map_der_status_to_response_missing():
     assert notification_all_set.resource is None
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_der_status_to_response(notification_type: NotificationType):
     all_set: SiteDERStatus = generate_class_instance(SiteDERStatus, seed=1, optional_is_none=False)
 
@@ -902,7 +909,7 @@ def test_NotificationMapper_map_der_status_to_response(notification_type: Notifi
     assert notification_all_set.resource.genConnectStatus.value == to_hex_binary(all_set.generator_connect_status)
 
 
-@pytest.mark.parametrize("notification_type, fsa_ids", list(product(NotificationType, [[11111, 222222], []])))
+@pytest.mark.parametrize("notification_type, fsa_ids", list(product(ENTITY_NOTIFICATION_TYPES, [[11111, 222222], []])))
 def test_NotificationMapper_map_function_set_assignments_list_to_response(
     notification_type: NotificationType, fsa_ids: list[int]
 ):
@@ -940,7 +947,7 @@ def test_NotificationMapper_map_function_set_assignments_list_to_response(
         assert fsa.href.startswith("/custom/prefix")
 
 
-@pytest.mark.parametrize("notification_type", list(NotificationType))
+@pytest.mark.parametrize("notification_type", ENTITY_NOTIFICATION_TYPES)
 def test_NotificationMapper_map_default_site_control_response(notification_type: NotificationType):
     all_set = generate_class_instance(SiteControlGroupDefault, seed=1, optional_is_none=False)
     assert all_set.import_limit_active_watts
@@ -1004,3 +1011,37 @@ def test_NotificationMapper_map_default_site_control_response_none_value():
     assert notification_all_set.resource is None
     assert f"/{derp_id}/" in notification_all_set.subscribedResource
     assert f"/{scope.display_site_id}/" in notification_all_set.subscribedResource
+
+
+@pytest.mark.parametrize(
+    "notification_type, scoped_site_id, expected_status",
+    [
+        (NotificationType.SUBSCRIPTION_CANCELLED, None, NotificationStatus.SUBSCRIPTION_CANCELLED_NO_INFO),
+        (NotificationType.SUBSCRIPTION_CANCELLED, 456, NotificationStatus.SUBSCRIPTION_CANCELLED_NO_INFO),
+        (NotificationType.ENTITY_DELETED, 456, NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED),
+    ],
+)
+def test_NotificationMapper_map_subscription_cancelled_to_response(
+    notification_type: NotificationType, scoped_site_id: int | None, expected_status: NotificationStatus
+):
+    sub: Subscription = generate_class_instance(
+        Subscription,
+        seed=101,
+        resource_type=SubscriptionResource.SITE,
+        scoped_site_id=scoped_site_id,
+        resource_id=None,
+    )
+    display_site_id = VIRTUAL_END_DEVICE_SITE_ID if scoped_site_id is None else scoped_site_id
+    scope = generate_class_instance(
+        AggregatorRequestScope, seed=1001, href_prefix="/custom/prefix", display_site_id=display_site_id
+    )
+
+    notification = NotificationMapper.map_subscription_cancelled_to_response(sub, scope, notification_type)
+    assert isinstance(notification, Notification)
+    assert notification.status == expected_status
+    assert notification.resource is None, "There is no resource for a cancelled subscription"
+    assert notification.subscribedResource == SubscriptionMapper.calculate_resource_href(sub, scope)
+    assert notification.subscribedResource.startswith("/custom/prefix")
+    assert notification.subscriptionURI.startswith("/custom/prefix")
+    assert notification.subscriptionURI.endswith(f"/sub/{sub.subscription_id}")
+    assert f"/edev/{display_site_id}/" in notification.subscriptionURI

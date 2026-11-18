@@ -16,6 +16,7 @@ from sqlalchemy import select, update
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
     fetch_default_site_controls_by_changed_at,
+    fetch_deleted_subscriptions_by_changed_at,
     fetch_der_availability_by_changed_at,
     fetch_der_rating_by_changed_at,
     fetch_der_setting_by_changed_at,
@@ -29,6 +30,7 @@ from envoy.notification.crud.batch import (
     get_batch_key,
     get_site_id,
     get_subscription_filter_id,
+    select_site_ids_deleted_at,
     select_subscriptions_for_resource,
 )
 from envoy.notification.crud.common import (
@@ -62,6 +64,7 @@ from envoy.server.model.archive.site import (
     ArchiveSiteDERStatus,
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
+from envoy.server.model.archive.subscription import ArchiveSubscription
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.base import Base
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
@@ -2573,3 +2576,67 @@ async def test_fetch_site_control_groups_by_changed_at_poll_rate(pg_base_config)
         entity_batch = await fetch_site_control_groups_by_changed_at(session, config_timestamp - timedelta(seconds=1))
         assert len(entity_batch.models_by_batch_key) == 0
         assert len(entity_batch.deleted_by_batch_key) == 0
+
+
+@pytest.mark.anyio
+async def test_fetch_deleted_subscriptions_by_changed_at(pg_base_config):
+    """Only subscriptions deleted at exactly timestamp are returned - changes (eg renewals) are ignored"""
+    timestamp = datetime(2024, 5, 6, 7, 8, 9, tzinfo=UTC)
+
+    async with generate_async_session(pg_base_config) as session:
+        # Active subscription "changed" at timestamp - should be ignored
+        await session.execute(
+            update(Subscription).where(Subscription.subscription_id == 1).values(changed_time=timestamp)
+        )
+
+        # Archive entries - only the deleted ones at timestamp will be picked up
+        session.add(generate_class_instance(ArchiveSubscription, seed=11, aggregator_id=1, subscription_id=70))
+        session.add(
+            generate_class_instance(
+                ArchiveSubscription, seed=22, aggregator_id=1, subscription_id=70, deleted_time=timestamp
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveSubscription, seed=33, aggregator_id=2, subscription_id=71, deleted_time=timestamp
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveSubscription,
+                seed=44,
+                aggregator_id=1,
+                subscription_id=72,
+                deleted_time=timestamp + timedelta(seconds=1),
+            )
+        )
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        batch = await fetch_deleted_subscriptions_by_changed_at(session, timestamp)
+        assert_batched_entities(batch, Subscription, ArchiveSubscription, 0, 2)
+        assert set(batch.deleted_by_batch_key.keys()) == {(1, 70), (2, 71)}
+        assert batch.deleted_by_batch_key[(1, 70)][0].deleted_time == timestamp
+
+        empty_batch = await fetch_deleted_subscriptions_by_changed_at(session, timestamp - timedelta(seconds=1))
+        assert_batched_entities(empty_batch, Subscription, ArchiveSubscription, 0, 0)
+
+
+@pytest.mark.anyio
+async def test_select_site_ids_deleted_at(pg_base_config):
+    timestamp = datetime(2024, 5, 6, 7, 8, 9, tzinfo=UTC)
+
+    async with generate_async_session(pg_base_config) as session:
+        session.add(generate_class_instance(ArchiveSite, seed=11, site_id=70))  # Not deleted
+        session.add(generate_class_instance(ArchiveSite, seed=22, site_id=71, deleted_time=timestamp))
+        session.add(generate_class_instance(ArchiveSite, seed=33, site_id=71, deleted_time=timestamp))  # Duplicate
+        session.add(generate_class_instance(ArchiveSite, seed=44, site_id=72, deleted_time=timestamp))
+        session.add(
+            generate_class_instance(ArchiveSite, seed=55, site_id=73, deleted_time=timestamp + timedelta(seconds=1))
+        )
+        await session.commit()
+
+    async with generate_async_session(pg_base_config) as session:
+        assert await select_site_ids_deleted_at(session, [70, 71, 73, 1, 99], timestamp) == {71}
+        assert await select_site_ids_deleted_at(session, [70, 71, 72, 73], timestamp) == {71, 72}
+        assert await select_site_ids_deleted_at(session, [], timestamp) == set()

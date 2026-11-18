@@ -368,7 +368,9 @@ async def test_delete_enddevice_for_scope(
     mock_session = create_mock_session()
     scope: SiteRequestScope = generate_class_instance(SiteRequestScope)
     delete_time = datetime(2021, 5, 6, 7, 8, 9)
-    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(
+        side_effect=lambda *args: create_async_result(True)
+    )
 
     # Just do a simple passthrough
     mock_utc_now.return_value = delete_time
@@ -384,9 +386,14 @@ async def test_delete_enddevice_for_scope(
         mock_session, site_id=scope.site_id, aggregator_id=scope.aggregator_id, deleted_time=delete_time
     )
     mock_utc_now.assert_called_once()
-    mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
-        mock.ANY, SubscriptionResource.SITE, delete_time
+    mock_NotificationManager.notify_changed_deleted_entities.assert_has_calls(
+        [
+            mock.call(mock.ANY, SubscriptionResource.SITE, delete_time),
+            mock.call(mock.ANY, SubscriptionResource.SUBSCRIPTION, delete_time),
+        ],
+        any_order=True,
     )
+    assert mock_NotificationManager.notify_changed_deleted_entities.call_count == 2
 
 
 @pytest.mark.parametrize(

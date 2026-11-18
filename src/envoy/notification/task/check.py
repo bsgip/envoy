@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from envoy.notification.crud.batch import (
     AggregatorBatchedEntities,
     fetch_default_site_controls_by_changed_at,
+    fetch_deleted_subscriptions_by_changed_at,
     fetch_der_availability_by_changed_at,
     fetch_der_rating_by_changed_at,
     fetch_der_setting_by_changed_at,
@@ -26,6 +27,7 @@ from envoy.notification.crud.batch import (
     fetch_sites_by_changed_at,
     get_site_id,
     get_subscription_filter_id,
+    select_site_ids_deleted_at,
     select_subscriptions_for_resource,
 )
 from envoy.notification.crud.common import (
@@ -339,6 +341,10 @@ def entities_to_notification(
             poll_rate, sub, scope, notification_type, new_fsa_ids
         )
 
+    elif resource == SubscriptionResource.SUBSCRIPTION:
+        # SUBSCRIPTION: (aggregator_id: int, subscription_id: int)
+        # This is the final notification to a deleted subscription - there are no entities to encode
+        return NotificationMapper.map_subscription_cancelled_to_response(sub, scope, notification_type)
     elif resource == SubscriptionResource.DEFAULT_SITE_CONTROL:
         # DEFAULT_SITE_CONTROL: (aggregator_id: int, site_id: int, site_control_group_id: int)
         _, site_id, site_control_group_id = batch_key
@@ -382,33 +388,17 @@ async def fetch_batched_entities(
         return await fetch_fsa_by_changed_at(session, timestamp)
     elif resource == SubscriptionResource.SITE_CONTROL_GROUP:
         return await fetch_site_control_groups_by_changed_at(session, timestamp)
+    elif resource == SubscriptionResource.SUBSCRIPTION:
+        return await fetch_deleted_subscriptions_by_changed_at(session, timestamp)
     else:
         raise NotificationError(f"Unsupported resource type: {resource}")
 
 
-async def check_db_change_or_delete(
-    session: AsyncSession,
-    resource: SubscriptionResource,
-    timestamp: datetime,
-    href_prefix: str | None,
-    config: RuntimeServerConfig,
-) -> None:
-    """Inspects a particular timestamp within a particular named resource that has had a batch of inserts/updates/
-    deletes - such that requesting all records with that changed_at timestamp will yield all resources to be inspected
-    for potentially notifying subscribers - and inserts the resulting outgoing notifications as notification_transmit
-    rows (via session). The caller owns the transaction (this does not commit).
-
-    For deletions - the deleted_time in the archive table will be used
-
-    resource: The resource that is being checked for changes
-    timestamp: The changed_at/deleted_time that will be used for finding resources (must be exact match)
-    config: The current runtime server config (used when mapping entities to notifications)"""
-
-    logger.debug("check_db_change_or_delete for resource %s at timestamp %s", resource, timestamp)
-
-    batched_entities = await fetch_batched_entities(session, resource, timestamp)
-
-    # Now generate subscription notifications
+async def generate_entity_notifications(
+    session: AsyncSession, resource: SubscriptionResource, batched_entities: AggregatorBatchedEntities
+) -> list[NotificationEntities]:
+    """Matches the changed/deleted entities in batched_entities against all (active) subscriptions for resource,
+    returning the NotificationEntities that should be sent out."""
     all_notifications: list[NotificationEntities] = []
     aggregator_subs_cache: dict[int, Sequence[Subscription]] = {}  # keyed by aggregator_id
     for batch_key, agg_id, entities, notification_type in all_entity_batches(
@@ -449,6 +439,85 @@ async def check_db_change_or_delete(
                             pricing_reading_type=None,
                         )
                     )
+
+    return all_notifications
+
+
+async def generate_subscription_cancelled_notifications(
+    session: AsyncSession, batched_entities: AggregatorBatchedEntities
+) -> list[NotificationEntities]:
+    """For SubscriptionResource.SUBSCRIPTION - batched_entities will contain the (archived) Subscriptions that were
+    deleted. Each of these is owed a single, final notification indicating the subscription has been cancelled
+    (IEEE 2030.5 §8.9.3.4 rule n). This notification is sent to the deleted subscription's own notification_uri.
+
+    If the subscription's scoped site was deleted at the same time - the subscribed resource is considered deleted,
+    otherwise the subscription is considered to have been cancelled (eg - DELETE'd by the client)"""
+
+    deleted_subs: list[tuple[tuple, Subscription]] = []
+    for batch_key, _, entities, notification_type in all_entity_batches(
+        batched_entities.models_by_batch_key, batched_entities.deleted_by_batch_key
+    ):
+        if notification_type != NotificationType.ENTITY_DELETED:
+            continue  # Changes (eg renewals) to subscriptions don't generate notifications
+
+        # This is duck typing ArchiveSubscription to Subscription. We have unit tests elsewhere that enforce
+        # that these type definitions stay in sync
+        deleted_subs.extend((batch_key, cast(Subscription, e)) for e in entities)
+
+    if not deleted_subs:
+        return []
+
+    deleted_site_ids = await select_site_ids_deleted_at(
+        session,
+        (s.scoped_site_id for _, s in deleted_subs if s.scoped_site_id is not None),
+        batched_entities.timestamp,
+    )
+
+    return [
+        NotificationEntities(
+            entities=[],
+            subscription=sub,
+            notification_id=uuid4(),
+            notification_type=(
+                NotificationType.ENTITY_DELETED
+                if sub.scoped_site_id is not None and sub.scoped_site_id in deleted_site_ids
+                else NotificationType.SUBSCRIPTION_CANCELLED
+            ),
+            batch_key=batch_key,
+            pricing_reading_type=None,
+        )
+        for batch_key, sub in deleted_subs
+    ]
+
+
+async def check_db_change_or_delete(
+    session: AsyncSession,
+    resource: SubscriptionResource,
+    timestamp: datetime,
+    href_prefix: str | None,
+    config: RuntimeServerConfig,
+) -> None:
+    """Inspects a particular timestamp within a particular named resource that has had a batch of inserts/updates/
+    deletes - such that requesting all records with that changed_at timestamp will yield all resources to be inspected
+    for potentially notifying subscribers - and inserts the resulting outgoing notifications as notification_transmit
+    rows (via session). The caller owns the transaction (this does not commit).
+
+    For deletions - the deleted_time in the archive table will be used
+
+    resource: The resource that is being checked for changes
+    timestamp: The changed_at/deleted_time that will be used for finding resources (must be exact match)
+    config: The current runtime server config (used when mapping entities to notifications)"""
+
+    logger.debug("check_db_change_or_delete for resource %s at timestamp %s", resource, timestamp)
+
+    batched_entities = await fetch_batched_entities(session, resource, timestamp)
+
+    # Now generate subscription notifications
+    all_notifications: list[NotificationEntities]
+    if resource == SubscriptionResource.SUBSCRIPTION:
+        all_notifications = await generate_subscription_cancelled_notifications(session, batched_entities)
+    else:
+        all_notifications = await generate_entity_notifications(session, resource, batched_entities)
 
     # Finally time to enqueue the outgoing notifications
     logger.info(

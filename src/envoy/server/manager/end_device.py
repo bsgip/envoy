@@ -146,6 +146,10 @@ class EndDeviceManager:
         )
         # We only notify the top level site deletion - all the child entities will be overwhelming
         await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, delete_time)
+        # Any subscriptions scoped to this site will have been deleted too - they need a final notification
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.SUBSCRIPTION, delete_time
+        )
         await session.commit()
 
         return result
