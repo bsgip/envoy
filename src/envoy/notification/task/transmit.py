@@ -3,6 +3,7 @@ import logging
 import ssl
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from http import HTTPStatus
 
 from httpx import AsyncClient
 from sqlalchemy import delete, select, update
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from envoy.notification.exception import NotificationTransmitError
 from envoy.server.api.response import SEP_XML_MIME
+from envoy.server.crud.subscription import delete_subscriptions_by_id
 from envoy.server.manager.time import utc_now
 from envoy.server.model.subscription import NotificationDeadLetter, NotificationTransmit, TransmitNotificationLog
 
@@ -21,6 +23,13 @@ logger = logging.getLogger(__name__)
 
 TRANSMIT_TIMEOUT_SECONDS = 30
 RETRY_DELAYS = [timedelta(seconds=10), timedelta(seconds=100), timedelta(seconds=300), timedelta(minutes=30)]
+
+# These 4XX responses are typically transient (they indicate "try again later") so they are retried like a 5XX
+RETRYABLE_4XX_STATUS_CODES = {HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.TOO_MANY_REQUESTS}
+
+# IEEE 2030.5 §8.9.3.4 rule o) - A client will respond with this to a notification for a subscription it doesn't want.
+# Upon receipt the server SHALL remove the Subscription WITHOUT Notification
+UNDESIRED_SUBSCRIPTION_STATUS_CODE = HTTPStatus.BAD_REQUEST
 
 # How far into the future a claimed notification_transmit row has its execute_after pushed while it's being sent. This
 # "lease" keeps a row out of the due window for the duration of the (locked) send so a concurrent worker - or this
@@ -87,76 +96,79 @@ async def do_transmit_notification(
 
     verify: The httpx "verify" argument (bool toggle or a prebuilt mTLS SSLContext) - see build_tls_verify"""
 
-    async with AsyncClient(timeout=TRANSMIT_TIMEOUT_SECONDS, verify=verify) as client:
-        logger.debug(
-            "Attempting to send notification %s of size %d to %s (attempt %d)",
+    logger.debug(
+        "Attempting to send notification %s of size %d to %s (attempt %d)",
+        notification_id,
+        len(content),
+        remote_uri,
+        attempt,
+    )
+
+    headers = {
+        HEADER_SUBSCRIPTION_ID: subscription_href,
+        HEADER_NOTIFICATION_ID: notification_id,
+        HEADER_CONTENT_TYPE: SEP_XML_MIME,
+    }
+
+    transmit_start = utc_now()
+    try:
+        # The client construction is inside the try so that errors in setting it up (eg TLS config) are treated the
+        # same as any other transmission error (i.e. logged and potentially retried)
+        async with AsyncClient(timeout=TRANSMIT_TIMEOUT_SECONDS, verify=verify) as client:
+            response = await client.post(url=remote_uri, content=content, headers=headers)
+
+    except Exception as ex:
+        logger.error(
+            f"Exception {ex} sending notification {notification_id} of size {len(content)} to {remote_uri} (attempt {attempt})",  # noqa e501
+            exc_info=ex,
+        )
+        # This is retryable - fire a NotificationTransmitError
+        raise NotificationTransmitError(
+            f"Exception {ex} sending notification {notification_id}",
+            transmit_start=transmit_start,
+            transmit_end=utc_now(),
+            http_status_code=None,
+        ) from ex
+
+    transmit_end = utc_now()
+    status_code = response.status_code
+
+    # Future work: Log these events in an audit log
+    if 200 <= status_code < 300:
+        # Success
+        return TransmitResult(
+            success=True,
+            transmit_start=transmit_start,
+            transmit_end=transmit_end,
+            http_status_code=status_code,
+        )
+
+    if 300 <= status_code < 500 and status_code not in RETRYABLE_4XX_STATUS_CODES:
+        # On a 3XX or 4XX error - don't retry - we're either being redirected OR rejected for whatever reason
+        logger.error(
+            "Received HTTP %d sending notification %s of size %d to %s (attempt %d). No future retries",
+            status_code,
             notification_id,
             len(content),
             remote_uri,
             attempt,
         )
-
-        headers = {
-            HEADER_SUBSCRIPTION_ID: subscription_href,
-            HEADER_NOTIFICATION_ID: notification_id,
-            HEADER_CONTENT_TYPE: SEP_XML_MIME,
-        }
-
-        transmit_start = utc_now()
-        try:
-            response = await client.post(url=remote_uri, content=content, headers=headers)
-
-        except Exception as ex:
-            logger.error(
-                f"Exception {ex} sending notification {notification_id} of size {len(content)} to {remote_uri} (attempt {attempt})",  # noqa e501
-                exc_info=ex,
-            )
-            # This is retryable - fire a NotificationTransmitError
-            raise NotificationTransmitError(
-                f"Exception {ex} sending notification {notification_id}",
-                transmit_start=transmit_start,
-                transmit_end=utc_now(),
-                http_status_code=None,
-            ) from ex
-
-        transmit_end = utc_now()
-
-        # Future work: Log these events in an audit log
-        if response.status_code >= 200 and response.status_code < 299:
-            # Success
-            return TransmitResult(
-                success=True,
-                transmit_start=transmit_start,
-                transmit_end=transmit_end,
-                http_status_code=response.status_code,
-            )
-
-        if response.status_code >= 300 and response.status_code < 499:
-            # On a 3XX or 4XX error - don't retry - we're either being redirected OR rejected for whatever reason
-            logger.error(
-                "Received HTTP %d sending notification %s of size %d to %s (attempt %d). No future retries",
-                response.status_code,
-                notification_id,
-                len(content),
-                remote_uri,
-                attempt,
-            )
-            return TransmitResult(
-                success=False,
-                transmit_start=transmit_start,
-                transmit_end=transmit_end,
-                http_status_code=response.status_code,
-            )
-
-        # At this point it's likely an intermittent error - raise an exception that can potentially enable a retry
-        msg = f"HTTP {response.status_code} sending notification {notification_id} of size {len(content)} to {remote_uri} (attempt {attempt})"  # noqa e501
-        logger.error(msg)
-        raise NotificationTransmitError(
-            msg,
+        return TransmitResult(
+            success=False,
             transmit_start=transmit_start,
-            transmit_end=utc_now(),
-            http_status_code=response.status_code,
+            transmit_end=transmit_end,
+            http_status_code=status_code,
         )
+
+    # At this point it's likely an intermittent error - raise an exception that can potentially enable a retry
+    msg = f"HTTP {status_code} sending notification {notification_id} of size {len(content)} to {remote_uri} (attempt {attempt})"  # noqa e501
+    logger.error(msg)
+    raise NotificationTransmitError(
+        msg,
+        transmit_start=transmit_start,
+        transmit_end=utc_now(),
+        http_status_code=status_code,
+    )
 
 
 async def claim_due_transmissions(session: AsyncSession, batch_size: int) -> list[ClaimedTransmit]:
@@ -216,6 +228,49 @@ async def drop_to_dead_letter(session: AsyncSession, c: ClaimedTransmit, http_st
     )
 
 
+async def remove_undesired_subscriptions(session: AsyncSession, subscription_ids: set[int]) -> None:
+    """Handles IEEE 2030.5 §8.9.3.4 rule o) - the remote client has indicated (via a HTTP 400) that it no longer wants
+    notifications for these subscriptions. They are removed (and archived) WITHOUT generating any form of notification
+    (no NotificationCheck is enqueued). Any of their notifications still queued for sending are dead-lettered.
+
+    subscription_ids that no longer exist (eg the 400 was in response to a subscription cancelled notification) will
+    be ignored."""
+    if not subscription_ids:
+        return
+
+    logger.warning(
+        "Removing subscription(s) %s - the notification endpoint responded with HTTP %d",
+        sorted(subscription_ids),
+        UNDESIRED_SUBSCRIPTION_STATUS_CODE,
+    )
+    await delete_subscriptions_by_id(session, subscription_ids, utc_now())
+
+    # There is no point sending anything else that's queued up for these subscriptions - dead letter them so they
+    # aren't lost entirely
+    pending_transmits = (
+        (
+            await session.execute(
+                select(NotificationTransmit).where(NotificationTransmit.subscription_id.in_(subscription_ids))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for t in pending_transmits:
+        session.add(
+            NotificationDeadLetter(
+                subscription_id=t.subscription_id,
+                subscription_href=t.subscription_href,
+                notification_id=t.notification_id,
+                remote_uri=t.remote_uri,
+                content=t.content,
+                attempt=t.attempt,
+                http_status_code=None,
+            )
+        )
+        await session.delete(t)
+
+
 async def process_transmit_batch(
     session_maker: async_sessionmaker[AsyncSession], verify: ssl.SSLContext | bool, batch_size: int
 ) -> int:
@@ -223,7 +278,10 @@ async def process_transmit_batch(
     any sending occurs so HTTP I/O never holds a row lock. On success the row is deleted; a retryable failure
     reschedules it via execute_after until retries are exhausted. Anything dropped without delivery (exhausted retries,
     a terminal 3xx/4xx, or an unexpected error) is moved to the dead-letter table. Every attempt is recorded in the
-    TransmitNotificationLog. Returns the number of rows claimed."""
+    TransmitNotificationLog.
+
+    A HTTP 400 response indicates the remote client doesn't want the subscription - it will be removed without
+    notification (see remove_undesired_subscriptions). Returns the number of rows claimed."""
 
     async with session_maker() as session:
         async with session.begin():
@@ -245,6 +303,7 @@ async def process_transmit_batch(
 
     async with session_maker() as session:
         async with session.begin():
+            undesired_subscription_ids: set[int] = set()
             for c, outcome in zip(claimed, outcomes, strict=True):
                 if isinstance(outcome, NotificationTransmitError):
                     session.add(create_transmit_notification_log(outcome, c.attempt, c.subscription_id, c.content))
@@ -273,6 +332,8 @@ async def process_transmit_batch(
                     else:
                         # Terminal 3xx/4xx - the endpoint rejected it and we won't retry
                         await drop_to_dead_letter(session, c, outcome.http_status_code)
+                        if outcome.http_status_code == UNDESIRED_SUBSCRIPTION_STATUS_CODE:
+                            undesired_subscription_ids.add(c.subscription_id)
                 else:
                     # An unexpected exception - this should never happen (do_transmit_notification only raises
                     # NotificationTransmitError for retryable errors). Dead-letter it so it can't wedge the queue
@@ -283,5 +344,8 @@ async def process_transmit_batch(
                         exc_info=outcome,
                     )
                     await drop_to_dead_letter(session, c, None)
+
+            # Done after all outcomes are recorded so that the above per row updates are unaffected
+            await remove_undesired_subscriptions(session, undesired_subscription_ids)
 
     return len(claimed)

@@ -95,6 +95,10 @@ class SiteManager:
         is_deleted = await delete_site_for_aggregator(session, site.aggregator_id, site_id, deleted_time)
 
         await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, deleted_time)
+        # Any subscriptions scoped to this site will have been deleted too - they need a final notification
+        await NotificationManager.notify_changed_deleted_entities(
+            session, SubscriptionResource.SUBSCRIPTION, deleted_time
+        )
         await session.commit()
 
         return is_deleted

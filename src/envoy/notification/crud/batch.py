@@ -48,6 +48,7 @@ from envoy.server.model.archive.site import (
     ArchiveSiteDERStatus,
 )
 from envoy.server.model.archive.site_reading import ArchiveSiteReading, ArchiveSiteReadingType
+from envoy.server.model.archive.subscription import ArchiveSubscription
 from envoy.server.model.archive.tariff import ArchiveTariff, ArchiveTariffComponent, ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.site import (
@@ -119,7 +120,7 @@ class AggregatorBatchedEntities(Generic[TResourceModel, TArchiveResourceModel]):
         return batch
 
 
-def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tuple:
+def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tuple:  # noqa: C901
     """
     Gets a multipart key in the form of a tuple that describes entity as a single sep2 resource. This is because
     sep2 Notifications are only sent out underneath a single resource (eg /edev/3/derp/doe/derc/1) which means all
@@ -195,6 +196,9 @@ def get_batch_key(resource: SubscriptionResource, entity: TResourceModel) -> tup
     elif resource == SubscriptionResource.COMBINED_TARIFF_GENERATED_RATE:
         rate = cast(SiteScopedTariffGeneratedRate, entity)
         return (rate.aggregator_id, rate.original.tariff_id, rate.site_id)
+    elif resource == SubscriptionResource.SUBSCRIPTION:
+        sub = cast(Subscription, entity)
+        return (sub.aggregator_id, sub.subscription_id)
     else:
         raise NotificationError(f"{resource} is unsupported - unable to identify appropriate batch key")
 
@@ -934,3 +938,33 @@ async def fetch_tariff_components_by_changed_at(
         site_scoped_active_comps,  # ty:ignore[invalid-argument-type]
         site_scoped_deleted_comps,  # ty:ignore[invalid-argument-type]
     )
+
+
+async def fetch_deleted_subscriptions_by_changed_at(
+    session: AsyncSession, timestamp: datetime
+) -> AggregatorBatchedEntities[Subscription, ArchiveSubscription]:
+    """Fetches all Subscriptions that were deleted at the specified timestamp (from the archive) and returns them keyed
+    by their aggregator/subscription id.
+
+    Changes to existing Subscriptions (eg renewals) are NOT returned - they don't generate any notifications. Only
+    deletions are relevant (they require a final "subscription cancelled" notification)"""
+
+    _, deleted_subs = await fetch_entities_with_archive_by_datetime(
+        session, Subscription, ArchiveSubscription, timestamp
+    )
+    return AggregatorBatchedEntities(timestamp, SubscriptionResource.SUBSCRIPTION, [], deleted_subs)
+
+
+async def select_site_ids_deleted_at(session: AsyncSession, site_ids: Iterable[int], timestamp: datetime) -> set[int]:
+    """Returns the subset of site_ids that were deleted (according to the archive) at exactly timestamp"""
+    site_ids = set(site_ids)
+    if not site_ids:
+        return set()
+
+    resp = await session.execute(
+        select(ArchiveSite.site_id)
+        .where(ArchiveSite.deleted_time == timestamp)
+        .where(ArchiveSite.site_id.in_(site_ids))
+        .distinct()
+    )
+    return set(resp.scalars().all())

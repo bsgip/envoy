@@ -2,6 +2,7 @@ import unittest.mock as mock
 from datetime import datetime
 
 import pytest
+from assertical.fake.asyncio import create_async_result
 from assertical.fake.generator import generate_class_instance
 from assertical.fake.sqlalchemy import assert_mock_session, create_mock_session
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
@@ -157,18 +158,21 @@ async def test_fetch_subscriptions_for_site(
     "retval, scope_site_id",
     list(zip([True, False], [111, None], strict=False)),
 )
+@mock.patch("envoy.server.manager.subscription.NotificationManager")
 @mock.patch("envoy.server.manager.subscription.delete_subscription_for_site")
 @mock.patch("envoy.server.manager.subscription.utc_now")
 async def test_delete_subscription_for_site(
     mock_utc_now: mock.MagicMock,
     mock_delete_subscription_for_site: mock.MagicMock,
+    mock_NotificationManager: mock.MagicMock,
     retval: bool,
     scope_site_id: int | None,
 ):
-    """Ensures session is handled properly on delete"""
+    """Ensures session is handled properly on delete (and that a successful delete enqueues the final notification)"""
     # Arrange
     deleted_time = datetime(2011, 4, 6)
     mock_utc_now.return_value = deleted_time
+    mock_NotificationManager.notify_changed_deleted_entities = mock.Mock(return_value=create_async_result(True))
     mock_session: AsyncSession = create_mock_session()
     scope: AggregatorRequestScope = generate_class_instance(AggregatorRequestScope, site_id=scope_site_id)
 
@@ -189,6 +193,13 @@ async def test_delete_subscription_for_site(
         subscription_id=sub_id,
         deleted_time=deleted_time,
     )
+
+    if retval:
+        mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
+            mock_session, SubscriptionResource.SUBSCRIPTION, deleted_time
+        )
+    else:
+        mock_NotificationManager.notify_changed_deleted_entities.assert_not_called()
 
     assert_mock_session(mock_session, committed=True)
 

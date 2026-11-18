@@ -72,6 +72,8 @@ class NotificationType(IntEnum):
 
     ENTITY_CHANGED = 1  # Raised when an entity has changed in place (same mrid/href)
     ENTITY_DELETED = 2  # Raised when an entity has deleted entirely (old mrid/href no longer exists)
+    SUBSCRIPTION_CANCELLED = 3  # Raised when a Subscription has been removed (for reasons other than its resource
+    # being deleted - eg the client DELETE'd the Subscription itself)
 
 
 def _map_to_notification_status(nt: NotificationType) -> NotificationStatus:
@@ -79,6 +81,8 @@ def _map_to_notification_status(nt: NotificationType) -> NotificationStatus:
         return NotificationStatus.DEFAULT
     elif nt == NotificationType.ENTITY_DELETED:
         return NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    elif nt == NotificationType.SUBSCRIPTION_CANCELLED:
+        return NotificationStatus.SUBSCRIPTION_CANCELLED_NO_INFO
     else:
         raise ValueError(f"NotificationType {nt} is not supported")
 
@@ -609,6 +613,26 @@ class SubscriptionListMapper:
 
 
 class NotificationMapper:
+    @staticmethod
+    def map_subscription_cancelled_to_response(
+        sub: Subscription,
+        scope: AggregatorRequestScope,
+        notification_type: NotificationType,
+    ) -> Notification:
+        """Generates the final Notification that is sent to a Subscription that has been removed (IEEE 2030.5
+        §8.9.3.4 rule n). There is no resource to send - the status communicates that the subscription is cancelled.
+
+        sub: The (now deleted) subscription
+        notification_type: Should be ENTITY_DELETED (if the subscribed resource has been deleted) or
+                           SUBSCRIPTION_CANCELLED (for all other forms of subscription removal)"""
+        return Notification.model_validate(
+            {
+                "subscribedResource": SubscriptionMapper.calculate_resource_href(sub, scope),
+                "subscriptionURI": SubscriptionMapper.calculate_subscription_href(sub, scope),
+                "status": _map_to_notification_status(notification_type),
+            }
+        )
+
     @staticmethod
     def map_sites_to_response(
         sites: Sequence[Site],

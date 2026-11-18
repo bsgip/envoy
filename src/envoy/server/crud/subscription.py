@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import datetime
 
 from sqlalchemy import and_, delete, func, select
@@ -142,23 +142,35 @@ async def delete_subscription_for_site(
 
     # At this point we're certain that the subscription exists AND belongs to the aggregator/site
     # We're free to start deleting/archiving the parts
+    await delete_subscriptions_by_id(session, [subscription_id], deleted_time)
+
+    return True
+
+
+async def delete_subscriptions_by_id(
+    session: AsyncSession, subscription_ids: Collection[int], deleted_time: datetime
+) -> None:
+    """Deletes the specified subscriptions (and any linked conditions) from the database WITHOUT any form of
+    aggregator/site scoping. Subscription IDs that don't exist will be ignored.
+
+    Existing subscriptions details will be archived (with the specified deleted_time)"""
+    if not subscription_ids:
+        return
 
     await delete_rows_into_archive(
         session,
         SubscriptionCondition,
         ArchiveSubscriptionCondition,
         deleted_time,
-        lambda q: q.where(SubscriptionCondition.subscription_id == subscription_id),
+        lambda q: q.where(SubscriptionCondition.subscription_id.in_(subscription_ids)),
     )
     await delete_rows_into_archive(
         session,
         Subscription,
         ArchiveSubscription,
         deleted_time,
-        lambda q: q.where(Subscription.subscription_id == subscription_id),
+        lambda q: q.where(Subscription.subscription_id.in_(subscription_ids)),
     )
-
-    return True
 
 
 async def upsert_subscription(session: AsyncSession, subscription: Subscription) -> int:
