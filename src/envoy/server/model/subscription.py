@@ -24,6 +24,11 @@ class SubscriptionResource(IntEnum):
     FUNCTION_SET_ASSIGNMENTS = auto()  # This just maps to the pollRate exposed in the FSA List
     SITE_CONTROL_GROUP = auto()
 
+    # INTERNAL USE ONLY - This is NOT a resource that a client can subscribe to (no Subscription will ever have this
+    # resource_type). It is only used as a NotificationCheck.resource_type to indicate that Subscription(s) have been
+    # deleted and a final "subscription cancelled" Notification needs to be sent to each deleted Subscription.
+    SUBSCRIPTION = auto()
+
 
 class Subscription(Base):
     """A subscription represents a remote client wanting to receive webhook notifications about resource(s)
