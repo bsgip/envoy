@@ -26,7 +26,15 @@ from envoy.notification.task.transmit import (
 )
 from envoy.server.api.response import SEP_XML_MIME
 from envoy.server.manager.time import utc_now
-from envoy.server.model.subscription import NotificationDeadLetter, NotificationTransmit, TransmitNotificationLog
+from envoy.server.model.archive.subscription import ArchiveSubscription, ArchiveSubscriptionCondition
+from envoy.server.model.subscription import (
+    NotificationCheck,
+    NotificationDeadLetter,
+    NotificationTransmit,
+    Subscription,
+    SubscriptionCondition,
+    TransmitNotificationLog,
+)
 
 
 def test_attempt_to_retry_delay():
@@ -133,6 +141,7 @@ async def test_do_transmit_notification_passes_verify(mock_AsyncClient: mock.Mag
         (HTTPStatus.ACCEPTED),
         (HTTPStatus.CREATED),
         (HTTPStatus.ALREADY_REPORTED),
+        (299),
     ],
 )
 @mock.patch("envoy.notification.task.transmit.AsyncClient")
@@ -179,6 +188,7 @@ async def test_do_transmit_notification_success(mock_AsyncClient: mock.MagicMock
         (HTTPStatus.FORBIDDEN),
         (HTTPStatus.NOT_FOUND),
         (HTTPStatus.MOVED_PERMANENTLY),
+        (499),
     ],
 )
 @mock.patch("envoy.notification.task.transmit.AsyncClient")
@@ -222,6 +232,8 @@ async def test_do_transmit_notification_immediately_abort(mock_AsyncClient: mock
         (HTTPStatus.INTERNAL_SERVER_ERROR),
         (HTTPStatus.GATEWAY_TIMEOUT),
         (HTTPStatus.SERVICE_UNAVAILABLE),
+        (HTTPStatus.REQUEST_TIMEOUT),
+        (HTTPStatus.TOO_MANY_REQUESTS),
         (Exception("Mock connection error")),
     ],
 )
@@ -253,13 +265,28 @@ async def test_do_transmit_notification_potential_retry(
     assert excinfo.value.transmit_start.tzinfo, "Should be TZ aware"
     assert excinfo.value.transmit_end.tzinfo, "Should be TZ aware"
     assert excinfo.value.transmit_start <= excinfo.value.transmit_end
-    if isinstance(response_code_or_ex, HTTPStatus):
+    if isinstance(response_code_or_ex, int):
         assert excinfo.value.http_status_code == response_code_or_ex
     else:
         assert excinfo.value.http_status_code is None
 
     # Should have had an outgoing request
     assert mocked_client.call_count_by_method_uri[(HTTPMethod.POST, remote_uri)] == 1
+
+
+@pytest.mark.anyio
+@mock.patch("envoy.notification.task.transmit.AsyncClient")
+async def test_do_transmit_notification_client_construction_error(mock_AsyncClient: mock.MagicMock):
+    """Errors constructing the client (eg a bad TLS config) should be treated like any other retryable transmit error
+    (so they get a TransmitNotificationLog entry rather than being treated as unexpected)"""
+    mock_AsyncClient.side_effect = ssl.SSLError("Mock unreadable CA bundle")
+
+    with pytest.raises(NotificationTransmitError) as excinfo:
+        await do_transmit_notification("http://foo.bar/example", "content", "/sub/1", str(uuid4()), 0)
+
+    assert excinfo.value.http_status_code is None
+    assert_nowish(excinfo.value.transmit_start)
+    assert excinfo.value.transmit_start <= excinfo.value.transmit_end
 
 
 @pytest.mark.anyio
@@ -434,5 +461,135 @@ async def test_process_transmit_batch_skips_future(
 
         async with generate_async_session(pg_empty_config) as session:
             assert (await session.execute(select(func.count()).select_from(NotificationTransmit))).scalar() == 1
+    finally:
+        await engine_state.dispose()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "http_status_code, expect_removal",
+    [
+        (HTTPStatus.BAD_REQUEST, True),
+        (HTTPStatus.NOT_FOUND, False),
+        (HTTPStatus.FORBIDDEN, False),
+    ],
+)
+@mock.patch("envoy.notification.task.transmit.do_transmit_notification")
+async def test_process_transmit_batch_http_400_removes_subscription(
+    mock_do_transmit_notification: mock.MagicMock,
+    pg_base_config,
+    http_status_code: HTTPStatus,
+    expect_removal: bool,
+):
+    """IEEE 2030.5 §8.9.3.4 rule o) - A HTTP 400 response removes the subscription WITHOUT notification (no
+    NotificationCheck is raised). Any other queued notifications for that subscription are dead-lettered. Other
+    terminal errors don't remove the subscription."""
+    sub_id = 1  # From base config - has conditions
+    other_sub_id = 2  # Should be unaffected
+    engine_state = SingleAsyncEngineState(pg_base_config)
+    try:
+        async with generate_async_session(pg_base_config) as session:
+            session.add(
+                SubscriptionCondition(subscription_id=sub_id, attribute=0, lower_threshold=1, upper_threshold=2)
+            )
+            session.add(  # This is due now - it will be sent
+                generate_class_instance(
+                    NotificationTransmit,
+                    seed=101,
+                    notification_transmit_id=None,
+                    subscription_id=sub_id,
+                    attempt=0,
+                    execute_after=utc_now(),
+                )
+            )
+            session.add(  # This is due later - it's pending
+                generate_class_instance(
+                    NotificationTransmit,
+                    seed=202,
+                    notification_transmit_id=None,
+                    subscription_id=sub_id,
+                    attempt=2,
+                    execute_after=utc_now() + timedelta(hours=1),
+                    content="pending content",
+                )
+            )
+            session.add(  # This is due later - for a different subscription
+                generate_class_instance(
+                    NotificationTransmit,
+                    seed=303,
+                    notification_transmit_id=None,
+                    subscription_id=other_sub_id,
+                    attempt=0,
+                    execute_after=utc_now() + timedelta(hours=1),
+                )
+            )
+            await session.commit()
+
+        mock_do_transmit_notification.return_value = TransmitResult(
+            False,
+            datetime(2023, 11, 14, 2, 0, 0, tzinfo=UTC),
+            datetime(2023, 11, 14, 2, 1, 1, tzinfo=UTC),
+            http_status_code,
+        )
+        processed = await process_transmit_batch(engine_state.session_maker, True, batch_size=10)  # ty:ignore[invalid-argument-type]  # noqa: E501
+        assert processed == 1
+
+        async with generate_async_session(pg_base_config) as session:
+            sub_ids = (await session.execute(select(Subscription.subscription_id))).scalars().all()
+            archived_subs = (
+                (
+                    await session.execute(
+                        select(ArchiveSubscription).where(ArchiveSubscription.subscription_id == sub_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            archived_conditions = (
+                (
+                    await session.execute(
+                        select(ArchiveSubscriptionCondition).where(
+                            ArchiveSubscriptionCondition.subscription_id == sub_id
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            remaining_transmits = (await session.execute(select(NotificationTransmit))).scalars().all()
+            dead = (
+                (await session.execute(select(NotificationDeadLetter).order_by(NotificationDeadLetter.attempt)))
+                .scalars()
+                .all()
+            )
+
+            # Removal must NEVER generate a notification
+            assert (await session.execute(select(func.count()).select_from(NotificationCheck))).scalar() == 0
+            assert other_sub_id in sub_ids
+
+            if expect_removal:
+                assert sub_id not in sub_ids
+                assert len(archived_subs) == 1
+                assert archived_subs[0].deleted_time is not None
+                assert_nowish(archived_subs[0].deleted_time)
+                assert len(archived_conditions) == 1
+                assert archived_conditions[0].deleted_time is not None
+                assert_nowish(archived_conditions[0].deleted_time)
+
+                # Only the other sub's notification remains, the rejected + pending one are dead-lettered
+                assert [t.subscription_id for t in remaining_transmits] == [other_sub_id]
+                assert len(dead) == 2
+                assert dead[0].attempt == 0
+                assert dead[0].http_status_code == HTTPStatus.BAD_REQUEST
+                assert dead[1].attempt == 2
+                assert dead[1].http_status_code is None
+                assert dead[1].content == "pending content"
+            else:
+                assert sub_id in sub_ids
+                assert len(archived_subs) == 0
+                assert len(archived_conditions) == 0
+                assert sorted([t.subscription_id for t in remaining_transmits]) == [sub_id, other_sub_id]
+                assert len(dead) == 1
+                assert dead[0].http_status_code == http_status_code
     finally:
         await engine_state.dispose()

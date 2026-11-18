@@ -4,6 +4,7 @@ from datetime import datetime
 from envoy_schema.server.schema.sep2.pub_sub import Subscription, SubscriptionListResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.aggregator import select_aggregator
 from envoy.server.crud.doe import select_site_control_group_by_id
 from envoy.server.crud.pricing import select_single_tariff, select_tariff_component_by_id
@@ -90,6 +91,9 @@ class SubscriptionManager:
             subscription_id=subscription_id,
             deleted_time=now,
         )
+        if removed:
+            # A final notification needs to be sent to the (now deleted) subscription
+            await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SUBSCRIPTION, now)
         await session.commit()
 
         logger.info(f"delete_subscription_for_site: site {scope.site_id} subscription_id {subscription_id}")

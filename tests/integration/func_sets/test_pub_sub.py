@@ -1,3 +1,4 @@
+import asyncio
 import urllib.parse
 from datetime import UTC, datetime
 from http import HTTPStatus
@@ -14,17 +15,18 @@ from envoy_schema.server.schema.sep2.der import DERCapability
 from envoy_schema.server.schema.sep2.end_device import EndDeviceRequest
 from envoy_schema.server.schema.sep2.metering_mirror import MirrorMeterReading
 from envoy_schema.server.schema.sep2.pub_sub import Notification as Sep2Notification
+from envoy_schema.server.schema.sep2.pub_sub import NotificationStatus, SubscriptionEncoding, SubscriptionListResponse
 from envoy_schema.server.schema.sep2.pub_sub import Subscription as Sep2Subscription
-from envoy_schema.server.schema.sep2.pub_sub import SubscriptionEncoding, SubscriptionListResponse
 from envoy_schema.server.schema.sep2.types import DeviceCategory
 from envoy_schema.server.schema.uri import EndDeviceListUri
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from sqlalchemy import delete, func, select
 
 from envoy.server.crud.site import VIRTUAL_END_DEVICE_SITE_ID
 from envoy.server.crud.subscription import select_subscription_by_id
 from envoy.server.manager.der_constants import PUBLIC_SITE_DER_ID
-from envoy.server.model.subscription import Subscription, SubscriptionResource
+from envoy.server.model.archive.subscription import ArchiveSubscription
+from envoy.server.model.subscription import NotificationCheck, Subscription, SubscriptionResource
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
 from tests.data.certificates.certificate4 import TEST_CERTIFICATE_FINGERPRINT as AGG_2_VALID_CERT
 from tests.data.certificates.certificate5 import TEST_CERTIFICATE_FINGERPRINT as AGG_3_VALID_CERT
@@ -770,3 +772,122 @@ async def test_subscription_create_unavailable_for_device_cert(
     )
     assert_response_header(response, HTTPStatus.FORBIDDEN)
     assert_error_response(response)
+
+
+@pytest.mark.anyio
+async def test_delete_subscription_sends_cancelled_notification(
+    client: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """IEEE 2030.5 §8.9.3.4 rule n) - deleting a subscription sends a final notification indicating it's cancelled"""
+
+    response = await client.delete(
+        "/edev/0/sub/1",
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+    )
+    assert_response_header(response, HTTPStatus.NO_CONTENT, expected_content_type=None)
+
+    assert await notifications_enabled.wait_for_request(timeout_seconds=30)
+    await asyncio.sleep(1)  # Give a chance for any extra requests to also appear
+
+    expected_notification_uri = "https://example.com:11/path/"  # from the base_config.sql (sub 1)
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, expected_notification_uri)] == 1
+
+    content = notifications_enabled.logged_requests[0].content
+    assert content
+    notification = Sep2Notification.from_xml(content)
+    assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_NO_INFO
+    assert notification.subscriptionURI == "/edev/0/sub/1"
+    assert notification.subscribedResource == "/edev"
+    assert notification.resource is None
+
+
+@pytest.mark.anyio
+async def test_delete_end_device_sends_subscription_cancelled_notification(
+    client: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """IEEE 2030.5 §8.9.3.4 rule n) - deleting an EndDevice also deletes subscriptions scoped to it - these must be
+    sent a final notification indicating the subscribed resource was deleted"""
+
+    response = await client.delete(
+        "/edev/4",
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+    )
+    assert_response_header(response, HTTPStatus.NO_CONTENT, expected_content_type=None)
+
+    assert await notifications_enabled.wait_for_n_requests(n=2, timeout_seconds=30)
+    await asyncio.sleep(1)  # Give a chance for any extra requests to also appear
+
+    # Sub 1 (unscoped EndDeviceList) gets notified about site 4 being removed
+    # Sub 4 (scoped to site 4) was deleted along with site 4 and gets its final cancellation notification
+    sub_1_uri = "https://example.com:11/path/"
+    sub_4_uri = "https://example.com:44/path/"
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 2
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, sub_1_uri)] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, sub_4_uri)] == 1
+
+    sub_4_request = [r for r in notifications_enabled.logged_requests if r.uri == sub_4_uri][0]
+    assert sub_4_request.content
+    notification = Sep2Notification.from_xml(sub_4_request.content)
+    assert notification.status == NotificationStatus.SUBSCRIPTION_CANCELLED_RESOURCE_DELETED
+    assert notification.subscriptionURI == "/edev/4/sub/4"
+    assert notification.subscribedResource == "/edev/4"
+    assert notification.resource is None
+
+
+@pytest.mark.anyio
+async def test_notification_http_400_removes_subscription_without_notification(
+    client: AsyncClient, notifications_enabled: MockedAsyncClient, pg_base_config
+):
+    """IEEE 2030.5 §8.9.3.4 rule o) - A HTTP 400 response to a notification means the server SHALL remove the
+    Subscription without Notification"""
+
+    sub_1_uri = "https://example.com:11/path/"  # from the base_config.sql (sub 1 - unscoped EndDeviceList)
+    notifications_enabled.set_results({sub_1_uri: Response(status_code=HTTPStatus.BAD_REQUEST)})
+
+    # Creating an EndDevice will trigger a notification for sub 1 (which will be rejected with a 400)
+    insert_request: EndDeviceRequest = generate_class_instance(EndDeviceRequest)
+    insert_request.lFDI = "abc123DEF"
+    insert_request.deviceCategory = f"{int(DeviceCategory.HOT_TUB):x}"
+    response = await client.post(
+        EndDeviceListUri,
+        headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)},
+        content=EndDeviceRequest.to_xml(insert_request),
+    )
+    assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+
+    assert await notifications_enabled.wait_for_request(timeout_seconds=30)
+
+    # Wait for the subscription to be removed (the worker processes the response after the request is logged)
+    for _ in range(60):
+        async with generate_async_session(pg_base_config) as session:
+            sub_count = (
+                await session.execute(
+                    select(func.count()).select_from(Subscription).where(Subscription.subscription_id == 1)
+                )
+            ).scalar_one()
+        if sub_count == 0:
+            break
+        await asyncio.sleep(0.5)
+    assert sub_count == 0, "Subscription 1 should have been removed"
+
+    await asyncio.sleep(2)  # Give a chance for any (unwanted) cancellation notification to be sent
+
+    # Only the single (rejected) notification - no "cancelled" notification was sent for the removed subscription
+    assert notifications_enabled.call_count_by_method[HTTPMethod.POST] == 1
+    assert notifications_enabled.call_count_by_method_uri[(HTTPMethod.POST, sub_1_uri)] == 1
+
+    async with generate_async_session(pg_base_config) as session:
+        # The subscription is archived (as deleted) and no notification check has been raised for it
+        archived = (
+            (await session.execute(select(ArchiveSubscription).where(ArchiveSubscription.subscription_id == 1)))
+            .scalars()
+            .all()
+        )
+        assert len(archived) == 1
+        assert archived[0].deleted_time is not None
+        assert (await session.execute(select(func.count()).select_from(NotificationCheck))).scalar_one() == 0
+
+    # The subscription is also gone from the API's perspective
+    response = await client.get("/edev/0/sub/1", headers={cert_header: urllib.parse.quote(AGG_1_VALID_CERT)})
+    assert_response_header(response, HTTPStatus.NOT_FOUND, expected_content_type=None)
