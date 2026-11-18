@@ -323,3 +323,13 @@ async def test_405_returns_error_response(client: AsyncClient, valid_headers: di
     assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
     assert_response_header(response, HTTPStatus.METHOD_NOT_ALLOWED)
     assert_error_response(response)
+
+
+@pytest.mark.parametrize(
+    "uri", [uri for methods, uri in ALL_ENDPOINTS_WITH_SUPPORTED_METHODS if HTTPMethod.HEAD in methods]
+)
+@pytest.mark.anyio
+async def test_head_has_no_response_body(uri: str, client: AsyncClient, valid_headers: dict):
+    response = await client.request(method=HTTPMethod.HEAD.name, url=uri, headers=valid_headers)
+    assert_response_header(response, HTTPStatus.OK, expected_content_type=None)
+    assert not read_response_body_string(response)
