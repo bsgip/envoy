@@ -4,12 +4,10 @@ import pytest
 from assertical.fake.generator import generate_class_instance
 from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema.certificate import CertificateAssignmentRequest
-from envoy_schema.admin.schema.doe import DynamicOperatingEnvelopeRequest
 from envoy_schema.admin.schema.pricing import TariffGeneratedRateRequest
 from envoy_schema.admin.schema.site_control import SiteControlRequest
 from envoy_schema.admin.schema.uri import (
     AggregatorCertificateListUri,
-    DoeUri,
     SiteControlUri,
     TariffGeneratedRateCreateUri,
 )
@@ -30,18 +28,15 @@ def _build_items(count: int, factory) -> str:
     "uri, factory, model_type",
     [
         (
-            DoeUri,
-            lambda i: generate_class_instance(DynamicOperatingEnvelopeRequest, seed=i, site_group_id=2),
-            DynamicOperatingEnvelope,
-        ),
-        (
             SiteControlUri.format(group_id=1),
             lambda i: generate_class_instance(SiteControlRequest, seed=i, site_group_id=2),
             DynamicOperatingEnvelope,
         ),
         (
             TariffGeneratedRateCreateUri,
-            lambda i: generate_class_instance(TariffGeneratedRateRequest, seed=i, tariff_id=1, site_group_id=1),
+            lambda i: generate_class_instance(
+                TariffGeneratedRateRequest, seed=i, tariff_component_id=1, site_group_id=1
+            ),
             TariffGeneratedRate,
         ),
         (
