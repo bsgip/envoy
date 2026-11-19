@@ -4,7 +4,14 @@ import logging
 import fastapi
 import sqlalchemy.exc
 from envoy_schema.admin.schema import uri
-from envoy_schema.admin.schema.aggregator import AggregatorPageResponse, AggregatorRequest, AggregatorResponse
+from envoy_schema.admin.schema.aggregator import (
+    AggregatorDomainPageResponse,
+    AggregatorDomainRequest,
+    AggregatorDomainResponse,
+    AggregatorPageResponse,
+    AggregatorRequest,
+    AggregatorResponse,
+)
 from envoy_schema.admin.schema.certificate import CertificateAssignmentRequest, CertificatePageResponse
 from fastapi_async_sqlalchemy import db
 
@@ -154,5 +161,94 @@ async def delete_aggregator_certificate_assignment(aggregator_id: int, certifica
     """
     try:
         await manager.CertificateManager.unassign_certificate_for_aggregator(db.session, aggregator_id, certificate_id)
+    except exception.NotFoundError as err:
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err
+
+
+@router.get(uri.AggregatorDomainListUri, status_code=http.HTTPStatus.OK, response_model=AggregatorDomainPageResponse)
+async def get_aggregator_domains(
+    aggregator_id: int,
+    start: list[int] = fastapi.Query([0]),
+    limit: list[int] = fastapi.Query([100]),
+) -> AggregatorDomainPageResponse:
+    """Endpoint for a paginated list of the whitelisted domains for an Aggregator, ordered by aggregator_domain_id
+
+    Path Params:
+        aggregator_id: ID of the aggregator whose domains will be listed
+
+    Query Params:
+        start: list query parameter for the start index value. Default 0.
+        limit: list query parameter for the maximum number of objects to return. Default 100.
+
+    Returns:
+        AggregatorDomainPageResponse (or 404 if the aggregator does not exist)
+    """
+    domains = await manager.AggregatorDomainManager.fetch_many_aggregator_domains(
+        session=db.session,
+        aggregator_id=aggregator_id,
+        start=request.extract_start_from_paging_param(start),
+        limit=request.extract_limit_from_paging_param(limit),
+    )
+    if domains is None:
+        raise fastapi.HTTPException(http.HTTPStatus.NOT_FOUND, f"Aggregator with ID {aggregator_id} not found")
+    return domains
+
+
+@router.post(uri.AggregatorDomainListUri, status_code=http.HTTPStatus.CREATED, response_model=None)
+async def create_aggregator_domain(
+    aggregator_id: int, aggregator_domain: AggregatorDomainRequest, response: fastapi.Response
+) -> None:
+    """Adds a new whitelisted domain to an Aggregator. The new domain's URI is returned in the Location header.
+
+    Path Params:
+        aggregator_id: ID of the aggregator that will receive the new domain
+
+    Body:
+        AggregatorDomainRequest
+    """
+    try:
+        aggregator_domain_id = await manager.AggregatorDomainManager.add_new_aggregator_domain(
+            db.session, aggregator_id, aggregator_domain
+        )
+    except exception.NotFoundError as err:
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err
+    response.headers["Location"] = uri.AggregatorDomainUri.format(aggregator_domain_id=aggregator_domain_id)
+
+
+@router.get(uri.AggregatorDomainUri, status_code=http.HTTPStatus.OK, response_model=AggregatorDomainResponse)
+async def get_aggregator_domain(aggregator_domain_id: int) -> AggregatorDomainResponse:
+    """Endpoint for requesting a single Aggregator domain by its unique id
+
+    Returns:
+        AggregatorDomainResponse (or 404 if it does not exist)
+    """
+    domain = await manager.AggregatorDomainManager.fetch_single_aggregator_domain(db.session, aggregator_domain_id)
+    if domain is None:
+        raise fastapi.HTTPException(
+            http.HTTPStatus.NOT_FOUND, f"AggregatorDomain with ID {aggregator_domain_id} not found"
+        )
+    return domain
+
+
+@router.put(uri.AggregatorDomainUri, status_code=http.HTTPStatus.OK, response_model=None)
+async def update_aggregator_domain(aggregator_domain_id: int, aggregator_domain: AggregatorDomainRequest) -> None:
+    """Updates the domain value of an existing Aggregator domain
+
+    Body:
+        AggregatorDomainRequest
+    """
+    try:
+        await manager.AggregatorDomainManager.update_existing_aggregator_domain(
+            db.session, aggregator_domain_id, aggregator_domain
+        )
+    except exception.NotFoundError as err:
+        raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err
+
+
+@router.delete(uri.AggregatorDomainUri, status_code=http.HTTPStatus.NO_CONTENT, response_model=None)
+async def delete_aggregator_domain(aggregator_domain_id: int) -> None:
+    """Permanently deletes an existing Aggregator domain"""
+    try:
+        await manager.AggregatorDomainManager.delete_aggregator_domain(db.session, aggregator_domain_id)
     except exception.NotFoundError as err:
         raise error_handler.LoggedHttpException(logger, err, http.HTTPStatus.NOT_FOUND, f"{err}") from err

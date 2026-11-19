@@ -360,7 +360,7 @@ async def count_does_at_timestamp(
 
     return await _does_at_timestamp(
         True, session, site_control_group_id, site_group_ids, timestamp, 0, changed_after, None
-    )  # ty:ignore[invalid-return-type] # Test coverage will ensure that it's an entity list
+    )  # ty:ignore[invalid-explicit-return] # Test coverage will ensure that it's an entity list
 
 
 async def select_does_at_timestamp(
@@ -386,7 +386,7 @@ async def select_does_at_timestamp(
 
     return await _does_at_timestamp(
         False, session, site_control_group_id, site_group_ids, timestamp, start, changed_after, limit
-    )  # ty:ignore[invalid-return-type]  # Test coverage will ensure that it's an entity list
+    )  # ty:ignore[invalid-explicit-return]  # Test coverage will ensure that it's an entity list
 
 
 async def _site_control_groups(
@@ -457,7 +457,7 @@ async def select_site_control_groups(
     # Test coverage will ensure that it's an entity list
     return await _site_control_groups(
         False, session, start, changed_after, limit, fsa_id, include_defaults, site_group_ids
-    )  # ty:ignore[invalid-return-type]
+    )  # ty:ignore[invalid-explicit-return]
 
 
 async def count_site_control_groups(
@@ -483,7 +483,7 @@ async def count_site_control_groups(
         fsa_id,
         False,
         site_group_ids,
-    )  # ty:ignore[invalid-return-type]
+    )  # ty:ignore[invalid-explicit-return]
 
 
 async def count_site_control_groups_by_fsa_id(session: AsyncSession) -> dict[int, int]:

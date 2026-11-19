@@ -57,7 +57,7 @@ name = "envoy"
 dynamic = ["version", "readme"]
 requires-python = ">=3.11,<4.0"
 dependencies = [
-    "envoy_schema==2.7.0",
+    "envoy_schema==2.8.0",
     "fastapi",
     "sqlalchemy[asyncio]>=2.1.0",
     "alembic",

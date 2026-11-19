@@ -3,6 +3,7 @@
 from .aggregator import *  # noqa: F403
 from .archive import *  # noqa: F403
 from .certificate import *  # noqa: F403
+from .cleanup import *  # noqa: F403
 from .config import *  # noqa: F403
 from .log import *  # noqa: F403
 from .pricing import *  # noqa: F403

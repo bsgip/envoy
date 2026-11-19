@@ -10,6 +10,9 @@ from assertical.fixtures.postgres import generate_async_session
 from envoy_schema.admin.schema import uri
 from envoy_schema.admin.schema.aggregator import (
     AggregatorDomain,
+    AggregatorDomainPageResponse,
+    AggregatorDomainRequest,
+    AggregatorDomainResponse,
     AggregatorPageResponse,
     AggregatorRequest,
     AggregatorResponse,
@@ -22,6 +25,7 @@ from envoy_schema.admin.schema.certificate import (
 from httpx import AsyncClient
 
 from envoy.admin import crud
+from envoy.server import model
 from envoy.server.model import AggregatorCertificateAssignment, Certificate
 from tests.integration import response
 
@@ -311,3 +315,189 @@ async def test_update_aggregator_invalid_id(admin_client_auth: AsyncClient) -> N
     )
 
     assert resp.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.parametrize(
+    "agg_id, start, limit, expected_domain_ids, expected_total",
+    [
+        (1, None, None, [1, 4], 2),
+        (1, 1, None, [4], 2),
+        (1, 0, 1, [1], 2),
+        (2, None, None, [2], 1),
+        (3, None, None, [3], 1),
+        (0, None, None, None, None),  # NULL aggregator isn't accessible
+        (99, None, None, None, None),  # DNE
+    ],
+)
+@pytest.mark.anyio
+async def test_get_aggregator_domains(
+    admin_client_auth: AsyncClient,
+    agg_id: int,
+    start: int | None,
+    limit: int | None,
+    expected_domain_ids: list[int] | None,
+    expected_total: int | None,
+) -> None:
+    res = await admin_client_auth.get(
+        uri.AggregatorDomainListUri.format(aggregator_id=agg_id) + _build_query_string(start, limit)
+    )
+    if expected_domain_ids is None:
+        assert res.status_code == HTTPStatus.NOT_FOUND
+        return
+
+    assert res.status_code == HTTPStatus.OK
+    page = AggregatorDomainPageResponse.model_validate(json.loads(response.read_response_body_string(res)))
+    assert page.total_count == expected_total
+    assert [d.aggregator_domain_id for d in page.aggregator_domains] == expected_domain_ids
+    assert all(d.aggregator_id == agg_id for d in page.aggregator_domains)
+
+
+@pytest.mark.parametrize(
+    "aggregator_domain_id, expected_agg_id, expected_domain",
+    [
+        (1, 1, "example.com"),
+        (4, 1, "another.example.com"),
+        (2, 2, "example.com"),
+        (99, None, None),
+    ],
+)
+@pytest.mark.anyio
+async def test_get_aggregator_domain(
+    admin_client_auth: AsyncClient,
+    aggregator_domain_id: int,
+    expected_agg_id: int | None,
+    expected_domain: str | None,
+) -> None:
+    res = await admin_client_auth.get(uri.AggregatorDomainUri.format(aggregator_domain_id=aggregator_domain_id))
+    if expected_domain is None:
+        assert res.status_code == HTTPStatus.NOT_FOUND
+        return
+
+    assert res.status_code == HTTPStatus.OK
+    domain = AggregatorDomainResponse.model_validate(json.loads(response.read_response_body_string(res)))
+    assert domain.aggregator_domain_id == aggregator_domain_id
+    assert domain.aggregator_id == expected_agg_id
+    assert domain.domain == expected_domain
+
+
+@pytest.mark.anyio
+async def test_create_aggregator_domain(admin_client_auth: AsyncClient, pg_base_config: psycopg.Connection) -> None:
+    before = dt.datetime.now(dt.UTC)
+    res = await admin_client_auth.post(
+        uri.AggregatorDomainListUri.format(aggregator_id=2),
+        json=AggregatorDomainRequest(domain="new.domain.example").model_dump(mode="json"),
+    )
+    assert res.status_code == HTTPStatus.CREATED
+    location = res.headers["Location"]
+    assert location == uri.AggregatorDomainUri.format(aggregator_domain_id=6)  # base_config sequence starts at 6
+
+    res = await admin_client_auth.get(location)
+    assert res.status_code == HTTPStatus.OK
+    domain = AggregatorDomainResponse.model_validate(json.loads(response.read_response_body_string(res)))
+    assert domain.aggregator_id == 2
+    assert domain.domain == "new.domain.example"
+    assert domain.changed_time >= before
+
+    # Should also show up on the parent aggregator
+    res = await admin_client_auth.get(uri.AggregatorUri.format(aggregator_id=2))
+    agg = AggregatorResponse.model_validate(json.loads(response.read_response_body_string(res)))
+    assert sorted(d.domain for d in agg.domains) == ["example.com", "new.domain.example"]
+
+
+@pytest.mark.parametrize(
+    "agg_id, body, expected_status",
+    [
+        (0, {"domain": "abc.com"}, HTTPStatus.NOT_FOUND),  # NULL aggregator
+        (99, {"domain": "abc.com"}, HTTPStatus.NOT_FOUND),
+        (1, {"domain": ""}, HTTPStatus.UNPROCESSABLE_ENTITY),
+        (1, {"domain": "a" * 513}, HTTPStatus.UNPROCESSABLE_ENTITY),
+        (1, {}, HTTPStatus.UNPROCESSABLE_ENTITY),
+    ],
+)
+@pytest.mark.anyio
+async def test_create_aggregator_domain_errors(
+    admin_client_auth: AsyncClient, pg_base_config: psycopg.Connection, agg_id: int, body: dict, expected_status
+) -> None:
+    res = await admin_client_auth.post(uri.AggregatorDomainListUri.format(aggregator_id=agg_id), json=body)
+    assert res.status_code == expected_status
+
+    async with generate_async_session(pg_base_config) as session:
+        count = (await session.execute(sa.select(sa.func.count()).select_from(model.AggregatorDomain))).scalar_one()
+        assert count == 4, "No domains should've been added"
+
+
+@pytest.mark.anyio
+async def test_update_aggregator_domain(admin_client_auth: AsyncClient, pg_base_config: psycopg.Connection) -> None:
+    before = dt.datetime.now(dt.UTC)
+    res = await admin_client_auth.put(
+        uri.AggregatorDomainUri.format(aggregator_domain_id=4),
+        json=AggregatorDomainRequest(domain="updated.example.com").model_dump(mode="json"),
+    )
+    assert res.status_code == HTTPStatus.OK
+
+    async with generate_async_session(pg_base_config) as session:
+        domains = (
+            (
+                await session.execute(
+                    sa.select(model.AggregatorDomain).order_by(model.AggregatorDomain.aggregator_domain_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert [d.domain for d in domains] == ["example.com", "example.com", "example.com", "updated.example.com"]
+        assert domains[3].aggregator_id == 1
+        assert domains[3].changed_time >= before
+        assert domains[0].changed_time < before
+
+
+@pytest.mark.parametrize(
+    "aggregator_domain_id, body, expected_status",
+    [
+        (99, {"domain": "abc.com"}, HTTPStatus.NOT_FOUND),
+        (1, {"domain": ""}, HTTPStatus.UNPROCESSABLE_ENTITY),
+        (1, {}, HTTPStatus.UNPROCESSABLE_ENTITY),
+    ],
+)
+@pytest.mark.anyio
+async def test_update_aggregator_domain_errors(
+    admin_client_auth: AsyncClient, aggregator_domain_id: int, body: dict, expected_status
+) -> None:
+    res = await admin_client_auth.put(
+        uri.AggregatorDomainUri.format(aggregator_domain_id=aggregator_domain_id), json=body
+    )
+    assert res.status_code == expected_status
+
+
+@pytest.mark.parametrize(
+    "aggregator_domain_id, expected_status, expected_remaining_ids",
+    [
+        (1, HTTPStatus.NO_CONTENT, [2, 3, 4]),
+        (4, HTTPStatus.NO_CONTENT, [1, 2, 3]),
+        (99, HTTPStatus.NOT_FOUND, [1, 2, 3, 4]),
+    ],
+)
+@pytest.mark.anyio
+async def test_delete_aggregator_domain(
+    admin_client_auth: AsyncClient,
+    pg_base_config: psycopg.Connection,
+    aggregator_domain_id: int,
+    expected_status: HTTPStatus,
+    expected_remaining_ids: list[int],
+) -> None:
+    res = await admin_client_auth.delete(uri.AggregatorDomainUri.format(aggregator_domain_id=aggregator_domain_id))
+    assert res.status_code == expected_status
+
+    async with generate_async_session(pg_base_config) as session:
+        ids = (
+            (
+                await session.execute(
+                    sa.select(model.AggregatorDomain.aggregator_domain_id).order_by(
+                        model.AggregatorDomain.aggregator_domain_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert list(ids) == expected_remaining_ids

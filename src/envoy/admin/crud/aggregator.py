@@ -1,10 +1,17 @@
 from collections.abc import Iterable, Sequence
+from typing import cast
 
 import sqlalchemy as sa
+from sqlalchemy import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from envoy.server.model.aggregator import NULL_AGGREGATOR_ID, Aggregator, AggregatorCertificateAssignment
+from envoy.server.model.aggregator import (
+    NULL_AGGREGATOR_ID,
+    Aggregator,
+    AggregatorCertificateAssignment,
+    AggregatorDomain,
+)
 
 
 async def count_all_aggregators(session: AsyncSession) -> int:
@@ -84,3 +91,58 @@ async def unassign_many_certificates(session: AsyncSession, aggregator_id: int, 
         .where(AggregatorCertificateAssignment.certificate_id.in_(certificate_ids))
     )
     await session.execute(stmt)
+
+
+async def count_aggregator_domains(session: AsyncSession, aggregator_id: int) -> int:
+    """Counts the AggregatorDomains belonging to aggregator_id"""
+    stmt = (
+        sa.select(sa.func.count()).select_from(AggregatorDomain).where(AggregatorDomain.aggregator_id == aggregator_id)
+    )
+    resp = await session.execute(stmt)
+    return resp.scalar_one()
+
+
+async def select_aggregator_domains(
+    session: AsyncSession, aggregator_id: int, start: int | None, limit: int | None
+) -> Sequence[AggregatorDomain]:
+    """Selects a page of AggregatorDomains belonging to aggregator_id, ordered by aggregator_domain_id"""
+    stmt = (
+        sa.select(AggregatorDomain)
+        .where(AggregatorDomain.aggregator_id == aggregator_id)
+        .order_by(AggregatorDomain.aggregator_domain_id.asc())
+        .offset(start)
+        .limit(limit)
+    )
+    resp = await session.execute(stmt)
+    return resp.scalars().all()
+
+
+async def select_aggregator_domain(session: AsyncSession, aggregator_domain_id: int) -> AggregatorDomain | None:
+    """Selects a single AggregatorDomain by its ID. Domains belonging to the NULL_AGGREGATOR are never returned.
+    Returns None if the domain can't be found."""
+    stmt = sa.select(AggregatorDomain).where(
+        (AggregatorDomain.aggregator_domain_id == aggregator_domain_id)
+        & (AggregatorDomain.aggregator_id != NULL_AGGREGATOR_ID)
+    )
+    resp = await session.execute(stmt)
+    return resp.scalar_one_or_none()
+
+
+async def insert_single_aggregator_domain(session: AsyncSession, aggregator_domain: AggregatorDomain) -> None:
+    """Inserts a single AggregatorDomain into the DB (aggregator_domain will be populated with the new ID on flush)"""
+    if aggregator_domain.created_time:
+        del aggregator_domain.created_time
+    session.add(aggregator_domain)
+    await session.flush()
+
+
+async def delete_single_aggregator_domain(session: AsyncSession, aggregator_domain_id: int) -> bool:
+    """Deletes a single AggregatorDomain by ID (domains of the NULL_AGGREGATOR will NOT be deleted).
+    Returns True if a domain was deleted, False otherwise"""
+    resp = await session.execute(
+        sa.delete(AggregatorDomain).where(
+            (AggregatorDomain.aggregator_domain_id == aggregator_domain_id)
+            & (AggregatorDomain.aggregator_id != NULL_AGGREGATOR_ID)
+        )
+    )
+    return cast(CursorResult, resp).rowcount > 0
