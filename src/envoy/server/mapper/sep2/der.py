@@ -13,6 +13,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERListResponse,
     DERSettings,
     DERStatus,
+    DERType,
     DOESupportedMode,
     VPPControlType,
 )
@@ -159,6 +160,18 @@ class DERAvailabilityMapper:
         )
 
     @staticmethod
+    def map_to_default_response(scope: BaseRequestScope, site_id: int) -> DERAvailability:
+        """Generates a minimally populated DERAvailability for a site that hasn't yet submitted one. All required
+        values are zeroed (readingTime will be the epoch)"""
+        return DERAvailability.model_validate(
+            {
+                "href": generate_href(uri.DERAvailabilityUri, scope, site_id=site_id, der_id=PUBLIC_SITE_DER_ID),
+                "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
+                "readingTime": 0,
+            }
+        )
+
+    @staticmethod
     def map_from_request(changed_time: datetime, der_avail: DERAvailability) -> SiteDERAvailability:
         m = SiteDERAvailability(
             availability_duration_sec=der_avail.availabilityDuration,
@@ -250,6 +263,18 @@ class DERStatusMapper:
                 "stateOfChargeStatus": soc_status,
                 "storageModeStatus": sm_status,
                 "storConnectStatus": stor_conn_status,
+            }
+        )
+
+    @staticmethod
+    def map_to_default_response(scope: BaseRequestScope, site_id: int) -> DERStatus:
+        """Generates a minimally populated DERStatus for a site that hasn't yet submitted one. All required
+        values are zeroed (readingTime will be the epoch)"""
+        return DERStatus.model_validate(
+            {
+                "href": generate_href(uri.DERStatusUri, scope, site_id=site_id, der_id=PUBLIC_SITE_DER_ID),
+                "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
+                "readingTime": 0,
             }
         )
 
@@ -390,6 +415,20 @@ class DERCapabilityMapper:
         )
 
     @staticmethod
+    def map_to_default_response(scope: BaseRequestScope, site_id: int) -> DERCapability:
+        """Generates a minimally populated DERCapability for a site that hasn't yet submitted one. All required
+        values are zeroed / set to "not applicable"."""
+        return DERCapability.model_validate(
+            {
+                "href": generate_href(uri.DERCapabilityUri, scope, site_id=site_id, der_id=PUBLIC_SITE_DER_ID),
+                "modesSupported": to_hex_binary(0),
+                "rtgMaxW": {"value": 0, "multiplier": 0},
+                "type_": DERType.NOT_APPLICABLE,
+                "doeModesSupported": to_hex_binary(0),
+            }
+        )
+
+    @staticmethod
     def map_from_request(changed_time: datetime, der_cap: DERCapability) -> SiteDERRating:
         vpp_modes_supported = VPPControlType(int(der_cap.vppModesSupported, 16)) if der_cap.vppModesSupported else None
         m = SiteDERRating(
@@ -497,6 +536,20 @@ class DERSettingMapper:
                 "updatedTime": int(der_setting.changed_time.timestamp()),
                 "doeModesEnabled": to_hex_binary(der_setting.doe_modes_enabled),
                 "vppModesEnabled": to_hex_binary(der_setting.vpp_modes_enabled),
+            }
+        )
+
+    @staticmethod
+    def map_to_default_response(scope: BaseRequestScope, site_id: int) -> DERSettings:
+        """Generates a minimally populated DERSettings for a site that hasn't yet submitted one. All required
+        values are zeroed (updatedTime will be the epoch)"""
+        return DERSettings.model_validate(
+            {
+                "href": generate_href(uri.DERSettingsUri, scope, site_id=site_id, der_id=PUBLIC_SITE_DER_ID),
+                "subscribable": SubscribableType.resource_supports_non_conditional_subscriptions,
+                "setGradW": 0,
+                "setMaxW": {"value": 0, "multiplier": 0},
+                "updatedTime": 0,
             }
         )
 

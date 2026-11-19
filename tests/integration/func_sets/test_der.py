@@ -120,9 +120,9 @@ async def test_get_der(
     "site_id, has_entity",
     [
         (1, True),
-        (2, False),
-        (3, False),
-        (4, False),
+        (2, True),  # No sub entities in DB - minimal defaults returned
+        (3, False),  # Belongs to a different aggregator
+        (4, True),  # No sub entities in DB - minimal defaults returned
     ],
 )
 @pytest.mark.anyio

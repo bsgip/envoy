@@ -109,8 +109,8 @@ class DERCapabilityManager:
         site_der_id: int,
         scope: SiteRequestScope,
     ) -> DERCapability:
-        """Fetches a single DER Capability for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed
-        or if no DERCapability has been stored."""
+        """Fetches a single DER Capability for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed.
+        Returns a minimal default if nothing has been stored."""
 
         await _site_for_der_or_raise(session, aggregator_id=scope.aggregator_id, site_id=scope.site_id)
 
@@ -119,7 +119,8 @@ class DERCapabilityManager:
 
         site_der_rating = await select_site_der_rating_for_site(session, scope.site_id)
         if site_der_rating is None:
-            raise NotFoundError(f"no DERCapability on record for DER {site_der_id} in site {scope.site_id}")
+            # Client hasn't populated this yet - return a minimal "empty" default rather than a 404
+            return DERCapabilityMapper.map_to_default_response(scope, scope.site_id)
 
         return DERCapabilityMapper.map_to_response(scope, site_der_rating, scope.site_id)
 
@@ -168,8 +169,8 @@ class DERSettingsManager:
         site_der_id: int,
         scope: SiteRequestScope,
     ) -> DERSettings:
-        """Fetches a single DER Settings for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed
-        or if no DERSettings has been stored."""
+        """Fetches a single DER Settings for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed.
+        Returns a minimal default if nothing has been stored."""
 
         await _site_for_der_or_raise(session, aggregator_id=scope.aggregator_id, site_id=scope.site_id)
 
@@ -178,7 +179,8 @@ class DERSettingsManager:
 
         site_der_setting = await select_site_der_setting_for_site(session, scope.site_id)
         if site_der_setting is None:
-            raise NotFoundError(f"no DERSettings on record for DER {site_der_id} in site {scope.site_id}")
+            # Client hasn't populated this yet - return a minimal "empty" default rather than a 404
+            return DERSettingMapper.map_to_default_response(scope, scope.site_id)
 
         return DERSettingMapper.map_to_response(scope, site_der_setting, scope.site_id)
 
@@ -227,8 +229,8 @@ class DERAvailabilityManager:
         site_der_id: int,
         scope: SiteRequestScope,
     ) -> DERAvailability:
-        """Fetches a single DER Availability for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed
-        or if no DERSettings has been stored."""
+        """Fetches a single DER Availability for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed.
+        Returns a minimal default if nothing has been stored."""
 
         await _site_for_der_or_raise(session, aggregator_id=scope.aggregator_id, site_id=scope.site_id)
 
@@ -237,7 +239,8 @@ class DERAvailabilityManager:
 
         site_der_availability = await select_site_der_availability_for_site(session, scope.site_id)
         if site_der_availability is None:
-            raise NotFoundError(f"no DERAvailability on record for DER {site_der_id} in site {scope.site_id}")
+            # Client hasn't populated this yet - return a minimal "empty" default rather than a 404
+            return DERAvailabilityMapper.map_to_default_response(scope, scope.site_id)
 
         return DERAvailabilityMapper.map_to_response(scope, site_der_availability, scope.site_id)
 
@@ -286,8 +289,8 @@ class DERStatusManager:
         site_der_id: int,
         scope: SiteRequestScope,
     ) -> DERStatus:
-        """Fetches a single DER Status for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed
-        or if no DERSettings has been stored."""
+        """Fetches a single DER Status for a specific DER. Raises NotFoundError if DER/Site couldn't be accessed.
+        Returns a minimal default if nothing has been stored."""
 
         await _site_for_der_or_raise(session, aggregator_id=scope.aggregator_id, site_id=scope.site_id)
 
@@ -296,7 +299,8 @@ class DERStatusManager:
 
         site_der_status = await select_site_der_status_for_site(session, scope.site_id)
         if site_der_status is None:
-            raise NotFoundError(f"no DERStatus on record for DER {site_der_id} in site {scope.site_id}")
+            # Client hasn't populated this yet - return a minimal "empty" default rather than a 404
+            return DERStatusMapper.map_to_default_response(scope, scope.site_id)
 
         return DERStatusMapper.map_to_response(scope, site_der_status, scope.site_id)
 
