@@ -50,4 +50,4 @@ async def test_content_type_header_storage_extension(client: AsyncClient) -> Non
     body = read_response_body_string(response)
     assert len(body) > 0
 
-    assert_response_header(response, HTTPStatus.OK, "application/sep+xml; csipaus=1.3-beta_storage")
+    assert_response_header(response, HTTPStatus.OK, "application/sep+xml; csipaus=v1.3")

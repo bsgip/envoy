@@ -15,7 +15,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{HOST}}/aggregator?s=0&l=100",
+							"raw": "{{HOST}}/aggregator",
 							"host": [
 								"{{HOST}}"
 							],
@@ -24,12 +24,16 @@
 							],
 							"query": [
 								{
-									"key": "s",
-									"value": "0"
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
 								},
 								{
-									"key": "l",
-									"value": "100"
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
 								}
 							]
 						}
@@ -55,6 +59,60 @@
 					"response": []
 				},
 				{
+					"name": "POST Create Aggregator",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator"
+							]
+						},
+						"description": "Returns the new aggregator's URI in the Location header",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Aggregator Name\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Update Aggregator",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator/{{AGGREGATOR_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator",
+								"{{AGGREGATOR_ID}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Aggregator Name\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "GET Aggregator Certificate List",
 					"request": {
 						"method": "GET",
@@ -68,6 +126,20 @@
 								"aggregator",
 								"{{AGGREGATOR_ID}}",
 								"certificate"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								}
 							]
 						}
 					},
@@ -78,15 +150,6 @@
 					"request": {
 						"method": "POST",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "[{\n        \"certificate_id\": 1\n}]",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/aggregator/{{AGGREGATOR_ID}}/certificate",
 							"host": [
@@ -97,6 +160,16 @@
 								"{{AGGREGATOR_ID}}",
 								"certificate"
 							]
+						},
+						"description": "Assign existing certificates (by certificate_id) or create + assign new ones (by lfdi/expiry)",
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"certificate_id\": 1\n    },\n    {\n        \"lfdi\": \"7c0fe9a2ff72f7cd4d1d6a62e33925e07a27b431\",\n        \"expiry\": \"2026-08-30T23:45:55Z\"\n    }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
 						}
 					},
 					"response": []
@@ -107,7 +180,7 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{HOST}}/aggregator/{{AGGREGATOR_ID}}/certificate/1",
+							"raw": "{{HOST}}/aggregator/{{AGGREGATOR_ID}}/certificate/{{CERTIFICATE_ID}}",
 							"host": [
 								"{{HOST}}"
 							],
@@ -115,7 +188,132 @@
 								"aggregator",
 								"{{AGGREGATOR_ID}}",
 								"certificate",
-								"1"
+								"{{CERTIFICATE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Aggregator Domain List",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator/{{AGGREGATOR_ID}}/aggregator_domain",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator",
+								"{{AGGREGATOR_ID}}",
+								"aggregator_domain"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Aggregator Domain",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator/{{AGGREGATOR_ID}}/aggregator_domain",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator",
+								"{{AGGREGATOR_ID}}",
+								"aggregator_domain"
+							]
+						},
+						"description": "Returns the new domain's URI in the Location header",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"domain\": \"example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Aggregator Domain",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator_domain/{{AGGREGATOR_DOMAIN_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator_domain",
+								"{{AGGREGATOR_DOMAIN_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Update Aggregator Domain",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator_domain/{{AGGREGATOR_DOMAIN_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator_domain",
+								"{{AGGREGATOR_DOMAIN_ID}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"domain\": \"updated.example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Aggregator Domain",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/aggregator_domain/{{AGGREGATOR_DOMAIN_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"aggregator_domain",
+								"{{AGGREGATOR_DOMAIN_ID}}"
 							]
 						}
 					},
@@ -141,18 +339,38 @@
 								"{{PERIOD_START}}",
 								"{{PERIOD_END}}",
 								"sites"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								},
+								{
+									"key": "only_deletes",
+									"value": "true",
+									"description": "Only return archive records created by a delete. Default true",
+									"disabled": true
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "GET Archived does for period",
+					"name": "GET Archived site controls for period",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{HOST}}/archive/{{PERIOD_START}}/{{PERIOD_END}}/does",
+							"raw": "{{HOST}}/archive/{{PERIOD_START}}/{{PERIOD_END}}/site_controls",
 							"host": [
 								"{{HOST}}"
 							],
@@ -160,14 +378,34 @@
 								"archive",
 								"{{PERIOD_START}}",
 								"{{PERIOD_END}}",
-								"does"
+								"site_controls"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								},
+								{
+									"key": "only_deletes",
+									"value": "true",
+									"description": "Only return archive records created by a delete. Default true",
+									"disabled": true
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "GET Archived tariffs for period",
+					"name": "GET Archived tariff generated rates for period",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -181,84 +419,26 @@
 								"{{PERIOD_START}}",
 								"{{PERIOD_END}}",
 								"tariff_generated_rates"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Billing",
-			"item": [
-				{
-					"name": "GET Aggregator Billing Report",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{HOST}}/billing/aggregator/{{AGGREGATOR_ID}}/tariff/{{TARIFF_ID}}/period/{{PERIOD_START}}/{{PERIOD_END}}",
-							"host": [
-								"{{HOST}}"
 							],
-							"path": [
-								"billing",
-								"aggregator",
-								"{{AGGREGATOR_ID}}",
-								"tariff",
-								"{{TARIFF_ID}}",
-								"period",
-								"{{PERIOD_START}}",
-								"{{PERIOD_END}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GET Calculation Log Billing Report",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{HOST}}/billing/calculation_log/1/tariff/{{TARIFF_ID}}",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"billing",
-								"calculation_log",
-								"1",
-								"tariff",
-								"{{TARIFF_ID}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "POST Get sites billing data",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"period_start\": \"2025-04-28T00:10:00Z\",\n    \"period_end\": \"2025-04-29T00:10:00Z\",\n    \"site_ids\": [1],\n    \"tariff_id\": 1\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								},
+								{
+									"key": "only_deletes",
+									"value": "true",
+									"description": "Only return archive records created by a delete. Default true",
+									"disabled": true
 								}
-							}
-						},
-						"url": {
-							"raw": "{{HOST}}/billing/site/period",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"billing",
-								"site",
-								"period"
 							]
 						}
 					},
@@ -281,86 +461,20 @@
 							],
 							"path": [
 								"certificate"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "POST Create certificate",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"lfdi\": \"7c0fe9a2ff72f7cd4d1d6a62e33925e07a27b431\",\n    \"expiry\": \"2026-08-30T23:45:55Z\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{HOST}}/certificate",
-							"host": [
-								"{{HOST}}"
 							],
-							"path": [
-								"certificate"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "DELETE certificate",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"lfdi\": \"7c0fe9a2ff72f7cd4d1d6a62e33925e07a27b431\",\n    \"expiry\": \"2026-08-30T23:45:55Z\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
 								}
-							}
-						},
-						"url": {
-							"raw": "{{HOST}}/certificate/{{CERTIFICATE_ID}}",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"certificate",
-								"{{CERTIFICATE_ID}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "PUT Update certificate",
-					"request": {
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"lfdi\": \"7c0fe9a2ff72f7cd4d1d6a62e33925e07a27b431\",\n    \"expiry\": \"2027-08-30T23:45:55Z\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{HOST}}/certificate/{{CERTIFICATE_ID}}",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"certificate",
-								"{{CERTIFICATE_ID}}"
 							]
 						}
 					},
@@ -380,6 +494,168 @@
 								"certificate",
 								"{{CERTIFICATE_ID}}"
 							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create certificate",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/certificate",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"certificate"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"lfdi\": \"7c0fe9a2ff72f7cd4d1d6a62e33925e07a27b431\",\n    \"expiry\": \"2026-08-30T23:45:55Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Update certificate",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/certificate/{{CERTIFICATE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"certificate",
+								"{{CERTIFICATE_ID}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"lfdi\": \"7c0fe9a2ff72f7cd4d1d6a62e33925e07a27b431\",\n    \"expiry\": \"2027-08-30T23:45:55Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE certificate",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/certificate/{{CERTIFICATE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"certificate",
+								"{{CERTIFICATE_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Cleanup",
+			"item": [
+				{
+					"name": "POST Cleanup expired site controls",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/cleanup/expired/site_controls",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"cleanup",
+								"expired",
+								"site_controls"
+							]
+						},
+						"description": "Removes ALL site controls ending at/before expired_before. mode: 'archive' (copy to archive) or 'delete'",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"expired_before\": \"2024-02-01T00:00:00Z\",\n    \"mode\": \"archive\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Cleanup expired tariff generated rates",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/cleanup/expired/tariff_generated_rates",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"cleanup",
+								"expired",
+								"tariff_generated_rates"
+							]
+						},
+						"description": "Removes ALL tariff generated rates ending at/before expired_before. mode: 'archive' or 'delete'",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"expired_before\": \"2024-02-01T00:00:00Z\",\n    \"mode\": \"archive\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Cleanup archive",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/cleanup/archive",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"cleanup",
+								"archive"
+							]
+						},
+						"description": "Permanently deletes archive records archived at/before archived_before. Omit archive_types (or null) to target ALL archive tables",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"archived_before\": \"2024-02-01T00:00:00Z\",\n    \"archive_types\": [\n        \"site_control\",\n        \"tariff_generated_rate\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
 						}
 					},
 					"response": []
@@ -412,15 +688,6 @@
 					"request": {
 						"method": "POST",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"dcap_pollrate_seconds\": 300\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/server_config/run_time",
 							"host": [
@@ -430,6 +697,16 @@
 								"server_config",
 								"run_time"
 							]
+						},
+						"description": "Any omitted/null values will NOT be updated",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"dcap_pollrate_seconds\": 300\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
 						}
 					},
 					"response": []
@@ -437,59 +714,64 @@
 			]
 		},
 		{
-			"name": "DOE",
+			"name": "Health",
 			"item": [
 				{
-					"name": "Add DOEs",
+					"name": "GET Health",
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "[{\n    \"site_id\": 1,\n    \"duration_seconds\": 300,\n    \"import_limit_active_watts\": 1111,\n    \"export_limit_watts\": -2222,\n    \"start_time\": \"2024-02-28T00:10:00Z\",\n    \"calculation_log_id\": null\n}]",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{HOST}}/doe",
+							"raw": "{{HOST}}/status/health",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"doe"
+								"status",
+								"health"
+							],
+							"query": [
+								{
+									"key": "check_data",
+									"value": "true",
+									"description": "Also run data checks. Default true",
+									"disabled": true
+								}
 							]
+						},
+						"description": "Unsecured endpoint",
+						"auth": {
+							"type": "noauth"
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "Get all does",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "HEAD Health",
 					"request": {
-						"method": "GET",
+						"method": "HEAD",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "[{\n    \"site_id\": 1,\n    \"duration_seconds\": 300,\n    \"import_limit_active_watts\": 1111,\n    \"export_limit_watts\": -2222,\n    \"start_time\": \"2024-02-28T00:10:00Z\"\n}]",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{HOST}}/doe",
+							"raw": "{{HOST}}/status/health",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"doe"
+								"status",
+								"health"
+							],
+							"query": [
+								{
+									"key": "check_data",
+									"value": "true",
+									"description": "Also run data checks. Default true",
+									"disabled": true
+								}
 							]
+						},
+						"description": "Unsecured endpoint",
+						"auth": {
+							"type": "noauth"
 						}
 					},
 					"response": []
@@ -504,15 +786,6 @@
 					"request": {
 						"method": "POST",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"calculation_range_start\": \"2010-01-02T00:00:01Z\",\n  \"calculation_range_duration_seconds\": 2,\n  \"interval_width_seconds\": 300,\n  \"topology_id\": \"feeder-123\",\n  \"external_id\": \"abc123\",\n  \"description\": \"Description of log\",\n  \"power_forecast_creation_time\": \"2010-01-07T00:00:06Z\",\n  \"weather_forecast_creation_time\": \"2010-01-08T00:00:07Z\",\n  \"weather_forecast_location_id\": \"Ashby, Perth\",\n  \"variable_metadata\": [\n    {\n      \"variable_id\": 1,\n      \"name\": \"variable 1\",\n      \"description\": \"aaa\"\n    }\n  ],\n  \"variable_values\": \n    {\n      \"variable_ids\": [1],\n      \"site_ids\": [1],\n      \"interval_periods\": [1],\n      \"values\": [1.24]\n    },\n  \"label_metadata\": [\n    {\n      \"label_id\": 6,\n      \"name\": \"nice label\",\n      \"description\": \"nice\"\n    }\n  ],\n  \"label_values\":     \n  {\n      \"label_ids\": [6],\n      \"site_ids\": [1],\n      \"values\": [\"some exog or something?\"]\n  }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/calculation_log",
 							"host": [
@@ -521,6 +794,15 @@
 							"path": [
 								"calculation_log"
 							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"calculation_range_start\": \"2010-01-02T00:00:01Z\",\n    \"calculation_range_duration_seconds\": 2,\n    \"interval_width_seconds\": 300,\n    \"topology_id\": \"feeder-123\",\n    \"external_id\": \"abc123\",\n    \"description\": \"Description of log\",\n    \"power_forecast_creation_time\": \"2010-01-07T00:00:06Z\",\n    \"power_forecast_basis_time\": \"2010-01-07T00:00:00Z\",\n    \"weather_forecast_creation_time\": \"2010-01-08T00:00:07Z\",\n    \"weather_forecast_location_id\": \"Ashby, Perth\",\n    \"variable_metadata\": [\n        {\n            \"variable_id\": 1,\n            \"name\": \"variable 1\",\n            \"description\": \"aaa\"\n        }\n    ],\n    \"variable_values\": {\n        \"variable_ids\": [\n            1\n        ],\n        \"site_ids\": [\n            1\n        ],\n        \"interval_periods\": [\n            1\n        ],\n        \"values\": [\n            1.24\n        ]\n    },\n    \"label_metadata\": [\n        {\n            \"label_id\": 6,\n            \"name\": \"nice label\",\n            \"description\": \"nice\"\n        }\n    ],\n    \"label_values\": {\n        \"label_ids\": [\n            6\n        ],\n        \"site_ids\": [\n            1\n        ],\n        \"values\": [\n            \"some label value\"\n        ]\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
 						}
 					},
 					"response": []
@@ -538,6 +820,20 @@
 							"path": [
 								"calculation_log",
 								"{{CALCULATION_LOG_ID}}"
+							],
+							"query": [
+								{
+									"key": "include_variables",
+									"value": "true",
+									"description": "Include variable metadata/values. Default false",
+									"disabled": true
+								},
+								{
+									"key": "include_labels",
+									"value": "true",
+									"description": "Include label metadata/values. Default false",
+									"disabled": true
+								}
 							]
 						}
 					},
@@ -558,6 +854,20 @@
 								"period",
 								"{{PERIOD_START}}",
 								"{{PERIOD_END}}"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								}
 							]
 						}
 					},
@@ -574,7 +884,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{HOST}}/tariff?s=0&l=100",
+							"raw": "{{HOST}}/tariff",
 							"host": [
 								"{{HOST}}"
 							],
@@ -583,12 +893,22 @@
 							],
 							"query": [
 								{
-									"key": "s",
-									"value": "0"
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
 								},
 								{
-									"key": "l",
-									"value": "100"
+									"key": "limit",
+									"value": "5",
+									"description": "Max items. Default 5",
+									"disabled": true
+								},
+								{
+									"key": "group",
+									"value": "group1",
+									"description": "SiteGroup name filter (matches required_site_group)",
+									"disabled": true
 								}
 							]
 						}
@@ -618,15 +938,6 @@
 					"request": {
 						"method": "POST",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"Tariff Name\",\n    \"dnsp_code\": \"ABC123\",\n    \"currency_code\": 36\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/tariff",
 							"host": [
@@ -635,32 +946,16 @@
 							"path": [
 								"tariff"
 							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Add Tariff Generated Rate",
-					"request": {
-						"method": "POST",
-						"header": [],
+						},
+						"description": "Returns the new tariff's URI in the Location header (and its id in the body)",
 						"body": {
 							"mode": "raw",
-							"raw": "[{\n    \"tariff_id\": 1,\n    \"site_id\": 1,\n    \"start_time\": \"2024-02-03T00:00:00\",\n    \"duration_seconds\": 300,\n    \"import_active_price\": 0.4,\n    \"export_active_price\": -0.4,\n    \"import_reactive_price\": 0,\n    \"export_reactive_price\": 0,\n    \"calculation_log_id\": null\n}]",
+							"raw": "{\n    \"name\": \"Tariff Name\",\n    \"dnsp_code\": \"ABC123\",\n    \"currency_code\": 36,\n    \"price_power_of_ten_multiplier\": -4,\n    \"primacy\": 1,\n    \"fsa_id\": 1,\n    \"required_site_group_id\": null\n}",
 							"options": {
 								"raw": {
 									"language": "json"
 								}
 							}
-						},
-						"url": {
-							"raw": "{{HOST}}/tariff_generated_rate",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"tariff_generated_rate"
-							]
 						}
 					},
 					"response": []
@@ -670,15 +965,6 @@
 					"request": {
 						"method": "PUT",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"Tariff Name\",\n    \"dnsp_code\": \"ABC1234\",\n    \"currency_code\": 36\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/tariff/{{TARIFF_ID}}",
 							"host": [
@@ -687,6 +973,252 @@
 							"path": [
 								"tariff",
 								"{{TARIFF_ID}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Tariff Name\",\n    \"dnsp_code\": \"ABC1234\",\n    \"currency_code\": 36,\n    \"price_power_of_ten_multiplier\": -4,\n    \"primacy\": 1,\n    \"fsa_id\": 1,\n    \"required_site_group_id\": null\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Tariff Components for Tariff",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff/{{TARIFF_ID}}/tariff_component",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff",
+								"{{TARIFF_ID}}",
+								"tariff_component"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Tariff Component",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff_component",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff_component"
+							]
+						},
+						"description": "Returns the new component's URI in the Location header (and its id in the body)",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tariff_id\": 1,\n    \"role_flags\": 1,\n    \"description\": \"Import energy\",\n    \"accumulation_behaviour\": 4,\n    \"commodity\": 1,\n    \"data_qualifier\": 0,\n    \"flow_direction\": 1,\n    \"kind\": 12,\n    \"phase\": 0,\n    \"power_of_ten_multiplier\": 0,\n    \"uom\": 72\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Tariff Component",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff_component/{{TARIFF_COMPONENT_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff_component",
+								"{{TARIFF_COMPONENT_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Tariff Component",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff_component/{{TARIFF_COMPONENT_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff_component",
+								"{{TARIFF_COMPONENT_ID}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tariff_id\": 1,\n    \"role_flags\": 1,\n    \"description\": \"Import energy (updated)\",\n    \"accumulation_behaviour\": 4,\n    \"commodity\": 1,\n    \"data_qualifier\": 0,\n    \"flow_direction\": 1,\n    \"kind\": 12,\n    \"phase\": 0,\n    \"power_of_ten_multiplier\": 0,\n    \"uom\": 72\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Tariff Component",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff_component/{{TARIFF_COMPONENT_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff_component",
+								"{{TARIFF_COMPONENT_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Tariff Generated Rates",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff_generated_rate",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff_generated_rate"
+							],
+							"query": [
+								{
+									"key": "on_collide",
+									"value": "error",
+									"description": "How to handle collisions on (tariff_component_id, start_time, site_group_id): error (default, abort everything) | ignore (skip, id=-1) | cancel (archive existing, then insert)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Prices are pow10 encoded using the parent tariff's price_power_of_ten_multiplier",
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"tariff_component_id\": 1,\n        \"site_group_id\": 1,\n        \"calculation_log_id\": null,\n        \"start_time\": \"2024-02-03T00:00:00Z\",\n        \"duration_seconds\": 300,\n        \"price_pow10_encoded\": 2500,\n        \"block_1_start_pow10_encoded\": null,\n        \"price_pow10_encoded_block_1\": null\n    }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Tariff Generated Rate",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff_generated_rate/{{TARIFF_GENERATED_RATE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff_generated_rate",
+								"{{TARIFF_GENERATED_RATE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Tariff Generated Rate",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff_generated_rate/{{TARIFF_GENERATED_RATE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff_generated_rate",
+								"{{TARIFF_GENERATED_RATE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Tariff Generated Rates for Component",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/tariff_component/{{TARIFF_COMPONENT_ID}}/tariff_generated_rate",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"tariff_component",
+								"{{TARIFF_COMPONENT_ID}}",
+								"tariff_generated_rate"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "500",
+									"description": "Max items. Default/max 500",
+									"disabled": true
+								},
+								{
+									"key": "group",
+									"value": "group1",
+									"description": "SiteGroup name filter (matches site_group_id)",
+									"disabled": true
+								},
+								{
+									"key": "start_time_since",
+									"value": "2024-02-03T00:00:00Z",
+									"description": "start_time >= this (inclusive)",
+									"disabled": true
+								},
+								{
+									"key": "start_time_until",
+									"value": "2024-02-04T00:00:00Z",
+									"description": "start_time < this (exclusive)",
+									"disabled": true
+								},
+								{
+									"key": "site_id",
+									"value": "1",
+									"description": "Rates whose site_group_id contains this site as a member",
+									"disabled": true
+								}
 							]
 						}
 					},
@@ -709,6 +1241,32 @@
 							],
 							"path": [
 								"site_control_group"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								},
+								{
+									"key": "after",
+									"value": "2024-02-28T00:00:00Z",
+									"description": "Only items created/modified at/after this timestamp",
+									"disabled": true
+								},
+								{
+									"key": "group",
+									"value": "group1",
+									"description": "SiteGroup name filter (matches required_site_group)",
+									"disabled": true
+								}
 							]
 						}
 					},
@@ -733,19 +1291,82 @@
 					"response": []
 				},
 				{
-					"name": "POST Update site control group default",
+					"name": "POST Create site control group",
 					"request": {
 						"method": "POST",
 						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_control_group",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group"
+							]
+						},
+						"description": "Returns the new group's URI in the Location header",
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"import_limit_watts\": {\"value\": 500},\n    \"export_limit_watts\": {\"value\": 500},\n    \"generation_limit_watts\": {\"value\": 500},\n    \"load_limit_watts\": {\"value\": 500},\n    \"ramp_rate_percent_per_second\": {\"value\": 500}\n}",
+							"raw": "{\n    \"description\": \"cntl 1\",\n    \"primacy\": 1,\n    \"fsa_id\": 1,\n    \"display_id\": null,\n    \"required_site_group_id\": null\n}",
 							"options": {
 								"raw": {
 									"language": "json"
 								}
 							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Update site control group",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group",
+								"{{GROUP_ID}}"
+							]
 						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"description\": \"cntl 1 updated\",\n    \"primacy\": 1,\n    \"fsa_id\": 1,\n    \"display_id\": null,\n    \"required_site_group_id\": null\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE All site control groups",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_control_group",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_control_group"
+							]
+						},
+						"description": "Deletes ALL site control groups (incl. controls, defaults and FSAs). Values are archived and notifications raised"
+					},
+					"response": []
+				},
+				{
+					"name": "POST Update site control group default",
+					"request": {
+						"method": "POST",
+						"header": [],
 						"url": {
 							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/default",
 							"host": [
@@ -756,27 +1377,25 @@
 								"{{GROUP_ID}}",
 								"default"
 							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GET site control group default",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [],
+						},
+						"description": "null for a field = don't update. {\"value\": null} = clear the value",
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"import_limit_watts\" 500,\n}",
+							"raw": "{\n    \"import_limit_watts\": {\n        \"value\": 500\n    },\n    \"export_limit_watts\": {\n        \"value\": 500\n    },\n    \"generation_limit_watts\": {\n        \"value\": 500\n    },\n    \"load_limit_watts\": {\n        \"value\": 500\n    },\n    \"ramp_rate_percent_per_second\": {\n        \"value\": 500\n    },\n    \"storage_target_watts\": {\n        \"value\": 500\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
 								}
 							}
-						},
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Site control group default",
+					"request": {
+						"method": "GET",
+						"header": [],
 						"url": {
 							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/default",
 							"host": [
@@ -796,15 +1415,6 @@
 					"request": {
 						"method": "POST",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "[{\n    \"site_id\": 1,\n    \"calculation_log_id\": 1,\n    \"duration_seconds\": 300,\n    \"start_time\": \"2024-02-28T00:10:00Z\",\n    \"import_limit_watts\": 500\n}]",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/controls",
 							"host": [
@@ -815,29 +1425,26 @@
 								"{{GROUP_ID}}",
 								"controls"
 							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"site_group_id\": 1,\n        \"calculation_log_id\": null,\n        \"duration_seconds\": 300,\n        \"start_time\": \"2024-02-28T00:10:00Z\",\n        \"import_limit_watts\": 500,\n        \"storage_target_watts\": null\n    }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
 						}
 					},
 					"response": []
 				},
 				{
 					"name": "Get all site controls",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
 					"request": {
 						"method": "GET",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "[{\n    \"site_id\": 1,\n    \"calculation_log_id\": 1,\n    \"duration_seconds\": 300,\n    \"start_time\": \"2024-02-28T00:10:00Z\",\n    \"import_limit_watts\": 500\n}]",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/controls?after=2024-02-28T00:10:00",
+							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/controls",
 							"host": [
 								"{{HOST}}"
 							],
@@ -848,8 +1455,46 @@
 							],
 							"query": [
 								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								},
+								{
 									"key": "after",
-									"value": "2024-02-28T00:10:00"
+									"value": "2024-02-28T00:00:00Z",
+									"description": "Only items created/modified at/after this timestamp",
+									"disabled": true
+								},
+								{
+									"key": "group",
+									"value": "group1",
+									"description": "SiteGroup name filter (matches parent required_site_group)",
+									"disabled": true
+								},
+								{
+									"key": "start_time_since",
+									"value": "2024-02-28T00:00:00Z",
+									"description": "start_time >= this (inclusive)",
+									"disabled": true
+								},
+								{
+									"key": "start_time_until",
+									"value": "2024-02-29T00:00:00Z",
+									"description": "start_time < this (exclusive)",
+									"disabled": true
+								},
+								{
+									"key": "site_id",
+									"value": "1",
+									"description": "Controls targeting a SiteGroup this site is a member of",
+									"disabled": true
 								}
 							]
 						}
@@ -861,15 +1506,6 @@
 					"request": {
 						"method": "DELETE",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "[{\n    \"site_id\": 1,\n    \"calculation_log_id\": 1,\n    \"duration_seconds\": 300,\n    \"start_time\": \"2024-02-28T00:10:00Z\",\n    \"import_limit_watts\": 500\n}]",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/site_control_group/{{GROUP_ID}}/controls/{{PERIOD_START}}/{{PERIOD_END}}",
 							"host": [
@@ -885,32 +1521,6 @@
 						}
 					},
 					"response": []
-				},
-				{
-					"name": "POST Create site control group",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"description\": \"cntl 1\",\n    \"primacy\": 1,\n    \"fsa_id\": 1\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{HOST}}/site_control_group",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"site_control_group"
-							]
-						}
-					},
-					"response": []
 				}
 			]
 		},
@@ -919,23 +1529,11 @@
 			"item": [
 				{
 					"name": "Get site readings",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
 					"request": {
 						"method": "GET",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "[{\n    \"site_id\": 1,\n    \"calculation_log_id\": 1,\n    \"duration_seconds\": 300,\n    \"start_time\": \"2024-02-28T00:10:00Z\",\n    \"import_limit_watts\": 500\n}]",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{HOST}}/site_readings/{{SITE_ID}}/csip_aus_unit/1/period/{{PERIOD_START}}/{{PERIOD_END}}",
+							"raw": "{{HOST}}/site_readings/{{SITE_ID}}/csip_aus_unit/{{CSIP_AUS_UNIT}}/period/{{PERIOD_START}}/{{PERIOD_END}}",
 							"host": [
 								"{{HOST}}"
 							],
@@ -943,12 +1541,27 @@
 								"site_readings",
 								"{{SITE_ID}}",
 								"csip_aus_unit",
-								"1",
+								"{{CSIP_AUS_UNIT}}",
 								"period",
 								"{{PERIOD_START}}",
 								"{{PERIOD_END}}"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "500",
+									"description": "Max items. Default 500",
+									"disabled": true
+								}
 							]
-						}
+						},
+						"description": "CSIP_AUS_UNIT: 1=ACTIVEPOWER, 2=REACTIVEPOWER, 3=FREQUENCY, 4=VOLTAGE"
 					},
 					"response": []
 				}
@@ -963,7 +1576,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{HOST}}/site?group=cohort-1",
+							"raw": "{{HOST}}/site",
 							"host": [
 								"{{HOST}}"
 							],
@@ -972,8 +1585,40 @@
 							],
 							"query": [
 								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								},
+								{
 									"key": "group",
-									"value": "cohort-1"
+									"value": "group1",
+									"description": "SiteGroup name filter",
+									"disabled": true
+								},
+								{
+									"key": "after",
+									"value": "2024-02-28T00:00:00Z",
+									"description": "Only items created/modified at/after this timestamp",
+									"disabled": true
+								},
+								{
+									"key": "nmi",
+									"value": "12345677",
+									"description": "NMI filter (repeatable)",
+									"disabled": true
+								},
+								{
+									"key": "aggregator_id",
+									"value": "1",
+									"description": "Aggregator ID filter",
+									"disabled": true
 								}
 							]
 						}
@@ -999,6 +1644,34 @@
 					"response": []
 				},
 				{
+					"name": "UPDATE Single site",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site/{{SITE_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site",
+								"{{SITE_ID}}"
+							]
+						},
+						"description": "Any omitted/null values will NOT be updated. Optional group_ids (list of SiteGroup ids) can also be set",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nmi\": \"12345677\",\n    \"timezone_id\": \"Australia/Brisbane\",\n    \"post_rate_seconds\": 60\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "DELETE Single site",
 					"request": {
 						"method": "DELETE",
@@ -1015,34 +1688,12 @@
 						}
 					},
 					"response": []
-				},
-				{
-					"name": "UPDATE Single site",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"nmi\": \"12345677\",\n    \"post_rate_seconds\": 2\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{HOST}}/site/{{SITE_ID}}",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"site",
-								"{{SITE_ID}}"
-							]
-						}
-					},
-					"response": []
-				},
+				}
+			]
+		},
+		{
+			"name": "Site Group",
+			"item": [
 				{
 					"name": "GET Site Groups",
 					"request": {
@@ -1055,6 +1706,20 @@
 							],
 							"path": [
 								"site_group"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								}
 							]
 						}
 					},
@@ -1073,6 +1738,134 @@
 							"path": [
 								"site_group",
 								"{{SITE_GROUP_NAME}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Site Group",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_group",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_group"
+							]
+						},
+						"description": "Returns the new group's URI in the Location header",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"group1\",\n    \"default_group\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Site Group Assignments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_group/{{SITE_GROUP_NAME}}/assignments",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_group",
+								"{{SITE_GROUP_NAME}}",
+								"assignments"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "0",
+									"description": "Start index (pagination). Default 0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Max items. Default 100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Site Group Assignment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_group/{{SITE_GROUP_NAME}}/assignments",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_group",
+								"{{SITE_GROUP_NAME}}",
+								"assignments"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"site_id\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Site Group Assignment",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_group/{{SITE_GROUP_NAME}}/assignments/{{SITE_GROUP_ASSIGNMENT_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_group",
+								"{{SITE_GROUP_NAME}}",
+								"assignments",
+								"{{SITE_GROUP_ASSIGNMENT_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Site Group Assignment",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/site_group/{{SITE_GROUP_NAME}}/assignments/{{SITE_GROUP_ASSIGNMENT_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"site_group",
+								"{{SITE_GROUP_NAME}}",
+								"assignments",
+								"{{SITE_GROUP_ASSIGNMENT_ID}}"
 							]
 						}
 					},
@@ -1166,6 +1959,36 @@
 			"key": "SITE_ID",
 			"value": "1",
 			"type": "default"
+		},
+		{
+			"key": "CERTIFICATE_ID",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "AGGREGATOR_DOMAIN_ID",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "SITE_GROUP_ASSIGNMENT_ID",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "CSIP_AUS_UNIT",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "TARIFF_COMPONENT_ID",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "TARIFF_GENERATED_RATE_ID",
+			"value": "1",
+			"type": "string"
 		}
 	]
 }
