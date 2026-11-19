@@ -12,9 +12,6 @@
 				{
 					"name": "/edev (EndDeviceList)",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
 						"method": "GET",
 						"header": [
 							{
@@ -29,7 +26,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev?l=10",
+							"raw": "{{HOST}}/edev?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -37,6 +34,10 @@
 								"edev"
 							],
 							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
 								{
 									"key": "l",
 									"value": "10"
@@ -47,11 +48,50 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1 (Single EndDevice)",
+					"name": "/edev (EndDevice Create)",
 					"request": {
-						"auth": {
-							"type": "noauth"
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\n\t<lFDI>A9993E364706816ABA3E25717850C26C9CD0D89D</lFDI>\n\t<sFDI>234561178</sFDI>\n\t<changedTime>1759733047</changedTime>\n</EndDevice>\n",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
 						},
+						"url": {
+							"raw": "{{HOST}}/edev",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/{id} (EndDevice)",
+					"request": {
 						"method": "GET",
 						"header": [
 							{
@@ -79,44 +119,8 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/rp (EndDevice registration)",
+					"name": "/edev/{id} (Delete EndDevice)",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rp",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"rp"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1 (Delete EndDevice)",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
 						"method": "DELETE",
 						"header": [
 							{
@@ -144,10 +148,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/3/cp (ConnectionPoint)",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "/edev/{id}/rg (Registration)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -162,28 +163,29 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/cp",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rg",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
 								"edev",
 								"{{EDEV_ID}}",
-								"cp"
+								"rg"
 							]
 						}
 					},
 					"response": []
-				},
+				}
+			]
+		},
+		{
+			"name": "Connection Point",
+			"item": [
 				{
-					"name": "/edev/3/cp (ConnectionPoint Upsert)",
+					"name": "/edev/{id}/cp (ConnectionPoint)",
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"header": [
 							{
 								"key": "x-forwarded-client-cert",
@@ -196,15 +198,6 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "<ConnectionPoint xmlns=\"https://csipaus.org/ns\">\n    <connectionPointId>1111111111</connectionPointId>\n</ConnectionPoint>\n",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/edev/{{EDEV_ID}}/cp",
 							"host": [
@@ -220,29 +213,29 @@
 					"response": []
 				},
 				{
-					"name": "/edev (EndDevice Create)",
+					"name": "/edev/{id}/cp (ConnectionPoint Upsert)",
 					"request": {
-						"method": "POST",
+						"method": "PUT",
 						"header": [
 							{
 								"key": "x-forwarded-client-cert",
 								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
 								"type": "text"
 							},
 							{
 								"key": "Content-Type",
 								"value": "application/sep+xml",
 								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<EndDevice xmlns=\"urn:ieee:std:2030.5:ns\">\r\n    <lFDI>A9993E364706816ABA3E25717850C26C9CD0D89D</lFDI>\r\n    <sFDI>234561178</sFDI>\r\n    <changedTime>1759733047</changedTime>\r\n</EndDevice>",
+							"raw": "<ConnectionPoint xmlns=\"https://csipaus.org/ns\">\n\t<connectionPointId>1111111111</connectionPointId>\n</ConnectionPoint>\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -250,19 +243,26 @@
 							}
 						},
 						"url": {
-							"raw": "{{HOST}}/edev",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/cp",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"edev"
+								"edev",
+								"{{EDEV_ID}}",
+								"cp"
 							]
 						}
 					},
 					"response": []
-				},
+				}
+			]
+		},
+		{
+			"name": "Function Set Assignments",
+			"item": [
 				{
-					"name": "/edev/3/fsa (EndDevice FunctionSetAssignment)",
+					"name": "/edev/{id}/fsa (FunctionSetAssignmentsList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -278,7 +278,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa?1=10",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -289,7 +289,11 @@
 							],
 							"query": [
 								{
-									"key": "1",
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
 									"value": "10"
 								}
 							]
@@ -298,7 +302,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/3/fsa/1 (FunctionSetAssignment)",
+					"name": "/edev/{id}/fsa/{id} (FunctionSetAssignments)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -334,7 +338,7 @@
 			"name": "Time",
 			"item": [
 				{
-					"name": "/tm",
+					"name": "/tm (Time)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -367,10 +371,7 @@
 			"name": "Device Capability",
 			"item": [
 				{
-					"name": "/dcap (Device Capability)",
-					"protocolProfileBehavior": {
-						"disabledSystemHeaders": {}
-					},
+					"name": "/dcap (DeviceCapability)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -403,54 +404,6 @@
 			"name": "Meter Mirroring",
 			"item": [
 				{
-					"name": "/mup/1 (MirrorUsagePoint)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/mup/{{MUP_ID}}",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"mup",
-								"{{MUP_ID}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/mup/1 (DELETE MirrorUsagePoint)",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/mup/{{MUP_ID}}",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"mup",
-								"{{MUP_ID}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "/mup (MirrorUsagePointList)",
 					"request": {
 						"method": "GET",
@@ -458,6 +411,11 @@
 							{
 								"key": "x-forwarded-client-cert",
 								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
 								"type": "text"
 							}
 						],
@@ -484,7 +442,7 @@
 					"response": []
 				},
 				{
-					"name": "/mup (Create MeterUsagePoint)",
+					"name": "/mup (Create MirrorUsagePoint)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -494,19 +452,19 @@
 								"type": "text"
 							},
 							{
-								"key": "Content-Type",
+								"key": "Accept",
 								"value": "application/sep+xml",
 								"type": "text"
 							},
 							{
-								"key": "Accept",
+								"key": "Content-Type",
 								"value": "application/sep+xml",
 								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0600006C</mRID>\r\n\t<description>Max Watts</description>\r\n\t<roleFlags>1234</roleFlags>\r\n\t<serviceCategoryKind>0</serviceCategoryKind>\r\n\t<status>1</status>\r\n\t<deviceLFDI>3E4F45AB31EDFE5B67E343E5E4562E3100000000</deviceLFDI>\r\n\t<MirrorMeterReading>\r\n\t\t<mRID>0700006C</mRID>\r\n\t\t<ReadingType>\r\n\t\t\t<accumulationBehaviour>9</accumulationBehaviour>\r\n\t\t\t<commodity>1</commodity>\r\n\t\t\t<dataQualifier>8</dataQualifier>\r\n\t\t\t<flowDirection>1</flowDirection>\r\n            <intervalLength>300</intervalLength>\r\n\t\t\t<powerOfTenMultiplier>3</powerOfTenMultiplier>\r\n\t\t\t<uom>38</uom>\r\n\t\t</ReadingType>\r\n\t</MirrorMeterReading>\r\n</MirrorUsagePoint>\r\n",
+							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\n\t<mRID>0600006C</mRID>\n\t<description>Max Watts</description>\n\t<roleFlags>1234</roleFlags>\n\t<serviceCategoryKind>0</serviceCategoryKind>\n\t<status>1</status>\n\t<deviceLFDI>3E4F45AB31EDFE5B67E343E5E4562E3100000000</deviceLFDI>\n\t<MirrorMeterReading>\n\t\t<mRID>0700006C</mRID>\n\t\t<ReadingType>\n\t\t\t<accumulationBehaviour>9</accumulationBehaviour>\n\t\t\t<commodity>1</commodity>\n\t\t\t<dataQualifier>8</dataQualifier>\n\t\t\t<flowDirection>1</flowDirection>\n\t\t\t<intervalLength>300</intervalLength>\n\t\t\t<powerOfTenMultiplier>3</powerOfTenMultiplier>\n\t\t\t<uom>38</uom>\n\t\t</ReadingType>\n\t</MirrorMeterReading>\n</MirrorUsagePoint>\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -526,7 +484,7 @@
 					"response": []
 				},
 				{
-					"name": "/mup (Update MeterUsagePoint) \\",
+					"name": "/mup (Update MirrorUsagePoint)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -536,19 +494,19 @@
 								"type": "text"
 							},
 							{
-								"key": "Content-Type",
+								"key": "Accept",
 								"value": "application/sep+xml",
 								"type": "text"
 							},
 							{
-								"key": "Accept",
+								"key": "Content-Type",
 								"value": "application/sep+xml",
 								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0600006CC8</mRID> <!-- This MRID should match a previously submitted MUP mrid to update -->\r\n\t<description>Max Watts</description>\r\n\t<roleFlags>9</roleFlags>\r\n\t<serviceCategoryKind>0</serviceCategoryKind>\r\n\t<status>1</status>\r\n\t<deviceLFDI>854d10a201ca99e5e90d3c3e1f9bc1c3bd075f3b</deviceLFDI>\r\n</MirrorUsagePoint>\r\n",
+							"raw": "<MirrorUsagePoint xmlns=\"urn:ieee:std:2030.5:ns\">\n\t<mRID>0600006C</mRID> <!-- This MRID should match a previously submitted MUP mrid to update -->\n\t<description>Max Watts</description>\n\t<roleFlags>09</roleFlags>\n\t<serviceCategoryKind>0</serviceCategoryKind>\n\t<status>1</status>\n\t<deviceLFDI>3E4F45AB31EDFE5B67E343E5E4562E3100000000</deviceLFDI>\n</MirrorUsagePoint>\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -568,7 +526,65 @@
 					"response": []
 				},
 				{
-					"name": "/mup/0 (MirrorMeterReading Add)",
+					"name": "/mup/{id} (MirrorUsagePoint)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/mup/{{MUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup",
+								"{{MUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/mup/{id} (Delete MirrorUsagePoint)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/mup/{{MUP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"mup",
+								"{{MUP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/mup/{id} (MirrorMeterReading Add)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -578,19 +594,24 @@
 								"type": "text"
 							},
 							{
-								"key": "Content-Type",
+								"key": "Accept",
 								"value": "application/sep+xml",
 								"type": "text"
 							},
 							{
-								"key": "Accept",
+								"key": "Content-Type",
 								"value": "application/sep+xml",
 								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\r\n\t<mRID>0700006C</mRID>\r\n\t<MirrorReadingSet>\r\n\t\t<mRID>12345678</mRID>\r\n\t\t<timePeriod>\r\n\t\t\t<duration>3600</duration>\r\n\t\t\t<start>1341579365</start>\r\n\t\t</timePeriod>\r\n\t\t<Reading>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579365</start>\r\n\t\t\t</timePeriod>\r\n            <value>9</value>\r\n\t\t</Reading>\r\n\t\t<Reading>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579665</start>\r\n\t\t\t</timePeriod>\r\n            <value>11</value>\r\n\t\t</Reading>\r\n\t\t<Reading>\r\n\t\t\t<timePeriod>\r\n\t\t\t\t<duration>300</duration>\r\n\t\t\t\t<start>1341579965</start>\r\n\t\t\t</timePeriod>\r\n            <value>10</value>\r\n\t\t</Reading>\r\n\t</MirrorReadingSet>\r\n</MirrorMeterReading>"
+							"raw": "<MirrorMeterReading xmlns=\"urn:ieee:std:2030.5:ns\">\n\t<mRID>0700006C</mRID>\n\t<MirrorReadingSet>\n\t\t<mRID>12345678</mRID>\n\t\t<timePeriod>\n\t\t\t<duration>3600</duration>\n\t\t\t<start>1341579365</start>\n\t\t</timePeriod>\n\t\t<Reading>\n\t\t\t<timePeriod>\n\t\t\t\t<duration>300</duration>\n\t\t\t\t<start>1341579365</start>\n\t\t\t</timePeriod>\n\t\t\t<value>9</value>\n\t\t</Reading>\n\t\t<Reading>\n\t\t\t<timePeriod>\n\t\t\t\t<duration>300</duration>\n\t\t\t\t<start>1341579665</start>\n\t\t\t</timePeriod>\n\t\t\t<value>11</value>\n\t\t</Reading>\n\t\t<Reading>\n\t\t\t<timePeriod>\n\t\t\t\t<duration>300</duration>\n\t\t\t\t<start>1341579965</start>\n\t\t\t</timePeriod>\n\t\t\t<value>10</value>\n\t\t</Reading>\n\t</MirrorReadingSet>\n</MirrorMeterReading>\n",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
 						},
 						"url": {
 							"raw": "{{HOST}}/mup/{{MUP_ID}}",
@@ -614,7 +635,7 @@
 					"name": "Unscoped",
 					"item": [
 						{
-							"name": "/tp (TariffProfileList (unscoped))",
+							"name": "/tp (TariffProfileList unscoped)",
 							"request": {
 								"method": "GET",
 								"header": [
@@ -652,7 +673,7 @@
 							"response": []
 						},
 						{
-							"name": "/tp/3 (TariffProfile (unscoped))",
+							"name": "/tp/{id} (TariffProfile unscoped)",
 							"request": {
 								"method": "GET",
 								"header": [
@@ -681,7 +702,7 @@
 							"response": []
 						},
 						{
-							"name": "/tp/1/rc (RateComponent (unscoped))",
+							"name": "/tp/{id}/rc (RateComponentList unscoped)",
 							"request": {
 								"method": "GET",
 								"header": [
@@ -697,7 +718,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{HOST}}/tp/{{TP_ID}}/rc",
+									"raw": "{{HOST}}/tp/{{TP_ID}}/rc?s=0&l=10",
 									"host": [
 										"{{HOST}}"
 									],
@@ -705,6 +726,16 @@
 										"tp",
 										"{{TP_ID}}",
 										"rc"
+									],
+									"query": [
+										{
+											"key": "s",
+											"value": "0"
+										},
+										{
+											"key": "l",
+											"value": "10"
+										}
 									]
 								}
 							},
@@ -713,7 +744,7 @@
 					]
 				},
 				{
-					"name": "/pricing/rt/1 (Pricing ReadingType)",
+					"name": "/pricing/rt/{type} (Pricing ReadingType)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -743,7 +774,7 @@
 					"response": []
 				},
 				{
-					"name": "/pricing/rt/1 (Pricing ReadingType) Copy",
+					"name": "/edev/{id}/tp (TariffProfileList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -759,21 +790,73 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/pricing/rt/{{PRICING_RT}}",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/tp?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
-								"pricing",
-								"rt",
-								"{{PRICING_RT}}"
+								"edev",
+								"{{EDEV_ID}}",
+								"tp"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "edev/1/tp/1 (TariffProfile)",
+					"name": "/edev/{id}/fsa/{id}/tp (TariffProfileList FSA scope)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa/{{FSA_ID}}/tp?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"fsa",
+								"{{FSA_ID}}",
+								"tp"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/{id}/tp/{id} (TariffProfile)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -804,7 +887,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/tp/1/rc (RateComponentList)",
+					"name": "/edev/{id}/tp/{id}/rc (RateComponentList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -846,7 +929,7 @@
 					"response": []
 				},
 				{
-					"name": "edev/1/fsa/1/tp (TariffProfileList FSA scope)",
+					"name": "/edev/{id}/tp/{id}/rc/{YYYY-MM-DD}/{type} (RateComponent)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -862,53 +945,25 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa/{{FSA_ID}}/tp",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/tp/{{TP_ID}}/rc/{{DATE}}/{{PRICING_RT}}",
 							"host": [
 								"{{HOST}}"
 							],
 							"path": [
 								"edev",
 								"{{EDEV_ID}}",
-								"fsa",
-								"{{FSA_ID}}",
-								"tp"
+								"tp",
+								"{{TP_ID}}",
+								"rc",
+								"{{DATE}}",
+								"{{PRICING_RT}}"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "edev/1/tp (TariffProfile List)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/tp",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"tp"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1/tp/1/rc/YYYY-MM-DD/1/tti (TimeTariffIntervalList)",
+					"name": "/edev/{id}/tp/{id}/rc/{YYYY-MM-DD}/{type}/tti (TimeTariffIntervalList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -953,7 +1008,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/tp/1/rc/YYYY-MM-DD/1/tti/HH:MM (TimeTariffInterval)",
+					"name": "/edev/{id}/tp/{id}/rc/{YYYY-MM-DD}/{type}/tti/{HH:MM} (TimeTariffInterval)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -989,7 +1044,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/tp/1/rc/YYYY-MM-DD/1/tti/HH:MM/cti/12345 (ConsumptionTariffIntervalList)",
+					"name": "/edev/{id}/tp/{id}/rc/{YYYY-MM-DD}/{type}/tti/{HH:MM}/cti/{price} (ConsumptionTariffIntervalList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1005,7 +1060,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/tp/{{TP_ID}}/rc/{{DATE}}/{{PRICING_RT}}/tti/{{TIME}}/cti/12345?s=0&l=10",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/tp/{{TP_ID}}/rc/{{DATE}}/{{PRICING_RT}}/tti/{{TIME}}/cti/{{PRICE}}?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1020,7 +1075,7 @@
 								"tti",
 								"{{TIME}}",
 								"cti",
-								"12345"
+								"{{PRICE}}"
 							],
 							"query": [
 								{
@@ -1037,7 +1092,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/tp/1/rc/YYYY-MM-DD/1/tti/HH:MM/cti/12345/1 (ConsumptionTariffInterval)",
+					"name": "/edev/{id}/tp/{id}/rc/{YYYY-MM-DD}/{type}/tti/{HH:MM}/cti/{price}/1 (ConsumptionTariffInterval)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1053,7 +1108,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/tp/{{TP_ID}}/rc/{{DATE}}/{{PRICING_RT}}/tti/{{TIME}}/cti/12345/1?s=0&l=10",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/tp/{{TP_ID}}/rc/{{DATE}}/{{PRICING_RT}}/tti/{{TIME}}/cti/{{PRICE}}/1",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1068,8 +1123,43 @@
 								"tti",
 								"{{TIME}}",
 								"cti",
-								"12345",
+								"{{PRICE}}",
 								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Pub Sub",
+			"item": [
+				{
+					"name": "/edev/{id}/sub (SubscriptionList)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/sub?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"sub"
 							],
 							"query": [
 								{
@@ -1084,14 +1174,53 @@
 						}
 					},
 					"response": []
-				}
-			]
-		},
-		{
-			"name": "Pub Sub",
-			"item": [
+				},
 				{
-					"name": "/edev/1/sub/1 (Get Subscription)",
+					"name": "/edev/{id}/sub (Create Subscription)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<Subscription xmlns=\"urn:ieee:std:2030.5:ns\">\n\t<subscribedResource>/edev/1/derp/1/derc</subscribedResource>\n\t<encoding>0</encoding>\n\t<level>+S1</level>\n\t<limit>100</limit>\n\t<notificationURI>http://example.com/my/path?q=123</notificationURI>\n</Subscription>\n",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/sub",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"sub"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/{id}/sub/{id} (Subscription)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1122,7 +1251,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/sub/1 (Delete Subscription)",
+					"name": "/edev/{id}/sub/{id} (Delete Subscription)",
 					"request": {
 						"method": "DELETE",
 						"header": [
@@ -1151,75 +1280,6 @@
 						}
 					},
 					"response": []
-				},
-				{
-					"name": "/edev/1/sub (Get Subscription List)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/sub",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"sub"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1/sub (POST Subscription create)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "<Subscription xmlns=\"urn:ieee:std:2030.5:ns\">\n    <subscribedResource>/edev/1/derp/1/derc</subscribedResource>\n\t<encoding>0</encoding>\n    <level>+S1</level>\n    <limit>100</limit>\n    <notificationURI>http://example.com/my/path?q=123</notificationURI>\n</Subscription>\n",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/sub",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"sub"
-							]
-						}
-					},
-					"response": []
 				}
 			]
 		},
@@ -1227,7 +1287,7 @@
 			"name": "DER",
 			"item": [
 				{
-					"name": "/edev/1/der (Get DERList)",
+					"name": "/edev/{id}/der (DERList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1243,7 +1303,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1251,13 +1311,23 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "/edev/1/der/1 (Get DER)",
+					"name": "/edev/{id}/der/{id} (DER)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1273,7 +1343,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/{{DER_ID}}",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1281,14 +1351,14 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der",
-								"1"
+								"{{DER_ID}}"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "/edev/1/der/1/dera (Get DERAvailability)",
+					"name": "/edev/{id}/der/{id}/dera (DERAvailability)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1304,7 +1374,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1/dera",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/{{DER_ID}}/dera",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1312,7 +1382,7 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der",
-								"1",
+								"{{DER_ID}}",
 								"dera"
 							]
 						}
@@ -1320,7 +1390,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/der/1/dera (PUT DERAvailability)",
+					"name": "/edev/{id}/der/{id}/dera (PUT DERAvailability)",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -1333,11 +1403,16 @@
 								"key": "Accept",
 								"value": "application/sep+xml",
 								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERAvailability\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<availabilityDuration>100</availabilityDuration>\n    <readingTime>1712286594</readingTime>\n\t<maxChargeDuration>2005</maxChargeDuration>\n\t<statVarAvail>\n\t\t<value>1000</value>\n\t\t<multiplier>1</multiplier>\n\t</statVarAvail>\n\t<statWAvail>\n\t\t<value>1000</value>\n\t\t<multiplier>1</multiplier>\n\t</statWAvail>\n</DERAvailability>",
+							"raw": "<DERAvailability xmlns=\"urn:ieee:std:2030.5:ns\">\n\t<availabilityDuration>100</availabilityDuration>\n\t<maxChargeDuration>2005</maxChargeDuration>\n\t<readingTime>1712286594</readingTime>\n\t<statVarAvail>\n\t\t<multiplier>1</multiplier>\n\t\t<value>1000</value>\n\t</statVarAvail>\n\t<statWAvail>\n\t\t<multiplier>1</multiplier>\n\t\t<value>1000</value>\n\t</statWAvail>\n</DERAvailability>\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -1345,7 +1420,7 @@
 							}
 						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1/dera",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/{{DER_ID}}/dera",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1353,7 +1428,7 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der",
-								"1",
+								"{{DER_ID}}",
 								"dera"
 							]
 						}
@@ -1361,7 +1436,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/der/1/dercap (Get DERCapability)",
+					"name": "/edev/{id}/der/{id}/dercap (DERCapability)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1377,7 +1452,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1/dercap",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/{{DER_ID}}/dercap",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1385,7 +1460,7 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der",
-								"1",
+								"{{DER_ID}}",
 								"dercap"
 							]
 						}
@@ -1393,7 +1468,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/der/1/dercap (PUT DERCapability)",
+					"name": "/edev/{id}/der/{id}/dercap (PUT DERCapability)",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -1406,11 +1481,16 @@
 								"key": "Accept",
 								"value": "application/sep+xml",
 								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERCapability\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"https://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesSupported>12345678</modesSupported>\n    <rtgAbnormalCategory>1</rtgAbnormalCategory>\n    <rtgMaxW>\n        <multiplier>0</multiplier>\n        <value>4</value>\n    </rtgMaxW>\n\t<type>5</type>\n\t<csipaus:doeModesSupported>12</csipaus:doeModesSupported>\n</DERCapability>",
+							"raw": "<DERCapability xmlns=\"urn:ieee:std:2030.5:ns\" xmlns:csipaus=\"https://csipaus.org/ns\">\n\t<modesSupported>12345678</modesSupported>\n\t<rtgAbnormalCategory>1</rtgAbnormalCategory>\n\t<rtgMaxW>\n\t\t<multiplier>0</multiplier>\n\t\t<value>4</value>\n\t</rtgMaxW>\n\t<type>5</type>\n\t<csipaus:doeModesSupported>12</csipaus:doeModesSupported>\n</DERCapability>\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -1418,7 +1498,7 @@
 							}
 						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1/dercap",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/{{DER_ID}}/dercap",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1426,7 +1506,7 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der",
-								"1",
+								"{{DER_ID}}",
 								"dercap"
 							]
 						}
@@ -1434,7 +1514,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/der/1/derg (Get DERSettings)",
+					"name": "/edev/{id}/der/{id}/derg (DERSettings)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1450,7 +1530,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1/derg",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/{{DER_ID}}/derg",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1458,7 +1538,7 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der",
-								"1",
+								"{{DER_ID}}",
 								"derg"
 							]
 						}
@@ -1466,7 +1546,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/der/1/derg (PUT DERSettings)",
+					"name": "/edev/{id}/der/{id}/derg (PUT DERSettings)",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -1479,11 +1559,16 @@
 								"key": "Accept",
 								"value": "application/sep+xml",
 								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERSettings\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"https://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<modesEnabled>0000</modesEnabled>\n    <setGradW>1001</setGradW>\n\t<setMaxW>\n\t\t<multiplier>1</multiplier>\n        \t<value>1001</value>\n\t</setMaxW>\n    <updatedTime>1715060552</updatedTime>\n\t<csipaus:doeModesEnabled>01</csipaus:doeModesEnabled>\n</DERSettings>",
+							"raw": "<DERSettings xmlns=\"urn:ieee:std:2030.5:ns\" xmlns:csipaus=\"https://csipaus.org/ns\">\n\t<modesEnabled>0000</modesEnabled>\n\t<setGradW>1001</setGradW>\n\t<setMaxW>\n\t\t<multiplier>1</multiplier>\n\t\t<value>1001</value>\n\t</setMaxW>\n\t<updatedTime>1715060552</updatedTime>\n\t<csipaus:doeModesEnabled>01</csipaus:doeModesEnabled>\n</DERSettings>\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -1491,7 +1576,7 @@
 							}
 						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1/derg",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/{{DER_ID}}/derg",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1499,7 +1584,7 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der",
-								"1",
+								"{{DER_ID}}",
 								"derg"
 							]
 						}
@@ -1507,7 +1592,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/der/1/ders (Get DERStatus)",
+					"name": "/edev/{id}/der/{id}/ders (DERStatus)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1523,7 +1608,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1/ders",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/{{DER_ID}}/ders",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1531,7 +1616,7 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der",
-								"1",
+								"{{DER_ID}}",
 								"ders"
 							]
 						}
@@ -1539,7 +1624,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/der/1/ders (PUT DERStatus)",
+					"name": "/edev/{id}/der/{id}/ders (PUT DERStatus)",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -1552,11 +1637,16 @@
 								"key": "Accept",
 								"value": "application/sep+xml",
 								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>12345678</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>12</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
+							"raw": "<DERStatus xmlns=\"urn:ieee:std:2030.5:ns\">\n\t<alarmStatus>12345678</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>12</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -1564,7 +1654,7 @@
 							}
 						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1/ders",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/{{DER_ID}}/ders",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1572,7 +1662,7 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der",
-								"1",
+								"{{DER_ID}}",
 								"ders"
 							]
 						}
@@ -1580,10 +1670,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/der/1/derp (GET Associated DERProgram)",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "/edev/{id}/der/{id}/derp (Associated DERProgramList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1598,17 +1685,8 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/1/derp",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/der/{{DER_ID}}/derp?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1616,38 +1694,18 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"der",
-								"1",
+								"{{DER_ID}}",
 								"derp"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1/derp (DERProgramList)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp",
-							"host": [
-								"{{HOST}}"
 							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"derp"
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
 							]
 						}
 					},
@@ -1659,10 +1717,7 @@
 			"name": "DERP",
 			"item": [
 				{
-					"name": "/edev/1/derp (GET DERProgram)",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "/edev/{id}/derp (DERProgramList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1677,17 +1732,8 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1695,16 +1741,23 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"derp"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "/edev/1/fsa/1/derp (GET DERProgram FSA scope)",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "/edev/{id}/fsa/{id}/derp (DERProgramList FSA scope)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1719,17 +1772,8 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa/{{FSA_ID}}/derp",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/fsa/{{FSA_ID}}/derp?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1739,16 +1783,23 @@
 								"fsa",
 								"{{FSA_ID}}",
 								"derp"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "/edev/1/derp/1 (GET DERProgram DOE)",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "/edev/{id}/derp/{id} (DERProgram)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1763,15 +1814,6 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}",
 							"host": [
@@ -1788,10 +1830,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/derp/1/derc (GET DERControl List)",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "/edev/{id}/derp/{id}/derc (DERControlList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1806,17 +1845,8 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}/derc",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}/derc?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1826,16 +1856,23 @@
 								"derp",
 								"{{DERP_ID}}",
 								"derc"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "/edev/1/derp/1/actderc (GET Active DERControl List)",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "/edev/{id}/derp/{id}/actderc (Active DERControlList)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1850,17 +1887,8 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}/actderc",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}/actderc?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -1870,16 +1898,23 @@
 								"derp",
 								"{{DERP_ID}}",
 								"actderc"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "/edev/1/derp/1/actderc (GET Default DERControl List)",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "/edev/{id}/derp/{id}/dderc (DefaultDERControl)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1894,15 +1929,6 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}/dderc",
 							"host": [
@@ -1920,10 +1946,7 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/derp/1/derc/1 (GET DERControl by id)",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "/edev/{id}/derp/{id}/derc/{id} (DERControl)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1938,15 +1961,6 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "<DERStatus\n\txmlns=\"urn:ieee:std:2030.5:ns\"\n\txmlns:csipaus=\"http://csipaus.org/ns\"\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n\t<alarmStatus>1</alarmStatus>\n\t<genConnectStatus>\n\t\t<dateTime>1712287573</dateTime>\n\t\t<value>2</value>\n\t</genConnectStatus>\n\t<readingTime>1712287573</readingTime>\n</DERStatus>",
-							"options": {
-								"raw": {
-									"language": "xml"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{HOST}}/edev/{{EDEV_ID}}/derp/{{DERP_ID}}/derc/{{DERC_ID}}",
 							"host": [
@@ -1967,147 +1981,95 @@
 			]
 		},
 		{
-			"name": "Health",
-			"item": [
-				{
-					"name": "/status/health",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/status/health",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"status",
-								"health"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/status/dynamicprices",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/status/dynamicprices",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"status",
-								"dynamicprices"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/status/doe",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/status/doe",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"status",
-								"doe"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/status/version",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/status/version",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"status",
-								"version"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
 			"name": "Log",
 			"item": [
 				{
-					"name": "/edev/1/lel/1 (Log event)",
+					"name": "/edev/{id}/lel (LogEventList)",
 					"request": {
-						"auth": {
-							"type": "noauth"
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/lel?s=0&l=10",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"lel"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/{id}/lel (Create LogEvent)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<LogEvent xmlns=\"urn:ieee:std:2030.5:ns\">\n\t<createdDateTime>1712287573</createdDateTime>\n\t<details>Example log event</details>\n\t<extendedData>0</extendedData>\n\t<functionSet>2</functionSet>\n\t<logEventCode>3</logEventCode>\n\t<logEventID>4</logEventID>\n\t<logEventPEN>28547</logEventPEN>\n\t<profileID>0</profileID>\n</LogEvent>\n",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
 						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/lel",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"lel"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/{id}/lel/{id} (LogEvent)",
+					"request": {
 						"method": "GET",
 						"header": [
 							{
@@ -2135,39 +2097,6 @@
 						}
 					},
 					"response": []
-				},
-				{
-					"name": "/edev/1/lel (Log event list)",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/lel",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"lel"
-							]
-						}
-					},
-					"response": []
 				}
 			]
 		},
@@ -2175,11 +2104,8 @@
 			"name": "Response",
 			"item": [
 				{
-					"name": "/edev/1/rsps (Response Set List)",
+					"name": "/edev/{id}/rsps (ResponseSetList)",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
 						"method": "GET",
 						"header": [
 							{
@@ -2194,7 +2120,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -2202,17 +2128,24 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"rsps"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "/edev/1/rsps/price (Response Set)",
+					"name": "/edev/{id}/rsps/{price|site_control} (ResponseSet)",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
 						"method": "GET",
 						"header": [
 							{
@@ -2242,11 +2175,8 @@
 					"response": []
 				},
 				{
-					"name": "/edev/1/rsps/price/rsp/1 (Response)",
+					"name": "/edev/{id}/rsps/{price|site_control}/rsp (ResponseList)",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
 						"method": "GET",
 						"header": [
 							{
@@ -2261,42 +2191,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/{{RSP_LIST_ID}}/rsp{{RSP_ID}}",
-							"host": [
-								"{{HOST}}"
-							],
-							"path": [
-								"edev",
-								"{{EDEV_ID}}",
-								"rsps",
-								"{{RSP_LIST_ID}}",
-								"rsp{{RSP_ID}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/edev/1/rsps/price/rsp (Response List)",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-forwarded-client-cert",
-								"value": "{{CLIENT_CERTIFICATE}}",
-								"type": "text"
-							},
-							{
-								"key": "Accept",
-								"value": "application/sep+xml",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/{{RSP_LIST_ID}}/rsp",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/{{RSP_LIST_ID}}/rsp?s=0&l=10",
 							"host": [
 								"{{HOST}}"
 							],
@@ -2306,17 +2201,57 @@
 								"rsps",
 								"{{RSP_LIST_ID}}",
 								"rsp"
+							],
+							"query": [
+								{
+									"key": "s",
+									"value": "0"
+								},
+								{
+									"key": "l",
+									"value": "10"
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "/edev/1/rsps/price/rsp (POST Response)",
+					"name": "/edev/{id}/rsps/{price|site_control}/rsp/{id} (Response)",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/{{RSP_LIST_ID}}/rsp/{{RSP_ID}}",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"rsps",
+								"{{RSP_LIST_ID}}",
+								"rsp",
+								"{{RSP_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/{id}/rsps/price/rsp (Create PriceResponse)",
+					"request": {
 						"method": "POST",
 						"header": [
 							{
@@ -2328,11 +2263,16 @@
 								"key": "Accept",
 								"value": "application/sep+xml",
 								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "<DERControlResponse xmlns=\"urn:ieee:std:2030.5:ns\">\n <createdDateTime>1341507000</createdDateTime>\n <endDeviceLFDI>854d10a201ca99e5e90d3c3e1f9bc1c3bd075f3b</endDeviceLFDI>\n <status>1</status>\n <subject>a0000000000000000000000100000000</subject>  <!-- This MRID should match am existing DOE mrid. This example is illustrative of structure only -->\n</DERControlResponse>",
+							"raw": "<PriceResponse xmlns=\"urn:ieee:std:2030.5:ns\">\n\t<createdDateTime>1341507000</createdDateTime>\n\t<endDeviceLFDI>854d10a201ca99e5e90d3c3e1f9bc1c3bd075f3b</endDeviceLFDI>\n\t<status>1</status>\n\t<subject>a0000000000000000000000100000000</subject> <!-- Should match an existing TimeTariffInterval mRID. Illustrative only -->\n</PriceResponse>\n",
 							"options": {
 								"raw": {
 									"language": "xml"
@@ -2340,7 +2280,7 @@
 							}
 						},
 						"url": {
-							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/{{RSP_LIST_ID}}/rsp",
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/price/rsp",
 							"host": [
 								"{{HOST}}"
 							],
@@ -2348,8 +2288,161 @@
 								"edev",
 								"{{EDEV_ID}}",
 								"rsps",
-								"{{RSP_LIST_ID}}",
+								"price",
 								"rsp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/edev/{id}/rsps/site_control/rsp (Create DERControlResponse)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-forwarded-client-cert",
+								"value": "{{CLIENT_CERTIFICATE}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<DERControlResponse xmlns=\"urn:ieee:std:2030.5:ns\">\n\t<createdDateTime>1341507000</createdDateTime>\n\t<endDeviceLFDI>854d10a201ca99e5e90d3c3e1f9bc1c3bd075f3b</endDeviceLFDI>\n\t<status>1</status>\n\t<subject>a0000000000000000000000100000000</subject> <!-- Should match an existing DERControl mRID. Illustrative only -->\n</DERControlResponse>\n",
+							"options": {
+								"raw": {
+									"language": "xml"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/edev/{{EDEV_ID}}/rsps/site_control/rsp",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"edev",
+								"{{EDEV_ID}}",
+								"rsps",
+								"site_control",
+								"rsp"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "/status/health",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/status/health?check_data=true",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"status",
+								"health"
+							],
+							"query": [
+								{
+									"key": "check_data",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/status/dynamicprices",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/status/dynamicprices",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"status",
+								"dynamicprices"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/status/doe",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/status/doe",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"status",
+								"doe"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/status/version",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/sep+xml",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{HOST}}/status/version",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"status",
+								"version"
 							]
 						}
 					},
@@ -2385,36 +2478,27 @@
 		{
 			"key": "HOST",
 			"value": "localhost:8443",
-			"type": "default"
+			"type": "string"
 		},
 		{
 			"key": "CLIENT_CERTIFICATE",
 			"value": "854d10a201ca99e5e90d3c3e1f9bc1c3bd075f3b89298d159ca526e069457b5a",
-			"type": "default"
+			"type": "string"
 		},
 		{
 			"key": "EDEV_ID",
-			"value": "1"
+			"value": "1",
+			"type": "string"
 		},
 		{
 			"key": "MUP_ID",
-			"value": "1"
-		},
-		{
-			"key": "UPT_ID",
-			"value": "1"
+			"value": "1",
+			"type": "string"
 		},
 		{
 			"key": "TP_ID",
-			"value": "1"
-		},
-		{
-			"key": "RT_ID",
-			"value": "1"
-		},
-		{
-			"key": "RC_ID",
-			"value": "3"
+			"value": "1",
+			"type": "string"
 		},
 		{
 			"key": "DATE",
@@ -2432,42 +2516,49 @@
 			"type": "string"
 		},
 		{
+			"key": "PRICE",
+			"value": "12345",
+			"type": "string"
+		},
+		{
 			"key": "FSA_ID",
-			"value": "1"
+			"value": "1",
+			"type": "string"
 		},
 		{
 			"key": "SUB_ID",
-			"value": "1"
+			"value": "1",
+			"type": "string"
 		},
 		{
-			"key": "SITE_ID",
-			"value": "E",
-			"type": "default"
+			"key": "DER_ID",
+			"value": "1",
+			"type": "string"
 		},
 		{
 			"key": "DERP_ID",
-			"value": "DERP_ID",
-			"type": "default"
+			"value": "1",
+			"type": "string"
 		},
 		{
 			"key": "DERC_ID",
 			"value": "1",
-			"type": "default"
+			"type": "string"
 		},
 		{
 			"key": "LOG_ID",
-			"value": "LOG_ID",
-			"type": "default"
-		},
-		{
-			"key": "RSP_ID",
 			"value": "1",
-			"type": "default"
+			"type": "string"
 		},
 		{
 			"key": "RSP_LIST_ID",
 			"value": "price",
-			"type": "default"
+			"type": "string"
+		},
+		{
+			"key": "RSP_ID",
+			"value": "1",
+			"type": "string"
 		}
 	]
 }
