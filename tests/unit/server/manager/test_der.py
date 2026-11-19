@@ -754,7 +754,7 @@ async def test_fetch_der_sub_entities_default_when_unpopulated(pg_base_config, s
         status = await DERStatusManager.fetch_der_status_for_site(session, PUBLIC_SITE_DER_ID, scope)
 
     assert isinstance(cap, DERCapability)
-    assert cap.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/dercap")
+    assert cap.href and cap.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/dercap")
     assert int(cap.modesSupported, 16) == 0
     assert int(cap.doeModesSupported, 16) == 0
     assert cap.type_ == DERType.NOT_APPLICABLE
@@ -762,18 +762,18 @@ async def test_fetch_der_sub_entities_default_when_unpopulated(pg_base_config, s
     assert cap.rtgMaxVA is None
 
     assert isinstance(settings, DERSettings)
-    assert settings.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/derg")
+    assert settings.href and settings.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/derg")
     assert settings.setGradW == 0
     assert settings.setMaxW.value == 0 and settings.setMaxW.multiplier == 0
     assert settings.updatedTime == 0
     assert settings.modesEnabled is None
 
     assert isinstance(avail, DERAvailability)
-    assert avail.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/dera")
+    assert avail.href and avail.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/dera")
     assert avail.readingTime == 0
     assert avail.statWAvail is None
 
     assert isinstance(status, DERStatus)
-    assert status.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/ders")
+    assert status.href and status.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/ders")
     assert status.readingTime == 0
     assert status.inverterStatus is None
