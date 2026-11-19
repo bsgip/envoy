@@ -1,9 +1,9 @@
 from collections.abc import Callable
 from datetime import datetime
 from itertools import chain
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import Delete, Select, delete, insert, literal, select
+from sqlalchemy import CursorResult, Delete, Select, delete, insert, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from envoy.server.model.archive.base import ARCHIVE_BASE_COLUMNS, ArchiveBase
@@ -45,9 +45,11 @@ async def delete_rows_into_archive(
     archive_table: type[ArchiveBase],
     deleted_time: datetime,
     where_clause_decorator: Callable[[Delete], Delete],
-) -> None:
+) -> int:
     """Deletes a set of rows from source_table (while also copying them to archive_table). The rows in the source_table
     will be deleted and copies of the deleted contents will be added to the archive (with the specified deleted_time).
+
+    Returns the number of rows that were deleted (and archived)
 
     source_table will have rows deleted (according to where_clause_decorator)
     archive_table will receive the deleted rows that are matched by where_clause_decorator
@@ -76,4 +78,5 @@ async def delete_rows_into_archive(
     # Define the insert statement, selecting from the CTE
     insert_from_delete_stmt = insert(archive_table).from_select(returned_cols, delete_cte)
 
-    await session.execute(insert_from_delete_stmt)
+    result = await session.execute(insert_from_delete_stmt)
+    return cast(CursorResult, result).rowcount

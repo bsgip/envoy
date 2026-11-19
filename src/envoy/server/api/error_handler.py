@@ -67,7 +67,7 @@ def validation_exception_handler(request: Request, exc: ValidationError | Except
         return general_exception_handler(request, exc)
 
     logger.exception(f"{request.path_params} generated validation exception {exc}")
-    return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.json())  # ty:ignore[call-non-callable] # We check for this above
+    return generate_error_response(HTTPStatus.BAD_REQUEST, message=exc.json())  # ty:ignore[not-callable] # We check for this above
 
 
 def xml_exception_handler(request: Request, exc: XMLSyntaxError | Exception) -> Response:

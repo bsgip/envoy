@@ -19,10 +19,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Bump deliberately - see https://github.com/bsgip/cactus-client/commits/main
-  CACTUS_CLIENT_PIN: v1.3.0
+  # Bump deliberately - see https://github.com/bsgip/cactus-client/releases
+  CACTUS_CLIENT_PIN: v1.3.5
   # Bump deliberately - see https://github.com/bsgip/cactus-client-envoy/releases
-  CACTUS_CLIENT_ENVOY_PIN: v1.2.0
+  CACTUS_CLIENT_ENVOY_PIN: v1.2.1
 
 jobs:
   autorun:

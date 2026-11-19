@@ -230,7 +230,7 @@ async def count_tariff_rates_for_day(
 
     changed_after: Only tariffs with a changed_time greater than this value will be counted (0 will count everything)"""
 
-    return await _tariff_rates_for_day(True, session, aggregator_id, tariff_id, site_id, day, 0, changed_after, None)  # ty:ignore[invalid-return-type]  # Test coverage will ensure that it's an int and not an entity
+    return await _tariff_rates_for_day(True, session, aggregator_id, tariff_id, site_id, day, 0, changed_after, None)  # ty:ignore[invalid-explicit-return]  # Test coverage will ensure that it's an int and not an entity
 
 
 async def select_tariff_rates_for_day(
@@ -257,7 +257,7 @@ async def select_tariff_rates_for_day(
 
     return await _tariff_rates_for_day(
         False, session, aggregator_id, tariff_id, site_id, day, start, changed_after, limit
-    )  # ty:ignore[invalid-return-type] # Test coverage will ensure that it's an entity list
+    )  # ty:ignore[invalid-explicit-return] # Test coverage will ensure that it's an entity list
 
 
 async def select_tariff_rate_for_day_time(
