@@ -5,7 +5,7 @@ from fastapi import HTTPException, Request, Response
 from pydantic_xml import BaseXmlModel
 from pydantic_xml.errors import ParsingError
 
-SEP_XML_MIME: str = "application/sep+xml; csipaus=1.3-beta_storage"
+SEP_XML_MIME: str = "application/sep+xml; csipaus=v1.3"
 
 LOCATION_HEADER_NAME: str = "Location"
 

@@ -69,7 +69,7 @@ curl --cacert ./tls-termination/test_certs/testca.crt --cert ./tls-termination/t
 
 That should generate a response like this:
 ```
-<DeviceCapability xmlns="urn:ieee:std:2030.5:ns" xmlns:csipaus="https://csipaus.org/ns/v1.3-beta/storage" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" href="/dcap"><TimeLink href="/tm"/><EndDeviceListLink href="/edev" all="0"/><MirrorUsagePointListLink href="/mup" all="0"/></DeviceCapability>
+<DeviceCapability xmlns="urn:ieee:std:2030.5:ns" xmlns:csipaus="https://csipaus.org/ns/v1.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" href="/dcap"><TimeLink href="/tm"/><EndDeviceListLink href="/edev" all="0"/><MirrorUsagePointListLink href="/mup" all="0"/></DeviceCapability>
 ```
 
 ## Connecting with Postman
