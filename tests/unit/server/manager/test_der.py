@@ -17,6 +17,7 @@ from envoy_schema.server.schema.sep2.der import (
     DERListResponse,
     DERSettings,
     DERStatus,
+    DERType,
     DOESupportedMode,
 )
 from sqlalchemy import func, select
@@ -181,14 +182,14 @@ async def test_fetch_der_list_for_site_pagination(
         (2, 1, PUBLIC_SITE_DER_ID),  # Invalid agg_id
         (1, 99, PUBLIC_SITE_DER_ID),  # Invalid site id
         (1, 1, PUBLIC_SITE_DER_ID + 1),  # invalid DER id
-        (1, 2, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
-        (1, 4, PUBLIC_SITE_DER_ID),  # There is DER or entity record in the db
     ],
 )
 @pytest.mark.anyio
 async def test_fetch_der_capability_not_found(pg_base_config, agg_id: int, site_id: int, der_id: int):
     """Tests the various ways a NotFoundError can be raised"""
-    scope: SiteRequestScope = generate_class_instance(SiteRequestScope, seed=1001)
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=agg_id, site_id=site_id
+    )
 
     async with generate_async_session(pg_base_config) as session:
         with pytest.raises(NotFoundError):
@@ -319,8 +320,6 @@ async def test_upsert_der_capability_roundtrip(
         (2, 1, PUBLIC_SITE_DER_ID),  # Invalid agg_id
         (1, 99, PUBLIC_SITE_DER_ID),  # Invalid site id
         (1, 1, PUBLIC_SITE_DER_ID + 1),  # invalid DER id
-        (1, 2, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
-        (1, 4, PUBLIC_SITE_DER_ID),  # There is DER or entity record in the db
     ],
 )
 @pytest.mark.anyio
@@ -460,8 +459,6 @@ async def test_upsert_der_settings_roundtrip(
         (2, 1, PUBLIC_SITE_DER_ID),  # Invalid agg_id
         (1, 99, PUBLIC_SITE_DER_ID),  # Invalid site id
         (1, 1, PUBLIC_SITE_DER_ID + 1),  # invalid DER id
-        (1, 2, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
-        (1, 4, PUBLIC_SITE_DER_ID),  # There is DER or entity record in the db
     ],
 )
 @pytest.mark.anyio
@@ -597,8 +594,6 @@ async def test_upsert_der_availability_roundtrip(
         (2, 1, PUBLIC_SITE_DER_ID),  # Invalid agg_id
         (1, 99, PUBLIC_SITE_DER_ID),  # Invalid site id
         (1, 1, PUBLIC_SITE_DER_ID + 1),  # invalid DER id
-        (1, 2, PUBLIC_SITE_DER_ID),  # There is no entity record in the db
-        (1, 4, PUBLIC_SITE_DER_ID),  # There is DER or entity record in the db
     ],
 )
 @pytest.mark.anyio
@@ -741,3 +736,44 @@ async def test_upsert_der_status_roundtrip(
     mock_NotificationManager.notify_changed_deleted_entities.assert_called_once_with(
         mock.ANY, SubscriptionResource.SITE_DER_STATUS, now
     )
+
+
+@pytest.mark.parametrize("site_id", [2, 4])  # Sites accessible to agg 1 with no DER sub entities in the db
+@pytest.mark.anyio
+async def test_fetch_der_sub_entities_default_when_unpopulated(pg_base_config, site_id: int):
+    """If a client hasn't populated DERCapability/DERSettings/DERAvailability/DERStatus - a minimal default is
+    returned (rather than raising NotFoundError)"""
+    scope: SiteRequestScope = generate_class_instance(
+        SiteRequestScope, seed=1001, aggregator_id=1, site_id=site_id, href_prefix=None
+    )
+
+    async with generate_async_session(pg_base_config) as session:
+        cap = await DERCapabilityManager.fetch_der_capability_for_site(session, PUBLIC_SITE_DER_ID, scope)
+        settings = await DERSettingsManager.fetch_der_settings_for_site(session, PUBLIC_SITE_DER_ID, scope)
+        avail = await DERAvailabilityManager.fetch_der_availability_for_site(session, PUBLIC_SITE_DER_ID, scope)
+        status = await DERStatusManager.fetch_der_status_for_site(session, PUBLIC_SITE_DER_ID, scope)
+
+    assert isinstance(cap, DERCapability)
+    assert cap.href and cap.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/dercap")
+    assert int(cap.modesSupported, 16) == 0
+    assert int(cap.doeModesSupported, 16) == 0
+    assert cap.type_ == DERType.NOT_APPLICABLE
+    assert cap.rtgMaxW.value == 0 and cap.rtgMaxW.multiplier == 0
+    assert cap.rtgMaxVA is None
+
+    assert isinstance(settings, DERSettings)
+    assert settings.href and settings.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/derg")
+    assert settings.setGradW == 0
+    assert settings.setMaxW.value == 0 and settings.setMaxW.multiplier == 0
+    assert settings.updatedTime == 0
+    assert settings.modesEnabled is None
+
+    assert isinstance(avail, DERAvailability)
+    assert avail.href and avail.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/dera")
+    assert avail.readingTime == 0
+    assert avail.statWAvail is None
+
+    assert isinstance(status, DERStatus)
+    assert status.href and status.href.endswith(f"/edev/{scope.site_id}/der/{PUBLIC_SITE_DER_ID}/ders")
+    assert status.readingTime == 0
+    assert status.inverterStatus is None

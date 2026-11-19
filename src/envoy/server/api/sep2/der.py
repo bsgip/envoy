@@ -94,7 +94,8 @@ async def get_der(request: Request, site_id: int, der_id: int) -> Response:
 @router.head(uri.DERAvailabilityUri)
 @router.get(uri.DERAvailabilityUri, status_code=HTTPStatus.OK)
 async def get_der_availability(request: Request, site_id: int, der_id: int) -> Response:
-    """Responds with the last DERAvailability submitted for a der. Returns 404 if none have been submitted
+    """Responds with the last DERAvailability submitted for a der. Returns a minimal
+    default if none have been submitted
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
@@ -151,7 +152,8 @@ async def put_der_availability(
 @router.head(uri.DERCapabilityUri)
 @router.get(uri.DERCapabilityUri, status_code=HTTPStatus.OK)
 async def get_der_capability(request: Request, site_id: int, der_id: int) -> Response:
-    """Responds with the last DERCapability submitted for a der. Returns 404 if none have been submitted
+    """Responds with the last DERCapability submitted for a der. Returns a minimal
+    default if none have been submitted
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
@@ -208,7 +210,8 @@ async def put_der_capability(
 @router.head(uri.DERStatusUri)
 @router.get(uri.DERStatusUri, status_code=HTTPStatus.OK)
 async def get_der_status(request: Request, site_id: int, der_id: int) -> Response:
-    """Responds with the last DERStatus submitted for a der. Returns 404 if none have been submitted
+    """Responds with the last DERStatus submitted for a der. Returns a minimal
+    default if none have been submitted
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
@@ -265,7 +268,8 @@ async def put_der_status(
 @router.head(uri.DERSettingsUri)
 @router.get(uri.DERSettingsUri, status_code=HTTPStatus.OK)
 async def get_der_settings(request: Request, site_id: int, der_id: int) -> Response:
-    """Responds with the last DERSettings submitted for a der. Returns 404 if none have been submitted
+    """Responds with the last DERSettings submitted for a der. Returns a minimal
+    default if none have been submitted
 
     Args:
         site_id: Path parameter, the target EndDevice's internal registration number.
