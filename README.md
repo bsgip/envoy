@@ -59,6 +59,7 @@ Contributions via a pull request are welcome but will be validated using the abo
 Top level directories define multiple apps that use a common codebase/shared models.
 
 * `demo/`: A fully containerised demonstration of all services in this project
+* `docs/`: documentation / diagrams for the project
 * `src/envoy/`: root package directory
 * `src/envoy/admin/`: Used for internal API endpoints for administering the server/injecting calculated entities
 * `src/envoy/server/`: primary implementation of the public API's - eg 2030.5 etc
@@ -137,6 +138,13 @@ uv run alembic revision --autogenerate -m "MY_SUMMARY_OF_CHANGES"
 
 3. Check the newly created migration file in `src/envoy/server/alembic/versions` (make sure it has what you've changed)
 
+## Updating documentation
+
+Entity Relationship Diagrams are auto-generated using [paracelsus](https://github.com/tedivm/paracelsus) and a dedicated CLI tool at `src/envoy/cli/erd.py`
+
+```
+uv run envoy-erd
+```
 
 ## Running Locally
 

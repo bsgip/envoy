@@ -77,6 +77,9 @@ dependencies = [
     "intervaltree",
 ]
 
+[project.scripts]
+envoy-erd = "envoy.cli.erd:main"
+
 [project.optional-dependencies]
 dev = [
     "bandit",
@@ -102,6 +105,7 @@ test = [
     "pytest-env",
     "freezegun",
 ]
+docs = ["paracelsus"]
 
 [tool.setuptools.package-data]
 "envoy" = ["py.typed", "server/alembic.ini"]
@@ -109,3 +113,9 @@ test = [
 [tool.setuptools.dynamic]
 version = { attr = "envoy.__version__" }
 readme = { file = ["README.md"], content-type = "text/markdown" }
+
+[tool.paracelsus]
+base = "envoy.server.model:Base"
+imports = [
+  "envoy.server.model"
+]
