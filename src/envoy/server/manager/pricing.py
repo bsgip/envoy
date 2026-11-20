@@ -26,6 +26,7 @@ from envoy.server.crud.pricing import (
 )
 from envoy.server.crud.site import select_single_site_with_site_id
 from envoy.server.exception import InvalidIdError, NotFoundError
+from envoy.server.manager.time import utc_now
 from envoy.server.mapper.constants import PricingReadingType
 from envoy.server.mapper.sep2.pricing import (
     TOTAL_PRICING_READING_TYPES,
@@ -230,7 +231,7 @@ class TimeTariffIntervalManager:
             session, scope.aggregator_id, tariff_id, scope.site_id, day, after
         )
 
-        return TimeTariffIntervalMapper.map_to_list_response(scope, rates, pricing_type, total_rates)
+        return TimeTariffIntervalMapper.map_to_list_response(scope, rates, pricing_type, total_rates, utc_now())
 
     @staticmethod
     async def fetch_time_tariff_interval(
@@ -257,7 +258,7 @@ class TimeTariffIntervalManager:
         if generated_rate is None:
             return None
 
-        return TimeTariffIntervalMapper.map_to_response(scope, scope.site_id, generated_rate, pricing_type)
+        return TimeTariffIntervalMapper.map_to_response(scope, scope.site_id, generated_rate, pricing_type, utc_now())
 
 
 class ConsumptionTariffIntervalManager:

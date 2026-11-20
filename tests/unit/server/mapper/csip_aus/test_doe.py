@@ -19,6 +19,7 @@ from envoy_schema.server.schema.uri import DERProgramFSAListUri, DERProgramListU
 
 from envoy.server.mapper.constants import MridType
 from envoy.server.mapper.csip_aus.doe import DERControlListSource, DERControlMapper, DERProgramMapper
+from envoy.server.mapper.sep2.event import EventVersion
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
@@ -173,13 +174,17 @@ def test_map_derc_to_response(
         else:
             assert result_all_set.EventStatus_.currentStatus == EventStatusType.Cancelled
         assert result_all_set.EventStatus_.dateTime == int(doe.deleted_time.timestamp())
+        assert result_all_set.version == EventVersion.CANCELLED
     else:
         if doe.superseded:
             assert result_all_set.EventStatus_.currentStatus == EventStatusType.Superseded
+            assert result_all_set.version == EventVersion.SUPERSEDED
         elif is_active:
             assert result_all_set.EventStatus_.currentStatus == EventStatusType.Active
+            assert result_all_set.version == EventVersion.ACTIVE
         else:
             assert result_all_set.EventStatus_.currentStatus == EventStatusType.Scheduled
+            assert result_all_set.version == EventVersion.SCHEDULED
         assert result_all_set.EventStatus_.dateTime == int(doe.changed_time.timestamp())
 
     result_optional = DERControlMapper.map_to_response(scope, site_control_group_id, doe_opt, -3, now)
@@ -208,13 +213,17 @@ def test_map_derc_to_response(
         else:
             assert result_optional.EventStatus_.currentStatus == EventStatusType.Cancelled
         assert result_optional.EventStatus_.dateTime == int(doe_opt.deleted_time.timestamp())
+        assert result_optional.version == EventVersion.CANCELLED
     else:
         if doe_opt.superseded:
             assert result_optional.EventStatus_.currentStatus == EventStatusType.Superseded
+            assert result_optional.version == EventVersion.SUPERSEDED
         elif is_active:
             assert result_optional.EventStatus_.currentStatus == EventStatusType.Active
+            assert result_optional.version == EventVersion.ACTIVE
         else:
             assert result_optional.EventStatus_.currentStatus == EventStatusType.Scheduled
+            assert result_optional.version == EventVersion.SCHEDULED
         assert result_optional.EventStatus_.dateTime == int(doe_opt.changed_time.timestamp())
 
 

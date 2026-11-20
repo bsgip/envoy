@@ -1,11 +1,12 @@
 import unittest.mock as mock
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from itertools import product
 
 import pytest
 from assertical.asserts.type import assert_list_type
 from assertical.fake.generator import generate_class_instance
+from envoy_schema.server.schema.sep2.event import EventStatusType
 from envoy_schema.server.schema.sep2.pricing import (
     TariffProfileListResponse,
     TariffProfileResponse,
@@ -15,6 +16,7 @@ from envoy_schema.server.schema.uri import TariffProfileFSAListUri, TariffProfil
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.constants import PricingReadingType
+from envoy.server.mapper.sep2.event import EventVersion
 from envoy.server.mapper.sep2.pricing import (
     TOTAL_PRICING_READING_TYPES,
     ConsumptionTariffIntervalMapper,
@@ -23,6 +25,7 @@ from envoy.server.mapper.sep2.pricing import (
     TariffProfileMapper,
     TimeTariffIntervalMapper,
 )
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, Tariff, TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
 
@@ -363,7 +366,9 @@ def test_time_tariff_interval_mapping(
     mock_ConsumptionTariffIntervalMapper.list_href = mock.Mock(return_value=cti_list_href)
 
     # Cursory check on values
-    mapped_all_set = TimeTariffIntervalMapper.map_to_response(scope, site_id, rate_all_set, rt)
+    mapped_all_set = TimeTariffIntervalMapper.map_to_response(
+        scope, site_id, rate_all_set, rt, datetime(2020, 1, 1, tzinfo=UTC)
+    )
     assert mapped_all_set
     assert mapped_all_set.href
     assert mapped_all_set.ConsumptionTariffIntervalListLink.href == cti_list_href
@@ -401,7 +406,7 @@ def test_time_tariff_interval_list_mapping(
     mock_ConsumptionTariffIntervalMapper.list_href = mock.Mock(return_value=cti_list_href)
     scope: DeviceOrAggregatorRequestScope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=1001)
 
-    mapped = TimeTariffIntervalMapper.map_to_list_response(scope, rates, rt, total)
+    mapped = TimeTariffIntervalMapper.map_to_list_response(scope, rates, rt, total, datetime(2020, 1, 1, tzinfo=UTC))
     assert mapped.all_ == total
     assert mapped.results == len(rates)
     assert_list_type(TimeTariffIntervalResponse, mapped.TimeTariffInterval, len(rates))
@@ -428,10 +433,48 @@ def test_mrid_uniqueness():
     rate.tariff_generated_rate_id = id
     rate.tariff_id = id
 
-    tti = TimeTariffIntervalMapper.map_to_response(scope, id, rate, reading_type)
+    tti = TimeTariffIntervalMapper.map_to_response(scope, id, rate, reading_type, datetime(2020, 1, 1, tzinfo=UTC))
     rc = RateComponentMapper.map_to_response(scope, id, reading_type, day)
     tp = TariffProfileMapper.map_to_response(scope, tariff, 999)
 
     assert tti.mRID != rc.mRID
     assert tti.mRID != tp.mRID
     assert rc.mRID != tp.mRID
+
+
+@pytest.mark.parametrize(
+    "rate_type, now_offset_seconds, is_deleted, expected_status, expected_version",
+    [
+        (TariffGeneratedRate, -10, False, EventStatusType.Scheduled, EventVersion.SCHEDULED),
+        (TariffGeneratedRate, 10, False, EventStatusType.Active, EventVersion.ACTIVE),
+        (TariffGeneratedRate, 1000, False, EventStatusType.Scheduled, EventVersion.COMPLETED),
+        (ArchiveTariffGeneratedRate, -10, False, EventStatusType.Scheduled, EventVersion.SCHEDULED),
+        (ArchiveTariffGeneratedRate, -10, True, EventStatusType.Cancelled, EventVersion.CANCELLED),
+        (ArchiveTariffGeneratedRate, 10, True, EventStatusType.Cancelled, EventVersion.CANCELLED),
+    ],
+)
+def test_time_tariff_interval_event_status_and_version(
+    rate_type: type[TariffGeneratedRate] | type[ArchiveTariffGeneratedRate],
+    now_offset_seconds: int,
+    is_deleted: bool,
+    expected_status: EventStatusType,
+    expected_version: EventVersion,
+):
+    start_time = datetime(2023, 4, 5, 6, 7, 8, tzinfo=UTC)
+    rate = generate_class_instance(
+        rate_type, seed=101, optional_is_none=False, start_time=start_time, duration_seconds=300
+    )
+    if isinstance(rate, ArchiveTariffGeneratedRate) and not is_deleted:
+        rate.deleted_time = None
+    scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
+    now = start_time + timedelta(seconds=now_offset_seconds)
+
+    mapped = TimeTariffIntervalMapper.map_to_response(scope, 123, rate, PricingReadingType.IMPORT_ACTIVE_POWER_KWH, now)
+    assert mapped.EventStatus_.currentStatus == expected_status
+    assert mapped.version == expected_version
+    if is_deleted:
+        assert isinstance(rate, ArchiveTariffGeneratedRate) and mapped.EventStatus_.dateTime == int(
+            rate.deleted_time.timestamp() if rate.deleted_time is not None else 0
+        )
+    else:
+        assert mapped.EventStatus_.dateTime == int(rate.changed_time.timestamp())
