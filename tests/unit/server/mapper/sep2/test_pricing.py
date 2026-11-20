@@ -454,7 +454,7 @@ def test_mrid_uniqueness():
     ],
 )
 def test_time_tariff_interval_event_status_and_version(
-    rate_type: type,
+    rate_type: type[TariffGeneratedRate] | type[ArchiveTariffGeneratedRate],
     now_offset_seconds: int,
     is_deleted: bool,
     expected_status: EventStatusType,
@@ -464,7 +464,7 @@ def test_time_tariff_interval_event_status_and_version(
     rate = generate_class_instance(
         rate_type, seed=101, optional_is_none=False, start_time=start_time, duration_seconds=300
     )
-    if rate_type is ArchiveTariffGeneratedRate and not is_deleted:
+    if isinstance(rate, ArchiveTariffGeneratedRate) and not is_deleted:
         rate.deleted_time = None
     scope: BaseRequestScope = generate_class_instance(BaseRequestScope)
     now = start_time + timedelta(seconds=now_offset_seconds)
@@ -473,6 +473,8 @@ def test_time_tariff_interval_event_status_and_version(
     assert mapped.EventStatus_.currentStatus == expected_status
     assert mapped.version == expected_version
     if is_deleted:
-        assert mapped.EventStatus_.dateTime == int(rate.deleted_time.timestamp())
+        assert isinstance(rate, ArchiveTariffGeneratedRate) and mapped.EventStatus_.dateTime == int(
+            rate.deleted_time.timestamp() if rate.deleted_time is not None else 0
+        )
     else:
         assert mapped.EventStatus_.dateTime == int(rate.changed_time.timestamp())
