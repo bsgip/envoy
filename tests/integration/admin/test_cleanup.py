@@ -169,15 +169,16 @@ async def populate_archive(pg_base_config, t: type[ArchiveBase], id_offset: int)
     ARCHIVE_DT and ARCHIVE_DT + 1 sec respectively"""
     async with generate_async_session(pg_base_config) as session:
         for i, delta in enumerate([timedelta(seconds=-1), timedelta(0), timedelta(seconds=1)], start=1):
-            session.add(
-                generate_class_instance(
-                    t,
-                    seed=id_offset + i * 101,
-                    archive_id=id_offset + i,
-                    archive_time=ARCHIVE_DT + delta,
-                    deleted_time=None,
-                )
+            entity = generate_class_instance(
+                t,
+                seed=id_offset + i * 101,
+                archive_id=id_offset + i,
+                archive_time=ARCHIVE_DT + delta,
+                deleted_time=None,
             )
+            if isinstance(entity, ArchiveSite):
+                entity.nmi_checksum = "9"  # Ensure the VARCHAR(1) column gets a compatible value
+            session.add(entity)
         await session.commit()
 
 

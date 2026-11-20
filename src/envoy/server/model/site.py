@@ -40,7 +40,10 @@ class Site(Base):
     __tablename__ = "site"
 
     site_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    nmi: Mapped[str | None] = mapped_column(VARCHAR(length=11), nullable=True)
+    nmi: Mapped[str | None] = mapped_column(VARCHAR(length=10), nullable=True)  # NMI excluding checksum
+    nmi_checksum: Mapped[str | None] = mapped_column(
+        VARCHAR(length=1), nullable=True
+    )  # The (optional) 11th NMI checksum character
     aggregator_id: Mapped[int] = mapped_column(ForeignKey("aggregator.aggregator_id"), nullable=False)
 
     timezone_id: Mapped[str] = mapped_column(VARCHAR(length=64), nullable=False)  # tz_id name of the local timezone

@@ -191,7 +191,7 @@ def test_AggregatorBatchedEntities_multi_batch(mock_get_batch_key: mock.MagicMoc
 def test_get_batch_key_invalid():
     """Validates we raise our own custom exception"""
     with pytest.raises(NotificationError):
-        get_batch_key(9999, generate_class_instance(Site))  # ty:ignore[invalid-argument-type]
+        get_batch_key(9999, generate_class_instance(Site, nmi_checksum="9"))  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -317,7 +317,7 @@ def test_get_batch_key(resource: SubscriptionResource, entity: TResourceModel, e
 def test_get_subscription_filter_id_invalid():
     """Validates we raise our own custom exception"""
     with pytest.raises(NotificationError):
-        get_subscription_filter_id(9999, generate_class_instance(Site))  # ty:ignore[invalid-argument-type]
+        get_subscription_filter_id(9999, generate_class_instance(Site, nmi_checksum="9"))  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -374,7 +374,7 @@ def test_get_subscription_filter_id(resource: SubscriptionResource, entity: TRes
 def test_get_site_id_invalid():
     """Validates we raise our own custom exception"""
     with pytest.raises(NotificationError):
-        get_site_id(9999, generate_class_instance(Site))  # ty:ignore[invalid-argument-type]
+        get_site_id(9999, generate_class_instance(Site, nmi_checksum="9"))  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -589,19 +589,32 @@ async def test_fetch_sites_by_timestamp_with_archive(pg_base_config):
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
         # One of these will be picked up
-        session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
-        session.add(generate_class_instance(ArchiveSite, seed=22, aggregator_id=1, site_id=70, deleted_time=timestamp))
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=11, aggregator_id=1, site_id=70))
         session.add(
             generate_class_instance(
-                ArchiveSite, seed=33, aggregator_id=1, site_id=70, deleted_time=timestamp + timedelta(seconds=5)
+                ArchiveSite, nmi_checksum="9", seed=22, aggregator_id=1, site_id=70, deleted_time=timestamp
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveSite,
+                nmi_checksum="9",
+                seed=33,
+                aggregator_id=1,
+                site_id=70,
+                deleted_time=timestamp + timedelta(seconds=5),
             )
         )
 
         # No deleted time so ignored
-        session.add(generate_class_instance(ArchiveSite, seed=44, aggregator_id=1, site_id=71))
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=44, aggregator_id=1, site_id=71))
 
         # This will be picked up
-        session.add(generate_class_instance(ArchiveSite, seed=66, aggregator_id=2, site_id=72, deleted_time=timestamp))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=66, aggregator_id=2, site_id=72, deleted_time=timestamp
+            )
+        )
         await session.commit()
 
     # Now see if the fetch grabs everything
@@ -744,7 +757,9 @@ async def test_fetch_rates_by_timestamp_with_archive(pg_base_config):
         # base_config.sql. Unlike the old site_id column, rate resolution now goes through a live
         # SiteGroupAssignment/Site join - a fully deleted site (no live row) can no longer be resolved to any
         # aggregator/site scope for notification purposes, so site 70 needs to stay live here.
-        site70 = generate_class_instance(Site, seed=999, site_id=70, aggregator_id=1, timezone_id="Australia/Brisbane")
+        site70 = generate_class_instance(
+            Site, nmi_checksum="9", seed=999, site_id=70, aggregator_id=1, timezone_id="Australia/Brisbane"
+        )
         session.add(site70)
         site70_group = SiteGroup(name="ArchiveRateTestGroup70", changed_time=timestamp)
         session.add(site70_group)
@@ -1055,7 +1070,9 @@ async def test_fetch_does_by_timestamp_with_archive(pg_base_config):
         # base_config.sql. Unlike the old site_id column, DOE resolution now goes through a live
         # SiteGroupAssignment/Site join - a fully deleted site (no live row) can no longer be resolved to any
         # aggregator/site scope for notification purposes, so site 70 needs to stay live here.
-        site70 = generate_class_instance(Site, seed=999, site_id=70, aggregator_id=1, timezone_id="Australia/Brisbane")
+        site70 = generate_class_instance(
+            Site, nmi_checksum="9", seed=999, site_id=70, aggregator_id=1, timezone_id="Australia/Brisbane"
+        )
         session.add(site70)
         site70_group = SiteGroup(name="ArchiveTestGroup70", changed_time=timestamp)
         session.add(site70_group)
@@ -1474,10 +1491,11 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
-        session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=11, aggregator_id=1, site_id=70))
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=22,
                 aggregator_id=1,
                 site_id=70,
@@ -1487,6 +1505,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=33,
                 aggregator_id=1,
                 site_id=70,
@@ -1498,6 +1517,7 @@ async def test_fetch_der_availability_by_timestamp_with_archive(pg_base_config):
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=44,
                 aggregator_id=1,
                 site_id=1,
@@ -1656,10 +1676,11 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
-        session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=11, aggregator_id=1, site_id=70))
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=22,
                 aggregator_id=1,
                 site_id=70,
@@ -1669,6 +1690,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=33,
                 aggregator_id=1,
                 site_id=70,
@@ -1680,6 +1702,7 @@ async def test_fetch_der_rating_by_timestamp_with_archive(pg_base_config):
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=44,
                 aggregator_id=1,
                 site_id=1,
@@ -1830,10 +1853,11 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
-        session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=11, aggregator_id=1, site_id=70))
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=22,
                 aggregator_id=1,
                 site_id=70,
@@ -1843,6 +1867,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=33,
                 aggregator_id=1,
                 site_id=70,
@@ -1854,6 +1879,7 @@ async def test_fetch_der_setting_by_timestamp_with_archive(pg_base_config):
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=44,
                 aggregator_id=1,
                 site_id=1,
@@ -2005,10 +2031,11 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
     # inject a bunch of archival data
     async with generate_async_session(pg_base_config) as session:
         # Inject a grandparent "archive" site that was deleted - the "newest" deleted value will be used
-        session.add(generate_class_instance(ArchiveSite, seed=11, aggregator_id=1, site_id=70))
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=11, aggregator_id=1, site_id=70))
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=22,
                 aggregator_id=1,
                 site_id=70,
@@ -2018,6 +2045,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=33,
                 aggregator_id=1,
                 site_id=70,
@@ -2029,6 +2057,7 @@ async def test_fetch_der_status_by_timestamp_with_archive(pg_base_config):
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=44,
                 aggregator_id=1,
                 site_id=1,
@@ -2627,12 +2656,16 @@ async def test_select_site_ids_deleted_at(pg_base_config):
     timestamp = datetime(2024, 5, 6, 7, 8, 9, tzinfo=UTC)
 
     async with generate_async_session(pg_base_config) as session:
-        session.add(generate_class_instance(ArchiveSite, seed=11, site_id=70))  # Not deleted
-        session.add(generate_class_instance(ArchiveSite, seed=22, site_id=71, deleted_time=timestamp))
-        session.add(generate_class_instance(ArchiveSite, seed=33, site_id=71, deleted_time=timestamp))  # Duplicate
-        session.add(generate_class_instance(ArchiveSite, seed=44, site_id=72, deleted_time=timestamp))
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=11, site_id=70))  # Not deleted
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=22, site_id=71, deleted_time=timestamp))
         session.add(
-            generate_class_instance(ArchiveSite, seed=55, site_id=73, deleted_time=timestamp + timedelta(seconds=1))
+            generate_class_instance(ArchiveSite, nmi_checksum="9", seed=33, site_id=71, deleted_time=timestamp)
+        )  # Duplicate
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=44, site_id=72, deleted_time=timestamp))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=55, site_id=73, deleted_time=timestamp + timedelta(seconds=1)
+            )
         )
         await session.commit()
 

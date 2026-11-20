@@ -41,6 +41,7 @@ from envoy.server.manager.nmi_validator import NmiValidator
 from envoy.server.manager.server import RuntimeServerConfigManager
 from envoy.server.manager.time import utc_now
 from envoy.server.mapper.csip_aus.connection_point import ConnectionPointMapper
+from envoy.server.mapper.nmi import combine_nmi, split_nmi
 from envoy.server.mapper.sep2.end_device import (
     EndDeviceListMapper,
     EndDeviceMapper,
@@ -275,7 +276,7 @@ class EndDeviceManager:
             raise ConflictError("NMI already exists for this site.")
 
         # We treat this as a successful update - avoiding uneccessary writes.
-        if site.nmi == nmi:
+        if combine_nmi(site.nmi, site.nmi_checksum) == nmi:
             return
 
         # if enabled - validate nmi format
@@ -287,7 +288,7 @@ class EndDeviceManager:
         # Ensure we archive the existing data
         await copy_rows_into_archive(session, Site, ArchiveSite, lambda q: q.where(Site.site_id == site.site_id))
 
-        site.nmi = nmi
+        site.nmi, site.nmi_checksum = split_nmi(nmi)
         site.changed_time = changed_time
         await NotificationManager.notify_changed_deleted_entities(session, SubscriptionResource.SITE, changed_time)
         await session.commit()
