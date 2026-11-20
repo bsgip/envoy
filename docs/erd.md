@@ -81,7 +81,8 @@ erDiagram
     DATETIME deleted_time "nullable,indexed"
     INTEGER device_category
     VARCHAR(42) COLLATE case_insensitive lfdi
-    VARCHAR(11) nmi "nullable"
+    VARCHAR(10) nmi "nullable"
+    VARCHAR(1) nmi_checksum "nullable"
     INTEGER post_rate_seconds "nullable"
     INTEGER registration_pin
     BIGINT sfdi
@@ -572,7 +573,8 @@ erDiagram
     DATETIME created_time
     INTEGER device_category
     VARCHAR(42) COLLATE case_insensitive lfdi UK
-    VARCHAR(11) nmi "nullable"
+    VARCHAR(10) nmi "nullable"
+    VARCHAR(1) nmi_checksum "nullable"
     INTEGER post_rate_seconds "nullable"
     INTEGER registration_pin
     BIGINT sfdi

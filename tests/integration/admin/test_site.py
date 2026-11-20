@@ -29,6 +29,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from envoy.admin.crud.site import count_all_site_group_assignments, count_all_site_groups, count_all_sites
+from envoy.server.mapper.nmi import split_nmi
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import ArchiveSite, ArchiveSiteGroupAssignment
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
@@ -447,6 +448,15 @@ async def test_delete_site_archives(
             111,
         ),
         (
+            1,
+            SiteUpdateRequest(nmi="12345678901", timezone_id=None, device_category=None, post_rate_seconds=None),
+            HTTPStatus.NO_CONTENT,
+            "12345678901",
+            "Australia/Brisbane",
+            0,
+            111,
+        ),
+        (
             2,
             SiteUpdateRequest(
                 nmi="abc123", timezone_id=None, device_category=DeviceCategory.FUEL_CELL, post_rate_seconds=23
@@ -526,7 +536,7 @@ async def test_update_site_archives(
 
         if check_site:
             actual_site = (await session.execute(select(Site).where(Site.site_id == site_id))).scalar_one()
-            assert actual_site.nmi == expected_nmi
+            assert (actual_site.nmi, actual_site.nmi_checksum) == split_nmi(expected_nmi)
             assert actual_site.post_rate_seconds == expected_post_rate
             assert actual_site.device_category == expected_device_category
             assert actual_site.timezone_id == expected_tz
@@ -745,3 +755,31 @@ async def test_delete_group_assignment_not_found(
         SiteGroupAssignmentsUri.format(group_name=group_name, site_group_assignment_id=site_group_assignment_id)
     )
     assert resp.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.parametrize(
+    "nmi, expected_site_ids",
+    [
+        ("33333333337", [3]),  # Full 11 char NMI (including checksum)
+        ("3333333333", []),  # Missing checksum - not an exact match
+        ("33333333338", []),  # Wrong checksum
+        ("1111111111", [1]),  # Site without checksum still matches
+        ("11111111117", []),  # Site without checksum doesn't match a NMI with checksum
+    ],
+)
+@pytest.mark.anyio
+async def test_get_all_sites_nmi_filter_with_checksum(
+    admin_client_auth: AsyncClient, pg_base_config, nmi: str, expected_site_ids: list[int]
+):
+    """Checks the nmi query param filter correctly handles NMIs with a checksum (11th char)"""
+    with pg_base_config.cursor() as cursor:
+        cursor.execute("UPDATE public.site SET nmi_checksum = '7' WHERE site_id = 3")
+        pg_base_config.commit()
+
+    response = await admin_client_auth.get(SiteListUri + _build_query_string(None, None, None, None, nmi_filter=nmi))
+    assert response.status_code == HTTPStatus.OK
+
+    site_page: SitePageResponse = SitePageResponse(**json.loads(read_response_body_string(response)))
+    assert site_page.total_count == len(expected_site_ids)
+    assert [s.site_id for s in site_page.sites] == expected_site_ids
+    assert [s.nmi for s in site_page.sites] == [nmi] * len(expected_site_ids)

@@ -41,18 +41,35 @@ async def test_fetch_entities_with_archive_by_id_site(
     # Load our archive with values - mark the "correct" deleted record with a custom nmi
     async with generate_async_session(pg_base_config) as session:
         # Site 1 has some audit records (with an old deletion)
-        session.add(generate_class_instance(ArchiveSite, seed=1, archive_id=None, deleted_time=None, site_id=1))
-        session.add(generate_class_instance(ArchiveSite, seed=2, archive_id=None, site_id=1))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=1, archive_id=None, deleted_time=None, site_id=1
+            )
+        )
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=2, archive_id=None, site_id=1))
 
         # Site 2 has some audit records
-        session.add(generate_class_instance(ArchiveSite, seed=3, archive_id=None, deleted_time=None, site_id=2))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=3, archive_id=None, deleted_time=None, site_id=2
+            )
+        )
 
         # Site 11 DNE in the main table (it was deleted)
-        session.add(generate_class_instance(ArchiveSite, seed=101, archive_id=None, deleted_time=None, site_id=11))
-        session.add(generate_class_instance(ArchiveSite, seed=202, archive_id=None, deleted_time=None, site_id=11))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=101, archive_id=None, deleted_time=None, site_id=11
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=202, archive_id=None, deleted_time=None, site_id=11
+            )
+        )
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=303,
                 archive_id=None,
                 deleted_time=datetime(2024, 1, 2, tzinfo=UTC),
@@ -65,6 +82,7 @@ async def test_fetch_entities_with_archive_by_id_site(
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=404,
                 archive_id=None,
                 deleted_time=datetime(2024, 11, 12, tzinfo=UTC),
@@ -75,6 +93,7 @@ async def test_fetch_entities_with_archive_by_id_site(
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=505,
                 archive_id=None,
                 deleted_time=datetime(2024, 12, 1, tzinfo=UTC),
@@ -82,14 +101,30 @@ async def test_fetch_entities_with_archive_by_id_site(
                 nmi="archive_12",
             )
         )
-        session.add(generate_class_instance(ArchiveSite, seed=606, archive_id=None, deleted_time=None, site_id=12))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=606, archive_id=None, deleted_time=None, site_id=12
+            )
+        )
 
         # Site 13 has no deletes
-        session.add(generate_class_instance(ArchiveSite, seed=707, archive_id=None, deleted_time=None, site_id=13))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=707, archive_id=None, deleted_time=None, site_id=13
+            )
+        )
 
         # Site 14 has no deletes
-        session.add(generate_class_instance(ArchiveSite, seed=808, archive_id=None, deleted_time=None, site_id=14))
-        session.add(generate_class_instance(ArchiveSite, seed=909, archive_id=None, deleted_time=None, site_id=14))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=808, archive_id=None, deleted_time=None, site_id=14
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=909, archive_id=None, deleted_time=None, site_id=14
+            )
+        )
 
         await session.commit()
 
@@ -172,22 +207,41 @@ async def test_fetch_entities_with_archive_by_datetime(pg_base_config, cd_time: 
     # Load our archive with values - mark the "correct" deleted record with a custom nmi
     async with generate_async_session(pg_base_config) as session:
         # Site 1 has some audit records (with an old deletion)
-        session.add(generate_class_instance(ArchiveSite, seed=1, archive_id=None, deleted_time=None, site_id=1))
-        session.add(generate_class_instance(ArchiveSite, seed=2, archive_id=None, site_id=1))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=1, archive_id=None, deleted_time=None, site_id=1
+            )
+        )
+        session.add(generate_class_instance(ArchiveSite, nmi_checksum="9", seed=2, archive_id=None, site_id=1))
 
         # Site 2 has some audit records
         session.add(
             generate_class_instance(
-                ArchiveSite, seed=3, archive_id=None, deleted_time=None, changed_time=cd_time, site_id=2
+                ArchiveSite,
+                nmi_checksum="9",
+                seed=3,
+                archive_id=None,
+                deleted_time=None,
+                changed_time=cd_time,
+                site_id=2,
             )
         )
 
         # Site 11 DNE in the main table (it was deleted)
-        session.add(generate_class_instance(ArchiveSite, seed=101, archive_id=None, deleted_time=None, site_id=11))
-        session.add(generate_class_instance(ArchiveSite, seed=202, archive_id=None, deleted_time=None, site_id=11))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=101, archive_id=None, deleted_time=None, site_id=11
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=202, archive_id=None, deleted_time=None, site_id=11
+            )
+        )
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=303,
                 archive_id=None,
                 deleted_time=cd_time,
@@ -200,6 +254,7 @@ async def test_fetch_entities_with_archive_by_datetime(pg_base_config, cd_time: 
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=404,
                 archive_id=None,
                 deleted_time=cd_time - timedelta(seconds=10),
@@ -209,6 +264,7 @@ async def test_fetch_entities_with_archive_by_datetime(pg_base_config, cd_time: 
         session.add(
             generate_class_instance(
                 ArchiveSite,
+                nmi_checksum="9",
                 seed=505,
                 archive_id=None,
                 deleted_time=cd_time,
@@ -216,14 +272,30 @@ async def test_fetch_entities_with_archive_by_datetime(pg_base_config, cd_time: 
                 nmi="archive_12",
             )
         )
-        session.add(generate_class_instance(ArchiveSite, seed=606, archive_id=None, deleted_time=None, site_id=12))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=606, archive_id=None, deleted_time=None, site_id=12
+            )
+        )
 
         # Site 13 has no deletes
-        session.add(generate_class_instance(ArchiveSite, seed=707, archive_id=None, deleted_time=None, site_id=13))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=707, archive_id=None, deleted_time=None, site_id=13
+            )
+        )
 
         # Site 14 has no deletes
-        session.add(generate_class_instance(ArchiveSite, seed=808, archive_id=None, deleted_time=None, site_id=14))
-        session.add(generate_class_instance(ArchiveSite, seed=909, archive_id=None, deleted_time=None, site_id=14))
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=808, archive_id=None, deleted_time=None, site_id=14
+            )
+        )
+        session.add(
+            generate_class_instance(
+                ArchiveSite, nmi_checksum="9", seed=909, archive_id=None, deleted_time=None, site_id=14
+            )
+        )
 
         await session.commit()
 

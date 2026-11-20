@@ -1,8 +1,7 @@
 from collections.abc import Iterator, Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from envoy_schema.server.schema import uri
-from envoy_schema.server.schema.sep2.event import EventStatus, EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.metering import ReadingType
 from envoy_schema.server.schema.sep2.pricing import (
@@ -28,6 +27,7 @@ from envoy.server.exception import NotFoundError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.constants import ResponseSetType
 from envoy.server.mapper.sep2.der import to_hex_binary
+from envoy.server.mapper.sep2.event import calculate_event_status_and_version, map_to_event_status
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
@@ -344,17 +344,20 @@ class TimeTariffIntervalMapper:
             rate_component_id=rate.tariff_component_id,
         )
 
-        is_active = rate.start_time <= now
-        event_status: int
-        event_status_time: datetime
-        if isinstance(rate, ArchiveTariffGeneratedRate) and rate.deleted_time is not None:
-            # This is a deleted rate
-            event_status = EventStatusType.Cancelled
-            event_status_time = rate.deleted_time
-        else:
-            # This is either a schedule / active DOE
-            event_status = EventStatusType.Active if is_active else EventStatusType.Scheduled
-            event_status_time = rate.changed_time
+        is_deleted = isinstance(rate, ArchiveTariffGeneratedRate) and rate.deleted_time is not None
+        status_and_version = calculate_event_status_and_version(
+            start_time=rate.start_time,
+            end_time=rate.start_time + timedelta(seconds=rate.duration_seconds),
+            now=now,
+            is_superseded=False,
+            is_deleted=is_deleted,
+            is_randomized=False,
+        )
+        event_status_time: datetime = (
+            rate.deleted_time
+            if isinstance(rate, ArchiveTariffGeneratedRate) and rate.deleted_time is not None
+            else rate.changed_time
+        )
 
         if rate.block_1_start_pow10_encoded is None or rate.price_pow10_encoded_block_1 is None:
             total_consumption_blocks = 1
@@ -364,7 +367,7 @@ class TimeTariffIntervalMapper:
         return TimeTariffIntervalResponse(
             href=href,
             mRID=MridMapper.encode_time_tariff_interval_mrid(scope, rate.tariff_generated_rate_id),
-            version=0,
+            version=status_and_version.version,
             touTier=TOUType.NOT_APPLICABLE,
             creationTime=int(rate.changed_time.timestamp()),
             replyTo=ResponseListMapper.response_list_href(
@@ -375,11 +378,7 @@ class TimeTariffIntervalMapper:
                 start=int(rate.start_time.timestamp()),
                 duration=rate.duration_seconds,
             ),
-            EventStatus_=EventStatus(
-                currentStatus=event_status,
-                dateTime=int(event_status_time.timestamp()),
-                potentiallySuperseded=False,
-            ),
+            EventStatus_=map_to_event_status(status_and_version.event_status, event_status_time),
             ConsumptionTariffIntervalListLink=ListLink(href=cti_list_href, all_=total_consumption_blocks),
             RateComponentLink=Link(href=rate_component_href),  # csip-aus v1.3 extension
             ConsumptionTariffIntervalListSummary=ConsumptionTariffIntervalMapper.map_to_summary_list_response(

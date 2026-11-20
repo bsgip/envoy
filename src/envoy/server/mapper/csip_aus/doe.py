@@ -14,12 +14,12 @@ from envoy_schema.server.schema.sep2.der import (
     DERProgramListResponse,
     DERProgramResponse,
 )
-from envoy_schema.server.schema.sep2.event import EventStatus, EventStatusType
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.types import DateTimeIntervalType, SubscribableType
 
 from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
+from envoy.server.mapper.sep2.event import calculate_event_status_and_version, map_to_event_status
 from envoy.server.mapper.sep2.mrid import MridMapper, ResponseSetType
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
@@ -101,24 +101,20 @@ class DERControlMapper:
         """Creates a csip aus compliant DERControlResponse from the specific doe. Needs to know current datetime
         in order to determine if the control is active or scheduled"""
 
-        is_intersecting_now = doe.start_time <= now and doe.end_time > now
-        event_status: int
-        event_status_time: datetime
-        if isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None:
-            # This is a deleted DOE
-            event_status = (
-                EventStatusType.Cancelled
-                if doe.randomize_start_seconds is None
-                else EventStatusType.CancelledWithRandomization
-            )
-            event_status_time = doe.deleted_time
-        elif doe.superseded:
-            event_status = EventStatusType.Superseded
-            event_status_time = doe.changed_time
-        else:
-            # This is either a schedule / active DOE
-            event_status = EventStatusType.Active if is_intersecting_now else EventStatusType.Scheduled
-            event_status_time = doe.changed_time
+        is_deleted = isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None
+        status_and_version = calculate_event_status_and_version(
+            start_time=doe.start_time,
+            end_time=doe.end_time,
+            now=now,
+            is_superseded=doe.superseded,
+            is_deleted=is_deleted,
+            is_randomized=doe.randomize_start_seconds is not None,
+        )
+        event_status_time: datetime = (
+            doe.deleted_time
+            if isinstance(doe, ArchiveDynamicOperatingEnvelope) and doe.deleted_time is not None
+            else doe.changed_time
+        )
 
         if doe.display_id is not None:
             mrid = MridMapper.encode_doe_mrid(scope, True, doe.display_id)
@@ -135,7 +131,7 @@ class DERControlMapper:
                     derc_id=doe.dynamic_operating_envelope_id,
                 ),
                 "mRID": mrid,
-                "version": 1,
+                "version": status_and_version.version,
                 "description": doe.start_time.isoformat(),
                 "replyTo": ResponseListMapper.response_list_href(
                     scope, scope.display_site_id, ResponseSetType.SITE_CONTROLS
@@ -149,13 +145,7 @@ class DERControlMapper:
                 ),
                 "randomizeStart": doe.randomize_start_seconds,
                 "creationTime": int(doe.changed_time.timestamp()),
-                "EventStatus_": EventStatus.model_validate(
-                    {
-                        "currentStatus": event_status,
-                        "dateTime": int(event_status_time.timestamp()),
-                        "potentiallySuperseded": False,
-                    }
-                ),
+                "EventStatus_": map_to_event_status(status_and_version.event_status, event_status_time),
                 "DERControlBase_": DERControlBase(
                     opModImpLimW=(
                         DERControlMapper.map_to_active_power(doe.import_limit_active_watts, pow10_multiplier)

@@ -22,6 +22,7 @@ from envoy_schema.admin.schema.site_group import (
 from envoy_schema.server.schema.sep2.der import DERType, DOESupportedMode, VPPControlType
 
 from envoy.server.mapper.common import pow10_to_decimal_value
+from envoy.server.mapper.nmi import combine_nmi
 from envoy.server.model.site import (
     Site,
     SiteDERAvailability,
@@ -210,7 +211,7 @@ class SiteMapper:
         return SiteResponse(
             aggregator_id=site.aggregator_id,
             site_id=site.site_id,
-            nmi=site.nmi,
+            nmi=combine_nmi(site.nmi, site.nmi_checksum),
             timezone_id=site.timezone_id,
             created_time=site.created_time,
             changed_time=site.changed_time,

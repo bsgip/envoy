@@ -59,6 +59,7 @@ from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignm
 from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
 from envoy.server.mapper.sep2.pricing import RateComponentMapper, TariffProfileMapper, TimeTariffIntervalMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
@@ -756,7 +757,7 @@ class NotificationMapper:
         tariff_id: int,
         site_id: int,
         tariff_component_id: int | None,
-        rates: Sequence[TariffGeneratedRate],
+        rates: Sequence[TariffGeneratedRate | ArchiveTariffGeneratedRate],
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
