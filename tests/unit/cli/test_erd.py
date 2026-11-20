@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from envoy.cli.erd import MARKDOWN_FILE_NAME, SVG_FILE_NAME, main
+from envoy.cli.erd import MARKDOWN_FILE_NAME, SVG_FILE_NAME, fix_mermaid, main
 
 PYPROJECT = Path(__file__).resolve().parents[3] / "pyproject.toml"
 
@@ -57,3 +57,8 @@ def test_erd_missing_config(tmp_path: Path):
     with pytest.raises(SystemExit) as exc_info:
         main(["--config", str(tmp_path / "does_not_exist.toml"), "--output-dir", str(tmp_path)])
     assert exc_info.value.code != 0
+
+
+def test_fix_mermaid_double_precision():
+    assert fix_mermaid("  table {\n    DOUBLE PRECISION value\n  }") == "  table {\n    DOUBLE_PRECISION value\n  }"
+    assert fix_mermaid("INTEGER id PK") == "INTEGER id PK"

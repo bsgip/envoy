@@ -1,9 +1,9 @@
 name: Entity Relationship Diagram
 on:
   push:
-    branches: [main]
+    branches: [main, csipaus.org/ns/v1.3]
   pull_request:
-    branches: [main]
+    branches: [main, csipaus.org/ns/v1.3]
   workflow_dispatch:
 
 jobs:

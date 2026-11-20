@@ -440,7 +440,7 @@ erDiagram
     INTEGER interval_period PK
     INTEGER site_id_snapshot PK
     INTEGER variable_id PK
-    DOUBLE PRECISION value
+    DOUBLE_PRECISION value
   }
 
   certificate {
