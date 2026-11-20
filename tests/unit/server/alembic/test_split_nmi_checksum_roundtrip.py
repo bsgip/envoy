@@ -1,6 +1,6 @@
 from envoy.server.alembic import downgrade, upgrade
 
-PREV_REVISION = "beb692fa34d5"
+PREV_REVISION = "be0cdcf87235"
 COLS = (
     "site_id, nmi, aggregator_id, timezone_id, created_time, changed_time, lfdi, sfdi, device_category, "
     "registration_pin, post_rate_seconds"
