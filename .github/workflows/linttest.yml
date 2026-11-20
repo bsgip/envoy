@@ -68,10 +68,11 @@ jobs:
         with:
           python-version: ${{ matrix.pyver }}
 
+      # We deliberately include docs - there are tests for exercising paracelsus / CLI funcs
       - name: Install Dependencies
         run: |
           sudo apt install -y postgresql
-          uv sync --extra test
+          uv sync --extra test --extra docs
 
       - name: Run Pytest
         run: |
