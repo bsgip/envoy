@@ -9,6 +9,7 @@ from psycopg import Connection
 from sqlalchemy import select
 
 from envoy.server.manager.nmi_validator import DNSPParticipantId
+from envoy.server.mapper.nmi import split_nmi
 from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.site import Site
 from tests.data.certificates.certificate1 import TEST_CERTIFICATE_FINGERPRINT as AGG_1_VALID_CERT
@@ -99,6 +100,9 @@ async def test_get_connectionpoint_none_nmi(
     "site_id, cert, update_nmi_value, expected_result, expected_nmi",
     [
         (1, AGG_1_VALID_CERT, "1212121212", HTTPStatus.CREATED, "1212121212"),
+        (1, AGG_1_VALID_CERT, "12121212125", HTTPStatus.CREATED, "12121212125"),  # NMI with checksum
+        (1, AGG_1_VALID_CERT, "123", HTTPStatus.CREATED, "123"),
+        (1, AGG_1_VALID_CERT, "121212121212", HTTPStatus.BAD_REQUEST, "1111111111"),  # NMI too long (12 chars)
         (1, AGG_1_VALID_CERT, "1212121212121212121212", HTTPStatus.BAD_REQUEST, "1111111111"),  # NMI too long
         (6, REGISTERED_DEVICE_CERT, "1212121212", HTTPStatus.CREATED, "1212121212"),
         (5, REGISTERED_DEVICE_CERT, "1212121212", HTTPStatus.FORBIDDEN, "5555555555"),  # Wrong device for device cert
@@ -142,7 +146,7 @@ async def test_connectionpoint_update(
     # check whether it updated (or not) in the DB
     async with generate_async_session(pg_base_config) as session:
         site = (await session.execute(select(Site).where(Site.site_id == site_id))).scalar_one()
-        assert site.nmi == expected_nmi
+        assert (site.nmi, site.nmi_checksum) == split_nmi(expected_nmi)
 
         archived_sites = (
             (await session.execute(select(ArchiveSite).where(ArchiveSite.site_id == site_id))).scalars().all()
@@ -153,6 +157,36 @@ async def test_connectionpoint_update(
             assert archived_sites[0].nmi == (str(site_id) * 10), "All NMIs in base config are just like 1111111111"
         else:
             assert len(archived_sites) == 0
+
+
+@pytest.mark.anyio
+async def test_connectionpoint_update_and_fetch_with_checksum(
+    client: AsyncClient, pg_base_config, connection_point_uri_format: str
+):
+    """Tests that an 11 char NMI (including checksum) round trips through PUT/GET unchanged and that re-sending the
+    same NMI doesn't generate an update"""
+    href = connection_point_uri_format.format(site_id=1)
+    headers = {cert_header: urllib.parse.quote(AGG_1_VALID_CERT)}
+    nmi = "12121212125"
+
+    for _ in range(2):
+        response = await client.put(url=href, headers=headers, content=ConnectionPointRequest(id=nmi).to_xml())
+        assert_response_header(response, HTTPStatus.CREATED, expected_content_type=None)
+
+        response = await client.get(href, headers=headers)
+        assert_response_header(response, HTTPStatus.OK)
+        assert ConnectionPointResponse.from_xml(read_response_body_string(response)).id == nmi
+
+    async with generate_async_session(pg_base_config) as session:
+        site = (await session.execute(select(Site).where(Site.site_id == 1))).scalar_one()
+        assert site.nmi == "1212121212"
+        assert site.nmi_checksum == "5"
+
+        # Only the first PUT should have generated an archive (the second is identical)
+        archived_sites = (await session.execute(select(ArchiveSite).where(ArchiveSite.site_id == 1))).scalars().all()
+        assert len(archived_sites) == 1
+        assert archived_sites[0].nmi == "1111111111"
+        assert archived_sites[0].nmi_checksum is None
 
 
 @pytest.mark.anyio

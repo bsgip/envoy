@@ -973,8 +973,23 @@ async def test_registration_manager_fetch_registration_for_scope_bad_site_id(
 @pytest.mark.parametrize(
     "site, nmi, allow",
     [
-        (generate_class_instance(Site, site_id=1, nmi="123"), "321", True),  # normal update
-        (generate_class_instance(Site, site_id=1, nmi="123"), "123", True),  # lazy update
+        (generate_class_instance(Site, site_id=1, nmi="123", nmi_checksum=None), "321", True),  # normal update
+        (generate_class_instance(Site, site_id=1, nmi="123", nmi_checksum=None), "123", True),  # lazy update
+        (
+            generate_class_instance(Site, site_id=1, nmi="1234567890", nmi_checksum="1"),
+            "12345678901",
+            True,
+        ),  # lazy update (with checksum)
+        (
+            generate_class_instance(Site, site_id=1, nmi="1234567890", nmi_checksum="1"),
+            "1234567890",
+            True,
+        ),  # update - removing checksum
+        (
+            generate_class_instance(Site, site_id=1, nmi="1234567890", nmi_checksum=None),
+            "12345678902",
+            True,
+        ),  # update - adding checksum
         (None, "123", True),  # failed update
     ],
 )
@@ -995,13 +1010,17 @@ async def test_end_device_manager_insert_or_update_nmi_for_site(
 
     # Act
     if site:
-        og_nmi = site.nmi
+        og_nmi = f"{site.nmi}{site.nmi_checksum or ''}"
         await EndDeviceManager.insert_or_update_nmi_for_site(mock_session, scope, nmi, allow)
     else:
         with pytest.raises(NotFoundError):
             await EndDeviceManager.insert_or_update_nmi_for_site(mock_session, scope, nmi, allow)
     # Assert
     mock_select_single_site_with_site_id.assert_awaited_once()
+    if site:
+        assert f"{site.nmi}{site.nmi_checksum or ''}" == nmi, "Site should now hold the (split) nmi"
+        assert site.nmi == nmi[:10]
+        assert site.nmi_checksum == (nmi[10:] or None)
     if site and og_nmi != nmi:
         assert_mock_session(mock_session, committed=True)
         mock_copy_rows_into_archive.assert_awaited_once()
@@ -1019,9 +1038,14 @@ async def test_end_device_manager_insert_or_update_nmi_for_site(
 @pytest.mark.parametrize(
     "site, nmi, allow, success",
     [
-        (generate_class_instance(Site, site_id=1, nmi=None), "123", True, True),  # Inserting
-        (generate_class_instance(Site, site_id=1, nmi=None), "123", False, True),  # Inserting
-        (generate_class_instance(Site, site_id=1, nmi="123"), "123", False, False),  # failed update
+        (generate_class_instance(Site, site_id=1, nmi=None, nmi_checksum=None), "123", True, True),  # Inserting
+        (generate_class_instance(Site, site_id=1, nmi=None, nmi_checksum=None), "123", False, True),  # Inserting
+        (
+            generate_class_instance(Site, site_id=1, nmi="123", nmi_checksum=None),
+            "123",
+            False,
+            False,
+        ),  # failed update
     ],
 )
 async def test_end_device_manager_insert_or_update_nmi_for_site_insert_only(

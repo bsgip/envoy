@@ -10,6 +10,7 @@ from envoy_schema.admin.schema.archive import (
 )
 
 from envoy.server.manager.time import utc_now
+from envoy.server.mapper.nmi import combine_nmi
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope
 from envoy.server.model.archive.site import ArchiveSite
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
@@ -26,7 +27,7 @@ class ArchiveMapper:
             archive_time=archive_time,
             deleted_time=site.deleted_time,
             site_id=site.site_id,
-            nmi=site.nmi,
+            nmi=combine_nmi(site.nmi, site.nmi_checksum),
             aggregator_id=site.aggregator_id,
             timezone_id=site.timezone_id,
             created_time=site.created_time,

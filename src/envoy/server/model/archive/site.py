@@ -27,7 +27,10 @@ class ArchiveSite(ArchiveBase):
     __tablename__ = ARCHIVE_TABLE_PREFIX + original_models.Site.__tablename__
 
     site_id: Mapped[int] = mapped_column(index=True)  # This is the original PK
-    nmi: Mapped[str | None] = mapped_column(VARCHAR(length=11), nullable=True)
+    nmi: Mapped[str | None] = mapped_column(VARCHAR(length=10), nullable=True)  # NMI excluding checksum
+    nmi_checksum: Mapped[str | None] = mapped_column(
+        VARCHAR(length=1), nullable=True
+    )  # The (optional) 11th NMI checksum character
     aggregator_id: Mapped[int] = mapped_column(INTEGER, nullable=False)  # This was originally a FK
 
     timezone_id: Mapped[str] = mapped_column(VARCHAR(length=64), nullable=False)

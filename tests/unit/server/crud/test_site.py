@@ -427,7 +427,7 @@ async def test_upsert_site_for_aggregator_insert(pg_base_config):
 
     # Do the insert in a session separate to the database
     inserted_id: int
-    new_site: Site = generate_class_instance(Site)
+    new_site: Site = generate_class_instance(Site, nmi_checksum="9")
     del new_site.site_id  # Don't set the primary key - we expect the DB to set that
     async with generate_async_session(pg_base_config) as session:
         inserted_id = await upsert_site_for_aggregator(session, 1, new_site)
@@ -471,7 +471,7 @@ async def test_upsert_site_for_aggregator_update_non_indexed(pg_base_config):
     # a SQL Alchemy session but shares the appropriate indexed values
     site_id_to_update = 1
     aggregator_id = 1
-    site_to_upsert: Site = generate_class_instance(Site)
+    site_to_upsert: Site = generate_class_instance(Site, nmi_checksum="9")
     existing_registration_pin: int
     async with generate_async_session(pg_base_config) as session:
         existing_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
@@ -890,7 +890,7 @@ async def test_insert_site_for_aggregator(pg_base_config):
 
     # Do the insert in a session separate to the database
     inserted_id: int
-    new_site: Site = generate_class_instance(Site, created_time=None)
+    new_site: Site = generate_class_instance(Site, nmi_checksum="9", created_time=None)
     del new_site.site_id  # Don't set the primary key - we expect the DB to set that
     async with generate_async_session(pg_base_config) as session:
         inserted_id = await insert_site_for_aggregator(session, 1, new_site)
@@ -936,7 +936,7 @@ async def test_insert_site_for_aggregator_unique_constraints(pg_base_config):
     # a SQL Alchemy session but shares the appropriate indexed values
     site_id_to_update = 1
     aggregator_id = 1
-    site_to_insert: Site = generate_class_instance(Site)
+    site_to_insert: Site = generate_class_instance(Site, nmi_checksum="9")
     async with generate_async_session(pg_base_config) as session:
         existing_site = await select_single_site_with_site_id(session, site_id_to_update, aggregator_id)
         assert existing_site

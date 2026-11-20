@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from envoy.server.mapper.nmi import site_nmi_equals
 from envoy.server.model.site import Site, SiteGroup, SiteGroupAssignment
 
 
@@ -26,7 +27,7 @@ async def count_all_sites(
         stmt = stmt.where(Site.changed_time >= changed_after)
 
     if nmi_filter:
-        stmt = stmt.where(Site.nmi == nmi_filter)
+        stmt = stmt.where(site_nmi_equals(nmi_filter))
 
     if aggregator_id_filter is not None:
         stmt = stmt.where(Site.aggregator_id == aggregator_id_filter)
@@ -75,7 +76,7 @@ async def select_all_sites(
         stmt = stmt.where(Site.changed_time >= changed_after)
 
     if nmi_filter:
-        stmt = stmt.where(Site.nmi == nmi_filter)
+        stmt = stmt.where(site_nmi_equals(nmi_filter))
 
     if aggregator_id_filter is not None:
         stmt = stmt.where(Site.aggregator_id == aggregator_id_filter)
