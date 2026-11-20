@@ -1,10 +1,9 @@
 from collections.abc import Iterator, Sequence
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from itertools import islice, product
 
 from envoy_schema.server.schema import uri
-from envoy_schema.server.schema.sep2.event import EventStatus
 from envoy_schema.server.schema.sep2.identification import Link, ListLink
 from envoy_schema.server.schema.sep2.metering import ReadingType
 from envoy_schema.server.schema.sep2.pricing import (
@@ -33,8 +32,10 @@ from envoy.server.exception import InvalidMappingError
 from envoy.server.mapper.common import generate_href
 from envoy.server.mapper.constants import PricingReadingType, ResponseSetType
 from envoy.server.mapper.sep2.der import to_hex_binary
+from envoy.server.mapper.sep2.event import calculate_event_status_and_version, map_to_event_status
 from envoy.server.mapper.sep2.mrid import MridMapper
 from envoy.server.mapper.sep2.response import SPECIFIC_RESPONSE_REQUIRED, ResponseListMapper
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import PRICE_DECIMAL_PLACES, PRICE_DECIMAL_POWER, Tariff, TariffGeneratedRate
 from envoy.server.request_scope import BaseRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
 
@@ -140,7 +141,7 @@ class PricingReadingTypeMapper:
         return generate_href(uri.PricingReadingTypeUri, scope, reading_type=rt)
 
     @staticmethod
-    def extract_price(rt: PricingReadingType, rate: TariffGeneratedRate) -> Decimal:
+    def extract_price(rt: PricingReadingType, rate: TariffGeneratedRate | ArchiveTariffGeneratedRate) -> Decimal:
         if rt == PricingReadingType.IMPORT_ACTIVE_POWER_KWH:
             return rate.import_active_price
         elif rt == PricingReadingType.EXPORT_ACTIVE_POWER_KWH:
@@ -391,12 +392,31 @@ class TimeTariffIntervalMapper:
 
     @staticmethod
     def map_to_response(
-        scope: BaseRequestScope, site_id: int, rate: TariffGeneratedRate, pricing_reading: PricingReadingType
+        scope: BaseRequestScope,
+        site_id: int,
+        rate: TariffGeneratedRate | ArchiveTariffGeneratedRate,
+        pricing_reading: PricingReadingType,
+        now: datetime,
     ) -> TimeTariffIntervalResponse:
-        """Creates a new TimeTariffIntervalResponse for the given rate and specific price reading
+        """Creates a new TimeTariffIntervalResponse for the given rate and specific price reading. Needs to know the
+        current datetime in order to determine the event status (and associated version)
 
         site_id: The specific member site (of rate.site_group_id) this response is being generated for - a rate
             now targets a SiteGroup rather than a single site, so this must be supplied by the caller."""
+        is_deleted = isinstance(rate, ArchiveTariffGeneratedRate) and rate.deleted_time is not None
+        status_and_version = calculate_event_status_and_version(
+            start_time=rate.start_time,
+            end_time=rate.start_time + timedelta(seconds=rate.duration_seconds),
+            now=now,
+            is_superseded=False,
+            is_deleted=is_deleted,
+            is_randomized=False,
+        )
+        event_status_time: datetime = (
+            rate.deleted_time
+            if isinstance(rate, ArchiveTariffGeneratedRate) and rate.deleted_time is not None
+            else rate.changed_time
+        )
         start_d = rate.start_time.date()
         start_t = rate.start_time.time()
         price = PricingReadingTypeMapper.extract_price(pricing_reading, rate)
@@ -413,7 +433,7 @@ class TimeTariffIntervalMapper:
                     rate.tariff_generated_rate_id,
                     pricing_reading,
                 ),
-                "version": 0,
+                "version": status_and_version.version,
                 "description": rate.start_time.isoformat(),
                 "touTier": TOUType.NOT_APPLICABLE,
                 "creationTime": int(rate.changed_time.timestamp()),
@@ -425,13 +445,7 @@ class TimeTariffIntervalMapper:
                     "start": int(rate.start_time.timestamp()),
                     "duration": rate.duration_seconds,
                 },
-                "EventStatus_": EventStatus.model_validate(
-                    {
-                        "currentStatus": 0,  # Set to 'scheduled'
-                        "dateTime": int(rate.changed_time.timestamp()),  # Set to when it is created
-                        "potentiallySuperseded": False,
-                    }
-                ),
+                "EventStatus_": map_to_event_status(status_and_version.event_status, event_status_time),
                 "ConsumptionTariffIntervalListLink": ListLink(href=list_href, all_=1),  # single rate
             }
         )
@@ -442,6 +456,7 @@ class TimeTariffIntervalMapper:
         rates: Sequence[TariffGeneratedRate],
         pricing_reading: PricingReadingType,
         total: int,
+        now: datetime,
     ) -> TimeTariffIntervalListResponse:
         """Creates a TimeTariffIntervalListResponse for a single set of rates."""
         return TimeTariffIntervalListResponse.model_validate(
@@ -449,7 +464,7 @@ class TimeTariffIntervalMapper:
                 "all_": total,
                 "results": len(rates),
                 "TimeTariffInterval": [
-                    TimeTariffIntervalMapper.map_to_response(scope, scope.display_site_id, rate, pricing_reading)
+                    TimeTariffIntervalMapper.map_to_response(scope, scope.display_site_id, rate, pricing_reading, now)
                     for rate in rates
                 ],
             }

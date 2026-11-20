@@ -55,6 +55,7 @@ from envoy.server.mapper.sep2.function_set_assignments import FunctionSetAssignm
 from envoy.server.mapper.sep2.metering import READING_SET_ALL_ID, MirrorMeterReadingMapper
 from envoy.server.mapper.sep2.pricing import TimeTariffIntervalMapper
 from envoy.server.model.archive.doe import ArchiveDynamicOperatingEnvelope, ArchiveSiteControlGroup
+from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.doe import DynamicOperatingEnvelope, SiteControlGroup, SiteControlGroupDefault
 from envoy.server.model.site import Site, SiteDERAvailability, SiteDERRating, SiteDERSetting, SiteDERStatus
 from envoy.server.model.site_reading import SiteReading
@@ -602,7 +603,7 @@ class NotificationMapper:
         site_id: int,
         day: date,
         pricing_reading_type: PricingReadingType,
-        rates: Sequence[TariffGeneratedRate],
+        rates: Sequence[TariffGeneratedRate | ArchiveTariffGeneratedRate],
         sub: Subscription,
         scope: AggregatorRequestScope,
         notification_type: NotificationType,
@@ -610,6 +611,7 @@ class NotificationMapper:
         """Turns a list of dynamic prices into a notification
 
         site_id: The specific member site this batch of rates is being notified for"""
+        now = utc_now()
         time_tariff_interval_list_href = generate_href(
             TimeTariffIntervalListUri,
             scope,
@@ -629,7 +631,8 @@ class NotificationMapper:
                     "all_": len(rates),
                     "results": len(rates),
                     "TimeTariffInterval": [
-                        TimeTariffIntervalMapper.map_to_response(scope, site_id, r, pricing_reading_type) for r in rates
+                        TimeTariffIntervalMapper.map_to_response(scope, site_id, r, pricing_reading_type, now)
+                        for r in rates
                     ],
                 },
             }
