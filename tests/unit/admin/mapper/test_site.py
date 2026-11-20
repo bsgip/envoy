@@ -156,9 +156,14 @@ def test_site_single_entity_mapper():
     assert isinstance(with_groups_der_mapped, SiteResponse)
 
     # we can get away with check_class_instance_equality as the field names are all the same
-    assert_class_instance_equality(SiteResponse, all_set, all_set_mapped)
+    assert_class_instance_equality(SiteResponse, all_set, all_set_mapped, {"nmi"})
     assert_class_instance_equality(SiteResponse, with_none, with_none_mapped)
-    assert_class_instance_equality(SiteResponse, with_groups_and_der, with_groups_der_mapped)
+    assert_class_instance_equality(SiteResponse, with_groups_and_der, with_groups_der_mapped, {"nmi"})
+
+    # The NMI checksum is stored separately but should be recombined
+    assert all_set_mapped.nmi == f"{all_set.nmi}{all_set.nmi_checksum}"
+    assert with_groups_der_mapped.nmi == f"{with_groups_and_der.nmi}{with_groups_and_der.nmi_checksum}"
+    assert with_none_mapped.nmi is None
 
     assert len(all_set_mapped.groups) == 0, "No groups on this type"
     assert len(with_none_mapped.groups) == 0, "No groups on this type"

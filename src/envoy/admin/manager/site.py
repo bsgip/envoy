@@ -28,6 +28,7 @@ from envoy.notification.manager.notification import NotificationManager
 from envoy.server.crud.archive import copy_rows_into_archive, delete_rows_into_archive
 from envoy.server.crud.site import delete_site_for_aggregator
 from envoy.server.manager.time import utc_now
+from envoy.server.mapper.nmi import split_nmi
 from envoy.server.model.archive.site import ArchiveSite, ArchiveSiteGroupAssignment
 from envoy.server.model.site import Site, SiteGroupAssignment
 from envoy.server.model.subscription import SubscriptionResource
@@ -120,7 +121,7 @@ class SiteManager:
 
         if update_request.nmi is not None:
             # Empty NMI gets treated as a NMI delete
-            site.nmi = update_request.nmi if len(update_request.nmi) > 0 else None
+            site.nmi, site.nmi_checksum = split_nmi(update_request.nmi if len(update_request.nmi) > 0 else None)
 
         if update_request.timezone_id is not None:
             site.timezone_id = update_request.timezone_id

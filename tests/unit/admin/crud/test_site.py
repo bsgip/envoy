@@ -274,7 +274,7 @@ async def test_max_limit_select_all_sites(pg_base_config):
         initial_site_count = await count_all_sites(session, None, None)
         for i in range(MAX_LIMIT):
             seed = i
-            site: Site = generate_class_instance(Site, seed=seed, site_id=None, aggregator_id=3)
+            site: Site = generate_class_instance(Site, nmi_checksum="9", seed=seed, site_id=None, aggregator_id=3)
             site.site_der_rating = generate_class_instance(
                 SiteDERRating, seed=seed, site_id=None, site_der_rating_id=None
             )

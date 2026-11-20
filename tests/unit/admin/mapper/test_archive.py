@@ -23,7 +23,10 @@ def test_map_to_site_response():
 
     all_mapped = ArchiveMapper.map_to_site_response(all)
     assert isinstance(all_mapped, ArchiveSiteResponse)
-    assert_class_instance_equality(ArchiveSite, all, all_mapped, {"registration_pin"})  # These should just map 1-1
+    assert_class_instance_equality(
+        ArchiveSite, all, all_mapped, {"registration_pin", "nmi", "nmi_checksum"}
+    )  # These should just map 1-1
+    assert all_mapped.nmi == f"{all.nmi}{all.nmi_checksum}", "NMI checksum should be recombined"
     assert all_mapped.groups == []
     assert all_mapped.der_availability is None
     assert all_mapped.der_config is None
@@ -32,7 +35,7 @@ def test_map_to_site_response():
     optional_mapped = ArchiveMapper.map_to_site_response(optional)
     assert isinstance(optional_mapped, ArchiveSiteResponse)
     assert_class_instance_equality(
-        ArchiveSite, optional, optional_mapped, {"archive_time", "registration_pin"}
+        ArchiveSite, optional, optional_mapped, {"archive_time", "registration_pin", "nmi_checksum"}
     )  # These should just map 1-1
     assert_nowish(optional_mapped.archive_time)  # This is a workaround in case we get some bad data
 

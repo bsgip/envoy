@@ -1,3 +1,4 @@
+import pytest
 from assertical.fake.generator import generate_class_instance
 from envoy_schema.server.schema.csip_aus.connection_point import ConnectionPointResponse
 
@@ -18,7 +19,7 @@ def test_map_to_response():
     result_all_set = ConnectionPointMapper.map_to_response(scope_all_set, site_all_set)
     assert result_all_set is not None
     assert isinstance(result_all_set, ConnectionPointResponse)
-    assert result_all_set.id == site_all_set.nmi
+    assert result_all_set.id == f"{site_all_set.nmi}{site_all_set.nmi_checksum}"
     assert result_all_set.href is not None
     assert result_all_set.href.startswith("/my/prefix")
     assert f"/{site_all_set.site_id}/" in result_all_set.href
@@ -29,3 +30,19 @@ def test_map_to_response():
     assert result_optional.id == "", "None NMI maps to empty string"
     assert result_optional.href is not None
     assert f"/{site_optional.site_id}/" in result_optional.href
+
+
+@pytest.mark.parametrize(
+    "nmi, nmi_checksum, expected_id",
+    [
+        ("1234567890", "5", "12345678905"),
+        ("1234567890", None, "1234567890"),
+        ("abc", None, "abc"),
+        (None, None, ""),
+    ],
+)
+def test_map_to_response_nmi_checksum(nmi: str | None, nmi_checksum: str | None, expected_id: str):
+    """The NMI checksum is stored separately in the DB but should be recombined for the ConnectionPoint id"""
+    scope = generate_class_instance(BaseRequestScope, href_prefix=None)
+    site: Site = generate_class_instance(Site, nmi=nmi, nmi_checksum=nmi_checksum)
+    assert ConnectionPointMapper.map_to_response(scope, site).id == expected_id

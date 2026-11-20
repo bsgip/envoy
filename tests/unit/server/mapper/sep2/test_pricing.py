@@ -20,6 +20,7 @@ from envoy_schema.server.schema.sep2.types import ConsumptionBlockType
 from envoy_schema.server.schema.uri import TariffProfileFSAListUri, TariffProfileListUri
 
 from envoy.server.exception import NotFoundError
+from envoy.server.mapper.sep2.event import EventVersion
 from envoy.server.mapper.sep2.pricing import (
     ConsumptionTariffIntervalMapper,
     RateComponentMapper,
@@ -28,7 +29,7 @@ from envoy.server.mapper.sep2.pricing import (
 )
 from envoy.server.model.archive.tariff import ArchiveTariffGeneratedRate
 from envoy.server.model.tariff import Tariff, TariffComponent, TariffGeneratedRate
-from envoy.server.request_scope import DeviceOrAggregatorRequestScope, SiteRequestScope
+from envoy.server.request_scope import AggregatorRequestScope, DeviceOrAggregatorRequestScope, SiteRequestScope
 
 
 def test_tariff_profile_mapping():
@@ -368,7 +369,7 @@ def test_time_tariff_interval_map_to_response(
     """Non exhaustive test on TimeTariffInterval mapping - mainly to catch any validation issues"""
 
     scope = generate_class_instance(DeviceOrAggregatorRequestScope, seed=101, href_prefix="/pfx")
-    rate = generate_class_instance(type, seed=202, optional_is_none=optional_is_none)
+    rate = generate_class_instance(type, seed=202, optional_is_none=optional_is_none, duration_seconds=3601)
     site_id = 54321
     now = rate.start_time + time_diff
 
@@ -389,7 +390,6 @@ def test_time_tariff_interval_map_to_response(
     assert mapped.ConsumptionTariffIntervalListSummary.href is None
     if rate.block_1_start_pow10_encoded is None or rate.price_pow10_encoded_block_1 is None:
         expected_consumption_blocks = 1
-
     else:
         expected_consumption_blocks = 2
     assert mapped.ConsumptionTariffIntervalListLink.all_ == expected_consumption_blocks
@@ -483,3 +483,41 @@ def test_mrid_uniqueness():
     assert tti.mRID != rc.mRID
     assert tti.mRID != tp.mRID
     assert rc.mRID != tp.mRID
+
+
+@pytest.mark.parametrize(
+    "rate_type, now_offset_seconds, is_deleted, expected_status, expected_version",
+    [
+        (TariffGeneratedRate, -10, False, EventStatusType.Scheduled, EventVersion.SCHEDULED),
+        (TariffGeneratedRate, 10, False, EventStatusType.Active, EventVersion.ACTIVE),
+        (TariffGeneratedRate, 1000, False, EventStatusType.Scheduled, EventVersion.COMPLETED),
+        (ArchiveTariffGeneratedRate, -10, False, EventStatusType.Scheduled, EventVersion.SCHEDULED),
+        (ArchiveTariffGeneratedRate, -10, True, EventStatusType.Cancelled, EventVersion.CANCELLED),
+        (ArchiveTariffGeneratedRate, 10, True, EventStatusType.Cancelled, EventVersion.CANCELLED),
+    ],
+)
+def test_time_tariff_interval_event_status_and_version(
+    rate_type: type[TariffGeneratedRate] | type[ArchiveTariffGeneratedRate],
+    now_offset_seconds: int,
+    is_deleted: bool,
+    expected_status: EventStatusType,
+    expected_version: EventVersion,
+):
+    start_time = datetime(2023, 4, 5, 6, 7, 8, tzinfo=UTC)
+    rate = generate_class_instance(
+        rate_type, seed=101, optional_is_none=False, start_time=start_time, duration_seconds=300
+    )
+    if isinstance(rate, ArchiveTariffGeneratedRate) and not is_deleted:
+        rate.deleted_time = None
+    scope = generate_class_instance(AggregatorRequestScope)
+    now = start_time + timedelta(seconds=now_offset_seconds)
+
+    mapped = TimeTariffIntervalMapper.map_to_response(scope, now, rate, 123)
+    assert mapped.EventStatus_.currentStatus == expected_status
+    assert mapped.version == expected_version
+    if is_deleted:
+        assert isinstance(rate, ArchiveTariffGeneratedRate) and mapped.EventStatus_.dateTime == int(
+            rate.deleted_time.timestamp() if rate.deleted_time is not None else 0
+        )
+    else:
+        assert mapped.EventStatus_.dateTime == int(rate.changed_time.timestamp())
