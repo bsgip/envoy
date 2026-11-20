@@ -48,6 +48,7 @@ erDiagram
     INTEGER site_control_group_id
     INTEGER site_group_id
     DATETIME start_time
+    DECIMAL(16-2) storage_target_active_watts "nullable"
     BOOLEAN superseded
   }
 
@@ -67,6 +68,8 @@ erDiagram
     INTEGER mupl_pollrate_seconds "nullable"
     INTEGER runtime_server_config_id "indexed"
     INTEGER site_control_pow10_encoding "nullable"
+    INTEGER tp_pollrate_seconds "nullable"
+    INTEGER tti_pollrate_seconds "nullable"
   }
 
   archive_site {
@@ -113,6 +116,7 @@ erDiagram
     INTEGER ramp_rate_percent_per_second "nullable"
     INTEGER site_control_group_default_id "indexed"
     INTEGER site_control_group_id
+    DECIMAL(16-2) storage_target_active_watts "nullable"
     INTEGER version
   }
 
@@ -189,6 +193,7 @@ erDiagram
     INTEGER under_excited_w_value "nullable"
     INTEGER v_nom_multiplier "nullable"
     INTEGER v_nom_value "nullable"
+    INTEGER vpp_modes_supported "nullable"
   }
 
   archive_site_der_setting {
@@ -236,6 +241,8 @@ erDiagram
     INTEGER min_pf_under_excited_multiplier "nullable"
     INTEGER min_v_multiplier "nullable"
     INTEGER min_v_value "nullable"
+    INTEGER min_wh_multiplier "nullable"
+    INTEGER min_wh_value "nullable"
     INTEGER modes_enabled "nullable"
     INTEGER site_der_setting_id "indexed"
     INTEGER site_id
@@ -246,6 +253,7 @@ erDiagram
     INTEGER v_ref_ofs_multiplier "nullable"
     INTEGER v_ref_ofs_value "nullable"
     INTEGER v_ref_value "nullable"
+    INTEGER vpp_modes_enabled "nullable"
   }
 
   archive_site_der_status {
@@ -351,6 +359,7 @@ erDiagram
     INTEGER entity_limit
     VARCHAR(2048) notification_uri
     INTEGER resource_id "nullable"
+    INTEGER resource_parent_id "nullable"
     INTEGER resource_type
     INTEGER scoped_site_id "nullable"
     INTEGER subscription_id "indexed"
@@ -377,24 +386,49 @@ erDiagram
     VARCHAR(20) dnsp_code
     INTEGER fsa_id
     VARCHAR(64) name
+    INTEGER price_power_of_ten_multiplier "nullable"
+    INTEGER primacy
     INTEGER required_site_group_id "nullable"
     INTEGER tariff_id "indexed"
+    INTEGER version "nullable"
+  }
+
+  archive_tariff_component {
+    INTEGER archive_id PK
+    INTEGER accumulation_behaviour "nullable"
+    DATETIME archive_time "nullable"
+    DATETIME changed_time
+    INTEGER commodity "nullable"
+    DATETIME created_time
+    INTEGER data_qualifier "nullable"
+    DATETIME deleted_time "nullable,indexed"
+    VARCHAR(32) description "nullable"
+    INTEGER flow_direction "nullable"
+    INTEGER kind "nullable"
+    INTEGER phase "nullable"
+    INTEGER power_of_ten_multiplier "nullable"
+    INTEGER role_flags
+    BIGINT tariff_component_id "indexed"
+    INTEGER tariff_id
+    INTEGER uom "nullable"
+    INTEGER version "nullable"
   }
 
   archive_tariff_generated_rate {
     INTEGER archive_id PK
     DATETIME archive_time "nullable"
+    INTEGER block_1_start_pow10_encoded "nullable"
     INTEGER calculation_log_id "nullable"
     DATETIME changed_time
     DATETIME created_time
     DATETIME deleted_time "nullable,indexed"
     INTEGER duration_seconds
-    DECIMAL(10-4) export_active_price
-    DECIMAL(10-4) export_reactive_price
-    DECIMAL(10-4) import_active_price
-    DECIMAL(10-4) import_reactive_price
+    DATETIME end_time
+    INTEGER price_pow10_encoded
+    INTEGER price_pow10_encoded_block_1 "nullable"
     INTEGER site_group_id
     DATETIME start_time
+    BIGINT tariff_component_id
     BIGINT tariff_generated_rate_id "indexed"
     INTEGER tariff_id
   }
@@ -470,6 +504,7 @@ erDiagram
     BOOLEAN set_energized "nullable"
     DECIMAL(16-2) set_point_percentage "nullable"
     DATETIME start_time
+    DECIMAL(16-2) storage_target_active_watts "nullable"
     BOOLEAN superseded
   }
 
@@ -526,6 +561,8 @@ erDiagram
     INTEGER mup_postrate_seconds "nullable"
     INTEGER mupl_pollrate_seconds "nullable"
     INTEGER site_control_pow10_encoding "nullable"
+    INTEGER tp_pollrate_seconds "nullable"
+    INTEGER tti_pollrate_seconds "nullable"
   }
 
   site {
@@ -563,6 +600,7 @@ erDiagram
     DECIMAL(16-2) import_limit_active_watts "nullable"
     DECIMAL(16-2) load_limit_active_watts "nullable"
     INTEGER ramp_rate_percent_per_second "nullable"
+    DECIMAL(16-2) storage_target_active_watts "nullable"
     INTEGER version
   }
 
@@ -633,6 +671,7 @@ erDiagram
     INTEGER under_excited_w_value "nullable"
     INTEGER v_nom_multiplier "nullable"
     INTEGER v_nom_value "nullable"
+    INTEGER vpp_modes_supported "nullable"
   }
 
   site_der_setting {
@@ -679,6 +718,8 @@ erDiagram
     INTEGER min_pf_under_excited_multiplier "nullable"
     INTEGER min_v_multiplier "nullable"
     INTEGER min_v_value "nullable"
+    INTEGER min_wh_multiplier "nullable"
+    INTEGER min_wh_value "nullable"
     INTEGER modes_enabled "nullable"
     INTEGER soft_grad_w "nullable"
     INTEGER v_nom_multiplier "nullable"
@@ -687,6 +728,7 @@ erDiagram
     INTEGER v_ref_ofs_multiplier "nullable"
     INTEGER v_ref_ofs_value "nullable"
     INTEGER v_ref_value "nullable"
+    INTEGER vpp_modes_enabled "nullable"
   }
 
   site_der_status {
@@ -789,6 +831,7 @@ erDiagram
     INTEGER entity_limit
     VARCHAR(2048) notification_uri
     INTEGER resource_id "nullable"
+    INTEGER resource_parent_id "nullable"
     INTEGER resource_type
   }
 
@@ -809,20 +852,42 @@ erDiagram
     VARCHAR(20) dnsp_code
     INTEGER fsa_id "indexed"
     VARCHAR(64) name
+    INTEGER price_power_of_ten_multiplier "nullable"
+    INTEGER primacy
+    INTEGER version "nullable"
+  }
+
+  tariff_component {
+    BIGINT tariff_component_id PK
+    INTEGER tariff_id FK
+    INTEGER accumulation_behaviour "nullable"
+    DATETIME changed_time "indexed"
+    INTEGER commodity "nullable"
+    DATETIME created_time
+    INTEGER data_qualifier "nullable"
+    VARCHAR(32) description "nullable"
+    INTEGER flow_direction "nullable"
+    INTEGER kind "nullable"
+    INTEGER phase "nullable"
+    INTEGER power_of_ten_multiplier "nullable"
+    INTEGER role_flags
+    INTEGER uom "nullable"
+    INTEGER version "nullable"
   }
 
   tariff_generated_rate {
     BIGINT tariff_generated_rate_id PK
     INTEGER calculation_log_id FK "nullable,indexed"
     INTEGER site_group_id FK
+    BIGINT tariff_component_id FK
     INTEGER tariff_id FK
+    INTEGER block_1_start_pow10_encoded "nullable"
     DATETIME changed_time "indexed"
     DATETIME created_time
     INTEGER duration_seconds
-    DECIMAL(10-4) export_active_price
-    DECIMAL(10-4) export_reactive_price
-    DECIMAL(10-4) import_active_price
-    DECIMAL(10-4) import_reactive_price
+    DATETIME end_time
+    INTEGER price_pow10_encoded
+    INTEGER price_pow10_encoded_block_1 "nullable"
     DATETIME start_time
   }
 
@@ -830,7 +895,6 @@ erDiagram
     BIGINT tariff_generated_rate_response_id PK
     INTEGER site_id FK
     DATETIME created_time
-    SMALLINT pricing_reading_type
     INTEGER response_type "nullable"
     BIGINT tariff_generated_rate_id_snapshot
   }
@@ -873,7 +937,9 @@ erDiagram
   site ||--o{ subscription : scoped_site_id
   subscription ||--o{ subscription_condition : subscription_id
   site_group ||--o{ tariff : required_site_group_id
+  tariff ||--o{ tariff_component : tariff_id
   tariff ||--o{ tariff_generated_rate : tariff_id
+  tariff_component ||--o{ tariff_generated_rate : tariff_component_id
   site_group ||--o{ tariff_generated_rate : site_group_id
   calculation_log ||--o{ tariff_generated_rate : calculation_log_id
   site ||--o{ tariff_generated_rate_response : site_id
