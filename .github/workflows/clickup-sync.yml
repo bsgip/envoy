@@ -1,0 +1,62 @@
+# GitHub issue -> ClickUp task (one-way)
+# Opened issue = new task. Closed issue = task set to "done".
+# Needs: secret CLICKUP_TOKEN, variable CLICKUP_LIST_ID
+
+name: Sync issues to ClickUp
+
+on:
+  issues:
+    types: [opened, closed]
+
+permissions:
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          TOKEN: ${{ secrets.CLICKUP_TOKEN }}
+          LIST_ID: ${{ vars.CLICKUP_LIST_ID }}
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const headers = { Authorization: process.env.TOKEN, 'Content-Type': 'application/json' };
+
+            if (context.payload.action === 'opened') {
+              // Create the ClickUp task
+              const res = await fetch(`https://api.clickup.com/api/v2/list/${process.env.LIST_ID}/task`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  name: `[${context.repo.repo}] ${issue.title}`,
+                  description: `${issue.html_url}\nOpened by ${issue.user.login}\n\n${issue.body || ''}`,
+                  tags: ['github', context.repo.repo.toLowerCase()],
+                }),
+              });
+              if (!res.ok) throw new Error(await res.text());
+              const task = await res.json();
+
+              // Leave a comment on the issue so we can find the task again when it closes
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issue.number,
+                body: `ClickUp task: ${task.url}\n<!-- clickup:${task.id} -->`,
+              });
+            } else {
+              // Issue closed: find the linked task and mark it done
+              const { data: comments } = await github.rest.issues.listComments({
+                ...context.repo,
+                issue_number: issue.number,
+              });
+              const match = comments.map(c => (c.body || '').match(/<!-- clickup:(\w+) -->/)).find(Boolean);
+              if (!match) return;
+
+              const res = await fetch(`https://api.clickup.com/api/v2/task/${match[1]}`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({ status: 'done' }), // must match your list's "closed" status name
+              });
+              if (!res.ok) throw new Error(await res.text());
+            }
