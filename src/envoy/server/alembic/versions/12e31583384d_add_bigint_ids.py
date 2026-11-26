@@ -24,7 +24,6 @@ def upgrade() -> None:
         existing_type=sa.INTEGER(),
         type_=sa.BigInteger(),
         existing_nullable=False,
-        autoincrement=True,
     )
     op.alter_column(
         "site_reading",
@@ -32,7 +31,6 @@ def upgrade() -> None:
         existing_type=sa.INTEGER(),
         type_=sa.BigInteger(),
         existing_nullable=False,
-        autoincrement=True,
     )
     op.alter_column(
         "tariff_generated_rate",
@@ -40,7 +38,6 @@ def upgrade() -> None:
         existing_type=sa.INTEGER(),
         type_=sa.BigInteger(),
         existing_nullable=False,
-        autoincrement=True,
     )
     # ### end Alembic commands ###
 
@@ -62,7 +59,6 @@ def downgrade() -> None:
         existing_type=sa.BigInteger(),
         type_=sa.INTEGER(),
         existing_nullable=False,
-        autoincrement=True,
     )
     op.alter_column(
         "site_reading",
@@ -70,7 +66,6 @@ def downgrade() -> None:
         existing_type=sa.BigInteger(),
         type_=sa.INTEGER(),
         existing_nullable=False,
-        autoincrement=True,
     )
     op.alter_column(
         "dynamic_operating_envelope",
@@ -78,7 +73,6 @@ def downgrade() -> None:
         existing_type=sa.BigInteger(),
         type_=sa.INTEGER(),
         existing_nullable=False,
-        autoincrement=True,
     )
     # ### end Alembic commands ###
 

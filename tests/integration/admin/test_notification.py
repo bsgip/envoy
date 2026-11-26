@@ -245,7 +245,7 @@ async def test_supersede_doe_with_active_subscription(
         site_group_id=2,
         calculation_log_id=None,
         start_time=datetime(2022, 5, 7, 1, 2, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
-        export_limit_watts=100,
+        export_limit_watts=Decimal(100),
     )
     assert doe_1.export_limit_watts is not None
 
@@ -523,10 +523,10 @@ async def test_replace_rate_with_active_subscription(
         tariff_id=1,
         calculation_log_id=None,
         start_time=datetime(2022, 3, 5, 1, 2, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
-        import_active_price=91234,
-        export_active_price=91235,
-        import_reactive_price=91236,
-        export_reactive_price=91237,
+        import_active_price=Decimal(91234),
+        export_active_price=Decimal(91235),
+        import_reactive_price=Decimal(91236),
+        export_reactive_price=Decimal(91237),
     )
 
     content = ",".join([d.model_dump_json() for d in [rate_1]])
