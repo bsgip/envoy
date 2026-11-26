@@ -32,6 +32,7 @@ from envoy_schema.admin.schema.uri import (
     TariffListUri,
     TariffUpdateUri,
 )
+from envoy_schema.server.schema.sep2.types import RoleFlagsType
 from httpx import AsyncClient
 from sqlalchemy import delete, insert, select
 
@@ -378,7 +379,7 @@ async def test_supersede_site_control_with_active_subscription(
         site_group_id=2,
         calculation_log_id=None,
         start_time=datetime(2022, 5, 7, 1, 2, 0, tzinfo=ZoneInfo("Australia/Brisbane")),
-        export_limit_watts=100,
+        export_limit_watts=Decimal(100),
     )
     assert control_1.export_limit_watts is not None
 
@@ -561,12 +562,12 @@ async def test_create_tariff_component_with_active_subscription(
 
         await session.commit()
 
-    tc_1 = generate_class_instance(TariffComponentRequest, seed=101, tariff_id=1, role_flags=1)
+    tc_1 = generate_class_instance(TariffComponentRequest, seed=101, tariff_id=1, role_flags=RoleFlagsType(1))
     resp = await admin_client_auth.post(TariffComponentCreateUri, content=tc_1.model_dump_json())
     assert resp.status_code == HTTPStatus.CREATED
 
     # Mismatches on tariff id - no notifications
-    tc_2 = generate_class_instance(TariffComponentRequest, seed=303, tariff_id=3, role_flags=2)
+    tc_2 = generate_class_instance(TariffComponentRequest, seed=303, tariff_id=3, role_flags=RoleFlagsType(2))
     resp = await admin_client_auth.post(TariffComponentCreateUri, content=tc_2.model_dump_json())
     assert resp.status_code == HTTPStatus.CREATED
 
@@ -681,14 +682,14 @@ async def test_update_tariff_component_with_active_subscription(
 
         await session.commit()
 
-    tc_1 = generate_class_instance(TariffComponentRequest, seed=101, tariff_id=1, role_flags=3)
+    tc_1 = generate_class_instance(TariffComponentRequest, seed=101, tariff_id=1, role_flags=RoleFlagsType(3))
     resp = await admin_client_auth.put(
         TariffComponentUpdateUri.format(tariff_component_id=1), content=tc_1.model_dump_json()
     )
     assert resp.status_code == HTTPStatus.NO_CONTENT
 
     # Mismatches on tariff id - no notifications
-    tc_2 = generate_class_instance(TariffComponentRequest, seed=303, tariff_id=3, role_flags=2)
+    tc_2 = generate_class_instance(TariffComponentRequest, seed=303, tariff_id=3, role_flags=RoleFlagsType(2))
     resp = await admin_client_auth.put(
         TariffComponentUpdateUri.format(tariff_component_id=tariff_3_tc_id), content=tc_2.model_dump_json()
     )
